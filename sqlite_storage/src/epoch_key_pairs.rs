@@ -58,9 +58,7 @@ pub(super) struct StorableEpochKeyPairsRef<'a, EpochKeyPairs: Entity<STORAGE_PRO
     pub &'a [EpochKeyPairs],
 );
 
-impl<EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>
-    StorableEpochKeyPairsRef<'_, EpochKeyPairs>
-{
+impl<EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>> StorableEpochKeyPairsRef<'_, EpochKeyPairs> {
     pub(super) fn store<
         C: Codec,
         GroupId: Key<STORAGE_PROVIDER_VERSION>,
