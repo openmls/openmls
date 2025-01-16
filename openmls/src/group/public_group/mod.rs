@@ -11,7 +11,6 @@
 //! To avoid duplication of code and functionality, [`MlsGroup`] internally
 //! relies on a [`PublicGroup`] as well.
 
-#[cfg(test)]
 use std::collections::HashSet;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -140,17 +139,41 @@ impl PublicGroup {
         // signature against.
         let treesync = TreeSync::from_ratchet_tree(crypto, ciphersuite, ratchet_tree)?;
 
+        let mut encryption_keys = HashSet::new();
+
         // Perform basic checks that the leaf nodes in the ratchet tree are valid
         // These checks only do those that don't need group context. We do the full
         // checks later, but do these here to fail early in case of funny business
-        treesync
-            .full_leaves()
-            .try_for_each(|leaf_node| leaf_node.validate_locally())?;
+        treesync.full_leaves().try_for_each(|leaf_node| {
+            leaf_node.validate_locally()?;
+
+            // Check that no two nodes share an encryption key.
+            // This is a bit stronger than what the spec requires: It requires that the encryption keys
+            // in parent nodes and unmerged leaves must be unique. Here, we check that all encryption
+            // keys (all leaf nodes, incl. unmerged and all parent nodes) are unique.
+            //
+            // https://validation.openmls.tech/#valn1410
+            if !encryption_keys.insert(leaf_node.encryption_key()) {
+                return Err(CreationFromExternalError::DuplicateEncryptionKey);
+            }
+
+            Ok(())
+        })?;
 
         // For each non-empty parent node and each entry in the node's unmerged_leaves field:
         treesync
             .full_parents()
             .try_for_each(|(parent_index, parent_node)| {
+                // Check that no two nodes share an encryption key.
+                // This is a bit stronger than what the spec requires: It requires that the encryption keys
+                // in parent nodes and unmerged leaves must be unique. Here, we check that all encryption
+                // keys (all leaf nodes, incl. unmerged and all parent nodes) are unique.
+                //
+                // https://validation.openmls.tech/#valn1410
+                if !encryption_keys.insert(parent_node.encryption_key()) {
+                    return Err(CreationFromExternalError::DuplicateEncryptionKey);
+                }
+
                 parent_node
                     .unmerged_leaves()
                     .iter()
@@ -167,6 +190,7 @@ impl PublicGroup {
                             CreationFromExternalError::<StorageError>::UnmergedLeafNotADescendant,
                         )?;
                         let path_leaf_to_this = &path[..this_parent_offset];
+
 
                         // https://validation.openmls.tech/#valn1409
                         // Verify that every non-blank intermediate node between the leaf node and the parent

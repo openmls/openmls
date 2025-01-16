@@ -213,9 +213,7 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     ) -> Vec<ParentNodeIndex> {
         common_direct_path(leaf_index_1, leaf_index_2, self.tree_size())
     }
-}
 
-impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     pub(crate) fn parent(&self, parent_index: ParentNodeIndex) -> &P {
         self.parent_nodes
             .get(parent_index.usize())

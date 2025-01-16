@@ -18,7 +18,6 @@
 // Finally, this module contains the [`treekem`] module, which allows the
 // encryption and decryption of updates to the tree.
 
-use std::collections::HashSet;
 #[cfg(any(feature = "test-utils", test))]
 use std::fmt;
 
@@ -109,9 +108,6 @@ pub enum RatchetTreeError {
     /// Wrong node type.
     #[error("Wrong node type.")]
     WrongNodeType,
-    /// The ratchet tree contains duplcate encryption keys
-    #[error("The ratchet tree contains duplcate encryption keys")]
-    DuplicateEncryptionKey,
 }
 
 impl RatchetTree {
@@ -487,30 +483,6 @@ impl TreeSync {
                 TreeSyncParentHashError::InvalidParentHash => {
                     TreeSyncFromNodesError::from(PublicTreeError::InvalidParentHash)
                 }
-            })?;
-
-        // Check that no two nodes share an encryption key.
-        // This is a bit stronger than what the spec requires: It requires that the encryption keys
-        // in parent nodes and unmerged leaves must be unique. Here, we check that all encryption
-        // keys (all leaf nodes, incl. unmerged and all parent nodes) are unique.
-        //
-        // https://validation.openmls.tech/#valn1410
-        tree_sync
-            .tree
-            .leaves()
-            .flat_map(|(_, node)| node.node().as_ref().map(LeafNode::encryption_key))
-            .chain(
-                tree_sync
-                    .tree
-                    .parents()
-                    .flat_map(|(_, node)| node.node().as_ref().map(ParentNode::encryption_key)),
-            )
-            .try_fold(HashSet::new(), |mut leaves, key| {
-                if !leaves.insert(key) {
-                    return Err(RatchetTreeError::DuplicateEncryptionKey);
-                }
-
-                Ok(leaves)
             })?;
 
         // Populate tree hash caches.

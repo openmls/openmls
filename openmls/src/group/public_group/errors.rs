@@ -39,6 +39,9 @@ pub enum CreationFromExternalError<StorageError> {
     /// Found a path from a parent with an unmerged leaf to the leaf with nodes that do not have that as a leaf  
     #[error("Found a path from a parent with an unmerged leaf to the leaf with nodes that do not have that as a leaf")]
     IntermediateNodeMissingUnmergedLeaf,
+    /// The ratchet tree contains duplcate encryption keys
+    #[error("The ratchet tree contains duplcate encryption keys")]
+    DuplicateEncryptionKey,
 }
 
 /// Public group builder error.
