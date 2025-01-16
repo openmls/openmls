@@ -107,7 +107,6 @@ impl PublicGroupDiff<'_> {
         }
 
         // Process self removes
-        let own_leaf_index = own_leaf_index.into();
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::SelfRemove) {
             if let Proposal::SelfRemove = queued_proposal.proposal() {
                 // Check if we got removed from the group
