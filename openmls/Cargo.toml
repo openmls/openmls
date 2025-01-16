@@ -33,7 +33,7 @@ backtrace = { version = "0.3", optional = true }
 rand = { version = "0.8", optional = true }
 serde_json = { version = "1.0", optional = true }
 # Crypto providers required for KAT and testing - "test-utils" feature
-itertools = { version = "0.13", optional = true }
+itertools = { version = "0.14", optional = true }
 wasm-bindgen-test = { version = "0.3.40", optional = true }
 getrandom = { version = "0.2.12", optional = true, features = ["js"] }
 fluvio-wasm-timer = { version = "0.2.5", optional = true }
