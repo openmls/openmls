@@ -84,7 +84,8 @@ pub enum ProposalType {
 }
 
 impl ProposalType {
-    /// Returns true for all proposal types that are considered "default" by the spec.
+    /// Returns true for all proposal types that are considered "default" by the
+    /// spec.
     pub(crate) fn is_default(self) -> bool {
         match self {
             ProposalType::Add
@@ -253,11 +254,27 @@ impl Proposal {
     pub fn is_path_required(&self) -> bool {
         self.proposal_type().is_path_required()
     }
+
+    pub(crate) fn has_lower_priority_than(&self, new_proposal: &Proposal) -> bool {
+        match (self, new_proposal) {
+            // Updates have the lowest priority.
+            (Proposal::Update(_), _) => true,
+            // Removes have a higher priority than Updates.
+            (Proposal::Remove(_), Proposal::Update(_)) => false,
+            // Later Removes trump earlier Removes
+            (Proposal::Remove(_), Proposal::Remove(_)) => false,
+            // SelfRemoves have the highest priority.
+            (_, Proposal::SelfRemove) => true,
+            // All other combinations are invalid
+            _ => false,
+        }
+    }
 }
 
 /// Add Proposal.
 ///
-/// An Add proposal requests that a client with a specified [`KeyPackage`] be added to the group.
+/// An Add proposal requests that a client with a specified [`KeyPackage`] be
+/// added to the group.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -279,8 +296,9 @@ impl AddProposal {
 
 /// Update Proposal.
 ///
-/// An Update proposal is a similar mechanism to [`AddProposal`] with the distinction that it
-/// replaces the sender's [`LeafNode`] in the tree instead of adding a new leaf to the tree.
+/// An Update proposal is a similar mechanism to [`AddProposal`] with the
+/// distinction that it replaces the sender's [`LeafNode`] in the tree instead
+/// of adding a new leaf to the tree.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -302,7 +320,8 @@ impl UpdateProposal {
 
 /// Remove Proposal.
 ///
-/// A Remove proposal requests that the member with the leaf index removed be removed from the group.
+/// A Remove proposal requests that the member with the leaf index removed be
+/// removed from the group.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -335,8 +354,8 @@ impl RemoveProposal {
 
 /// PreSharedKey Proposal.
 ///
-/// A PreSharedKey proposal can be used to request that a pre-shared key be injected into the key
-/// schedule in the process of advancing the epoch.
+/// A PreSharedKey proposal can be used to request that a pre-shared key be
+/// injected into the key schedule in the process of advancing the epoch.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -376,9 +395,10 @@ impl PreSharedKeyProposal {
 
 /// ReInit Proposal.
 ///
-/// A ReInit proposal represents a request to reinitialize the group with different parameters, for
-/// example, to increase the version number or to change the ciphersuite. The reinitialization is
-/// done by creating a completely new group and shutting down the old one.
+/// A ReInit proposal represents a request to reinitialize the group with
+/// different parameters, for example, to increase the version number or to
+/// change the ciphersuite. The reinitialization is done by creating a
+/// completely new group and shutting down the old one.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -410,8 +430,8 @@ pub struct ReInitProposal {
 
 /// ExternalInit Proposal.
 ///
-/// An ExternalInit proposal is used by new members that want to join a group by using an external
-/// commit. This proposal can only be used in that context.
+/// An ExternalInit proposal is used by new members that want to join a group by
+/// using an external commit. This proposal can only be used in that context.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -472,8 +492,8 @@ pub struct AppAckProposal {
 
 /// GroupContextExtensions Proposal.
 ///
-/// A GroupContextExtensions proposal is used to update the list of extensions in the GroupContext
-/// for the group.
+/// A GroupContextExtensions proposal is used to update the list of extensions
+/// in the GroupContext for the group.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -593,9 +613,11 @@ impl ProposalRef {
             .map_err(|error| ProposalRefError::Other(LibraryError::unexpected_crypto_error(error)))
     }
 
-    /// Note: A [`ProposalRef`] should be calculated by using TLS-serialized [`AuthenticatedContent`]
-    ///       as value input and not the TLS-serialized proposal. However, to spare us a major refactoring,
-    ///       we calculate it from the raw value in some places that do not interact with the outside world.
+    /// Note: A [`ProposalRef`] should be calculated by using TLS-serialized
+    /// [`AuthenticatedContent`]       as value input and not the
+    /// TLS-serialized proposal. However, to spare us a major refactoring,
+    ///       we calculate it from the raw value in some places that do not
+    /// interact with the outside world.
     pub(crate) fn from_raw_proposal(
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
