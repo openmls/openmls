@@ -609,6 +609,8 @@ impl TreeSyncDiff<'_> {
     ///
     /// Returns an error if one of the parent nodes in the tree has an invalid
     /// parent hash.
+    ///
+    /// Checks [valn1406](https://validation.openmls.tech/#valn1406).
     pub(super) fn verify_parent_hashes(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -638,7 +640,7 @@ impl TreeSyncDiff<'_> {
                 let right_child = self.diff.right_child(parent_index);
 
                 // We exclude the unmerged leaves from the parent node for the
-                // following computations. Those leaves were obviously addede
+                // following computations. Those leaves were obviously added
                 // after the parent node was populated during a commit and must
                 // therefore be removed to recreate the tree state at the time
                 // of the commit.

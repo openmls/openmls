@@ -185,6 +185,7 @@ impl DecryptedMessage {
             }
             Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 // Fetch the credential from the message itself.
+                // https://validation.openmls.tech/#valn0407
                 self.verifiable_content.new_member_credential()
             }
         }
