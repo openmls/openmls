@@ -1132,8 +1132,6 @@ fn mls_group_ratchet_tree_extension(
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
-        let group_id = GroupId::random(provider.rand());
-
         // === Positive case: using the ratchet tree extension ===
 
         // Generate credentials
@@ -1159,11 +1157,12 @@ fn mls_group_ratchet_tree_extension(
             .build();
 
         // === Alice creates a group ===
+        let group_id = GroupId::random(provider.rand());
         let mut alice_group = MlsGroup::new_with_group_id(
             provider,
             &alice_signer,
             &mls_group_create_config,
-            group_id.clone(),
+            group_id,
             alice_credential.clone(),
         )
         .expect("An unexpected error occurred.");
@@ -1210,6 +1209,7 @@ fn mls_group_ratchet_tree_extension(
         let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
 
         // === Alice creates a group ===
+        let group_id = GroupId::random(provider.rand());
         let mut alice_group = MlsGroup::new_with_group_id(
             provider,
             &alice_signer,
