@@ -38,8 +38,14 @@ pub trait StorageProvider: openmls_traits::storage::StorageProvider<CURRENT_VERS
 /// A convenience trait for the current version of the public storage.
 /// Throughout the code, this one should be used instead of `openmls_traits::public_storage::PublicStorageProvider`.
 pub trait PublicStorageProvider:
-    openmls_traits::public_storage::PublicStorageProvider<CURRENT_VERSION>
+    openmls_traits::public_storage::PublicStorageProvider<
+    CURRENT_VERSION,
+    PublicError = <Self as PublicStorageProvider>::Error,
+>
 {
+    /// An opaque error returned by all methods on this trait.
+    /// Matches `PublicError` from `openmls_traits::storage::PublicStorageProvider`.
+    type Error: core::fmt::Debug + std::error::Error;
 }
 
 impl<P: openmls_traits::storage::StorageProvider<CURRENT_VERSION>> StorageProvider for P {}
@@ -47,6 +53,7 @@ impl<P: openmls_traits::storage::StorageProvider<CURRENT_VERSION>> StorageProvid
 impl<P: openmls_traits::public_storage::PublicStorageProvider<CURRENT_VERSION>>
     PublicStorageProvider for P
 {
+    type Error = P::PublicError;
 }
 
 /// A convenience trait for the OpenMLS provider that defines the storage provider

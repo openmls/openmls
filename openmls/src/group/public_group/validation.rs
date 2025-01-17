@@ -186,6 +186,7 @@ impl PublicGroup {
         let mut init_key_set = HashSet::new();
         let mut encryption_key_set = HashSet::new();
 
+        // Handle the exceptions needed for https://validation.openmls.tech/#valn0306
         let remove_proposals = HashSet::<LeafNodeIndex>::from_iter(
             proposal_queue
                 .remove_proposals()
@@ -274,6 +275,7 @@ impl PublicGroup {
         //  - ValSem101
         //  - https://validation.openmls.tech/#valn0111
         //  - https://validation.openmls.tech/#valn0305
+        //  - https://validation.openmls.tech/#valn0306
         for signature_key in signature_keys {
             if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKey);
