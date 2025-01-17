@@ -262,11 +262,14 @@ impl Proposal {
             // Removes have a higher priority than Updates.
             (Proposal::Remove(_), Proposal::Update(_)) => false,
             // Later Removes trump earlier Removes
-            (Proposal::Remove(_), Proposal::Remove(_)) => false,
+            (Proposal::Remove(_), Proposal::Remove(_)) => true,
             // SelfRemoves have the highest priority.
             (_, Proposal::SelfRemove) => true,
             // All other combinations are invalid
-            _ => false,
+            _ => {
+                debug_assert!(false);
+                false
+            }
         }
     }
 }
