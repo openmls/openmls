@@ -744,6 +744,11 @@ impl LeafNodeIn {
         }
     }
 
+    /// Returns the `encryption_key` as byte slice.
+    pub fn encryption_key(&self) -> &EncryptionKey {
+        &self.payload.encryption_key
+    }
+
     /// Returns the `signature_key` as byte slice.
     pub fn signature_key(&self) -> &SignaturePublicKey {
         &self.payload.signature_key

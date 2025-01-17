@@ -344,6 +344,9 @@ pub enum ValidationError {
     /// Cannot decrypt own messages because the necessary key has been deleted according to the deletion schedule.
     #[error("Cannot decrypt own messages.")]
     CannotDecryptOwnMessage,
+    /// See [`ExternalCommitValidationError`] for more details.
+    #[error(transparent)]
+    ExternalCommitValidation(#[from] ExternalCommitValidationError),
 }
 
 /// Proposal validation error
@@ -427,9 +430,6 @@ pub enum ExternalCommitValidationError {
     /// External Commit has to contain a path.
     #[error("External Commit has to contain a path.")]
     NoPath,
-    /// The remove proposal referenced a non-existing member.
-    #[error("The remove proposal referenced a non-existing member.")]
-    UnknownMemberRemoval,
     /// External commit contains referenced proposal
     #[error("Found a referenced proposal in an External Commit.")]
     ReferencedProposal,
