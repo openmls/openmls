@@ -234,8 +234,10 @@ impl Group {
             openmls::framing::ProcessedMessageContent::ApplicationMessage(app_msg) => {
                 Ok(app_msg.into_bytes())
             }
-            openmls::framing::ProcessedMessageContent::ProposalMessage(_)
-            | openmls::framing::ProcessedMessageContent::ExternalJoinProposalMessage(_) => {
+            openmls::framing::ProcessedMessageContent::ProposalMessage(p)
+            | openmls::framing::ProcessedMessageContent::ExternalJoinProposalMessage(p) => {
+                self.mls_group
+                    .store_pending_proposal(provider.0.storage(), *p)?;
                 Ok(vec![])
             }
             openmls::framing::ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
@@ -359,7 +361,7 @@ mod tests {
     #[test]
     fn basic() {
         let mut alice_provider = Provider::new();
-        let bob_provider = Provider::new();
+        let mut bob_provider = Provider::new();
 
         let alice = Identity::new(&alice_provider, "alice")
             .map_err(js_error_to_string)
@@ -384,7 +386,7 @@ mod tests {
 
         let ratchet_tree = chess_club_alice.export_ratchet_tree();
 
-        let chess_club_bob = Group::native_join(&bob_provider, &add_msgs.welcome, ratchet_tree);
+        let mut chess_club_bob = Group::native_join(&bob_provider, &add_msgs.welcome, ratchet_tree);
 
         let bob_exported_key = chess_club_bob
             .export_key(&bob_provider, "chess_key", &[0x30], 32)
@@ -395,6 +397,58 @@ mod tests {
             .map_err(js_error_to_string)
             .unwrap();
 
-        assert_eq!(bob_exported_key, alice_exported_key)
+        assert_eq!(bob_exported_key, alice_exported_key);
+
+        // Create a third user "carl"
+        let carl_provider = Provider::new();
+        let carl = Identity::new(&carl_provider, "carl")
+            .map_err(js_error_to_string)
+            .unwrap();
+        let carl_key_pkg = carl.key_package(&carl_provider);
+
+        // Invite carl to the group
+        let add_msg = chess_club_alice
+            .native_propose_and_commit_add(&alice_provider, &alice, &carl_key_pkg)
+            .map_err(js_error_to_string)
+            .unwrap();
+        chess_club_alice
+            .merge_pending_commit(&mut alice_provider)
+            .map_err(js_error_to_string)
+            .unwrap();
+        let ratchet_tree = chess_club_alice.export_ratchet_tree();
+
+        // Bob needs to update his key too
+        chess_club_bob
+            .process_message(&mut bob_provider, &add_msg.proposal)
+            .map_err(js_error_to_string)
+            .unwrap();
+        chess_club_bob
+            .process_message(&mut bob_provider, &add_msg.commit)
+            .map_err(js_error_to_string)
+            .unwrap();
+
+        let chess_club_carl = Group::native_join(&carl_provider, &add_msg.welcome, ratchet_tree);
+
+        let carl_exported_key = chess_club_carl
+            .export_key(&carl_provider, "chess_key", &[0x30], 32)
+            .map_err(js_error_to_string)
+            .unwrap();
+
+        // The old key of alice should not match the key of carl
+        assert_ne!(alice_exported_key, carl_exported_key);
+
+        // Alice should have updated her key
+        let alice_exported_key = chess_club_alice
+            .export_key(&alice_provider, "chess_key", &[0x30], 32)
+            .map_err(js_error_to_string)
+            .unwrap();
+        assert_eq!(alice_exported_key, carl_exported_key);
+
+        // Bob should have updated his key too
+        let bob_exported_key = chess_club_bob
+            .export_key(&bob_provider, "chess_key", &[0x30], 32)
+            .map_err(js_error_to_string)
+            .unwrap();
+        assert_eq!(bob_exported_key, alice_exported_key);
     }
 }
