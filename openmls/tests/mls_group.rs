@@ -1132,7 +1132,7 @@ fn mls_group_ratchet_tree_extension(
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
-        let group_id = GroupId::from_slice(b"Test Group");
+        let group_id = GroupId::random(provider.rand());
 
         // === Positive case: using the ratchet tree extension ===
 
