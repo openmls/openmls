@@ -276,6 +276,13 @@ impl MlsGroup {
                         ))
                     }
                     FramedContentBody::Proposal(_) => {
+                        // On receiving a FramedContent containing a Proposal, a client MUST verify that the
+                        // epoch field of the enclosing FramedContent is equal to the epoch field of the current
+                        // GroupContext object.
+                        if epoch != self.epoch() {
+                            return Err(ValidationError::WrongEpoch.into());
+                        }
+
                         let proposal = Box::new(QueuedProposal::from_authenticated_content_by_ref(
                             self.ciphersuite(),
                             provider.crypto(),
