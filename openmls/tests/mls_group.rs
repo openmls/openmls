@@ -987,7 +987,7 @@ fn mls_group_operations() {
 #[openmls_test]
 fn addition_order() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
-        let group_id = GroupId::from_slice(b"Test Group");
+        let group_id = GroupId::random(provider.rand());
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
             new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
