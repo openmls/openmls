@@ -402,6 +402,12 @@ pub enum ProposalValidationError {
     /// Regular Commits may not contain ExternalInit proposals, but one was found
     #[error("Found ExternalInit proposal in regular commit")]
     ExternalInitProposalInRegularCommit,
+    /// Found ReInit proposal with wrong protocol version
+    #[error("Found ReInit proposal with wrong protocol version")]
+    InvalidReInitVersion,
+    /// Found ReInit proposal next to other proposals
+    #[error("Found ReInit proposal next to other proposals")]
+    OtherProposalsBesidesReInit,
 }
 
 /// External Commit validaton error

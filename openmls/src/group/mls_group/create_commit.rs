@@ -160,6 +160,12 @@ impl MlsGroup {
         self.public_group
             .validate_group_context_extensions_proposal(&proposal_queue)?;
 
+        // Validate the reinit proposals:
+        // https://validation.openmls.tech/#valn0901
+        // https://validation.openmls.tech/#valn0309
+        self.public_group
+            .validate_reinit_proposals(&proposal_queue, self.version())?;
+
         // Make a copy of the public group to apply proposals safely
         let mut diff = self.public_group.empty_diff();
 

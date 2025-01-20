@@ -144,6 +144,9 @@ impl PublicGroup {
         // ValSem402
         // ValSem403
         self.validate_pre_shared_key_proposals(&proposal_queue)?;
+        // https://validation.openmls.tech/#valn0901
+        // https://validation.openmls.tech/#valn0309
+        self.validate_reinit_proposals(&proposal_queue, self.version())?;
 
         match sender {
             Sender::Member(leaf_index) => {

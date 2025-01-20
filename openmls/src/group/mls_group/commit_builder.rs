@@ -3,6 +3,7 @@
 
 use openmls_traits::{
     crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, storage::StorageProvider as _,
+    types::Ciphersuite,
 };
 use tls_codec::Serialize as _;
 
@@ -12,7 +13,8 @@ use crate::{
     group::{
         create_commit::CommitType, diff::compute_path::PathComputationResult,
         CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
-        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
+        GroupId, ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension,
+        StagedCommit,
     },
     key_packages::KeyPackage,
     messages::{
@@ -32,7 +34,7 @@ use super::{
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
     AddProposal, CreateCommitResult, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
-    MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
+    MlsMessageOut, PendingCommitState, Proposal, ReInitProposal, RemoveProposal, Sender,
 };
 
 /// This stage is for populating the builder.
@@ -40,6 +42,7 @@ pub struct Initial {
     own_proposals: Vec<Proposal>,
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
+    reinit_psk_id: Option<PreSharedKeyId>,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
@@ -55,6 +58,7 @@ pub struct LoadedPsks {
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
+    is_reinit: bool,
     psks: Vec<(PreSharedKeyId, Secret)>,
 }
 
@@ -152,6 +156,7 @@ impl<'a> CommitBuilder<'a, Initial> {
                 force_self_update: false,
                 leaf_node_parameters: LeafNodeParameters::default(),
                 own_proposals: vec![],
+                reinit_psk_id: None,
             },
         }
     }
@@ -217,6 +222,27 @@ impl<'a> CommitBuilder<'a, Initial> {
         self
     }
 
+    pub fn propose_reinit(
+        mut self,
+        psk_id: PreSharedKeyId,
+        new_group_id: GroupId,
+        ciphersuite: Ciphersuite,
+        group_info_extensions: Extensions,
+    ) -> Self {
+        self.stage
+            .own_proposals
+            .push(Proposal::ReInit(ReInitProposal {
+                group_id: new_group_id,
+                version: self.group.version(),
+                ciphersuite,
+                extensions: group_info_extensions,
+            }));
+
+        self.stage.reinit_psk_id = Some(psk_id);
+
+        self
+    }
+
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
     pub fn load_psks<Storage: StorageProvider>(
         self,
@@ -236,6 +262,7 @@ impl<'a> CommitBuilder<'a, Initial> {
                 Proposal::PreSharedKey(psk_proposal) => Some(psk_proposal.clone().into_psk_id()),
                 _ => None,
             })
+            .chain(self.stage.reinit_psk_id.clone())
             .collect();
 
         // Load the PSKs and make the PskIds owned.
@@ -254,6 +281,7 @@ impl<'a> CommitBuilder<'a, Initial> {
                         force_self_update: stage.force_self_update,
                         leaf_node_parameters: stage.leaf_node_parameters,
                         consume_proposal_store: stage.consume_proposal_store,
+                        is_reinit: stage.reinit_psk_id.is_some(),
                     },
                 )
             })
@@ -358,6 +386,14 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             .group
             .public_group
             .validate_update_proposals(&proposal_queue, builder.group.own_leaf_index())?;
+
+        // Validate the reinit proposals:
+        // https://validation.openmls.tech/#valn0901
+        // https://validation.openmls.tech/#valn0309
+        builder
+            .group
+            .public_group
+            .validate_reinit_proposals(&proposal_queue, builder.group.version())?;
 
         // ValSem208
         // ValSem209
@@ -480,8 +516,9 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
 
         diff.update_interim_transcript_hash(ciphersuite, crypto, confirmation_tag.clone())?;
 
-        // If there are invitations, we need to build a welcome
-        let needs_welcome = !apply_proposals_values.invitation_list.is_empty();
+        // If there are invitations or this is a reinit, we need to build a welcome
+        let needs_welcome =
+            !apply_proposals_values.invitation_list.is_empty() || cur_stage.is_reinit;
 
         // We need a GroupInfo if we need to build a Welcome. If the ratchet tree extension
         // should be used, always build a GroupInfo.

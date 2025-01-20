@@ -6,11 +6,12 @@ use std::collections::{BTreeSet, HashSet};
 use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
+use crate::error::LibraryError;
 use crate::extensions::RequiredCapabilitiesExtension;
 use crate::group::proposal_store::ProposalQueue;
 use crate::group::GroupContextExtensionsProposalValidationError;
-use crate::prelude::LibraryError;
 use crate::treesync::{errors::LeafNodeValidationError, LeafNode};
+use crate::versions::ProtocolVersion;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{
@@ -161,6 +162,48 @@ impl PublicGroup {
             }
         }
         Ok(())
+    }
+
+    /// Validate the reinit proposals. Specifically,
+    /// - there may not be proposals next to reinit ([valn0309])
+    /// - the protocol version in a reinit proposal may not be lower thant that of the current
+    ///   group ([valn0901]).
+    ///
+    /// This requires the caller to provide the current protocol version as the `current_version`
+    /// argument.
+    ///
+    /// [valn0901]: https://validation.openmls.tech/#valn0901
+    /// [valn0309]: https://validation.openmls.tech/#valn0309
+    pub(crate) fn validate_reinit_proposals(
+        &self,
+        proposal_queue: &ProposalQueue,
+        current_version: ProtocolVersion,
+    ) -> Result<(), ProposalValidationError> {
+        proposal_queue
+            .queued_proposals()
+            .enumerate()
+            .try_fold(false, |found_reinit, (index, proposal)| {
+                let found_reinit = match proposal.proposal() {
+                    Proposal::ReInit(reinit_proposal) => {
+                        // The protocol version in a reinit proposal may not be lower thant that of
+                        // the current group (https://validation.openmls.tech/#valn0901)
+                        if reinit_proposal.version < current_version {
+                            return Err(ProposalValidationError::InvalidReInitVersion);
+                        }
+
+                        true
+                    }
+                    _ => found_reinit,
+                };
+
+                // There may not be proposals next to reinit (https://validation.openmls.tech/#valn0309)
+                if found_reinit && index > 0 {
+                    return Err(ProposalValidationError::OtherProposalsBesidesReInit);
+                }
+
+                Ok(found_reinit)
+            })
+            .map(|_| ())
     }
 
     /// Validate key uniqueness. This function implements the following checks:
