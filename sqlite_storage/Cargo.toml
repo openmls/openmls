@@ -19,4 +19,3 @@ refinery = { version = "0.8", features = ["rusqlite"] }
 
 [dev-dependencies]
 serde_json = { version = "1.0" }
-openmls_rust_crypto = { version = "0.3.0", path = "../openmls_rust_crypto" }

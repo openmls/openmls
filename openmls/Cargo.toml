@@ -93,8 +93,13 @@ openmls = { path = ".", features = [
   "sqlite-provider",
   "libcrux-provider",
 ] }
+
+# Disable for wasm32
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 openmls = { path = ".", features = ["test-utils", "sqlite-provider"] }
+
+[target.'cfg(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows")))'.dev-dependencies]
+openmls = { path = ".", features = ["test-utils"] }
 
 [[bench]]
 name = "benchmark"
