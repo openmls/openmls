@@ -93,7 +93,7 @@ openmls = { path = ".", features = [
   "sqlite-provider",
   "libcrux-provider",
 ] }
-[target.'cfg(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows")))'.dev-dependencies]
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 openmls = { path = ".", features = ["test-utils", "sqlite-provider"] }
 
 [[bench]]
