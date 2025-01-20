@@ -16,6 +16,10 @@
 //! crate. The codec is set by implementing [`Codec`] and passing the
 //! implementation as generic parameter to the [`SqliteStorageProvider`] upon
 //! creation.
+//!
+//! ## Support
+//!
+//! The SQLite storage provider currently does not support the `wasm32` target.
 
 #[cfg(doc)]
 use openmls_traits::storage::StorageProvider;
