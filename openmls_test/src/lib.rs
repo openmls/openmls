@@ -49,7 +49,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         test_funs.push(test_fun);
     }
 
-    #[cfg(feature = "sqlite-provider")]
+    #[cfg(all(feature = "sqlite-provider", not(target_arch = "wasm32",)))]
     {
         let rc_ciphersuites = rc.crypto().supported_ciphersuites();
         for ciphersuite in rc_ciphersuites {
