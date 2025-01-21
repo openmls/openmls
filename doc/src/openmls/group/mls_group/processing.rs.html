@@ -400,7 +400,10 @@
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a></pre></div><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a></pre></div><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
 
@@ -606,7 +609,10 @@
         own_leaf_nodes: <span class="kw-2">&amp;</span>[LeafNode],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;EncryptionKeyPair&gt;, Vec&lt;EncryptionKeyPair&gt;), StageCommitError&gt; {
         <span class="comment">// All keys from the previous epoch are potential decryption keypairs.
-        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.storage());
+        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.storage()).map_err(|e| {
+            <span class="macro">log::error!</span>(<span class="string">"Error reading epoch keypairs: {:?}"</span>, e);
+            StageCommitError::MissingDecryptionKey
+        })<span class="question-mark">?</span>;
 
         <span class="comment">// If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a

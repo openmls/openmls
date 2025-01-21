@@ -870,10 +870,7 @@
 <a href="#869" id="869">869</a>
 <a href="#870" id="870">870</a>
 <a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
-<a href="#875" id="875">875</a></pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
+<a href="#872" id="872">872</a></pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
 //!
@@ -1554,19 +1551,16 @@
     <span class="doccomment">/// Read the [`EncryptionKeyPair`]s of this group and its current
     /// [`GroupEpoch`] from the `provider`'s storage.
     ///
-    /// Returns an empty vector if access to the store fails or it can't find
-    /// any keys.
+    /// Returns an error if the lookup in the [`StorageProvider`] fails.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>read_epoch_keypairs&lt;Storage: StorageProvider&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         store: <span class="kw-2">&amp;</span>Storage,
-    ) -&gt; Vec&lt;EncryptionKeyPair&gt; {
-        store
-            .encryption_epoch_key_pairs(
-                <span class="self">self</span>.group_id(),
-                <span class="kw-2">&amp;</span><span class="self">self</span>.context().epoch(),
-                <span class="self">self</span>.own_leaf_index().u32(),
-            )
-            .unwrap_or_default()
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;EncryptionKeyPair&gt;, Storage::Error&gt; {
+        store.encryption_epoch_key_pairs(
+            <span class="self">self</span>.group_id(),
+            <span class="kw-2">&amp;</span><span class="self">self</span>.context().epoch(),
+            <span class="self">self</span>.own_leaf_index().u32(),
+        )
     }
 
     <span class="doccomment">/// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from

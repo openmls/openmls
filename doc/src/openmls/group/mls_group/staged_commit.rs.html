@@ -609,7 +609,9 @@
 <a href="#608" id="608">608</a>
 <a href="#609" id="609">609</a>
 <a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a></pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a></pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
 <span class="kw">use </span>openmls_traits::storage::StorageProvider;
@@ -945,7 +947,9 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Provider::StorageError&gt;&gt; {
         <span class="comment">// Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
-        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(provider.storage());
+        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self
+            </span>.read_epoch_keypairs(provider.storage())
+            .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
         <span class="kw">match </span>staged_commit.state {
             StagedCommitState::PublicState(staged_state) =&gt; {
                 <span class="self">self</span>.public_group
