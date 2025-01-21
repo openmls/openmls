@@ -1848,6 +1848,7 @@ fn test_valsem110() {
     // process the commit.
     let leaf_keypair = alice_group
         .read_epoch_keypairs(provider.storage())
+        .unwrap()
         .into_iter()
         .find(|keypair| keypair.public_key() == &alice_encryption_key)
         .unwrap();
