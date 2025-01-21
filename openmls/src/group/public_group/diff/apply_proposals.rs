@@ -5,7 +5,9 @@ use crate::{
     error::LibraryError,
     framing::Sender,
     group::proposal_store::ProposalQueue,
-    messages::proposals::{AddProposal, ExternalInitProposal, Proposal, ProposalType},
+    messages::proposals::{
+        AddProposal, ExternalInitProposal, Proposal, ProposalType, ReInitProposal,
+    },
     schedule::psk::PreSharedKeyId,
 };
 
@@ -19,6 +21,7 @@ pub(crate) struct ApplyProposalsValues {
     pub(crate) invitation_list: Vec<(LeafNodeIndex, AddProposal)>,
     pub(crate) presharedkeys: Vec<PreSharedKeyId>,
     pub(crate) external_init_proposal_option: Option<ExternalInitProposal>,
+    pub(crate) reinit_proposal_option: Option<ReInitProposal>,
     pub(crate) extensions: Option<Extensions>,
 }
 
@@ -57,6 +60,18 @@ impl PublicGroupDiff<'_> {
     ) -> Result<ApplyProposalsValues, LibraryError> {
         log::debug!("Applying proposal");
         let mut self_removed = false;
+
+        // Extract the ReInit proposal, if there is one
+        let reinit_proposal_option = proposal_queue
+            .filtered_by_type(ProposalType::Reinit)
+            .next()
+            .and_then(|queued_proposal| {
+                if let Proposal::ReInit(reinit_proposal) = queued_proposal.proposal() {
+                    Some(reinit_proposal.clone())
+                } else {
+                    None
+                }
+            });
 
         // Process external init proposals. We do this before the removes, so we
         // know that removing "ourselves" (i.e. removing the group member in the
@@ -171,6 +186,7 @@ impl PublicGroupDiff<'_> {
             invitation_list,
             presharedkeys,
             external_init_proposal_option,
+            reinit_proposal_option,
             extensions,
         })
     }
