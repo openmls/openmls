@@ -2,8 +2,6 @@
 //!
 //! This module contains structs for creating signature keys, issuing signatures and verifying them.
 
-use tls_codec::Serialize;
-
 use super::{LABEL_PREFIX, *};
 
 /// Signature.
@@ -51,12 +49,6 @@ impl SignContent {
         let label_string = LABEL_PREFIX.to_owned() + label;
         let label = label_string.as_bytes().into();
         Self { label, content }
-    }
-}
-
-impl From<(&str, &[u8])> for SignContent {
-    fn from((label, content): (&str, &[u8])) -> Self {
-        Self::new(label, content.into())
     }
 }
 
@@ -167,49 +159,6 @@ impl OpenMlsSignaturePublicKey {
             value: key.value,
             signature_scheme,
         }
-    }
-
-    /// Verify a [`Signature`] on the [`SignContent`] with this public key
-    /// public key.
-    pub fn verify_with_label(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        signature: &Signature,
-        sign_content: &SignContent,
-    ) -> Result<(), CryptoError> {
-        let payload = match sign_content.tls_serialize_detached() {
-            Ok(p) => p,
-            Err(e) => {
-                log::error!("Serializing SignContent failed, {:?}", e);
-                return Err(CryptoError::TlsSerializationError);
-            }
-        };
-        crypto
-            .verify_signature(
-                self.signature_scheme,
-                &payload,
-                self.value.as_ref(),
-                signature.value.as_slice(),
-            )
-            .map_err(|_| CryptoError::InvalidSignature)
-    }
-
-    /// Verify a `Signature` on the `payload` byte slice with the keypair's
-    /// public key.
-    pub fn verify(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        signature: &Signature,
-        payload: &[u8],
-    ) -> Result<(), CryptoError> {
-        crypto
-            .verify_signature(
-                self.signature_scheme,
-                payload,
-                self.value.as_ref(),
-                signature.value.as_slice(),
-            )
-            .map_err(|_| CryptoError::InvalidSignature)
     }
 
     /// Get the signature scheme of the public key.
