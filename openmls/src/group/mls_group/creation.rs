@@ -556,6 +556,11 @@ impl StagedWelcome {
 
         Ok(mls_group)
     }
+
+    /// Get a reference to the public group [`PulblicGroup`] of this [`StagedWelcome`].
+    pub fn public_group(&self) -> &PublicGroup {
+        &self.public_group
+    }
 }
 
 fn keys_for_welcome<Provider: OpenMlsProvider>(
