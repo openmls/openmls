@@ -518,7 +518,7 @@ impl MlsGroup {
         &self,
         aad: &[u8],
         signer: &impl Signer,
-    ) -> Result<AuthenticatedContent, ValidationError> {
+    ) -> Result<AuthenticatedContent, LibraryError> {
         let proposal = Proposal::SelfRemove;
         let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
         AuthenticatedContent::member_proposal(
@@ -528,7 +528,6 @@ impl MlsGroup {
             self.context(),
             signer,
         )
-        .map_err(ValidationError::LibraryError)
     }
 
     // 12.1.4. PreSharedKey

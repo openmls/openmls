@@ -235,9 +235,8 @@ impl MlsGroup {
         ) {
             return Err(LeaveGroupError::CannotSelfRemoveWithPureCiphertext);
         }
-        let self_remove_proposal = self
-            .create_self_remove_proposal(self.framing_parameters().aad(), signer)
-            .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
+        let self_remove_proposal =
+            self.create_self_remove_proposal(self.framing_parameters().aad(), signer)?;
 
         let ciphersuite = self.ciphersuite();
         let queued_self_remove_proposal = QueuedProposal::from_authenticated_content_by_ref(
