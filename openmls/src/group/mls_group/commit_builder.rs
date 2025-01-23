@@ -5,7 +5,7 @@ use openmls_traits::{
     crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, storage::StorageProvider as _,
     types::Ciphersuite,
 };
-use tls_codec::Serialize as _;
+use tls_codec::{Serialize as _, VLBytes};
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -13,8 +13,8 @@ use crate::{
     group::{
         create_commit::CommitType, diff::compute_path::PathComputationResult,
         CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
-        GroupId, ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension,
-        StagedCommit,
+        GroupContext, GroupEpoch, GroupId, ProposalQueue, ProposalQueueError, QueuedProposal,
+        RatchetTreeExtension, StagedCommit,
     },
     key_packages::KeyPackage,
     messages::{
@@ -23,8 +23,8 @@ use crate::{
     },
     prelude::{LeafNodeParameters, LibraryError},
     schedule::{
-        psk::{load_psks, PskSecret},
-        JoinerSecret, KeySchedule, PreSharedKeyId,
+        psk::{load_psks, PskSecret, ResumptionPsk, ResumptionPskUsage},
+        JoinerSecret, KeySchedule, PreSharedKeyId, Psk,
     },
     storage::{OpenMlsProvider, StorageProvider},
     versions::ProtocolVersion,
@@ -58,7 +58,6 @@ pub struct LoadedPsks {
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
-    is_reinit: bool,
     psks: Vec<(PreSharedKeyId, Secret)>,
 }
 
@@ -224,11 +223,21 @@ impl<'a> CommitBuilder<'a, Initial> {
 
     pub fn propose_reinit(
         mut self,
-        psk_id: PreSharedKeyId,
+        psk_epoch: GroupEpoch,
+        psk_nonce: VLBytes,
         new_group_id: GroupId,
         ciphersuite: Ciphersuite,
         group_info_extensions: Extensions,
     ) -> Self {
+        let psk_id = PreSharedKeyId {
+            psk: Psk::Resumption(ResumptionPsk {
+                usage: ResumptionPskUsage::Reinit,
+                psk_group_id: self.group.group_id().clone(),
+                psk_epoch,
+            }),
+            psk_nonce,
+        };
+
         self.stage
             .own_proposals
             .push(Proposal::ReInit(ReInitProposal {
@@ -281,7 +290,6 @@ impl<'a> CommitBuilder<'a, Initial> {
                         force_self_update: stage.force_self_update,
                         leaf_node_parameters: stage.leaf_node_parameters,
                         consume_proposal_store: stage.consume_proposal_store,
-                        is_reinit: stage.reinit_psk_id.is_some(),
                     },
                 )
             })
@@ -303,6 +311,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         let ciphersuite = self.group.ciphersuite();
         let sender = Sender::build_member(self.group.own_leaf_index());
         let (cur_stage, builder) = self.take_stage();
+
         let psks = cur_stage.psks;
 
         // put the pending and uniform proposals into a uniform shape,
@@ -517,8 +526,8 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         diff.update_interim_transcript_hash(ciphersuite, crypto, confirmation_tag.clone())?;
 
         // If there are invitations or this is a reinit, we need to build a welcome
-        let needs_welcome =
-            !apply_proposals_values.invitation_list.is_empty() || cur_stage.is_reinit;
+        let needs_welcome = !apply_proposals_values.invitation_list.is_empty()
+            || apply_proposals_values.reinit_proposal_option.is_some();
 
         // We need a GroupInfo if we need to build a Welcome. If the ratchet tree extension
         // should be used, always build a GroupInfo.
@@ -548,10 +557,26 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 Extensions::single(external_pub_extension)
             };
 
+            let group_context = if let Some(reinit) = apply_proposals_values.reinit_proposal_option
+            {
+                GroupContext::new(
+                    reinit.ciphersuite,
+                    reinit.group_id,
+                    1,
+                    diff.group_context().tree_hash().to_vec(),
+                    // TODO: this most likely won't work, because we need to recompute the
+                    // transcript.
+                    diff.group_context().confirmed_transcript_hash().to_vec(),
+                    reinit.extensions,
+                )
+            } else {
+                diff.group_context().clone()
+            };
+
             // Create to-be-signed group info.
             let group_info_tbs = {
                 GroupInfoTBS::new(
-                    diff.group_context().clone(),
+                    group_context,
                     extensions,
                     confirmation_tag,
                     builder.group.own_leaf_index(),

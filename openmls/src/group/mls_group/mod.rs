@@ -196,6 +196,8 @@ pub enum MlsGroupState {
     Operational,
     /// The group is inactive because the member has been removed.
     Inactive,
+    /// The group has been shut down and replaced using ReInit
+    Reinitialized,
 }
 
 /// A `MlsGroup` represents an MLS group with a high-level API. The API exposes
@@ -346,6 +348,7 @@ impl MlsGroup {
             }
             MlsGroupState::Operational => None,
             MlsGroupState::Inactive => None,
+            MlsGroupState::Reinitialized => None,
         }
     }
 
@@ -373,7 +376,9 @@ impl MlsGroup {
                     Ok(())
                 }
             }
-            MlsGroupState::Operational | MlsGroupState::Inactive => Ok(()),
+            MlsGroupState::Operational | MlsGroupState::Inactive | MlsGroupState::Reinitialized => {
+                Ok(())
+            }
         }
     }
 
@@ -765,6 +770,7 @@ impl MlsGroup {
         match self.group_state {
             MlsGroupState::PendingCommit(_) => Err(MlsGroupStateError::PendingCommit),
             MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction),
+            MlsGroupState::Reinitialized => Err(MlsGroupStateError::UseAfterReinit),
             MlsGroupState::Operational => Ok(()),
         }
     }

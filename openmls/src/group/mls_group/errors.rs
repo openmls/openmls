@@ -79,6 +79,9 @@ pub enum MlsGroupStateError {
     /// Requested pending proposal hasn't been found in local pending proposals
     #[error("Requested pending proposal hasn't been found in local pending proposals.")]
     PendingProposalNotFound,
+    /// Tried to use a group after it was reinitialized.
+    #[error("Tried to use a group after was reinitialized.")]
+    UseAfterReinit,
 }
 
 /// Error merging pending commit

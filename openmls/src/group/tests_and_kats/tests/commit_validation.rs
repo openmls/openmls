@@ -948,10 +948,9 @@ fn test_reinit(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMls
     //      Hm, on second read, the RFC sounds like we could just send everything in one go and
     //      hope for the best. We could even ask the DS to deliver both messages together.
 
-    //
-    // let welcome = reinit_bundle
-    //     .welcome()
-    //     .expect("reinit didn't give a welcome");
+    let _welcome = reinit_bundle
+        .welcome()
+        .expect("reinit didn't give a welcome");
 
     let processed_message = bob_group
         .process_message(provider, commit.into_protocol_message().unwrap())

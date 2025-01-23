@@ -193,6 +193,7 @@ impl MlsGroup {
                 Ok(())
             }
             MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction)?,
+            MlsGroupState::Reinitialized => Err(MlsGroupStateError::UseAfterReinit)?,
             MlsGroupState::Operational => Ok(()),
         }
     }
