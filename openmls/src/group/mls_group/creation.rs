@@ -556,6 +556,11 @@ impl StagedWelcome {
 
         Ok(mls_group)
     }
+
+    /// Get a reference to the group context [`Extensions`] of this [`StagedWelcome`].
+    pub fn extensions(&self) -> &Extensions {
+        self.public_group.group_context().extensions()
+    }
 }
 
 fn keys_for_welcome<Provider: OpenMlsProvider>(
