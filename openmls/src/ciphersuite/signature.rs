@@ -2,8 +2,6 @@
 //!
 //! This module contains structs for creating signature keys, issuing signatures and verifying them.
 
-use tls_codec::Serialize;
-
 use super::{LABEL_PREFIX, *};
 
 /// Signature.
