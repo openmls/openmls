@@ -604,3 +604,31 @@ fn self_remove_proposals(
     assert!(!group_bob.is_active());
     assert_eq!(group_alice.members().count(), 1);
 }
+
+// A simple test to check that SelfRemove proposals are only ever sent as
+// PublicMessages.
+#[openmls_test::openmls_test]
+fn self_remove_proposals_always_public(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
+    let (alice_credential, alice_signer) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+
+    // Alice creates a group
+    let mut group_alice = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .build(provider, &alice_signer, alice_credential.clone())
+        .expect("Error creating group.");
+
+    // Now Bob wants to remove himself via a SelfRemove proposal
+    let self_remove = group_alice
+        .leave_group_via_self_remove(provider, &alice_signer)
+        .expect_err("SelfRemove proposal was created with wrong wire format policy.");
+
+    assert_eq!(
+        self_remove,
+        LeaveGroupError::CannotSelfRemoveWithPureCiphertext
+    );
+}
