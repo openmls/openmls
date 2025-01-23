@@ -1,7 +1,7 @@
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
-    credentials::CredentialType,
+    credentials::{test_utils, CredentialType},
     extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
     framing::{
         mls_auth_content::AuthenticatedContent, sender::Sender, FramingParameters, WireFormat,
@@ -14,12 +14,12 @@ use crate::{
             ProcessedMessageContent,
         },
         GroupContext, GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome,
-        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
-    key_packages::{KeyPackageBundle, KeyPackageIn},
+    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
-    prelude::{test_utils, Capabilities, KeyPackage},
     test_utils::*,
+    treesync::node::leaf_node::Capabilities,
     versions::ProtocolVersion,
 };
 
