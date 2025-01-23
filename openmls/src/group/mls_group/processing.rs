@@ -204,7 +204,10 @@ impl MlsGroup {
         own_leaf_nodes: &[LeafNode],
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
+        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage()).map_err(|e| {
+            log::error!("Error reading epoch keypairs: {:?}", e);
+            StageCommitError::MissingDecryptionKey
+        })?;
 
         // If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a
