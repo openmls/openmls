@@ -506,6 +506,8 @@ fn group_context_extension_proposal(
     )
 }
 
+// A simple test to check that a SelfRemove proposal can be created and
+// processed.
 #[openmls_test::openmls_test]
 fn self_remove_proposals(
     ciphersuite: Ciphersuite,
