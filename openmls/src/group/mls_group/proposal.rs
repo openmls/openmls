@@ -3,7 +3,7 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::C
 use super::{
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError, RemoveProposalError},
     AddProposal, CreateGroupContextExtProposalError, CustomProposal, FramingParameters, MlsGroup,
-    PreSharedKeyProposal, Proposal, QueuedProposal, RemoveProposal, UpdateProposal,
+    PreSharedKeyProposal, Proposal, QueuedProposal, RemoveProposal, UpdateProposal, WireFormat,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -510,6 +510,24 @@ impl MlsGroup {
             signer,
         )
         .map_err(ValidationError::LibraryError)
+    }
+
+    /// Create a SelfRemove proposal. Note that SelfRemove proposals are always
+    /// sent as PublicMessages.
+    pub(crate) fn create_self_remove_proposal(
+        &self,
+        aad: &[u8],
+        signer: &impl Signer,
+    ) -> Result<AuthenticatedContent, LibraryError> {
+        let proposal = Proposal::SelfRemove;
+        let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            self.own_leaf_index(),
+            proposal,
+            self.context(),
+            signer,
+        )
     }
 
     // 12.1.4. PreSharedKey

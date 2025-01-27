@@ -25,6 +25,7 @@ impl Size for Proposal {
                 Proposal::ExternalInit(p) => p.tls_serialized_len(),
                 Proposal::GroupContextExtensions(p) => p.tls_serialized_len(),
                 Proposal::AppAck(p) => p.tls_serialized_len(),
+                Proposal::SelfRemove => 0,
                 Proposal::Custom(p) => p.payload().tls_serialized_len(),
             }
     }
@@ -42,6 +43,7 @@ impl Serialize for Proposal {
             Proposal::ExternalInit(p) => p.tls_serialize(writer),
             Proposal::GroupContextExtensions(p) => p.tls_serialize(writer),
             Proposal::AppAck(p) => p.tls_serialize(writer),
+            Proposal::SelfRemove => Ok(0),
             Proposal::Custom(p) => p.payload().tls_serialize(writer),
         }
         .map(|l| written + l)
@@ -60,6 +62,7 @@ impl Size for &ProposalIn {
                 ProposalIn::ExternalInit(p) => p.tls_serialized_len(),
                 ProposalIn::GroupContextExtensions(p) => p.tls_serialized_len(),
                 ProposalIn::AppAck(p) => p.tls_serialized_len(),
+                ProposalIn::SelfRemove => 0,
                 ProposalIn::Custom(p) => p.payload().tls_serialized_len(),
             }
     }
@@ -83,6 +86,7 @@ impl Serialize for &ProposalIn {
             ProposalIn::ExternalInit(p) => p.tls_serialize(writer),
             ProposalIn::GroupContextExtensions(p) => p.tls_serialize(writer),
             ProposalIn::AppAck(p) => p.tls_serialize(writer),
+            ProposalIn::SelfRemove => Ok(0),
             ProposalIn::Custom(p) => p.payload().tls_serialize(writer),
         }
         .map(|l| written + l)
@@ -116,6 +120,7 @@ impl Deserialize for ProposalIn {
                 GroupContextExtensionProposal::tls_deserialize(bytes)?,
             ),
             ProposalType::AppAck => ProposalIn::AppAck(AppAckProposal::tls_deserialize(bytes)?),
+            ProposalType::SelfRemove => ProposalIn::SelfRemove,
             ProposalType::Custom(_) => {
                 let payload = Vec::<u8>::tls_deserialize(bytes)?;
                 let custom_proposal = CustomProposal::new(proposal_type.into(), payload);

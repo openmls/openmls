@@ -60,6 +60,8 @@ pub enum ProposalIn {
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
     AppAck(AppAckProposal),
+    // A SelfRemove proposal is an empty struct.
+    SelfRemove,
     Custom(CustomProposal),
 }
 
@@ -75,6 +77,7 @@ impl ProposalIn {
             ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             ProposalIn::AppAck(_) => ProposalType::AppAck,
+            ProposalIn::SelfRemove => ProposalType::SelfRemove,
             ProposalIn::Custom(custom_proposal) => {
                 ProposalType::Custom(custom_proposal.proposal_type())
             }
@@ -111,6 +114,7 @@ impl ProposalIn {
                 Proposal::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) => Proposal::AppAck(app_ack),
+            ProposalIn::SelfRemove => Proposal::SelfRemove,
             ProposalIn::Custom(custom) => Proposal::Custom(custom),
         })
     }
@@ -314,6 +318,7 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
                 Self::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) => Self::AppAck(app_ack),
+            ProposalIn::SelfRemove => Self::SelfRemove,
             ProposalIn::Custom(other) => Self::Custom(other),
         }
     }
@@ -332,6 +337,7 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
                 Self::GroupContextExtensions(group_context_extension)
             }
             Proposal::AppAck(app_ack) => Self::AppAck(app_ack),
+            Proposal::SelfRemove => Self::SelfRemove,
             Proposal::Custom(other) => Self::Custom(other),
         }
     }

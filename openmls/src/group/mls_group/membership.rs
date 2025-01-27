@@ -211,6 +211,55 @@ impl MlsGroup {
         Ok(self.content_to_mls_message(remove_proposal, provider)?)
     }
 
+    /// Leave the group via a SelfRemove proposal.
+    ///
+    /// Creates a SelfRemove Proposal that needs to be covered by a Commit from
+    /// a different member. The SelfRemove Proposal is returned as a
+    /// [`MlsMessageOut`].
+    ///
+    /// Since SelfRemove proposals are always sent as [`PublicMessage`]s, this
+    /// function can only be used if the group's [`WireFormatPolicy`] allows for
+    /// it.
+    ///
+    /// Returns an error if there is a pending commit.
+    pub fn leave_group_via_self_remove<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+    ) -> Result<MlsMessageOut, LeaveGroupError<Provider::StorageError>> {
+        self.is_operational()?;
+
+        if matches!(
+            self.configuration().wire_format_policy().outgoing(),
+            OutgoingWireFormatPolicy::AlwaysCiphertext
+        ) {
+            return Err(LeaveGroupError::CannotSelfRemoveWithPureCiphertext);
+        }
+        let self_remove_proposal =
+            self.create_self_remove_proposal(self.framing_parameters().aad(), signer)?;
+
+        let ciphersuite = self.ciphersuite();
+        let queued_self_remove_proposal = QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            provider.crypto(),
+            self_remove_proposal.clone(),
+        )?;
+
+        provider
+            .storage()
+            .queue_proposal(
+                self.group_id(),
+                &queued_self_remove_proposal.proposal_reference(),
+                &queued_self_remove_proposal,
+            )
+            .map_err(LeaveGroupError::StorageError)?;
+
+        self.proposal_store_mut().add(queued_self_remove_proposal);
+
+        self.reset_aad();
+        Ok(self.content_to_mls_message(self_remove_proposal, provider)?)
+    }
+
     /// Returns a list of [`Member`]s in the group.
     pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
         self.public_group().members()

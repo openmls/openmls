@@ -460,6 +460,9 @@ pub(crate) enum ProposalQueueError {
     /// Update proposal from external sender.
     #[error("Update proposal from external sender.")]
     UpdateFromExternalSender,
+    /// SelfRemove proposal from a non-Member.
+    #[error("SelfRemove proposal from a non-Member.")]
+    SelfRemoveFromNonMember,
 }
 
 /// Errors that can arise when creating a [`ProposalQueue`] from committed
