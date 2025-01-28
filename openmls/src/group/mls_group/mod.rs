@@ -677,19 +677,16 @@ impl MlsGroup {
     /// Read the [`EncryptionKeyPair`]s of this group and its current
     /// [`GroupEpoch`] from the `provider`'s storage.
     ///
-    /// Returns an empty vector if access to the store fails or it can't find
-    /// any keys.
+    /// Returns an error if the lookup in the [`StorageProvider`] fails.
     pub(super) fn read_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
-    ) -> Vec<EncryptionKeyPair> {
-        store
-            .encryption_epoch_key_pairs(
-                self.group_id(),
-                &self.context().epoch(),
-                self.own_leaf_index().u32(),
-            )
-            .unwrap_or_default()
+    ) -> Result<Vec<EncryptionKeyPair>, Storage::Error> {
+        store.encryption_epoch_key_pairs(
+            self.group_id(),
+            &self.context().epoch(),
+            self.own_leaf_index().u32(),
+        )
     }
 
     /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from

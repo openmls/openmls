@@ -474,7 +474,7 @@ impl ProposalQueue {
                     members
                         .entry(removed)
                         .or_default()
-                        .updates
+                        .removes
                         .push(queued_proposal.clone());
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
@@ -604,7 +604,7 @@ impl ProposalQueue {
                     members
                         .entry(removed)
                         .or_default()
-                        .updates
+                        .removes
                         .push(queued_proposal.clone());
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
