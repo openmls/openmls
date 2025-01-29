@@ -334,11 +334,6 @@ fn test_welcome_processing() {
 
     let welcome = welcome.into_welcome().expect("Unexpected message type.");
 
-    provider
-        .storage()
-        .write_key_package(&bob_kp.hash_ref(provider.crypto()).unwrap(), &bob_kpb)
-        .unwrap();
-
     // Process the welcome
     let processed_welcome = ProcessedWelcome::new_from_welcome(
         provider,

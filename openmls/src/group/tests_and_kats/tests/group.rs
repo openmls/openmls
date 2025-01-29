@@ -1,4 +1,4 @@
-use crate::{framing::*, group::*, test_utils::*, *};
+use crate::{framing::*, group::*, *};
 use mls_group::tests_and_kats::utils::{setup_alice_bob, setup_alice_bob_group, setup_client};
 use prelude::KeyPackageBundle;
 use treesync::{node::leaf_node::Capabilities, LeafNodeParameters};

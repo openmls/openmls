@@ -469,8 +469,6 @@ impl MlsGroup {
             self.own_leaf_index().u32(),
         )?;
 
-        self.proposal_store_mut().empty();
-
         Ok(())
     }
 

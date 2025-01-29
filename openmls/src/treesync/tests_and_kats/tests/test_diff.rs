@@ -1,5 +1,3 @@
-use openmls_traits::prelude::*;
-
 use crate::{
     credentials::test_utils::new_credential,
     key_packages::KeyPackageBundle,

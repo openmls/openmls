@@ -15,6 +15,7 @@ proc-macro = true
 [features]
 # This needs to be enabled explicity to allow disabling on some platforms
 libcrux-provider = ["dep:openmls_libcrux_crypto"]
+sqlite-provider = ["dep:openmls_sqlite_storage"]
 
 [dependencies]
 syn = { version = "2.0", features = ["full", "visit"] }
@@ -26,3 +27,4 @@ rstest_reuse = { version = "0.7" }
 openmls_rust_crypto = { version = "0.3.0", path = "../openmls_rust_crypto" }
 openmls_libcrux_crypto = { version = "0.1.0", path = "../libcrux_crypto", optional = true }
 openmls_traits = { version = "0.3.0", path = "../traits" }
+openmls_sqlite_storage = { version = "0.1.0", path = "../sqlite_storage", optional = true }

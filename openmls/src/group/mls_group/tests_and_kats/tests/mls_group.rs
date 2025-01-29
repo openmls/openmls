@@ -1,10 +1,10 @@
-use mls_group::tests_and_kats::utils::{
-    flip_last_byte, setup_alice_bob, setup_alice_bob_group, setup_client,
+use mls_group::{
+    tests_and_kats::utils::{flip_last_byte, setup_alice_bob, setup_alice_bob_group, setup_client},
+    EncryptionKeyPair, GroupEpochSecrets, MessageSecretsStore,
 };
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::MemoryStorage;
 use openmls_test::openmls_test;
-use openmls_traits::{storage::CURRENT_VERSION, OpenMlsProvider as _};
+use openmls_traits::storage::CURRENT_VERSION;
 use signable::Signable;
 use tls_codec::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ use crate::{
     messages::{
         group_info::GroupInfoTBS, proposals::*, EncryptedGroupSecrets, GroupSecretsError, Welcome,
     },
-    prelude::ConfirmationTag,
+    prelude::{ConfirmationTag, LeafNode},
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     test_utils::{
         frankenstein::{FrankenFramedContentBody, FrankenPublicMessage},
@@ -30,7 +30,7 @@ use crate::{
     treesync::{
         errors::{ApplyUpdatePathError, LeafNodeValidationError},
         node::leaf_node::Capabilities,
-        LeafNodeParameters,
+        LeafNodeParameters, TreeSync,
     },
 };
 
@@ -2047,11 +2047,17 @@ fn deletion() {
         setup_client("alice", ciphersuite, provider);
 
     // delete the kpb from the provider, as we don't need it
-    <MemoryStorage as openmls_traits::storage::StorageProvider<CURRENT_VERSION>>::
-        delete_key_package(alice_provider.storage(),&alice_kpb.key_package().hash_ref(provider.crypto()).unwrap())
+
+    <StorageProvider as openmls_traits::storage::StorageProvider<CURRENT_VERSION>>::delete_key_package
+        (
+            alice_provider.storage(),
+            &alice_kpb.key_package().hash_ref(provider.crypto()).unwrap(),
+        ).unwrap();
+
+    <StorageProvider as openmls_traits::storage::StorageProvider<CURRENT_VERSION>>::delete_encryption_key_pair
+        (alice_provider
+        .storage(),alice_kpb.key_package().leaf_node().encryption_key())
         .unwrap();
-    <MemoryStorage as openmls_traits::storage::StorageProvider<CURRENT_VERSION>>::
-        delete_encryption_key_pair(alice_provider.storage(),alice_kpb.key_package().leaf_node().encryption_key()).unwrap();
 
     // alice creates MlsGroup
     let mut alice_group = MlsGroup::builder()
@@ -2070,7 +2076,62 @@ fn deletion() {
     // alice deletes the group
     alice_group.delete(alice_provider.storage()).unwrap();
 
-    assert!(alice_provider.storage().values.read().unwrap().is_empty());
+    let storage = alice_provider.storage();
+    let group_id = alice_group.group_id();
+    let current_epoch = alice_group.epoch();
+    let own_leaf_index = alice_group.own_leaf_index();
+
+    let all_gone = storage.tree::<_, TreeSync>(group_id).unwrap().is_none()
+        && storage
+            .confirmation_tag::<_, ConfirmationTag>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .group_context::<_, GroupContext>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .interim_transcript_hash::<_, InterimTranscriptHash>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .own_leaf_index::<_, LeafNodeIndex>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .group_epoch_secrets::<_, GroupEpochSecrets>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .message_secrets::<_, MessageSecretsStore>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .mls_group_join_config::<_, MlsGroupJoinConfig>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .own_leaf_nodes::<_, LeafNode>(group_id)
+            .unwrap()
+            .is_empty()
+        && storage
+            .group_state::<MlsGroupState, _>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .encryption_epoch_key_pairs::<_, _, EncryptionKeyPair>(
+                group_id,
+                &current_epoch,
+                own_leaf_index.u32(),
+            )
+            .unwrap()
+            .is_empty()
+        && alice_group.proposal_store().is_empty();
+
+    // The trait doesn't allow us to check whether the proposal queue is empty,
+    // or whether all resumption PSKs have been deleted.
+
+    assert!(all_gone);
 }
 
 #[openmls_test::openmls_test]

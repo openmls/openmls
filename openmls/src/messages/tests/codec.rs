@@ -5,7 +5,6 @@ use crate::{
     group::GroupId,
     messages::{PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
     schedule::psk::{ExternalPsk, PreSharedKeyId, Psk, ResumptionPsk, ResumptionPskUsage},
-    test_utils::*,
 };
 
 /// Test the encoding for PreSharedKeyProposal, that also covers some of the
