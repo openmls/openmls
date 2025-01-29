@@ -868,9 +868,7 @@
 <a href="#867" id="867">867</a>
 <a href="#868" id="868">868</a>
 <a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a></pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
+<a href="#870" id="870">870</a></pre></div><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
 //!
@@ -1340,8 +1338,6 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.epoch(),
             <span class="self">self</span>.own_leaf_index().u32(),
         )<span class="question-mark">?</span>;
-
-        <span class="self">self</span>.proposal_store_mut().empty();
 
         <span class="prelude-val">Ok</span>(())
     }

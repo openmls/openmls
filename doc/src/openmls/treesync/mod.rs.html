@@ -796,9 +796,7 @@
 <a href="#795" id="795">795</a>
 <a href="#796" id="796">796</a>
 <a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
+<a href="#798" id="798">798</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
 
@@ -1551,8 +1549,6 @@
         ciphersuite: Ciphersuite,
         provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
     ) {
-        <span class="kw">use </span>openmls_traits::OpenMlsProvider;
-
         <span class="kw">let </span>(key_package, <span class="kw">_</span>, <span class="kw">_</span>) = <span class="kw">crate</span>::key_packages::tests::key_package(ciphersuite, provider);
         <span class="kw">let </span>node_in = NodeIn::from(Node::LeafNode(LeafNode::from(key_package)));
         <span class="kw">let </span>tests = [
