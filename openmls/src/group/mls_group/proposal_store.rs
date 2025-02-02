@@ -3,6 +3,7 @@ use std::collections::{hash_map::Entry, HashMap, HashSet};
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
+use tls_codec::{TlsSerialize, TlsSize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -65,7 +66,7 @@ impl ProposalStore {
 
 /// Alternative representation of a Proposal, where the sender is extracted from
 /// the encapsulating PublicMessage and the ProposalRef is attached.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct QueuedProposal {
     proposal: Proposal,
     proposal_reference: ProposalRef,
