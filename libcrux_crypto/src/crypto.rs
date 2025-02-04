@@ -70,6 +70,7 @@ impl OpenMlsCrypto for CryptoProvider {
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
                 Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
                 Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
+                Ciphersuite::MLS_128_XWING_AES128GCM_SHA256_P256,
             ]
         } else {
             vec![
