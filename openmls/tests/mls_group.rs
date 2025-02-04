@@ -22,6 +22,338 @@ fn generate_key_package<Provider: OpenMlsProvider>(
         .clone()
 }
 
+/// This test checks if it is possible to bypass duplicate signature key detection in add proposals,
+/// when the same key package is used for each of the two add proposals.
+/// - Alice creates a group
+/// - Alice adds Bob
+/// - Alice commits
+/// - Alice creates three proposals: Remove Bob, Add Bob, and Add Bob
+/// - Alice commits
+/// - Ensure that Bob is not added twice
+#[openmls_test]
+fn mls_duplicate_signature_key_detection_same_key_package() {
+    for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
+        let group_id = GroupId::from_slice(b"Test Group");
+
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+
+        // Generate credentials with keys
+        let (alice_credential, alice_signer) =
+            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+        let (bob_credential, bob_signer) =
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+
+        // Generate KeyPackage for Bob
+        let bob_key_package = generate_key_package(
+            ciphersuite,
+            Extensions::empty(),
+            bob_provider,
+            bob_credential.clone(),
+            &bob_signer,
+        );
+
+        // Define the MlsGroup configuration
+
+        let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .wire_format_policy(*wire_format_policy)
+            .ciphersuite(ciphersuite)
+            .build();
+
+        // === Alice creates a group ===
+        let mut alice_group = MlsGroup::new_with_group_id(
+            alice_provider,
+            &alice_signer,
+            &mls_group_create_config,
+            group_id.clone(),
+            alice_credential.clone(),
+        )
+        .expect("An unexpected error occurred.");
+
+        // === Alice adds Bob ===
+        let welcome =
+            match alice_group.add_members(alice_provider, &alice_signer, &[bob_key_package]) {
+                Ok((_, welcome, _)) => welcome,
+                Err(e) => panic!("Could not add member to group: {e:?}"),
+            };
+
+        // Check that we received the correct proposals
+        if let Some(staged_commit) = alice_group.pending_commit() {
+            let add = staged_commit
+                .add_proposals()
+                .next()
+                .expect("Expected a proposal.");
+            // Check that Bob was added
+            assert_eq!(
+                add.add_proposal().key_package().leaf_node().credential(),
+                &bob_credential.credential
+            );
+            // Check that Alice added Bob
+            assert!(
+                matches!(add.sender(), Sender::Member(member) if *member == alice_group.own_leaf_index())
+            );
+        } else {
+            unreachable!("Expected a StagedCommit.");
+        }
+
+        // ===Alice commits===
+        alice_group
+            .merge_pending_commit(alice_provider)
+            .expect("error merging pending commit");
+
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
+        let bob_group = StagedWelcome::new_from_welcome(
+            bob_provider,
+            mls_group_create_config.join_config(),
+            welcome,
+            Some(alice_group.export_ratchet_tree().into()),
+        )
+        .expect("Error creating StagedWelcome from Welcome")
+        .into_group(bob_provider)
+        .expect("Error creating group from StagedWelcome");
+
+        // Ensure that the state is correct
+        // Check that the group now has two members
+        assert_eq!(alice_group.members().count(), 2);
+
+        // Check that Alice & Bob are the members of the group
+        let members = alice_group.members().collect::<Vec<Member>>();
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
+
+        // Ensure that there are the correct number of pending proposals
+        assert_eq!(alice_group.pending_proposals().count(), 0);
+
+        // === Alice creates three proposals: Remove Bob, Add Bob, and Add Bob ===
+        let bob_leaf_node_index = bob_group.own_leaf_index();
+        if let Err(e) =
+            alice_group.propose_remove_member(alice_provider, &alice_signer, bob_leaf_node_index)
+        {
+            panic!("Could not add member from group: {e:?}");
+        };
+
+        // Generate KeyPackage for Bob
+        let bob_key_package_2 = generate_key_package(
+            ciphersuite,
+            Extensions::empty(),
+            bob_provider,
+            bob_credential.clone(),
+            &bob_signer,
+        );
+
+        // Add Bob twice, with same key package...
+        for _ in 0..2 {
+            if let Err(e) =
+                alice_group.propose_add_member(alice_provider, &alice_signer, &bob_key_package_2)
+            {
+                panic!("Could not add member to group: {e:?}");
+            }
+        }
+
+        // Ensure that there are the correct number of pending proposals
+        assert_eq!(alice_group.pending_proposals().count(), 3);
+
+        // Create commit
+        if let Err(e) = alice_group.commit_to_pending_proposals(alice_provider, &alice_signer) {
+            panic!("Could not commit proposals: {e:?}");
+        }
+
+        // Ensure that a commit is pending
+        let pending_commit = match alice_group.pending_commit() {
+            Some(pending_commit) => pending_commit,
+            None => panic!("No pending commit was created"),
+        };
+
+        // Ensure that the pending commit contains the correct number of proposals
+        // TODO: Determine whether the duplicate proposals should have been filtered out at this
+        // stage. See issue
+        assert_eq!(pending_commit.queued_proposals().count(), 2);
+
+        // ... and merge commit
+        alice_group
+            .merge_pending_commit(alice_provider)
+            .expect("error merging pending commit");
+
+        // Ensure that the state is correct
+        // Check that the group now has two members
+        assert_eq!(alice_group.members().count(), 2);
+
+        // Check that Alice & Bob are the members of the group
+        let members = alice_group.members().collect::<Vec<Member>>();
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
+    }
+}
+
+/// This test checks if it is possible to bypass duplicate signature key detection in add proposals,
+/// when a different key package is used for each of the two add proposals.
+/// - Alice creates a group
+/// - Alice adds Bob
+/// - Alice commits
+/// - Alice creates three proposals: Remove Bob, Add Bob, and Add Bob
+/// - Alice commits
+/// - Ensure that Bob is not added twice
+#[openmls_test]
+fn mls_duplicate_signature_key_detection_different_key_package() {
+    for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
+        let group_id = GroupId::from_slice(b"Test Group");
+
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+
+        // Generate credentials with keys
+        let (alice_credential, alice_signer) =
+            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+        let (bob_credential, bob_signer) =
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+
+        // Generate KeyPackages
+        let bob_key_package = generate_key_package(
+            ciphersuite,
+            Extensions::empty(),
+            bob_provider,
+            bob_credential.clone(),
+            &bob_signer,
+        );
+
+        // Define the MlsGroup configuration
+
+        let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .wire_format_policy(*wire_format_policy)
+            .ciphersuite(ciphersuite)
+            .build();
+
+        // === Alice creates a group ===
+        let mut alice_group = MlsGroup::new_with_group_id(
+            alice_provider,
+            &alice_signer,
+            &mls_group_create_config,
+            group_id.clone(),
+            alice_credential.clone(),
+        )
+        .expect("An unexpected error occurred.");
+
+        // === Alice adds Bob ===
+        let welcome = match alice_group.add_members(
+            alice_provider,
+            &alice_signer,
+            &[bob_key_package.clone()],
+        ) {
+            Ok((_, welcome, _)) => welcome,
+            Err(e) => panic!("Could not add member to group: {e:?}"),
+        };
+
+        // Check that we received the correct proposals
+        if let Some(staged_commit) = alice_group.pending_commit() {
+            let add = staged_commit
+                .add_proposals()
+                .next()
+                .expect("Expected a proposal.");
+            // Check that Bob was added
+            assert_eq!(
+                add.add_proposal().key_package().leaf_node().credential(),
+                &bob_credential.credential
+            );
+            // Check that Alice added Bob
+            assert!(
+                matches!(add.sender(), Sender::Member(member) if *member == alice_group.own_leaf_index())
+            );
+        } else {
+            unreachable!("Expected a StagedCommit.");
+        }
+
+        // ===Alice commits===
+        alice_group
+            .merge_pending_commit(alice_provider)
+            .expect("error merging pending commit");
+
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
+        let bob_group = StagedWelcome::new_from_welcome(
+            bob_provider,
+            mls_group_create_config.join_config(),
+            welcome,
+            Some(alice_group.export_ratchet_tree().into()),
+        )
+        .expect("Error creating StagedWelcome from Welcome")
+        .into_group(bob_provider)
+        .expect("Error creating group from StagedWelcome");
+
+        // Ensure that the state is correct
+        // Check that the group now has two members
+        assert_eq!(alice_group.members().count(), 2);
+
+        // Check that Alice & Bob are the members of the group
+        let members = alice_group.members().collect::<Vec<Member>>();
+        let credential0 = members[0].credential.serialized_content();
+        let credential1 = members[1].credential.serialized_content();
+        assert_eq!(credential0, b"Alice");
+        assert_eq!(credential1, b"Bob");
+
+        // Ensure that there are the correct number of pending proposals
+        assert_eq!(alice_group.pending_proposals().count(), 0);
+
+        // === Alice creates three proposals: Remove Bob, Add Bob, and Add Bob ===
+        let bob_leaf_node_index = bob_group.own_leaf_index();
+        if let Err(e) =
+            alice_group.propose_remove_member(alice_provider, &alice_signer, bob_leaf_node_index)
+        {
+            panic!("Could not add member from group: {e:?}");
+        };
+
+        // Add Bob twice, with different key packages
+        for _ in 0..2 {
+            let bob_key_package = generate_key_package(
+                ciphersuite,
+                Extensions::empty(),
+                bob_provider,
+                bob_credential.clone(),
+                &bob_signer,
+            );
+
+            if let Err(e) =
+                alice_group.propose_add_member(alice_provider, &alice_signer, &bob_key_package)
+            {
+                panic!("Could not add member to group: {e:?}");
+            }
+        }
+
+        // Ensure that there are the correct number of pending proposals
+        assert_eq!(alice_group.pending_proposals().count(), 3);
+
+        // Create commit
+        use openmls::group::{
+            CommitToPendingProposalsError, CreateCommitError, ProposalValidationError,
+        };
+
+        // Check we receive the correct error when creating commit
+        match alice_group.commit_to_pending_proposals(alice_provider, &alice_signer) {
+            // correct case
+            Err(CommitToPendingProposalsError::CreateCommitError(
+                CreateCommitError::ProposalValidationError(
+                    ProposalValidationError::DuplicateSignatureKey,
+                ),
+            )) => (),
+            // incorrect cases
+            Err(e) => panic!("Wrong error type returned: {e:?}."),
+            Ok(e) => panic!("Creating commit should fail: {e:?}"),
+        }
+    }
+}
+
 /// This test simulates various group operations like Add, Update, Remove in a
 /// small group
 ///  - Alice creates a group
