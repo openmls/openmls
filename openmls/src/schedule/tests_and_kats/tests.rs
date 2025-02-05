@@ -1,6 +1,6 @@
 //! Key Schedule Unit Tests
 
-use openmls_traits::{random::OpenMlsRand, OpenMlsProvider};
+use openmls_traits::random::OpenMlsRand;
 
 use crate::{
     ciphersuite::Secret,

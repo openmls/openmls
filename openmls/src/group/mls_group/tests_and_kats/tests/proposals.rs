@@ -19,7 +19,6 @@ use crate::{
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
     prelude::LeafNodeParameters,
-    test_utils::*,
     treesync::node::leaf_node::Capabilities,
     versions::ProtocolVersion,
 };

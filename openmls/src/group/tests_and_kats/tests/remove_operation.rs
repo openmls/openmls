@@ -2,7 +2,6 @@
 
 use crate::group::tests_and_kats::utils::{generate_credential_with_key, generate_key_package};
 use crate::{framing::*, group::*};
-use openmls_traits::prelude::*;
 
 #[openmls_test::openmls_test]
 fn remove_blank() {
@@ -132,7 +131,7 @@ fn test_remove_operation_variants() {
     }
 
     for test_case in [TestCase::Remove, TestCase::Leave] {
-        let group_id = GroupId::from_slice(b"Test Group");
+        let group_id = GroupId::random(provider.rand());
 
         // Generate credentials with keys
         let alice_credential_with_key_and_signer = generate_credential_with_key(

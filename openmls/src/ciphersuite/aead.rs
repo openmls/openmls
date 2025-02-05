@@ -155,7 +155,6 @@ pub(crate) fn aead_key_gen(
 
 #[cfg(test)]
 mod unit_tests {
-    use crate::test_utils::*;
 
     use super::*;
 

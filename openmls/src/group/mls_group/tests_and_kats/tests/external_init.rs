@@ -1,11 +1,8 @@
-use crate::{
-    group::{
-        errors::ExternalCommitError,
-        mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client},
-        public_group::errors::CreationFromExternalError,
-        MlsGroup, MlsGroupJoinConfig,
-    },
-    storage::OpenMlsProvider,
+use crate::group::{
+    errors::ExternalCommitError,
+    mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client},
+    public_group::errors::CreationFromExternalError,
+    MlsGroup, MlsGroupJoinConfig,
 };
 
 #[openmls_test::openmls_test]
@@ -41,8 +38,6 @@ fn test_external_init_broken_signature() {
     .expect_err("Signature was corrupted. This should have failed.");
     assert!(matches!(
         result,
-        ExternalCommitError::<<Provider as OpenMlsProvider>::StorageError>::PublicGroupError(
-            CreationFromExternalError::InvalidGroupInfoSignature
-        )
+        ExternalCommitError::PublicGroupError(CreationFromExternalError::InvalidGroupInfoSignature)
     ));
 }
