@@ -308,11 +308,9 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
 
         // === Alice creates three proposals: Remove Bob, Add Bob, and Add Bob ===
         let bob_leaf_node_index = bob_group.own_leaf_index();
-        if let Err(e) =
-            alice_group.propose_remove_member(alice_provider, &alice_signer, bob_leaf_node_index)
-        {
-            panic!("Could not add member from group: {e:?}");
-        };
+        alice_group
+            .propose_remove_member(alice_provider, &alice_signer, bob_leaf_node_index)
+            .expect("Could not add member from group: {e:?}");
 
         // Add Bob twice, with different key packages
         for _ in 0..2 {
