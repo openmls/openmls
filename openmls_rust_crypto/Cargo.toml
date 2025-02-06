@@ -10,12 +10,12 @@ repository = "https://github.com/openmls/openmls/tree/main/openmls_rust_crypto"
 readme = "README.md"
 
 [dependencies]
-openmls_traits = { version = "0.3.0", path = "../traits" }
-openmls_memory_storage = { version = "0.3.0", path = "../memory_storage" }
-hpke = { version = "0.2.0", package = "hpke-rs", default-features = false, features = [
+hpke = { version = "0.2.1-pre.1", package = "hpke-rs", default-features = false, features = [
   "hazmat",
   "serialization",
-] }
+], git = "https://github.com/kkohbrok/hpke-rs", branch = "konrad/xwing_p256" }
+openmls_traits = { version = "0.3.0", path = "../traits" }
+openmls_memory_storage = { version = "0.3.0", path = "../memory_storage" }
 # Rust Crypto dependencies
 sha2 = { version = "0.10" }
 aes-gcm = { version = "0.10" }
@@ -26,8 +26,8 @@ p256 = { version = "0.13" }
 hkdf = { version = "0.12" }
 rand = "0.8"
 rand_chacha = { version = "0.3" }
-hpke-rs-crypto = { version = "0.2.0" }
-hpke-rs-rust-crypto = { version = "0.2.0" }
+hpke-rs-crypto = { version = "0.2.0", git = "https://github.com/kkohbrok/hpke-rs", branch = "konrad/xwing_p256" }
+hpke-rs-rust-crypto = { version = "0.2.0", git = "https://github.com/kkohbrok/hpke-rs", branch = "konrad/xwing_p256" }
 tls_codec = { workspace = true }
 thiserror = "2.0"
 serde = { version = "^1.0", features = ["derive"] }

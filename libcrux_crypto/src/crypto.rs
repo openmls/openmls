@@ -75,7 +75,6 @@ impl OpenMlsCrypto for CryptoProvider {
             vec![
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
                 Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
-                Ciphersuite::MLS_128_XWING_CHACHA20POLY1305_SHA256_P256,
             ]
         }
     }
@@ -436,6 +435,7 @@ fn hpke_kem(kem: HpkeKemType) -> libcrux::hpke::kem::KEM {
         HpkeKemType::DhKem25519 => libcrux::hpke::kem::KEM::DHKEM_X25519_HKDF_SHA256,
         HpkeKemType::DhKem448 => libcrux::hpke::kem::KEM::DHKEM_X448_HKDF_SHA512,
         HpkeKemType::XWingKemDraft2 => libcrux::hpke::kem::KEM::XWingDraft02,
+        HpkeKemType::XWingP256Kem => unimplemented!("libcrux does not support XWingP256Kem"),
     }
 }
 
