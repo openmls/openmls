@@ -1,7 +1,7 @@
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
-    credentials::CredentialType,
+    credentials::{test_utils, CredentialType},
     extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
     framing::{
         mls_auth_content::AuthenticatedContent, sender::Sender, FramingParameters, WireFormat,
@@ -14,10 +14,12 @@ use crate::{
             ProcessedMessageContent,
         },
         GroupContext, GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome,
+        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
-    key_packages::{KeyPackageBundle, KeyPackageIn},
+    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageIn},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
     prelude::LeafNodeParameters,
+    treesync::node::leaf_node::Capabilities,
     versions::ProtocolVersion,
 };
 
@@ -504,6 +506,105 @@ fn group_context_extension_proposal(
     )
 }
 
+// A simple test to check that a SelfRemove proposal can be created and
+// processed.
+#[openmls_test::openmls_test]
+fn self_remove_proposals(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
+    // Create credentials and keys
+    let (alice_credential, alice_signer) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
+
+    // Add SelfRemove to capabilities
+    let capabilities = Capabilities::new(
+        None,
+        Some(&[ciphersuite]),
+        None,
+        Some(&[ProposalType::SelfRemove]),
+        None,
+    );
+
+    // Generate KeyPackages
+    let bob_key_package_bundle = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities)
+        .build(ciphersuite, provider, &bob_signer, bob_credential.clone())
+        .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // Alice creates a group
+    let mut group_alice = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(provider, &alice_signer, alice_credential.clone())
+        .expect("Error creating group.");
+
+    // Alice adds Bob
+    let (_commit, welcome, _group_info_option) = group_alice
+        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .expect("Could not create proposal.");
+
+    group_alice
+        .merge_pending_commit(provider)
+        .expect("error merging pending commit");
+
+    let mut group_bob = StagedWelcome::new_from_welcome(
+        provider,
+        &MlsGroupJoinConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .build(),
+        welcome.into_welcome().unwrap(),
+        Some(group_alice.export_ratchet_tree().into()),
+    )
+    .and_then(|staged_join| staged_join.into_group(provider))
+    .expect("error creating group from welcome");
+
+    // Now Bob wants to remove himself via a SelfRemove proposal
+    let self_remove = group_bob
+        .leave_group_via_self_remove(provider, &bob_signer)
+        .unwrap();
+
+    // Alice process Bob's proposal
+    let processed_message = group_alice
+        .process_message(provider, self_remove.into_protocol_message().unwrap())
+        .expect("Error processing self remove proposal.");
+
+    match processed_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(queued_proposal) => {
+            group_alice
+                .store_pending_proposal(provider.storage(), *queued_proposal)
+                .unwrap();
+        }
+        _ => panic!("Expected a ProposalMessage."),
+    };
+
+    // Alice commits Bob's proposal
+    let (commit, _, _) = group_alice
+        .commit_to_pending_proposals(provider, &alice_signer)
+        .unwrap();
+
+    group_alice.merge_pending_commit(provider).unwrap();
+
+    // Bob processes Alice's commit
+    let processed_message = group_bob
+        .process_message(provider, commit.into_protocol_message().unwrap())
+        .expect("Error processing commit.");
+
+    match processed_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(commit) => {
+            group_bob.merge_staged_commit(provider, *commit).unwrap();
+        }
+        _ => panic!("Expected a StagedCommitMessage."),
+    };
+
+    // Bob should have been removed from the group
+    assert!(!group_bob.is_active());
+    assert_eq!(group_alice.members().count(), 1);
+}
+
 // Test if update proposals are properly discarded if a remove proposal is
 // present for a given leaf.
 #[openmls_test::openmls_test]
@@ -607,8 +708,35 @@ fn remove_and_update_processing(
         }
         _ => panic!("Expected a StagedCommitMessage."),
     };
-
     // Bob should be removed now.
     assert_eq!(alice_group.members().count(), 1);
     assert!(!bob_group.is_active());
+}
+
+// A simple test to check that SelfRemove proposals are only ever sent as
+// PublicMessages.
+#[openmls_test::openmls_test]
+fn self_remove_proposals_always_public(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
+    let (alice_credential, alice_signer) =
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+
+    // Alice creates a group
+    let mut group_alice = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .build(provider, &alice_signer, alice_credential.clone())
+        .expect("Error creating group.");
+
+    // Now Bob wants to remove himself via a SelfRemove proposal
+    let self_remove = group_alice
+        .leave_group_via_self_remove(provider, &alice_signer)
+        .expect_err("SelfRemove proposal was created with wrong wire format policy.");
+
+    assert_eq!(
+        self_remove,
+        LeaveGroupError::CannotSelfRemoveWithPureCiphertext
+    );
 }
