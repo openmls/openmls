@@ -173,7 +173,7 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
 
         // Ensure that the pending commit contains the correct number of proposals
         // TODO: Determine whether the duplicate proposals should have been filtered out at this
-        // stage. See issue
+        // stage. See issue #1718
         assert_eq!(pending_commit.queued_proposals().count(), 2);
 
         // ... and merge commit
