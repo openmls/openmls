@@ -308,7 +308,8 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             .map_err(|e| match e {
                 ProposalQueueError::LibraryError(e) => e.into(),
                 ProposalQueueError::ProposalNotFound => CreateCommitError::MissingProposal,
-                ProposalQueueError::UpdateFromExternalSender => {
+                ProposalQueueError::UpdateFromExternalSender
+                | ProposalQueueError::SelfRemoveFromNonMember => {
                     CreateCommitError::WrongProposalSenderType
                 }
             })?;
