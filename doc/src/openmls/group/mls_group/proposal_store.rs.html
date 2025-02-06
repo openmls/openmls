@@ -810,7 +810,9 @@
 <a href="#809" id="809">809</a>
 <a href="#810" id="810">810</a>
 <a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <span class="kw">use </span>openmls_traits::types::Ciphersuite;
@@ -1207,8 +1209,9 @@
     /// The function performs the following steps:
     ///
     /// - Extract Adds and filter for duplicates
-    /// - Build member list with chains: Updates &amp; Removes
+    /// - Build member list with chains: Updates, Removes &amp; SelfRemoves
     /// - Check for invalid indexes and drop proposal
+    /// - Check for presence of SelfRemoves and delete Removes and Updates
     /// - Check for presence of Removes and delete Updates
     /// - Only keep the last Update
     ///
@@ -1222,12 +1225,6 @@
         inline_proposals: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[Proposal],
         own_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, bool), ProposalQueueError&gt; {
-        <span class="attr">#[derive(Clone, Default)]
-        </span><span class="kw">struct </span>Member {
-            updates: Vec&lt;QueuedProposal&gt;,
-            removes: Vec&lt;QueuedProposal&gt;,
-        }
-        <span class="kw">let </span><span class="kw-2">mut </span>members = HashMap::&lt;LeafNodeIndex, Member&gt;::new();
         <span class="comment">// We use a HashSet to filter out duplicate Adds and use a vector in
         // addition to keep the order as they come in.
         </span><span class="kw">let </span><span class="kw-2">mut </span>adds: OrderedProposalRefs = OrderedProposalRefs::new();
@@ -1235,6 +1232,30 @@
         <span class="kw">let </span><span class="kw-2">mut </span>proposal_pool: HashMap&lt;ProposalRef, QueuedProposal&gt; = HashMap::new();
         <span class="kw">let </span><span class="kw-2">mut </span>contains_own_updates = <span class="bool-val">false</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>contains_external_init = <span class="bool-val">false</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>member_specific_proposals: HashMap&lt;LeafNodeIndex, QueuedProposal&gt; = HashMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>register_member_specific_proposal =
+            |member: LeafNodeIndex, proposal: QueuedProposal| {
+                <span class="comment">// Only replace if the existing proposal is an Update.
+                </span><span class="kw">match </span>member_specific_proposals.entry(member) {
+                    <span class="comment">// Insert if no entry exists for this sender.
+                    </span>Entry::Vacant(vacant_entry) =&gt; {
+                        vacant_entry.insert(proposal);
+                    }
+                    <span class="comment">// Replace the existing proposal if the new proposal has
+                    // priority.
+                    </span>Entry::Occupied(<span class="kw-2">mut </span>occupied_entry)
+                        <span class="kw">if </span>occupied_entry
+                            .get()
+                            .proposal()
+                            .has_lower_priority_than(<span class="kw-2">&amp;</span>proposal.proposal) =&gt;
+                    {
+                        occupied_entry.insert(proposal);
+                    }
+                    <span class="comment">// Otherwise ignore the new proposal.
+                    </span>Entry::Occupied(<span class="kw">_</span>) =&gt; {}
+                }
+            };
 
         <span class="comment">// Aggregate both proposal types to a common iterator
         // We checked earlier that only proposals can end up here
@@ -1257,83 +1278,66 @@
 
         <span class="comment">// Parse proposals and build adds and member list
         </span><span class="kw">for </span>queued_proposal <span class="kw">in </span>queued_proposal_list {
+            proposal_pool.insert(
+                queued_proposal.proposal_reference(),
+                queued_proposal.clone(),
+            );
             <span class="kw">match </span>queued_proposal.proposal {
                 Proposal::Add(<span class="kw">_</span>) =&gt; {
                     adds.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(<span class="kw">_</span>) =&gt; {
                     <span class="comment">// Only members can send update proposals
                     // ValSem112
-                    </span><span class="kw">let </span>leaf_index = <span class="kw">match </span>queued_proposal.sender.clone() {
-                        Sender::Member(hash_ref) =&gt; hash_ref,
-                        <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalQueueError::UpdateFromExternalSender),
+                    </span><span class="kw">let </span>Sender::Member(sender_index) = queued_proposal.sender() <span class="kw">else </span>{
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalQueueError::UpdateFromExternalSender);
                     };
-                    <span class="kw">if </span>leaf_index != own_index {
-                        members
-                            .entry(leaf_index)
-                            .or_default()
-                            .updates
-                            .push(queued_proposal.clone());
-                    } <span class="kw">else </span>{
+                    <span class="kw">if </span>sender_index == <span class="kw-2">&amp;</span>own_index {
                         contains_own_updates = <span class="bool-val">true</span>;
+                        <span class="kw">continue</span>;
                     }
-                    <span class="kw">let </span>proposal_reference = queued_proposal.proposal_reference();
-                    proposal_pool.insert(proposal_reference, queued_proposal);
+                    register_member_specific_proposal(<span class="kw-2">*</span>sender_index, queued_proposal);
                 }
                 Proposal::Remove(<span class="kw-2">ref </span>remove_proposal) =&gt; {
                     <span class="kw">let </span>removed = remove_proposal.removed();
-                    members
-                        .entry(removed)
-                        .or_default()
-                        .removes
-                        .push(queued_proposal.clone());
-                    <span class="kw">let </span>proposal_reference = queued_proposal.proposal_reference();
-                    proposal_pool.insert(proposal_reference, queued_proposal);
+                    register_member_specific_proposal(removed, queued_proposal);
                 }
                 Proposal::PreSharedKey(<span class="kw">_</span>) =&gt; {
                     valid_proposals.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::ReInit(<span class="kw">_</span>) =&gt; {
                     <span class="comment">// TODO #751: Only keep one ReInit
-                    </span>proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
-                }
+                </span>}
                 Proposal::ExternalInit(<span class="kw">_</span>) =&gt; {
                     <span class="comment">// Only use the first external init proposal we find.
                     </span><span class="kw">if </span>!contains_external_init {
                         valid_proposals.add(queued_proposal.proposal_reference());
-                        proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                         contains_external_init = <span class="bool-val">true</span>;
                     }
                 }
                 Proposal::GroupContextExtensions(<span class="kw">_</span>) =&gt; {
                     valid_proposals.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::AppAck(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">"See #291"</span>),
+                Proposal::SelfRemove =&gt; {
+                    <span class="kw">let </span>Sender::Member(removed) = queued_proposal.sender() <span class="kw">else </span>{
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalQueueError::SelfRemoveFromNonMember);
+                    };
+                    register_member_specific_proposal(<span class="kw-2">*</span>removed, queued_proposal);
+                }
                 Proposal::Custom(<span class="kw">_</span>) =&gt; {
                     <span class="comment">// Other/unknown proposals are always considered valid and
                     // have to be checked by the application instead.
                     </span>valid_proposals.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
             }
         }
-        <span class="comment">// Check for presence of Removes and delete Updates
-        </span><span class="kw">for </span>(<span class="kw">_</span>, member) <span class="kw">in </span>members.iter_mut() {
-            <span class="comment">// Check if there are Removes
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_remove) = member.removes.last() {
-                <span class="comment">// Delete all Updates when a Remove is found
-                </span>member.updates = Vec::new();
-                <span class="comment">// Only keep the last Remove
-                </span>valid_proposals.add(last_remove.proposal_reference());
-            }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(last_update) = member.updates.last() {
-                <span class="comment">// Only keep the last Update
-                </span>valid_proposals.add(last_update.proposal_reference());
-            }
+
+        <span class="comment">// Add the leaf-specific proposals to the list of valid proposals.
+        </span><span class="kw">for </span>proposal <span class="kw">in </span>member_specific_proposals.values() {
+            valid_proposals.add(proposal.proposal_reference());
         }
+
         <span class="comment">// Only retain `adds` and `valid_proposals`
         </span><span class="kw">let </span><span class="kw-2">mut </span>proposal_queue = ProposalQueue::default();
         <span class="kw">for </span>proposal_reference <span class="kw">in </span>adds.iter().chain(valid_proposals.iter()) {
@@ -1360,8 +1364,9 @@
     /// The function performs the following steps:
     ///
     /// - Extract Adds and filter for duplicates
-    /// - Build member list with chains: Updates &amp; Removes
+    /// - Build member list with chains: Updates, Removes &amp; SelfRemoves
     /// - Check for invalid indexes and drop proposal
+    /// - Check for presence of SelfRemoves and delete Removes and Updates
     /// - Check for presence of Removes and delete Updates
     /// - Only keep the last Update
     ///
@@ -1371,12 +1376,6 @@
         iter: <span class="kw">impl </span>IntoIterator&lt;Item = QueuedProposal&gt;,
         own_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, bool), ProposalQueueError&gt; {
-        <span class="attr">#[derive(Clone, Default)]
-        </span><span class="kw">struct </span>Member {
-            updates: Vec&lt;QueuedProposal&gt;,
-            removes: Vec&lt;QueuedProposal&gt;,
-        }
-        <span class="kw">let </span><span class="kw-2">mut </span>members: HashMap&lt;LeafNodeIndex, Member&gt; = HashMap::new();
         <span class="comment">// We use a HashSet to filter out duplicate Adds and use a vector in
         // addition to keep the order as they come in.
         </span><span class="kw">let </span><span class="kw-2">mut </span>adds: OrderedProposalRefs = OrderedProposalRefs::new();
@@ -1385,85 +1384,90 @@
         <span class="kw">let </span><span class="kw-2">mut </span>contains_own_updates = <span class="bool-val">false</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>contains_external_init = <span class="bool-val">false</span>;
 
+        <span class="kw">let </span><span class="kw-2">mut </span>member_specific_proposals: HashMap&lt;LeafNodeIndex, QueuedProposal&gt; = HashMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>register_member_specific_proposal =
+            |member: LeafNodeIndex, proposal: QueuedProposal| {
+                <span class="comment">// Only replace if the existing proposal is an Update.
+                </span><span class="kw">match </span>member_specific_proposals.entry(member) {
+                    <span class="comment">// Insert if no entry exists for this sender.
+                    </span>Entry::Vacant(vacant_entry) =&gt; {
+                        vacant_entry.insert(proposal);
+                    }
+                    <span class="comment">// Replace the existing proposal if the new proposal has
+                    // priority.
+                    </span>Entry::Occupied(<span class="kw-2">mut </span>occupied_entry)
+                        <span class="kw">if </span>occupied_entry
+                            .get()
+                            .proposal()
+                            .has_lower_priority_than(<span class="kw-2">&amp;</span>proposal.proposal) =&gt;
+                    {
+                        occupied_entry.insert(proposal);
+                    }
+                    <span class="comment">// Otherwise ignore the new proposal.
+                    </span>Entry::Occupied(<span class="kw">_</span>) =&gt; {}
+                }
+            };
+
         <span class="comment">// Parse proposals and build adds and member list
         </span><span class="kw">for </span>queued_proposal <span class="kw">in </span>iter {
+            proposal_pool.insert(
+                queued_proposal.proposal_reference(),
+                queued_proposal.clone(),
+            );
             <span class="kw">match </span>queued_proposal.proposal {
                 Proposal::Add(<span class="kw">_</span>) =&gt; {
                     adds.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(<span class="kw">_</span>) =&gt; {
                     <span class="comment">// Only members can send update proposals
                     // ValSem112
-                    </span><span class="kw">let </span>leaf_index = <span class="kw">match </span>queued_proposal.sender.clone() {
-                        Sender::Member(hash_ref) =&gt; hash_ref,
-                        <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalQueueError::UpdateFromExternalSender),
+                    </span><span class="kw">let </span>Sender::Member(sender_index) = queued_proposal.sender() <span class="kw">else </span>{
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalQueueError::UpdateFromExternalSender);
                     };
-                    <span class="kw">if </span>leaf_index != own_index {
-                        members
-                            .entry(leaf_index)
-                            .or_default()
-                            .updates
-                            .push(queued_proposal.clone());
-                    } <span class="kw">else </span>{
+                    <span class="kw">if </span>sender_index == <span class="kw-2">&amp;</span>own_index {
                         contains_own_updates = <span class="bool-val">true</span>;
+                        <span class="kw">continue</span>;
                     }
-                    <span class="kw">let </span>proposal_reference = queued_proposal.proposal_reference();
-                    proposal_pool.insert(proposal_reference, queued_proposal);
+                    register_member_specific_proposal(<span class="kw-2">*</span>sender_index, queued_proposal);
                 }
                 Proposal::Remove(<span class="kw-2">ref </span>remove_proposal) =&gt; {
                     <span class="kw">let </span>removed = remove_proposal.removed();
-                    members
-                        .entry(removed)
-                        .or_default()
-                        .removes
-                        .push(queued_proposal.clone());
-                    <span class="kw">let </span>proposal_reference = queued_proposal.proposal_reference();
-                    proposal_pool.insert(proposal_reference, queued_proposal);
+                    register_member_specific_proposal(removed, queued_proposal);
                 }
                 Proposal::PreSharedKey(<span class="kw">_</span>) =&gt; {
                     valid_proposals.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::ReInit(<span class="kw">_</span>) =&gt; {
                     <span class="comment">// TODO #751: Only keep one ReInit
-                    </span>proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
-                }
+                </span>}
                 Proposal::ExternalInit(<span class="kw">_</span>) =&gt; {
                     <span class="comment">// Only use the first external init proposal we find.
                     </span><span class="kw">if </span>!contains_external_init {
                         valid_proposals.add(queued_proposal.proposal_reference());
-                        proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                         contains_external_init = <span class="bool-val">true</span>;
                     }
                 }
                 Proposal::GroupContextExtensions(<span class="kw">_</span>) =&gt; {
                     valid_proposals.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::AppAck(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">"See #291"</span>),
+                Proposal::SelfRemove =&gt; {
+                    <span class="kw">let </span>Sender::Member(removed) = queued_proposal.sender() <span class="kw">else </span>{
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalQueueError::SelfRemoveFromNonMember);
+                    };
+                    register_member_specific_proposal(<span class="kw-2">*</span>removed, queued_proposal);
+                }
                 Proposal::Custom(<span class="kw">_</span>) =&gt; {
                     <span class="comment">// Other/unknown proposals are always considered valid and
                     // have to be checked by the application instead.
                     </span>valid_proposals.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
             }
         }
 
-        <span class="comment">// Check for presence of Removes and delete Updates
-        </span><span class="kw">for </span>(<span class="kw">_</span>, member) <span class="kw">in </span>members.iter_mut() {
-            <span class="comment">// Check if there are Removes
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_remove) = member.removes.last() {
-                <span class="comment">// Delete all Updates when a Remove is found
-                </span>member.updates = Vec::new();
-                <span class="comment">// Only keep the last Remove
-                </span>valid_proposals.add(last_remove.proposal_reference());
-            }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(last_update) = member.updates.last() {
-                <span class="comment">// Only keep the last Update
-                </span>valid_proposals.add(last_update.proposal_reference());
-            }
+        <span class="comment">// Add the leaf-specific proposals to the list of valid proposals.
+        </span><span class="kw">for </span>proposal <span class="kw">in </span>member_specific_proposals.values() {
+            valid_proposals.add(proposal.proposal_reference());
         }
 
         <span class="comment">// Only retain `adds` and `valid_proposals`

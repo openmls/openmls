@@ -371,7 +371,10 @@
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a></pre></div><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a></pre></div><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors
 //!
 //! This module defines the public errors that can be returned from all calls
 //! to methods of [`MlsGroup`](super::MlsGroup).
@@ -600,6 +603,9 @@
     <span class="doccomment">/// An error ocurred while writing to storage
     </span><span class="attr">#[error(<span class="string">"An error ocurred while writing to storage"</span>)]
     </span>StorageError(StorageError),
+    <span class="doccomment">/// SelfRemove not allowed with pure ciphertext outgoing wire format policy.
+    </span><span class="attr">#[error(<span class="string">"SelfRemove not allowed with pure ciphertext outgoing wire format policy."</span>)]
+    </span>CannotSelfRemoveWithPureCiphertext,
 }
 
 <span class="doccomment">/// Self update error

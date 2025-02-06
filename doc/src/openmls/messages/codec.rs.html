@@ -137,7 +137,12 @@
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Codec
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Codec
 //!
 //! This module contains the encoding and decoding logic for Proposals.
 
@@ -164,6 +169,7 @@
                 Proposal::ExternalInit(p) =&gt; p.tls_serialized_len(),
                 Proposal::GroupContextExtensions(p) =&gt; p.tls_serialized_len(),
                 Proposal::AppAck(p) =&gt; p.tls_serialized_len(),
+                Proposal::SelfRemove =&gt; <span class="number">0</span>,
                 Proposal::Custom(p) =&gt; p.payload().tls_serialized_len(),
             }
     }
@@ -181,6 +187,7 @@
             Proposal::ExternalInit(p) =&gt; p.tls_serialize(writer),
             Proposal::GroupContextExtensions(p) =&gt; p.tls_serialize(writer),
             Proposal::AppAck(p) =&gt; p.tls_serialize(writer),
+            Proposal::SelfRemove =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
             Proposal::Custom(p) =&gt; p.payload().tls_serialize(writer),
         }
         .map(|l| written + l)
@@ -199,6 +206,7 @@
                 ProposalIn::ExternalInit(p) =&gt; p.tls_serialized_len(),
                 ProposalIn::GroupContextExtensions(p) =&gt; p.tls_serialized_len(),
                 ProposalIn::AppAck(p) =&gt; p.tls_serialized_len(),
+                ProposalIn::SelfRemove =&gt; <span class="number">0</span>,
                 ProposalIn::Custom(p) =&gt; p.payload().tls_serialized_len(),
             }
     }
@@ -222,6 +230,7 @@
             ProposalIn::ExternalInit(p) =&gt; p.tls_serialize(writer),
             ProposalIn::GroupContextExtensions(p) =&gt; p.tls_serialize(writer),
             ProposalIn::AppAck(p) =&gt; p.tls_serialize(writer),
+            ProposalIn::SelfRemove =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
             ProposalIn::Custom(p) =&gt; p.payload().tls_serialize(writer),
         }
         .map(|l| written + l)
@@ -255,6 +264,7 @@
                 GroupContextExtensionProposal::tls_deserialize(bytes)<span class="question-mark">?</span>,
             ),
             ProposalType::AppAck =&gt; ProposalIn::AppAck(AppAckProposal::tls_deserialize(bytes)<span class="question-mark">?</span>),
+            ProposalType::SelfRemove =&gt; ProposalIn::SelfRemove,
             ProposalType::Custom(<span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span>payload = Vec::&lt;u8&gt;::tls_deserialize(bytes)<span class="question-mark">?</span>;
                 <span class="kw">let </span>custom_proposal = CustomProposal::new(proposal_type.into(), payload);

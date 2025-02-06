@@ -696,7 +696,42 @@
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
-<a href="#698" id="698">698</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Proposals
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
 
@@ -777,11 +812,13 @@
     ExternalInit,
     GroupContextExtensions,
     AppAck,
+    SelfRemove,
     Custom(u16),
 }
 
 <span class="kw">impl </span>ProposalType {
-    <span class="doccomment">/// Returns true for all proposal types that are considered "default" by the spec.
+    <span class="doccomment">/// Returns true for all proposal types that are considered "default" by the
+    /// spec.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_default(<span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
             ProposalType::Add
@@ -791,7 +828,7 @@
             | ProposalType::Reinit
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions =&gt; <span class="bool-val">true</span>,
-            ProposalType::AppAck | ProposalType::Custom(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+            ProposalType::SelfRemove | ProposalType::AppAck | ProposalType::Custom(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
         }
     }
 }
@@ -839,7 +876,11 @@
     </span><span class="kw">pub fn </span>is_path_required(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="macro">matches!</span>(
             <span class="self">self</span>,
-            <span class="self">Self</span>::Update | <span class="self">Self</span>::Remove | <span class="self">Self</span>::ExternalInit | <span class="self">Self</span>::GroupContextExtensions
+            <span class="self">Self</span>::Update
+                | <span class="self">Self</span>::Remove
+                | <span class="self">Self</span>::ExternalInit
+                | <span class="self">Self</span>::GroupContextExtensions
+                | <span class="self">Self</span>::SelfRemove
         )
     }
 }
@@ -855,6 +896,7 @@
             <span class="number">6 </span>=&gt; ProposalType::ExternalInit,
             <span class="number">7 </span>=&gt; ProposalType::GroupContextExtensions,
             <span class="number">8 </span>=&gt; ProposalType::AppAck,
+            <span class="number">0x000c </span>=&gt; ProposalType::SelfRemove,
             other =&gt; ProposalType::Custom(other),
         }
     }
@@ -871,6 +913,7 @@
             ProposalType::ExternalInit =&gt; <span class="number">6</span>,
             ProposalType::GroupContextExtensions =&gt; <span class="number">7</span>,
             ProposalType::AppAck =&gt; <span class="number">8</span>,
+            ProposalType::SelfRemove =&gt; <span class="number">0x000c</span>,
             ProposalType::Custom(id) =&gt; id,
         }
     }
@@ -911,6 +954,8 @@
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
     </span>AppAck(AppAckProposal),
+    <span class="comment">// A SelfRemove proposal is an empty struct.
+    </span>SelfRemove,
     Custom(CustomProposal),
 }
 
@@ -926,6 +971,7 @@
             Proposal::ExternalInit(<span class="kw">_</span>) =&gt; ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(<span class="kw">_</span>) =&gt; ProposalType::GroupContextExtensions,
             Proposal::AppAck(<span class="kw">_</span>) =&gt; ProposalType::AppAck,
+            Proposal::SelfRemove =&gt; ProposalType::SelfRemove,
             Proposal::Custom(CustomProposal {
                 proposal_type,
                 payload: <span class="kw">_</span>,
@@ -941,11 +987,30 @@
     </span><span class="kw">pub fn </span>is_path_required(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.proposal_type().is_path_required()
     }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>has_lower_priority_than(<span class="kw-2">&amp;</span><span class="self">self</span>, new_proposal: <span class="kw-2">&amp;</span>Proposal) -&gt; bool {
+        <span class="kw">match </span>(<span class="self">self</span>, new_proposal) {
+            <span class="comment">// Updates have the lowest priority.
+            </span>(Proposal::Update(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            <span class="comment">// Removes have a higher priority than Updates.
+            </span>(Proposal::Remove(<span class="kw">_</span>), Proposal::Update(<span class="kw">_</span>)) =&gt; <span class="bool-val">false</span>,
+            <span class="comment">// Later Removes trump earlier Removes
+            </span>(Proposal::Remove(<span class="kw">_</span>), Proposal::Remove(<span class="kw">_</span>)) =&gt; <span class="bool-val">true</span>,
+            <span class="comment">// SelfRemoves have the highest priority.
+            </span>(<span class="kw">_</span>, Proposal::SelfRemove) =&gt; <span class="bool-val">true</span>,
+            <span class="comment">// All other combinations are invalid
+            </span><span class="kw">_ </span>=&gt; {
+                <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
+                <span class="bool-val">false
+            </span>}
+        }
+    }
 }
 
 <span class="doccomment">/// Add Proposal.
 ///
-/// An Add proposal requests that a client with a specified [`KeyPackage`] be added to the group.
+/// An Add proposal requests that a client with a specified [`KeyPackage`] be
+/// added to the group.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -967,8 +1032,9 @@
 
 <span class="doccomment">/// Update Proposal.
 ///
-/// An Update proposal is a similar mechanism to [`AddProposal`] with the distinction that it
-/// replaces the sender's [`LeafNode`] in the tree instead of adding a new leaf to the tree.
+/// An Update proposal is a similar mechanism to [`AddProposal`] with the
+/// distinction that it replaces the sender's [`LeafNode`] in the tree instead
+/// of adding a new leaf to the tree.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -990,7 +1056,8 @@
 
 <span class="doccomment">/// Remove Proposal.
 ///
-/// A Remove proposal requests that the member with the leaf index removed be removed from the group.
+/// A Remove proposal requests that the member with the leaf index removed be
+/// removed from the group.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -1023,8 +1090,8 @@
 
 <span class="doccomment">/// PreSharedKey Proposal.
 ///
-/// A PreSharedKey proposal can be used to request that a pre-shared key be injected into the key
-/// schedule in the process of advancing the epoch.
+/// A PreSharedKey proposal can be used to request that a pre-shared key be
+/// injected into the key schedule in the process of advancing the epoch.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -1064,9 +1131,10 @@
 
 <span class="doccomment">/// ReInit Proposal.
 ///
-/// A ReInit proposal represents a request to reinitialize the group with different parameters, for
-/// example, to increase the version number or to change the ciphersuite. The reinitialization is
-/// done by creating a completely new group and shutting down the old one.
+/// A ReInit proposal represents a request to reinitialize the group with
+/// different parameters, for example, to increase the version number or to
+/// change the ciphersuite. The reinitialization is done by creating a
+/// completely new group and shutting down the old one.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -1098,8 +1166,8 @@
 
 <span class="doccomment">/// ExternalInit Proposal.
 ///
-/// An ExternalInit proposal is used by new members that want to join a group by using an external
-/// commit. This proposal can only be used in that context.
+/// An ExternalInit proposal is used by new members that want to join a group by
+/// using an external commit. This proposal can only be used in that context.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -1160,8 +1228,8 @@
 
 <span class="doccomment">/// GroupContextExtensions Proposal.
 ///
-/// A GroupContextExtensions proposal is used to update the list of extensions in the GroupContext
-/// for the group.
+/// A GroupContextExtensions proposal is used to update the list of extensions
+/// in the GroupContext for the group.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -1281,9 +1349,11 @@
             .map_err(|error| ProposalRefError::Other(LibraryError::unexpected_crypto_error(error)))
     }
 
-    <span class="doccomment">/// Note: A [`ProposalRef`] should be calculated by using TLS-serialized [`AuthenticatedContent`]
-    ///       as value input and not the TLS-serialized proposal. However, to spare us a major refactoring,
-    ///       we calculate it from the raw value in some places that do not interact with the outside world.
+    <span class="doccomment">/// Note: A [`ProposalRef`] should be calculated by using TLS-serialized
+    /// [`AuthenticatedContent`]       as value input and not the
+    /// TLS-serialized proposal. However, to spare us a major refactoring,
+    ///       we calculate it from the raw value in some places that do not
+    /// interact with the outside world.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_raw_proposal(
         ciphersuite: Ciphersuite,
         crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,

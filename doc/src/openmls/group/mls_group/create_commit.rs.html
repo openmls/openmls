@@ -385,7 +385,8 @@
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a></pre></div><pre class="rust"><code><span class="doccomment">//! Defines the `CreateCommit` trait and its implementation for `MlsGroup`.
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a></pre></div><pre class="rust"><code><span class="doccomment">//! Defines the `CreateCommit` trait and its implementation for `MlsGroup`.
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use crate</span>::{credentials::CredentialWithKey, treesync::LeafNodeParameters};
@@ -496,7 +497,8 @@
         .map_err(|e| <span class="kw">match </span>e {
             ProposalQueueError::LibraryError(e) =&gt; e.into(),
             ProposalQueueError::ProposalNotFound =&gt; CreateCommitError::MissingProposal,
-            ProposalQueueError::UpdateFromExternalSender =&gt; {
+            ProposalQueueError::UpdateFromExternalSender
+            | ProposalQueueError::SelfRemoveFromNonMember =&gt; {
                 CreateCommitError::WrongProposalSenderType
             }
         })<span class="question-mark">?</span>;

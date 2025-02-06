@@ -359,7 +359,13 @@
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
 <a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Proposals
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
 
@@ -421,6 +427,8 @@
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
     </span>AppAck(AppAckProposal),
+    <span class="comment">// A SelfRemove proposal is an empty struct.
+    </span>SelfRemove,
     Custom(CustomProposal),
 }
 
@@ -436,6 +444,7 @@
             ProposalIn::ExternalInit(<span class="kw">_</span>) =&gt; ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(<span class="kw">_</span>) =&gt; ProposalType::GroupContextExtensions,
             ProposalIn::AppAck(<span class="kw">_</span>) =&gt; ProposalType::AppAck,
+            ProposalIn::SelfRemove =&gt; ProposalType::SelfRemove,
             ProposalIn::Custom(custom_proposal) =&gt; {
                 ProposalType::Custom(custom_proposal.proposal_type())
             }
@@ -472,6 +481,7 @@
                 Proposal::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) =&gt; Proposal::AppAck(app_ack),
+            ProposalIn::SelfRemove =&gt; Proposal::SelfRemove,
             ProposalIn::Custom(custom) =&gt; Proposal::Custom(custom),
         })
     }
@@ -675,6 +685,7 @@
                 <span class="self">Self</span>::GroupContextExtensions(group_context_extension)
             }
             ProposalIn::AppAck(app_ack) =&gt; <span class="self">Self</span>::AppAck(app_ack),
+            ProposalIn::SelfRemove =&gt; <span class="self">Self</span>::SelfRemove,
             ProposalIn::Custom(other) =&gt; <span class="self">Self</span>::Custom(other),
         }
     }
@@ -693,6 +704,7 @@
                 <span class="self">Self</span>::GroupContextExtensions(group_context_extension)
             }
             Proposal::AppAck(app_ack) =&gt; <span class="self">Self</span>::AppAck(app_ack),
+            Proposal::SelfRemove =&gt; <span class="self">Self</span>::SelfRemove,
             Proposal::Custom(other) =&gt; <span class="self">Self</span>::Custom(other),
         }
     }

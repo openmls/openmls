@@ -304,7 +304,56 @@
 <a href="#303" id="303">303</a>
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a></pre></div><pre class="rust"><code><span class="doccomment">//! MLS group membership
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a></pre></div><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
@@ -515,6 +564,55 @@
 
         <span class="self">self</span>.reset_aad();
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.content_to_mls_message(remove_proposal, provider)<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// Leave the group via a SelfRemove proposal.
+    ///
+    /// Creates a SelfRemove Proposal that needs to be covered by a Commit from
+    /// a different member. The SelfRemove Proposal is returned as a
+    /// [`MlsMessageOut`].
+    ///
+    /// Since SelfRemove proposals are always sent as [`PublicMessage`]s, this
+    /// function can only be used if the group's [`WireFormatPolicy`] allows for
+    /// it.
+    ///
+    /// Returns an error if there is a pending commit.
+    </span><span class="kw">pub fn </span>leave_group_via_self_remove&lt;Provider: OpenMlsProvider&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        provider: <span class="kw-2">&amp;</span>Provider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, LeaveGroupError&lt;Provider::StorageError&gt;&gt; {
+        <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
+
+        <span class="kw">if </span><span class="macro">matches!</span>(
+            <span class="self">self</span>.configuration().wire_format_policy().outgoing(),
+            OutgoingWireFormatPolicy::AlwaysCiphertext
+        ) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(LeaveGroupError::CannotSelfRemoveWithPureCiphertext);
+        }
+        <span class="kw">let </span>self_remove_proposal =
+            <span class="self">self</span>.create_self_remove_proposal(<span class="self">self</span>.framing_parameters().aad(), signer)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
+        <span class="kw">let </span>queued_self_remove_proposal = QueuedProposal::from_authenticated_content_by_ref(
+            ciphersuite,
+            provider.crypto(),
+            self_remove_proposal.clone(),
+        )<span class="question-mark">?</span>;
+
+        provider
+            .storage()
+            .queue_proposal(
+                <span class="self">self</span>.group_id(),
+                <span class="kw-2">&amp;</span>queued_self_remove_proposal.proposal_reference(),
+                <span class="kw-2">&amp;</span>queued_self_remove_proposal,
+            )
+            .map_err(LeaveGroupError::StorageError)<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.proposal_store_mut().add(queued_self_remove_proposal);
+
+        <span class="self">self</span>.reset_aad();
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.content_to_mls_message(self_remove_proposal, provider)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns a list of [`Member`]s in the group.
