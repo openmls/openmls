@@ -4,7 +4,7 @@ use super::*;
 
 /// Combined message secrets that need to be stored for later decryption/verification
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct MessageSecrets {
     sender_data_secret: SenderDataSecret,
@@ -113,15 +113,5 @@ impl MessageSecrets {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn replace_secret_tree(&mut self, secret_tree: SecretTree) -> SecretTree {
         std::mem::replace(&mut self.secret_tree, secret_tree)
-    }
-}
-
-// In tests we allow comparing secrets.
-#[cfg(any(test, feature = "test-utils"))]
-impl PartialEq for MessageSecrets {
-    fn eq(&self, other: &Self) -> bool {
-        self.sender_data_secret == other.sender_data_secret
-            && self.membership_key == other.membership_key
-            && self.confirmation_key == other.confirmation_key
     }
 }
