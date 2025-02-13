@@ -156,15 +156,14 @@ fn test_ratchet_writeback() {
         .unwrap()
         .unwrap();
 
-    // Check that message secrets have been updated
     let store_secrets_after = message_secrets_store_after.message_secrets().clone();
     let group_secrets_after = bob_group.message_secrets().clone();
 
+    // Ensure that storage secrets still match group secrets
+    assert_eq!(store_secrets_after, group_secrets_after);
+
     // Ensure that group secrets have been updated
     assert_ne!(group_secrets_before, group_secrets_after);
-
-    // Ensure that storage secrets match group secrets
-    assert_eq!(store_secrets_after, group_secrets_after);
 
     // TODO: Check that message secrets are updated to correct value
 }
