@@ -29,8 +29,8 @@ fn generate_key_package<Provider: OpenMlsProvider>(
 ///  - Bob processes message
 #[openmls_test::openmls_test]
 fn test_ratchet_writeback() {
-    // use same wire format policy as `tests_and_kats::utils::setup_alice_bob_group()`
-    let wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
+
+    let wire_format_policy = MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY;
 
     let group_id = GroupId::from_slice(b"Test Group");
 
