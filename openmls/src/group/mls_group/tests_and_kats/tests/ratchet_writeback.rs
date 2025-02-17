@@ -164,5 +164,4 @@ fn test_ratchet_writeback() {
     // Ensure that storage secrets still match group secrets
     assert_eq!(store_secrets_after, group_secrets_after);
 
-    // TODO: Check that message secrets are updated to correct value
 }
