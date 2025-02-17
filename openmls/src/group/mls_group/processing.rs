@@ -335,6 +335,24 @@ impl MlsGroup {
                             credential,
                         ))
                     }
+                    FramedContentBody::Proposal(Proposal::Add(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content(
+                                self.ciphersuite(),
+                                provider.crypto(),
+                                content,
+                                ProposalOrRefType::Proposal,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.context().epoch(),
+                            sender,
+                            data,
+                            content,
+                            credential,
+                        ))
+                    }
                     // TODO #151/#106
                     FramedContentBody::Proposal(_) => {
                         Err(ProcessMessageError::UnsupportedProposalType)
