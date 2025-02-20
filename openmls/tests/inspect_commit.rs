@@ -118,15 +118,15 @@ fn mls_test_inspect_add_commit() {
             .add_members(alice_provider, &alice_signer, &[charlie_key_package])
             .unwrap();
 
-        // Inspect the `MlsMessageBodyOut` in the `MlsMessageOut`
-        // (which is the only thing we can retrieve from it via the public API)
+        // Inspect the `MlsMessageBodyOut` in the `MlsMessageOut`,
+        // which is the only thing we can retrieve from it via the public API
         if wire_format_policy == PURE_PLAINTEXT_WIRE_FORMAT_POLICY {
             if let MlsMessageBodyOut::PublicMessage(public_message) = queued_message.body() {
-                // NOTE: `public_message.content` is private (this would be
+                // NOTE: `public_message.content` is private. This would be
                 // another way to access a `FramedContentBody::Commit(Commit)`,
                 // which also provides access to `Proposal`s.
                 // However, those doesn't provide any information beyond what we can get
-                // from the `StagedCommit`.)
+                // from the `StagedCommit`.
 
                 // We can retrieve the `ContentType` here, but nothing else from the public API
                 assert_eq!(public_message.content_type(), ContentType::Commit);
@@ -153,7 +153,7 @@ fn mls_test_inspect_add_commit() {
             )
             .expect("Could not process message.");
 
-        // Could merge pending commits for Alice here
+        // ...could merge pending commits for Alice here...
 
         // Inspect the staged commit
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
