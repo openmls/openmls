@@ -51,6 +51,12 @@ impl Signer for SignatureKeyPair {
                 let signature: Signature = k.sign(payload);
                 Ok(signature.to_der().to_bytes().into())
             }
+            SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+                let k = p384::ecdsa::SigningKey::from_bytes(self.private.as_slice().into())
+                    .map_err(|_| SignerError::SigningError)?;
+                let signature: p384::ecdsa::Signature = k.sign(payload);
+                Ok(signature.to_der().to_bytes().into())
+            }
             SignatureScheme::ED25519 => {
                 let k = ed25519_dalek::SigningKey::try_from(self.private.as_slice())
                     .map_err(|_| SignerError::SigningError)?;
@@ -82,6 +88,11 @@ impl SignatureKeyPair {
         let (private, public) = match signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
                 let k = SigningKey::random(&mut OsRng);
+                let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
+                (k.to_bytes().as_slice().into(), pk)
+            }
+            SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+                let k = p384::ecdsa::SigningKey::random(&mut OsRng);
                 let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
                 (k.to_bytes().as_slice().into(), pk)
             }
