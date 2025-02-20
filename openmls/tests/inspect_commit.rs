@@ -159,17 +159,17 @@ fn mls_test_inspect_add_commit() {
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             bob_processed_message.into_content()
         {
+            // Confirming that the numbers of proposal types are correct
+            assert_eq!(staged_commit.add_proposals().count(), 1);
+            assert_eq!(staged_commit.update_proposals().count(), 0);
+            assert_eq!(staged_commit.psk_proposals().count(), 0);
+
             // We can retrieve the key package here, since that's
             // the only member of the `AddProposal` struct.
             for queued_proposal in staged_commit.add_proposals() {
                 let add_proposal = queued_proposal.add_proposal();
                 let _key_package = add_proposal.key_package();
             }
-
-            // Confirming that the numbers of other proposal types are correct
-            assert_eq!(staged_commit.add_proposals().count(), 1);
-            assert_eq!(staged_commit.update_proposals().count(), 0);
-            assert_eq!(staged_commit.psk_proposals().count(), 0);
 
             // We can also retrieve the signature key from the update path leaf node
             let leaf_node = staged_commit.update_path_leaf_node().unwrap();
