@@ -13,7 +13,7 @@ readme = "README.md"
 hpke = { version = "0.2.1-pre.1", package = "hpke-rs", default-features = false, features = [
   "hazmat",
   "serialization",
-], git = "https://github.com/kkohbrok/hpke-rs", rev = "f03b968f70fa4ae1644e5f1a81e0b7d93158ef2e" }
+], git = "https://github.com/kkohbrok/hpke-rs", rev = "8b5ca0c0e4bc83757de99150c5f18d99b5fa0d1d" }
 openmls_traits = { version = "0.3.0", path = "../traits" }
 openmls_memory_storage = { version = "0.3.0", path = "../memory_storage" }
 # Rust Crypto dependencies
@@ -23,11 +23,12 @@ chacha20poly1305 = { version = "0.10" }
 hmac = { version = "0.12" }
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 p256 = { version = "0.13" }
+p384 = { version = "0.13" }
 hkdf = { version = "0.12" }
 rand = "0.8"
 rand_chacha = { version = "0.3" }
-hpke-rs-crypto = { version = "0.2.0", git = "https://github.com/kkohbrok/hpke-rs", rev = "f03b968f70fa4ae1644e5f1a81e0b7d93158ef2e" }
-hpke-rs-rust-crypto = { version = "0.2.0", git = "https://github.com/kkohbrok/hpke-rs", rev = "f03b968f70fa4ae1644e5f1a81e0b7d93158ef2e" }
+hpke-rs-crypto = { version = "0.2.0", git = "https://github.com/kkohbrok/hpke-rs", rev = "8b5ca0c0e4bc83757de99150c5f18d99b5fa0d1d" }
+hpke-rs-rust-crypto = { version = "0.2.0", git = "https://github.com/kkohbrok/hpke-rs", rev = "8b5ca0c0e4bc83757de99150c5f18d99b5fa0d1d" }
 tls_codec = { workspace = true }
 thiserror = "2.0"
 serde = { version = "^1.0", features = ["derive"] }
