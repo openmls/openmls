@@ -88,7 +88,7 @@ impl OpenMlsCrypto for RustCrypto {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
             | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
             | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
-            | Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384
+            | Ciphersuite::MLS_256_XWING_AES256GCM_SHA256_P384
             | Ciphersuite::MLS_256_XWING_AES256GCM_SHA256_P256 => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }
@@ -99,8 +99,8 @@ impl OpenMlsCrypto for RustCrypto {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS_256_XWING_AES256GCM_SHA256_P384,
             Ciphersuite::MLS_256_XWING_AES256GCM_SHA256_P256,
-            Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384,
         ]
     }
 
