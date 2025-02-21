@@ -1,6 +1,5 @@
 use crate::test_utils::*;
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::prelude::*;
 
 use tls_codec::Deserialize;
 

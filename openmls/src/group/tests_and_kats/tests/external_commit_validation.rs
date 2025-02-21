@@ -2,7 +2,6 @@
 //! commit messages as defined in
 //! https://github.com/openmls/openmls/wiki/Message-validation
 
-use openmls_traits::prelude::*;
 use tls_codec::{Deserialize, Serialize};
 
 use self::utils::*;

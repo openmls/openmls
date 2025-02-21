@@ -5,7 +5,6 @@ use crate::{
     group::mls_group::tests_and_kats::utils::setup_alice_group,
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
     prelude::MlsMessageBodyOut,
-    test_utils::*,
 };
 
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.

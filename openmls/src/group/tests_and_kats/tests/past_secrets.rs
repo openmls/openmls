@@ -7,8 +7,6 @@ use crate::{
     treesync::LeafNodeParameters,
 };
 
-use openmls_traits::OpenMlsProvider as _;
-
 #[openmls_test::openmls_test]
 fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
@@ -19,7 +17,7 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
 
     // Test this for different parameters
     for max_epochs in (0..10usize).step_by(2) {
-        let group_id = GroupId::from_slice(b"Test Group");
+        let group_id = GroupId::random(alice_provider.rand());
 
         // Generate credentials
         let alice_credential_with_keys = generate_credential_with_key(

@@ -175,7 +175,7 @@ pub(crate) fn generate_group_candidate(
     };
 
     GroupCandidate {
-        identity: identity.as_ref().to_vec(),
+        identity: identity.to_vec(),
         key_package,
         signature_keypair: credential_with_key_and_signer.signer.clone(),
         credential_with_key_and_signer,

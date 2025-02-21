@@ -15,7 +15,6 @@ use crate::{
     prelude_test::HpkePublicKey,
     versions::ProtocolVersion,
 };
-use openmls_traits::prelude::*;
 
 #[test]
 fn application_id() {

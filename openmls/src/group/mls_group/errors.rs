@@ -227,6 +227,9 @@ pub enum LeaveGroupError<StorageError> {
     /// An error ocurred while writing to storage
     #[error("An error ocurred while writing to storage")]
     StorageError(StorageError),
+    /// SelfRemove not allowed with pure ciphertext outgoing wire format policy.
+    #[error("SelfRemove not allowed with pure ciphertext outgoing wire format policy.")]
+    CannotSelfRemoveWithPureCiphertext,
 }
 
 /// Self update error
