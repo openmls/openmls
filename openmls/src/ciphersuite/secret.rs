@@ -57,6 +57,9 @@ impl Secret {
         ciphersuite: Ciphersuite,
         rand: &impl OpenMlsRand,
     ) -> Result<Self, CryptoError> {
+        println!("generating secret of length: {}", ciphersuite.hash_length());
+        println!("cipher suite: {:?}", ciphersuite);
+        println!("hash algorithm: {:?}", ciphersuite.hash_algorithm());
         Ok(Secret {
             value: rand
                 .random_vec(ciphersuite.hash_length())
