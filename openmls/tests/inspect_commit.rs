@@ -5,6 +5,7 @@ use openmls::{
 
 use openmls_test::openmls_test;
 use openmls_traits::signatures::Signer;
+use tls_codec::{Deserialize, Serialize};
 
 fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
@@ -78,6 +79,7 @@ fn mls_test_inspect_add_commit() {
             alice_credential.clone(),
         )
         .expect("An unexpected error occurred.");
+        assert!(alice_group.epoch().as_u64() == 0);
 
         // === Alice adds Bob ===
         let welcome =
@@ -105,6 +107,10 @@ fn mls_test_inspect_add_commit() {
         .into_group(bob_provider)
         .expect("Error creating group from StagedWelcome");
 
+        assert!(alice_group.epoch().as_u64() == 1);
+        assert!(bob_group.epoch() == alice_group.epoch());
+        assert!(bob_group.epoch_authenticator() == alice_group.epoch_authenticator());
+
         // === Alice adds Charlie ===
         let charlie_key_package = generate_key_package(
             ciphersuite,
@@ -113,12 +119,55 @@ fn mls_test_inspect_add_commit() {
             charlie_credential,
             &charlie_signer,
         );
+        let kp_in_proposal = charlie_key_package.clone();
 
         let (queued_message, _welcome, _group_info) = alice_group
             .add_members(alice_provider, &alice_signer, &[charlie_key_package])
             .unwrap();
 
-        // Inspect the `MlsMessageBodyOut` in the `MlsMessageOut`,
+        // Alice applies the commit directly
+        alice_group.merge_pending_commit(alice_provider).unwrap();
+
+        // Serialize the message.
+        let msg_for_bob = queued_message.tls_serialize_detached().unwrap();
+        // Bob receives the messages.
+        let msg_for_bob = MlsMessageIn::tls_deserialize_exact(msg_for_bob).unwrap();
+
+        // On the message we can get ...
+        let wire_format = msg_for_bob.wire_format();
+
+        // ... depending on the type, we can do something ...
+        let bob_protocol_message = {
+            // Let's get the protocol message ... consumes the msg
+            let protocol_message = msg_for_bob.try_into_protocol_message().unwrap();
+
+            // ... this can be a public or a private message
+            let wire_format2 = protocol_message.wire_format();
+            assert_eq!(wire_format2, wire_format);
+
+            let group_id = protocol_message.group_id();
+            assert!(group_id == bob_group.group_id());
+
+            let content_type = protocol_message.content_type();
+            assert!(content_type == ContentType::Commit);
+
+            let external = protocol_message.is_external();
+            assert!(!external);
+
+            let handshake_msg = protocol_message.is_handshake_message();
+            assert!(handshake_msg);
+
+            let epoch = protocol_message.epoch();
+            assert_eq!(epoch.as_u64(), 1);
+
+            protocol_message
+        };
+        // {
+        //     // Let's get the message body ... consumes the msg
+        //     let body = msg_for_bob.extract();
+        // }
+
+        // Inspect the `MlsMessageIn`,
         // which is the only thing we can retrieve from it via the public API
         if wire_format_policy == PURE_PLAINTEXT_WIRE_FORMAT_POLICY {
             if let MlsMessageBodyOut::PublicMessage(public_message) = queued_message.body() {
@@ -144,13 +193,7 @@ fn mls_test_inspect_add_commit() {
 
         // Now, get the processed message for Bob
         let bob_processed_message = bob_group
-            .process_message(
-                bob_provider,
-                queued_message
-                    .clone()
-                    .into_protocol_message()
-                    .expect("Unexpected message type"),
-            )
+            .process_message(bob_provider, bob_protocol_message)
             .expect("Could not process message.");
 
         // ...could merge pending commits for Alice here...
@@ -163,17 +206,60 @@ fn mls_test_inspect_add_commit() {
             assert_eq!(staged_commit.add_proposals().count(), 1);
             assert_eq!(staged_commit.update_proposals().count(), 0);
             assert_eq!(staged_commit.psk_proposals().count(), 0);
+            assert_eq!(staged_commit.credentials_to_verify().count(), 2);
 
             // We can retrieve the key package here, since that's
             // the only member of the `AddProposal` struct.
             for queued_proposal in staged_commit.add_proposals() {
                 let add_proposal = queued_proposal.add_proposal();
-                let _key_package = add_proposal.key_package();
+                let key_package = add_proposal.key_package();
+
+                let signature_key = key_package.leaf_node().signature_key();
+                assert_eq!(signature_key, kp_in_proposal.leaf_node().signature_key());
+            }
+
+            for credential in staged_commit.credentials_to_verify() {
+                // There are two credentials in here that we need to verify.
+                // The committer's and the newly added leaf.
+
+                let basic_credential = BasicCredential::try_from(credential.clone()).unwrap();
+                let alice = basic_credential.identity() == b"Alice";
+                let charlie = basic_credential.identity() == b"Charlie";
+
+                if alice {
+                    // This is Alice's new credential. Shouldn't have changed.
+                    assert_eq!(
+                        &alice_credential.signature_key,
+                        staged_commit
+                            .update_path_leaf_node()
+                            .unwrap()
+                            .signature_key()
+                    );
+                } else if charlie {
+                    // This is charlie, so the signature key in the staged commit.
+                    // We checked that above already.
+                    assert!(basic_credential.identity() == b"Charlie");
+                } else {
+                    panic!("There should be no other credential");
+                }
             }
 
             // We can also retrieve the signature key from the update path leaf node
             let leaf_node = staged_commit.update_path_leaf_node().unwrap();
             let _signature_key = leaf_node.signature_key();
+
+            // The group context on the staged commit is what it will be if
+            // the commit is being applied.
+            let new_group_context = staged_commit.group_context();
+            assert_eq!(new_group_context.epoch().as_u64(), 2);
+            assert_ne!(
+                staged_commit.epoch_authenticator().unwrap(),
+                bob_group.epoch_authenticator()
+            );
+            assert_eq!(
+                staged_commit.epoch_authenticator().unwrap(),
+                alice_group.epoch_authenticator() // Alice already applied the commit.
+            );
 
             // NOTE: `StagedCommit.state` is private. Through this, we would be able to get the
             // `StagedTreeSyncDiff`.
