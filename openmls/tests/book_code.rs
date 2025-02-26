@@ -1,6 +1,6 @@
 use openmls::{
     prelude::{tls_codec::*, CustomProposal, *},
-    test_utils::*,
+    test_utils::{storage_state::GroupStorageState, *},
     *,
 };
 use openmls_basic_credential::SignatureKeyPair;
@@ -1662,4 +1662,371 @@ fn commit_builder() {
     let (mls_message_out, welcome, group_info) = message_bundle.into_contents();
     // ANCHOR_END: alice_adds_bob_with_commit_builder
     _ = (mls_message_out, welcome, group_info)
+}
+
+#[openmls_test]
+fn reject_commit_add() {
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    // Generate credentials with keys
+    let (alice_credential, alice_signature_keys) = generate_credential(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let (bob_credential, bob_signature_keys) = generate_credential(
+        "Bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    // Define the MlsGroup configuration
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true) // NOTE: important
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new_with_group_id(
+        alice_provider,
+        &alice_signature_keys,
+        &mls_group_create_config,
+        group_id.clone(),
+        alice_credential,
+    )
+    .expect("An unexpected error occurred.");
+
+    // Generate KeyPackages
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        bob_credential.clone(),
+        Extensions::default(),
+        bob_provider,
+        &bob_signature_keys,
+    );
+
+    let state_before = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
+
+    // === Alice adds Bob ===
+    //ANCHOR: reject_commit_add_setup
+    let (_mls_message_out, _welcome, _group_info) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signature_keys,
+            &[bob_key_package.key_package().clone()],
+        )
+        .expect("Could not add members.");
+    //ANCHOR_END: reject_commit_add_setup
+
+    assert_ne!(
+        provider.storage().group_state(&group_id).unwrap(),
+        Some(MlsGroupState::Operational)
+    );
+
+    // === Commit rejected by delivery service ===
+    // Will need to clean up
+
+    assert_eq!(alice_group.members().count(), 1);
+    //ANCHOR: reject_commit_add
+    // clear pending commit and reset state
+    alice_group
+        .clear_pending_commit(alice_provider.storage())
+        .unwrap();
+    //ANCHOR_END: reject_commit_add
+    let state_after = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
+    assert!(state_before == state_after);
+}
+
+#[openmls_test]
+fn reject_commit_update() {
+    let provider = &Provider::default();
+
+    let group_id = GroupId::from_slice(b"Test Group");
+    // Generate credentials with keys
+    let (alice_credential, alice_signer) =
+        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    // Define the MlsGroup configuration
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true) // NOTE: important
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new_with_group_id(
+        provider,
+        &alice_signer,
+        &mls_group_create_config,
+        group_id.clone(),
+        alice_credential.clone(),
+    )
+    .expect("An unexpected error occurred.");
+
+    // === Alice new credential ===
+    let basic_credential = BasicCredential::new("Alice".into());
+    let new_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    //new_signer.store(provider.storage()).unwrap();
+    let new_credential = CredentialWithKey {
+        credential: basic_credential.into(),
+        signature_key: new_signer.to_public_vec().into(),
+    };
+
+    // Check alice credential
+    let own_leaf_node_before = alice_group.own_leaf_node().unwrap().clone();
+    assert_eq!(
+        own_leaf_node_before.credential(),
+        &alice_credential.credential
+    );
+    // Check alice signature key
+    assert_eq!(
+        own_leaf_node_before.signature_key(),
+        &alice_credential.signature_key
+    );
+    let own_leaf_nodes_before: Vec<LeafNode> = provider
+        .storage()
+        .own_leaf_nodes(&group_id)
+        .expect("could not get leaf nodes");
+
+    // NOTE: the list of own leaf nodes in the storage provider is empty.
+    // TODO: is this correct?
+    assert_eq!(own_leaf_nodes_before.len(), 0);
+
+    // save the storage state
+    let state_before = GroupStorageState::from_storage(provider.storage(), &group_id);
+
+    // === Alice updates ===
+    // Alice updates own credential
+    // HPKE encryption key is also updated by the commit
+
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_credential_with_key(new_credential)
+        .build();
+    //ANCHOR: reject_commit_update_setup
+    let commit_message_bundle = alice_group
+        .self_update(provider, &new_signer, leaf_node_parameters)
+        .expect("failed to update own leaf node");
+    //ANCHOR_END: reject_commit_update_setup
+    assert_ne!(
+        provider.storage().group_state(&group_id).unwrap(),
+        Some(MlsGroupState::Operational)
+    );
+
+    // Ensure own leaf node credential is still the same as before
+    let own_leaf_node_after = alice_group.own_leaf_node().unwrap();
+    assert_eq!(
+        own_leaf_node_after.credential(),
+        own_leaf_node_before.credential(),
+    );
+    // Ensure own leaf node signature key is still the same as before
+    assert_eq!(
+        own_leaf_node_after.signature_key(),
+        own_leaf_node_before.signature_key(),
+    );
+    // Ensure own leaf node encryption key is still the same as before
+    assert_eq!(
+        own_leaf_node_after.encryption_key(),
+        own_leaf_node_before.encryption_key(),
+    );
+
+    let own_leaf_nodes_after: Vec<LeafNode> = provider
+        .storage()
+        .own_leaf_nodes(&group_id)
+        .expect("could not get leaf nodes");
+    assert_eq!(own_leaf_nodes_after.len(), 0);
+
+    // Ensure that leaf nodes same in storage
+    assert_eq!(own_leaf_nodes_before, own_leaf_nodes_after);
+
+    let commit: &MlsMessageOut = commit_message_bundle.commit();
+
+    // === Commit rejected by delivery service ===
+    //ANCHOR: reject_commit_update
+    // clear pending commit and reset state
+    alice_group
+        .clear_pending_commit(provider.storage())
+        .unwrap();
+
+    // also delete the unused signature key pair,
+    // if it was stored in the storage provider earlier.
+    // This is not part of OpenMLS.
+    SignatureKeyPair::delete(
+        provider.storage(),
+        new_signer.public(),
+        ciphersuite.signature_algorithm(),
+    )
+    .expect("Could not delete signature key pair from storage");
+    //ANCHOR_END: reject_commit_update
+
+    let state_after = GroupStorageState::from_storage(provider.storage(), &group_id);
+    assert!(state_before == state_after);
+}
+
+#[openmls_test]
+fn not_join_group() {
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    // Generate credentials with keys
+    let (alice_credential, alice_signature_keys) = generate_credential(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let (bob_credential, bob_signature_keys) = generate_credential(
+        "Bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    // Define the MlsGroup configuration
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true) // NOTE: important
+        .build();
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::new_with_group_id(
+        alice_provider,
+        &alice_signature_keys,
+        &mls_group_create_config,
+        group_id.clone(),
+        alice_credential,
+    )
+    .expect("An unexpected error occurred.");
+
+    // Generate KeyPackages
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        bob_credential.clone(),
+        Extensions::default(),
+        bob_provider,
+        &bob_signature_keys,
+    );
+
+    // === Alice adds Bob ===
+    let (_mls_message_out, welcome, _group_info) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signature_keys,
+            &[bob_key_package.key_package().clone()],
+        )
+        .expect("Could not add members.");
+
+    let welcome: MlsMessageIn = welcome.into();
+
+    let group_context: Option<GroupContext> =
+        bob_provider.storage().group_context(&group_id).unwrap();
+    assert!(group_context.is_none());
+    let confirmation_tag: Option<ConfirmationTag> =
+        bob_provider.storage().confirmation_tag(&group_id).unwrap();
+    assert!(confirmation_tag.is_none());
+
+    let state_before = GroupStorageState::from_storage(bob_provider.storage(), &group_id);
+    //ANCHOR: not_join_group_welcome
+    let welcome = match welcome.extract() {
+        MlsMessageBodyIn::Welcome(welcome) => welcome,
+        _ => unimplemented!("Handle other message types"),
+    };
+    //ANCHOR_END: not_join_group_welcome
+
+    //ANCHOR: not_join_group_welcome_inspect
+    for _secret in welcome.secrets() {
+        // TODO: check secret
+    }
+    //ANCHOR_END: not_join_group_welcome_inspect
+
+    //ANCHOR: not_join_group_processed_welcome
+    let join_config = MlsGroupJoinConfig::default();
+    let processed_welcome = ProcessedWelcome::new_from_welcome(bob_provider, &join_config, welcome)
+        .expect("Error constructing processed welcome");
+    //ANCHOR_END: not_join_group_processed_welcome
+
+    //ANCHOR: not_join_group_processed_welcome_inspect
+    let _unverified_psks = processed_welcome.psks();
+    let _unverified_group_info = processed_welcome.unverified_group_info();
+    //ANCHOR_END: not_join_group_processed_welcome_inspect
+
+    //ANCHOR: not_join_group_staged_welcome
+    let staged_welcome: StagedWelcome = processed_welcome
+        .into_staged_welcome(bob_provider, None)
+        .expect("Error constructing staged welcome");
+    //ANCHOR_END: not_join_group_staged_welcome
+
+    // check storage state after staging welcome
+    let own_leaf_nodes: Vec<LeafNode> = bob_provider.storage().own_leaf_nodes(&group_id).unwrap();
+    // TODO: is this correct?
+    assert!(own_leaf_nodes.is_empty());
+
+    let own_leaf_index: Option<LeafNodeIndex> =
+        bob_provider.storage().own_leaf_index(&group_id).unwrap();
+
+    // TODO: is this correct?
+    assert!(own_leaf_index.is_none());
+
+    //ANCHOR: not_join_group_welcome_sender
+    let welcome_sender: &LeafNode = staged_welcome
+        .welcome_sender()
+        .expect("Welcome sender could not be retrieved");
+
+    // Inspect sender's credential...
+    let _credential = welcome_sender.credential();
+    // Inspect sender's signature public key...
+    let _signature_key = welcome_sender.signature_key();
+    // Inspect sender's encryption public key...
+    let _encryption_key = welcome_sender.encryption_key();
+    //ANCHOR_END: not_join_group_welcome_sender
+
+    //ANCHOR: not_join_group_group_context
+    // Inspect group context...
+    let group_context = staged_welcome.group_context();
+
+    // Inspect protocol version...
+    let _protocol_version: ProtocolVersion = group_context.protocol_version();
+    // Inspect extensions...
+    let extensions: &Extensions = group_context.extensions();
+
+    // Can check which extensions are enabled
+    let _has_ratchet_extension = extensions.ratchet_tree().is_some();
+
+    // Inspect required capabilities...
+    if let Some(capabilities) = group_context.required_capabilities() {
+        // Inspect extension types...
+        let _extension_types: &[ExtensionType] = capabilities.extension_types();
+        // Inspect proposal types...
+        let _proposal_types: &[ProposalType] = capabilities.proposal_types();
+        // Inspect credential types...
+        let _credential_types: &[CredentialType] = capabilities.credential_types();
+    }
+    //ANCHOR_END: not_join_group_group_context
+
+    //ANCHOR: not_join_group_members
+    // Inspect the group members
+    for member in staged_welcome.members() {
+        // leaf node index
+        let _leaf_node_index = member.index;
+        // credential
+        let _credential = member.credential;
+        // encryption public key
+        let _encryption_key = member.encryption_key;
+        // signature public key
+        let _signature_key = member.signature_key;
+    }
+    //ANCHOR_END: not_join_group_members
+
+    //ANCHOR: not_join_group_cleanup
+    // clean up storage provider
+    PublicGroup::delete(bob_provider.storage(), &group_id).unwrap();
+    // drop staged welcome
+    drop(staged_welcome);
+    //ANCHOR_END: not_join_group_cleanup
+
+    let state_after = GroupStorageState::from_storage(bob_provider.storage(), &group_id);
+    assert!(state_before == state_after);
 }
