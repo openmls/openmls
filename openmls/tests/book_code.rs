@@ -1743,6 +1743,8 @@ fn not_join_group() {
 
     //ANCHOR: not_join_group_processed_welcome
     let join_config = MlsGroupJoinConfig::default();
+    // This deletes the keys used to decrypt the welcome, except if it is a last resort key
+    // package.
     let processed_welcome = ProcessedWelcome::new_from_welcome(bob_provider, &join_config, welcome)
         .expect("Error constructing processed welcome");
     //ANCHOR_END: not_join_group_processed_welcome
