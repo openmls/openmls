@@ -1776,8 +1776,6 @@ fn not_join_group() {
     let _credential = welcome_sender.credential();
     // Inspect sender's signature public key...
     let _signature_key = welcome_sender.signature_key();
-    // Inspect sender's encryption public key...
-    let _encryption_key = welcome_sender.encryption_key();
     //ANCHOR_END: not_join_group_welcome_sender
 
     //ANCHOR: not_join_group_group_context
