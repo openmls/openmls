@@ -1760,13 +1760,11 @@ fn not_join_group() {
 
     // check storage state after staging welcome
     let own_leaf_nodes: Vec<LeafNode> = bob_provider.storage().own_leaf_nodes(&group_id).unwrap();
-    // TODO: is this correct?
     assert!(own_leaf_nodes.is_empty());
 
     let own_leaf_index: Option<LeafNodeIndex> =
         bob_provider.storage().own_leaf_index(&group_id).unwrap();
 
-    // TODO: is this correct?
     assert!(own_leaf_index.is_none());
 
     //ANCHOR: not_join_group_welcome_sender
