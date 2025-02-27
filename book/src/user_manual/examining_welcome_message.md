@@ -1,6 +1,6 @@
 # Examining a welcome message
 
-When a client is invited to join a group, the application can allow the client to decide whether or not to join the group. In order to determine whether to join the group, the application can inspect information provided in the welcome message, such as who invited them, who else is in the group, what extensions are available, and more. If the application decides not to join the group, data must be cleaned up in the storage provider.
+When a client is invited to join a group, the application can allow the client to decide whether or not to join the group. In order to determine whether to join the group, the application can inspect information provided in the welcome message, such as who invited them, who else is in the group, what extensions are available, and more. If the application decides not to join the group, the welcome must be discarded to ensure that the local state is cleaned up.
 
 After receiving a `MlsMessageIn` from the delivery service, the first step is to extract the `MlsMessageBodyIn`, and determine whether it is a welcome message.
 ```rust,no_run,noplayground
