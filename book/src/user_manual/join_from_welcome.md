@@ -37,7 +37,7 @@ The next step is to process the `Welcome`.
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_processed_welcome}}
 ```
 
-After this, some (unverified) information contained in the `ProcessedWelcome` can be investigated.
+At this stage, there are some more pieces of information in the `ProcessedWelcome` that could be useful to the application. For example, it can be useful to check which extensions are available. Much of this information can also be checked using the `StagedWelcome` that is produced in the next step.
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_processed_welcome_inspect}}
 ```
@@ -47,11 +47,11 @@ The next step is to stage the `ProcessedWelcome`. This causes some state to be u
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_staged_welcome}}
 ```
 
-Then, more information about the welcome messages sender, such as the credential, signature public key, and encryption public key can also be individually inspected.
+Then, more information about the welcome message's sender, such as the credential, signature public key, and encryption public key can also be individually inspected. The welcome message sender's credential can be validated at this stage.
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_welcome_sender}}
 ```
-Additionally, some information about the other group members is available.
+Additionally, some information about the other group members is made available, e.g. credentials and signature public keys, which are used for credential validation by the Authentication Service.
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_members}}
 ```
