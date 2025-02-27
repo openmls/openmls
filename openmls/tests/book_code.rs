@@ -1785,7 +1785,7 @@ fn not_join_group() {
     //ANCHOR: not_join_group_group_context
     // Inspect group context...
     let group_context = staged_welcome.group_context();
-     
+
     // inspect protocol version...
     let _protocol_version  = group_context.protocol_version();
     // Inspect ciphersuite...
@@ -1830,8 +1830,7 @@ fn not_join_group() {
     //ANCHOR: not_join_group_cleanup
     // clean up storage provider
     PublicGroup::delete(bob_provider.storage(), &group_id).unwrap();
-    // drop staged welcome
-    drop(staged_welcome);
+    // NOTE: the `StagedWelcome` should not be used after this point
     //ANCHOR_END: not_join_group_cleanup
 
     let state_after = GroupStorageState::from_storage(bob_provider.storage(), &group_id);
