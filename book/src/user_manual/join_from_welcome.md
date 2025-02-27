@@ -51,7 +51,7 @@ Then, more information about the welcome message's sender, such as the credentia
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_welcome_sender}}
 ```
-Additionally, some information about the other group members is made available, e.g. credentials and signature public keys, which are used for credential validation by the Authentication Service.
+Additionally, some information about the other group members is made available, e.g. credentials and signature public keys for credential validation.
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_members}}
 ```
