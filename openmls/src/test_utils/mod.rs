@@ -28,6 +28,7 @@ use crate::{
 };
 
 pub mod frankenstein;
+pub mod storage_state;
 pub mod test_framework;
 
 pub(crate) fn write(file_name: &str, obj: impl Serialize) {
