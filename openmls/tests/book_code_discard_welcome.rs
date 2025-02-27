@@ -128,7 +128,23 @@ fn not_join_group() {
 
     //ANCHOR: not_join_group_processed_welcome_inspect
     let _unverified_psks = processed_welcome.psks();
-    let _unverified_group_info = processed_welcome.unverified_group_info();
+    let unverified_group_info = processed_welcome.unverified_group_info();
+
+    // Can retrieve the ciphersuite, group_id, and other information
+    // from the `unverified_group_info`
+    let _ciphersuite = unverified_group_info.ciphersuite();
+    let _group_id = unverified_group_info.group_id();
+    let _epoch = unverified_group_info.epoch();
+
+    // Can also retrieve any available extensions
+    let extensions = unverified_group_info.extensions();
+
+    // For example, the ratchet tree extension
+    let ratchet_tree_extension = extensions
+        .ratchet_tree()
+        .expect("No ratchet tree extension");
+    let _ratchet_tree = ratchet_tree_extension.ratchet_tree();
+
     //ANCHOR_END: not_join_group_processed_welcome_inspect
 
     //ANCHOR: not_join_group_staged_welcome
