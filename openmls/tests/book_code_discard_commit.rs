@@ -173,8 +173,6 @@ fn discard_commit_update() {
         .own_leaf_nodes(&group_id)
         .expect("could not get leaf nodes");
 
-    // NOTE: the list of own leaf nodes in the storage provider is empty.
-    // TODO: is this correct?
     assert_eq!(own_leaf_nodes_before.len(), 0);
 
     // save the storage state
@@ -583,7 +581,7 @@ fn discard_commit_external_join() {
     // save the storage state
     let bob_state_before = GroupStorageState::from_storage(bob_provider.storage(), &group_id);
 
-    // XXX: get correctly
+    // TODO: get correctly
     let aad = vec![0; 32];
 
     let (mut bob_group, _message, _group_info) = MlsGroup::join_by_external_commit(
@@ -652,7 +650,6 @@ fn discard_commit_group_context_extensions() {
     // save the storage state
     let state_before = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
 
-    // FIXME: need a valid `Extensions` here
     let extensions = Extensions::from_vec(vec![
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
             &[ExtensionType::Unknown(unknown_extension_type)],
@@ -766,7 +763,6 @@ fn discard_commit_self_remove() {
 
     // Bob removes self
 
-    // TODO: ensure this is possible with current wire format
     let _mls_message_out = bob_group
         .leave_group_via_self_remove(bob_provider, &bob_signer)
         .expect("Error leaving group via self remove");
@@ -787,11 +783,13 @@ fn discard_commit_self_remove() {
     assert!(state_before == state_after);
 }
 
+/*
 #[openmls_test]
 fn discard_commit_app_ack() {
 
     // TODO: AppAck proposal not supported yet
 }
+*/
 
 #[openmls_test]
 fn discard_commit_custom_proposal() {
