@@ -5,7 +5,7 @@
 //! used to authenticate their messages. Each
 //! [`KeyPackage`](crate::key_packages::KeyPackage) as well as each client (leaf node)
 //! in the group (tree) contains a [`Credential`] and is authenticated.
-//! The [`Credential`] must the be checked by an authentication server and the
+//! The [`Credential`] must be checked by an authentication server and the
 //! application, which is out of scope of MLS.
 //!
 //! Clients can create a [`Credential`].
