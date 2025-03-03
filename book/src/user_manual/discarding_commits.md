@@ -1,0 +1,28 @@
+# Discarding commits
+
+The delivery service may reject a commit sent by a client. In this case, the application needs to ensure that the local state remains the same as it was before the commit was staged.
+
+## Cleaning up local state after discarded commits
+Generally, if a commit is discarded (e.g. due to being rejected by the Delivery Service), it can be cleaned up by the application in the following way:
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code_discard_commit.rs:discard_commit_add}}
+```
+
+In general, the application only needs to complete the cleanup above in order to fully restore the local state to the way it was before the commit was staged. However, in several other cases, additional cleanup may need to be done.
+
+### Update
+If a staged commit containing an Update proposal must be discarded, the new signature keypair, if already stored in the `StorageProvider`, may also be removed by the application.
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code_discard_commit.rs:discard_commit_update}}
+```
+
+### ExternalJoin
+If a staged commit containing an external join proposal must be discarded, the entire `MlsGroup` instance should be discarded by the application.
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code_discard_commit.rs:discard_commit_external_join}}
+```
+### PreSharedKey
+In addition to clearing the staged commit, the application may also clear the pre-shared key from storage.
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code_discard_commit.rs:discard_commit_psk}}
+```
