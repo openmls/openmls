@@ -424,7 +424,7 @@ fn discard_commit_psk() {
     let psk_id = PreSharedKeyId::new(ciphersuite, alice_provider.rand(), psk.clone()).unwrap();
 
     // store
-    // XXX: is this correct?
+    // TODO: is this correct?
     psk_id
         .store(alice_provider, &psk_bytes)
         .expect("Could not store psk in storage provider");
