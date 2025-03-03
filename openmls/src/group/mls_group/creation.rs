@@ -388,7 +388,7 @@ impl ProcessedWelcome {
                 PublicTreeError::MalformedTree,
             ))?;
 
-        let (group_epoch_secrets, message_secrets) = {
+        let (group_epoch_secrets, message_secrets, application_export_secret) = {
             let serialized_group_context = public_group
                 .group_context()
                 .tls_serialize_detached()
@@ -399,15 +399,21 @@ impl ProcessedWelcome {
                 .add_context(provider.crypto(), &serialized_group_context)
                 .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-            let epoch_secrets = self
+            let (epoch_secrets, application_export_secret) = self
                 .key_schedule
                 .epoch_secrets(provider.crypto(), self.ciphersuite)
                 .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-            epoch_secrets.split_secrets(
+            let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
                 serialized_group_context,
                 public_group.tree_size(),
                 own_leaf_index,
+            );
+
+            (
+                group_epoch_secrets,
+                message_secrets,
+                application_export_secret,
             )
         };
 
@@ -469,6 +475,7 @@ impl ProcessedWelcome {
             group_epoch_secrets,
             own_leaf_index,
             message_secrets_store,
+            application_export_secret,
             resumption_psk_store: self.resumption_psk_store,
             verifiable_group_info: self.verifiable_group_info,
             key_package_bundle: self.key_package_bundle,
@@ -526,6 +533,11 @@ impl StagedWelcome {
     /// Get an iterator over all [`Member`]s of this welcome's [`PublicGroup`].
     pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
         self.public_group.members()
+    }
+
+    /// Get the [`ApplicationExportSecret`] of this welcome.
+    pub fn application_export_secret(&self) -> &ApplicationExportSecret {
+        &self.application_export_secret
     }
 
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].

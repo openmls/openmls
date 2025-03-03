@@ -119,7 +119,7 @@ impl MlsGroupBuilder {
             .add_context(provider.crypto(), &serialized_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-        let epoch_secrets = key_schedule
+        let (epoch_secrets, _application_exporter) = key_schedule
             .epoch_secrets(provider.crypto(), ciphersuite)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 

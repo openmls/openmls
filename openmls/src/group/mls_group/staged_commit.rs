@@ -14,6 +14,7 @@ use super::{
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
+use crate::schedule::ApplicationExportSecret;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
@@ -33,7 +34,7 @@ impl MlsGroup {
         epoch_secrets: &GroupEpochSecrets,
         commit_secret: CommitSecret,
         serialized_provisional_group_context: &[u8],
-    ) -> Result<EpochSecrets, StageCommitError> {
+    ) -> Result<(EpochSecrets, ApplicationExportSecret), StageCommitError> {
         // Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
         let joiner_secret = if let Some(ref external_init_proposal) =
@@ -267,19 +268,18 @@ impl MlsGroup {
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
-        let (provisional_group_secrets, provisional_message_secrets) = self
-            .derive_epoch_secrets(
-                provider,
-                apply_proposals_values,
-                self.group_epoch_secrets(),
-                commit_secret,
-                &serialized_provisional_group_context,
-            )?
-            .split_secrets(
-                serialized_provisional_group_context,
-                diff.tree_size(),
-                self.own_leaf_index(),
-            );
+        let (epoch_secrets, application_exporter) = self.derive_epoch_secrets(
+            provider,
+            apply_proposals_values,
+            self.group_epoch_secrets(),
+            commit_secret,
+            &serialized_provisional_group_context,
+        )?;
+        let (provisional_group_secrets, provisional_message_secrets) = epoch_secrets.split_secrets(
+            serialized_provisional_group_context,
+            diff.tree_size(),
+            self.own_leaf_index(),
+        );
 
         // Verify confirmation tag
         // ValSem205
@@ -313,6 +313,7 @@ impl MlsGroup {
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
                 provisional_group_secrets,
                 provisional_message_secrets,
+                application_exporter,
                 staged_diff,
                 new_keypairs,
                 new_leaf_keypair_option,
@@ -485,6 +486,16 @@ impl StagedCommit {
         self.staged_proposal_queue.queued_proposals()
     }
 
+    /// Returns the `[ApplicationExportSecret]` of the staged commit state if
+    /// the owner of the originating group state is a member of the group.
+    /// Returns `None` otherwise.
+    pub fn application_exporter(&self) -> Option<&ApplicationExportSecret> {
+        let StagedCommitState::GroupMember(gm) = &self.state else {
+            return None;
+        };
+        Some(&gm.application_exporter)
+    }
+
     /// Returns the leaf node of the (optional) update path.
     pub fn update_path_leaf_node(&self) -> Option<&LeafNode> {
         match self.state {
@@ -581,6 +592,7 @@ impl StagedCommit {
 pub(crate) struct MemberStagedCommitState {
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,
+    application_exporter: ApplicationExportSecret,
     staged_diff: StagedPublicGroupDiff,
     new_keypairs: Vec<EncryptionKeyPair>,
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
@@ -591,6 +603,7 @@ impl MemberStagedCommitState {
     pub(crate) fn new(
         group_epoch_secrets: GroupEpochSecrets,
         message_secrets: MessageSecrets,
+        application_exporter: ApplicationExportSecret,
         staged_diff: StagedPublicGroupDiff,
         new_keypairs: Vec<EncryptionKeyPair>,
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
@@ -599,6 +612,7 @@ impl MemberStagedCommitState {
         Self {
             group_epoch_secrets,
             message_secrets,
+            application_exporter,
             staged_diff,
             new_keypairs,
             new_leaf_keypair_option,

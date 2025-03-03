@@ -268,6 +268,11 @@ fn export_secret() {
 }
 
 #[openmls_test]
+fn application_export_secret() {
+    // TODO
+}
+
+#[openmls_test]
 fn staged_join() {
     let group_id = GroupId::from_slice(b"Test Group");
 

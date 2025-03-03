@@ -38,7 +38,7 @@ use crate::{
     schedule::{
         message_secrets::MessageSecrets,
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
-        GroupEpochSecrets, JoinerSecret, KeySchedule,
+        ApplicationExportSecret, GroupEpochSecrets, JoinerSecret, KeySchedule,
     },
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{
@@ -835,6 +835,10 @@ pub struct StagedWelcome {
     /// able to decrypt application messages from previous epochs, the size of
     /// the store must be increased through [`max_past_epochs()`].
     message_secrets_store: MessageSecretsStore,
+
+    /// A secret that is not stored as part of the [`MlsGroup`] after the group is created.
+    /// It can be used by the application to derive forward secure secrets.
+    application_export_secret: ApplicationExportSecret,
 
     /// Resumption psk store. This is where the resumption psks are kept in a rollover list.
     resumption_psk_store: ResumptionPskStore,

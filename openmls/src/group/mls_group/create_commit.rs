@@ -258,7 +258,7 @@ impl MlsGroup {
         key_schedule
             .add_context(provider.crypto(), &serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
-        let provisional_epoch_secrets = key_schedule
+        let (provisional_epoch_secrets, application_exporter) = key_schedule
             .epoch_secrets(provider.crypto(), self.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
@@ -366,6 +366,7 @@ impl MlsGroup {
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
             provisional_message_secrets,
+            application_exporter,
             diff.into_staged_diff(provider.crypto(), ciphersuite)?,
             path_computation_result.new_keypairs,
             // The committer is not allowed to include their own update
