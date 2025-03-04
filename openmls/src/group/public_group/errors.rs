@@ -8,7 +8,7 @@ use crate::{
 
 /// Public group creation from external error.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreationFromExternalError<StorageError> {
+pub enum CreationFromExternalError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -30,9 +30,6 @@ pub enum CreationFromExternalError<StorageError> {
     /// See [`LeafNodeValidationError`]
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
-    /// Error writing to storage.
-    #[error("Error writing to storage: {0}")]
-    WriteToStorageError(StorageError),
     /// A parent node has an unmerged leaf that is not a descendant of the node.
     #[error("A parent node has an unmerged leaf that is not a descendant of the node")]
     UnmergedLeafNotADescendant,

@@ -113,16 +113,12 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    pub fn from_external<StorageProvider, StorageError>(
+    pub fn from_external(
         crypto: &impl OpenMlsCrypto,
-        storage: &StorageProvider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
-    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>>
-    where
-        StorageProvider: PublicStorageProvider<Error = StorageError>,
-    {
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
         let ciphersuite = verifiable_group_info.ciphersuite();
 
         let group_id = verifiable_group_info.group_id();
@@ -187,7 +183,7 @@ impl PublicGroup {
                             .iter()
                             .position(|x| x == &parent_index)
                             .ok_or(
-                            CreationFromExternalError::<StorageError>::UnmergedLeafNotADescendant,
+                            CreationFromExternalError::UnmergedLeafNotADescendant,
                         )?;
                         let path_leaf_to_this = &path[..this_parent_offset];
 
@@ -202,7 +198,7 @@ impl PublicGroup {
                                 if let Some(intermediate_node) = treesync
                                     .parent(*intermediate_index) {
                                     if !intermediate_node.unmerged_leaves().contains(leaf_index) {
-                                        return Err(CreationFromExternalError::<StorageError>::IntermediateNodeMissingUnmergedLeaf);
+                                        return Err(CreationFromExternalError::IntermediateNodeMissingUnmergedLeaf);
                                     }
                                 }
 
@@ -260,10 +256,6 @@ impl PublicGroup {
             .treesync
             .full_leaves()
             .try_for_each(|leaf_node| public_group.validate_leaf_node(leaf_node))?;
-
-        public_group
-            .store(storage)
-            .map_err(CreationFromExternalError::WriteToStorageError)?;
 
         Ok((public_group, group_info))
     }
