@@ -206,7 +206,7 @@ impl PublicGroup {
                             .iter()
                             .position(|x| x == &parent_index)
                             .ok_or(
-                            CreationFromExternalError::UnmergedLeafNotADescendant,
+                            CreationFromExternalError::<StorageError>::UnmergedLeafNotADescendant,
                         )?;
                         let path_leaf_to_this = &path[..this_parent_offset];
 
@@ -221,7 +221,7 @@ impl PublicGroup {
                                 if let Some(intermediate_node) = treesync
                                     .parent(*intermediate_index) {
                                     if !intermediate_node.unmerged_leaves().contains(leaf_index) {
-                                        return Err(CreationFromExternalError::IntermediateNodeMissingUnmergedLeaf);
+                                        return Err(CreationFromExternalError::<StorageError>::IntermediateNodeMissingUnmergedLeaf);
                                     }
                                 }
 
