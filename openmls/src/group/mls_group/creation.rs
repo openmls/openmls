@@ -124,7 +124,7 @@ impl MlsGroup {
             },
         };
 
-        let (public_group, group_info) = PublicGroup::from_external(
+        let (public_group, group_info) = PublicGroup::from_external_internal(
             provider.crypto(),
             ratchet_tree,
             verifiable_group_info,
@@ -358,7 +358,7 @@ impl ProcessedWelcome {
 
         // Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
-        let (public_group, _group_info_extensions) = PublicGroup::from_external(
+        let (public_group, _group_info_extensions) = PublicGroup::from_external_internal(
             provider.crypto(),
             ratchet_tree,
             self.verifiable_group_info.clone(),

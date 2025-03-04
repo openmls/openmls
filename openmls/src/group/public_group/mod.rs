@@ -113,12 +113,35 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    pub fn from_external(
+    pub fn from_external<StorageProvider, StorageError>(
+        crypto: &impl OpenMlsCrypto,
+        storage: &StorageProvider,
+        ratchet_tree: RatchetTreeIn,
+        verifiable_group_info: VerifiableGroupInfo,
+        proposal_store: ProposalStore,
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>>
+    where
+        StorageProvider: PublicStorageProvider<Error = StorageError>,
+    {
+        let (public_group, group_info) = PublicGroup::from_external_internal(
+            crypto,
+            ratchet_tree,
+            verifiable_group_info,
+            proposal_store,
+        )?;
+
+        public_group
+            .store(storage)
+            .map_err(CreationFromExternalError::WriteToStorageError)?;
+
+        Ok((public_group, group_info))
+    }
+    pub(crate) fn from_external_internal<StorageError>(
         crypto: &impl OpenMlsCrypto,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
-    ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>> {
         let ciphersuite = verifiable_group_info.ciphersuite();
 
         let group_id = verifiable_group_info.group_id();

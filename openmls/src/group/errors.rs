@@ -83,7 +83,7 @@ pub enum WelcomeError<StorageError> {
     /// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
-    PublicGroupError(#[from] CreationFromExternalError),
+    PublicGroupError(#[from] CreationFromExternalError<StorageError>),
     /// This error indicates the leaf node is invalid. See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
@@ -119,7 +119,7 @@ pub enum ExternalCommitError<StorageError> {
     /// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
-    PublicGroupError(#[from] CreationFromExternalError),
+    PublicGroupError(#[from] CreationFromExternalError<StorageError>),
     /// Credential is missing from external commit.
     #[error("Credential is missing from external commit.")]
     MissingCredential,
