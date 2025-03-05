@@ -51,7 +51,6 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::C
 
 // Private
 mod application;
-mod builder;
 mod creation;
 mod exporting;
 mod updates;
@@ -59,6 +58,7 @@ mod updates;
 use config::*;
 
 // Crate
+pub(crate) mod builder;
 pub(crate) mod commit_builder;
 pub(crate) mod config;
 pub(crate) mod create_commit;
@@ -69,6 +69,7 @@ pub(crate) mod processing;
 pub(crate) mod proposal;
 pub(crate) mod proposal_store;
 pub(crate) mod staged_commit;
+pub(crate) use builder as group_builder;
 
 // Tests
 #[cfg(test)]

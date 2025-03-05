@@ -102,23 +102,25 @@ pub(crate) fn setup_client(
 
 pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    provider: &Provider,
+    alice_provider: &Provider,
+    bob_provider: &Provider,
 ) -> (
     MlsGroup,
     SignatureKeyPair,
     MlsGroup,
     SignatureKeyPair,
     CredentialWithKey,
+    CredentialWithKey,
 ) {
     // Create credentials and keys
     let (alice_credential, alice_signature_keys) =
-        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
     let (bob_credential, bob_signature_keys) =
-        test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::generate(
-        provider,
+        bob_provider,
         &bob_signature_keys,
         ciphersuite,
         bob_credential.clone(),
@@ -129,27 +131,35 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
     let mut group_alice = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .build(provider, &alice_signature_keys, alice_credential.clone())
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential.clone(),
+        )
         .expect("Error creating group.");
 
     // Alice adds Bob
     let (_commit, welcome, _group_info_option) = group_alice
-        .add_members(provider, &alice_signature_keys, &[bob_key_package.clone()])
+        .add_members(
+            alice_provider,
+            &alice_signature_keys,
+            &[bob_key_package.clone()],
+        )
         .expect("Could not create proposal.");
 
     group_alice
-        .merge_pending_commit(provider)
+        .merge_pending_commit(alice_provider)
         .expect("error merging pending commit");
 
     let group_bob = StagedWelcome::new_from_welcome(
-        provider,
+        bob_provider,
         &MlsGroupJoinConfig::builder()
             .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
             .build(),
         welcome.into_welcome().unwrap(),
         Some(group_alice.export_ratchet_tree().into()),
     )
-    .and_then(|staged_join| staged_join.into_group(provider))
+    .and_then(|staged_join| staged_join.into_group(bob_provider))
     .expect("error creating group from welcome");
 
     (
@@ -157,6 +167,7 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         alice_signature_keys,
         group_bob,
         bob_signature_keys,
+        alice_credential,
         bob_credential,
     )
 }

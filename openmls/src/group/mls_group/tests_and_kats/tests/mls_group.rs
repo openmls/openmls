@@ -2253,13 +2253,15 @@ fn failed_groupinfo_decryption(
 #[openmls_test::openmls_test]
 fn update_path() {
     // === Alice creates a group with her and Bob ===
+    // TODO: don't let alice and bob share the provider
     let (
         mut group_alice,
         _alice_signature_keys,
         mut group_bob,
         bob_signature_keys,
+        _alice_credential_with_key,
         _bob_credential_with_key,
-    ) = setup_alice_bob_group(ciphersuite, provider);
+    ) = setup_alice_bob_group(ciphersuite, provider, provider);
 
     // === Bob updates and commits ===
     let mut bob_new_leaf_node = group_bob.own_leaf_node().unwrap().clone();
