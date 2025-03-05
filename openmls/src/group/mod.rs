@@ -20,6 +20,8 @@ pub(crate) mod errors;
 pub(crate) mod mls_group;
 pub(crate) mod public_group;
 
+mod fork_resolution;
+
 // Public
 pub use errors::*;
 pub use group_context::GroupContext;
