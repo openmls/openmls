@@ -112,12 +112,6 @@ fn not_join_group() {
     };
     //ANCHOR_END: not_join_group_welcome
 
-    //ANCHOR: not_join_group_welcome_inspect
-    for _secret in welcome.secrets() {
-        // TODO: check secret
-    }
-    //ANCHOR_END: not_join_group_welcome_inspect
-
     //ANCHOR: not_join_group_processed_welcome
     let join_config = MlsGroupJoinConfig::default();
     // This deletes the keys used to decrypt the welcome, except if it is a last resort key

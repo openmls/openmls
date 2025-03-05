@@ -27,11 +27,6 @@ After receiving a `MlsMessageIn` from the delivery service, the first step is to
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_welcome}}
 ```
 
-At this stage, the welcome's `&[EncryptedGroupSecrets]` can be investigated:
-```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_welcome_inspect}}
-```
-
 The next step is to process the `Welcome`.
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_processed_welcome}}
