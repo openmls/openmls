@@ -97,7 +97,11 @@ fn create_commit_optional_path(
 
 #[openmls_test::openmls_test]
 fn basic_group_setup() {
-    let (mut alice_group, alice_signer, _, _, _) = setup_alice_bob_group(ciphersuite, provider);
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let (mut alice_group, alice_signer, _, _, _, _) =
+        setup_alice_bob_group(ciphersuite, &alice_provider, &bob_provider);
 
     let _result =
         match alice_group.self_update(provider, &alice_signer, LeafNodeParameters::default()) {
@@ -161,8 +165,9 @@ fn wrong_group_create_config() {
 #[openmls_test::openmls_test]
 fn group_operations() {
     // Create group with alice and bob
-    let (mut alice_group, alice_signer, mut bob_group, bob_signer, _) =
-        setup_alice_bob_group(ciphersuite, provider);
+    let (mut alice_group, alice_signer, mut bob_group, bob_signer, _, _) =
+        // TODO: don't let alice and bob share the provider
+        setup_alice_bob_group(ciphersuite, provider, provider);
 
     // Make sure that both groups have the same public tree
     assert_eq!(
