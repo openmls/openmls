@@ -215,12 +215,6 @@ fn not_join_group() {
     }
     //ANCHOR_END: not_join_group_members
 
-    //ANCHOR: not_join_group_cleanup
-    // clean up storage provider
-    PublicGroup::delete(bob_provider.storage(), &group_id).unwrap();
-    // NOTE: the `StagedWelcome` should not be used after this point
-    //ANCHOR_END: not_join_group_cleanup
-
     let state_after = GroupStorageState::from_storage(bob_provider.storage(), &group_id);
     assert!(state_before == state_after);
 }

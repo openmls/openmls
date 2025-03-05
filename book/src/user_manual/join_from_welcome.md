@@ -55,10 +55,3 @@ Lastly, the `GroupContext` contains several other useful pieces of information, 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_group_context}}
 ```
-
-# Cleaning up after not joining the group
-
-After deciding not to join the group, some information that was stored in the `StorageProvider` by the staging process can be discarded.
-```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_cleanup}}
-```
