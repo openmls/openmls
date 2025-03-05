@@ -598,9 +598,7 @@
 <a href="#597" id="597">597</a>
 <a href="#598" id="598">598</a>
 <a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a></pre></div><pre class="rust"><code><span class="kw">use </span>errors::NewGroupError;
+<a href="#600" id="600">600</a></pre></div><pre class="rust"><code><span class="kw">use </span>errors::NewGroupError;
 <span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
 
 <span class="kw">use super</span>::{builder::MlsGroupBuilder, <span class="kw-2">*</span>};
@@ -726,9 +724,8 @@
             },
         };
 
-        <span class="kw">let </span>(public_group, group_info) = PublicGroup::from_external(
+        <span class="kw">let </span>(public_group, group_info) = PublicGroup::from_external_internal(
             provider.crypto(),
-            provider.storage(),
             ratchet_tree,
             verifiable_group_info,
             <span class="comment">// Existing proposals are discarded when joining by external commit.
@@ -961,9 +958,8 @@
 
         <span class="comment">// Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
-        </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external(
+        </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external_internal(
             provider.crypto(),
-            provider.storage(),
             ratchet_tree,
             <span class="self">self</span>.verifiable_group_info.clone(),
             ProposalStore::new(),
