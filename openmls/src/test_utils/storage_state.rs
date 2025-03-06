@@ -7,7 +7,7 @@ use crate::treesync::TreeSync;
 use openmls_traits::storage::{traits::GroupId, StorageProvider};
 
 #[derive(PartialEq)]
-pub struct NonProposalState {
+pub struct NonProposalGroupStorageState {
     own_leaf_nodes: Vec<LeafNode>,
     group_config: Option<MlsGroupJoinConfig>,
     tree: Option<TreeSync>,
@@ -24,7 +24,7 @@ pub struct NonProposalState {
 #[derive(PartialEq)]
 pub struct GroupStorageState {
     pub queued_proposals: Vec<(ProposalRef, QueuedProposal)>,
-    pub non_proposal_state: NonProposalState,
+    pub non_proposal_state: NonProposalGroupStorageState,
 }
 
 impl GroupStorageState {
@@ -59,7 +59,7 @@ impl GroupStorageState {
 
         GroupStorageState {
             queued_proposals,
-            non_proposal_state: NonProposalState {
+            non_proposal_state: NonProposalGroupStorageState {
                 own_leaf_nodes,
                 group_config,
                 tree,
