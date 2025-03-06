@@ -416,7 +416,6 @@ fn discard_commit_psk() {
     // save the storage state
     let state_before = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
 
-    // TODO: create these values the correct way
     let psk_bytes = vec![1; 32];
     let psk = Psk::External(ExternalPsk::new(psk_bytes.clone()));
     let psk_id = PreSharedKeyId::new(ciphersuite, alice_provider.rand(), psk.clone()).unwrap();
@@ -581,7 +580,6 @@ fn discard_commit_external_join() {
     // save the storage state
     let bob_state_before = GroupStorageState::from_storage(bob_provider.storage(), &group_id);
 
-    // TODO: get correctly
     let aad = vec![0; 32];
 
     let (mut bob_group, _message, _group_info) = MlsGroup::join_by_external_commit(
