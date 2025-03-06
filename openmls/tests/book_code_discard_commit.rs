@@ -454,13 +454,8 @@ fn discard_commit_psk() {
         .expect("Could not clear pending commit");
     //ANCHOR_END: discard_commit_psk
 
-    // also delete the proposals so the state can be compared to the previous state
-    alice_group
-        .clear_pending_proposals(alice_provider.storage())
-        .expect("Could not clear pending proposals");
-
     let state_after = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
-    assert!(state_before == state_after);
+    assert!(state_before.non_proposal_state == state_after.non_proposal_state);
 }
 
 /*
@@ -519,13 +514,8 @@ fn discard_commit_reinit() {
         .expect("Could not clear pending commit");
     //ANCHOR_END: discard_commit_reinit
 
-    // also delete the proposals so the state can be compared to the previous state
-    alice_group
-        .clear_pending_proposals(alice_provider.storage())
-        .expect("Could not clear pending proposals");
-
     let state_after = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
-    assert!(state_before == state_after);
+    assert!(state_before.non_proposal_state == state_after.non_proposal_state);
 }
 */
 
@@ -675,13 +665,8 @@ fn discard_commit_group_context_extensions() {
         .expect("Could not clear pending commit");
     //ANCHOR_END: discard_commit_group_context_extensions
 
-    // also delete the proposals so the state can be compared to the previous state
-    alice_group
-        .clear_pending_proposals(alice_provider.storage())
-        .expect("Could not clear pending proposals");
-
     let state_after = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
-    assert!(state_before == state_after);
+    assert!(state_before.non_proposal_state == state_after.non_proposal_state);
 }
 
 #[openmls_test]
@@ -772,13 +757,8 @@ fn discard_commit_self_remove() {
         .clear_pending_commit(bob_provider.storage())
         .expect("Could not clear pending commit");
 
-    // also delete the proposals so the state can be compared to the previous state
-    bob_group
-        .clear_pending_proposals(bob_provider.storage())
-        .expect("Could not clear pending proposals");
-
     let state_after = GroupStorageState::from_storage(bob_provider.storage(), &group_id);
-    assert!(state_before == state_after);
+    assert!(state_before.non_proposal_state == state_after.non_proposal_state);
 }
 
 /*
