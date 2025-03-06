@@ -20,8 +20,6 @@ pub(crate) mod errors;
 pub(crate) mod mls_group;
 pub(crate) mod public_group;
 
-mod fork_resolution;
-
 // Public
 pub use errors::*;
 pub use group_context::GroupContext;
@@ -33,6 +31,8 @@ pub use mls_group::{Member, *};
 pub use public_group::*;
 
 // Private
+#[cfg(feature = "fork-resolution-helpers")]
+mod fork_resolution;
 mod group_context;
 
 // Tests
