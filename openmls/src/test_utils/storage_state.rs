@@ -6,10 +6,8 @@ use crate::treesync::TreeSync;
 
 use openmls_traits::storage::{traits::GroupId, StorageProvider};
 
-/// All state associated only with a GroupId
 #[derive(PartialEq)]
-pub struct GroupStorageState {
-    queued_proposals: Vec<(ProposalRef, QueuedProposal)>,
+pub struct NonProposalState {
     own_leaf_nodes: Vec<LeafNode>,
     group_config: Option<MlsGroupJoinConfig>,
     tree: Option<TreeSync>,
@@ -21,6 +19,12 @@ pub struct GroupStorageState {
     resumption_psk_secrets: Option<ResumptionPskStore>,
     own_leaf_index: Option<LeafNodeIndex>,
     group_epoch_secrets: Option<GroupEpochSecrets>,
+}
+/// All state associated only with a GroupId
+#[derive(PartialEq)]
+pub struct GroupStorageState {
+    pub queued_proposals: Vec<(ProposalRef, QueuedProposal)>,
+    pub non_proposal_state: NonProposalState,
 }
 
 impl GroupStorageState {
@@ -55,17 +59,19 @@ impl GroupStorageState {
 
         GroupStorageState {
             queued_proposals,
-            own_leaf_nodes,
-            group_config,
-            tree,
-            confirmation_tag,
-            group_state,
-            context,
-            interim_transcript_hash,
-            message_secrets,
-            resumption_psk_secrets,
-            own_leaf_index,
-            group_epoch_secrets,
+            non_proposal_state: NonProposalState {
+                own_leaf_nodes,
+                group_config,
+                tree,
+                confirmation_tag,
+                group_state,
+                context,
+                interim_transcript_hash,
+                message_secrets,
+                resumption_psk_secrets,
+                own_leaf_index,
+                group_epoch_secrets,
+            },
         }
     }
 }
