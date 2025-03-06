@@ -20,20 +20,9 @@ pub struct NonProposalGroupStorageState {
     own_leaf_index: Option<LeafNodeIndex>,
     group_epoch_secrets: Option<GroupEpochSecrets>,
 }
-/// All state associated only with a GroupId
-#[derive(PartialEq)]
-pub struct GroupStorageState {
-    pub queued_proposals: Vec<(ProposalRef, QueuedProposal)>,
-    pub non_proposal_state: NonProposalGroupStorageState,
-}
 
-impl GroupStorageState {
-    pub fn from_storage(
-        store: &impl StorageProvider<1>,
-        group_id: &impl GroupId<1>,
-    ) -> GroupStorageState {
-        let queued_proposals = store.queued_proposals(group_id).unwrap();
-
+impl NonProposalGroupStorageState {
+    pub fn from_storage(store: &impl StorageProvider<1>, group_id: &impl GroupId<1>) -> Self {
         let own_leaf_nodes = store.own_leaf_nodes(group_id).unwrap();
 
         let group_config = store.mls_group_join_config(group_id).unwrap();
@@ -56,22 +45,38 @@ impl GroupStorageState {
         let own_leaf_index = store.own_leaf_index(group_id).unwrap();
 
         let group_epoch_secrets = store.group_epoch_secrets(group_id).unwrap();
+        Self {
+            own_leaf_nodes,
+            group_config,
+            tree,
+            confirmation_tag,
+            group_state,
+            context,
+            interim_transcript_hash,
+            message_secrets,
+            resumption_psk_secrets,
+            own_leaf_index,
+            group_epoch_secrets,
+        }
+    }
+}
+
+/// All state associated only with a GroupId
+#[derive(PartialEq)]
+pub struct GroupStorageState {
+    pub queued_proposals: Vec<(ProposalRef, QueuedProposal)>,
+    pub non_proposal_state: NonProposalGroupStorageState,
+}
+
+impl GroupStorageState {
+    pub fn from_storage(store: &impl StorageProvider<1>, group_id: &impl GroupId<1>) -> Self {
+        let queued_proposals = store.queued_proposals(group_id).unwrap();
+
+        let non_proposal_state = NonProposalGroupStorageState::from_storage(store, group_id);
 
         GroupStorageState {
             queued_proposals,
-            non_proposal_state: NonProposalGroupStorageState {
-                own_leaf_nodes,
-                group_config,
-                tree,
-                confirmation_tag,
-                group_state,
-                context,
-                interim_transcript_hash,
-                message_secrets,
-                resumption_psk_secrets,
-                own_leaf_index,
-                group_epoch_secrets,
-            },
+            non_proposal_state,
         }
     }
 }
