@@ -252,7 +252,7 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         // sort by index
         members.sort_by_key(|(pos, _member)| *pos);
 
-        // keep only the `MemberState`
+        // keep only the references to `MemberState`s
         let member_states: Vec<&mut MemberState<'a, Provider>> =
             members.into_iter().map(|(_, member)| member).collect();
 
