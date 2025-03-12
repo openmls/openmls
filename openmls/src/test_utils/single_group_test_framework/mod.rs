@@ -246,7 +246,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
             })
             .collect();
 
-        // sort by name
+        // sort by index in `names`
         members.sort_by_key(|(pos, _member)| *pos);
 
         let member_states: Vec<&mut MemberState<'a, Provider>> =
