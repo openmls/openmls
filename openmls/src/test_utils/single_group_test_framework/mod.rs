@@ -228,13 +228,25 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
     }
 
     /// Get mutable references to all `MemberState`s as a fixed-size array,
-    /// in alphabetical order of the members' `Name`s
-    pub fn all_members_mut<const N: usize>(&mut self) -> [&mut MemberState<'a, Provider>; N] {
-        let mut members: Vec<(&Name, &mut MemberState<'a, Provider>)> =
-            self.members.iter_mut().collect();
+    /// in the order of the names provided in `names`.
+    pub fn all_members_mut<const N: usize>(
+        &mut self,
+        names: &[Name; N],
+    ) -> [&mut MemberState<'a, Provider>; N] {
+        let mut members: Vec<(usize, &mut MemberState<'a, Provider>)> = self
+            .members
+            .iter_mut()
+            .map(|(member_name, member)| {
+                let index = names
+                    .iter()
+                    .position(|name| name == member_name)
+                    .expect("Provided list must contain all members");
+                (index, member)
+            })
+            .collect();
 
         // sort by name
-        members.sort_by(|a, b| a.0.cmp(b.0));
+        members.sort_by_key(|(pos, _member)| *pos);
 
         let member_states: Vec<&mut MemberState<'a, Provider>> =
             members.into_iter().map(|(_, member)| member).collect();
@@ -376,6 +388,64 @@ mod test {
 
     use super::*;
     use openmls_test::openmls_test;
+
+    #[openmls_test]
+    fn test_all_members_mut() {
+        let alice_party = CorePartyState::<Provider>::new("alice");
+        let bob_party = CorePartyState::<Provider>::new("bob");
+        let charlie_party = CorePartyState::<Provider>::new("charlie");
+        let dave_party = CorePartyState::<Provider>::new("dave");
+
+        let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+        let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+        let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+        let dave_pre_group = dave_party.generate_pre_group(ciphersuite);
+
+        // Create config
+        let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .ciphersuite(ciphersuite)
+            .use_ratchet_tree_extension(true)
+            .build();
+
+        // Join config
+        let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+        // Initialize the group state
+        let group_id = GroupId::from_slice(b"test");
+        let mut group_state =
+            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+        group_state
+            .add_member(AddMemberConfig {
+                adder: "alice",
+                addees: vec![bob_pre_group, charlie_pre_group, dave_pre_group],
+                join_config: mls_group_join_config.clone(),
+                tree: None,
+            })
+            .expect("Could not add member");
+
+        // test different orderings
+        let [alice, bob, charlie, dave] =
+            group_state.all_members_mut(&["alice", "bob", "charlie", "dave"]);
+        assert_eq!(alice.party.core_state.name, "alice");
+        assert_eq!(bob.party.core_state.name, "bob");
+        assert_eq!(charlie.party.core_state.name, "charlie");
+        assert_eq!(dave.party.core_state.name, "dave");
+
+        let [dave, charlie, bob, alice] =
+            group_state.all_members_mut(&["dave", "charlie", "bob", "alice"]);
+        assert_eq!(alice.party.core_state.name, "alice");
+        assert_eq!(bob.party.core_state.name, "bob");
+        assert_eq!(charlie.party.core_state.name, "charlie");
+        assert_eq!(dave.party.core_state.name, "dave");
+
+        let [dave, bob, charlie, alice] =
+            group_state.all_members_mut(&["dave", "bob", "charlie", "alice"]);
+        assert_eq!(alice.party.core_state.name, "alice");
+        assert_eq!(bob.party.core_state.name, "bob");
+        assert_eq!(charlie.party.core_state.name, "charlie");
+        assert_eq!(dave.party.core_state.name, "dave");
+    }
     #[openmls_test]
     pub fn simpler_example() {
         let alice_party = CorePartyState::<Provider>::new("alice");
@@ -452,7 +522,7 @@ mod test {
             GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
 
         // Get a mutable reference to Alice's group representation
-        let [alice] = group_state.all_members_mut();
+        let [alice] = group_state.all_members_mut(&["alice"]);
 
         // Build a commit with a single add proposal
         let bundle = alice
@@ -475,7 +545,7 @@ mod test {
             .deliver_and_apply_welcome(bob_pre_group, mls_group_join_config, welcome, None)
             .expect("Error delivering and applying welcome");
 
-        let [alice, _bob] = group_state.all_members_mut();
+        let [alice, _bob] = group_state.all_members_mut(&["alice", "bob"]);
 
         let staged_commit = alice.group.pending_commit().unwrap().clone();
 
