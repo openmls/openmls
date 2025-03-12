@@ -227,13 +227,14 @@ impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
 
 /// All of the state for a group and its members
 pub struct GroupState<'a, Provider> {
-    // TODO: GroupId
+    group_id: GroupId,
     members: HashMap<Name, MemberState<'a, Provider>>,
 }
 
 impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
     /// Create a new `GroupState` from a single party
     pub fn new_from_party(
+        group_id: GroupId,
         pre_group_state: PreGroupPartyState<'a, Provider>,
         mls_group_create_config: MlsGroupCreateConfig,
     ) -> Result<
@@ -250,7 +251,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
 
         members.insert(name, member_state);
 
-        Ok(Self { members })
+        Ok(Self { group_id, members })
     }
 
     /// Get mutable references to all `MemberState`s as a fixed-size array
@@ -355,8 +356,9 @@ mod test {
         let mls_group_join_config = mls_group_create_config.join_config().clone();
 
         // Initialize the group state
+        let group_id = GroupId::from_slice(b"test");
         let mut group_state =
-            GroupState::new_from_party(alice_pre_group, mls_group_create_config).unwrap();
+            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
 
         // Get a mutable reference to Alice's group representation
         let [alice] = group_state.groups_mut();
