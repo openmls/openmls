@@ -25,8 +25,8 @@ pub struct GroupStorageState {
 
 impl GroupStorageState {
     pub fn from_storage(
-        store: &impl StorageProvider<1>,
-        group_id: &impl GroupId<1>,
+        store: &impl StorageProvider<CURRENT_VERSION>,
+        group_id: &impl GroupId<CURRENT_VERSION>,
     ) -> GroupStorageState {
         let queued_proposals = store.queued_proposals(group_id).unwrap();
 
