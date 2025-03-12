@@ -469,11 +469,11 @@ mod test {
             })
             .expect("Could not stage commit");
 
-        // Deliver_and_apply welcome to Bob
+        // Deliver and apply welcome to Bob
         let welcome = bundle.welcome().unwrap().clone();
         group_state
             .deliver_and_apply_welcome(bob_pre_group, mls_group_join_config, welcome, None)
-            .expect("Error deliver_and_applying welcome");
+            .expect("Error delivering and applying welcome");
 
         let [alice, _bob] = group_state.all_members_mut();
 
