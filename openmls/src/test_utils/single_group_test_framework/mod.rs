@@ -227,10 +227,17 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         Ok(Self { group_id, members })
     }
 
-    /// Get mutable references to all `MemberState`s as a fixed-size array
+    /// Get mutable references to all `MemberState`s as a fixed-size array,
+    /// in alphabetical order of the members' `Name`s
     pub fn all_members_mut<const N: usize>(&mut self) -> [&mut MemberState<'a, Provider>; N] {
+        let mut members: Vec<(&Name, &mut MemberState<'a, Provider>)> =
+            self.members.iter_mut().collect();
+
+        // sort by name
+        members.sort_by(|a, b| a.0.cmp(b.0));
+
         let member_states: Vec<&mut MemberState<'a, Provider>> =
-            self.members.values_mut().collect();
+            members.into_iter().map(|(_, member)| member).collect();
 
         match member_states.try_into() {
             Ok(states) => states,
