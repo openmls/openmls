@@ -56,8 +56,8 @@ pub(crate) fn generate_key_package(
 
 /// Struct representing a party's global state
 pub struct CorePartyState<Provider> {
-    name: Name,
-    provider: Provider,
+    pub name: Name,
+    pub provider: Provider,
 }
 
 impl<Provider: Default> CorePartyState<Provider> {
@@ -71,11 +71,11 @@ impl<Provider: Default> CorePartyState<Provider> {
 
 /// Struct representing a party's state before joining a group
 pub struct PreGroupPartyState<'a, Provider> {
-    credential_with_key: CredentialWithKey,
+    pub credential_with_key: CredentialWithKey,
     // TODO: regenerate?
-    key_package_bundle: KeyPackageBundle,
-    signer: SignatureKeyPair,
-    core_state: &'a CorePartyState<Provider>,
+    pub key_package_bundle: KeyPackageBundle,
+    pub signer: SignatureKeyPair,
+    pub core_state: &'a CorePartyState<Provider>,
 }
 
 impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
@@ -106,8 +106,8 @@ impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
 
 /// Represents a group member's `MlsGroup` instance and pre-group state
 pub struct MemberState<'a, Provider> {
-    party: PreGroupPartyState<'a, Provider>,
-    group: MlsGroup,
+    pub party: PreGroupPartyState<'a, Provider>,
+    pub group: MlsGroup,
 }
 
 impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
