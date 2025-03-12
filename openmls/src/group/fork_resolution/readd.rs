@@ -27,14 +27,14 @@ impl MlsGroup {
         &mut self,
         own_partition: &[LeafNodeIndex],
     ) -> Result<CommitBuilder<ReAddExpectKeyPackages>, ReAddError> {
-        // Load member info. This is None of at least one of the indexes is not a valid member
+        // Load member info. This is None if at least one of the indexes is not a valid member
         let own_partition: Option<Vec<_>> = own_partition
             .iter()
             .cloned()
             .map(|leaf_index| self.member_at(leaf_index))
             .collect();
 
-        // Fail if ther eis a leaf node index that is not a member
+        // Fail if there is a leaf node index that is not a member
         let own_partition = own_partition.ok_or(ReAddError::InvalidLeafNodeIndex)?;
 
         // Compute the complement parition, i.e. the list of members that are not in our partition
@@ -49,7 +49,7 @@ impl MlsGroup {
 }
 
 impl<'a> CommitBuilder<'a, ReAddExpectKeyPackages> {
-    /// Returns the complemennt partition, i.e. the list of members that are not in our partition
+    /// Returns the complement partition, i.e. the list of members that are not in our partition.
     pub fn complement_partition(&self) -> &[Member] {
         self.stage().complement_partition.as_slice()
     }
