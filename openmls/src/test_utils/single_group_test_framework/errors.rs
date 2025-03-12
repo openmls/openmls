@@ -2,14 +2,14 @@ use crate::prelude::{commit_builder::*, *};
 pub use crate::utils::*;
 
 pub use openmls_traits::{
-    storage::StorageProvider as StorageProviderTrait,
+    storage::{StorageProvider as StorageProviderTrait, CURRENT_VERSION},
     types::{Ciphersuite, HpkeKeyPair},
     OpenMlsProvider,
 };
 
 // type alias for `TestError`
 pub type GroupError<Provider> =
-    TestError<<<Provider as OpenMlsProvider>::StorageProvider as StorageProviderTrait<1>>::Error>;
+    TestError<<<Provider as OpenMlsProvider>::StorageProvider as StorageProviderTrait<CURRENT_VERSION>>::Error>;
 #[derive(Debug)]
 pub enum TestError<StorageError> {
     CreateCommit(CreateCommitError),
