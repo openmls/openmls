@@ -37,7 +37,7 @@ At this stage, there are some more pieces of information in the `ProcessedWelcom
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_processed_welcome_inspect}}
 ```
 
-The next step is to stage the `ProcessedWelcome`. This causes some state to be updated in the `StorageProvider`. 
+The next step is to stage the `ProcessedWelcome`.
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_staged_welcome}}
 ```
