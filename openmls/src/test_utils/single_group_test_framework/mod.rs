@@ -209,7 +209,7 @@ pub struct GroupState<'a, Provider> {
     members: HashMap<Name, MemberState<'a, Provider>>,
 }
 
-impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
+impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
     /// Create a new `GroupState` from a single party
     pub fn new_from_party(
         group_id: GroupId,
@@ -259,15 +259,12 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
     }
 
     /// Deliver_and_apply a message to all parties
-    pub fn deliver_and_apply(
-        &'b mut self,
-        message: MlsMessageIn,
-    ) -> Result<(), GroupError<Provider>> {
+    pub fn deliver_and_apply(&mut self, message: MlsMessageIn) -> Result<(), GroupError<Provider>> {
         self.deliver_and_apply_if(message, |_| true)
     }
     /// Deliver_and_apply a message to all parties if a provided condition is met
     pub fn deliver_and_apply_if(
-        &'b mut self,
+        &mut self,
         message: MlsMessageIn,
         condition: impl Fn(&MemberState<'a, Provider>) -> bool,
     ) -> Result<(), GroupError<Provider>> {
@@ -281,7 +278,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
 
     /// Deliver_and_apply a welcome to a single party, and initialize a group for that party
     pub fn deliver_and_apply_welcome(
-        &'b mut self,
+        &mut self,
         recipient: PreGroupPartyState<'a, Provider>,
         mls_group_join_config: MlsGroupJoinConfig,
         welcome: Welcome,
