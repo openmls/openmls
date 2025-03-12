@@ -19,6 +19,8 @@ pub enum TestError<StorageError> {
     Welcome(WelcomeError<StorageError>),
     ProtocolMessage(ProtocolMessageError),
     MergeCommit(MergeCommitError<StorageError>),
+    CommitToPendingProposals(CommitToPendingProposalsError<StorageError>),
+    NoSuchMember,
 }
 
 impl<StorageError> From<CreateCommitError> for TestError<StorageError> {
@@ -29,6 +31,12 @@ impl<StorageError> From<CreateCommitError> for TestError<StorageError> {
 impl<StorageError> From<CommitBuilderStageError<StorageError>> for TestError<StorageError> {
     fn from(e: CommitBuilderStageError<StorageError>) -> Self {
         TestError::CommitBuilderStage(e)
+    }
+}
+
+impl<StorageError> From<CommitToPendingProposalsError<StorageError>> for TestError<StorageError> {
+    fn from(e: CommitToPendingProposalsError<StorageError>) -> Self {
+        TestError::CommitToPendingProposals(e)
     }
 }
 
