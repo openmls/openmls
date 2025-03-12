@@ -394,8 +394,15 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         _charlie_public_signature_key,
     ) = setup_client("Charlie", ciphersuite, provider);
 
-    let (mut alice_group, alice_signature_keys, _bob_group, _bob_signature_keys, _bob_credential) =
-        setup_alice_bob_group(ciphersuite, provider);
+    // TODO: don't let alice and bob share the provider
+    let (
+        mut alice_group,
+        alice_signature_keys,
+        _bob_group,
+        _bob_signature_keys,
+        _alice_credential,
+        _bob_credential,
+    ) = setup_alice_bob_group(ciphersuite, provider, provider);
 
     // Alice adds Charlie
     let (_commit, welcome, _group_info_option) = alice_group
@@ -487,13 +494,15 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
 
 #[openmls_test::openmls_test]
 fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
+    // TODO: don't let alice and bob share the provider
     let (
         mut alice_group,
         alice_signature_keys,
         mut bob_group,
         _bob_signature_keys,
+        _alice_credential,
         _bob_credential,
-    ) = setup_alice_bob_group(ciphersuite, provider);
+    ) = setup_alice_bob_group(ciphersuite, provider, provider);
 
     // Alice does an update
     let (commit, _welcome_option, _group_info_option) = alice_group
