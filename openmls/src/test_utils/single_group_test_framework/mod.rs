@@ -233,11 +233,14 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         &mut self,
         names: &[Name; N],
     ) -> [&mut MemberState<'a, Provider>; N] {
+        // Map each member in `self.members` to its name's index in `names`
+        // NOTE: the list of names provided to this method will generally be short,
+        // so not many comparisons are made here.
         let mut members: Vec<(usize, &mut MemberState<'a, Provider>)> = self
             .members
             .iter_mut()
             .map(|(member_name, member)| {
-                // NOTE: the list of names provided to this method will generally be short
+                // Find the index of the member's name in `names`
                 let index = names
                     .iter()
                     .position(|name| name == member_name)
@@ -246,9 +249,10 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
             })
             .collect();
 
-        // sort by index in `names`
+        // sort by index
         members.sort_by_key(|(pos, _member)| *pos);
 
+        // keep only the `MemberState`
         let member_states: Vec<&mut MemberState<'a, Provider>> =
             members.into_iter().map(|(_, member)| member).collect();
 
