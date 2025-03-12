@@ -54,7 +54,7 @@ pub(crate) fn generate_key_package(
         .unwrap()
 }
 
-// Struct representing a party's global state
+/// Struct representing a party's global state
 pub struct CorePartyState<Provider> {
     name: Name,
     provider: Provider,
@@ -69,7 +69,7 @@ impl<Provider: Default> CorePartyState<Provider> {
     }
 }
 
-// Struct representing a party's state before joining a group
+/// Struct representing a party's state before joining a group
 pub struct PreGroupPartyState<'a, Provider> {
     credential_with_key: CredentialWithKey,
     // TODO: regenerate?
@@ -79,7 +79,7 @@ pub struct PreGroupPartyState<'a, Provider> {
 }
 
 impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
-    // Generates the pre-group state for a `CorePartyState`
+    /// Generates the pre-group state for a `CorePartyState`
     pub fn generate_pre_group(&self, ciphersuite: Ciphersuite) -> PreGroupPartyState<'_, Provider> {
         let (credential_with_key, signer) = generate_credential(
             self.name.into(),
@@ -104,14 +104,14 @@ impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
     }
 }
 
-// Represents a group member's `MlsGroup` instance and pre-group state
+/// Represents a group member's `MlsGroup` instance and pre-group state
 pub struct MemberState<'a, Provider> {
     party: PreGroupPartyState<'a, Provider>,
     group: MlsGroup,
 }
 
 impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
-    // Deliver_and_apply a message to this member's `MlsGroup`
+    /// Deliver_and_apply a message to this member's `MlsGroup`
     pub fn deliver_and_apply(
         &mut self,
         message: MlsMessageIn,
@@ -145,7 +145,7 @@ impl<'commit_builder, 'b: 'commit_builder, 'a: 'b, Provider> MemberState<'a, Pro
 where
     Provider: openmls_traits::OpenMlsProvider,
 {
-    // Build and stage a commit, using the provided closure to add proposals
+    /// Build and stage a commit, using the provided closure to add proposals
     pub fn build_commit_and_stage(
         &'b mut self,
         f: impl FnOnce(
@@ -178,11 +178,8 @@ where
 }
 
 impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
-    // Create a `MemberState` from a `PreGroupPartyState`. This creates a new `MlsGroup` with one
-    // member
-    // TODO: builder pattern?
-    // - GroupId
-    // - MlsGroupCreateConfig
+    /// Create a `MemberState` from a `PreGroupPartyState`. This creates a new `MlsGroup` with one
+    /// member
     pub fn create_from_pre_group(
         party: PreGroupPartyState<'a, Provider>,
         mls_group_create_config: MlsGroupCreateConfig,
@@ -202,8 +199,8 @@ impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
 
         Ok(Self { party, group })
     }
-    // Create a `MemberState` from a `Welcome`, which creates a new `MlsGroup` using a `Welcome`
-    // invitation from an existing group
+    /// Create a `MemberState` from a `Welcome`, which creates a new `MlsGroup` using a `Welcome`
+    /// invitation from an existing group
     pub fn join_from_pre_group(
         party: PreGroupPartyState<'a, Provider>,
         mls_group_join_config: MlsGroupJoinConfig,
@@ -228,14 +225,14 @@ impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
     }
 }
 
-// All of the state for a group and its members
+/// All of the state for a group and its members
 pub struct GroupState<'a, Provider> {
     // TODO: GroupId
     members: HashMap<Name, MemberState<'a, Provider>>,
 }
 
 impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
-    // Create a new `GroupState` from a single party
+    /// Create a new `GroupState` from a single party
     pub fn new_from_party(
         pre_group_state: PreGroupPartyState<'a, Provider>,
         mls_group_create_config: MlsGroupCreateConfig,
@@ -256,7 +253,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         Ok(Self { members })
     }
 
-    // Get mutable references to all `MemberState`s as a fixed-size array
+    /// Get mutable references to all `MemberState`s as a fixed-size array
     pub fn groups_mut<const N: usize>(&mut self) -> [&mut MemberState<'a, Provider>; N] {
         let member_states: Vec<&mut MemberState<'a, Provider>> =
             self.members.values_mut().collect();
@@ -267,7 +264,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         }
     }
 
-    // Deliver_and_apply a message to all parties
+    /// Deliver_and_apply a message to all parties
     pub fn deliver_and_apply(
         &'b mut self,
         message: MlsMessageIn,
@@ -279,7 +276,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
     > {
         self.deliver_and_apply_if(message, |_| true)
     }
-    // Deliver_and_apply a message to all parties if a provided condition is met
+    /// Deliver_and_apply a message to all parties if a provided condition is met
     pub fn deliver_and_apply_if(
         &'b mut self,
         message: MlsMessageIn,
@@ -298,7 +295,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         Ok(())
     }
 
-    // Deliver_and_apply a welcome to a single party, and initialize a group for that party
+    /// Deliver_and_apply a welcome to a single party, and initialize a group for that party
     pub fn deliver_and_apply_welcome(
         &'b mut self,
         recipient: PreGroupPartyState<'a, Provider>,
@@ -323,8 +320,8 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         Ok(())
     }
 
-    // Drop a member from the internal hashmap. This does not delete the member from any
-    // `MlsGroup`
+    /// Drop a member from the internal hashmap. This does not delete the member from any
+    /// `MlsGroup`
     pub fn untrack_member(&mut self, name: Name) {
         let _ = self.members.remove(&name);
     }
