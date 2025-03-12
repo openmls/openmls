@@ -69,7 +69,6 @@ pub(crate) mod processing;
 pub(crate) mod proposal;
 pub(crate) mod proposal_store;
 pub(crate) mod staged_commit;
-pub(crate) use builder as group_builder;
 
 // Tests
 #[cfg(test)]

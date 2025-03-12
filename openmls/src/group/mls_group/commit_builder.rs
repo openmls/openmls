@@ -151,14 +151,7 @@ impl<'a, T> CommitBuilder<'a, T> {
         (aux, CommitBuilder { group, stage })
     }
 
-    pub(crate) fn group(&self) -> &MlsGroup {
-        self.group
-    }
-
-    pub(crate) fn group_mut(&mut self) -> &mut MlsGroup {
-        self.group
-    }
-
+    #[cfg(feature = "fork-resolution-helpers")]
     pub(crate) fn stage(&self) -> &T {
         &self.stage
     }

@@ -9,7 +9,7 @@ use crate::{
     extensions::errors::InvalidExtensionError,
     group::{
         commit_builder::{CommitBuilder, CommitMessageBundle, Initial},
-        group_builder::MlsGroupBuilder,
+        mls_group::builder::MlsGroupBuilder,
         CommitBuilderStageError, CreateCommitError, Extensions, GroupId, Member, MlsGroup,
         NewGroupError,
     },
