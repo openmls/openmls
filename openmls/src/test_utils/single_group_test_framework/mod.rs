@@ -469,13 +469,6 @@ mod test {
             })
             .expect("Could not stage commit");
 
-        // Deliver_and_apply to all members but Alice
-        group_state
-            .deliver_and_apply_if(bundle.commit().clone().into(), |member| {
-                member.party.core_state.name != "alice"
-            })
-            .expect("Error deliver_and_applying commit");
-
         // Deliver_and_apply welcome to Bob
         let welcome = bundle.welcome().unwrap().clone();
         group_state
