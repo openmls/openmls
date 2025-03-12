@@ -13,6 +13,8 @@ use crate::{
     prelude::{commit_builder::*, *},
 };
 
+mod assertions;
+
 mod errors;
 use errors::*;
 
@@ -282,6 +284,84 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
     pub fn untrack_member(&mut self, name: Name) {
         let _ = self.members.remove(&name);
     }
+
+    pub fn add_member(
+        &mut self,
+        add_config: AddMemberConfig<'a, Provider>,
+    ) -> Result<(), GroupError<Provider>> {
+        let adder = self
+            .members
+            .get_mut(add_config.adder)
+            .ok_or(TestError::NoSuchMember)?;
+
+        let key_packages: Vec<_> = add_config
+            .addees
+            .iter()
+            .map(|addee| addee.key_package_bundle.key_package.clone())
+            .collect();
+
+        let (commit, welcome, _) = adder
+            .group
+            .add_members(
+                &adder.party.core_state.provider,
+                &adder.party.signer,
+                &key_packages,
+            )
+            .unwrap();
+
+        // Deliver_and_apply to all members but adder
+        self.deliver_and_apply_if(commit.into(), |member| {
+            member.party.core_state.name != add_config.adder
+        })?;
+
+        // Deliver_and_apply welcome to addee
+        let welcome = match welcome.body() {
+            MlsMessageBodyOut::Welcome(welcome) => welcome.clone(),
+            _ => panic!("No welcome returned"),
+        };
+
+        for addee in add_config.addees.into_iter() {
+            self.deliver_and_apply_welcome(
+                addee,
+                add_config.join_config.clone(),
+                welcome.clone(),
+                None,
+            )?;
+        }
+
+        let adder = self
+            .members
+            .get_mut(add_config.adder)
+            .ok_or(TestError::NoSuchMember)?;
+
+        let staged_commit = adder.group.pending_commit().unwrap().clone();
+
+        adder
+            .group
+            .merge_staged_commit(&adder.party.core_state.provider, staged_commit)?;
+
+        Ok(())
+    }
+}
+
+pub struct CreateConfig(pub MlsGroupCreateConfig);
+
+impl CreateConfig {
+    fn default_from_ciphersuite(ciphersuite: Ciphersuite) -> Self {
+        let config = MlsGroupCreateConfig::builder()
+            .ciphersuite(ciphersuite)
+            .use_ratchet_tree_extension(true)
+            .build();
+
+        Self(config)
+    }
+}
+
+pub struct AddMemberConfig<'a, Provider> {
+    pub adder: Name,
+    pub addees: Vec<PreGroupPartyState<'a, Provider>>,
+    pub join_config: MlsGroupJoinConfig,
+    pub tree: Option<RatchetTreeIn>,
 }
 
 #[cfg(test)]
@@ -289,6 +369,54 @@ mod test {
 
     use super::*;
     use openmls_test::openmls_test;
+    #[openmls_test]
+    pub fn simpler_example() {
+        let alice_party = CorePartyState::<Provider>::new("alice");
+        let bob_party = CorePartyState::<Provider>::new("bob");
+        let charlie_party = CorePartyState::<Provider>::new("charlie");
+        let dave_party = CorePartyState::<Provider>::new("dave");
+
+        let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+        let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+        let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+        let dave_pre_group = dave_party.generate_pre_group(ciphersuite);
+
+        // Create config
+        let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .ciphersuite(ciphersuite)
+            .use_ratchet_tree_extension(true)
+            .build();
+
+        // Join config
+        let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+        // Initialize the group state
+        let group_id = GroupId::from_slice(b"test");
+        let mut group_state =
+            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+        group_state
+            .add_member(AddMemberConfig {
+                adder: "alice",
+                addees: vec![bob_pre_group, charlie_pre_group],
+                join_config: mls_group_join_config.clone(),
+                tree: None,
+            })
+            .expect("Could not add member");
+
+        group_state.assert_membership();
+
+        group_state
+            .add_member(AddMemberConfig {
+                adder: "bob",
+                addees: vec![dave_pre_group],
+                join_config: mls_group_join_config,
+                tree: None,
+            })
+            .expect("Could not add member");
+
+        group_state.assert_membership();
+    }
 
     #[openmls_test]
     pub fn simple_example() {
