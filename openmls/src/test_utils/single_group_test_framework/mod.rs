@@ -237,6 +237,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
             .members
             .iter_mut()
             .map(|(member_name, member)| {
+                // NOTE: the list of names provided to this method will generally be short
                 let index = names
                     .iter()
                     .position(|name| name == member_name)
