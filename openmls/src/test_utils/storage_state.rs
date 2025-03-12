@@ -4,7 +4,7 @@ use crate::schedule::psk::store::ResumptionPskStore;
 use crate::schedule::GroupEpochSecrets;
 use crate::treesync::TreeSync;
 
-use openmls_traits::storage::{traits::GroupId, StorageProvider};
+use openmls_traits::storage::{traits::GroupId, StorageProvider, CURRENT_VERSION};
 
 /// All state associated only with a GroupId
 #[derive(PartialEq)]
