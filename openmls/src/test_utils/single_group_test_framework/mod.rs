@@ -112,15 +112,7 @@ pub struct MemberState<'a, Provider> {
 
 impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
     /// Deliver_and_apply a message to this member's `MlsGroup`
-    pub fn deliver_and_apply(
-        &mut self,
-        message: MlsMessageIn,
-    ) -> Result<
-        (),
-        TestError<
-            <<Provider as OpenMlsProvider>::StorageProvider as StorageProviderTrait<1>>::Error,
-        >,
-    > {
+    pub fn deliver_and_apply(&mut self, message: MlsMessageIn) -> Result<(), GroupError<Provider>> {
         let message = message.try_into_protocol_message()?;
 
         // process message
@@ -151,13 +143,7 @@ where
         f: impl FnOnce(
             CommitBuilder<'commit_builder, Initial>,
         ) -> CommitBuilder<'commit_builder, Initial>,
-        // XXX: is there a better way to express this type constraint?
-    ) -> Result<
-        CommitMessageBundle,
-        TestError<
-            <<Provider as OpenMlsProvider>::StorageProvider as StorageProviderTrait<1>>::Error,
-        >,
-    > {
+    ) -> Result<CommitMessageBundle, GroupError<Provider>> {
         let commit_builder = f(self.group.commit_builder());
 
         let provider = &self.party.core_state.provider;
@@ -183,12 +169,7 @@ impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
     pub fn create_from_pre_group(
         party: PreGroupPartyState<'a, Provider>,
         mls_group_create_config: MlsGroupCreateConfig,
-    ) -> Result<
-        Self,
-        TestError<
-            <<Provider as OpenMlsProvider>::StorageProvider as StorageProviderTrait<1>>::Error,
-        >,
-    > {
+    ) -> Result<Self, GroupError<Provider>> {
         // initialize MlsGroup
         let group = MlsGroup::new(
             &party.core_state.provider,
@@ -206,12 +187,7 @@ impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
         mls_group_join_config: MlsGroupJoinConfig,
         welcome: Welcome,
         tree: Option<RatchetTreeIn>,
-    ) -> Result<
-        Self,
-        TestError<
-            <<Provider as OpenMlsProvider>::StorageProvider as StorageProviderTrait<1>>::Error,
-        >,
-    > {
+    ) -> Result<Self, GroupError<Provider>> {
         let staged_join = StagedWelcome::new_from_welcome(
             &party.core_state.provider,
             &mls_group_join_config,
@@ -237,12 +213,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         group_id: GroupId,
         pre_group_state: PreGroupPartyState<'a, Provider>,
         mls_group_create_config: MlsGroupCreateConfig,
-    ) -> Result<
-        Self,
-        TestError<
-            <<Provider as OpenMlsProvider>::StorageProvider as StorageProviderTrait<1>>::Error,
-        >,
-    > {
+    ) -> Result<Self, GroupError<Provider>> {
         let mut members = HashMap::new();
 
         let name = pre_group_state.core_state.name;
@@ -269,12 +240,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
     pub fn deliver_and_apply(
         &'b mut self,
         message: MlsMessageIn,
-    ) -> Result<
-        (),
-        TestError<
-            <<Provider as OpenMlsProvider>::StorageProvider as StorageProviderTrait<1>>::Error,
-        >,
-    > {
+    ) -> Result<(), GroupError<Provider>> {
         self.deliver_and_apply_if(message, |_| true)
     }
     /// Deliver_and_apply a message to all parties if a provided condition is met
@@ -282,12 +248,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         &'b mut self,
         message: MlsMessageIn,
         condition: impl Fn(&MemberState<'a, Provider>) -> bool,
-    ) -> Result<
-        (),
-        TestError<
-            <<Provider as OpenMlsProvider>::StorageProvider as StorageProviderTrait<1>>::Error,
-        >,
-    > {
+    ) -> Result<(), GroupError<Provider>> {
         self.members
             .values_mut()
             .filter(|member| condition(member))
@@ -303,12 +264,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         mls_group_join_config: MlsGroupJoinConfig,
         welcome: Welcome,
         tree: Option<RatchetTreeIn>,
-    ) -> Result<
-        (),
-        TestError<
-            <<Provider as OpenMlsProvider>::StorageProvider as StorageProviderTrait<1>>::Error,
-        >,
-    > {
+    ) -> Result<(), GroupError<Provider>> {
         // create new group
         let name = recipient.core_state.name;
 
