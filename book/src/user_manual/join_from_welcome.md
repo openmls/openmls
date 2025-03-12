@@ -32,7 +32,7 @@ The next step is to process the `Welcome`. This removes the consumed `KeyPackage
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_processed_welcome}}
 ```
 
-At this stage, there are some more pieces of information in the `ProcessedWelcome` that could be useful to the application. For example, it can be useful to check which extensions are available. Much of this information can also be checked using the `StagedWelcome` that is produced in the next step.
+At this stage, there are some more pieces of information in the `ProcessedWelcome` that could be useful to the application. For example, it can be useful to check which extensions are available. However, the pieces of information that are retrieved from the `ProcessedWelcome` are unverified, and verified values are only available from the `StagedWelcome` that is produced in the next step.
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_discard_welcome.rs:not_join_group_processed_welcome_inspect}}
 ```
