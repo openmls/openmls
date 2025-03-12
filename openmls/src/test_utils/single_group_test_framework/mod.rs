@@ -228,7 +228,7 @@ impl<'b, 'a: 'b, Provider: OpenMlsProvider> GroupState<'a, Provider> {
     }
 
     /// Get mutable references to all `MemberState`s as a fixed-size array
-    pub fn groups_mut<const N: usize>(&mut self) -> [&mut MemberState<'a, Provider>; N] {
+    pub fn all_members_mut<const N: usize>(&mut self) -> [&mut MemberState<'a, Provider>; N] {
         let member_states: Vec<&mut MemberState<'a, Provider>> =
             self.members.values_mut().collect();
 
@@ -445,7 +445,7 @@ mod test {
             GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
 
         // Get a mutable reference to Alice's group representation
-        let [alice] = group_state.groups_mut();
+        let [alice] = group_state.all_members_mut();
 
         // Build a commit with a single add proposal
         let bundle = alice
