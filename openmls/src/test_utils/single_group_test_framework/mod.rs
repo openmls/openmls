@@ -481,5 +481,16 @@ mod test {
         group_state
             .deliver_and_apply_welcome(bob_pre_group, mls_group_join_config, welcome, None)
             .expect("Error deliver_and_applying welcome");
+
+        let [alice, _bob] = group_state.all_members_mut();
+
+        let staged_commit = alice.group.pending_commit().unwrap().clone();
+
+        alice
+            .group
+            .merge_staged_commit(&alice.party.core_state.provider, staged_commit)
+            .expect("Error merging staged commit");
+
+        group_state.assert_membership();
     }
 }
