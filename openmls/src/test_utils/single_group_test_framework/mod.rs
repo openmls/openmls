@@ -227,7 +227,7 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         Ok(Self { group_id, members })
     }
 
-    /// Get mutable references to all `MemberState`s as a fixed-size array,
+    /// Get mutable references to specified `MemberState`s as a fixed-size array,
     /// in the order of the names provided in `names`.
     /// At least one member must be requested.
     pub fn members_mut<const N: usize>(
