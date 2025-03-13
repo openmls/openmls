@@ -229,37 +229,38 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
 
     /// Get mutable references to all `MemberState`s as a fixed-size array,
     /// in the order of the names provided in `names`.
-    pub fn all_members_mut<const N: usize>(
+    /// At least one member must be requested.
+    pub fn members_mut<const N: usize>(
         &mut self,
         names: &[Name; N],
     ) -> [&mut MemberState<'a, Provider>; N] {
-        // Map each member in `self.members` to its name's index in `names`
-        // NOTE: the list of names provided to this method will generally be short,
-        // so not many comparisons are made here.
-        let mut members: Vec<(usize, &mut MemberState<'a, Provider>)> = self
+
+        assert!(N > 0, "must request at least one member");
+        assert!(N <= self.members.len(), "cannot request more members than available");
+
+        // map each member in `self.members` to its name's index in `names`
+        let mut members: [(_,_); N] = self
             .members
             .iter_mut()
-            .map(|(member_name, member)| {
+            .filter_map(|(member_name, member)| {
                 // Find the index of the member's name in `names`
+                // NOTE: the list of names provided to this method will generally be short,
+                // so not many comparisons are made here.
                 let index = names
                     .iter()
-                    .position(|name| name == member_name)
-                    .expect("Provided list must contain all members");
-                (index, member)
+                    .position(|name| name == member_name)?;
+
+                Some((index, member))
             })
-            .collect();
+            // collect into Vec, then into fixed-size array
+            .collect::<Vec<_>>()
+            .try_into().ok()
+            .expect("At least one requested member not found");
 
         // sort by index
         members.sort_by_key(|(pos, _member)| *pos);
 
-        // keep only the references to `MemberState`s
-        let member_states: Vec<&mut MemberState<'a, Provider>> =
-            members.into_iter().map(|(_, member)| member).collect();
-
-        match member_states.try_into() {
-            Ok(states) => states,
-            Err(_) => panic!("Could not construct array of length {N} from members"),
-        }
+        members.map(|(_pos, member)| member)
     }
 
     /// Deliver_and_apply a message to all parties
@@ -392,7 +393,7 @@ mod test {
     use openmls_test::openmls_test;
 
     #[openmls_test]
-    fn test_all_members_mut() {
+    fn test_members_mut() {
         let alice_party = CorePartyState::<Provider>::new("alice");
         let bob_party = CorePartyState::<Provider>::new("bob");
         let charlie_party = CorePartyState::<Provider>::new("charlie");
@@ -428,25 +429,36 @@ mod test {
 
         // test different orderings
         let [alice, bob, charlie, dave] =
-            group_state.all_members_mut(&["alice", "bob", "charlie", "dave"]);
+            group_state.members_mut(&["alice", "bob", "charlie", "dave"]);
         assert_eq!(alice.party.core_state.name, "alice");
         assert_eq!(bob.party.core_state.name, "bob");
         assert_eq!(charlie.party.core_state.name, "charlie");
         assert_eq!(dave.party.core_state.name, "dave");
 
         let [dave, charlie, bob, alice] =
-            group_state.all_members_mut(&["dave", "charlie", "bob", "alice"]);
+            group_state.members_mut(&["dave", "charlie", "bob", "alice"]);
         assert_eq!(alice.party.core_state.name, "alice");
         assert_eq!(bob.party.core_state.name, "bob");
         assert_eq!(charlie.party.core_state.name, "charlie");
         assert_eq!(dave.party.core_state.name, "dave");
 
         let [dave, bob, charlie, alice] =
-            group_state.all_members_mut(&["dave", "bob", "charlie", "alice"]);
+            group_state.members_mut(&["dave", "bob", "charlie", "alice"]);
         assert_eq!(alice.party.core_state.name, "alice");
         assert_eq!(bob.party.core_state.name, "bob");
         assert_eq!(charlie.party.core_state.name, "charlie");
         assert_eq!(dave.party.core_state.name, "dave");
+
+        let [dave, bob] =
+            group_state.members_mut(&["dave", "bob"]);
+        assert_eq!(bob.party.core_state.name, "bob");
+        assert_eq!(dave.party.core_state.name, "dave");
+
+        let [alice, charlie] =
+            group_state.members_mut(&["alice", "charlie"]);
+        assert_eq!(alice.party.core_state.name, "alice");
+        assert_eq!(charlie.party.core_state.name, "charlie");
+
     }
     #[openmls_test]
     pub fn simpler_example() {
@@ -524,7 +536,7 @@ mod test {
             GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
 
         // Get a mutable reference to Alice's group representation
-        let [alice] = group_state.all_members_mut(&["alice"]);
+        let [alice] = group_state.members_mut(&["alice"]);
 
         // Build a commit with a single add proposal
         let bundle = alice
@@ -547,7 +559,7 @@ mod test {
             .deliver_and_apply_welcome(bob_pre_group, mls_group_join_config, welcome, None)
             .expect("Error delivering and applying welcome");
 
-        let [alice, _bob] = group_state.all_members_mut(&["alice", "bob"]);
+        let [alice] = group_state.members_mut(&["alice"]);
 
         let staged_commit = alice.group.pending_commit().unwrap().clone();
 
