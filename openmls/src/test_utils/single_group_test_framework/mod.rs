@@ -234,27 +234,28 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         &mut self,
         names: &[Name; N],
     ) -> [&mut MemberState<'a, Provider>; N] {
-
         assert!(N > 0, "must request at least one member");
-        assert!(N <= self.members.len(), "cannot request more members than available");
+        assert!(
+            N <= self.members.len(),
+            "cannot request more members than available"
+        );
 
         // map each member in `self.members` to its name's index in `names`
-        let mut members: [(_,_); N] = self
+        let mut members: [(_, _); N] = self
             .members
             .iter_mut()
             .filter_map(|(member_name, member)| {
                 // Find the index of the member's name in `names`
                 // NOTE: the list of names provided to this method will generally be short,
                 // so not many comparisons are made here.
-                let index = names
-                    .iter()
-                    .position(|name| name == member_name)?;
+                let index = names.iter().position(|name| name == member_name)?;
 
                 Some((index, member))
             })
             // collect into Vec, then into fixed-size array
             .collect::<Vec<_>>()
-            .try_into().ok()
+            .try_into()
+            .ok()
             .expect("At least one requested member not found");
 
         // sort by index
@@ -449,16 +450,13 @@ mod test {
         assert_eq!(charlie.party.core_state.name, "charlie");
         assert_eq!(dave.party.core_state.name, "dave");
 
-        let [dave, bob] =
-            group_state.members_mut(&["dave", "bob"]);
+        let [dave, bob] = group_state.members_mut(&["dave", "bob"]);
         assert_eq!(bob.party.core_state.name, "bob");
         assert_eq!(dave.party.core_state.name, "dave");
 
-        let [alice, charlie] =
-            group_state.members_mut(&["alice", "charlie"]);
+        let [alice, charlie] = group_state.members_mut(&["alice", "charlie"]);
         assert_eq!(alice.party.core_state.name, "alice");
         assert_eq!(charlie.party.core_state.name, "charlie");
-
     }
     #[openmls_test]
     pub fn simpler_example() {
