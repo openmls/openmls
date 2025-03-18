@@ -12,13 +12,9 @@ fn generate_credential(
     signature_algorithm: SignatureScheme,
     provider: &impl openmls::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
-    // ANCHOR: create_basic_credential
     let credential = BasicCredential::new(identity);
-    // ANCHOR_END: create_basic_credential
-    // ANCHOR: create_credential_keys
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.storage()).unwrap();
-    // ANCHOR_END: create_credential_keys
 
     (
         CredentialWithKey {
@@ -34,21 +30,16 @@ fn discard_commit_add() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
-
     let group_id = GroupId::from_slice(b"Test Group");
 
-    // Define the MlsGroup configuration
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true) // NOTE: important
-        .build();
+    let mut group_state = GroupState::new_from_party(
+        group_id.clone(),
+        alice_party.generate_pre_group(ciphersuite),
+        MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite),
+    )
+    .unwrap();
 
-    let mut group_state =
-        GroupState::new_from_party(group_id.clone(), alice_pre_group, mls_group_create_config)
-            .unwrap();
-
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
     let bob_key_package = bob_pre_group.key_package_bundle.key_package().clone();
 
     let [alice] = group_state.members_mut(&["alice"]);
@@ -58,18 +49,12 @@ fn discard_commit_add() {
     let alice_signer = &alice.party.signer;
 
     // === Alice adds Bob ===
-    //ANCHOR: discard_commit_add_setup
     let (_mls_message_out, _welcome, _group_info) = alice_group
         .add_members(alice_provider, alice_signer, &[bob_key_package])
         .expect("Could not add members.");
-    //ANCHOR_END: discard_commit_add_setup
 
     assert_ne!(
-        alice_party
-            .provider
-            .storage()
-            .group_state(&group_id)
-            .unwrap(),
+        alice_provider.storage().group_state(&group_id).unwrap(),
         Some(MlsGroupState::Operational)
     );
 
@@ -77,31 +62,26 @@ fn discard_commit_add() {
     // Will need to clean up
 
     assert_eq!(alice_group.members().count(), 1);
-    //ANCHOR: discard_commit_add
+    //ANCHOR: discard_commit_example
     // clear pending commit and reset state
     alice_group
         .clear_pending_commit(alice_provider.storage())
         .unwrap();
-    //ANCHOR_END: discard_commit_add
-    let state_after = alice.group_storage_state();
-    assert!(state_before.non_proposal_state() == state_after.non_proposal_state());
+    //ANCHOR_END: discard_commit_example
+    alice.assert_non_proposal_group_storage_state_matches(state_before);
 }
 
 #[openmls_test]
 fn discard_commit_update() {
     let group_id = GroupId::from_slice(b"Test Group");
-    // Define the MlsGroup configuration
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true) // NOTE: important
-        .build();
     let alice_party = CorePartyState::<Provider>::new("alice");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-
-    let mut group_state =
-        GroupState::new_from_party(group_id.clone(), alice_pre_group, mls_group_create_config)
-            .unwrap();
+    let mut group_state = GroupState::new_from_party(
+        group_id.clone(),
+        alice_party.generate_pre_group(ciphersuite),
+        MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite),
+    )
+    .unwrap();
 
     let [alice] = group_state.members_mut(&["alice"]);
     let alice_group = &mut alice.group;
@@ -137,22 +117,17 @@ fn discard_commit_update() {
 
     assert_eq!(own_leaf_nodes_before.len(), 0);
 
-    // save the storage state
+    // save the storage state for comparison later
     let state_before = alice.group_storage_state();
 
     let [alice] = group_state.members_mut(&["alice"]);
-    let alice_group = &mut alice.group;
-    let alice_provider = &alice_party.provider;
-    let alice_signer = &alice.party.signer;
 
     // check that alice signer was stored
-    let alice_signer_still_stored = SignatureKeyPair::read(
-        alice_provider.storage(),
-        alice_signer.public(),
-        ciphersuite.signature_algorithm(),
-    )
-    .is_some();
-    assert_eq!(alice_signer_still_stored, true);
+    assert!(alice.get_storage_signature_key_pair().is_some());
+
+    let alice_group = &mut alice.group;
+    let alice_provider = &alice_party.provider;
+
     // check that the signer was stored
     let new_signer_still_stored = SignatureKeyPair::read(
         alice_provider.storage(),
@@ -160,7 +135,7 @@ fn discard_commit_update() {
         ciphersuite.signature_algorithm(),
     )
     .is_some();
-    assert_eq!(new_signer_still_stored, true);
+    assert!(new_signer_still_stored);
 
     // === Alice updates ===
     // Alice updates own credential
@@ -169,11 +144,9 @@ fn discard_commit_update() {
     let leaf_node_parameters = LeafNodeParameters::builder()
         .with_credential_with_key(new_credential)
         .build();
-    //ANCHOR: discard_commit_update_setup
     let commit_message_bundle = alice_group
         .self_update(alice_provider, &new_signer, leaf_node_parameters)
         .expect("failed to update own leaf node");
-    //ANCHOR_END: discard_commit_update_setup
 
     // Unused
     let _commit_message_bundle = commit_message_bundle;
@@ -227,13 +200,7 @@ fn discard_commit_update() {
     //ANCHOR_END: discard_commit_update
 
     // check that alice signer still stored
-    let alice_signer_still_stored = SignatureKeyPair::read(
-        alice_provider.storage(),
-        alice_signer.public(),
-        ciphersuite.signature_algorithm(),
-    )
-    .is_some();
-    assert_eq!(alice_signer_still_stored, true);
+    assert!(alice.get_storage_signature_key_pair().is_some());
 
     let new_signer_still_stored = SignatureKeyPair::read(
         alice_provider.storage(),
@@ -241,36 +208,33 @@ fn discard_commit_update() {
         ciphersuite.signature_algorithm(),
     )
     .is_some();
-    assert_eq!(new_signer_still_stored, false);
+    assert!(!new_signer_still_stored);
 
-    let state_after = alice.group_storage_state();
-    assert!(state_before == state_after);
+    alice.assert_group_storage_state_matches(state_before);
 }
 
 #[openmls_test]
 fn discard_commit_remove() {
     // Define the MlsGroup configuration
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true) // NOTE: important
-        .build();
-    let mls_group_join_config = MlsGroupJoinConfig::default();
 
     let group_id = GroupId::from_slice(b"Test Group");
 
     // set up group with two members
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
-    let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+    let mut group_state = GroupState::new_from_party(
+        group_id,
+        alice_party.generate_pre_group(ciphersuite),
+        MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite),
+    )
+    .unwrap();
 
     group_state
         .add_member(AddMemberConfig {
             adder: "alice",
-            addees: vec![bob_pre_group],
-            join_config: mls_group_join_config.clone(),
+            addees: vec![bob_party.generate_pre_group(ciphersuite)],
+            join_config: MlsGroupJoinConfig::default(),
             tree: None,
         })
         .expect("Could not add member");
@@ -304,33 +268,26 @@ fn discard_commit_remove() {
     // === Delivery service rejected the commit ===
 
     // Discard the commit
-    //ANCHOR: discard_commit_remove
     bob_group
         .clear_pending_commit(bob_provider.storage())
         .expect("Could not clear pending commit");
-    //ANCHOR_END: discard_commit_remove
 
-    let state_after = bob.group_storage_state();
-    assert!(state_before.non_proposal_state() == state_after.non_proposal_state());
+    bob.assert_non_proposal_group_storage_state_matches(state_before);
 }
 
 #[openmls_test]
 fn discard_commit_psk() {
-    // Define the MlsGroup configuration
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true) // NOTE: important
-        .build();
     let group_id = GroupId::from_slice(b"Test Group");
 
     // set up group with one member
     let alice_party = CorePartyState::<Provider>::new("alice");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-
-    let mut group_state =
-        GroupState::new_from_party(group_id.clone(), alice_pre_group, mls_group_create_config)
-            .unwrap();
+    let mut group_state = GroupState::new_from_party(
+        group_id.clone(),
+        alice_party.generate_pre_group(ciphersuite),
+        MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite),
+    )
+    .unwrap();
 
     let [alice] = group_state.members_mut(&["alice"]);
     let state_before = alice.group_storage_state();
@@ -377,8 +334,7 @@ fn discard_commit_psk() {
         .expect("Could not clear pending commit");
     //ANCHOR_END: discard_commit_psk
 
-    let state_after = alice.group_storage_state();
-    assert!(state_before.non_proposal_state() == state_after.non_proposal_state());
+    alice.assert_non_proposal_group_storage_state_matches(state_before);
 }
 
 /*
@@ -446,7 +402,7 @@ fn discard_commit_reinit() {
 fn discard_commit_external_join() {
     let bob_provider = &Provider::default();
     let (bob_credential, bob_signer) = generate_credential(
-        "Bob".into(),
+        "bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
     );
@@ -460,11 +416,12 @@ fn discard_commit_external_join() {
         .build();
     let alice_party = CorePartyState::<Provider>::new("alice");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-
-    let mut group_state =
-        GroupState::new_from_party(group_id.clone(), alice_pre_group, mls_group_create_config)
-            .unwrap();
+    let mut group_state = GroupState::new_from_party(
+        group_id.clone(),
+        alice_party.generate_pre_group(ciphersuite),
+        mls_group_create_config,
+    )
+    .unwrap();
 
     let [alice] = group_state.members_mut(&["alice"]);
 
@@ -522,8 +479,6 @@ fn discard_commit_external_join() {
 fn discard_commit_group_context_extensions() {
     let alice_party = CorePartyState::<Provider>::new("alice");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-
     let group_id = GroupId::from_slice(b"Test Group");
     let unknown_extension_type = 1;
 
@@ -540,9 +495,12 @@ fn discard_commit_group_context_extensions() {
         ))
         .build();
     // set up group with one member
-    let mut group_state =
-        GroupState::new_from_party(group_id.clone(), alice_pre_group, mls_group_create_config)
-            .unwrap();
+    let mut group_state = GroupState::new_from_party(
+        group_id.clone(),
+        alice_party.generate_pre_group(ciphersuite),
+        mls_group_create_config,
+    )
+    .unwrap();
 
     let [alice] = group_state.members_mut(&["alice"]);
     // save the storage state
@@ -572,15 +530,12 @@ fn discard_commit_group_context_extensions() {
 
     // === Delivery service rejected the commit ===
 
-    //ANCHOR: discard_commit_group_context_extensions
     // Discard the commit
     alice_group
         .clear_pending_commit(alice_provider.storage())
         .expect("Could not clear pending commit");
-    //ANCHOR_END: discard_commit_group_context_extensions
 
-    let state_after = alice.group_storage_state();
-    assert!(state_before.non_proposal_state() == state_after.non_proposal_state());
+    alice.assert_non_proposal_group_storage_state_matches(state_before);
 }
 
 #[openmls_test]
@@ -588,8 +543,6 @@ fn discard_commit_self_remove() {
     let group_id = GroupId::from_slice(b"Test Group");
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -597,14 +550,17 @@ fn discard_commit_self_remove() {
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true) // NOTE: important
         .build();
-    let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config.clone())
-            .unwrap();
+    let mut group_state = GroupState::new_from_party(
+        group_id,
+        alice_party.generate_pre_group(ciphersuite),
+        mls_group_create_config.clone(),
+    )
+    .unwrap();
 
     group_state
         .add_member(AddMemberConfig {
             adder: "alice",
-            addees: vec![bob_pre_group],
+            addees: vec![bob_party.generate_pre_group(ciphersuite)],
             join_config: mls_group_create_config.join_config().clone(),
             tree: None,
         })
@@ -630,8 +586,7 @@ fn discard_commit_self_remove() {
         .clear_pending_commit(bob_provider.storage())
         .expect("Could not clear pending commit");
 
-    let state_after = bob.group_storage_state();
-    assert!(state_before.non_proposal_state() == state_after.non_proposal_state());
+    bob.assert_non_proposal_group_storage_state_matches(state_before);
 }
 
 /*
@@ -649,7 +604,7 @@ fn discard_commit_custom_proposal() {
     let group_id = GroupId::from_slice(b"Test Group");
     // Generate credentials with keys
     let (alice_credential, alice_signer) = generate_credential(
-        "Alice".into(),
+        "alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
     );

@@ -5,7 +5,7 @@ The delivery service may reject a commit sent by a client. In this case, the app
 ## Cleaning up local state after discarded commits
 Generally, if a commit is discarded (e.g. due to being rejected by the Delivery Service), it can be cleaned up by the application in the following way:
 ```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code_discard_commit.rs:discard_commit_add}}
+{{#include ../../../openmls/tests/book_code_discard_commit.rs:discard_commit_example}}
 ```
 
 In general, the application only needs to complete the cleanup above in order to fully restore the local state to the way it was before the commit was staged. However, in several other cases, additional cleanup may need to be done.
