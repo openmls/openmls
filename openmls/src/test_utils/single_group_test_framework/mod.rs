@@ -80,6 +80,7 @@ pub struct PreGroupPartyState<'a, Provider> {
     pub key_package_bundle: KeyPackageBundle,
     pub signer: SignatureKeyPair,
     pub core_state: &'a CorePartyState<Provider>,
+    pub ciphersuite: Ciphersuite,
 }
 
 impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
@@ -104,6 +105,7 @@ impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
             key_package_bundle,
             signer,
             core_state: self,
+            ciphersuite,
         }
     }
 }
@@ -115,6 +117,16 @@ pub struct MemberState<'a, Provider> {
 }
 
 impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
+    /// Get member's `SignatureKeyPair` if available
+    pub fn get_storage_signature_key_pair(&self) -> Option<SignatureKeyPair> {
+        let ciphersuite = self.party.ciphersuite.into();
+
+        SignatureKeyPair::read(
+            self.party.core_state.provider.storage(),
+            self.party.signer.public(),
+            ciphersuite,
+        )
+    }
     /// Get the `GroupStorageState` for this group
     pub fn group_storage_state(&self) -> GroupStorageState {
         let storage_provider = self.party.core_state.provider.storage();
@@ -376,16 +388,13 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
     }
 }
 
-pub struct CreateConfig(pub MlsGroupCreateConfig);
-
-impl CreateConfig {
-    fn default_from_ciphersuite(ciphersuite: Ciphersuite) -> Self {
-        let config = MlsGroupCreateConfig::builder()
+impl MlsGroupCreateConfig {
+    /// Default config for test framework
+    pub fn test_default_from_ciphersuite(ciphersuite: Ciphersuite) -> Self {
+        MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
-            .build();
-
-        Self(config)
+            .build()
     }
 }
 
