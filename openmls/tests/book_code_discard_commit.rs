@@ -25,6 +25,18 @@ fn generate_credential(
     )
 }
 
+// Utility function for checking commit
+fn clear_pending_commit_and_assert_storage_state<Provider: OpenMlsProvider>(
+    member_state: &mut MemberState<'_, Provider>,
+    state_before: GroupStorageState,
+) {
+    member_state
+        .group
+        .clear_pending_commit(member_state.party.core_state.provider.storage())
+        .expect("Could not clear pending commit");
+
+    member_state.assert_non_proposal_group_storage_state_matches(state_before);
+}
 #[openmls_test]
 fn discard_commit_add() {
     let alice_party = CorePartyState::<Provider>::new("alice");
@@ -267,12 +279,7 @@ fn discard_commit_remove() {
 
     // === Delivery service rejected the commit ===
 
-    // Discard the commit
-    bob_group
-        .clear_pending_commit(bob_provider.storage())
-        .expect("Could not clear pending commit");
-
-    bob.assert_non_proposal_group_storage_state_matches(state_before);
+    clear_pending_commit_and_assert_storage_state(bob, state_before);
 }
 
 #[openmls_test]
@@ -530,12 +537,7 @@ fn discard_commit_group_context_extensions() {
 
     // === Delivery service rejected the commit ===
 
-    // Discard the commit
-    alice_group
-        .clear_pending_commit(alice_provider.storage())
-        .expect("Could not clear pending commit");
-
-    alice.assert_non_proposal_group_storage_state_matches(state_before);
+    clear_pending_commit_and_assert_storage_state(alice, state_before);
 }
 
 #[openmls_test]
@@ -582,11 +584,7 @@ fn discard_commit_self_remove() {
     // === Delivery service rejected the commit ===
 
     // Discard the commit
-    bob_group
-        .clear_pending_commit(bob_provider.storage())
-        .expect("Could not clear pending commit");
-
-    bob.assert_non_proposal_group_storage_state_matches(state_before);
+    clear_pending_commit_and_assert_storage_state(bob, state_before);
 }
 
 /*
