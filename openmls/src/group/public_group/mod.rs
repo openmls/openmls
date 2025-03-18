@@ -123,6 +123,25 @@ impl PublicGroup {
     where
         StorageProvider: PublicStorageProvider<Error = StorageError>,
     {
+        let (public_group, group_info) = PublicGroup::from_external_internal(
+            crypto,
+            ratchet_tree,
+            verifiable_group_info,
+            proposal_store,
+        )?;
+
+        public_group
+            .store(storage)
+            .map_err(CreationFromExternalError::WriteToStorageError)?;
+
+        Ok((public_group, group_info))
+    }
+    pub(crate) fn from_external_internal<StorageError>(
+        crypto: &impl OpenMlsCrypto,
+        ratchet_tree: RatchetTreeIn,
+        verifiable_group_info: VerifiableGroupInfo,
+        proposal_store: ProposalStore,
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>> {
         let ciphersuite = verifiable_group_info.ciphersuite();
 
         let group_id = verifiable_group_info.group_id();
@@ -260,10 +279,6 @@ impl PublicGroup {
             .treesync
             .full_leaves()
             .try_for_each(|leaf_node| public_group.validate_leaf_node(leaf_node))?;
-
-        public_group
-            .store(storage)
-            .map_err(CreationFromExternalError::WriteToStorageError)?;
 
         Ok((public_group, group_info))
     }

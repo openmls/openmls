@@ -31,6 +31,8 @@ pub mod frankenstein;
 pub mod storage_state;
 pub mod test_framework;
 
+pub mod single_group_test_framework;
+
 pub(crate) fn write(file_name: &str, obj: impl Serialize) {
     let mut file = match File::create(file_name) {
         Ok(f) => f,
