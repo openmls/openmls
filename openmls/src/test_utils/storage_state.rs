@@ -4,8 +4,9 @@ use crate::schedule::psk::store::ResumptionPskStore;
 use crate::schedule::GroupEpochSecrets;
 use crate::treesync::TreeSync;
 
-use openmls_traits::storage::{traits::GroupId, StorageProvider};
+use openmls_traits::storage::{traits::GroupId, StorageProvider, CURRENT_VERSION};
 
+/// All state associated only with a GroupId
 #[derive(PartialEq)]
 pub struct NonProposalGroupStorageState {
     own_leaf_nodes: Vec<LeafNode>,
@@ -20,9 +21,11 @@ pub struct NonProposalGroupStorageState {
     own_leaf_index: Option<LeafNodeIndex>,
     group_epoch_secrets: Option<GroupEpochSecrets>,
 }
-
 impl NonProposalGroupStorageState {
-    pub fn from_storage(store: &impl StorageProvider<1>, group_id: &impl GroupId<1>) -> Self {
+    pub fn from_storage(
+        store: &impl StorageProvider<CURRENT_VERSION>,
+        group_id: &impl GroupId<CURRENT_VERSION>,
+    ) -> NonProposalGroupStorageState {
         let own_leaf_nodes = store.own_leaf_nodes(group_id).unwrap();
 
         let group_config = store.mls_group_join_config(group_id).unwrap();
@@ -60,18 +63,22 @@ impl NonProposalGroupStorageState {
         }
     }
 }
-
 /// All state associated only with a GroupId
 #[derive(PartialEq)]
 pub struct GroupStorageState {
-    pub queued_proposals: Vec<(ProposalRef, QueuedProposal)>,
-    pub non_proposal_state: NonProposalGroupStorageState,
+    queued_proposals: Vec<(ProposalRef, QueuedProposal)>,
+    non_proposal_state: NonProposalGroupStorageState,
 }
 
 impl GroupStorageState {
-    pub fn from_storage(store: &impl StorageProvider<1>, group_id: &impl GroupId<1>) -> Self {
+    pub fn non_proposal_state(&self) -> &NonProposalGroupStorageState {
+        &self.non_proposal_state
+    }
+    pub fn from_storage(
+        store: &impl StorageProvider<CURRENT_VERSION>,
+        group_id: &impl GroupId<CURRENT_VERSION>,
+    ) -> GroupStorageState {
         let queued_proposals = store.queued_proposals(group_id).unwrap();
-
         let non_proposal_state = NonProposalGroupStorageState::from_storage(store, group_id);
 
         GroupStorageState {

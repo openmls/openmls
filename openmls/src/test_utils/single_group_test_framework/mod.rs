@@ -13,6 +13,8 @@ use crate::{
     prelude::{commit_builder::*, *},
 };
 
+use crate::test_utils::storage_state::GroupStorageState;
+
 mod assertions;
 
 mod errors;
@@ -113,6 +115,13 @@ pub struct MemberState<'a, Provider> {
 }
 
 impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
+    /// Get the `GroupStorageState` for this group
+    pub fn group_storage_state(&self) -> GroupStorageState {
+        let storage_provider = self.party.core_state.provider.storage();
+        let group_id = self.group.group_id();
+
+        GroupStorageState::from_storage(storage_provider, group_id)
+    }
     /// Deliver_and_apply a message to this member's `MlsGroup`
     pub fn deliver_and_apply(&mut self, message: MlsMessageIn) -> Result<(), GroupError<Provider>> {
         let message = message.try_into_protocol_message()?;
