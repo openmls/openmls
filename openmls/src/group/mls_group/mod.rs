@@ -33,7 +33,7 @@ use crate::{
     messages::{
         group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
         proposals::*,
-        Commit, GroupSecrets, Welcome,
+        Commit, ConfirmationTag, GroupSecrets, Welcome,
     },
     schedule::{
         message_secrets::MessageSecrets,
@@ -291,6 +291,11 @@ impl MlsGroup {
     /// Returns the group's ciphersuite.
     pub fn ciphersuite(&self) -> Ciphersuite {
         self.public_group.ciphersuite()
+    }
+
+    /// Get confirmation tag.
+    pub fn confirmation_tag(&self) -> &ConfirmationTag {
+        self.public_group.confirmation_tag()
     }
 
     /// Returns whether the own client is still a member of the group or if it
