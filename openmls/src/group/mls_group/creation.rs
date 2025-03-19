@@ -124,9 +124,8 @@ impl MlsGroup {
             },
         };
 
-        let (public_group, group_info) = PublicGroup::from_external(
+        let (public_group, group_info) = PublicGroup::from_external_internal(
             provider.crypto(),
-            provider.storage(),
             ratchet_tree,
             verifiable_group_info,
             // Existing proposals are discarded when joining by external commit.
@@ -359,9 +358,8 @@ impl ProcessedWelcome {
 
         // Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
-        let (public_group, _group_info_extensions) = PublicGroup::from_external(
+        let (public_group, _group_info_extensions) = PublicGroup::from_external_internal(
             provider.crypto(),
-            provider.storage(),
             ratchet_tree,
             self.verifiable_group_info.clone(),
             ProposalStore::new(),
