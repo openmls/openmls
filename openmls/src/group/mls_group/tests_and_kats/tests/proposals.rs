@@ -451,8 +451,9 @@ fn group_context_extension_proposal(
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
-    let (mut alice_group, alice_signer, mut bob_group, bob_signer, _bob_credential) =
-        setup_alice_bob_group(ciphersuite, provider);
+    let (mut alice_group, alice_signer, mut bob_group, bob_signer, _alice_credential, _bob_credential) =
+        // TODO: don't let alice and bob share the provider
+        setup_alice_bob_group(ciphersuite, provider, provider);
 
     // Alice adds a required capability.
     let required_application_id =

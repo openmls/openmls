@@ -7,8 +7,9 @@ use crate::group::{
 
 #[openmls_test::openmls_test]
 fn test_external_init_broken_signature() {
-    let (group_alice, alice_signer, _group_bob, _bob_signer, _bob_credential_with_key) =
-        setup_alice_bob_group(ciphersuite, provider);
+    let (group_alice, alice_signer, _group_bob, _bob_signer, _alice_credetial_with_key, _bob_credential_with_key) =
+        // TODO: don't let alice and bob share the provider
+        setup_alice_bob_group(ciphersuite, provider, provider);
 
     // Now set up charly and try to init externally.
     let (charlie_credential, _charlie_kpb, charlie_signer, _charlie_pk) =

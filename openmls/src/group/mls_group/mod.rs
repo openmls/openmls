@@ -33,7 +33,7 @@ use crate::{
     messages::{
         group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
         proposals::*,
-        Commit, GroupSecrets, Welcome,
+        Commit, ConfirmationTag, GroupSecrets, Welcome,
     },
     schedule::{
         message_secrets::MessageSecrets,
@@ -51,7 +51,6 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::C
 
 // Private
 mod application;
-mod builder;
 mod creation;
 mod exporting;
 mod updates;
@@ -59,6 +58,7 @@ mod updates;
 use config::*;
 
 // Crate
+pub(crate) mod builder;
 pub(crate) mod commit_builder;
 pub(crate) mod config;
 pub(crate) mod create_commit;
@@ -291,6 +291,11 @@ impl MlsGroup {
     /// Returns the group's ciphersuite.
     pub fn ciphersuite(&self) -> Ciphersuite {
         self.public_group.ciphersuite()
+    }
+
+    /// Get confirmation tag.
+    pub fn confirmation_tag(&self) -> &ConfirmationTag {
+        self.public_group.confirmation_tag()
     }
 
     /// Returns whether the own client is still a member of the group or if it
