@@ -280,8 +280,8 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
     /// the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
     ///
-    /// In contrast to `build`, this function can be used to create for commits
-    /// that rotate the own leaf node's signature key.
+    /// In contrast to `build`, this function can be used to create commits that
+    /// rotate the own leaf node's signature key.
     pub fn build_with_new_signer(
         self,
         rand: &impl OpenMlsRand,
