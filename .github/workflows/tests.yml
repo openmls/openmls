@@ -46,7 +46,7 @@ jobs:
           fi
 
       - name: Test with Fork Resolution helpers
-        run cargo test $TEST_MODE -p openmls -F fork-resolution-helpers
+        run: cargo test $TEST_MODE -p openmls -F fork-resolution-helpers
 
       - name: Test with libcrux provider
         if: matrix.os == 'ubuntu-latest'
