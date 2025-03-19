@@ -573,7 +573,6 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
             provisional_message_secrets,
-            application_exporter,
             diff.into_staged_diff(crypto, ciphersuite)?,
             path_computation_result.new_keypairs,
             // The committer is not allowed to include their own update
@@ -594,6 +593,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 welcome_option,
                 staged_commit,
                 group_info: group_info.filter(|_| use_ratchet_tree_extension),
+                application_exporter,
             },
         }))
     }
@@ -617,16 +617,6 @@ impl CommitBuilder<'_, Complete> {
             },
             ..
         } = self;
-
-        let application_export_secret = create_commit_result
-            .staged_commit
-            .application_exporter()
-            .ok_or_else(|| {
-                CommitBuilderStageError::LibraryError(LibraryError::custom(
-                    "Application exporter not available",
-                ))
-            })?
-            .clone();
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -653,7 +643,7 @@ impl CommitBuilder<'_, Complete> {
             commit: mls_message,
             welcome: create_commit_result.welcome_option,
             group_info: create_commit_result.group_info,
-            application_export_secret,
+            application_export_secret: create_commit_result.application_exporter,
         })
     }
 }

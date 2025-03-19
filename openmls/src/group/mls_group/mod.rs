@@ -80,6 +80,7 @@ pub(crate) struct CreateCommitResult {
     pub(crate) welcome_option: Option<Welcome>,
     pub(crate) staged_commit: StagedCommit,
     pub(crate) group_info: Option<GroupInfo>,
+    pub(crate) application_exporter: ApplicationExportSecret,
 }
 
 /// A member in the group is identified by this [`Member`] struct.

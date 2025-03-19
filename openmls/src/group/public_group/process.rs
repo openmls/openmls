@@ -255,6 +255,7 @@ impl PublicGroup {
                     authenticated_data,
                     content,
                     credential,
+                    None,
                 ))
             }
             Sender::External(_) => {
@@ -279,6 +280,7 @@ impl PublicGroup {
                             data,
                             content,
                             credential,
+                            None,
                         ))
                     }
                     // TODO #151/#106

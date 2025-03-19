@@ -326,12 +326,12 @@ fn application_export_secret() {
                 .unwrap(),
         )
         .unwrap();
+    let bob_application_secret = processed_message.application_exporter().unwrap().clone();
     let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         processed_message.into_content()
     else {
         panic!("Expected a StagedCommitMessage");
     };
-    let bob_application_secret = staged_commit.application_exporter().unwrap().clone();
 
     bob_group_state
         .group

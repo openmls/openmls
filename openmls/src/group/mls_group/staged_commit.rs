@@ -109,8 +109,11 @@ impl MlsGroup {
     ///  - Verifies the confirmation tag
     ///
     /// Returns a [StagedCommit] that can be inspected and later merged into the
-    /// group state with [MlsGroup::merge_commit()] This function does the
-    /// following checks:
+    /// group state with [MlsGroup::merge_commit()]. If the member was not
+    /// removed from the group, the function also returns an
+    /// [ApplicationExportSecret].
+    ///
+    /// This function does the following checks:
     ///  - ValSem101
     ///  - ValSem102
     ///  - ValSem104
@@ -141,7 +144,7 @@ impl MlsGroup {
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         provider: &impl OpenMlsProvider,
-    ) -> Result<StagedCommit, StageCommitError> {
+    ) -> Result<(StagedCommit, Option<ApplicationExportSecret>), StageCommitError> {
         // Check that the sender is another member of the group
         if let Sender::Member(member) = mls_content.sender() {
             if member == &self.own_leaf_index() {
@@ -188,10 +191,11 @@ impl MlsGroup {
                         staged_diff,
                         commit.path.as_ref().map(|path| path.leaf_node().clone()),
                     );
-                    return Ok(StagedCommit::new(
+                    let staged_commit = StagedCommit::new(
                         proposal_queue,
                         StagedCommitState::PublicState(Box::new(staged_state)),
-                    ));
+                    );
+                    return Ok((staged_commit, None));
                 }
 
                 let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
@@ -313,14 +317,14 @@ impl MlsGroup {
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
                 provisional_group_secrets,
                 provisional_message_secrets,
-                application_exporter,
                 staged_diff,
                 new_keypairs,
                 new_leaf_keypair_option,
                 update_path_leaf_node,
             )));
+        let staged_commit = StagedCommit::new(proposal_queue, staged_commit_state);
 
-        Ok(StagedCommit::new(proposal_queue, staged_commit_state))
+        Ok((staged_commit, Some(application_exporter)))
     }
 
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
@@ -486,16 +490,6 @@ impl StagedCommit {
         self.staged_proposal_queue.queued_proposals()
     }
 
-    /// Returns the `[ApplicationExportSecret]` of the staged commit state if
-    /// the owner of the originating group state is a member of the group.
-    /// Returns `None` otherwise.
-    pub fn application_exporter(&self) -> Option<&ApplicationExportSecret> {
-        let StagedCommitState::GroupMember(gm) = &self.state else {
-            return None;
-        };
-        Some(&gm.application_exporter)
-    }
-
     /// Returns the leaf node of the (optional) update path.
     pub fn update_path_leaf_node(&self) -> Option<&LeafNode> {
         match self.state {
@@ -592,7 +586,6 @@ impl StagedCommit {
 pub(crate) struct MemberStagedCommitState {
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,
-    application_exporter: ApplicationExportSecret,
     staged_diff: StagedPublicGroupDiff,
     new_keypairs: Vec<EncryptionKeyPair>,
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
@@ -603,7 +596,6 @@ impl MemberStagedCommitState {
     pub(crate) fn new(
         group_epoch_secrets: GroupEpochSecrets,
         message_secrets: MessageSecrets,
-        application_exporter: ApplicationExportSecret,
         staged_diff: StagedPublicGroupDiff,
         new_keypairs: Vec<EncryptionKeyPair>,
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
@@ -612,7 +604,6 @@ impl MemberStagedCommitState {
         Self {
             group_epoch_secrets,
             message_secrets,
-            application_exporter,
             staged_diff,
             new_keypairs,
             new_leaf_keypair_option,

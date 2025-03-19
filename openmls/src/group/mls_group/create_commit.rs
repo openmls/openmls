@@ -366,7 +366,6 @@ impl MlsGroup {
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
             provisional_message_secrets,
-            application_exporter,
             diff.into_staged_diff(provider.crypto(), ciphersuite)?,
             path_computation_result.new_keypairs,
             // The committer is not allowed to include their own update
@@ -384,6 +383,7 @@ impl MlsGroup {
             welcome_option,
             staged_commit,
             group_info: group_info.filter(|_| self.configuration().use_ratchet_tree_extension),
+            application_exporter,
         })
     }
 }
