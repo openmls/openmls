@@ -106,15 +106,10 @@ mod test {
 
     #[openmls_test::openmls_test]
     fn example_readd() {
-        let alice_provider_ = Provider::default();
-        let bob_provider_ = Provider::default();
-        let charlie_provider_ = Provider::default();
-        let dave_provider_ = Provider::default();
-
-        let alice_provider = &alice_provider_;
-        let bob_provider = &bob_provider_;
-        let charlie_provider = &charlie_provider_;
-        let dave_provider = &dave_provider_;
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+        let charlie_provider = &Provider::default();
+        let dave_provider = &Provider::default();
 
         // Create group with alice and bob
         let (mut alice_group, alice_signer, mut bob_group, bob_signer, _alice_cwk, bob_cwk) =

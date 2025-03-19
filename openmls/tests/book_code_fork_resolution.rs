@@ -7,13 +7,9 @@ use openmls_traits::{signatures::Signer, types::SignatureScheme};
 
 #[openmls_test]
 fn book_example_readd() {
-    let alice_provider_ = Provider::default();
-    let bob_provider_ = Provider::default();
-    let charlie_provider_ = Provider::default();
-
-    let alice_provider = &alice_provider_;
-    let bob_provider = &bob_provider_;
-    let charlie_provider = &charlie_provider_;
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
 
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) = generate_credential(
@@ -239,13 +235,9 @@ fn book_example_readd() {
 
 #[openmls_test]
 fn book_example_reboot() {
-    let alice_provider_ = Provider::default();
-    let bob_provider_ = Provider::default();
-    let charlie_provider_ = Provider::default();
-
-    let alice_provider = &alice_provider_;
-    let bob_provider = &bob_provider_;
-    let charlie_provider = &charlie_provider_;
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
 
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) = generate_credential(
