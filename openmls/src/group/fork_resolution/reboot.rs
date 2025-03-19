@@ -116,6 +116,16 @@ pub enum RebootError<StorageError> {
     CommitBuilderStage(#[from] CommitBuilderStageError<StorageError>),
 }
 
+/// Defines a method that consumes self, passes it into a closure and returns the output of the
+/// closure. Comes in handy in long builder chains.
+trait PipeThrough: Sized {
+    fn pipe_through<T: Sized, F: FnMut(Self) -> T>(self, mut f: F) -> T {
+        f(self)
+    }
+}
+
+impl<T> PipeThrough for T {}
+
 #[cfg(test)]
 mod test {
     use crate::{
@@ -267,13 +277,3 @@ mod test {
         assert_eq!(alice_comparison, charlie_comparison);
     }
 }
-
-/// Defines a method that consumes self, passes it into a closure and returns the output of the
-/// closure. Comes in handy in long builder chains.
-trait PipeThrough: Sized {
-    fn pipe_through<T: Sized, F: FnMut(Self) -> T>(self, mut f: F) -> T {
-        f(self)
-    }
-}
-
-impl<T> PipeThrough for T {}

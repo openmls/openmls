@@ -157,7 +157,7 @@ fn book_example_readd() {
     // ANCHOR_END: readd_prepare_group
 
     // ANCHOR: readd_do_it
-    // Let Alice re-add Bob
+    // Let Alice re-add the members of the other partition (i.e. Bob)
     let bob_new_kpb = generate_key_package(
         ciphersuite,
         bob_credential,
@@ -166,10 +166,30 @@ fn book_example_readd() {
         &bob_signature_keys,
     );
 
-    let readd_messages = alice_group
-        .recover_fork_by_readding(&[alice_group.own_leaf_index()])
-        .unwrap()
-        .provide_key_packages(vec![bob_new_kpb.key_package().clone()])
+    // Alice and Charlie are in the same partition
+    let our_partition = &[alice_group.own_leaf_index(), charlie_group.own_leaf_index()];
+    let builder = alice_group.recover_fork_by_readding(our_partition).unwrap();
+
+    // Here we iterate over the members of the complement partition to get their key packages.
+    // In this example this is trivial, but the pattern extends to more realistic scenarios.
+    let readded_key_packages = builder
+        .complement_partition()
+        .iter()
+        .map(|member| {
+            let basic_credential = BasicCredential::try_from(member.credential.clone()).unwrap();
+            match basic_credential.identity() {
+                b"Bob" => bob_new_kpb.key_package().clone(),
+                other => panic!(
+                    "we only expect bob to be re-added, but found {:?}",
+                    String::from_utf8(other.to_vec()).unwrap()
+                ),
+            }
+        })
+        .collect();
+
+    // Specify the key packages to be re-added and create the commit
+    let readd_messages = builder
+        .provide_key_packages(readded_key_packages)
         .load_psks(alice_provider.storage())
         .unwrap()
         .build(

@@ -1234,7 +1234,7 @@ fn builder_pattern() {
     let alice_group = MlsGroup::builder()
         .with_group_id(test_group_id.clone())
         .padding_size(test_padding_size)
-        .sender_ratchet_configuration(test_sender_ratchet_config.clone())
+        .sender_ratchet_configuration(test_sender_ratchet_config)
         .with_group_context_extensions(test_gc_extensions.clone())
         .expect("error adding group context extension to builder")
         .ciphersuite(test_ciphersuite)
