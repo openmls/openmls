@@ -21,6 +21,7 @@ use crate::{
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     test_utils::{
         frankenstein::{FrankenFramedContentBody, FrankenPublicMessage},
+        single_group_test_framework::{AddMemberConfig, CorePartyState, GroupState},
         test_framework::{
             errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
             MlsGroupTestSetup,
@@ -269,7 +270,95 @@ fn export_secret() {
 
 #[openmls_test]
 fn application_export_secret() {
-    // TODO
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+
+    // Create config
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    // Join config
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    // Initialize the group state
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let [alice_group_state, bob_group_state] = group_state.members_mut(&["alice", "bob"]);
+
+    // Alice updates her leaf node
+    let alice_commit = alice_group_state
+        .group
+        .self_update(
+            &alice_group_state.party.core_state.provider,
+            &alice_group_state.party.signer,
+            LeafNodeParameters::default(),
+        )
+        .expect("Could not create self update");
+    alice_group_state
+        .group
+        .merge_pending_commit(&alice_group_state.party.core_state.provider)
+        .unwrap();
+    let alice_application_secret = alice_commit.application_export_secret().clone();
+
+    // Bob processes the update
+    let processed_message = bob_group_state
+        .group
+        .process_message(
+            &bob_group_state.party.core_state.provider,
+            MlsMessageIn::from(alice_commit.into_commit())
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap();
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a StagedCommitMessage");
+    };
+    let bob_application_secret = staged_commit.application_exporter().unwrap().clone();
+
+    bob_group_state
+        .group
+        .merge_staged_commit(&bob_group_state.party.core_state.provider, *staged_commit)
+        .unwrap();
+
+    assert_eq!(alice_application_secret, bob_application_secret);
+
+    let alice_derived_secret = alice_application_secret
+        .derive_exported_secret(
+            ciphersuite,
+            alice_group_state.party.core_state.provider.crypto(),
+            "test",
+            &[],
+            32,
+        )
+        .unwrap();
+    let bob_derived_secret = bob_application_secret
+        .derive_exported_secret(
+            ciphersuite,
+            bob_group_state.party.core_state.provider.crypto(),
+            "test",
+            &[],
+            32,
+        )
+        .unwrap();
+    assert_eq!(alice_derived_secret, bob_derived_secret);
 }
 
 #[openmls_test]
