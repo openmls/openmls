@@ -778,11 +778,6 @@ impl ApplicationExportSecret {
         Ok(ApplicationExportSecret { secret })
     }
 
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.as_slice()
-    }
-
     /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
     /// it can be used outside of OpenMLS.
     pub fn derive_exported_secret(
