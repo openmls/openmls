@@ -31,7 +31,7 @@ pub use mls_group::{Member, *};
 pub use public_group::*;
 
 // Private
-#[cfg(feature = "fork-resolution-helpers")]
+#[cfg(feature = "fork-resolution")]
 mod fork_resolution;
 mod group_context;
 
