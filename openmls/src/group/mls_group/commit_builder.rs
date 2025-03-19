@@ -421,27 +421,27 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 // group context by updating the epoch and computing the new
                 // tree hash.
                 if let Some(new_signer) = new_signer {
-                diff.compute_path(
-                    rand,
-                    crypto,
-                    builder.group.own_leaf_index(),
-                    apply_proposals_values.exclusion_list(),
-                    &CommitType::Member,
-                    &cur_stage.leaf_node_parameters,
-                    new_signer,
-                    apply_proposals_values.extensions.clone()
-                )?
+                    diff.compute_path(
+                        rand,
+                        crypto,
+                        builder.group.own_leaf_index(),
+                        apply_proposals_values.exclusion_list(),
+                        &CommitType::Member,
+                        &cur_stage.leaf_node_parameters,
+                        new_signer,
+                        apply_proposals_values.extensions.clone()
+                    )?
                 } else {
-                diff.compute_path(
-                    rand,
-                    crypto,
-                    builder.group.own_leaf_index(),
-                    apply_proposals_values.exclusion_list(),
-                    &CommitType::Member,
-                    &cur_stage.leaf_node_parameters,
-                    old_signer,
-                    apply_proposals_values.extensions.clone()
-                )?
+                    diff.compute_path(
+                        rand,
+                        crypto,
+                        builder.group.own_leaf_index(),
+                        apply_proposals_values.exclusion_list(),
+                        &CommitType::Member,
+                        &cur_stage.leaf_node_parameters,
+                        old_signer,
+                        apply_proposals_values.extensions.clone()
+                    )?
                 }
             } else {
                 // If path is not needed, update the group context and return
