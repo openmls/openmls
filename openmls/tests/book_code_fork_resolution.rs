@@ -1,4 +1,4 @@
-#![cfg(feature = "fork-resolution-helpers")]
+#![cfg(feature = "fork-resolution")]
 
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
@@ -141,7 +141,7 @@ fn book_example_readd() {
             .into_group(charlie_provider)
             .unwrap();
 
-    // We shoulkd be forked now, double-check
+    // We should be forked now, double-check
     // Alice and Charlie are on the same state
     assert_eq!(
         alice_group.confirmation_tag(),

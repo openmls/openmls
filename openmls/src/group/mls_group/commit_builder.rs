@@ -151,7 +151,7 @@ impl<'a, T> CommitBuilder<'a, T> {
         (aux, CommitBuilder { group, stage })
     }
 
-    #[cfg(feature = "fork-resolution-helpers")]
+    #[cfg(feature = "fork-resolution")]
     pub(crate) fn stage(&self) -> &T {
         &self.stage
     }

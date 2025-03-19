@@ -37,7 +37,7 @@ impl MlsGroup {
         // Fail if there is a leaf node index that is not a member
         let own_partition = own_partition.ok_or(ReAddError::InvalidLeafNodeIndex)?;
 
-        // Compute the complement parition, i.e. the list of members that are not in our partition
+        // Compute the complement partition, i.e. the list of members that are not in our partition
         let complement_partition = complement(&own_partition, self.members()).collect();
 
         let stage = ReAddExpectKeyPackages {
