@@ -22,7 +22,7 @@ use crate::{
     prelude::{LeafNodeParameters, LibraryError},
     schedule::{
         psk::{load_psks, PskSecret},
-        JoinerSecret, KeySchedule, PreSharedKeyId,
+        ApplicationExportSecret, JoinerSecret, KeySchedule, PreSharedKeyId,
     },
     storage::{OpenMlsProvider, StorageProvider},
     versions::ProtocolVersion,
@@ -504,7 +504,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         key_schedule
             .add_context(crypto, &serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
-        let provisional_epoch_secrets = key_schedule
+        let (provisional_epoch_secrets, application_exporter) = key_schedule
             .epoch_secrets(crypto, builder.group.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
@@ -635,6 +635,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 welcome_option,
                 staged_commit,
                 group_info: group_info.filter(|_| use_ratchet_tree_extension),
+                application_exporter,
             },
         }))
     }
@@ -684,6 +685,7 @@ impl CommitBuilder<'_, Complete> {
             commit: mls_message,
             welcome: create_commit_result.welcome_option,
             group_info: create_commit_result.group_info,
+            application_export_secret: create_commit_result.application_exporter,
         })
     }
 }
@@ -696,6 +698,7 @@ pub struct CommitMessageBundle {
     commit: MlsMessageOut,
     welcome: Option<Welcome>,
     group_info: Option<GroupInfo>,
+    application_export_secret: ApplicationExportSecret,
 }
 
 #[cfg(test)]
@@ -705,12 +708,14 @@ impl CommitMessageBundle {
         commit: MlsMessageOut,
         welcome: Option<Welcome>,
         group_info: Option<GroupInfo>,
+        application_export_secret: ApplicationExportSecret,
     ) -> Self {
         Self {
             version,
             commit,
             welcome,
             group_info,
+            application_export_secret,
         }
     }
 }
@@ -718,18 +723,23 @@ impl CommitMessageBundle {
 impl CommitMessageBundle {
     // borrowed getters
 
-    /// Gets a the Commit messsage. For owned version, see [`Self::into_commit`].
+    /// Gets the Commit messsage. For owned version, see [`Self::into_commit`].
     pub fn commit(&self) -> &MlsMessageOut {
         &self.commit
     }
 
-    /// Gets a the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+    /// Gets the [`ApplicationExportSecret`].
+    pub fn application_export_secret(&self) -> &ApplicationExportSecret {
+        &self.application_export_secret
+    }
+
+    /// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
     /// For owned version, see [`Self::into_welcome`].
     pub fn welcome(&self) -> Option<&Welcome> {
         self.welcome.as_ref()
     }
 
-    /// Gets a the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+    /// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
     /// Performs a copy of the Welcome. For owned version, see [`Self::into_welcome_msg`].
     pub fn to_welcome_msg(&self) -> Option<MlsMessageOut> {
         self.welcome
@@ -737,7 +747,7 @@ impl CommitMessageBundle {
             .map(|welcome| MlsMessageOut::from_welcome(welcome.clone(), self.version))
     }
 
-    /// Gets a the GroupInfo message. Only [`Some`] if new clients have been added or the group
+    /// Gets the GroupInfo message. Only [`Some`] if new clients have been added or the group
     /// configuration has `use_ratchet_tree_extension` set.
     /// For owned version, see [`Self::into_group_info`].
     pub fn group_info(&self) -> Option<&GroupInfo> {
@@ -755,27 +765,27 @@ impl CommitMessageBundle {
     }
 
     // owned getters
-    /// Gets a the Commit messsage. This method consumes the [`CommitMessageBundle`]. For a borrowed
+    /// Gets the Commit messsage. This method consumes the [`CommitMessageBundle`]. For a borrowed
     /// version see [`Self::commit`].
     pub fn into_commit(self) -> MlsMessageOut {
         self.commit
     }
 
-    /// Gets a the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+    /// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
     /// This method consumes the [`CommitMessageBundle`]. For a borrowed version see
     /// [`Self::welcome`].
     pub fn into_welcome(self) -> Option<Welcome> {
         self.welcome
     }
 
-    /// Gets a the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+    /// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
     /// For a borrowed version, see [`Self::to_welcome_msg`].
     pub fn into_welcome_msg(self) -> Option<MlsMessageOut> {
         self.welcome
             .map(|welcome| MlsMessageOut::from_welcome(welcome, self.version))
     }
 
-    /// Gets a the GroupInfo message. Only [`Some`] if new clients have been added or the group
+    /// Gets the GroupInfo message. Only [`Some`] if new clients have been added or the group
     /// configuration has `use_ratchet_tree_extension` set.
     /// This method consumes the [`CommitMessageBundle`]. For a borrowed version see
     /// [`Self::group_info`].
@@ -783,7 +793,7 @@ impl CommitMessageBundle {
         self.group_info
     }
 
-    /// Gets a the GroupInfo messsage. Only [`Some`] if new clients have been added in the commit.
+    /// Gets the GroupInfo messsage. Only [`Some`] if new clients have been added in the commit.
     pub fn into_group_info_msg(self) -> Option<MlsMessageOut> {
         self.group_info.map(|group_info| group_info.into())
     }

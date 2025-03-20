@@ -272,6 +272,8 @@ impl MlsGroup {
                 let authenticated_data = content.authenticated_data().to_owned();
                 let epoch = content.epoch();
 
+                let mut application_exporter_option = None;
+
                 let content = match content.content() {
                     FramedContentBody::Application(application_message) => {
                         ProcessedMessageContent::ApplicationMessage(ApplicationMessage::new(
@@ -292,12 +294,13 @@ impl MlsGroup {
                         }
                     }
                     FramedContentBody::Commit(_) => {
-                        let staged_commit = self.stage_commit(
+                        let (staged_commit, application_exporter) = self.stage_commit(
                             &content,
                             old_epoch_keypairs,
                             leaf_node_keypairs,
                             provider,
                         )?;
+                        application_exporter_option = application_exporter;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                 };
@@ -309,6 +312,7 @@ impl MlsGroup {
                     authenticated_data,
                     content,
                     credential,
+                    application_exporter_option,
                 ))
             }
             Sender::External(_) => {
@@ -333,6 +337,7 @@ impl MlsGroup {
                             data,
                             content,
                             credential,
+                            None,
                         ))
                     }
                     // TODO #151/#106
