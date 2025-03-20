@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/updates.rs`."><title>updates.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../static.files/storage-59e33391.js"></script><script defer src="../../../../static.files/src-script-56102188.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>updates.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/updates.rs`."><title>updates.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.1 (4eb161250 2025-03-15)" data-channel="1.85.1" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../static.files/storage-59e33391.js"></script><script defer src="../../../../static.files/src-script-56102188.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>updates.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
 <a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
@@ -113,7 +113,51 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a></pre></div><pre class="rust"><code><span class="kw">use </span>commit_builder::CommitMessageBundle;
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a></pre></div><pre class="rust"><code><span class="kw">use </span>commit_builder::CommitMessageBundle;
 <span class="kw">use </span>errors::{ProposeSelfUpdateError, SelfUpdateError};
 <span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>};
 
@@ -135,8 +179,6 @@
     /// Returns an error if there is a pending commit.
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    </span><span class="comment">// FIXME: #1217
-    </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>self_update&lt;Provider: OpenMlsProvider&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         provider: <span class="kw-2">&amp;</span>Provider,
@@ -151,6 +193,52 @@
             .consume_proposal_store(<span class="bool-val">true</span>)
             .load_psks(provider.storage())<span class="question-mark">?
             </span>.build(provider.rand(), provider.crypto(), signer, |<span class="kw">_</span>| <span class="bool-val">true</span>)<span class="question-mark">?
+            </span>.stage_commit(provider)<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.reset_aad();
+
+        <span class="prelude-val">Ok</span>(bundle)
+    }
+
+    <span class="doccomment">/// Updates the own leaf node. The application can choose to update the
+    /// credential, the capabilities, and the extensions by buliding the
+    /// [`LeafNodeParameters`].
+    ///
+    /// In contrast to `self_update`, this function allows updating the
+    /// signature public key in the senders leaf node. Note that `new_signer`
+    /// MUST be the private key corresponding to the public key set in the
+    /// `leaf_node_parameters`.
+    ///
+    /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
+    /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and
+    /// the [GroupInfo]. The [`Welcome`] is [Some] when the queue of pending
+    /// proposals contained add proposals The [GroupInfo] is [Some] if the group
+    /// has the `use_ratchet_tree_extension` flag set.
+    ///
+    /// Returns an error if there is a pending commit.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
+    </span><span class="kw">pub fn </span>self_update_with_new_signer&lt;Provider: OpenMlsProvider&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        provider: <span class="kw-2">&amp;</span>Provider,
+        old_signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+        new_signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+        leaf_node_parameters: LeafNodeParameters,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;CommitMessageBundle, SelfUpdateError&lt;Provider::StorageError&gt;&gt; {
+        <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>bundle = <span class="self">self
+            </span>.commit_builder()
+            .leaf_node_parameters(leaf_node_parameters)
+            .consume_proposal_store(<span class="bool-val">true</span>)
+            .load_psks(provider.storage())<span class="question-mark">?
+            </span>.build_with_new_signer(
+                provider.rand(),
+                provider.crypto(),
+                old_signer,
+                new_signer,
+                |<span class="kw">_</span>| <span class="bool-val">true</span>,
+            )<span class="question-mark">?
             </span>.stage_commit(provider)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.reset_aad();
