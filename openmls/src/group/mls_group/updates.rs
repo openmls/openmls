@@ -20,8 +20,6 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    // FIXME: #1217
-    #[allow(clippy::type_complexity)]
     pub fn self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -36,6 +34,52 @@ impl MlsGroup {
             .consume_proposal_store(true)
             .load_psks(provider.storage())?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .stage_commit(provider)?;
+
+        self.reset_aad();
+
+        Ok(bundle)
+    }
+
+    /// Updates the own leaf node. The application can choose to update the
+    /// credential, the capabilities, and the extensions by buliding the
+    /// [`LeafNodeParameters`].
+    ///
+    /// In contrast to `self_update`, this function allows updating the
+    /// signature public key in the senders leaf node. Note that `new_signer`
+    /// MUST be the private key corresponding to the public key set in the
+    /// `leaf_node_parameters`.
+    ///
+    /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
+    /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and
+    /// the [GroupInfo]. The [`Welcome`] is [Some] when the queue of pending
+    /// proposals contained add proposals The [GroupInfo] is [Some] if the group
+    /// has the `use_ratchet_tree_extension` flag set.
+    ///
+    /// Returns an error if there is a pending commit.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
+    pub fn self_update_with_new_signer<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        old_signer: &impl Signer,
+        new_signer: &impl Signer,
+        leaf_node_parameters: LeafNodeParameters,
+    ) -> Result<CommitMessageBundle, SelfUpdateError<Provider::StorageError>> {
+        self.is_operational()?;
+
+        let bundle = self
+            .commit_builder()
+            .leaf_node_parameters(leaf_node_parameters)
+            .consume_proposal_store(true)
+            .load_psks(provider.storage())?
+            .build_with_new_signer(
+                provider.rand(),
+                provider.crypto(),
+                old_signer,
+                new_signer,
+                |_| true,
+            )?
             .stage_commit(provider)?;
 
         self.reset_aad();
