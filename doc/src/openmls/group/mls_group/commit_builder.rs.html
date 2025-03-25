@@ -827,7 +827,24 @@
 <a href="#826" id="826">826</a>
 <a href="#827" id="827">827</a>
 <a href="#828" id="828">828</a>
-<a href="#829" id="829">829</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the commit builder types, which can be used to build regular (i.e.
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a></pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the commit builder types, which can be used to build regular (i.e.
 //! non-external) commits. See the documentation of [`CommitBuilder`] for more information.
 
 </span><span class="kw">use </span>openmls_traits::{
@@ -873,6 +890,17 @@
     <span class="doccomment">/// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     </span>consume_proposal_store: bool,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>Initial {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        Initial {
+            consume_proposal_store: <span class="bool-val">true</span>,
+            force_self_update: <span class="bool-val">false</span>,
+            leaf_node_parameters: LeafNodeParameters::default(),
+            own_proposals: <span class="macro">vec!</span>[],
+        }
+    }
 }
 
 <span class="doccomment">/// This stage is after the PSKs were loaded, ready for validation
@@ -940,19 +968,25 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T&gt; CommitBuilder&lt;<span class="lifetime">'a</span>, T&gt; {
-    <span class="kw">fn </span>replace_stage&lt;NextStage&gt;(<span class="self">self</span>, next_stage: NextStage) -&gt; (T, CommitBuilder&lt;<span class="lifetime">'a</span>, NextStage&gt;) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>replace_stage&lt;NextStage&gt;(
+        <span class="self">self</span>,
+        next_stage: NextStage,
+    ) -&gt; (T, CommitBuilder&lt;<span class="lifetime">'a</span>, NextStage&gt;) {
         <span class="self">self</span>.map_stage(|prev_stage| (prev_stage, next_stage))
     }
 
-    <span class="kw">fn </span>into_stage&lt;NextStage&gt;(<span class="self">self</span>, next_stage: NextStage) -&gt; CommitBuilder&lt;<span class="lifetime">'a</span>, NextStage&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_stage&lt;NextStage&gt;(
+        <span class="self">self</span>,
+        next_stage: NextStage,
+    ) -&gt; CommitBuilder&lt;<span class="lifetime">'a</span>, NextStage&gt; {
         <span class="self">self</span>.replace_stage(next_stage).<span class="number">1
     </span>}
 
-    <span class="kw">fn </span>take_stage(<span class="self">self</span>) -&gt; (T, CommitBuilder&lt;<span class="lifetime">'a</span>, ()&gt;) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_stage(<span class="self">self</span>) -&gt; (T, CommitBuilder&lt;<span class="lifetime">'a</span>, ()&gt;) {
         <span class="self">self</span>.replace_stage(())
     }
 
-    <span class="kw">fn </span>map_stage&lt;NextStage, Aux, F: FnOnce(T) -&gt; (Aux, NextStage)&gt;(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>map_stage&lt;NextStage, Aux, F: FnOnce(T) -&gt; (Aux, NextStage)&gt;(
         <span class="self">self</span>,
         f: F,
     ) -&gt; (Aux, CommitBuilder&lt;<span class="lifetime">'a</span>, NextStage&gt;) {
@@ -961,6 +995,11 @@
         <span class="kw">let </span>(aux, stage) = f(stage);
 
         (aux, CommitBuilder { group, stage })
+    }
+
+    <span class="attr">#[cfg(feature = <span class="string">"fork-resolution"</span>)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.stage
     }
 }
 
@@ -976,12 +1015,7 @@
     </span><span class="kw">pub fn </span>new(group: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>MlsGroup) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             group,
-            stage: Initial {
-                consume_proposal_store: <span class="bool-val">true</span>,
-                force_self_update: <span class="bool-val">false</span>,
-                leaf_node_parameters: LeafNodeParameters::default(),
-                own_proposals: <span class="macro">vec!</span>[],
-            },
+            stage: Initial::default(),
         }
     }
 

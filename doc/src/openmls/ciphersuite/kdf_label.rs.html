@@ -78,7 +78,7 @@
         label: String,
         length: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, CryptoError&gt; {
-        <span class="kw">if </span>length &gt; u16::MAX.into() {
+        <span class="kw">if </span>length &gt; u16::MAX <span class="kw">as </span>usize {
             <span class="macro">debug_assert!</span>(
                 <span class="bool-val">false</span>,
                 <span class="string">"Library error: Trying to derive a key with a too large length field!"

@@ -148,7 +148,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ExportSecretError&gt; {
         <span class="kw">let </span>crypto = provider.crypto();
 
-        <span class="kw">if </span>key_length &gt; u16::MAX.into() {
+        <span class="kw">if </span>key_length &gt; u16::MAX <span class="kw">as </span>usize {
             <span class="macro">log::error!</span>(<span class="string">"Got a key that is larger than u16::MAX"</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExportSecretError::KeyLengthTooLong);
         }

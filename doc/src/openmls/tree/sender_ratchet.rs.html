@@ -309,7 +309,7 @@
 /// - maximum_forward_distance:
 ///   This parameter defines how many incoming messages can be skipped. This is useful if the DS
 ///   drops application messages. The default value is 1000.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>SenderRatchetConfiguration {
     out_of_order_tolerance: Generation,
     maximum_forward_distance: Generation,

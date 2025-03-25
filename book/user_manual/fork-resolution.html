@@ -1,0 +1,598 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Fork Resolution - OpenMLS Book</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">OpenMLS Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="fork-resolution"><a class="header" href="#fork-resolution">Fork Resolution</a></h1>
+<p>If members of a group merge different commits, the group state is called forked.
+At this point, the group members have different keys and will not be able to decrypt
+each others' messages. While this should not happen in normal operation, it may
+still occur due to bugs. When enabling the <code>fork-resolution-helpers</code> feature,
+OpenMLS comes with helpers to get a working group again. There are two helpers,
+and they use different mechanisms.</p>
+<p>The <code>readd</code> helper removes and then re-adds members that are forked. This requires
+that the caller knows the set of members that are forked. It is relatively
+efficient, especially if only a small number of members forked.</p>
+<p>The <code>reboot</code> helper creates a new group and helps with migrating the entire group
+state over. This includes extensions in the group context, as well as re-inviting
+all the members.</p>
+<p>We provide examples for how to use both, and in the end provide some guidance on
+detecting forks.</p>
+<h2 id="readd-example"><a class="header" href="#readd-example"><code>readd</code> Example</a></h2>
+<p>First, let's create a forked group. In this example, Alice creates a group and
+adds Bob. Then, they both merge different commits to add Charlie.</p>
+<pre><code class="language-rust no_run noplayground">    // Alice creates a group
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &amp;alice_signature_keys,
+        &amp;mls_group_create_config,
+        alice_credential.clone(),
+    )
+    .unwrap();
+
+    // Alice adds Bob and merges the commit
+    let add_bob_messages = alice_group
+        .commit_builder()
+        .propose_adds(vec![bob_kpb.key_package().clone()])
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    // Bob joins from the welcome
+    let welcome = add_bob_messages.into_welcome().unwrap();
+    let mut bob_group =
+        StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome.clone(), None)
+            .unwrap()
+            .into_group(bob_provider)
+            .unwrap();
+
+    // Now Alice and Bob both add Charlie and merge their own commit.
+    // This forks the group.
+    let charlie_kpb = generate_key_package(
+        ciphersuite,
+        charlie_credential,
+        Extensions::empty(),
+        charlie_provider,
+        &amp;charlie_signature_keys,
+    );
+
+    let add_charlie_messages = alice_group
+        .commit_builder()
+        .propose_adds(vec![charlie_kpb.key_package().clone()])
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    bob_group
+        .commit_builder()
+        .propose_adds(vec![charlie_kpb.key_package().clone()])
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &amp;bob_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(bob_provider)
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    bob_group.merge_pending_commit(bob_provider).unwrap();
+
+    // Charlie joins using Alice's invite
+    let welcome = add_charlie_messages.into_welcome().unwrap();
+    let mut charlie_group =
+        StagedWelcome::new_from_welcome(charlie_provider, mls_group_config, welcome, None)
+            .unwrap()
+            .into_group(charlie_provider)
+            .unwrap();
+
+    // We should be forked now, double-check
+    // Alice and Charlie are on the same state
+    assert_eq!(
+        alice_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );
+    // But Bob is different from the other two
+    assert_ne!(bob_group.confirmation_tag(), alice_group.confirmation_tag());
+    assert_ne!(
+        bob_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );
+</code></pre>
+<p>Then, Alice removes and re-adds Bob using the helper.
+We assume here that Alice knows that only Bob merged the wrong commit. This
+information needs to be transferred somehow, see <a href="#fork-detection">Fork Detection</a>.
+Notice how Alice needs to provide a new key package for Bob.</p>
+<pre><code class="language-rust no_run noplayground">    // Let Alice re-add the members of the other partition (i.e. Bob)
+    let bob_new_kpb = generate_key_package(
+        ciphersuite,
+        bob_credential,
+        Extensions::empty(),
+        bob_provider,
+        &amp;bob_signature_keys,
+    );
+
+    // Alice and Charlie are in the same partition
+    let our_partition = &amp;[alice_group.own_leaf_index(), charlie_group.own_leaf_index()];
+    let builder = alice_group.recover_fork_by_readding(our_partition).unwrap();
+
+    // Here we iterate over the members of the complement partition to get their key packages.
+    // In this example this is trivial, but the pattern extends to more realistic scenarios.
+    let readded_key_packages = builder
+        .complement_partition()
+        .iter()
+        .map(|member| {
+            let basic_credential = BasicCredential::try_from(member.credential.clone()).unwrap();
+            match basic_credential.identity() {
+                b"Bob" =&gt; bob_new_kpb.key_package().clone(),
+                other =&gt; panic!(
+                    "we only expect bob to be re-added, but found {:?}",
+                    String::from_utf8(other.to_vec()).unwrap()
+                ),
+            }
+        })
+        .collect();
+
+    // Specify the key packages to be re-added and create the commit
+    let readd_messages = builder
+        .provide_key_packages(readded_key_packages)
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    // Make Bob re-join the group and Alice and Charlie merge the commit that adds Bob.
+    let (commit, welcome, _) = readd_messages.into_contents();
+    let welcome = welcome.unwrap();
+    let bob_group = StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome, None)
+        .unwrap()
+        .into_group(bob_provider)
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) = charlie_group
+        .process_message(charlie_provider, commit.into_protocol_message().unwrap())
+        .unwrap()
+        .into_content()
+    {
+        charlie_group
+            .merge_staged_commit(charlie_provider, *staged_commit)
+            .unwrap()
+    } else {
+        panic!("expected a commit")
+    }
+
+    // The fork should be fixed now, double-check
+    assert_eq!(alice_group.confirmation_tag(), bob_group.confirmation_tag());
+    assert_eq!(
+        alice_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );
+    assert_eq!(
+        charlie_group.confirmation_tag(),
+        bob_group.confirmation_tag()
+    );</code></pre>
+<p>In the end, they all can communicate again.</p>
+<h2 id="reboot-example"><a class="header" href="#reboot-example"><code>reboot</code> Example</a></h2>
+<p>Again, let's create a forked group. In this example, Alice creates a group and
+adds Bob. Then, they both merge different commits to add Charlie.</p>
+<pre><code class="language-rust no_run noplayground">    // Alice creates a group
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &amp;alice_signature_keys,
+        &amp;mls_group_create_config,
+        alice_credential.clone(),
+    )
+    .unwrap();
+
+    // Alice adds Bob and merges the commit
+    let add_bob_messages = alice_group
+        .commit_builder()
+        .propose_adds(vec![bob_kpb.key_package().clone()])
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    // Bob joins from the welcome
+    let welcome = add_bob_messages.into_welcome().unwrap();
+    let mut bob_group =
+        StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome, None)
+            .unwrap()
+            .into_group(bob_provider)
+            .unwrap();
+
+    // Now Alice and Bob both add Charlie and merge their own commit.
+    // This forks the group.
+    let charlie_kpb = generate_key_package(
+        ciphersuite,
+        charlie_credential.clone(),
+        Extensions::empty(),
+        charlie_provider,
+        &amp;charlie_signature_keys,
+    );
+
+    let add_charlie_messages = alice_group
+        .commit_builder()
+        .propose_adds(vec![charlie_kpb.key_package().clone()])
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    bob_group
+        .commit_builder()
+        .propose_adds(vec![charlie_kpb.key_package().clone()])
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &amp;bob_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(bob_provider)
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    bob_group.merge_pending_commit(bob_provider).unwrap();
+
+    // Charlie joins using Alice's invite
+    let welcome = add_charlie_messages.into_welcome().unwrap();
+    let charlie_group =
+        StagedWelcome::new_from_welcome(charlie_provider, mls_group_config, welcome, None)
+            .unwrap()
+            .into_group(charlie_provider)
+            .unwrap();
+
+    // We shoulkd be forked now, double-check
+    // Alice and Charlie are on the same state
+    assert_eq!(
+        alice_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );
+    // But Bob is different from the other two
+    assert_ne!(bob_group.confirmation_tag(), alice_group.confirmation_tag());
+    assert_ne!(
+        bob_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );</code></pre>
+<p>Then, Alice sets up a new group and adds everyone from the old group. In this
+approach, she not only needs to provide key packages for all members, but also
+set a new group id and migrate the group context extensions, because these might
+be contain e.g. the old group id. This is the responsibility of the application,
+so the API just exposes the old extensions and expects the new ones.</p>
+<pre><code class="language-rust no_run noplayground">    // Let Alice reboot the group. For that she needs new key packages for Bob and Charlie, a;s
+    // well as a new group ID.
+    let bob_new_kpb = generate_key_package(
+        ciphersuite,
+        bob_credential,
+        Extensions::empty(),
+        bob_provider,
+        &amp;bob_signature_keys,
+    );
+
+    let charlie_new_kpb = generate_key_package(
+        ciphersuite,
+        charlie_credential,
+        Extensions::empty(),
+        charlie_provider,
+        &amp;charlie_signature_keys,
+    );
+
+    let new_group_id: GroupId = GroupId::from_slice(
+        alice_group
+            .group_id()
+            .as_slice()
+            .iter()
+            .copied()
+            .chain(b"-new".iter().copied())
+            .collect::&lt;Vec&lt;_&gt;&gt;()
+            .as_slice(),
+    );
+
+    let (mut alice_group, reboot_messages) = alice_group
+        .reboot(new_group_id)
+        .finish(
+            Extensions::empty(),
+            vec![
+                bob_new_kpb.key_package().clone(),
+                charlie_new_kpb.key_package().clone(),
+            ],
+            // We can use this closure to add more proposals to the commit builder that is used to
+            // create the commit that readds all the other members, but in this case we will leave
+            // it as-is.
+            |builder| builder,
+            alice_provider,
+            &amp;alice_signature_keys,
+            alice_credential,
+        )
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    // Bob and Charlie join the new group
+    let welcome = reboot_messages.into_welcome().unwrap();
+    let bob_group =
+        StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome.clone(), None)
+            .unwrap()
+            .into_group(bob_provider)
+            .unwrap();
+    assert_eq!(bob_group.own_leaf_index(), LeafNodeIndex::new(1));
+
+    let charlie_group =
+        StagedWelcome::new_from_welcome(charlie_provider, mls_group_config, welcome, None)
+            .unwrap()
+            .into_group(charlie_provider)
+            .unwrap();
+    assert_eq!(charlie_group.own_leaf_index(), LeafNodeIndex::new(2));
+
+    // The fork should be fixed now, double-check
+    assert_eq!(alice_group.confirmation_tag(), bob_group.confirmation_tag());
+    assert_eq!(
+        alice_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );
+    assert_eq!(
+        bob_group.confirmation_tag(),
+        charlie_group.confirmation_tag()
+    );</code></pre>
+<p>In the end, they all can communicate again.</p>
+<h2 id="fork-detection"><a class="header" href="#fork-detection">Fork Detection</a></h2>
+<p>Before initiating fork resolution, we first need to detect that a fork happened.
+In addition, for using the <code>readd</code> mechanism, we also need to know the members
+that forked.</p>
+<p>One simple technique that may work, depending on how the delivery service works,
+is to consider all incoming non-decryptable messages as a sign that there is a fork.
+However, this may lead to false positives and is not enough to know the membership.</p>
+<p>One way to learn about this that every member send a message when they merges a
+commit, encrypted for the old epoch, that contains the hash of the commit they are
+merging. This way, all group members know which commits are merged, and the <code>readd</code>
+strategy can be used to resolve possible forks.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../user_manual/wasm.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../traits/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../user_manual/wasm.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../traits/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
