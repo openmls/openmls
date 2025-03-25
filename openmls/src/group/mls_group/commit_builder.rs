@@ -46,6 +46,17 @@ pub struct Initial {
     consume_proposal_store: bool,
 }
 
+impl Default for Initial {
+    fn default() -> Self {
+        Initial {
+            consume_proposal_store: true,
+            force_self_update: false,
+            leaf_node_parameters: LeafNodeParameters::default(),
+            own_proposals: vec![],
+        }
+    }
+}
+
 /// This stage is after the PSKs were loaded, ready for validation
 pub struct LoadedPsks {
     own_proposals: Vec<Proposal>,
@@ -111,19 +122,25 @@ pub struct CommitBuilder<'a, T> {
 }
 
 impl<'a, T> CommitBuilder<'a, T> {
-    fn replace_stage<NextStage>(self, next_stage: NextStage) -> (T, CommitBuilder<'a, NextStage>) {
+    pub(crate) fn replace_stage<NextStage>(
+        self,
+        next_stage: NextStage,
+    ) -> (T, CommitBuilder<'a, NextStage>) {
         self.map_stage(|prev_stage| (prev_stage, next_stage))
     }
 
-    fn into_stage<NextStage>(self, next_stage: NextStage) -> CommitBuilder<'a, NextStage> {
+    pub(crate) fn into_stage<NextStage>(
+        self,
+        next_stage: NextStage,
+    ) -> CommitBuilder<'a, NextStage> {
         self.replace_stage(next_stage).1
     }
 
-    fn take_stage(self) -> (T, CommitBuilder<'a, ()>) {
+    pub(crate) fn take_stage(self) -> (T, CommitBuilder<'a, ()>) {
         self.replace_stage(())
     }
 
-    fn map_stage<NextStage, Aux, F: FnOnce(T) -> (Aux, NextStage)>(
+    pub(crate) fn map_stage<NextStage, Aux, F: FnOnce(T) -> (Aux, NextStage)>(
         self,
         f: F,
     ) -> (Aux, CommitBuilder<'a, NextStage>) {
@@ -132,6 +149,11 @@ impl<'a, T> CommitBuilder<'a, T> {
         let (aux, stage) = f(stage);
 
         (aux, CommitBuilder { group, stage })
+    }
+
+    #[cfg(feature = "fork-resolution")]
+    pub(crate) fn stage(&self) -> &T {
+        &self.stage
     }
 }
 
@@ -147,12 +169,7 @@ impl<'a> CommitBuilder<'a, Initial> {
     pub fn new(group: &'a mut MlsGroup) -> Self {
         Self {
             group,
-            stage: Initial {
-                consume_proposal_store: true,
-                force_self_update: false,
-                leaf_node_parameters: LeafNodeParameters::default(),
-                own_proposals: vec![],
-            },
+            stage: Initial::default(),
         }
     }
 

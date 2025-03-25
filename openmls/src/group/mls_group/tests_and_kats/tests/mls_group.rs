@@ -1235,7 +1235,7 @@ fn builder_pattern() {
     let alice_group = MlsGroup::builder()
         .with_group_id(test_group_id.clone())
         .padding_size(test_padding_size)
-        .sender_ratchet_configuration(test_sender_ratchet_config.clone())
+        .sender_ratchet_configuration(test_sender_ratchet_config)
         .with_group_context_extensions(test_gc_extensions.clone())
         .expect("error adding group context extension to builder")
         .ciphersuite(test_ciphersuite)
@@ -2254,13 +2254,15 @@ fn failed_groupinfo_decryption(
 #[openmls_test::openmls_test]
 fn update_path() {
     // === Alice creates a group with her and Bob ===
+    // TODO: don't let alice and bob share the provider
     let (
         mut group_alice,
         _alice_signature_keys,
         mut group_bob,
         bob_signature_keys,
+        _alice_credential_with_key,
         _bob_credential_with_key,
-    ) = setup_alice_bob_group(ciphersuite, provider);
+    ) = setup_alice_bob_group(ciphersuite, provider, provider);
 
     // === Bob updates and commits ===
     let mut bob_new_leaf_node = group_bob.own_leaf_node().unwrap().clone();
