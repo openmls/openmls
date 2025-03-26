@@ -173,7 +173,7 @@ impl PublicGroupDiff<'_> {
             .any(|p| p.proposal().is_path_required());
 
         // This flag determines if the commit requires a path. A path is required if:
-        // * none of the proposals require a path
+        // * at least one proposal requires a path
         // * (or) it is an external commit
         // * (or) the commit is empty which implicitly means it's a self-update
         let path_required = proposals_require_path
