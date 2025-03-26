@@ -252,7 +252,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         .unwrap();
 
     let (_group_epoch_secrets, message_secrets) = {
-        let epoch_secrets = key_schedule
+        let (epoch_secrets, _) = key_schedule
             .epoch_secrets(provider.crypto(), welcome.ciphersuite())
             .unwrap();
 

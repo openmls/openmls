@@ -258,7 +258,7 @@ impl MlsGroup {
         key_schedule
             .add_context(provider.crypto(), &serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
-        let provisional_epoch_secrets = key_schedule
+        let (provisional_epoch_secrets, application_exporter) = key_schedule
             .epoch_secrets(provider.crypto(), self.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
@@ -383,6 +383,7 @@ impl MlsGroup {
             welcome_option,
             staged_commit,
             group_info: group_info.filter(|_| self.configuration().use_ratchet_tree_extension),
+            application_exporter,
         })
     }
 }

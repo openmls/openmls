@@ -273,6 +273,7 @@ pub struct ProcessedMessage {
     authenticated_data: Vec<u8>,
     content: ProcessedMessageContent,
     credential: Credential,
+    application_exporter: Option<ApplicationExportSecret>,
 }
 
 impl ProcessedMessage {
@@ -284,6 +285,7 @@ impl ProcessedMessage {
         authenticated_data: Vec<u8>,
         content: ProcessedMessageContent,
         credential: Credential,
+        application_exporter: Option<ApplicationExportSecret>,
     ) -> Self {
         Self {
             group_id,
@@ -292,6 +294,7 @@ impl ProcessedMessage {
             authenticated_data,
             content,
             credential,
+            application_exporter,
         }
     }
 
@@ -328,6 +331,12 @@ impl ProcessedMessage {
     /// Returns the credential of the message.
     pub fn credential(&self) -> &Credential {
         &self.credential
+    }
+
+    /// Returns the [`ApplicationExportSecret`] if the message was a commit and
+    /// the processing party is a member of the group. Returns `None` otherwise.
+    pub fn application_exporter(&self) -> Option<&ApplicationExportSecret> {
+        self.application_exporter.as_ref()
     }
 }
 
