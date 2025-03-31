@@ -46,6 +46,17 @@ pub struct Initial {
     consume_proposal_store: bool,
 }
 
+impl Default for Initial {
+    fn default() -> Self {
+        Initial {
+            consume_proposal_store: true,
+            force_self_update: false,
+            leaf_node_parameters: LeafNodeParameters::default(),
+            own_proposals: vec![],
+        }
+    }
+}
+
 /// This stage is after the PSKs were loaded, ready for validation
 pub struct LoadedPsks {
     own_proposals: Vec<Proposal>,
@@ -111,19 +122,25 @@ pub struct CommitBuilder<'a, T> {
 }
 
 impl<'a, T> CommitBuilder<'a, T> {
-    fn replace_stage<NextStage>(self, next_stage: NextStage) -> (T, CommitBuilder<'a, NextStage>) {
+    pub(crate) fn replace_stage<NextStage>(
+        self,
+        next_stage: NextStage,
+    ) -> (T, CommitBuilder<'a, NextStage>) {
         self.map_stage(|prev_stage| (prev_stage, next_stage))
     }
 
-    fn into_stage<NextStage>(self, next_stage: NextStage) -> CommitBuilder<'a, NextStage> {
+    pub(crate) fn into_stage<NextStage>(
+        self,
+        next_stage: NextStage,
+    ) -> CommitBuilder<'a, NextStage> {
         self.replace_stage(next_stage).1
     }
 
-    fn take_stage(self) -> (T, CommitBuilder<'a, ()>) {
+    pub(crate) fn take_stage(self) -> (T, CommitBuilder<'a, ()>) {
         self.replace_stage(())
     }
 
-    fn map_stage<NextStage, Aux, F: FnOnce(T) -> (Aux, NextStage)>(
+    pub(crate) fn map_stage<NextStage, Aux, F: FnOnce(T) -> (Aux, NextStage)>(
         self,
         f: F,
     ) -> (Aux, CommitBuilder<'a, NextStage>) {
@@ -132,6 +149,11 @@ impl<'a, T> CommitBuilder<'a, T> {
         let (aux, stage) = f(stage);
 
         (aux, CommitBuilder { group, stage })
+    }
+
+    #[cfg(feature = "fork-resolution")]
+    pub(crate) fn stage(&self) -> &T {
+        &self.stage
     }
 }
 
@@ -147,12 +169,7 @@ impl<'a> CommitBuilder<'a, Initial> {
     pub fn new(group: &'a mut MlsGroup) -> Self {
         Self {
             group,
-            stage: Initial {
-                consume_proposal_store: true,
-                force_self_update: false,
-                leaf_node_parameters: LeafNodeParameters::default(),
-                own_proposals: vec![],
-            },
+            stage: Initial::default(),
         }
     }
 
@@ -265,11 +282,40 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
-    pub fn build(
+    pub fn build<S: Signer>(
         self,
         rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
-        signer: &impl Signer,
+        signer: &S,
+        f: impl FnMut(&QueuedProposal) -> bool,
+    ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
+        self.build_internal(rand, crypto, signer, None::<&S>, f)
+    }
+
+    /// Just like `build`, this function validates the inputs and builds the
+    /// commit. The last argument `f` is a function that lets the caller filter
+    /// the proposals that are considered for inclusion. This provides a way for
+    /// the application to enforce custom policies in the creation of commits.
+    ///
+    /// In contrast to `build`, this function can be used to create commits that
+    /// rotate the own leaf node's signature key.
+    pub fn build_with_new_signer(
+        self,
+        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
+        old_signer: &impl Signer,
+        new_signer: &impl Signer,
+        f: impl FnMut(&QueuedProposal) -> bool,
+    ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
+        self.build_internal(rand, crypto, old_signer, Some(new_signer), f)
+    }
+
+    fn build_internal(
+        self,
+        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
+        old_signer: &impl Signer,
+        new_signer: Option<&impl Signer>,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
         let ciphersuite = self.group.ciphersuite();
@@ -391,16 +437,29 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 // Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
                 // tree hash.
-                diff.compute_path(
-                    rand,
-                    crypto,
-                    builder.group.own_leaf_index(),
-                    apply_proposals_values.exclusion_list(),
-                    &CommitType::Member,
-                    &cur_stage.leaf_node_parameters,
-                    signer,
-                    apply_proposals_values.extensions.clone()
-                )?
+                if let Some(new_signer) = new_signer {
+                    diff.compute_path(
+                        rand,
+                        crypto,
+                        builder.group.own_leaf_index(),
+                        apply_proposals_values.exclusion_list(),
+                        &CommitType::Member,
+                        &cur_stage.leaf_node_parameters,
+                        new_signer,
+                        apply_proposals_values.extensions.clone()
+                    )?
+                } else {
+                    diff.compute_path(
+                        rand,
+                        crypto,
+                        builder.group.own_leaf_index(),
+                        apply_proposals_values.exclusion_list(),
+                        &CommitType::Member,
+                        &cur_stage.leaf_node_parameters,
+                        old_signer,
+                        apply_proposals_values.extensions.clone()
+                    )?
+                }
             } else {
                 // If path is not needed, update the group context and return
                 // empty path processing results
@@ -425,7 +484,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             sender,
             commit,
             builder.group.public_group.group_context(),
-            signer,
+            old_signer,
         )?;
 
         // Update the confirmed transcript hash using the commit we just created.
@@ -522,7 +581,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 )
             };
             // Sign to-be-signed group info.
-            Some(group_info_tbs.sign(signer)?)
+            Some(group_info_tbs.sign(old_signer)?)
         };
 
         let welcome_option = if !needs_welcome {

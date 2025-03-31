@@ -21,6 +21,7 @@ use crate::{
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     test_utils::{
         frankenstein::{FrankenFramedContentBody, FrankenPublicMessage},
+        single_group_test_framework::{AddMemberConfig, CorePartyState, GroupState},
         test_framework::{
             errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
             MlsGroupTestSetup,
@@ -1234,7 +1235,7 @@ fn builder_pattern() {
     let alice_group = MlsGroup::builder()
         .with_group_id(test_group_id.clone())
         .padding_size(test_padding_size)
-        .sender_ratchet_configuration(test_sender_ratchet_config.clone())
+        .sender_ratchet_configuration(test_sender_ratchet_config)
         .with_group_context_extensions(test_gc_extensions.clone())
         .expect("error adding group context extension to builder")
         .ciphersuite(test_ciphersuite)
@@ -2253,13 +2254,15 @@ fn failed_groupinfo_decryption(
 #[openmls_test::openmls_test]
 fn update_path() {
     // === Alice creates a group with her and Bob ===
+    // TODO: don't let alice and bob share the provider
     let (
         mut group_alice,
         _alice_signature_keys,
         mut group_bob,
         bob_signature_keys,
+        _alice_credential_with_key,
         _bob_credential_with_key,
-    ) = setup_alice_bob_group(ciphersuite, provider);
+    ) = setup_alice_bob_group(ciphersuite, provider, provider);
 
     // === Bob updates and commits ===
     let mut bob_new_leaf_node = group_bob.own_leaf_node().unwrap().clone();
@@ -2846,4 +2849,110 @@ fn proposal_application_after_self_was_removed_ref(
     let member = bob_members.next().unwrap();
     let bob_next_id = member.credential.serialized_content();
     assert_eq!(bob_next_id, b"Charlie");
+}
+
+// Test processing of own commits
+#[openmls_test::openmls_test]
+fn signature_key_rotation(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+
+    // Create config
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    // Join config
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    // Initialize the group state
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    // Generate a new signer for Alice
+    let new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
+
+    // Create a commit that updates Alice's signer
+    let [alice_group_state] = group_state.members_mut(&["alice"]);
+
+    let old_signature_key = alice_group_state
+        .party
+        .credential_with_key
+        .signature_key
+        .clone();
+    let new_signature_key = new_pre_group_state
+        .credential_with_key
+        .signature_key
+        .clone();
+    assert_ne!(old_signature_key, new_signature_key);
+
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_credential_with_key(new_pre_group_state.credential_with_key)
+        .build();
+
+    let bundle = alice_group_state
+        .group
+        .self_update_with_new_signer(
+            &alice_group_state.party.core_state.provider,
+            &alice_group_state.party.signer,
+            &new_pre_group_state.signer,
+            leaf_node_parameters,
+        )
+        .unwrap();
+
+    alice_group_state
+        .group
+        .merge_pending_commit(&alice_group_state.party.core_state.provider)
+        .unwrap();
+
+    group_state
+        .deliver_and_apply_if(bundle.into_commit().into(), |state| {
+            state.party.core_state.name != "alice"
+        })
+        .unwrap();
+
+    // Check that the signature key was rotated
+    let [bob_group_state] = group_state.members_mut(&["bob"]);
+    let alice_signature_key = bob_group_state
+        .group
+        .members()
+        .find(|m| m.index == LeafNodeIndex::new(0))
+        .unwrap()
+        .signature_key;
+    assert_eq!(alice_signature_key.as_slice(), new_signature_key.as_slice());
+
+    // Check that we can send messages using the new signer.
+    let [alice_group_state] = group_state.members_mut(&["alice"]);
+
+    let bundle = alice_group_state
+        .group
+        .self_update(
+            &alice_group_state.party.core_state.provider,
+            &new_pre_group_state.signer,
+            LeafNodeParameters::default(),
+        )
+        .unwrap();
+
+    group_state
+        .deliver_and_apply_if(bundle.into_commit().into(), |state| {
+            state.party.core_state.name != "alice"
+        })
+        .unwrap();
 }
