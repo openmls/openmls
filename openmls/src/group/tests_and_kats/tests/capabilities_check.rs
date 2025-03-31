@@ -128,7 +128,7 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
         false
     );
 
-    // Should fail with CredentialType::Basic
+    // Should succeed with CredentialType::Basic
     // Alice adds Dave
     test_valn_0104_supported_credential!(
         "dave",
