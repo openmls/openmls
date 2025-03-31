@@ -67,6 +67,22 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
     let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
 
+    // assert Bob and Charlie both are initialized to use the Basic credential type
+    assert_eq!(
+        bob_pre_group
+            .credential_with_key
+            .credential
+            .credential_type(),
+        CredentialType::Basic
+    );
+    assert_eq!(
+        charlie_pre_group
+            .credential_with_key
+            .credential
+            .credential_type(),
+        CredentialType::Basic
+    );
+
     // Create config
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
@@ -89,17 +105,6 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
             tree: None,
         })
         .expect("Could not add member");
-
-    let dave_party = CorePartyState::<Provider>::new("dave");
-    let dave_pre_group = dave_party.generate_pre_group(ciphersuite);
-
-    assert_eq!(
-        dave_pre_group
-            .credential_with_key
-            .credential
-            .credential_type(),
-        CredentialType::Basic
-    );
 
     // Should fail with CredentialType::X509
     // Alice adds Dave
