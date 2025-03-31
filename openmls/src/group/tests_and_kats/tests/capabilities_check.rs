@@ -27,6 +27,8 @@ macro_rules! test_valn_0104_error {
 }
 
 // Helper macro for test cases
+// Creates a party and updates its credential type to the specified value,
+// then adds the member to the group, and asserts that the correct result is returned
 macro_rules! test_valn_0104_supported_credential {
     ($addee:expr, $adder:expr, $group_state:expr, $ciphersuite:expr, $credential_type:expr, $should_succeed:expr) => {
         let join_config = MlsGroupJoinConfig::builder()
@@ -35,13 +37,18 @@ macro_rules! test_valn_0104_supported_credential {
         // Case with right capabilities plus more; should succeed
         let party = CorePartyState::<Provider>::new($addee);
         let mut pre_group = party.generate_pre_group($ciphersuite);
+
+        // update the credential type of the credential
         pre_group.update_credential_type($credential_type, $ciphersuite);
+
         let add_member_config: AddMemberConfig<'_, Provider> = AddMemberConfig {
             adder: $adder,
             addees: vec![pre_group],
             join_config,
             tree: None,
         };
+
+        // add the member to the group and assert that the correct result is returned
         test_valn_0104_error!(pre_group, $group_state, add_member_config, $should_succeed);
     };
 }
@@ -126,21 +133,26 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
 }
 
 // Helper macro for test cases
+// Creates a party and updates its supported credential types to the specified value,
+// then adds the member to the group, and asserts that the correct result is returned
 macro_rules! test_valn_0104_supported_caps {
     ($addee:expr, $adder:expr, $group_state:expr, $ciphersuite:expr, $credential_types:expr, $should_succeed:expr) => {
         let join_config = MlsGroupJoinConfig::builder()
             .use_ratchet_tree_extension(true)
             .build();
-        // Case with right capabilities plus more; should succeed
         let party = CorePartyState::<Provider>::new($addee);
         let mut pre_group = party.generate_pre_group($ciphersuite);
+
+        // update credential capabilities
         pre_group.update_credential_capabilities($credential_types, $ciphersuite);
+
         let add_member_config: AddMemberConfig<'_, Provider> = AddMemberConfig {
             adder: $adder,
             addees: vec![pre_group],
             join_config,
             tree: None,
         };
+        // add the member to the group and assert that the correct result is returned
         test_valn_0104_error!(pre_group, $group_state, add_member_config, $should_succeed);
     };
 }
