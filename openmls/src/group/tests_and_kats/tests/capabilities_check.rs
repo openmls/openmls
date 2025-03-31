@@ -90,7 +90,6 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
         })
         .expect("Could not add member");
 
-    // add Dave with different credential type
     let dave_party = CorePartyState::<Provider>::new("dave");
     let dave_pre_group = dave_party.generate_pre_group(ciphersuite);
 
@@ -103,6 +102,7 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
     );
 
     // Should fail with CredentialType::X509
+    // Alice adds Dave
     test_valn_0104_supported_credential!(
         "dave",
         "alice",
@@ -113,6 +113,7 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
     );
 
     // Should fail with CredentialType::Other(3)
+    // Alice adds Dave
     test_valn_0104_supported_credential!(
         "dave",
         "alice",
@@ -123,6 +124,7 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
     );
 
     // Should fail with CredentialType::Basic
+    // Alice adds Dave
     test_valn_0104_supported_credential!(
         "dave",
         "alice",
@@ -225,6 +227,7 @@ fn test_valn_0104_new_member_capabilities_not_support_all_credential_types() {
     test_valn_0104_supported_caps!("dave", "alice", group_state, ciphersuite, Vec::new(), false);
 
     // Case with wrong capabilities; should fail
+    // Alice adds Dave
     test_valn_0104_supported_caps!(
         "dave",
         "alice",
@@ -235,6 +238,7 @@ fn test_valn_0104_new_member_capabilities_not_support_all_credential_types() {
     );
 
     // Case with right capabilities; should succeed
+    // Alice adds Dave
     test_valn_0104_supported_caps!(
         "dave",
         "alice",
@@ -245,6 +249,7 @@ fn test_valn_0104_new_member_capabilities_not_support_all_credential_types() {
     );
 
     // Case with right capabilities plus more; should succeed
+    // Dave adds Eve
     test_valn_0104_supported_caps!(
         "eve",
         "dave",
