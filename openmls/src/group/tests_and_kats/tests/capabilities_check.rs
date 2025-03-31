@@ -18,8 +18,6 @@ impl<Provider: OpenMlsProvider> PreGroupPartyState<'_, Provider> {
 
         let new_capabilities = Capabilities::builder()
             .versions(capabilities.versions().to_vec())
-            // FIXME: need to provide Ciphersuites, not VerifiableCiphersuites
-            //.ciphersuites(capabilities.ciphersuites().to_vec())
             .extensions(capabilities.extensions().to_vec())
             .proposals(capabilities.proposals().to_vec())
             .credentials(credential_types.clone())
