@@ -16,7 +16,8 @@ use crate::{
 mod assertions;
 
 mod errors;
-pub use errors::*;
+use errors::*;
+pub use errors::TestError;
 
 use std::collections::HashMap;
 
