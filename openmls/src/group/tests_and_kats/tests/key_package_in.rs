@@ -48,7 +48,15 @@ fn valn0108() {
     // Construct a `FrankenKeyPackage` from the `KeyPackage`
     let franken_key_package = FrankenKeyPackage::from(alice_key_package.clone());
 
-    // Test unmodified case
+    // Test unmodified case with variant `KeyPackage`
+    assert!(matches!(
+        franken_key_package
+            .payload
+            .leaf_node
+            .payload
+            .leaf_node_source,
+        FrankenLeafNodeSource::KeyPackage(_)
+    ));
     test_valn0108!(
         franken_key_package.clone(),
         alice_party.provider.crypto(),
