@@ -63,13 +63,13 @@ fn valn0108() {
         true
     );
 
-    // Incorrect case with `Update`
+    // Incorrect case with variant `Update`
     let updated_key_package = franken_key_package
         .clone()
         .with_leaf_node_source(FrankenLeafNodeSource::Update);
     test_valn0108!(updated_key_package, alice_party.provider.crypto(), false);
 
-    // Incorrect source with `Commit`
+    // Incorrect case with variant `Commit`
     let updated_key_package = franken_key_package
         .clone()
         .with_leaf_node_source(FrankenLeafNodeSource::Commit(VLBytes::new(vec![1; 32])));
