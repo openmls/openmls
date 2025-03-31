@@ -229,6 +229,7 @@ fn test_valn_0104_new_member_capabilities_not_support_all_credential_types() {
         .expect("Could not add member");
 
     // Case with no credential capabilities; should fail
+    // Alice adds Dave
     test_valn_0104_supported_caps!("dave", "alice", group_state, ciphersuite, Vec::new(), false);
 
     // Case with wrong capabilities; should fail
