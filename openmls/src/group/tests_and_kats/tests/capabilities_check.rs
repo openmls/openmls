@@ -34,7 +34,8 @@ macro_rules! test_valn_0104_supported_credential {
         let join_config = MlsGroupJoinConfig::builder()
             .use_ratchet_tree_extension(true)
             .build();
-        // Case with right capabilities plus more; should succeed
+
+        // Initialize party and pre-group
         let party = CorePartyState::<Provider>::new($addee);
         let mut pre_group = party.generate_pre_group($ciphersuite);
 
@@ -140,6 +141,8 @@ macro_rules! test_valn_0104_supported_caps {
         let join_config = MlsGroupJoinConfig::builder()
             .use_ratchet_tree_extension(true)
             .build();
+
+        // Initialize party and pre-group
         let party = CorePartyState::<Provider>::new($addee);
         let mut pre_group = party.generate_pre_group($ciphersuite);
 
