@@ -10,7 +10,7 @@ macro_rules! assert_err_matches {
 }
 
 // Function to check that the correct error type was returned
-fn test_valn0104_error<Provider: OpenMlsProvider>(error: Result<(), GroupError<Provider>>) {
+fn expect_valn0104_error<Provider: OpenMlsProvider>(error: Result<(), GroupError<Provider>>) {
     assert_err_matches!(
         error,
         GroupError::<Provider>::AddMembers(AddMembersError::CreateCommitError(
@@ -214,7 +214,7 @@ fn test_valn0104_new_member_unsupported_credential_type() {
 
     // Should fail with CredentialType::X509
     // Alice adds Dave
-    test_valn0104_error::<Provider>(group_state.add_member_with_credential_type(
+    expect_valn0104_error::<Provider>(group_state.add_member_with_credential_type(
         &dave_party,
         "alice",
         ciphersuite,
@@ -223,7 +223,7 @@ fn test_valn0104_new_member_unsupported_credential_type() {
 
     // Should fail with CredentialType::Other(3)
     // Alice adds Dave
-    test_valn0104_error::<Provider>(group_state.add_member_with_credential_type(
+    expect_valn0104_error::<Provider>(group_state.add_member_with_credential_type(
         &dave_party,
         "alice",
         ciphersuite,
@@ -302,7 +302,7 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
 
     // Case with no credential capabilities; should fail
     // Alice adds Dave
-    test_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
+    expect_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
         &dave_party,
         "alice",
         ciphersuite,
@@ -311,7 +311,7 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
 
     // Case with wrong capabilities; should fail
     // Alice adds Dave
-    test_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
+    expect_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
         &dave_party,
         "alice",
         ciphersuite,
