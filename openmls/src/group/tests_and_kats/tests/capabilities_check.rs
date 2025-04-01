@@ -310,6 +310,8 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
     ));
 
     // Case with wrong capabilities; should fail
+    // This is because Dave needs to support all the credential types currently in use by other
+    // members, which are `Other(3)` (Alice) and `Basic` (Bob, Charlie), but he is missing support for `Other(3)`.
     // Alice adds Dave
     expect_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
         &dave_party,
