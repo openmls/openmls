@@ -16,6 +16,7 @@ use crate::{
 mod assertions;
 
 mod errors;
+pub use errors::GroupError;
 use errors::*;
 
 use std::collections::HashMap;
@@ -323,14 +324,11 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
             .map(|addee| addee.key_package_bundle.key_package.clone())
             .collect();
 
-        let (commit, welcome, _) = adder
-            .group
-            .add_members(
-                &adder.party.core_state.provider,
-                &adder.party.signer,
-                &key_packages,
-            )
-            .unwrap();
+        let (commit, welcome, _) = adder.group.add_members(
+            &adder.party.core_state.provider,
+            &adder.party.signer,
+            &key_packages,
+        )?;
 
         // Deliver_and_apply to all members but adder
         self.deliver_and_apply_if(commit.into(), |member| {
