@@ -3,7 +3,6 @@ use crate::test_utils::single_group_test_framework::*;
 use crate::treesync::errors::LeafNodeValidationError;
 
 // Helper macro for checking error matches a provided pattern
-#[cfg(test)]
 macro_rules! assert_err_matches {
     ($err:expr, $pattern:pat) => {
         assert!(matches!($err.expect_err("Expected an error"), $pattern));
@@ -11,7 +10,6 @@ macro_rules! assert_err_matches {
 }
 
 // Function to check that the correct error type was returned
-#[cfg(test)]
 fn test_valn0104_error<Provider: OpenMlsProvider>(error: Result<(), GroupError<Provider>>) {
     assert_err_matches!(
         error,
@@ -25,7 +23,6 @@ fn test_valn0104_error<Provider: OpenMlsProvider>(error: Result<(), GroupError<P
     );
 }
 
-#[cfg(test)]
 impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
     // add a member to the GroupState with the specified credential capabilities
     fn add_member_with_credential_capabilities(
@@ -84,7 +81,6 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
     }
 }
 
-#[cfg(test)]
 impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
     // Helper function to update the PreGroupPartyState to support the specified CredentialTypes in its Capabilities
     fn update_credential_capabilities(
