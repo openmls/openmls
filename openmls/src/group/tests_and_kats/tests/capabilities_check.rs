@@ -201,8 +201,7 @@ fn test_valn0104_new_member_unsupported_credential_type() {
     // Initialize the group state
     let group_id = GroupId::from_slice(b"test");
     let mut group_state =
-        GroupState::<Provider>::new_from_party(group_id, alice_pre_group, mls_group_create_config)
-            .unwrap();
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
 
     group_state
         .add_member(AddMemberConfig {
@@ -288,8 +287,7 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
     // Initialize the group state
     let group_id = GroupId::from_slice(b"test");
     let mut group_state =
-        GroupState::<Provider>::new_from_party(group_id, alice_pre_group, mls_group_create_config)
-            .unwrap();
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
 
     // Alice adds Bob and Charlie
     // This should succeed, since all used credential types used are supported
