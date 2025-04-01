@@ -410,6 +410,95 @@ to inspect the message, e.g. to determine the identity of the sender.</p>
 <p>Pay attention not to forward a Welcome message to a client before its associated
 commit has been accepted by the Delivery Service.  Otherwise, you would end up
 with an invalid MLS group instance.</p>
+<h1 id="examining-a-welcome-message"><a class="header" href="#examining-a-welcome-message">Examining a welcome message</a></h1>
+<p>When a client is invited to join a group, the application can allow the client to decide whether or not to join the group. In order to determine whether to join the group, the application can inspect information provided in the welcome message, such as who invited them, who else is in the group, what extensions are available, and more. If the application decides not to join the group, the welcome must be discarded to ensure that the local state is cleaned up.</p>
+<p>After receiving a <code>MlsMessageIn</code> from the delivery service, the first step is to extract the <code>MlsMessageBodyIn</code>, and determine whether it is a welcome message.</p>
+<pre><code class="language-rust no_run noplayground">    let welcome = match welcome.extract() {
+        MlsMessageBodyIn::Welcome(welcome) =&gt; welcome,
+        _ =&gt; unimplemented!("Handle other message types"),
+    };</code></pre>
+<p>The next step is to process the <code>Welcome</code>. This removes the consumed <code>KeyPackage</code> from the <code>StorageProvider</code>, unless it is a last resort <code>KeyPackage</code>.</p>
+<pre><code class="language-rust no_run noplayground">    let join_config = MlsGroupJoinConfig::default();
+    // This deletes the keys used to decrypt the welcome, except if it is a last resort key
+    // package.
+    let processed_welcome = ProcessedWelcome::new_from_welcome(bob_provider, &amp;join_config, welcome)
+        .expect("Error constructing processed welcome");</code></pre>
+<p>At this stage, there are some more pieces of information in the <code>ProcessedWelcome</code> that could be useful to the application. For example, it can be useful to check which extensions are available. However, the pieces of information that are retrieved from the <code>ProcessedWelcome</code> are unverified, and verified values are only available from the <code>StagedWelcome</code> that is produced in the next step.</p>
+<pre><code class="language-rust no_run noplayground">    // unverified pre-shared keys (`&amp;[PreSharedKeyId]`)
+    let _unverified_psks = processed_welcome.psks();
+
+    // unverified group info (`VerifiableGroupInfo`)
+    let unverified_group_info = processed_welcome.unverified_group_info();
+
+    // From the unverified group info, the ciphersuite, group_id, and other information
+    // can be retrieved.
+    let _ciphersuite = unverified_group_info.ciphersuite();
+    let _group_id = unverified_group_info.group_id();
+    let _epoch = unverified_group_info.epoch();
+
+    // Can also retrieve any available extensions
+    let extensions = unverified_group_info.extensions();
+
+    // Retrieving the ratchet tree extension
+    let ratchet_tree_extension = extensions
+        .ratchet_tree()
+        .expect("No ratchet tree extension");
+    // The (unverified) ratchet tree itself can also be inspected
+    let _ratchet_tree = ratchet_tree_extension.ratchet_tree();</code></pre>
+<p>The next step is to stage the <code>ProcessedWelcome</code>.</p>
+<pre><code class="language-rust no_run noplayground">    let staged_welcome: StagedWelcome = processed_welcome
+        .into_staged_welcome(bob_provider, None)
+        .expect("Error constructing staged welcome");</code></pre>
+<p>Then, more information about the welcome message's sender, such as the credential, signature public key, and encryption public key can also be individually inspected. The welcome message sender's credential can be validated at this stage.</p>
+<pre><code class="language-rust no_run noplayground">    let welcome_sender: &amp;LeafNode = staged_welcome
+        .welcome_sender()
+        .expect("Welcome sender could not be retrieved");
+
+    // Inspect sender's credential...
+    let _credential = welcome_sender.credential();
+    // Inspect sender's signature public key...
+    let _signature_key = welcome_sender.signature_key();</code></pre>
+<p>Additionally, some information about the other group members is made available, e.g. credentials and signature public keys for credential validation.</p>
+<pre><code class="language-rust no_run noplayground">    // Inspect the group members
+    for member in staged_welcome.members() {
+        // leaf node index
+        let _leaf_node_index = member.index;
+        // credential
+        let _credential = member.credential;
+        // encryption public key
+        let _encryption_key = member.encryption_key;
+        // signature public key
+        let _signature_key = member.signature_key;
+    }</code></pre>
+<p>Lastly, the <code>GroupContext</code> contains several other useful pieces of information, including the protocol version, the extensions enabled on the group, and the required extension, proposal, and credential types.</p>
+<pre><code class="language-rust no_run noplayground">    // Inspect group context...
+    let group_context = staged_welcome.group_context();
+
+    // inspect protocol version...
+    let _protocol_version = group_context.protocol_version();
+    // Inspect ciphersuite...
+    let _ciphersuite = group_context.ciphersuite();
+    // Inspect extensions...
+    let extensions: &amp;Extensions = group_context.extensions();
+
+    // Can check which extensions are enabled
+    let _has_ratchet_extension = extensions.ratchet_tree().is_some();
+
+    // Inspect required capabilities...
+    if let Some(capabilities) = group_context.required_capabilities() {
+        // Inspect required extension types...
+        let _extension_types: &amp;[ExtensionType] = capabilities.extension_types();
+        // Inspect required proposal types...
+        let _proposal_types: &amp;[ProposalType] = capabilities.proposal_types();
+        // Inspect required credential types...
+        let _credential_types: &amp;[CredentialType] = capabilities.credential_types();
+    }
+    // Additional information from the `GroupContext`
+    let _group_id = group_context.group_id();
+    let _epoch = group_context.epoch();
+    let _tree_hash = group_context.tree_hash();
+    let _confirmed_transcript_hash = group_context.confirmed_transcript_hash();
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="join-a-group-with-an-external-commit"><a class="header" href="#join-a-group-with-an-external-commit">Join a group with an external commit</a></h1>
 <p>To join a group with an external commit message, a new <code>MlsGroup</code> can be instantiated directly from the <code>GroupInfo</code>.
 The <code>GroupInfo</code>/Ratchet Tree should be shared over a secure channel.
