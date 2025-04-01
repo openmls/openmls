@@ -10,6 +10,156 @@ macro_rules! assert_err_matches {
     };
 }
 
+#[cfg(test)]
+fn test_valn0104_error<Provider: OpenMlsProvider>(error: Result<(), GroupError<Provider>>) {
+    assert_err_matches!(
+        error,
+        GroupError::<Provider>::AddMembers(AddMembersError::CreateCommitError(
+            CreateCommitError::ProposalValidationError(
+                ProposalValidationError::LeafNodeValidation(
+                    LeafNodeValidationError::UnsupportedCredentials,
+                )
+            )
+        ))
+    );
+}
+
+#[cfg(test)]
+impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
+    fn add_member_with_credential_capabilities(
+        &'a mut self,
+        new_party: &'b CorePartyState<Provider>,
+        adder_name: &'static str,
+        ciphersuite: Ciphersuite,
+        credential_types: Vec<CredentialType>,
+    ) -> Result<(), GroupError<Provider>> {
+        let join_config = MlsGroupJoinConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .build();
+
+        // Initialize party and pre-group
+        let mut pre_group = new_party.generate_pre_group(ciphersuite);
+
+        // update the credential type of the credential
+        pre_group.update_credential_capabilities(credential_types, ciphersuite);
+
+        let add_member_config: AddMemberConfig<'_, Provider> = AddMemberConfig {
+            adder: adder_name,
+            addees: vec![pre_group],
+            join_config,
+            tree: None,
+        };
+
+        self.add_member(add_member_config)
+    }
+
+    fn add_member_with_credential_type(
+        &'a mut self,
+        new_party: &'b CorePartyState<Provider>,
+        adder_name: &'static str,
+        ciphersuite: Ciphersuite,
+        credential_type: CredentialType,
+    ) -> Result<(), GroupError<Provider>> {
+        let join_config = MlsGroupJoinConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .build();
+
+        // Initialize party and pre-group
+        let mut pre_group = new_party.generate_pre_group(ciphersuite);
+
+        // update the credential type of the credential
+        pre_group.update_credential_type(credential_type, ciphersuite);
+
+        let add_member_config: AddMemberConfig<'_, Provider> = AddMemberConfig {
+            adder: adder_name,
+            addees: vec![pre_group],
+            join_config,
+            tree: None,
+        };
+
+        self.add_member(add_member_config)
+    }
+}
+
+#[cfg(test)]
+impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
+    // Helper function to update the PreGroupPartyState to support the specified CredentialTypes in its Capabilities
+    fn update_credential_capabilities(
+        &'a mut self,
+        credential_types: Vec<CredentialType>,
+        ciphersuite: Ciphersuite,
+    ) -> Capabilities {
+        let capabilities = self
+            .key_package_bundle
+            .key_package
+            .leaf_node()
+            .capabilities();
+
+        let new_capabilities = Capabilities::builder()
+            .versions(capabilities.versions().to_vec())
+            .extensions(capabilities.extensions().to_vec())
+            .proposals(capabilities.proposals().to_vec())
+            .credentials(credential_types.clone())
+            .build();
+
+        self.key_package_bundle = KeyPackage::builder()
+            .key_package_extensions(Extensions::default())
+            .leaf_node_capabilities(new_capabilities.clone())
+            .build(
+                ciphersuite,
+                &self.core_state.provider,
+                &self.signer,
+                CredentialWithKey {
+                    credential: self.credential_with_key.credential.clone(),
+                    signature_key: self.signer.to_public_vec().into(),
+                },
+            )
+            .unwrap();
+
+        // ensure updated correctly
+        let updated_capabilities = self
+            .key_package_bundle
+            .key_package
+            .leaf_node()
+            .capabilities();
+
+        assert_eq!(updated_capabilities.credentials(), credential_types);
+
+        // return the updated capabilities
+        new_capabilities
+    }
+
+    // Helper function to set the CredentialType of the PreGroupPartyState's credential to the
+    // specified value (keeping all else equal)
+    fn update_credential_type(
+        &'a mut self,
+        credential_type: CredentialType,
+        ciphersuite: Ciphersuite,
+    ) {
+        // update to a non-supported credential type
+        let new_credential = Credential::new(
+            credential_type,
+            self.credential_with_key
+                .credential
+                .serialized_content()
+                .to_vec(),
+        );
+
+        // Update only the new credential
+        self.credential_with_key.credential = new_credential.clone();
+        self.key_package_bundle = generate_key_package(
+            ciphersuite,
+            CredentialWithKey {
+                credential: new_credential,
+                signature_key: self.signer.to_public_vec().into(),
+            },
+            Extensions::default(),
+            &self.core_state.provider,
+            &self.signer,
+        );
+    }
+}
+
 // Ensure that this check fails on invalid input:
 //   - Test that the credential type is supported by all members of the group,
 //     as specified by the capabilities field of each member's leaf node
@@ -196,154 +346,4 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
             ],
         )
         .expect("Should succeed");
-}
-
-#[cfg(test)]
-fn test_valn0104_error<Provider: OpenMlsProvider>(error: Result<(), GroupError<Provider>>) {
-    assert_err_matches!(
-        error,
-        GroupError::<Provider>::AddMembers(AddMembersError::CreateCommitError(
-            CreateCommitError::ProposalValidationError(
-                ProposalValidationError::LeafNodeValidation(
-                    LeafNodeValidationError::UnsupportedCredentials,
-                )
-            )
-        ))
-    );
-}
-
-#[cfg(test)]
-impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
-    fn add_member_with_credential_capabilities(
-        &'a mut self,
-        new_party: &'b CorePartyState<Provider>,
-        adder_name: &'static str,
-        ciphersuite: Ciphersuite,
-        credential_types: Vec<CredentialType>,
-    ) -> Result<(), GroupError<Provider>> {
-        let join_config = MlsGroupJoinConfig::builder()
-            .use_ratchet_tree_extension(true)
-            .build();
-
-        // Initialize party and pre-group
-        let mut pre_group = new_party.generate_pre_group(ciphersuite);
-
-        // update the credential type of the credential
-        pre_group.update_credential_capabilities(credential_types, ciphersuite);
-
-        let add_member_config: AddMemberConfig<'_, Provider> = AddMemberConfig {
-            adder: adder_name,
-            addees: vec![pre_group],
-            join_config,
-            tree: None,
-        };
-
-        self.add_member(add_member_config)
-    }
-
-    fn add_member_with_credential_type(
-        &'a mut self,
-        new_party: &'b CorePartyState<Provider>,
-        adder_name: &'static str,
-        ciphersuite: Ciphersuite,
-        credential_type: CredentialType,
-    ) -> Result<(), GroupError<Provider>> {
-        let join_config = MlsGroupJoinConfig::builder()
-            .use_ratchet_tree_extension(true)
-            .build();
-
-        // Initialize party and pre-group
-        let mut pre_group = new_party.generate_pre_group(ciphersuite);
-
-        // update the credential type of the credential
-        pre_group.update_credential_type(credential_type, ciphersuite);
-
-        let add_member_config: AddMemberConfig<'_, Provider> = AddMemberConfig {
-            adder: adder_name,
-            addees: vec![pre_group],
-            join_config,
-            tree: None,
-        };
-
-        self.add_member(add_member_config)
-    }
-}
-
-#[cfg(test)]
-impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
-    // Helper function to update the PreGroupPartyState to support the specified CredentialTypes in its Capabilities
-    fn update_credential_capabilities(
-        &'a mut self,
-        credential_types: Vec<CredentialType>,
-        ciphersuite: Ciphersuite,
-    ) -> Capabilities {
-        let capabilities = self
-            .key_package_bundle
-            .key_package
-            .leaf_node()
-            .capabilities();
-
-        let new_capabilities = Capabilities::builder()
-            .versions(capabilities.versions().to_vec())
-            .extensions(capabilities.extensions().to_vec())
-            .proposals(capabilities.proposals().to_vec())
-            .credentials(credential_types.clone())
-            .build();
-
-        self.key_package_bundle = KeyPackage::builder()
-            .key_package_extensions(Extensions::default())
-            .leaf_node_capabilities(new_capabilities.clone())
-            .build(
-                ciphersuite,
-                &self.core_state.provider,
-                &self.signer,
-                CredentialWithKey {
-                    credential: self.credential_with_key.credential.clone(),
-                    signature_key: self.signer.to_public_vec().into(),
-                },
-            )
-            .unwrap();
-
-        // ensure updated correctly
-        let updated_capabilities = self
-            .key_package_bundle
-            .key_package
-            .leaf_node()
-            .capabilities();
-
-        assert_eq!(updated_capabilities.credentials(), credential_types);
-
-        // return the updated capabilities
-        new_capabilities
-    }
-
-    // Helper function to set the CredentialType of the PreGroupPartyState's credential to the
-    // specified value (keeping all else equal)
-    fn update_credential_type(
-        &'a mut self,
-        credential_type: CredentialType,
-        ciphersuite: Ciphersuite,
-    ) {
-        // update to a non-supported credential type
-        let new_credential = Credential::new(
-            credential_type,
-            self.credential_with_key
-                .credential
-                .serialized_content()
-                .to_vec(),
-        );
-
-        // Update only the new credential
-        self.credential_with_key.credential = new_credential.clone();
-        self.key_package_bundle = generate_key_package(
-            ciphersuite,
-            CredentialWithKey {
-                credential: new_credential,
-                signature_key: self.signer.to_public_vec().into(),
-            },
-            Extensions::default(),
-            &self.core_state.provider,
-            &self.signer,
-        );
-    }
 }
