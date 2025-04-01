@@ -14,7 +14,7 @@ macro_rules! assert_err_matches {
 //   - Test that the credential type is supported by all members of the group,
 //     as specified by the capabilities field of each member's leaf node
 #[openmls_test::openmls_test]
-fn test_valn_0104_new_member_unsupported_credential_type() {
+fn test_valn0104_new_member_unsupported_credential_type() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
     let charlie_party = CorePartyState::<Provider>::new("charlie");
@@ -93,7 +93,7 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
 //     indicates support for all the credential types currently in use
 //     by other members.
 #[openmls_test::openmls_test]
-fn test_valn_0104_new_member_capabilities_not_support_all_credential_types() {
+fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
     // Set up Alice with multiple credential capabilities and Other(3) credential
     let alice_party = CorePartyState::<Provider>::new("alice");
     let mut alice_pre_group = alice_party.generate_pre_group(ciphersuite);
