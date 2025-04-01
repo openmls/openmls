@@ -238,7 +238,7 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
             tree: None,
         };
 
-        self.add_member(add_member_config).map(move |_| ())
+        self.add_member(add_member_config)
     }
 
     fn add_member_with_credential_type(
@@ -265,7 +265,7 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
             tree: None,
         };
 
-        self.add_member(add_member_config).map(move |_| ())
+        self.add_member(add_member_config)
     }
 }
 
