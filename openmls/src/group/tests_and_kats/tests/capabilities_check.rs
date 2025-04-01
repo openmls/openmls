@@ -10,6 +10,7 @@ macro_rules! assert_err_matches {
     };
 }
 
+// Function to check that the correct error type was returned
 #[cfg(test)]
 fn test_valn0104_error<Provider: OpenMlsProvider>(error: Result<(), GroupError<Provider>>) {
     assert_err_matches!(
@@ -26,6 +27,7 @@ fn test_valn0104_error<Provider: OpenMlsProvider>(error: Result<(), GroupError<P
 
 #[cfg(test)]
 impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
+    // add a member to the GroupState with the specified credential capabilities
     fn add_member_with_credential_capabilities(
         &'a mut self,
         new_party: &'b CorePartyState<Provider>,
@@ -53,6 +55,7 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
         self.add_member(add_member_config)
     }
 
+    // add a member to the GroupState with the specified credential type
     fn add_member_with_credential_type(
         &'a mut self,
         new_party: &'b CorePartyState<Provider>,
