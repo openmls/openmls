@@ -2,55 +2,11 @@ use crate::prelude::*;
 use crate::test_utils::single_group_test_framework::*;
 use crate::treesync::errors::LeafNodeValidationError;
 
-// Macro that adds a member to a group and asserts that the correct error was received
-macro_rules! test_valn_0104_error {
-    ($pre_group:expr,$group_state:expr,$add_member_config:expr, $should_succeed:expr) => {
-        let result = $group_state.add_member($add_member_config);
-
-        if $should_succeed {
-            // check adding succeeded
-            let _ = result.expect("Should succeed");
-        } else {
-            // assert received correct error type
-            match result.unwrap_err() {
-                TestError::AddMembers(AddMembersError::CreateCommitError(
-                    CreateCommitError::ProposalValidationError(
-                        ProposalValidationError::LeafNodeValidation(
-                            LeafNodeValidationError::UnsupportedCredentials,
-                        ),
-                    ),
-                )) => {}
-                e => panic!("Incorrect error received: {:?}", e),
-            };
-        }
-    };
-}
-
-// Helper macro for test cases
-// Creates a party and updates its credential type to the specified value,
-// then adds the member to the group, and asserts that the correct result is returned
-macro_rules! test_valn_0104_supported_credential {
-    ($addee:expr, $adder:expr, $group_state:expr, $ciphersuite:expr, $credential_type:expr, $should_succeed:expr) => {
-        let join_config = MlsGroupJoinConfig::builder()
-            .use_ratchet_tree_extension(true)
-            .build();
-
-        // Initialize party and pre-group
-        let party = CorePartyState::<Provider>::new($addee);
-        let mut pre_group = party.generate_pre_group($ciphersuite);
-
-        // update the credential type of the credential
-        pre_group.update_credential_type($credential_type, $ciphersuite);
-
-        let add_member_config: AddMemberConfig<'_, Provider> = AddMemberConfig {
-            adder: $adder,
-            addees: vec![pre_group],
-            join_config,
-            tree: None,
-        };
-
-        // add the member to the group and assert that the correct result is returned
-        test_valn_0104_error!(pre_group, $group_state, add_member_config, $should_succeed);
+// Helper macro for checking error matches a provided pattern
+#[cfg(test)]
+macro_rules! assert_err_matches {
+    ($err:expr, $pattern:pat) => {
+        assert!(matches!($err.expect_err("Expected an error"), $pattern));
     };
 }
 
@@ -62,6 +18,7 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
     let charlie_party = CorePartyState::<Provider>::new("charlie");
+    let dave_party = CorePartyState::<Provider>::new("dave");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
@@ -95,7 +52,8 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
     // Initialize the group state
     let group_id = GroupId::from_slice(b"test");
     let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+        GroupState::<Provider>::new_from_party(group_id, alice_pre_group, mls_group_create_config)
+            .unwrap();
 
     group_state
         .add_member(AddMemberConfig {
@@ -108,63 +66,26 @@ fn test_valn_0104_new_member_unsupported_credential_type() {
 
     // Should fail with CredentialType::X509
     // Alice adds Dave
-    test_valn_0104_supported_credential!(
-        "dave",
+    test_valn0104_error::<Provider>(group_state.add_member_with_credential_type(
+        &dave_party,
         "alice",
-        group_state,
         ciphersuite,
         CredentialType::X509,
-        false
-    );
+    ));
 
     // Should fail with CredentialType::Other(3)
     // Alice adds Dave
-    test_valn_0104_supported_credential!(
-        "dave",
+    test_valn0104_error::<Provider>(group_state.add_member_with_credential_type(
+        &dave_party,
         "alice",
-        group_state,
         ciphersuite,
         CredentialType::Other(3),
-        false
-    );
-
+    ));
     // Should succeed with CredentialType::Basic
     // Alice adds Dave
-    test_valn_0104_supported_credential!(
-        "dave",
-        "alice",
-        group_state,
-        ciphersuite,
-        CredentialType::Basic,
-        true
-    );
-}
-
-// Helper macro for test cases
-// Creates a party and updates its supported credential types to the specified value,
-// then adds the member to the group, and asserts that the correct result is returned
-macro_rules! test_valn_0104_supported_caps {
-    ($addee:expr, $adder:expr, $group_state:expr, $ciphersuite:expr, $credential_types:expr, $should_succeed:expr) => {
-        let join_config = MlsGroupJoinConfig::builder()
-            .use_ratchet_tree_extension(true)
-            .build();
-
-        // Initialize party and pre-group
-        let party = CorePartyState::<Provider>::new($addee);
-        let mut pre_group = party.generate_pre_group($ciphersuite);
-
-        // update credential capabilities
-        pre_group.update_credential_capabilities($credential_types, $ciphersuite);
-
-        let add_member_config: AddMemberConfig<'_, Provider> = AddMemberConfig {
-            adder: $adder,
-            addees: vec![pre_group],
-            join_config,
-            tree: None,
-        };
-        // add the member to the group and assert that the correct result is returned
-        test_valn_0104_error!(pre_group, $group_state, add_member_config, $should_succeed);
-    };
+    group_state
+        .add_member_with_credential_type(&dave_party, "alice", ciphersuite, CredentialType::Basic)
+        .expect("Should succeed");
 }
 
 // Ensure that this check fails on invalid input:
@@ -202,6 +123,9 @@ fn test_valn_0104_new_member_capabilities_not_support_all_credential_types() {
         ciphersuite,
     );
 
+    let dave_party = CorePartyState::<Provider>::new("dave");
+    let eve_party = CorePartyState::<Provider>::new("eve");
+
     // Create config
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
@@ -215,7 +139,8 @@ fn test_valn_0104_new_member_capabilities_not_support_all_credential_types() {
     // Initialize the group state
     let group_id = GroupId::from_slice(b"test");
     let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+        GroupState::<Provider>::new_from_party(group_id, alice_pre_group, mls_group_create_config)
+            .unwrap();
 
     // Alice adds Bob and Charlie
     // This should succeed, since all used credential types used are supported
@@ -230,51 +155,125 @@ fn test_valn_0104_new_member_capabilities_not_support_all_credential_types() {
 
     // Case with no credential capabilities; should fail
     // Alice adds Dave
-    test_valn_0104_supported_caps!("dave", "alice", group_state, ciphersuite, Vec::new(), false);
+    test_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
+        &dave_party,
+        "alice",
+        ciphersuite,
+        Vec::new(),
+    ));
 
     // Case with wrong capabilities; should fail
     // Alice adds Dave
-    test_valn_0104_supported_caps!(
-        "dave",
+    test_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
+        &dave_party,
         "alice",
-        group_state,
         ciphersuite,
         vec![CredentialType::Basic, CredentialType::Other(2)],
-        false
-    );
+    ));
 
     // Case with right capabilities; should succeed
     // Alice adds Dave
-    test_valn_0104_supported_caps!(
-        "dave",
-        "alice",
-        group_state,
-        ciphersuite,
-        vec![CredentialType::Basic, CredentialType::Other(3)],
-        true
-    );
+    group_state
+        .add_member_with_credential_capabilities(
+            &dave_party,
+            "alice",
+            ciphersuite,
+            vec![CredentialType::Basic, CredentialType::Other(3)],
+        )
+        .expect("Should succeed");
 
     // Case with right capabilities plus more; should succeed
     // Dave adds Eve
-    test_valn_0104_supported_caps!(
-        "eve",
-        "dave",
-        group_state,
-        ciphersuite,
-        vec![
-            CredentialType::Basic,
-            CredentialType::Other(3),
-            CredentialType::Other(5)
-        ],
-        true
+    group_state
+        .add_member_with_credential_capabilities(
+            &eve_party,
+            "dave",
+            ciphersuite,
+            vec![
+                CredentialType::Basic,
+                CredentialType::Other(3),
+                CredentialType::Other(5),
+            ],
+        )
+        .expect("Should succeed");
+}
+
+#[cfg(test)]
+fn test_valn0104_error<Provider: OpenMlsProvider>(error: Result<(), GroupError<Provider>>) {
+    assert_err_matches!(
+        error,
+        GroupError::<Provider>::AddMembers(AddMembersError::CreateCommitError(
+            CreateCommitError::ProposalValidationError(
+                ProposalValidationError::LeafNodeValidation(
+                    LeafNodeValidationError::UnsupportedCredentials,
+                )
+            )
+        ))
     );
 }
 
 #[cfg(test)]
-impl<Provider: OpenMlsProvider> PreGroupPartyState<'_, Provider> {
+impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
+    fn add_member_with_credential_capabilities(
+        &'a mut self,
+        new_party: &'b CorePartyState<Provider>,
+        adder_name: &'static str,
+        ciphersuite: Ciphersuite,
+        credential_types: Vec<CredentialType>,
+    ) -> Result<(), GroupError<Provider>> {
+        let join_config = MlsGroupJoinConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .build();
+
+        // Initialize party and pre-group
+        let mut pre_group = new_party.generate_pre_group(ciphersuite);
+
+        // update the credential type of the credential
+        pre_group.update_credential_capabilities(credential_types, ciphersuite);
+
+        let add_member_config: AddMemberConfig<'_, Provider> = AddMemberConfig {
+            adder: adder_name,
+            addees: vec![pre_group],
+            join_config,
+            tree: None,
+        };
+
+        self.add_member(add_member_config).map(move |_| ())
+    }
+
+    fn add_member_with_credential_type(
+        &'a mut self,
+        new_party: &'b CorePartyState<Provider>,
+        adder_name: &'static str,
+        ciphersuite: Ciphersuite,
+        credential_type: CredentialType,
+    ) -> Result<(), GroupError<Provider>> {
+        let join_config = MlsGroupJoinConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .build();
+
+        // Initialize party and pre-group
+        let mut pre_group = new_party.generate_pre_group(ciphersuite);
+
+        // update the credential type of the credential
+        pre_group.update_credential_type(credential_type, ciphersuite);
+
+        let add_member_config: AddMemberConfig<'_, Provider> = AddMemberConfig {
+            adder: adder_name,
+            addees: vec![pre_group],
+            join_config,
+            tree: None,
+        };
+
+        self.add_member(add_member_config).map(move |_| ())
+    }
+}
+
+#[cfg(test)]
+impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
     // Helper function to update the PreGroupPartyState to support the specified CredentialTypes in its Capabilities
     fn update_credential_capabilities(
-        &mut self,
+        &'a mut self,
         credential_types: Vec<CredentialType>,
         ciphersuite: Ciphersuite,
     ) -> Capabilities {
@@ -321,7 +320,7 @@ impl<Provider: OpenMlsProvider> PreGroupPartyState<'_, Provider> {
     // Helper function to set the CredentialType of the PreGroupPartyState's credential to the
     // specified value (keeping all else equal)
     fn update_credential_type(
-        &mut self,
+        &'a mut self,
         credential_type: CredentialType,
         ciphersuite: Ciphersuite,
     ) {
