@@ -11,6 +11,7 @@ mod framing;
 mod framing_validation;
 mod group;
 mod group_context_extensions;
+mod key_package_in;
 mod past_secrets;
 mod proposal_validation;
 mod remove_operation;
