@@ -174,12 +174,10 @@ impl PublicGroupDiff<'_> {
 
         // This flag determines if the commit requires a path. A path is required if:
         // * at least one proposal requires a path
-        // * (or) it is an external commit
         // * (or) the commit is empty which implicitly means it's a self-update
-        let path_required = proposals_require_path
-            // The fact that this is some implies that there's an external init proposal.
-            || external_init_proposal_option.is_some()
-            || proposal_queue.is_empty();
+        // * (or) it is an external commit
+        // External commits always have an ExternalInit proposal, which requires a path. Therefore the last check is redundant.
+        let path_required = proposals_require_path || proposal_queue.is_empty();
 
         Ok(ApplyProposalsValues {
             path_required,
