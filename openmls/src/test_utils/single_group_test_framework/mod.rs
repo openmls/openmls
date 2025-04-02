@@ -193,12 +193,14 @@ impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
     pub fn create_from_pre_group(
         party: PreGroupPartyState<'a, Provider>,
         mls_group_create_config: MlsGroupCreateConfig,
+        group_id: GroupId,
     ) -> Result<Self, GroupError<Provider>> {
         // initialize MlsGroup
-        let group = MlsGroup::new(
+        let group = MlsGroup::new_with_group_id(
             &party.core_state.provider,
             &party.signer,
             &mls_group_create_config,
+            group_id,
             party.credential_with_key.clone(),
         )?;
 
@@ -241,8 +243,11 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         let mut members = HashMap::new();
 
         let name = pre_group_state.core_state.name;
-        let member_state =
-            MemberState::create_from_pre_group(pre_group_state, mls_group_create_config)?;
+        let member_state = MemberState::create_from_pre_group(
+            pre_group_state,
+            mls_group_create_config,
+            group_id.clone(),
+        )?;
 
         members.insert(name, member_state);
 
