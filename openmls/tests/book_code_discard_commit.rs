@@ -119,9 +119,11 @@ fn discard_commit_add() {
 }
 
 #[openmls_test]
-fn discard_commit_update() {
+fn discard_commit_update_with_new_signer() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
+
+    // Set up a group with one member (Alice)
     let mut group_state = alice_group(&alice_party, ciphersuite, create_config);
 
     let [alice] = group_state.members_mut(&["alice"]);
@@ -130,15 +132,12 @@ fn discard_commit_update() {
     let alice_credential = &alice.party.credential_with_key;
 
     // === Alice new credential ===
-    let basic_credential = BasicCredential::new("alice".into());
+    let new_credential = BasicCredential::new("alice2".into());
     let new_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
     let new_credential = CredentialWithKey {
-        credential: basic_credential.into(),
+        credential: new_credential.into(),
         signature_key: new_signer.to_public_vec().into(),
     };
-
-    // store new credential
-    new_signer.store(alice_provider.storage()).unwrap();
 
     // Check alice credential
     let own_leaf_node_before = alice_group.own_leaf_node().unwrap().clone();
@@ -162,12 +161,32 @@ fn discard_commit_update() {
     let state_before = alice.group_storage_state();
 
     let [alice] = group_state.members_mut(&["alice"]);
+    let old_signer = &alice.party.signer;
 
     // check that alice signer was stored
     assert!(alice.get_storage_signature_key_pair().is_some());
 
     let alice_group = &mut alice.group;
     let alice_provider = &alice_party.provider;
+
+    // === Alice updates ===
+    // Alice updates own credential
+    // HPKE encryption key is also updated by the commit
+
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_credential_with_key(new_credential)
+        .build();
+    let _commit_message_bundle = alice_group
+        .self_update_with_new_signer(
+            alice_provider,
+            old_signer,
+            &new_signer,
+            leaf_node_parameters,
+        )
+        .expect("failed to update own leaf node");
+
+    // store new credential
+    new_signer.store(alice_provider.storage()).unwrap();
 
     // check that the signer was stored
     let new_signer_still_stored = SignatureKeyPair::read(
@@ -177,20 +196,6 @@ fn discard_commit_update() {
     )
     .is_some();
     assert!(new_signer_still_stored);
-
-    // === Alice updates ===
-    // Alice updates own credential
-    // HPKE encryption key is also updated by the commit
-
-    let leaf_node_parameters = LeafNodeParameters::builder()
-        .with_credential_with_key(new_credential)
-        .build();
-    let commit_message_bundle = alice_group
-        .self_update(alice_provider, &new_signer, leaf_node_parameters)
-        .expect("failed to update own leaf node");
-
-    // Unused
-    let _commit_message_bundle = commit_message_bundle;
 
     assert_ne!(
         provider
