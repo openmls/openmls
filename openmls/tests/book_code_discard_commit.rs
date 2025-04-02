@@ -128,7 +128,6 @@ fn discard_commit_update_with_new_signer() {
     let group_id = group_state.group_id();
 
     let [alice] = group_state.members_mut(&["alice"]);
-    let alice_group = &mut alice.group;
     let alice_provider = &alice_party.provider;
     let alice_credential = &alice.party.credential_with_key;
 
@@ -141,7 +140,7 @@ fn discard_commit_update_with_new_signer() {
     };
 
     // Check alice credential
-    let own_leaf_node_before = alice_group.own_leaf_node().unwrap().clone();
+    let own_leaf_node_before = alice.group.own_leaf_node().unwrap().clone();
     assert_eq!(
         own_leaf_node_before.credential(),
         &alice_credential.credential
@@ -161,7 +160,6 @@ fn discard_commit_update_with_new_signer() {
     // save the storage state for comparison later
     let state_before = alice.group_storage_state();
 
-    let [alice] = group_state.members_mut(&["alice"]);
     let old_signer = &alice.party.signer;
 
     // check that alice signer was stored
