@@ -125,6 +125,7 @@ fn discard_commit_update_with_new_signer() {
 
     // Set up a group with one member (Alice)
     let mut group_state = alice_group(&alice_party, ciphersuite, create_config);
+    let group_id = group_state.group_id();
 
     let [alice] = group_state.members_mut(&["alice"]);
     let alice_group = &mut alice.group;
@@ -152,7 +153,7 @@ fn discard_commit_update_with_new_signer() {
     );
     let own_leaf_nodes_before: Vec<LeafNode> = alice_provider
         .storage()
-        .own_leaf_nodes(alice_group.group_id())
+        .own_leaf_nodes(&group_id)
         .expect("could not get leaf nodes");
 
     assert_eq!(own_leaf_nodes_before.len(), 0);
@@ -185,23 +186,8 @@ fn discard_commit_update_with_new_signer() {
         )
         .expect("failed to update own leaf node");
 
-    // store new credential
-    new_signer.store(alice_provider.storage()).unwrap();
-
-    // check that the signer was stored
-    let new_signer_still_stored = SignatureKeyPair::read(
-        alice_provider.storage(),
-        new_signer.public(),
-        ciphersuite.signature_algorithm(),
-    )
-    .is_some();
-    assert!(new_signer_still_stored);
-
     assert_ne!(
-        provider
-            .storage()
-            .group_state(alice_group.group_id())
-            .unwrap(),
+        provider.storage().group_state(&group_id).unwrap(),
         Some(MlsGroupState::Operational)
     );
 
@@ -224,12 +210,23 @@ fn discard_commit_update_with_new_signer() {
 
     let own_leaf_nodes_after: Vec<LeafNode> = provider
         .storage()
-        .own_leaf_nodes(alice_group.group_id())
+        .own_leaf_nodes(&group_id)
         .expect("could not get leaf nodes");
     assert_eq!(own_leaf_nodes_after.len(), 0);
 
     // Ensure that leaf nodes same in storage
     assert_eq!(own_leaf_nodes_before, own_leaf_nodes_after);
+
+    // assert that the new signer is not in the StorageProvider yet
+    assert!(SignatureKeyPair::read(
+        alice_provider.storage(),
+        new_signer.public(),
+        ciphersuite.signature_algorithm(),
+    )
+    .is_none());
+
+    // store for documentation purposes
+    new_signer.store(alice_provider.storage()).unwrap();
 
     // === Commit rejected by delivery service ===
     //ANCHOR: discard_commit_update
@@ -251,13 +248,20 @@ fn discard_commit_update_with_new_signer() {
     // check that alice signer still stored
     assert!(alice.get_storage_signature_key_pair().is_some());
 
-    let new_signer_still_stored = SignatureKeyPair::read(
+    // assert that the new signer is not in the StorageProvider (does not need to be cleaned up)
+    assert!(SignatureKeyPair::read(
         alice_provider.storage(),
         new_signer.public(),
         ciphersuite.signature_algorithm(),
     )
-    .is_some();
-    assert!(!new_signer_still_stored);
+    .is_none());
+
+    // check that own leaf node in storage does not contain wrong credential
+    let own_leaf_nodes_before: Vec<LeafNode> = alice_provider
+        .storage()
+        .own_leaf_nodes(&group_id)
+        .expect("could not get leaf nodes");
+    assert_eq!(own_leaf_nodes_before.len(), 0);
 
     alice.assert_group_storage_state_matches(state_before);
 }
