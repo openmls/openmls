@@ -22,6 +22,7 @@
   - [Discarding commits](user_manual/discarding_commits.md)
   - [Credential validation](user_manual/credential_validation.md)
   - [WebAssembly](user_manual/wasm.md)
+  - [Fork Resolution](user_manual/fork-resolution.md)
 - [Traits & External Types](./traits/README.md)
   - [Traits](./traits/traits.md)
   - [Types](./traits/types.md)

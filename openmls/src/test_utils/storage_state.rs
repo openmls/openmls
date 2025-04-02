@@ -21,6 +21,7 @@ pub struct NonProposalGroupStorageState {
     own_leaf_index: Option<LeafNodeIndex>,
     group_epoch_secrets: Option<GroupEpochSecrets>,
 }
+
 impl NonProposalGroupStorageState {
     pub fn from_storage(
         store: &impl StorageProvider<CURRENT_VERSION>,
@@ -48,6 +49,7 @@ impl NonProposalGroupStorageState {
         let own_leaf_index = store.own_leaf_index(group_id).unwrap();
 
         let group_epoch_secrets = store.group_epoch_secrets(group_id).unwrap();
+
         Self {
             own_leaf_nodes,
             group_config,
@@ -63,6 +65,7 @@ impl NonProposalGroupStorageState {
         }
     }
 }
+
 /// All state associated only with a GroupId
 #[derive(PartialEq)]
 pub struct GroupStorageState {

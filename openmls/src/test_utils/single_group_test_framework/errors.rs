@@ -14,6 +14,7 @@ pub type GroupError<Provider> =
     TestError<<<Provider as OpenMlsProvider>::StorageProvider as StorageProviderTrait<CURRENT_VERSION>>::Error>;
 #[derive(Error, Debug)]
 pub enum TestError<StorageError> {
+    AddMembers(#[from] AddMembersError<StorageError>),
     CreateCommit(#[from] CreateCommitError),
     CommitBuilderStage(#[from] CommitBuilderStageError<StorageError>),
     NewGroup(#[from] NewGroupError<StorageError>),
