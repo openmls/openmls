@@ -38,11 +38,11 @@ fn clear_pending_commit_and_assert_storage_state<Provider: OpenMlsProvider>(
     member_state.assert_non_proposal_group_storage_state_matches(state_before);
 }
 
-fn alice_group<'a, Provider: OpenMlsProvider>(
-    alice_party: &'a CorePartyState<Provider>,
+fn alice_group<Provider: OpenMlsProvider>(
+    alice_party: &CorePartyState<Provider>,
     ciphersuite: Ciphersuite,
     create_config: MlsGroupCreateConfig,
-) -> GroupState<'a, Provider> {
+) -> GroupState<'_, Provider> {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let group_state = GroupState::new_from_party(
@@ -61,7 +61,7 @@ fn alice_bob_group<'a, Provider: OpenMlsProvider>(
     create_config: MlsGroupCreateConfig,
 ) -> GroupState<'a, Provider> {
     let join_config = create_config.join_config().clone();
-    let mut group_state = alice_group(&alice_party, ciphersuite, create_config);
+    let mut group_state = alice_group(alice_party, ciphersuite, create_config);
 
     group_state
         .add_member(AddMemberConfig {
