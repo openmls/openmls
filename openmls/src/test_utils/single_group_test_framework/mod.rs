@@ -389,6 +389,11 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
 
         Ok(())
     }
+
+    /// Returns a copy of the GroupId
+    pub fn group_id(&self) -> GroupId {
+        self.group_id.clone()
+    }
 }
 
 impl MlsGroupCreateConfig {
