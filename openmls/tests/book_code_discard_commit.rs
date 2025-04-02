@@ -352,67 +352,6 @@ fn discard_commit_psk() {
     alice.assert_non_proposal_group_storage_state_matches(state_before);
 }
 
-/*
-#[openmls_test]
-fn discard_commit_reinit() {
-    let alice_provider = &Provider::default();
-
-    let group_id = GroupId::from_slice(b"Test Group");
-    // Generate credentials with keys
-    let (alice_credential, alice_signer) = generate_credential(
-        "Alice".into(),
-        ciphersuite.signature_algorithm(),
-        alice_provider,
-    );
-
-    // Define the MlsGroup configuration
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true) // NOTE: important
-        .build();
-
-    // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new_with_group_id(
-        alice_provider,
-        &alice_signer,
-        &mls_group_create_config,
-        group_id.clone(),
-        alice_credential.clone(),
-    )
-    .expect("An unexpected error occurred.");
-
-    // save the storage state
-    let state_before = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
-
-    // TODO: is there a way to create this using the public API?
-    let reinit_proposal = todo!();
-
-    alice_group
-        .commit_builder()
-        .add_proposal(Proposal::ReInit(reinit_proposal))
-        .load_psks(alice_provider.storage())
-        .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signer,
-            |_| true,
-        )
-        .unwrap();
-    // === Delivery service rejected the commit ===
-
-    //ANCHOR: discard_commit_reinit
-    // Discard the commit
-    alice_group
-        .clear_pending_commit(alice_provider.storage())
-        .expect("Could not clear pending commit");
-    //ANCHOR_END: discard_commit_reinit
-
-    let state_after = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
-    assert!(state_before.non_proposal_state == state_after.non_proposal_state);
-}
-*/
-
 #[openmls_test]
 fn discard_commit_external_join() {
     let bob_provider = &Provider::default();
