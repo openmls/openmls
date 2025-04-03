@@ -316,7 +316,7 @@ impl PublicGroup {
     /// Validate capabilities. This function implements the following checks:
     /// - ValSem106: Add Proposal: required capabilities
     /// - ValSem109: Update Proposal: required capabilities
-    /// Implements check [valn0113](https://validation.openmls.tech/#valn0113).
+    /// - [valn0113](https://validation.openmls.tech/#valn0113).
     pub(crate) fn validate_capabilities(
         &self,
         proposal_queue: &ProposalQueue,
