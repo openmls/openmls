@@ -313,9 +313,10 @@ impl PublicGroup {
         Ok(())
     }
 
-    /// Validate capablities. This function implements the following checks:
+    /// Validate capabilities. This function implements the following checks:
     /// - ValSem106: Add Proposal: required capabilities
     /// - ValSem109: Update Proposal: required capabilities
+    /// Implements check [valn0113](https://validation.openmls.tech/#valn0113).
     pub(crate) fn validate_capabilities(
         &self,
         proposal_queue: &ProposalQueue,
@@ -327,7 +328,7 @@ impl PublicGroup {
         //   this supported by the node?
         // - Check that all extensions are contained in the capabilities.
         // - Check that the capabilities contain the leaf node's credential
-        //   type.
+        //   type (https://validation.openmls.tech/#valn0113).
         // - Check that the credential type is supported by all members of the
         //   group.
         // - Check that the capabilities field of this LeafNode indicates
@@ -604,6 +605,8 @@ impl PublicGroup {
         leaf_node: &LeafNode,
     ) -> Result<(), LeafNodeValidationError> {
         // Check that the data in the leaf node is self-consistent
+        // Check that the capabilities contain the leaf node's credential
+        // type (https://validation.openmls.tech/#valn0113)
         leaf_node.validate_locally()?;
 
         // Check if the ciphersuite and the version of the group are
