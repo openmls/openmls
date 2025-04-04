@@ -448,11 +448,11 @@ impl From<Secret> for PskSecret {
     }
 }
 
-pub(crate) fn load_psks<'p, Storage: StorageProvider>(
+pub(crate) fn load_psks<Storage: StorageProvider>(
     storage: &Storage,
     resumption_psk_store: &ResumptionPskStore,
-    psk_ids: &'p [PreSharedKeyId],
-) -> Result<Vec<(&'p PreSharedKeyId, Secret)>, PskError> {
+    psk_ids: &[PreSharedKeyId],
+) -> Result<Vec<(PreSharedKeyId, Secret)>, PskError> {
     let mut psk_bundles = Vec::new();
 
     for psk_id in psk_ids.iter() {
@@ -461,7 +461,7 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
         match &psk_id.psk {
             Psk::Resumption(resumption) => {
                 if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
-                    psk_bundles.push((psk_id, psk_bundle.secret.clone()));
+                    psk_bundles.push((psk_id.clone(), psk_bundle.secret.clone()));
                 } else {
                     return Err(PskError::KeyNotFound);
                 }
@@ -471,7 +471,7 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
                     .psk(psk_id.psk())
                     .map_err(|_| PskError::KeyNotFound)?;
                 if let Some(psk_bundle) = psk_bundle {
-                    psk_bundles.push((psk_id, psk_bundle.secret));
+                    psk_bundles.push((psk_id.clone(), psk_bundle.secret));
                 } else {
                     return Err(PskError::KeyNotFound);
                 }
