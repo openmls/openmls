@@ -15,7 +15,6 @@ use crate::{
     prelude_test::HpkePublicKey,
     versions::ProtocolVersion,
 };
-use openmls_traits::prelude::*;
 
 #[test]
 fn application_id() {
@@ -367,8 +366,6 @@ fn last_resort_extension() {
     .expect("An unexpected error occurred.")
     .into_group(provider)
     .expect("An unexpected error occurred.");
-
-    use openmls_traits::storage::StorageProvider;
 
     let _: KeyPackageBundle = provider
         .storage()

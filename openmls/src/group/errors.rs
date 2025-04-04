@@ -14,7 +14,7 @@ use crate::{
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
     schedule::errors::PskError,
-    treesync::{errors::*, node::leaf_node::LeafNodeUpdateError},
+    treesync::errors::*,
 };
 
 /// Welcome error
@@ -206,7 +206,7 @@ pub enum StageCommitError {
 
 /// Create commit error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateCommitError<StorageError> {
+pub enum CreateCommitError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -228,9 +228,6 @@ pub enum CreateCommitError<StorageError> {
     /// See [`ProposalValidationError`] for more details.
     #[error(transparent)]
     ProposalValidationError(#[from] ProposalValidationError),
-    /// Error interacting with storage.
-    #[error("Error interacting with storage.")]
-    KeyStoreError(StorageError),
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
@@ -248,12 +245,20 @@ pub enum CreateCommitError<StorageError> {
     GroupContextExtensionsProposalValidationError(
         #[from] GroupContextExtensionsProposalValidationError,
     ),
-    /// See [`LeafNodeUpdateError`] for more details.
-    #[error(transparent)]
-    LeafNodeUpdateError(#[from] LeafNodeUpdateError<StorageError>),
     /// See [`TreeSyncAddLeaf`] for more details.
     #[error(transparent)]
     TreeSyncAddLeaf(#[from] TreeSyncAddLeaf),
+}
+
+/// Stage commit error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum CommitBuilderStageError<StorageError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// Error interacting with storage.
+    #[error("Error interacting with storage.")]
+    KeyStoreError(StorageError),
 }
 
 /// Validation error
@@ -336,6 +341,12 @@ pub enum ValidationError {
         "The ciphersuite in the KeyPackage of the Add proposal does not match the group context."
     )]
     InvalidAddProposalCiphersuite,
+    /// Cannot decrypt own messages because the necessary key has been deleted according to the deletion schedule.
+    #[error("Cannot decrypt own messages.")]
+    CannotDecryptOwnMessage,
+    /// See [`ExternalCommitValidationError`] for more details.
+    #[error(transparent)]
+    ExternalCommitValidation(#[from] ExternalCommitValidationError),
 }
 
 /// Proposal validation error
@@ -388,6 +399,9 @@ pub enum ProposalValidationError {
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// Regular Commits may not contain ExternalInit proposals, but one was found
+    #[error("Found ExternalInit proposal in regular commit")]
+    ExternalInitProposalInRegularCommit,
 }
 
 /// External Commit validaton error
@@ -416,9 +430,6 @@ pub enum ExternalCommitValidationError {
     /// External Commit has to contain a path.
     #[error("External Commit has to contain a path.")]
     NoPath,
-    /// The remove proposal referenced a non-existing member.
-    #[error("The remove proposal referenced a non-existing member.")]
-    UnknownMemberRemoval,
     /// External commit contains referenced proposal
     #[error("Found a referenced proposal in an External Commit.")]
     ReferencedProposal,
@@ -449,6 +460,9 @@ pub(crate) enum ProposalQueueError {
     /// Update proposal from external sender.
     #[error("Update proposal from external sender.")]
     UpdateFromExternalSender,
+    /// SelfRemove proposal from a non-Member.
+    #[error("SelfRemove proposal from a non-Member.")]
+    SelfRemoveFromNonMember,
 }
 
 /// Errors that can arise when creating a [`ProposalQueue`] from committed
@@ -486,7 +500,10 @@ pub enum CreateGroupContextExtProposalError<StorageError> {
     MlsGroupStateError(#[from] MlsGroupStateError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<StorageError>),
+    CreateCommitError(#[from] CreateCommitError),
+    /// See [`CommitBuilderStageError`] for more details.
+    #[error(transparent)]
+    CommitBuilderStageError(#[from] CommitBuilderStageError<StorageError>),
     /// Error writing updated group to storage.
     #[error("Error writing updated group data to storage.")]
     StorageError(StorageError),

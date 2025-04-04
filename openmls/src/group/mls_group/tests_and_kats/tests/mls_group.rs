@@ -1,10 +1,10 @@
-use mls_group::tests_and_kats::utils::{
-    flip_last_byte, setup_alice_bob, setup_alice_bob_group, setup_client,
+use mls_group::{
+    tests_and_kats::utils::{flip_last_byte, setup_alice_bob, setup_alice_bob_group, setup_client},
+    EncryptionKeyPair, GroupEpochSecrets, MessageSecretsStore,
 };
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::MemoryStorage;
 use openmls_test::openmls_test;
-use openmls_traits::{storage::CURRENT_VERSION, OpenMlsProvider as _};
+use openmls_traits::storage::CURRENT_VERSION;
 use signable::Signable;
 use tls_codec::{Deserialize, Serialize};
 
@@ -17,10 +17,11 @@ use crate::{
     messages::{
         group_info::GroupInfoTBS, proposals::*, EncryptedGroupSecrets, GroupSecretsError, Welcome,
     },
-    prelude::ConfirmationTag,
+    prelude::{ConfirmationTag, LeafNode},
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     test_utils::{
         frankenstein::{FrankenFramedContentBody, FrankenPublicMessage},
+        single_group_test_framework::{AddMemberConfig, CorePartyState, GroupState},
         test_framework::{
             errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
             MlsGroupTestSetup,
@@ -30,7 +31,7 @@ use crate::{
     treesync::{
         errors::{ApplyUpdatePathError, LeafNodeValidationError},
         node::leaf_node::Capabilities,
-        LeafNodeParameters,
+        LeafNodeParameters, TreeSync,
     },
 };
 
@@ -493,7 +494,8 @@ fn test_verify_staged_commit_credentials(
 
     let (_msg, welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
 
     // Merging the pending commit should clear the pending commit and we should
     // end up in the same state as bob.
@@ -535,7 +537,8 @@ fn test_verify_staged_commit_credentials(
     // === Make a new, empty commit and check that the leaf node credentials match ===
     let (commit_msg, _welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_contents();
 
     // empty commits should only produce a single message
     assert!(_welcome_option.is_none());
@@ -673,7 +676,8 @@ fn test_commit_with_update_path_leaf_node(
     println!("\nCreating commit with add proposal.");
     let (_msg, welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
     println!("Done creating commit.");
 
     // Merging the pending commit should clear the pending commit and we should
@@ -718,7 +722,8 @@ fn test_commit_with_update_path_leaf_node(
     println!("\nCreating self-update commit.");
     let (commit_msg, _welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
     println!("Done creating commit.");
 
     // empty commits should only produce a single message
@@ -869,7 +874,8 @@ fn test_pending_commit_logic(
     println!("\nCreating commit with add proposal.");
     let (_msg, _welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
     println!("Done creating commit.");
 
     // There should be a pending commit after issueing a proposal.
@@ -936,7 +942,8 @@ fn test_pending_commit_logic(
     // Creating a new commit should commit the same proposals.
     let (_msg, welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
 
     // Merging the pending commit should clear the pending commit and we should
     // end up in the same state as bob.
@@ -976,11 +983,13 @@ fn test_pending_commit_logic(
     // While a commit is pending, merging Bob's commit should clear the pending commit.
     let (_msg, _welcome_option, _group_info) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
 
     let (msg, _welcome_option, _group_info) = bob_group
         .self_update(provider, &bob_signer, LeafNodeParameters::default())
-        .expect("error creating self-update commit");
+        .expect("error creating self-update commit")
+        .into_messages();
 
     let alice_processed_message = alice_group
         .process_message(provider, msg.into_protocol_message().unwrap())
@@ -1048,8 +1057,6 @@ fn key_package_deletion() {
     .expect("Error creating staged join from Welcome")
     .into_group(provider)
     .expect("Error creating group from staged join");
-
-    use openmls_traits::storage::StorageProvider;
 
     // TEST: The key package must be gone from the key store.
     let result: Option<KeyPackageBundle> = provider
@@ -1228,7 +1235,7 @@ fn builder_pattern() {
     let alice_group = MlsGroup::builder()
         .with_group_id(test_group_id.clone())
         .padding_size(test_padding_size)
-        .sender_ratchet_configuration(test_sender_ratchet_config.clone())
+        .sender_ratchet_configuration(test_sender_ratchet_config)
         .with_group_context_extensions(test_gc_extensions.clone())
         .expect("error adding group context extension to builder")
         .ciphersuite(test_ciphersuite)
@@ -2041,11 +2048,17 @@ fn deletion() {
         setup_client("alice", ciphersuite, provider);
 
     // delete the kpb from the provider, as we don't need it
-    <MemoryStorage as openmls_traits::storage::StorageProvider<CURRENT_VERSION>>::
-        delete_key_package(alice_provider.storage(),&alice_kpb.key_package().hash_ref(provider.crypto()).unwrap())
+
+    <StorageProvider as openmls_traits::storage::StorageProvider<CURRENT_VERSION>>::delete_key_package
+        (
+            alice_provider.storage(),
+            &alice_kpb.key_package().hash_ref(provider.crypto()).unwrap(),
+        ).unwrap();
+
+    <StorageProvider as openmls_traits::storage::StorageProvider<CURRENT_VERSION>>::delete_encryption_key_pair
+        (alice_provider
+        .storage(),alice_kpb.key_package().leaf_node().encryption_key())
         .unwrap();
-    <MemoryStorage as openmls_traits::storage::StorageProvider<CURRENT_VERSION>>::
-        delete_encryption_key_pair(alice_provider.storage(),alice_kpb.key_package().leaf_node().encryption_key()).unwrap();
 
     // alice creates MlsGroup
     let mut alice_group = MlsGroup::builder()
@@ -2064,7 +2077,62 @@ fn deletion() {
     // alice deletes the group
     alice_group.delete(alice_provider.storage()).unwrap();
 
-    assert!(alice_provider.storage().values.read().unwrap().is_empty());
+    let storage = alice_provider.storage();
+    let group_id = alice_group.group_id();
+    let current_epoch = alice_group.epoch();
+    let own_leaf_index = alice_group.own_leaf_index();
+
+    let all_gone = storage.tree::<_, TreeSync>(group_id).unwrap().is_none()
+        && storage
+            .confirmation_tag::<_, ConfirmationTag>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .group_context::<_, GroupContext>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .interim_transcript_hash::<_, InterimTranscriptHash>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .own_leaf_index::<_, LeafNodeIndex>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .group_epoch_secrets::<_, GroupEpochSecrets>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .message_secrets::<_, MessageSecretsStore>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .mls_group_join_config::<_, MlsGroupJoinConfig>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .own_leaf_nodes::<_, LeafNode>(group_id)
+            .unwrap()
+            .is_empty()
+        && storage
+            .group_state::<MlsGroupState, _>(group_id)
+            .unwrap()
+            .is_none()
+        && storage
+            .encryption_epoch_key_pairs::<_, _, EncryptionKeyPair>(
+                group_id,
+                &current_epoch,
+                own_leaf_index.u32(),
+            )
+            .unwrap()
+            .is_empty()
+        && alice_group.proposal_store().is_empty();
+
+    // The trait doesn't allow us to check whether the proposal queue is empty,
+    // or whether all resumption PSKs have been deleted.
+
+    assert!(all_gone);
 }
 
 #[openmls_test::openmls_test]
@@ -2186,13 +2254,15 @@ fn failed_groupinfo_decryption(
 #[openmls_test::openmls_test]
 fn update_path() {
     // === Alice creates a group with her and Bob ===
+    // TODO: don't let alice and bob share the provider
     let (
         mut group_alice,
         _alice_signature_keys,
         mut group_bob,
         bob_signature_keys,
+        _alice_credential_with_key,
         _bob_credential_with_key,
-    ) = setup_alice_bob_group(ciphersuite, provider);
+    ) = setup_alice_bob_group(ciphersuite, provider, provider);
 
     // === Bob updates and commits ===
     let mut bob_new_leaf_node = group_bob.own_leaf_node().unwrap().clone();
@@ -2209,7 +2279,8 @@ fn update_path() {
 
     let (update_bob, _welcome_option, _group_info_option) = group_bob
         .self_update(provider, &bob_signature_keys, LeafNodeParameters::default())
-        .expect("Could not create proposal.");
+        .expect("Could not create proposal.")
+        .into_contents();
 
     // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
     // apart the commit, manipulating the ciphertexts and the piecing it
@@ -2250,8 +2321,7 @@ fn update_path() {
         Some(pm.confirmation_tag().unwrap().0.mac_value.clone()),
     );
 
-    let protocol_message =
-        ProtocolMessage::PublicMessage(PublicMessage::from(broken_message).into());
+    let protocol_message = ProtocolMessage::from(PublicMessage::from(broken_message));
 
     let result = group_alice.process_message(provider, protocol_message);
     assert_eq!(
@@ -2324,7 +2394,8 @@ fn psks() {
     // === Bob updates and commits ===
     let (_commit, _welcome_option, _group_info_option) = bob_group
         .self_update(provider, &bob_signature_keys, LeafNodeParameters::default())
-        .expect("An unexpected error occurred.");
+        .expect("An unexpected error occurred.")
+        .into_contents();
 }
 
 // Test several scenarios when PSKs are used in a group
@@ -2404,7 +2475,8 @@ fn own_commit_processing(
             &alice_signature_keys,
             LeafNodeParameters::default(),
         )
-        .expect("Could not create commit");
+        .expect("Could not create commit")
+        .into_contents();
 
     let commit_in = MlsMessageIn::from(commit_out);
 
@@ -2777,4 +2849,110 @@ fn proposal_application_after_self_was_removed_ref(
     let member = bob_members.next().unwrap();
     let bob_next_id = member.credential.serialized_content();
     assert_eq!(bob_next_id, b"Charlie");
+}
+
+// Test processing of own commits
+#[openmls_test::openmls_test]
+fn signature_key_rotation(
+    ciphersuite: Ciphersuite,
+    provider: &impl crate::storage::OpenMlsProvider,
+) {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+
+    // Create config
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    // Join config
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    // Initialize the group state
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    // Generate a new signer for Alice
+    let new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
+
+    // Create a commit that updates Alice's signer
+    let [alice_group_state] = group_state.members_mut(&["alice"]);
+
+    let old_signature_key = alice_group_state
+        .party
+        .credential_with_key
+        .signature_key
+        .clone();
+    let new_signature_key = new_pre_group_state
+        .credential_with_key
+        .signature_key
+        .clone();
+    assert_ne!(old_signature_key, new_signature_key);
+
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_credential_with_key(new_pre_group_state.credential_with_key)
+        .build();
+
+    let bundle = alice_group_state
+        .group
+        .self_update_with_new_signer(
+            &alice_group_state.party.core_state.provider,
+            &alice_group_state.party.signer,
+            &new_pre_group_state.signer,
+            leaf_node_parameters,
+        )
+        .unwrap();
+
+    alice_group_state
+        .group
+        .merge_pending_commit(&alice_group_state.party.core_state.provider)
+        .unwrap();
+
+    group_state
+        .deliver_and_apply_if(bundle.into_commit().into(), |state| {
+            state.party.core_state.name != "alice"
+        })
+        .unwrap();
+
+    // Check that the signature key was rotated
+    let [bob_group_state] = group_state.members_mut(&["bob"]);
+    let alice_signature_key = bob_group_state
+        .group
+        .members()
+        .find(|m| m.index == LeafNodeIndex::new(0))
+        .unwrap()
+        .signature_key;
+    assert_eq!(alice_signature_key.as_slice(), new_signature_key.as_slice());
+
+    // Check that we can send messages using the new signer.
+    let [alice_group_state] = group_state.members_mut(&["alice"]);
+
+    let bundle = alice_group_state
+        .group
+        .self_update(
+            &alice_group_state.party.core_state.provider,
+            &new_pre_group_state.signer,
+            LeafNodeParameters::default(),
+        )
+        .unwrap();
+
+    group_state
+        .deliver_and_apply_if(bundle.into_commit().into(), |state| {
+            state.party.core_state.name != "alice"
+        })
+        .unwrap();
 }

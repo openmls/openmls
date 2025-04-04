@@ -420,6 +420,19 @@ impl Extensions {
                 _ => None,
             })
     }
+
+    /// Get a reference to the [`UnknownExtension`] with the given type id, if there is any.
+    pub fn unknown(&self, extension_type_id: u16) -> Option<&UnknownExtension> {
+        let extension_type: ExtensionType = extension_type_id.into();
+
+        match extension_type {
+            ExtensionType::Unknown(_) => self.find_by_type(extension_type).and_then(|e| match e {
+                Extension::Unknown(_, e) => Some(e),
+                _ => None,
+            }),
+            _ => None,
+        }
+    }
 }
 
 impl Extension {

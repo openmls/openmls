@@ -25,6 +25,7 @@ pub(super) fn deserialize_ciphertext_content<R: Read>(
     };
 
     // ValSem011: PrivateMessageContentIn padding must be all-zero.
+    // https://validation.openmls.tech/#valn1303
     if !padding.into_iter().all(|byte| byte == 0x00) {
         return Err(Error::InvalidInput);
     }
@@ -37,11 +38,19 @@ impl Deserialize for MlsMessageIn {
         let version = ProtocolVersion::tls_deserialize(bytes)?;
         let body = MlsMessageBodyIn::tls_deserialize(bytes)?;
 
+        // This is required by the RFC in the struct definition of MLSMessage
+        if version != ProtocolVersion::Mls10 {
+            return Err(tls_codec::Error::DecodingError(
+                "MlsMessage protocol version is not 1.0".into(),
+            ));
+        }
+
         // KeyPackage version must match MlsMessage version.
+        // https://validation.openmls.tech/#valn0205
         if let MlsMessageBodyIn::KeyPackage(key_package) = &body {
             if !key_package.version_is_supported(version) {
                 return Err(tls_codec::Error::DecodingError(
-                    "KeyPackage version does not match MlsMessage version.".into(),
+                    "KeyPackage protocol version does not match MlsMessage version.".into(),
                 ));
             }
         }

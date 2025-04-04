@@ -37,6 +37,7 @@ impl PublicGroup {
     /// Checks the following semantic validation:
     ///  - ValSem002
     ///  - ValSem003
+    ///  - [valn1307](https://validation.openmls.tech/#valn1307)
     pub(crate) fn validate_framing(
         &self,
         message: &ProtocolMessage,
@@ -62,6 +63,7 @@ impl PublicGroup {
             }
             // For all other messages we only only accept the current epoch
             _ => {
+                // https://validation.openmls.tech/#valn1307
                 if message.epoch() != self.group_context().epoch() {
                     log::error!(
                         "Wrong Epoch: message.epoch() {} != {} self.group_context().epoch()",
@@ -174,6 +176,7 @@ impl PublicGroup {
     ///
     /// [valn0111]: https://validation.openmls.tech/#valn0111
     /// [valn0112]: https://validation.openmls.tech/#valn0112
+    /// [valn1208]: https://validation.openmls.tech/#valn1208
     pub(crate) fn validate_key_uniqueness(
         &self,
         proposal_queue: &ProposalQueue,
@@ -183,6 +186,7 @@ impl PublicGroup {
         let mut init_key_set = HashSet::new();
         let mut encryption_key_set = HashSet::new();
 
+        // Handle the exceptions needed for https://validation.openmls.tech/#valn0306
         let remove_proposals = HashSet::<LeafNodeIndex>::from_iter(
             proposal_queue
                 .remove_proposals()
@@ -271,6 +275,7 @@ impl PublicGroup {
         //  - ValSem101
         //  - https://validation.openmls.tech/#valn0111
         //  - https://validation.openmls.tech/#valn0305
+        //  - https://validation.openmls.tech/#valn0306
         for signature_key in signature_keys {
             if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKey);
@@ -491,6 +496,7 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ExternalCommitValidationError> {
+        // [valn0401](https://validation.openmls.tech/#valn0401)
         let count_external_init_proposals = proposal_queue
             .filtered_by_type(ProposalType::ExternalInit)
             .count();
@@ -503,6 +509,7 @@ impl PublicGroup {
         }
 
         // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+        // [valn0404](https://validation.openmls.tech/#valn0404)
         let contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
             let is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
             let is_allowed_type = matches!(

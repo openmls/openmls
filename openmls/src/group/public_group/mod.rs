@@ -11,7 +11,6 @@
 //! To avoid duplication of code and functionality, [`MlsGroup`] internally
 //! relies on a [`PublicGroup`] as well.
 
-#[cfg(test)]
 use std::collections::HashSet;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -28,7 +27,10 @@ use super::{
 #[cfg(test)]
 use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
 use crate::{
-    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
+    binary_tree::{
+        array_representation::{direct_path, TreeSize},
+        LeafNodeIndex,
+    },
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
@@ -111,13 +113,35 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    pub fn from_external<StorageProvider: PublicStorageProvider>(
+    pub fn from_external<StorageProvider, StorageError>(
         crypto: &impl OpenMlsCrypto,
         storage: &StorageProvider,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
-    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageProvider::PublicError>> {
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>>
+    where
+        StorageProvider: PublicStorageProvider<Error = StorageError>,
+    {
+        let (public_group, group_info) = PublicGroup::from_external_internal(
+            crypto,
+            ratchet_tree,
+            verifiable_group_info,
+            proposal_store,
+        )?;
+
+        public_group
+            .store(storage)
+            .map_err(CreationFromExternalError::WriteToStorageError)?;
+
+        Ok((public_group, group_info))
+    }
+    pub(crate) fn from_external_internal<StorageError>(
+        crypto: &impl OpenMlsCrypto,
+        ratchet_tree: RatchetTreeIn,
+        verifiable_group_info: VerifiableGroupInfo,
+        proposal_store: ProposalStore,
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>> {
         let ciphersuite = verifiable_group_info.ciphersuite();
 
         let group_id = verifiable_group_info.group_id();
@@ -134,13 +158,79 @@ impl PublicGroup {
         // signature against.
         let treesync = TreeSync::from_ratchet_tree(crypto, ciphersuite, ratchet_tree)?;
 
+        let mut encryption_keys = HashSet::new();
+
         // Perform basic checks that the leaf nodes in the ratchet tree are valid
         // These checks only do those that don't need group context. We do the full
         // checks later, but do these here to fail early in case of funny business
-        treesync
-            .full_leaves()
-            .try_for_each(|leaf_node| leaf_node.validate_locally())?;
+        treesync.full_leaves().try_for_each(|leaf_node| {
+            leaf_node.validate_locally()?;
 
+            // Check that no two nodes share an encryption key.
+            // This is a bit stronger than what the spec requires: It requires that the encryption keys
+            // in parent nodes and unmerged leaves must be unique. Here, we check that all encryption
+            // keys (all leaf nodes, incl. unmerged and all parent nodes) are unique.
+            //
+            // https://validation.openmls.tech/#valn1410
+            if !encryption_keys.insert(leaf_node.encryption_key()) {
+                return Err(CreationFromExternalError::DuplicateEncryptionKey);
+            }
+
+            Ok(())
+        })?;
+
+        // For each non-empty parent node and each entry in the node's unmerged_leaves field:
+        treesync
+            .full_parents()
+            .try_for_each(|(parent_index, parent_node)| {
+                // Check that no two nodes share an encryption key.
+                // This is a bit stronger than what the spec requires: It requires that the encryption keys
+                // in parent nodes and unmerged leaves must be unique. Here, we check that all encryption
+                // keys (all leaf nodes, incl. unmerged and all parent nodes) are unique.
+                //
+                // https://validation.openmls.tech/#valn1410
+                if !encryption_keys.insert(parent_node.encryption_key()) {
+                    return Err(CreationFromExternalError::DuplicateEncryptionKey);
+                }
+
+                parent_node
+                    .unmerged_leaves()
+                    .iter()
+                    .try_for_each(|leaf_index| {
+                        let path = direct_path(*leaf_index, treesync.tree_size());
+
+                        // https://validation.openmls.tech/#valn1408
+                        // Verify that the entry represents a non-blank leaf node that is a descendant of the
+                        // parent node.
+                        let this_parent_offset = path
+                            .iter()
+                            .position(|x| x == &parent_index)
+                            .ok_or(
+                            CreationFromExternalError::<StorageError>::UnmergedLeafNotADescendant,
+                        )?;
+                        let path_leaf_to_this = &path[..this_parent_offset];
+
+
+                        // https://validation.openmls.tech/#valn1409
+                        // Verify that every non-blank intermediate node between the leaf node and the parent
+                        // node also has an entry for the leaf node in its unmerged_leaves.
+                        path_leaf_to_this
+                            .iter()
+                            .try_for_each(|intermediate_index| {
+                                // None would be blank, and we don't care about those
+                                if let Some(intermediate_node) = treesync
+                                    .parent(*intermediate_index) {
+                                    if !intermediate_node.unmerged_leaves().contains(leaf_index) {
+                                        return Err(CreationFromExternalError::<StorageError>::IntermediateNodeMissingUnmergedLeaf);
+                                    }
+                                }
+
+                                Ok(())
+                            })
+                    })
+            })?;
+
+        // https://validation.openmls.tech/#valn1402
         let group_info: GroupInfo = {
             let signer_signature_key = treesync
                 .leaf(verifiable_group_info.signer())
@@ -154,6 +244,7 @@ impl PublicGroup {
                 .map_err(|_| CreationFromExternalError::InvalidGroupInfoSignature)?
         };
 
+        // https://validation.openmls.tech/#valn1405
         if treesync.tree_hash() != group_info.group_context().tree_hash() {
             return Err(CreationFromExternalError::TreeHashMismatch);
         }
@@ -162,7 +253,7 @@ impl PublicGroup {
             return Err(CreationFromExternalError::UnsupportedMlsVersion);
         }
 
-        let group_context = GroupContext::from(group_info.clone());
+        let group_context = group_info.group_context().clone();
 
         let interim_transcript_hash = {
             let input = InterimTranscriptHashInput::from(group_info.confirmation_tag());
@@ -183,14 +274,11 @@ impl PublicGroup {
         };
 
         // Fully check that the leaf nodes in the ratchet tree are valid
+        // https://validation.openmls.tech/#valn1407
         public_group
             .treesync
             .full_leaves()
             .try_for_each(|leaf_node| public_group.validate_leaf_node(leaf_node))?;
-
-        public_group
-            .store(storage)
-            .map_err(CreationFromExternalError::WriteToStorageError)?;
 
         Ok((public_group, group_info))
     }
@@ -308,7 +396,7 @@ impl PublicGroup {
         &mut self,
         storage: &Storage,
         proposal: QueuedProposal,
-    ) -> Result<(), Storage::PublicError> {
+    ) -> Result<(), Storage::Error> {
         storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)?;
         self.proposal_store.add(proposal);
         Ok(())
@@ -319,7 +407,7 @@ impl PublicGroup {
         &mut self,
         storage: &Storage,
         proposal_ref: &ProposalRef,
-    ) -> Result<(), Storage::PublicError> {
+    ) -> Result<(), Storage::Error> {
         storage.remove_proposal(self.group_id(), proposal_ref)?;
         self.proposal_store.remove(proposal_ref);
         Ok(())
@@ -329,7 +417,7 @@ impl PublicGroup {
     pub fn queued_proposals<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
-    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Storage::PublicError> {
+    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Storage::Error> {
         storage.queued_proposals(self.group_id())
     }
 }
@@ -399,7 +487,7 @@ impl PublicGroup {
     pub(crate) fn store<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
-    ) -> Result<(), Storage::PublicError> {
+    ) -> Result<(), Storage::Error> {
         let group_id = self.group_context.group_id();
         storage.write_tree(group_id, self.treesync())?;
         storage.write_confirmation_tag(group_id, self.confirmation_tag())?;
@@ -415,7 +503,7 @@ impl PublicGroup {
     pub fn delete<Storage: PublicStorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
-    ) -> Result<(), Storage::PublicError> {
+    ) -> Result<(), Storage::Error> {
         storage.delete_tree(group_id)?;
         storage.delete_confirmation_tag(group_id)?;
         storage.delete_context(group_id)?;
@@ -428,7 +516,7 @@ impl PublicGroup {
     pub fn load<Storage: PublicStorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
-    ) -> Result<Option<Self>, Storage::PublicError> {
+    ) -> Result<Option<Self>, Storage::Error> {
         let treesync = storage.tree(group_id)?;
         let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
         let group_context = storage.group_context(group_id)?;

@@ -154,6 +154,7 @@ impl PublicMessageIn {
             &membership_key.tag_message(crypto, ciphersuite, tbm_payload)?;
 
         // Verify the membership tag
+        // https://validation.openmls.tech/#valn1302
         if let Some(membership_tag) = &self.membership_tag {
             // TODO #133: make this a constant-time comparison
             if membership_tag != expected_membership_tag {

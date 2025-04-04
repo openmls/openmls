@@ -71,34 +71,22 @@ impl MlsGroup {
     > {
         self.is_operational()?;
 
-        // Create Commit over all pending proposals
+        // Build and stage the commit using the commit builder
         // TODO #751
-        let params = CreateCommitParams::builder()
-            .framing_parameters(self.framing_parameters())
-            .build();
-        let create_commit_result = self.create_commit(params, provider, signer)?;
+        let (commit, welcome, group_info) = self
+            .commit_builder()
+            // This forces committing to the proposals in the proposal store:
+            .consume_proposal_store(true)
+            .load_psks(provider.storage())?
+            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .stage_commit(provider)?
+            .into_contents();
 
-        // Convert PublicMessage messages to MLSMessage and encrypt them if required by
-        // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider)?;
-
-        // Set the current group state to [`MlsGroupState::PendingCommit`],
-        // storing the current [`StagedCommit`] from the commit results
-        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-            create_commit_result.staged_commit,
-        )));
-        provider
-            .storage()
-            .write_group_state(self.group_id(), &self.group_state)
-            .map_err(CommitToPendingProposalsError::StorageError)?;
-
-        self.reset_aad();
         Ok((
-            mls_message,
-            create_commit_result
-                .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, self.version())),
-            create_commit_result.group_info,
+            commit,
+            // Turn the [`Welcome`] to an [`MlsMessageOut`], if there is one
+            welcome.map(|welcome| MlsMessageOut::from_welcome(welcome, self.version())),
+            group_info,
         ))
     }
 
@@ -169,7 +157,10 @@ impl MlsGroup {
         storage: &impl StorageProvider,
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
-        let old_epoch_keypairs = self.read_epoch_keypairs(storage);
+        let old_epoch_keypairs = self.read_epoch_keypairs(storage).map_err(|e| {
+            log::error!("Error reading epoch keypairs: {:?}", e);
+            StageCommitError::MissingDecryptionKey
+        })?;
 
         // If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a
@@ -290,6 +281,7 @@ impl MlsGroup {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 let sender = content.sender().clone();
                 let authenticated_data = content.authenticated_data().to_owned();
+                let epoch = content.epoch();
 
                 let content = match content.content() {
                     FramedContentBody::Application(application_message) => {
@@ -324,7 +316,7 @@ impl MlsGroup {
 
                 Ok(ProcessedMessage::new(
                     self.group_id().clone(),
-                    self.context().epoch(),
+                    epoch,
                     sender,
                     authenticated_data,
                     content,
@@ -404,7 +396,7 @@ impl MlsGroup {
                         .into(),
                     })?;
                 DecryptedMessage::from_inbound_public_message(
-                    public_message,
+                    *public_message,
                     message_secrets,
                     message_secrets.serialized_context().to_vec(),
                     crypto,

@@ -207,6 +207,7 @@ impl ProposalQueue {
     pub(crate) fn is_empty(&self) -> bool {
         self.proposal_references.is_empty()
     }
+
     /// Returns a new `QueuedProposalQueue` from proposals that were committed
     /// and don't need filtering.
     /// This functions does the following checks:
@@ -394,8 +395,9 @@ impl ProposalQueue {
     /// The function performs the following steps:
     ///
     /// - Extract Adds and filter for duplicates
-    /// - Build member list with chains: Updates & Removes
+    /// - Build member list with chains: Updates, Removes & SelfRemoves
     /// - Check for invalid indexes and drop proposal
+    /// - Check for presence of SelfRemoves and delete Removes and Updates
     /// - Check for presence of Removes and delete Updates
     /// - Only keep the last Update
     ///
@@ -409,12 +411,6 @@ impl ProposalQueue {
         inline_proposals: &'a [Proposal],
         own_index: LeafNodeIndex,
     ) -> Result<(Self, bool), ProposalQueueError> {
-        #[derive(Clone, Default)]
-        struct Member {
-            updates: Vec<QueuedProposal>,
-            removes: Vec<QueuedProposal>,
-        }
-        let mut members = HashMap::<LeafNodeIndex, Member>::new();
         // We use a HashSet to filter out duplicate Adds and use a vector in
         // addition to keep the order as they come in.
         let mut adds: OrderedProposalRefs = OrderedProposalRefs::new();
@@ -422,6 +418,30 @@ impl ProposalQueue {
         let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
         let mut contains_own_updates = false;
         let mut contains_external_init = false;
+
+        let mut member_specific_proposals: HashMap<LeafNodeIndex, QueuedProposal> = HashMap::new();
+        let mut register_member_specific_proposal =
+            |member: LeafNodeIndex, proposal: QueuedProposal| {
+                // Only replace if the existing proposal is an Update.
+                match member_specific_proposals.entry(member) {
+                    // Insert if no entry exists for this sender.
+                    Entry::Vacant(vacant_entry) => {
+                        vacant_entry.insert(proposal);
+                    }
+                    // Replace the existing proposal if the new proposal has
+                    // priority.
+                    Entry::Occupied(mut occupied_entry)
+                        if occupied_entry
+                            .get()
+                            .proposal()
+                            .has_lower_priority_than(&proposal.proposal) =>
+                    {
+                        occupied_entry.insert(proposal);
+                    }
+                    // Otherwise ignore the new proposal.
+                    Entry::Occupied(_) => {}
+                }
+            };
 
         // Aggregate both proposal types to a common iterator
         // We checked earlier that only proposals can end up here
@@ -444,83 +464,66 @@ impl ProposalQueue {
 
         // Parse proposals and build adds and member list
         for queued_proposal in queued_proposal_list {
+            proposal_pool.insert(
+                queued_proposal.proposal_reference(),
+                queued_proposal.clone(),
+            );
             match queued_proposal.proposal {
                 Proposal::Add(_) => {
                     adds.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(_) => {
                     // Only members can send update proposals
                     // ValSem112
-                    let leaf_index = match queued_proposal.sender.clone() {
-                        Sender::Member(hash_ref) => hash_ref,
-                        _ => return Err(ProposalQueueError::UpdateFromExternalSender),
+                    let Sender::Member(sender_index) = queued_proposal.sender() else {
+                        return Err(ProposalQueueError::UpdateFromExternalSender);
                     };
-                    if leaf_index != own_index {
-                        members
-                            .entry(leaf_index)
-                            .or_default()
-                            .updates
-                            .push(queued_proposal.clone());
-                    } else {
+                    if sender_index == &own_index {
                         contains_own_updates = true;
+                        continue;
                     }
-                    let proposal_reference = queued_proposal.proposal_reference();
-                    proposal_pool.insert(proposal_reference, queued_proposal);
+                    register_member_specific_proposal(*sender_index, queued_proposal);
                 }
                 Proposal::Remove(ref remove_proposal) => {
                     let removed = remove_proposal.removed();
-                    members
-                        .entry(removed)
-                        .or_default()
-                        .updates
-                        .push(queued_proposal.clone());
-                    let proposal_reference = queued_proposal.proposal_reference();
-                    proposal_pool.insert(proposal_reference, queued_proposal);
+                    register_member_specific_proposal(removed, queued_proposal);
                 }
                 Proposal::PreSharedKey(_) => {
                     valid_proposals.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::ReInit(_) => {
                     // TODO #751: Only keep one ReInit
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::ExternalInit(_) => {
                     // Only use the first external init proposal we find.
                     if !contains_external_init {
                         valid_proposals.add(queued_proposal.proposal_reference());
-                        proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                         contains_external_init = true;
                     }
                 }
                 Proposal::GroupContextExtensions(_) => {
                     valid_proposals.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::AppAck(_) => unimplemented!("See #291"),
+                Proposal::SelfRemove => {
+                    let Sender::Member(removed) = queued_proposal.sender() else {
+                        return Err(ProposalQueueError::SelfRemoveFromNonMember);
+                    };
+                    register_member_specific_proposal(*removed, queued_proposal);
+                }
                 Proposal::Custom(_) => {
                     // Other/unknown proposals are always considered valid and
                     // have to be checked by the application instead.
                     valid_proposals.add(queued_proposal.proposal_reference());
-                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
             }
         }
-        // Check for presence of Removes and delete Updates
-        for (_, member) in members.iter_mut() {
-            // Check if there are Removes
-            if let Some(last_remove) = member.removes.last() {
-                // Delete all Updates when a Remove is found
-                member.updates = Vec::new();
-                // Only keep the last Remove
-                valid_proposals.add(last_remove.proposal_reference());
-            }
-            if let Some(last_update) = member.updates.last() {
-                // Only keep the last Update
-                valid_proposals.add(last_update.proposal_reference());
-            }
+
+        // Add the leaf-specific proposals to the list of valid proposals.
+        for proposal in member_specific_proposals.values() {
+            valid_proposals.add(proposal.proposal_reference());
         }
+
         // Only retain `adds` and `valid_proposals`
         let mut proposal_queue = ProposalQueue::default();
         for proposal_reference in adds.iter().chain(valid_proposals.iter()) {
@@ -532,6 +535,139 @@ impl ProposalQueue {
         }
         Ok((proposal_queue, contains_own_updates))
     }
+
+    /// Filters received proposals without inline proposals
+    ///
+    /// 11.2 Commit
+    /// If there are multiple proposals that apply to the same leaf,
+    /// the committer chooses one and includes only that one in the Commit,
+    /// considering the rest invalid. The committer MUST prefer any Remove
+    /// received, or the most recent Update for the leaf if there are no
+    /// Removes. If there are multiple Add proposals for the same client,
+    /// the committer again chooses one to include and considers the rest
+    /// invalid.
+    ///
+    /// The function performs the following steps:
+    ///
+    /// - Extract Adds and filter for duplicates
+    /// - Build member list with chains: Updates, Removes & SelfRemoves
+    /// - Check for invalid indexes and drop proposal
+    /// - Check for presence of SelfRemoves and delete Removes and Updates
+    /// - Check for presence of Removes and delete Updates
+    /// - Only keep the last Update
+    ///
+    /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for
+    /// the own node were included
+    pub(crate) fn filter_proposals_without_inline(
+        iter: impl IntoIterator<Item = QueuedProposal>,
+        own_index: LeafNodeIndex,
+    ) -> Result<(Self, bool), ProposalQueueError> {
+        // We use a HashSet to filter out duplicate Adds and use a vector in
+        // addition to keep the order as they come in.
+        let mut adds: OrderedProposalRefs = OrderedProposalRefs::new();
+        let mut valid_proposals: OrderedProposalRefs = OrderedProposalRefs::new();
+        let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
+        let mut contains_own_updates = false;
+        let mut contains_external_init = false;
+
+        let mut member_specific_proposals: HashMap<LeafNodeIndex, QueuedProposal> = HashMap::new();
+        let mut register_member_specific_proposal =
+            |member: LeafNodeIndex, proposal: QueuedProposal| {
+                // Only replace if the existing proposal is an Update.
+                match member_specific_proposals.entry(member) {
+                    // Insert if no entry exists for this sender.
+                    Entry::Vacant(vacant_entry) => {
+                        vacant_entry.insert(proposal);
+                    }
+                    // Replace the existing proposal if the new proposal has
+                    // priority.
+                    Entry::Occupied(mut occupied_entry)
+                        if occupied_entry
+                            .get()
+                            .proposal()
+                            .has_lower_priority_than(&proposal.proposal) =>
+                    {
+                        occupied_entry.insert(proposal);
+                    }
+                    // Otherwise ignore the new proposal.
+                    Entry::Occupied(_) => {}
+                }
+            };
+
+        // Parse proposals and build adds and member list
+        for queued_proposal in iter {
+            proposal_pool.insert(
+                queued_proposal.proposal_reference(),
+                queued_proposal.clone(),
+            );
+            match queued_proposal.proposal {
+                Proposal::Add(_) => {
+                    adds.add(queued_proposal.proposal_reference());
+                }
+                Proposal::Update(_) => {
+                    // Only members can send update proposals
+                    // ValSem112
+                    let Sender::Member(sender_index) = queued_proposal.sender() else {
+                        return Err(ProposalQueueError::UpdateFromExternalSender);
+                    };
+                    if sender_index == &own_index {
+                        contains_own_updates = true;
+                        continue;
+                    }
+                    register_member_specific_proposal(*sender_index, queued_proposal);
+                }
+                Proposal::Remove(ref remove_proposal) => {
+                    let removed = remove_proposal.removed();
+                    register_member_specific_proposal(removed, queued_proposal);
+                }
+                Proposal::PreSharedKey(_) => {
+                    valid_proposals.add(queued_proposal.proposal_reference());
+                }
+                Proposal::ReInit(_) => {
+                    // TODO #751: Only keep one ReInit
+                }
+                Proposal::ExternalInit(_) => {
+                    // Only use the first external init proposal we find.
+                    if !contains_external_init {
+                        valid_proposals.add(queued_proposal.proposal_reference());
+                        contains_external_init = true;
+                    }
+                }
+                Proposal::GroupContextExtensions(_) => {
+                    valid_proposals.add(queued_proposal.proposal_reference());
+                }
+                Proposal::AppAck(_) => unimplemented!("See #291"),
+                Proposal::SelfRemove => {
+                    let Sender::Member(removed) = queued_proposal.sender() else {
+                        return Err(ProposalQueueError::SelfRemoveFromNonMember);
+                    };
+                    register_member_specific_proposal(*removed, queued_proposal);
+                }
+                Proposal::Custom(_) => {
+                    // Other/unknown proposals are always considered valid and
+                    // have to be checked by the application instead.
+                    valid_proposals.add(queued_proposal.proposal_reference());
+                }
+            }
+        }
+
+        // Add the leaf-specific proposals to the list of valid proposals.
+        for proposal in member_specific_proposals.values() {
+            valid_proposals.add(proposal.proposal_reference());
+        }
+
+        // Only retain `adds` and `valid_proposals`
+        let mut proposal_queue = ProposalQueue::default();
+        for proposal_reference in adds.iter().chain(valid_proposals.iter()) {
+            let queued_proposal = proposal_pool
+                .get(proposal_reference)
+                .cloned()
+                .ok_or(ProposalQueueError::ProposalNotFound)?;
+            proposal_queue.add(queued_proposal);
+        }
+        Ok((proposal_queue, contains_own_updates))
+    }
+
     /// Returns `true` if all `ProposalRef` values from the list are
     /// contained in the queue
     #[cfg(test)]
@@ -565,6 +701,42 @@ impl ProposalQueue {
     }
 }
 
+impl Extend<QueuedProposal> for ProposalQueue {
+    fn extend<T: IntoIterator<Item = QueuedProposal>>(&mut self, iter: T) {
+        for proposal in iter {
+            self.add(proposal)
+        }
+    }
+}
+
+impl IntoIterator for ProposalQueue {
+    type Item = QueuedProposal;
+
+    type IntoIter = std::collections::hash_map::IntoValues<ProposalRef, QueuedProposal>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.queued_proposals.into_values()
+    }
+}
+
+impl<'a> IntoIterator for &'a ProposalQueue {
+    type Item = &'a QueuedProposal;
+
+    type IntoIter = std::collections::hash_map::Values<'a, ProposalRef, QueuedProposal>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.queued_proposals.values()
+    }
+}
+
+impl FromIterator<QueuedProposal> for ProposalQueue {
+    fn from_iter<T: IntoIterator<Item = QueuedProposal>>(iter: T) -> Self {
+        let mut out = Self::default();
+        out.extend(iter);
+        out
+    }
+}
+
 /// A queued Add proposal
 #[derive(PartialEq, Debug)]
 pub struct QueuedAddProposal<'a> {
@@ -572,7 +744,7 @@ pub struct QueuedAddProposal<'a> {
     sender: &'a Sender,
 }
 
-impl<'a> QueuedAddProposal<'a> {
+impl QueuedAddProposal<'_> {
     /// Returns a reference to the proposal
     pub fn add_proposal(&self) -> &AddProposal {
         self.add_proposal
@@ -591,7 +763,7 @@ pub struct QueuedRemoveProposal<'a> {
     sender: &'a Sender,
 }
 
-impl<'a> QueuedRemoveProposal<'a> {
+impl QueuedRemoveProposal<'_> {
     /// Returns a reference to the proposal
     pub fn remove_proposal(&self) -> &RemoveProposal {
         self.remove_proposal
@@ -610,7 +782,7 @@ pub struct QueuedUpdateProposal<'a> {
     sender: &'a Sender,
 }
 
-impl<'a> QueuedUpdateProposal<'a> {
+impl QueuedUpdateProposal<'_> {
     /// Returns a reference to the proposal
     pub fn update_proposal(&self) -> &UpdateProposal {
         self.update_proposal
@@ -629,7 +801,7 @@ pub struct QueuedPskProposal<'a> {
     sender: &'a Sender,
 }
 
-impl<'a> QueuedPskProposal<'a> {
+impl QueuedPskProposal<'_> {
     /// Returns a reference to the proposal
     pub fn psk_proposal(&self) -> &PreSharedKeyProposal {
         self.psk_proposal

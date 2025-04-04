@@ -49,7 +49,7 @@ impl ApplyProposalsValues {
 /// Remove proposal.
 ///
 /// Returns an error if the proposals have not been validated before.
-impl<'a> PublicGroupDiff<'a> {
+impl PublicGroupDiff<'_> {
     pub(crate) fn apply_proposals(
         &mut self,
         proposal_queue: &ProposalQueue,
@@ -106,6 +106,22 @@ impl<'a> PublicGroupDiff<'a> {
             }
         }
 
+        // Process self removes
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::SelfRemove) {
+            if let Proposal::SelfRemove = queued_proposal.proposal() {
+                // Check if we got removed from the group
+                let Sender::Member(removed) = queued_proposal.sender() else {
+                    // This should not happen with validated proposals
+                    return Err(LibraryError::custom("SelfRemove proposal from non-member"));
+                };
+                if Some(*removed) == own_leaf_index {
+                    self_removed = true;
+                }
+                // Blank the direct path of the removed member
+                self.diff.blank_leaf(*removed);
+            }
+        }
+
         // Process adds
         let add_proposals = proposal_queue
             .filtered_by_type(ProposalType::Add)
@@ -157,13 +173,11 @@ impl<'a> PublicGroupDiff<'a> {
             .any(|p| p.proposal().is_path_required());
 
         // This flag determines if the commit requires a path. A path is required if:
-        // * none of the proposals require a path
-        // * (or) it is an external commit
+        // * at least one proposal requires a path
         // * (or) the commit is empty which implicitly means it's a self-update
-        let path_required = proposals_require_path
-            // The fact that this is some implies that there's an external init proposal.
-            || external_init_proposal_option.is_some()
-            || proposal_queue.is_empty();
+        // * (or) it is an external commit
+        // External commits always have an ExternalInit proposal, which requires a path. Therefore the last check is redundant.
+        let path_required = proposals_require_path || proposal_queue.is_empty();
 
         Ok(ApplyProposalsValues {
             path_required,

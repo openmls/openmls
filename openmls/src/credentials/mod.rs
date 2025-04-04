@@ -33,7 +33,7 @@ use tls_codec::{
 #[cfg(test)]
 mod tests;
 
-use crate::ciphersuite::SignaturePublicKey;
+use crate::{ciphersuite::SignaturePublicKey, group::Member, treesync::LeafNode};
 use errors::*;
 
 // Public
@@ -295,6 +295,24 @@ pub struct CredentialWithKey {
     pub credential: Credential,
     /// The corresponding public key as [`SignaturePublicKey`].
     pub signature_key: SignaturePublicKey,
+}
+
+impl From<&LeafNode> for CredentialWithKey {
+    fn from(leaf_node: &LeafNode) -> Self {
+        Self {
+            credential: leaf_node.credential().clone(),
+            signature_key: leaf_node.signature_key().clone(),
+        }
+    }
+}
+
+impl From<&Member> for CredentialWithKey {
+    fn from(member: &Member) -> Self {
+        Self {
+            credential: member.credential.clone(),
+            signature_key: member.signature_key.clone().into(),
+        }
+    }
 }
 
 #[cfg(test)]

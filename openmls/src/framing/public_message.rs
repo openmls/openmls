@@ -200,7 +200,7 @@ pub(crate) struct ConfirmedTranscriptHashInput<'a> {
     pub(super) signature: &'a Signature,
 }
 
-impl<'a> ConfirmedTranscriptHashInput<'a> {
+impl ConfirmedTranscriptHashInput<'_> {
     pub(crate) fn calculate_confirmed_transcript_hash(
         self,
         crypto: &impl OpenMlsCrypto,
@@ -249,7 +249,7 @@ pub(crate) struct InterimTranscriptHashInput<'a> {
     pub(crate) confirmation_tag: &'a ConfirmationTag,
 }
 
-impl<'a> InterimTranscriptHashInput<'a> {
+impl InterimTranscriptHashInput<'_> {
     pub fn calculate_interim_transcript_hash(
         self,
         crypto: &impl OpenMlsCrypto,

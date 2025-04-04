@@ -180,7 +180,7 @@ pub enum ProtocolMessage {
     /// A [`ProtocolMessage`] containing a [`PrivateMessage`].
     PrivateMessage(PrivateMessageIn),
     /// A [`ProtocolMessage`] containing a [`PublicMessage`].
-    PublicMessage(PublicMessageIn),
+    PublicMessage(Box<PublicMessageIn>),
 }
 
 impl ProtocolMessage {
@@ -244,7 +244,7 @@ impl From<PrivateMessageIn> for ProtocolMessage {
 
 impl From<PublicMessageIn> for ProtocolMessage {
     fn from(public_message: PublicMessageIn) -> Self {
-        ProtocolMessage::PublicMessage(public_message)
+        ProtocolMessage::PublicMessage(Box::new(public_message))
     }
 }
 
@@ -253,7 +253,7 @@ impl TryFrom<MlsMessageIn> for ProtocolMessage {
 
     fn try_from(msg: MlsMessageIn) -> Result<Self, Self::Error> {
         match msg.body {
-            MlsMessageBodyIn::PublicMessage(m) => Ok(ProtocolMessage::PublicMessage(m)),
+            MlsMessageBodyIn::PublicMessage(m) => Ok(m.into()),
             MlsMessageBodyIn::PrivateMessage(m) => Ok(ProtocolMessage::PrivateMessage(m)),
             _ => Err(ProtocolMessageError::WrongWireFormat),
         }
@@ -263,6 +263,6 @@ impl TryFrom<MlsMessageIn> for ProtocolMessage {
 #[cfg(any(feature = "test-utils", test))]
 impl From<PublicMessage> for ProtocolMessage {
     fn from(msg: PublicMessage) -> Self {
-        ProtocolMessage::PublicMessage(msg.into())
+        PublicMessageIn::from(msg).into()
     }
 }

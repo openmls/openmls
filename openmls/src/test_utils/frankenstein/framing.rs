@@ -364,7 +364,7 @@ pub struct FrankenFramedContentTbs<'a> {
     group_context: Option<&'a FrankenGroupContext>,
 }
 
-impl<'a> tls_codec::Size for FrankenFramedContentTbs<'a> {
+impl tls_codec::Size for FrankenFramedContentTbs<'_> {
     fn tls_serialized_len(&self) -> usize {
         if let Some(ctx) = self.group_context {
             4 + self.content.tls_serialized_len() + ctx.tls_serialized_len()
@@ -374,7 +374,7 @@ impl<'a> tls_codec::Size for FrankenFramedContentTbs<'a> {
     }
 }
 
-impl<'a> Serialize for FrankenFramedContentTbs<'a> {
+impl Serialize for FrankenFramedContentTbs<'_> {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, Error> {
         writer.write_all(&self.version.to_be_bytes())?;
         writer.write_all(&self.wire_format.to_be_bytes())?;

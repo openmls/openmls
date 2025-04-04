@@ -1,5 +1,7 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
-use openmls_traits::{signatures::Signer, types::Ciphersuite};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, types::Ciphersuite,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{
@@ -192,7 +194,8 @@ impl LeafNode {
         } = new_leaf_node_params;
 
         // Create a new encryption key pair.
-        let encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
+        let encryption_key_pair =
+            EncryptionKeyPair::random(provider.rand(), provider.crypto(), ciphersuite)?;
 
         let leaf_node = Self::new_with_key(
             encryption_key_pair.public_key().clone(),
@@ -256,7 +259,8 @@ impl LeafNode {
     /// New [`LeafNode`] with a parent hash.
     #[allow(clippy::too_many_arguments)]
     pub(in crate::treesync) fn new_with_parent_hash(
-        provider: &impl OpenMlsProvider,
+        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         parent_hash: &[u8],
         leaf_node_params: UpdateLeafNodeParams,
@@ -264,7 +268,7 @@ impl LeafNode {
         leaf_index: LeafNodeIndex,
         signer: &impl Signer,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
-        let encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
+        let encryption_key_pair = EncryptionKeyPair::random(rand, crypto, ciphersuite)?;
 
         let leaf_node_tbs = LeafNodeTbs::new(
             encryption_key_pair.public_key().clone(),
@@ -361,7 +365,8 @@ impl LeafNode {
         }
 
         // Create a new encryption key pair
-        let encryption_key_pair = EncryptionKeyPair::random(provider, ciphersuite)?;
+        let encryption_key_pair =
+            EncryptionKeyPair::random(provider.rand(), provider.crypto(), ciphersuite)?;
         leaf_node_tbs.payload.encryption_key = encryption_key_pair.public_key().clone();
 
         // Store the encryption key pair in the key store.
@@ -451,6 +456,12 @@ impl LeafNode {
     ) -> Result<(), LeafNodeValidationError> {
         for required in extensions.iter() {
             if !self.supports_extension(required) {
+                log::error!(
+                    "Leaf node does not support required extension {:?}\n
+                    Supported extensions: {:?}",
+                    required,
+                    self.payload.capabilities.extensions
+                );
                 return Err(LeafNodeValidationError::UnsupportedExtensions);
             }
         }
@@ -463,16 +474,28 @@ impl LeafNode {
     /// - the type of the credential is coveered by the capabilities
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
         // Check that no extension is invalid when used in leaf nodes.
-        if self
+        let invalid_extension_types = self
             .extensions()
             .iter()
-            .any(|ext| ext.extension_type().is_valid_in_leaf_node() == Some(false))
-        {
+            .filter(|ext| ext.extension_type().is_valid_in_leaf_node() == Some(false))
+            .collect::<Vec<_>>();
+        if !invalid_extension_types.is_empty() {
+            log::error!(
+                "Invalid extension used in leaf node: {:?}",
+                invalid_extension_types
+            );
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
 
         // Check that all extensions are contained in the capabilities.
         if !self.capabilities().contains_extensions(self.extensions()) {
+            log::error!(
+                "Leaf node does not support all extensions it uses\n
+                Supported extensions: {:?}\n
+                Used extensions: {:?}",
+                self.payload.capabilities.extensions,
+                self.extensions()
+            );
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
 
@@ -719,6 +742,11 @@ impl LeafNodeIn {
                 VerifiableLeafNode::Commit(verifiable)
             }
         }
+    }
+
+    /// Returns the `encryption_key` as byte slice.
+    pub fn encryption_key(&self) -> &EncryptionKey {
+        &self.payload.encryption_key
     }
 
     /// Returns the `signature_key` as byte slice.

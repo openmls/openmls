@@ -102,7 +102,7 @@ impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> From<&'a ABinar
     }
 }
 
-impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'a, L, P> {
+impl<L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'_, L, P> {
     // Functions handling interactions with leaves.
     ///////////////////////////////////////////////
 

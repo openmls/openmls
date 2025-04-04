@@ -3,7 +3,7 @@
 //! This module contains [`MlsGroup`] and its submodules.
 //!
 
-use create_commit::{CommitType, CreateCommitParams};
+use create_commit::CreateCommitParams;
 use past_secrets::MessageSecretsStore;
 use proposal_store::ProposalQueue;
 use serde::{Deserialize, Serialize};
@@ -33,7 +33,7 @@ use crate::{
     messages::{
         group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
         proposals::*,
-        Commit, GroupSecrets, Welcome,
+        Commit, ConfirmationTag, GroupSecrets, Welcome,
     },
     schedule::{
         message_secrets::MessageSecrets,
@@ -51,7 +51,6 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::C
 
 // Private
 mod application;
-mod builder;
 mod creation;
 mod exporting;
 mod updates;
@@ -59,6 +58,8 @@ mod updates;
 use config::*;
 
 // Crate
+pub(crate) mod builder;
+pub(crate) mod commit_builder;
 pub(crate) mod config;
 pub(crate) mod create_commit;
 pub(crate) mod errors;
@@ -293,6 +294,11 @@ impl MlsGroup {
         self.public_group.ciphersuite()
     }
 
+    /// Get confirmation tag.
+    pub fn confirmation_tag(&self) -> &ConfirmationTag {
+        self.public_group.confirmation_tag()
+    }
+
     /// Returns whether the own client is still a member of the group or if it
     /// was already evicted
     pub fn is_active(&self) -> bool {
@@ -469,8 +475,6 @@ impl MlsGroup {
             self.own_leaf_index().u32(),
         )?;
 
-        self.proposal_store_mut().empty();
-
         Ok(())
     }
 
@@ -601,9 +605,10 @@ impl MlsGroup {
     ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
         let padding_size = self.configuration().padding_size();
         let msg = PrivateMessage::try_from_authenticated_content(
+            provider.crypto(),
+            provider.rand(),
             &public_message,
             self.ciphersuite(),
-            provider,
             self.message_secrets_store.message_secrets_mut(),
             padding_size,
         )?;
@@ -678,19 +683,16 @@ impl MlsGroup {
     /// Read the [`EncryptionKeyPair`]s of this group and its current
     /// [`GroupEpoch`] from the `provider`'s storage.
     ///
-    /// Returns an empty vector if access to the store fails or it can't find
-    /// any keys.
+    /// Returns an error if the lookup in the [`StorageProvider`] fails.
     pub(super) fn read_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
-    ) -> Vec<EncryptionKeyPair> {
-        store
-            .encryption_epoch_key_pairs(
-                self.group_id(),
-                &self.context().epoch(),
-                self.own_leaf_index().u32(),
-            )
-            .unwrap_or_default()
+    ) -> Result<Vec<EncryptionKeyPair>, Storage::Error> {
+        store.encryption_epoch_key_pairs(
+            self.group_id(),
+            &self.context().epoch(),
+            self.own_leaf_index().u32(),
+        )
     }
 
     /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from

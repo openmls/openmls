@@ -2,7 +2,7 @@ use openmls_test::openmls_test;
 
 use crate::{credentials::BasicCredential, framing::*, group::*, messages::external_proposals::*};
 
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider as _};
+use openmls_traits::types::Ciphersuite;
 
 use crate::group::tests_and_kats::utils::*;
 

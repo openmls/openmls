@@ -26,7 +26,7 @@ impl MlsGroup {
     ) -> Result<Vec<u8>, ExportSecretError> {
         let crypto = provider.crypto();
 
-        if key_length > u16::MAX.into() {
+        if key_length > u16::MAX as usize {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExportSecretError::KeyLengthTooLong);
         }

@@ -53,6 +53,7 @@ impl<'a> InitialProcessingState<'a> {
             .authenticated_content
             .committed_psk_proposals(self.group.proposal_store());
 
+        // Fails if PSKs are missing ([valn1205](https://validation.openmls.tech/#valn1205))
         let psks = load_psks(storage, &self.group.resumption_psk_store, &psk_ids)
             .map_err(|e| ProcessMessageError::InvalidCommit(StageCommitError::PskError(e)))?;
 

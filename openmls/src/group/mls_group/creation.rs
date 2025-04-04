@@ -106,8 +106,7 @@ impl MlsGroup {
             .with_extensions(extensions.unwrap_or_default())
             .build();
         let mut params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .commit_type(CommitType::External(credential_with_key))
+            .external_commit(credential_with_key, framing_parameters)
             .leaf_node_parameters(leaf_node_parameters)
             .build();
 
@@ -125,9 +124,8 @@ impl MlsGroup {
             },
         };
 
-        let (public_group, group_info) = PublicGroup::from_external(
+        let (public_group, group_info) = PublicGroup::from_external_internal(
             provider.crypto(),
-            provider.storage(),
             ratchet_tree,
             verifiable_group_info,
             // Existing proposals are discarded when joining by external commit.
@@ -176,12 +174,7 @@ impl MlsGroup {
 
         // If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
-        let signature_key = match params.commit_type() {
-            CommitType::External(credential_with_key) => {
-                credential_with_key.signature_key.as_slice()
-            }
-            _ => return Err(ExternalCommitError::MissingCredential),
-        };
+        let signature_key = params.credential_with_key().signature_key.as_slice();
         if let Some(us) = public_group
             .members()
             .find(|member| member.signature_key == signature_key)
@@ -209,7 +202,7 @@ impl MlsGroup {
 
         // Immediately create the commit to add ourselves to the group.
         let create_commit_result = mls_group
-            .create_commit(params, provider, signer)
+            .create_external_commit(params, provider, signer)
             .map_err(|_| ExternalCommitError::CommitError)?;
 
         mls_group.group_state = MlsGroupState::PendingCommit(Box::new(
@@ -227,14 +220,6 @@ impl MlsGroup {
             public_message.into(),
             create_commit_result.group_info,
         ))
-    }
-}
-
-fn transpose_err_opt<T, E>(v: Result<Option<T>, E>) -> Option<Result<T, E>> {
-    match v {
-        Ok(Some(v)) => Some(Ok(v)),
-        Ok(None) => None,
-        Err(err) => Some(Err(err)),
     }
 }
 
@@ -261,11 +246,15 @@ impl ProcessedWelcome {
         ) else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
-        if ciphersuite != key_package_bundle.key_package().ciphersuite() {
+
+        // This check seems to be superfluous from the perspective of the RFC, but still doesn't
+        // seem like a bad idea.
+        if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
             let e = WelcomeError::CiphersuiteMismatch;
             log::debug!("new_from_welcome {:?}", e);
             return Err(e);
         }
+
         let group_secrets = GroupSecrets::try_from_ciphertext(
             key_package_bundle.init_private_key(),
             egs.encrypted_group_secrets(),
@@ -310,6 +299,15 @@ impl ProcessedWelcome {
                 .leaf_node()
                 .capabilities()
                 .supports_required_capabilities(required_capabilities)?;
+        }
+
+        // https://validation.openmls.tech/#valn1404
+        // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
+        // KeyPackage.
+        if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+            let e = WelcomeError::CiphersuiteMismatch;
+            log::debug!("new_from_welcome {:?}", e);
+            return Err(e);
         }
 
         Ok(Self {
@@ -360,9 +358,8 @@ impl ProcessedWelcome {
 
         // Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
-        let (public_group, _group_info_extensions) = PublicGroup::from_external(
+        let (public_group, _group_info_extensions) = PublicGroup::from_external_internal(
             provider.crypto(),
-            provider.storage(),
             ratchet_tree,
             self.verifiable_group_info.clone(),
             ProposalStore::new(),
@@ -422,6 +419,7 @@ impl ProcessedWelcome {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Verify confirmation tag
+        // https://validation.openmls.tech/#valn1410
         if &confirmation_tag != public_group.confirmation_tag() {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
@@ -583,12 +581,11 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         .find_map(|egs| {
             let hash_ref = egs.new_member();
 
-            transpose_err_opt(
-                provider
-                    .storage()
-                    .key_package(&hash_ref)
-                    .map_err(WelcomeError::StorageError),
-            )
+            provider
+                .storage()
+                .key_package(&hash_ref)
+                .map_err(WelcomeError::StorageError)
+                .transpose()
         })
         .ok_or(WelcomeError::NoMatchingKeyPackage)??;
     if !key_package_bundle.key_package().last_resort() {

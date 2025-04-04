@@ -28,7 +28,10 @@ use crate::{
 };
 
 pub mod frankenstein;
+pub mod storage_state;
 pub mod test_framework;
+
+pub mod single_group_test_framework;
 
 pub(crate) fn write(file_name: &str, obj: impl Serialize) {
     let mut file = match File::create(file_name) {
@@ -175,7 +178,7 @@ pub(crate) fn generate_group_candidate(
     };
 
     GroupCandidate {
-        identity: identity.as_ref().to_vec(),
+        identity: identity.to_vec(),
         key_package,
         signature_keypair: credential_with_key_and_signer.signer.clone(),
         credential_with_key_and_signer,

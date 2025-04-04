@@ -348,6 +348,7 @@ impl MlsGroupCreateConfigBuilder {
             .iter()
             .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_)));
         if !is_valid_in_leaf_node {
+            log::error!("Leaf node extensions must be unknown extensions.");
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
 

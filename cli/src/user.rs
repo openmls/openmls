@@ -77,7 +77,7 @@ impl User {
         out
     }
 
-    fn get_file_path(user_name: &String) -> PathBuf {
+    fn get_file_path(user_name: &str) -> PathBuf {
         openmls_memory_storage::persistence::get_file_path(
             &("openmls_cli_".to_owned() + user_name + ".json"),
         )
@@ -648,10 +648,7 @@ impl User {
 
         // Get the client leaf index
 
-        let leaf_index = match self.find_member_index(name, group) {
-            Ok(l) => l,
-            Err(e) => return Err(e),
-        };
+        let leaf_index = self.find_member_index(name, group)?;
 
         // Remove operation on the mls group
         let (remove_message, _welcome, _group_info) = group

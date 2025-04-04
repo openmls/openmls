@@ -34,7 +34,7 @@ use crate::{
     treesync::node::NodeReference,
 };
 
-impl<'a> TreeSyncDiff<'a> {
+impl TreeSyncDiff<'_> {
     /// Encrypt the given `path` to the nodes in the copath resolution of the
     /// owner of this [`TreeSyncDiff`]. The `group_context` is used in the
     /// encryption of the nodes, while the `exclusion_list` is used to filter
@@ -407,6 +407,8 @@ impl UpdatePathIn {
     ) -> Result<UpdatePath, UpdatePathError> {
         let leaf_node_in = self.leaf_node().clone();
         let verifiable_leaf_node = leaf_node_in.into_verifiable_leaf_node();
+
+        // [valn1207](https://validation.openmls.tech/#valn1207)
         match verifiable_leaf_node {
             // https://validation.openmls.tech/#valn1208
             VerifiableLeafNode::Commit(mut commit_leaf_node) => {

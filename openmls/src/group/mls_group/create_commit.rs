@@ -11,11 +11,12 @@ pub(crate) enum CommitType {
 }
 
 pub(crate) struct CreateCommitParams<'a> {
-    framing_parameters: FramingParameters<'a>, // Mandatory
-    inline_proposals: Vec<Proposal>,           // Optional
-    force_self_update: bool,                   // Optional
-    commit_type: CommitType,                   // Optional (default is `Member`)
-    leaf_node_parameters: LeafNodeParameters,  // Optional
+    framing_parameters: Option<FramingParameters<'a>>,
+    credential_with_key: CredentialWithKey,
+
+    inline_proposals: Vec<Proposal>,          // Optional
+    force_self_update: bool,                  // Optional
+    leaf_node_parameters: LeafNodeParameters, // Optional
 }
 
 pub(crate) struct TempBuilderCCPM0 {}
@@ -25,16 +26,19 @@ pub(crate) struct CreateCommitParamsBuilder<'a> {
 }
 
 impl TempBuilderCCPM0 {
-    pub(crate) fn framing_parameters(
+    pub(crate) fn external_commit(
         self,
+        credential_with_key: CredentialWithKey,
         framing_parameters: FramingParameters,
     ) -> CreateCommitParamsBuilder {
         CreateCommitParamsBuilder {
             ccp: CreateCommitParams {
-                framing_parameters,
+                framing_parameters: Some(framing_parameters),
+                credential_with_key,
+
+                // defaults:
                 inline_proposals: vec![],
                 force_self_update: true,
-                commit_type: CommitType::Member,
                 leaf_node_parameters: LeafNodeParameters::default(),
             },
         }
@@ -42,18 +46,6 @@ impl TempBuilderCCPM0 {
 }
 
 impl<'a> CreateCommitParamsBuilder<'a> {
-    pub(crate) fn inline_proposals(mut self, inline_proposals: Vec<Proposal>) -> Self {
-        self.ccp.inline_proposals = inline_proposals;
-        self
-    }
-    pub(crate) fn force_self_update(mut self, force_self_update: bool) -> Self {
-        self.ccp.force_self_update = force_self_update;
-        self
-    }
-    pub(crate) fn commit_type(mut self, commit_type: CommitType) -> Self {
-        self.ccp.commit_type = commit_type;
-        self
-    }
     pub(crate) fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
         self.ccp.leaf_node_parameters = leaf_node_parameters;
         self
@@ -63,12 +55,9 @@ impl<'a> CreateCommitParamsBuilder<'a> {
     }
 }
 
-impl<'a> CreateCommitParams<'a> {
+impl CreateCommitParams<'_> {
     pub(crate) fn builder() -> TempBuilderCCPM0 {
         TempBuilderCCPM0 {}
-    }
-    pub(crate) fn framing_parameters(&self) -> &FramingParameters {
-        &self.framing_parameters
     }
     pub(crate) fn inline_proposals(&self) -> &[Proposal] {
         &self.inline_proposals
@@ -79,8 +68,8 @@ impl<'a> CreateCommitParams<'a> {
     pub(crate) fn force_self_update(&self) -> bool {
         self.force_self_update
     }
-    pub(crate) fn commit_type(&self) -> &CommitType {
-        &self.commit_type
+    pub(crate) fn credential_with_key(&self) -> &CredentialWithKey {
+        &self.credential_with_key
     }
     pub(crate) fn leaf_node_parameters(&self) -> &LeafNodeParameters {
         &self.leaf_node_parameters
@@ -88,15 +77,22 @@ impl<'a> CreateCommitParams<'a> {
 }
 
 impl MlsGroup {
-    pub(crate) fn create_commit<Provider: OpenMlsProvider>(
-        &self,
+    pub(crate) fn create_external_commit<Provider: OpenMlsProvider>(
+        &mut self,
         params: CreateCommitParams,
         provider: &Provider,
         signer: &impl Signer,
-    ) -> Result<CreateCommitResult, CreateCommitError<Provider::StorageError>> {
+    ) -> Result<CreateCommitResult, CreateCommitError> {
+        // We  are building an external commit. This means we have to pull the
+        // framing parameters out of the create commit parameteres instead of the group. Since
+        // these are set together with the group mode, we can be sure that this is `Some(..)` (see
+        // [`TempBuilderCCPM0::external_commit`].
+        let framing_parameters = params.framing_parameters.unwrap();
+        let commit_type = CommitType::External(params.credential_with_key().clone());
+
         let ciphersuite = self.ciphersuite();
 
-        let sender = match params.commit_type() {
+        let sender = match commit_type {
             CommitType::External(_) => Sender::NewMemberCommit,
             CommitType::Member => Sender::build_member(self.own_leaf_index()),
         };
@@ -113,7 +109,8 @@ impl MlsGroup {
         .map_err(|e| match e {
             ProposalQueueError::LibraryError(e) => e.into(),
             ProposalQueueError::ProposalNotFound => CreateCommitError::MissingProposal,
-            ProposalQueueError::UpdateFromExternalSender => {
+            ProposalQueueError::UpdateFromExternalSender
+            | ProposalQueueError::SelfRemoveFromNonMember => {
                 CreateCommitError::WrongProposalSenderType
             }
         })?;
@@ -170,9 +167,6 @@ impl MlsGroup {
         // Apply proposals to tree
         let apply_proposals_values =
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
-        if apply_proposals_values.self_removed && params.commit_type() == &CommitType::Member {
-            return Err(CreateCommitError::CannotRemoveSelf);
-        }
 
         let path_computation_result =
             // If path is needed, compute path values
@@ -185,10 +179,11 @@ impl MlsGroup {
                 // group context by updating the epoch and computing the new
                 // tree hash.
                 diff.compute_path(
-                    provider,
+                    provider.rand(),
+                    provider.crypto(),
                     self.own_leaf_index(),
                     apply_proposals_values.exclusion_list(),
-                    params.commit_type(),
+                    &commit_type,
                     params.leaf_node_parameters(),
                     signer,
                     apply_proposals_values.extensions.clone()
@@ -213,7 +208,7 @@ impl MlsGroup {
 
         // Build AuthenticatedContent
         let mut authenticated_content = AuthenticatedContent::commit(
-            *params.framing_parameters(),
+            framing_parameters,
             sender,
             commit,
             self.public_group.group_context(),

@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use openmls_traits::signatures::Signer;
+use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer};
 use tls_codec::Serialize;
 
 use crate::{
@@ -10,7 +10,6 @@ use crate::{
     extensions::Extensions,
     group::{create_commit::CommitType, errors::CreateCommitError},
     schedule::CommitSecret,
-    storage::OpenMlsProvider,
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
@@ -33,18 +32,19 @@ pub(crate) struct PathComputationResult {
     pub(crate) new_keypairs: Vec<EncryptionKeyPair>,
 }
 
-impl<'a> PublicGroupDiff<'a> {
+impl PublicGroupDiff<'_> {
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn compute_path<Provider: OpenMlsProvider>(
+    pub(crate) fn compute_path(
         &mut self,
-        provider: &Provider,
+        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet<&LeafNodeIndex>,
         commit_type: &CommitType,
         leaf_node_params: &LeafNodeParameters,
         signer: &impl Signer,
         gc_extensions: Option<Extensions>,
-    ) -> Result<PathComputationResult, CreateCommitError<Provider::StorageError>> {
+    ) -> Result<PathComputationResult, CreateCommitError> {
         let ciphersuite = self.group_context().ciphersuite();
 
         let leaf_node_params = if let CommitType::External(credential_with_key) = commit_type {
@@ -97,7 +97,8 @@ impl<'a> PublicGroupDiff<'a> {
         // Derive and apply an update path based on the previously
         // generated new leaf.
         let (plain_path, new_keypairs, commit_secret) = self.diff.apply_own_update_path(
-            provider,
+            rand,
+            crypto,
             signer,
             ciphersuite,
             commit_type,
@@ -109,7 +110,7 @@ impl<'a> PublicGroupDiff<'a> {
         // After we've processed the path, we can update the group context s.t.
         // the updated group context is used for path secret encryption. Note
         // that we have not yet updated the confirmed transcript hash.
-        self.update_group_context(provider.crypto(), gc_extensions)?;
+        self.update_group_context(crypto, gc_extensions)?;
 
         let serialized_group_context = self
             .group_context()
@@ -118,7 +119,7 @@ impl<'a> PublicGroupDiff<'a> {
 
         // Encrypt the path to the correct recipient nodes.
         let encrypted_path = self.diff.encrypt_path(
-            provider.crypto(),
+            crypto,
             ciphersuite,
             &plain_path,
             &serialized_group_context,

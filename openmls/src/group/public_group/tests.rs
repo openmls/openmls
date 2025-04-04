@@ -1,5 +1,3 @@
-use openmls_traits::prelude::*;
-
 use crate::{
     binary_tree::LeafNodeIndex,
     framing::{
@@ -73,7 +71,7 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
         ProtocolMessage::PublicMessage(public_message) => public_message,
     };
     let processed_message = public_group
-        .process_message(provider.crypto(), public_message)
+        .process_message(provider.crypto(), *public_message)
         .unwrap();
 
     // Further inspection of the message can take place here ...
@@ -295,7 +293,7 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
 fn into_public_message(message: MlsMessageOut) -> PublicMessageIn {
     match message.into_protocol_message().unwrap() {
         ProtocolMessage::PrivateMessage(_) => panic!("Unexpected message type."),
-        ProtocolMessage::PublicMessage(public_message) => public_message,
+        ProtocolMessage::PublicMessage(public_message) => *public_message,
     }
 }
 
