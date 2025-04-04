@@ -471,7 +471,7 @@ impl LeafNode {
     /// Perform all checks that can be done without further context:
     /// - the used extensions are not known to be invalid in leaf nodes
     /// - the types of the used extensions are covered by the capabilities
-    /// - the type of the credential is coveered by the capabilities
+    /// - the type of the credential is covered by the capabilities
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
         // Check that no extension is invalid when used in leaf nodes.
         let invalid_extension_types = self
@@ -500,6 +500,7 @@ impl LeafNode {
         }
 
         // Check that the capabilities contain the leaf node's credential type.
+        // (https://validation.openmls.tech/#valn0113)
         if !self
             .capabilities()
             .contains_credential(self.credential().credential_type())
