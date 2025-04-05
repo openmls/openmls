@@ -44,6 +44,10 @@ jobs:
           else
             echo "TEST_MODE=--release" >> $GITHUB_ENV
           fi
+
+      - name: Test with Fork Resolution helpers
+        run: cargo test $TEST_MODE -p openmls -F fork-resolution
+
       - name: Test with libcrux provider
         if: matrix.os == 'ubuntu-latest'
         run: |

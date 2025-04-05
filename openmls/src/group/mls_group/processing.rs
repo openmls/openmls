@@ -51,8 +51,7 @@ impl MlsGroup {
         }
 
         // Parse the message
-        let sender_ratchet_configuration =
-            self.configuration().sender_ratchet_configuration().clone();
+        let sender_ratchet_configuration = *self.configuration().sender_ratchet_configuration();
 
         // Checks the following semantic validation:
         //  - ValSem002
