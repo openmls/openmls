@@ -16,7 +16,7 @@ use crate::{
         errors::ValidationError, mls_group::errors::ProcessMessageError,
         past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
     },
-    messages::proposals::Proposal,
+    messages::proposals::Proposal, prelude::ProposalOrRefType,
 };
 
 use super::PublicGroup;
@@ -270,6 +270,24 @@ impl PublicGroup {
                                 self.ciphersuite(),
                                 crypto,
                                 content,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.group_context().epoch(),
+                            sender,
+                            data,
+                            content,
+                            credential,
+                        ))
+                    }
+                    FramedContentBody::Proposal(Proposal::Add(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content(
+                                self.ciphersuite(),
+                                crypto,
+                                content,
+                                ProposalOrRefType::Proposal,
                             )?,
                         ));
                         Ok(ProcessedMessage::new(
