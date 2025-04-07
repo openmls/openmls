@@ -1,7 +1,7 @@
-//! Ciphersuites for MLS
+//! # Ciphersuites for MLS
 //!
-//! This file contains the API to interact with ciphersuites.
-//! See `codec.rs` and `ciphersuites.rs` for internals.
+//! This module defines the API for interacting with MLS ciphersuites. For
+//! implementation details, refer to `codec.rs` and `ciphersuites.rs`.
 
 use ::tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 use openmls_traits::{
