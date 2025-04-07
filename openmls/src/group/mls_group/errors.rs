@@ -113,6 +113,9 @@ pub enum ProcessMessageError {
     /// External application messages are not permitted.
     #[error("External application messages are not permitted.")]
     UnauthorizedExternalApplicationMessage,
+    /// External commit messages are not permitted.
+    #[error("Commit messages from external senders are not permitted.")]
+    UnauthorizedExternalCommitMessage,
     /// The proposal is invalid for the Sender of type [External](crate::prelude::Sender::External)
     #[error("The proposal is invalid for the Sender of type External")]
     UnsupportedProposalType,
