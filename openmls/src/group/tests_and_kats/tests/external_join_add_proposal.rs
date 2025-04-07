@@ -112,7 +112,7 @@ fn validation_test_setup(
 }
 
 #[openmls_test]
-fn external_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
+fn external_join_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
     for policy in WIRE_FORMAT_POLICIES {
         let ProposalValidationTestSetup {
             alice_group,
@@ -228,7 +228,7 @@ fn external_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
 }
 
 #[openmls_test]
-fn external_add_proposal_should_be_signed_by_key_package_it_references<
+fn external_join_add_proposal_should_be_signed_by_key_package_it_references<
     Provider: OpenMlsProvider,
 >() {
     let ProposalValidationTestSetup { alice_group, .. } =
