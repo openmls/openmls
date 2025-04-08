@@ -122,7 +122,7 @@ impl OpenMlsCrypto for CryptoProvider {
         let key: &[u8; 32] = key.try_into().unwrap();
 
         let mut msg_ctx: Vec<u8> = vec![0; data.len() + 16];
-        libcrux_chacha20poly1305::encrypt(key, &data, &mut msg_ctx, aad.as_ref(), &iv.0)
+        libcrux_chacha20poly1305::encrypt(key, data, &mut msg_ctx, aad, &iv.0)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
         Ok(msg_ctx)
@@ -146,8 +146,6 @@ impl OpenMlsCrypto for CryptoProvider {
         }
 
         let boundary = ct_tag.len() - 16;
-        //let mut c = ct_tag[..boundary].to_vec();
-        //let tag = &ct_tag[boundary..];
 
         let mut ptext = vec![0; boundary];
 
@@ -157,7 +155,7 @@ impl OpenMlsCrypto for CryptoProvider {
         // so that the length will be correct
         let key = key.try_into().unwrap();
 
-        libcrux_chacha20poly1305::decrypt(&key, &mut ptext, &ct_tag, aad.as_ref(), &iv.0).map_err(
+        libcrux_chacha20poly1305::decrypt(&key, &mut ptext, ct_tag, aad, &iv.0).map_err(
             |e| match e {
                 libcrux_chacha20poly1305::AeadError::InvalidCiphertext => {
                     CryptoError::AeadDecryptionError
