@@ -16,7 +16,7 @@ use crate::{
         errors::ValidationError, mls_group::errors::ProcessMessageError,
         past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
     },
-    messages::proposals::{Proposal, ProposalOrRefType}
+    messages::proposals::{Proposal, ProposalOrRefType},
 };
 
 use super::PublicGroup;

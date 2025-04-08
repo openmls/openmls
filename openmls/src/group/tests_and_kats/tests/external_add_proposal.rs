@@ -153,8 +153,7 @@ fn external_add_proposal_should_suceeed() {
         .unwrap();
 
     // commit the proposal
-    let ProcessedMessageContent::ProposalMessage(add_proposal) =
-        processed_message.into_content()
+    let ProcessedMessageContent::ProposalMessage(add_proposal) = processed_message.into_content()
     else {
         panic!("Not an add proposal");
     };
