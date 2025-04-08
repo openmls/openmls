@@ -285,7 +285,9 @@ impl PublicGroup {
                     FramedContentBody::Proposal(_) => {
                         Err(ProcessMessageError::UnsupportedProposalType)
                     }
-                    FramedContentBody::Commit(_) => unimplemented!(),
+                    FramedContentBody::Commit(_) => {
+                        Err(ProcessMessageError::UnauthorizedExternalCommitMessage)
+                    }
                 }
             }
         }
