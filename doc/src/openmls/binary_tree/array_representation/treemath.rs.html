@@ -229,7 +229,7 @@
 <a href=#229 id=229 data-nosnippet>229</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>dec(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
 <a href=#230 id=230 data-nosnippet>230</a>        <span class="macro">debug_assert!</span>(<span class="self">self</span>.<span class="number">0 </span>&gt;= <span class="number">2</span>);
 <a href=#231 id=231 data-nosnippet>231</a>        <span class="kw">if </span><span class="self">self</span>.<span class="number">0 </span>&gt;= <span class="number">2 </span>{
-<a href=#232 id=232 data-nosnippet>232</a>            <span class="self">self</span>.<span class="number">0 </span>= (<span class="self">self</span>.<span class="number">0 </span>+ <span class="number">1</span>) / <span class="number">2 </span>- <span class="number">1</span>;
+<a href=#232 id=232 data-nosnippet>232</a>            <span class="self">self</span>.<span class="number">0 </span>= <span class="self">self</span>.<span class="number">0</span>.div_ceil(<span class="number">2</span>) - <span class="number">1</span>;
 <a href=#233 id=233 data-nosnippet>233</a>        } <span class="kw">else </span>{
 <a href=#234 id=234 data-nosnippet>234</a>            <span class="self">self</span>.<span class="number">0 </span>= <span class="number">0</span>;
 <a href=#235 id=235 data-nosnippet>235</a>        }
