@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/messages/external_proposals.rs`."><title>external_proposals.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/messages/</div>external_proposals.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-2"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! External Proposals
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/messages/external_proposals.rs`."><title>external_proposals.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/messages/</div>external_proposals.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! External Proposals
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! Contains the types and methods to build external proposal to add/remove a client from a MLS group
 <a href=#4 id=4 data-nosnippet>4</a>//!
@@ -88,4 +88,33 @@
 <a href=#88 id=88 data-nosnippet>88</a>        .map(MlsMessageOut::from)
 <a href=#89 id=89 data-nosnippet>89</a>        .map_err(ProposeRemoveMemberError::from)
 <a href=#90 id=90 data-nosnippet>90</a>    }
-<a href=#91 id=91 data-nosnippet>91</a>}</code></pre></div></section></main></body></html>
+<a href=#91 id=91 data-nosnippet>91</a>
+<a href=#92 id=92 data-nosnippet>92</a>    <span class="doccomment">/// Creates an external Add proposal. For delivery services requesting to add a client.
+<a href=#93 id=93 data-nosnippet>93</a>    /// This proposal will have to be committed later by a group member.
+<a href=#94 id=94 data-nosnippet>94</a>    ///
+<a href=#95 id=95 data-nosnippet>95</a>    /// # Arguments
+<a href=#96 id=96 data-nosnippet>96</a>    /// * `key_package` - key package of the client to add
+<a href=#97 id=97 data-nosnippet>97</a>    /// * `group_id` - unique group identifier of the group to join
+<a href=#98 id=98 data-nosnippet>98</a>    /// * `epoch` - group's epoch
+<a href=#99 id=99 data-nosnippet>99</a>    /// * `signer` - of the sender to sign the message
+<a href=#100 id=100 data-nosnippet>100</a>    /// * `sender` - index of the sender of the proposal (in the [crate::extensions::ExternalSendersExtension] array
+<a href=#101 id=101 data-nosnippet>101</a>    ///   from the Group Context)
+<a href=#102 id=102 data-nosnippet>102</a>    </span><span class="kw">pub fn </span>new_add&lt;Provider: OpenMlsProvider&gt;(
+<a href=#103 id=103 data-nosnippet>103</a>        key_package: KeyPackage,
+<a href=#104 id=104 data-nosnippet>104</a>        group_id: GroupId,
+<a href=#105 id=105 data-nosnippet>105</a>        epoch: GroupEpoch,
+<a href=#106 id=106 data-nosnippet>106</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+<a href=#107 id=107 data-nosnippet>107</a>        sender_index: SenderExtensionIndex,
+<a href=#108 id=108 data-nosnippet>108</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeAddMemberError&lt;Provider::StorageError&gt;&gt; {
+<a href=#109 id=109 data-nosnippet>109</a>        AuthenticatedContent::new_external_proposal(
+<a href=#110 id=110 data-nosnippet>110</a>            Proposal::Add(AddProposal { key_package }),
+<a href=#111 id=111 data-nosnippet>111</a>            group_id,
+<a href=#112 id=112 data-nosnippet>112</a>            epoch,
+<a href=#113 id=113 data-nosnippet>113</a>            signer,
+<a href=#114 id=114 data-nosnippet>114</a>            sender_index,
+<a href=#115 id=115 data-nosnippet>115</a>        )
+<a href=#116 id=116 data-nosnippet>116</a>        .map(PublicMessage::from)
+<a href=#117 id=117 data-nosnippet>117</a>        .map(MlsMessageOut::from)
+<a href=#118 id=118 data-nosnippet>118</a>        .map_err(ProposeAddMemberError::from)
+<a href=#119 id=119 data-nosnippet>119</a>    }
+<a href=#120 id=120 data-nosnippet>120</a>}</code></pre></div></section></main></body></html>

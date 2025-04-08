@@ -634,6 +634,41 @@ Note that in this scenario it is up to the application to define a proper author
         }
         _ =&gt; unreachable!(),
     }</code></pre>
+<p>Outside parties can also make proposals to add other members as long as they are registered as part of the <code>ExternalSendersExtension</code> extension.
+Since those proposals are crafted by outsiders, they are always public messages.</p>
+<pre><code class="language-rust no_run noplayground">    let proposal = ExternalProposal::new_add::&lt;Provider&gt;(
+        bob_key_package.key_package().clone(),
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &amp;ds_signature_keys,
+        SenderExtensionIndex::new(0),
+    )
+    .expect("Could not create external Add proposal");</code></pre>
+<p>It is then up to one of the group members to process the proposal and commit it.</p>
+<pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
+        .process_message(
+            provider,
+            proposal
+                .into_protocol_message()
+                .expect("Unexpected message type."),
+        )
+        .expect("Could not process message.");
+    match alice_processed_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(proposal) =&gt; {
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
+            assert_eq!(alice_group.members().count(), 2);
+            alice_group
+                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .expect("Could not commit");
+            alice_group
+                .merge_pending_commit(provider)
+                .expect("Could not merge commit");
+            assert_eq!(alice_group.members().count(), 1);
+        }
+        _ =&gt; unreachable!(),
+    }</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="removing-members-from-a-group"><a class="header" href="#removing-members-from-a-group">Removing members from a group</a></h1>
 <h2 id="immediate-operation-1"><a class="header" href="#immediate-operation-1">Immediate operation</a></h2>
 <p>Members can be removed from the group atomically with the <code>.remove_members()</code> function, which takes the <code>KeyPackageRef</code> of group member as input. References to the <code>KeyPackage</code>s of group members can be obtained using the <code>.members()</code> function, from which one can in turn compute the <code>KeyPackageRef</code> using their <code>.hash_ref()</code> function.</p>
@@ -708,7 +743,30 @@ Since those proposals are crafted by outsiders, they are always public messages.
     )
     .expect("Could not create external Remove proposal");</code></pre>
 <p>It is then up to one of the group members to process the proposal and commit it.</p>
-<pre><code class="language-rust no_run noplayground"></code></pre>
+<pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
+        .process_message(
+            provider,
+            proposal
+                .into_protocol_message()
+                .expect("Unexpected message type."),
+        )
+        .expect("Could not process message.");
+    match alice_processed_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(proposal) =&gt; {
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
+            assert_eq!(alice_group.members().count(), 2);
+            alice_group
+                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .expect("Could not commit");
+            alice_group
+                .merge_pending_commit(provider)
+                .expect("Could not merge commit");
+            assert_eq!(alice_group.members().count(), 1);
+        }
+        _ =&gt; unreachable!(),
+    }</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="updating-own-leaf-node"><a class="header" href="#updating-own-leaf-node">Updating own leaf node</a></h1>
 <h2 id="immediate-operation-2"><a class="header" href="#immediate-operation-2">Immediate operation</a></h2>
 <p>Members can update their own leaf node atomically with the <code>.self_update()</code> function.

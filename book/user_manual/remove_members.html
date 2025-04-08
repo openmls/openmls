@@ -229,7 +229,30 @@ Since those proposals are crafted by outsiders, they are always public messages.
     )
     .expect("Could not create external Remove proposal");</code></pre>
 <p>It is then up to one of the group members to process the proposal and commit it.</p>
-<pre><code class="language-rust no_run noplayground"></code></pre>
+<pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
+        .process_message(
+            provider,
+            proposal
+                .into_protocol_message()
+                .expect("Unexpected message type."),
+        )
+        .expect("Could not process message.");
+    match alice_processed_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(proposal) =&gt; {
+            alice_group
+                .store_pending_proposal(provider.storage(), *proposal)
+                .unwrap();
+            assert_eq!(alice_group.members().count(), 2);
+            alice_group
+                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .expect("Could not commit");
+            alice_group
+                .merge_pending_commit(provider)
+                .expect("Could not merge commit");
+            assert_eq!(alice_group.members().count(), 1);
+        }
+        _ =&gt; unreachable!(),
+    }</code></pre>
 
                     </main>
 
