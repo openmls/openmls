@@ -91,9 +91,9 @@ impl OpenMlsCrypto for CryptoProvider {
     // TODO: replace with sha2
     fn hash(&self, hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let out = match hash_type {
-            HashType::Sha2_256 => libcrux::digest::sha2_256(data).to_vec(),
-            HashType::Sha2_384 => libcrux::digest::sha2_384(data).to_vec(),
-            HashType::Sha2_512 => libcrux::digest::sha2_512(data).to_vec(),
+            HashType::Sha2_256 => libcrux_sha2::sha256(data).to_vec(),
+            HashType::Sha2_384 => libcrux_sha2::sha384(data).to_vec(),
+            HashType::Sha2_512 => libcrux_sha2::sha512(data).to_vec(),
         };
 
         Ok(out)
