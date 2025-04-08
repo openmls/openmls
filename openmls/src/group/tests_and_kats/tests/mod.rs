@@ -7,6 +7,7 @@ mod encoding;
 mod external_add_proposal;
 mod external_commit;
 mod external_commit_validation;
+mod external_join_add_proposal;
 mod external_remove_proposal;
 mod framing;
 mod framing_validation;
