@@ -13,6 +13,7 @@ readme = "../README.md"
 getrandom = "0.2.12"
 libcrux = { version = "=0.0.2-alpha.3", features = ["rand"] }
 libcrux-chacha20poly1305 = { version = "0.0.2-alpha.3" }
+libcrux-ed25519 = { version = "0.0.2-alpha.3" }
 libcrux-hkdf = { version = "0.0.2-alpha.3" }
 libcrux-sha2 = { version = "0.0.2-alpha.3" }
 openmls_traits = { version = "0.3.0", path = "../traits" }

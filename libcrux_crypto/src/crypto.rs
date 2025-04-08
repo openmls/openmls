@@ -119,10 +119,10 @@ impl OpenMlsCrypto for CryptoProvider {
 
         // TODO: instead, use key generation from chachapoly crate
         // so that the length will be correct
-        let key = key.try_into().unwrap();
+        let key: &[u8; 32] = key.try_into().unwrap();
 
         let mut msg_ctx: Vec<u8> = vec![0; data.len() + 16];
-        libcrux_chacha20poly1305::encrypt(&key, &data, &mut msg_ctx, aad.as_ref(), &iv.0)
+        libcrux_chacha20poly1305::encrypt(key, &data, &mut msg_ctx, aad.as_ref(), &iv.0)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
         Ok(msg_ctx)
@@ -170,14 +170,19 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 
     fn signature_key_gen(&self, alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
-        let alg = sig_alg(alg)?;
+        if !matches!(alg, SignatureScheme::ED25519) {
+            return Err(CryptoError::UnsupportedSignatureScheme);
+        }
+
         let mut rng = self
             .drbg
             .lock()
             .map_err(|_| CryptoError::CryptoLibraryError)
             .map(GuardedRng)?;
 
-        libcrux::signature::key_gen(alg, &mut rng).map_err(|_| CryptoError::SigningError)
+        // TODO: replace with key generation from libcrux-ed25519 crate, once available
+        libcrux::signature::key_gen(libcrux::signature::Algorithm::Ed25519, &mut rng)
+            .map_err(|_| CryptoError::SigningError)
     }
 
     fn verify_signature(
@@ -187,20 +192,30 @@ impl OpenMlsCrypto for CryptoProvider {
         pk: &[u8],
         signature: &[u8],
     ) -> Result<(), CryptoError> {
-        let signature = sig(alg, signature)?;
-        libcrux::signature::verify(data, &signature, pk).map_err(|_| CryptoError::InvalidSignature)
+        if !matches!(alg, SignatureScheme::ED25519) {
+            return Err(CryptoError::UnsupportedSignatureScheme);
+        }
+
+        let pk: &[u8; 32] = pk.try_into().map_err(|_| CryptoError::InvalidPublicKey)?;
+        let sk: &[u8; 64] = signature
+            .try_into()
+            .map_err(|_| CryptoError::InvalidSignature)?;
+
+        libcrux_ed25519::verify(data, pk, sk).map_err(|e| match e {
+            libcrux_ed25519::Error::InvalidSignature => CryptoError::InvalidSignature,
+            _ => CryptoError::SigningError,
+        })
     }
 
     fn sign(&self, alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        let alg = sig_alg(alg)?;
-        let drbg = self
-            .drbg
-            .lock()
-            .map_err(|_| CryptoError::CryptoLibraryError)?;
+        if !matches!(alg, SignatureScheme::ED25519) {
+            return Err(CryptoError::UnsupportedSignatureScheme);
+        }
 
-        libcrux::signature::sign(alg, data, key, &mut GuardedRng(drbg))
+        let key: &[u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidPublicKey)?;
+        libcrux_ed25519::sign(data, key)
             .map_err(|_| CryptoError::SigningError)
-            .map(|sig| sig.into_vec())
+            .map(|sig| sig.to_vec())
     }
 
     fn hpke_seal(
@@ -340,44 +355,6 @@ fn hkdf_alg(hash_type: HashType) -> libcrux_hkdf::Algorithm {
         HashType::Sha2_256 => libcrux_hkdf::Algorithm::Sha256,
         HashType::Sha2_384 => libcrux_hkdf::Algorithm::Sha384,
         HashType::Sha2_512 => libcrux_hkdf::Algorithm::Sha512,
-    }
-}
-
-// Don't need RSA and do not support EcDsaP256
-// TODO: use ed25519 crate instead
-fn sig(alg: SignatureScheme, sig: &[u8]) -> Result<libcrux::signature::Signature, CryptoError> {
-    match alg {
-        SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-            let decoded: [u8; 64] = der_decode(sig)?
-                .try_into()
-                .map_err(|_| CryptoError::InvalidSignature)?;
-
-            Ok(libcrux::signature::Signature::EcDsaP256(
-                libcrux::signature::EcDsaP256Signature::from_bytes(
-                    decoded,
-                    libcrux::signature::Algorithm::EcDsaP256(
-                        libcrux::signature::DigestAlgorithm::Sha256,
-                    ),
-                ),
-            ))
-        }
-        SignatureScheme::ED25519 => libcrux::signature::Ed25519Signature::from_slice(sig)
-            .map(libcrux::signature::Signature::Ed25519)
-            .map_err(|e| match e {
-                libcrux::signature::Error::InvalidSignature => CryptoError::InvalidSignature,
-                _ => CryptoError::CryptoLibraryError,
-            }),
-        _ => Err(CryptoError::UnsupportedSignatureScheme),
-    }
-}
-
-fn sig_alg(alg: SignatureScheme) -> Result<libcrux::signature::Algorithm, CryptoError> {
-    match alg {
-        SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(libcrux::signature::Algorithm::EcDsaP256(
-            libcrux::signature::DigestAlgorithm::Sha256,
-        )),
-        SignatureScheme::ED25519 => Ok(libcrux::signature::Algorithm::Ed25519),
-        _ => Err(CryptoError::UnsupportedSignatureScheme),
     }
 }
 
