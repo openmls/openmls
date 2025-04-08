@@ -28,20 +28,10 @@ impl Default for CryptoProvider {
     }
 }
 
-impl CryptoProvider {
-    #[inline(always)]
-    fn aes_support(&self) -> bool {
-        libcrux::aes_ni_support() && cfg!(target_arch = "x86_64")
-    }
-}
-
 impl OpenMlsCrypto for CryptoProvider {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
-        match (ciphersuite.aead_algorithm(), self.aes_support()) {
-            (AeadType::Aes128Gcm, true)
-            | (AeadType::Aes256Gcm, true)
-            | (AeadType::ChaCha20Poly1305, true)
-            | (AeadType::ChaCha20Poly1305, false) => Ok(()),
+        match ciphersuite.aead_algorithm() {
+            AeadType::ChaCha20Poly1305 => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }?;
 
@@ -56,7 +46,7 @@ impl OpenMlsCrypto for CryptoProvider {
 
         match ciphersuite.hpke_aead_algorithm() {
             HpkeAeadType::ChaCha20Poly1305 => Ok(()),
-            HpkeAeadType::AesGcm128 | HpkeAeadType::AesGcm256 if self.aes_support() => Ok(()),
+            //HpkeAeadType::AesGcm128 | HpkeAeadType::AesGcm256 if self.aes_support() => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }?;
 
@@ -64,19 +54,10 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 
     fn supported_ciphersuites(&self) -> Vec<Ciphersuite> {
-        if self.aes_support() {
-            vec![
-                Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-                Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
-                Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
-            ]
-        } else {
-            vec![
-                Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
-            ]
-        }
+        vec![
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+            Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
+        ]
     }
 
     fn hkdf_extract(
@@ -107,6 +88,7 @@ impl OpenMlsCrypto for CryptoProvider {
             .map(<Vec<u8> as Into<SecretVLBytes>>::into)
     }
 
+    // TODO: replace with sha2
     fn hash(&self, hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let out = match hash_type {
             HashType::Sha2_256 => libcrux::digest::sha2_256(data).to_vec(),
@@ -125,22 +107,25 @@ impl OpenMlsCrypto for CryptoProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
+        // The only supported AeadType (as of openmls_traits v0.3.0) is ChaCha20Poly1305
+        if !matches!(alg, AeadType::ChaCha20Poly1305) {
+            return Err(CryptoError::UnsupportedAeadAlgorithm);
+        }
+
         // only fails on wrong length
         let iv = libcrux::aead::Iv::new(nonce).map_err(|err| match err {
             libcrux::aead::InvalidArgumentError::InvalidIv => CryptoError::InvalidLength,
             _ => CryptoError::CryptoLibraryError,
         })?;
-        let key = aead_key(alg, key)?;
 
-        let mut msg_ctx: Vec<u8> = data.to_vec();
-        let tag = libcrux::aead::encrypt(&key, &mut msg_ctx, iv, aad).map_err(|e| match e {
-            libcrux::aead::EncryptError::InvalidArgument(
-                libcrux::aead::InvalidArgumentError::UnsupportedAlgorithm,
-            ) => CryptoError::UnsupportedAeadAlgorithm,
-            _ => CryptoError::CryptoLibraryError,
-        })?;
+        // TODO: instead, use key generation from chachapoly crate
+        // so that the length will be correct
+        let key = key.try_into().unwrap();
 
-        msg_ctx.extend_from_slice(tag.as_ref());
+        let mut msg_ctx: Vec<u8> = vec![0; data.len() + 16];
+        libcrux_chacha20poly1305::encrypt(&key, &data, &mut msg_ctx, aad.as_ref(), &iv.0)
+            .map_err(|_| CryptoError::CryptoLibraryError)?;
+
         Ok(msg_ctx)
     }
 
@@ -152,27 +137,37 @@ impl OpenMlsCrypto for CryptoProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
+        // The only supported AeadType (as of openmls_traits v0.3.0) is ChaCha20Poly1305
+        if !matches!(alg, AeadType::ChaCha20Poly1305) {
+            return Err(CryptoError::UnsupportedAeadAlgorithm);
+        }
+
         if ct_tag.len() < 16 || nonce.len() != 12 {
             return Err(CryptoError::InvalidLength);
         }
 
         let boundary = ct_tag.len() - 16;
-        let mut c = ct_tag[..boundary].to_vec();
-        let tag = &ct_tag[boundary..];
+        //let mut c = ct_tag[..boundary].to_vec();
+        //let tag = &ct_tag[boundary..];
+
+        let mut ptext = vec![0; boundary];
 
         let iv = libcrux::aead::Iv::new(nonce).map_err(|_| CryptoError::InvalidLength)?;
-        let key = aead_key(alg, key)?;
-        let tag = libcrux::aead::Tag::from_slice(tag).expect("failed despite correct length");
 
-        libcrux::aead::decrypt(&key, &mut c, iv, aad, &tag).map_err(|e| match e {
-            libcrux::aead::DecryptError::InvalidArgument(
-                libcrux::aead::InvalidArgumentError::UnsupportedAlgorithm,
-            ) => CryptoError::UnsupportedAeadAlgorithm,
-            libcrux::aead::DecryptError::DecryptionFailed => CryptoError::AeadDecryptionError,
-            _ => CryptoError::CryptoLibraryError,
-        })?;
+        // TODO: instead, use key generation from chachapoly crate
+        // so that the length will be correct
+        let key = key.try_into().unwrap();
 
-        Ok(c)
+        libcrux_chacha20poly1305::decrypt(&key, &mut ptext, &ct_tag, aad.as_ref(), &iv.0).map_err(
+            |e| match e {
+                libcrux_chacha20poly1305::AeadError::InvalidCiphertext => {
+                    CryptoError::AeadDecryptionError
+                }
+                _ => CryptoError::CryptoLibraryError,
+            },
+        )?;
+
+        Ok(ptext)
     }
 
     fn signature_key_gen(&self, alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
@@ -349,31 +344,8 @@ fn hkdf_alg(hash_type: HashType) -> libcrux_hkdf::Algorithm {
     }
 }
 
-fn aead_key(alg: AeadType, key: &[u8]) -> Result<libcrux::aead::Key, CryptoError> {
-    let key = match alg {
-        AeadType::Aes128Gcm => {
-            const ALG: libcrux::aead::Algorithm = libcrux::aead::Algorithm::Aes128Gcm;
-            let key: [u8; ALG.key_size()] =
-                key.try_into().map_err(|_| CryptoError::InvalidLength)?;
-            libcrux::aead::Key::Aes128(libcrux::aead::Aes128Key(key))
-        }
-        AeadType::Aes256Gcm => {
-            const ALG: libcrux::aead::Algorithm = libcrux::aead::Algorithm::Aes256Gcm;
-            let key: [u8; ALG.key_size()] =
-                key.try_into().map_err(|_| CryptoError::InvalidLength)?;
-            libcrux::aead::Key::Aes256(libcrux::aead::Aes256Key(key))
-        }
-        AeadType::ChaCha20Poly1305 => {
-            const ALG: libcrux::aead::Algorithm = libcrux::aead::Algorithm::Chacha20Poly1305;
-            let key: [u8; ALG.key_size()] =
-                key.try_into().map_err(|_| CryptoError::InvalidLength)?;
-            libcrux::aead::Key::Chacha20Poly1305(libcrux::aead::Chacha20Key(key))
-        }
-    };
-
-    Ok(key)
-}
-
+// Don't need RSA and do not support EcDsaP256
+// TODO: use ed25519 crate instead
 fn sig(alg: SignatureScheme, sig: &[u8]) -> Result<libcrux::signature::Signature, CryptoError> {
     match alg {
         SignatureScheme::ECDSA_SECP256R1_SHA256 => {
