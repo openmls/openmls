@@ -258,7 +258,7 @@ impl From<Secret> for InitSecret {
 
 /// Creates a string from the given MLS `ProtocolVersion` for the computation of
 /// the `init_secret` when creating or processing a commit with an external init
-/// proposal. TODO: #628.
+/// proposal.
 fn hpke_info_from_version(version: ProtocolVersion) -> &'static str {
     match version {
         ProtocolVersion::Mls10 => "MLS 1.0 external init secret",

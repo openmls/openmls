@@ -419,14 +419,12 @@ pub enum ExternalCommitValidationError {
     /// Found inline Add or Update proposals.
     #[error("Found inline Add or Update proposals.")]
     InvalidInlineProposals,
-    // TODO #803: this seems unused
     /// Found multiple inline Remove proposals.
     #[error("Found multiple inline Remove proposals.")]
     MultipleRemoveProposals,
     /// Remove proposal targets the wrong group member.
     #[error("Remove proposal targets the wrong group member.")]
     InvalidRemoveProposal,
-    // TODO #803: this seems unused
     /// External Commit has to contain a path.
     #[error("External Commit has to contain a path.")]
     NoPath,
