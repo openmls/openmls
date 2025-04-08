@@ -86,7 +86,7 @@ impl OpenMlsCrypto for CryptoProvider {
         ikm: &[u8],
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hkdf_alg(hash_type);
-        let out = libcrux::hkdf::extract(alg, salt, ikm);
+        let out = libcrux_hkdf::extract(alg, salt, ikm);
 
         Ok(out.into())
     }
@@ -100,9 +100,9 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hkdf_alg(hash_type);
 
-        libcrux::hkdf::expand(alg, prk, info, okm_len)
+        libcrux_hkdf::expand(alg, prk, info, okm_len)
             .map_err(|e| match e {
-                libcrux::hkdf::Error::OkmLengthTooLarge => CryptoError::HkdfOutputLengthInvalid,
+                libcrux_hkdf::Error::OkmLengthTooLarge => CryptoError::HkdfOutputLengthInvalid,
             })
             .map(<Vec<u8> as Into<SecretVLBytes>>::into)
     }
@@ -341,11 +341,11 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 }
 
-fn hkdf_alg(hash_type: HashType) -> libcrux::hkdf::Algorithm {
+fn hkdf_alg(hash_type: HashType) -> libcrux_hkdf::Algorithm {
     match hash_type {
-        HashType::Sha2_256 => libcrux::hkdf::Algorithm::Sha256,
-        HashType::Sha2_384 => libcrux::hkdf::Algorithm::Sha384,
-        HashType::Sha2_512 => libcrux::hkdf::Algorithm::Sha512,
+        HashType::Sha2_256 => libcrux_hkdf::Algorithm::Sha256,
+        HashType::Sha2_384 => libcrux_hkdf::Algorithm::Sha384,
+        HashType::Sha2_512 => libcrux_hkdf::Algorithm::Sha512,
     }
 }
 
