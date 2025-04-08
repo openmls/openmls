@@ -88,7 +88,6 @@ impl OpenMlsCrypto for CryptoProvider {
             .map(<Vec<u8> as Into<SecretVLBytes>>::into)
     }
 
-    // TODO: replace with sha2
     fn hash(&self, hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let out = match hash_type {
             HashType::Sha2_256 => libcrux_sha2::sha256(data).to_vec(),
