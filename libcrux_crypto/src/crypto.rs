@@ -116,9 +116,8 @@ impl OpenMlsCrypto for CryptoProvider {
             _ => CryptoError::CryptoLibraryError,
         })?;
 
-        // TODO: instead, use key generation from chachapoly crate
-        // so that the length will be correct
-        let key: &[u8; 32] = key.try_into().unwrap();
+        // TODO: instead, use key conversion from chachapoly crate, when available,
+        let key: &[u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
 
         let mut msg_ctx: Vec<u8> = vec![0; data.len() + 16];
         libcrux_chacha20poly1305::encrypt(key, data, &mut msg_ctx, aad, &iv.0)
@@ -151,8 +150,7 @@ impl OpenMlsCrypto for CryptoProvider {
         let iv = libcrux::aead::Iv::new(nonce).map_err(|_| CryptoError::InvalidLength)?;
 
         // TODO: instead, use key conversion from chachapoly crate, when available,
-        // so that the length will be correct
-        let key = key.try_into().unwrap();
+        let key: &[u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
 
         libcrux_chacha20poly1305::decrypt(&key, &mut ptext, ct_tag, aad, &iv.0).map_err(
             |e| match e {
@@ -209,7 +207,7 @@ impl OpenMlsCrypto for CryptoProvider {
             return Err(CryptoError::UnsupportedSignatureScheme);
         }
 
-        let key: &[u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidPublicKey)?;
+        let key: &[u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
         libcrux_ed25519::sign(data, key)
             .map_err(|_| CryptoError::SigningError)
             .map(|sig| sig.to_vec())
