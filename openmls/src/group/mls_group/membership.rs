@@ -33,61 +33,24 @@ impl MlsGroup {
     ) -> UpdateResult<Provider> {
         self.is_operational()?;
 
-        // Create inline add proposals from any provided key packages
-        let add_proposals = key_packages_to_add
-            .iter()
-            .map(|key_package| {
-                Proposal::Add(AddProposal {
-                    key_package: key_package.clone(),
-                })
-            })
-            .collect::<Vec<Proposal>>();
+        let bundle = self.commit_builder().propose_adds(key_packages_to_add.iter().cloned())
+            .propose_removals(leaf_nodes_to_remove.iter().cloned())
+            .propose_group_context_extensions(new_extensions)
+            .load_psks(provider.storage())?
+            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .stage_commit(provider)?;
 
-        let extensions_proposals = vec![Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal {
-                extensions: new_extensions,
-            },
-        )];
-
-        let mut remove_proposals = Vec::new();
-        for member in leaf_nodes_to_remove.iter() {
-            remove_proposals.push(Proposal::Remove(RemoveProposal { removed: *member }))
-        }
-
-        let proposals = [add_proposals, extensions_proposals, remove_proposals].concat();
-
-        let params = CreateCommitParams::builder()
-            .framing_parameters(self.framing_parameters())
-            .inline_proposals(proposals)
-            .force_self_update(true)
-            .build();
-
-        let create_commit_result = self.create_commit(params, provider, signer)?;
-
-        // Convert PublicMessage messages to MLSMessage and encrypt them if required by
-        // the configuration
-        let mls_messages = self.content_to_mls_message(create_commit_result.commit, provider)?;
-
-        // Set the current group state to [`MlsGroupState::PendingCommit`],
-        // storing the current [`StagedCommit`] from the commit results
-        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-            create_commit_result.staged_commit,
-        )));
+        let welcome = bundle.to_welcome_msg();
+        let (commit, _, group_info) = bundle.into_contents();
 
         provider
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(UpdateGroupMembershipError::StorageError)?;
-
+        
         self.reset_aad();
 
-        Ok((
-            mls_messages,
-            create_commit_result
-                .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, self.version())),
-            create_commit_result.group_info,
-        ))
+        Ok((commit, welcome, group_info))
     }
     /// Adds members to the group.
     ///
