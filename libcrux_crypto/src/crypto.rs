@@ -191,8 +191,8 @@ impl OpenMlsCrypto for CryptoProvider {
             return Err(CryptoError::UnsupportedSignatureScheme);
         }
 
-        let pk = <&[u8; 32]>::try_from(pk).map_err(|_| CryptoError::InvalidPublicKey)?;
-        let sk = <&[u8; 64]>::try_from(signature).map_err(|_| CryptoError::InvalidSignature)?;
+        let pk = <&[u8; 32]>::try_from(pk).map_err(|_| CryptoError::InvalidLength)?;
+        let sk = <&[u8; 64]>::try_from(signature).map_err(|_| CryptoError::InvalidLength)?;
 
         libcrux_ed25519::verify(data, pk, sk).map_err(|e| match e {
             libcrux_ed25519::Error::InvalidSignature => CryptoError::InvalidSignature,
