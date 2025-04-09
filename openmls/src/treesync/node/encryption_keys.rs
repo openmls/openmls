@@ -175,14 +175,10 @@ impl EncryptionKeyPair {
     ///
     /// Returns `None` if the keypair cannot be read from the store.
     pub(crate) fn read(
-        provider: &impl OpenMlsProvider,
+        provider: &impl StorageProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
-        provider
-            .storage()
-            .encryption_key_pair(encryption_key)
-            .ok()
-            .flatten()
+        provider.encryption_key_pair(encryption_key).ok().flatten()
     }
 
     /// Delete the [`EncryptionKeyPair`] from the store of the `provider`.
@@ -227,7 +223,7 @@ pub mod test_utils {
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> HpkeKeyPair {
-        let keys = EncryptionKeyPair::read(provider, encryption_key).unwrap();
+        let keys = EncryptionKeyPair::read(provider.storage(), encryption_key).unwrap();
 
         HpkeKeyPair {
             private: keys.private_key.key,
