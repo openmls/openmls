@@ -1,8 +1,11 @@
 //! # Message framing
 //!
-//! This module contains framing-related operations for MLS messages, including validation operations.
-//! The general structure of the framing process in OpenMLS closely mirrors the
-//! one described in Section 7 of the MLS specification. It can be visualized as follows:
+//! This module contains framing-related operations for MLS messages, including
+//! validation logic.
+//!
+//! The general structure of the framing process in OpenMLS closely follows the
+//! design described in Section 7 of the MLS specification. It can be visualized
+//! as follows:
 //!
 //! ```text
 //!                               Proposal        Commit     Application Data

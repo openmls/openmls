@@ -28,7 +28,7 @@ use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::signable::Verifiable,
     framing::{MlsMessageBodyIn, MlsMessageIn},
-    group::{GroupContext, HpkePrivateKey, OpenMlsSignaturePublicKey, SignaturePublicKey},
+    group::{HpkePrivateKey, OpenMlsSignaturePublicKey, SignaturePublicKey},
     key_packages::*,
     messages::*,
     prelude::group_info::{GroupInfo, VerifiableGroupInfo},
@@ -243,7 +243,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     //
     //   * Initialize a key schedule epoch using the decrypted joiner_secret and no PSKs
     //   * Recompute a candidate confirmation_tag value using the confirmation_key from the key schedule epoch and the confirmed_transcript_hash from the decrypted GroupContext
-    let group_context = GroupContext::from(group_info.clone());
+    let group_context = group_info.group_context().clone();
 
     let serialized_group_context = group_context.tls_serialize_detached().unwrap();
 

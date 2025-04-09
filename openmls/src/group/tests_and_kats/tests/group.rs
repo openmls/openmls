@@ -1,6 +1,7 @@
-use crate::{framing::*, group::*, test_utils::*, *};
+use crate::{framing::*, group::*, *};
 use mls_group::tests_and_kats::utils::{setup_alice_bob, setup_alice_bob_group, setup_client};
-use treesync::LeafNodeParameters;
+use prelude::KeyPackageBundle;
+use treesync::{node::leaf_node::Capabilities, LeafNodeParameters};
 
 #[openmls_test::openmls_test]
 fn create_commit_optional_path(
@@ -77,7 +78,8 @@ fn create_commit_optional_path(
     // Alice updates
     let (commit_message, _, _) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .unwrap();
+        .unwrap()
+        .into_contents();
 
     let commit = match commit_message.body() {
         MlsMessageBodyOut::PublicMessage(pm) => match pm.content() {
@@ -95,13 +97,57 @@ fn create_commit_optional_path(
 
 #[openmls_test::openmls_test]
 fn basic_group_setup() {
-    let (mut alice_group, alice_signer, _, _, _) = setup_alice_bob_group(ciphersuite, provider);
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let (mut alice_group, alice_signer, _, _, _, _) =
+        setup_alice_bob_group(ciphersuite, &alice_provider, &bob_provider);
 
     let _result =
         match alice_group.self_update(provider, &alice_signer, LeafNodeParameters::default()) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {e:?}"),
         };
+}
+
+/// This test checks that we can't create a group that is invalid.
+/// Specifically, we test that the extensions in the leaf node must be supported by the lead node's
+/// own capabilities ([valn0107]).
+///
+/// [valn0107]: https://validation.openmls.tech/#valn0107
+#[openmls_test::openmls_test]
+fn wrong_group_create_config() {
+    MlsGroupCreateConfig::builder()
+        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
+            0xff00,
+            UnknownExtension(b"testdata".to_vec()),
+        )))
+        .expect_err("leaf node extension is not in leaf node capabilities, should have failed");
+
+    MlsGroupCreateConfig::builder()
+        .capabilities(
+            Capabilities::builder()
+                .extensions(vec![ExtensionType::Unknown(0xff00)])
+                .build(),
+        )
+        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
+            0xff01,
+            UnknownExtension(b"testdata".to_vec()),
+        )))
+        .expect_err("leaf node extension is not in leaf node capabilities, should have failed");
+
+    MlsGroupCreateConfig::builder()
+        .capabilities(
+            Capabilities::builder()
+                .extensions(vec![ExtensionType::Unknown(0xff00)])
+                .build(),
+        )
+        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
+            0xff00,
+            UnknownExtension(b"testdata".to_vec()),
+        )))
+        .expect("leaf node extension is in leaf node capabilities, should have succeeded")
+        .build();
 }
 
 /// This test simulates various group operations like Add, Update, Remove in a
@@ -119,8 +165,9 @@ fn basic_group_setup() {
 #[openmls_test::openmls_test]
 fn group_operations() {
     // Create group with alice and bob
-    let (mut alice_group, alice_signer, mut bob_group, bob_signer, _) =
-        setup_alice_bob_group(ciphersuite, provider);
+    let (mut alice_group, alice_signer, mut bob_group, bob_signer, _, _) =
+        // TODO: don't let alice and bob share the provider
+        setup_alice_bob_group(ciphersuite, provider, provider);
 
     // Make sure that both groups have the same public tree
     assert_eq!(
@@ -156,7 +203,8 @@ fn group_operations() {
     // === Bob updates and commits ===
     let (commit_message, welcome_option, _) = bob_group
         .self_update(provider, &bob_signer, LeafNodeParameters::default())
-        .expect("Error updating group");
+        .expect("Error updating group")
+        .into_contents();
 
     // Check that there is a path
     let commit = match &commit_message.body {
@@ -195,7 +243,8 @@ fn group_operations() {
     // === Alice updates and commits ===
     let (commit_message, _, _) = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .expect("Error updating group");
+        .expect("Error updating group")
+        .into_contents();
 
     let commit = match &commit_message.body {
         MlsMessageBodyOut::PublicMessage(pm) => match pm.content() {
@@ -368,7 +417,8 @@ fn group_operations() {
     // === Charlie updates and commits ===
     let (commit_message, _, _) = charlie_group
         .self_update(provider, &charlie_signer, LeafNodeParameters::default())
-        .expect("Error updating group");
+        .expect("Error updating group")
+        .into_contents();
 
     let commit = match &commit_message.body {
         MlsMessageBodyOut::PublicMessage(pm) => match pm.content() {
@@ -490,4 +540,163 @@ fn group_operations() {
     let exporter_length = exporter_length + 1;
     let alice_exporter = alice_group.export_secret(provider, "export test", &[], exporter_length);
     assert!(alice_exporter.is_err())
+}
+
+#[openmls_test::openmls_test]
+fn decrypt_after_leaf_index_reuse() {
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let charlie_provider = Provider::default();
+    let dora_provider = Provider::default();
+    // Create credentials and keys
+    let (alice_credential, alice_signature_keys) = crate::credentials::test_utils::new_credential(
+        &alice_provider,
+        b"Alice",
+        ciphersuite.signature_algorithm(),
+    );
+    let (bob_credential, bob_signature_keys) = crate::credentials::test_utils::new_credential(
+        &bob_provider,
+        b"Bob",
+        ciphersuite.signature_algorithm(),
+    );
+    let (charlie_credential, charlie_signature_keys) =
+        crate::credentials::test_utils::new_credential(
+            &charlie_provider,
+            b"charlie",
+            ciphersuite.signature_algorithm(),
+        );
+    let (dora_credential, dora_signature_keys) = crate::credentials::test_utils::new_credential(
+        &dora_provider,
+        b"dora",
+        ciphersuite.signature_algorithm(),
+    );
+
+    // Alice creates a group
+    let mut group_alice = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .max_past_epochs(5)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(
+            &alice_provider,
+            &alice_signature_keys,
+            alice_credential.clone(),
+        )
+        .expect("Error creating group.");
+
+    // Generate KeyPackages
+    let bob_key_package_bundle = KeyPackageBundle::generate(
+        &bob_provider,
+        &bob_signature_keys,
+        ciphersuite,
+        bob_credential.clone(),
+    );
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // Generate KeyPackages
+    let charlie_key_package_bundle = KeyPackageBundle::generate(
+        &charlie_provider,
+        &charlie_signature_keys,
+        ciphersuite,
+        charlie_credential.clone(),
+    );
+    let charlie_key_package = charlie_key_package_bundle.key_package();
+
+    // Generate KeyPackages
+    let dora_key_package_bundle = KeyPackageBundle::generate(
+        &dora_provider,
+        &dora_signature_keys,
+        ciphersuite,
+        dora_credential.clone(),
+    );
+    let dora_key_package = dora_key_package_bundle.key_package();
+
+    // Alice adds Bob
+    let (_commit, welcome, _group_info_option) = group_alice
+        .add_members(
+            &alice_provider,
+            &alice_signature_keys,
+            &[bob_key_package.clone(), charlie_key_package.clone()],
+        )
+        .expect("Could not create proposal.");
+
+    group_alice
+        .merge_pending_commit(&alice_provider)
+        .expect("error merging pending commit");
+
+    let welcome = welcome.into_welcome().unwrap();
+
+    let mut group_bob = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &MlsGroupJoinConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .max_past_epochs(5)
+            .build(),
+        welcome.clone(),
+        Some(group_alice.export_ratchet_tree().into()),
+    )
+    .and_then(|staged_join| staged_join.into_group(&bob_provider))
+    .expect("error creating bob's group from welcome");
+
+    let mut group_charlie = StagedWelcome::new_from_welcome(
+        &charlie_provider,
+        &MlsGroupJoinConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .max_past_epochs(5)
+            .build(),
+        welcome,
+        Some(group_alice.export_ratchet_tree().into()),
+    )
+    .and_then(|staged_join| staged_join.into_group(&charlie_provider))
+    .expect("error creating charlie's group from welcome");
+
+    let charlie_msg = group_charlie
+        .create_message(
+            &charlie_provider,
+            &charlie_signature_keys,
+            b"this is a test message",
+        )
+        .unwrap();
+
+    // replace charlie with dora
+    let commit_bundle = group_alice
+        .commit_builder()
+        .propose_removals(Some(group_charlie.own_leaf_index()))
+        .propose_adds(Some(dora_key_package.clone()))
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(&alice_provider)
+        .unwrap();
+
+    group_alice.merge_pending_commit(&alice_provider).unwrap();
+
+    let bob_incoming_commit = group_bob
+        .process_message(
+            &bob_provider,
+            commit_bundle
+                .commit()
+                .clone()
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap();
+
+    match bob_incoming_commit.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => group_bob
+            .merge_staged_commit(&bob_provider, *staged_commit)
+            .unwrap(),
+        _ => unreachable!(),
+    };
+
+    let charlie_protocol_message = charlie_msg.into_protocol_message().unwrap();
+
+    let _bob_incoming_appmsg = group_bob
+        .process_message(&bob_provider, charlie_protocol_message)
+        .unwrap();
 }

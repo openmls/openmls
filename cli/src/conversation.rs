@@ -23,11 +23,7 @@ impl Conversation {
     #[allow(dead_code)]
     pub fn get(&self, last_n: usize) -> Option<&[ConversationMessage]> {
         let num_messages = self.messages.len();
-        let start = if last_n > num_messages {
-            0
-        } else {
-            num_messages - last_n
-        };
+        let start = num_messages.saturating_sub(last_n);
         self.messages.get(start..num_messages)
     }
 }

@@ -115,9 +115,10 @@ fn self_update(
     provider: &OpenMlsRustCrypto,
     signer: &SignatureKeyPair,
 ) -> MlsMessageOut {
-    let (commit, _, _group_info) = group
+    let commit = group
         .self_update(provider, signer, LeafNodeParameters::default())
-        .unwrap();
+        .unwrap()
+        .into_commit();
 
     group.merge_pending_commit(provider).unwrap();
 

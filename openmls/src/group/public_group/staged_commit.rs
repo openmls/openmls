@@ -47,6 +47,7 @@ impl PublicGroup {
         let ciphersuite = self.ciphersuite();
 
         // Verify epoch
+        // https://validation.openmls.tech/#valn1201
         if mls_content.epoch() != self.group_context().epoch() {
             log::error!(
                 "Epoch mismatch. Got {:?}, expected {:?}",
@@ -63,16 +64,34 @@ impl PublicGroup {
         };
 
         let sender = mls_content.sender();
-        // ValSem244: External Commit, There MUST NOT be any referenced proposals.
-        if sender == &Sender::NewMemberCommit
-            && commit
+
+        if sender == &Sender::NewMemberCommit {
+            // External commit, there MUST be a path
+            // https://validation.openmls.tech/#valn0405
+            if commit.path.is_none() {
+                return Err(ExternalCommitValidationError::NoPath.into());
+            }
+
+            // ValSem244: External Commit, There MUST NOT be any referenced proposals.
+            // https://validation.openmls.tech/#valn0406
+            if commit
                 .proposals
                 .iter()
                 .any(|proposal| matches!(proposal, ProposalOrRef::Reference(_)))
-        {
-            return Err(StageCommitError::ExternalCommitValidation(
-                ExternalCommitValidationError::ReferencedProposal,
-            ));
+            {
+                return Err(ExternalCommitValidationError::ReferencedProposal.into());
+            }
+
+            let number_of_remove_proposals = commit
+                .proposals
+                .iter()
+                .filter(|prop| matches!(prop, ProposalOrRef::Proposal(Proposal::Remove(_))))
+                .count();
+
+            // https://validation.openmls.tech/#valn0402
+            if number_of_remove_proposals > 1 {
+                return Err(ExternalCommitValidationError::MultipleExternalInitProposals.into());
+            }
         }
 
         // Build a queue with all proposals from the Commit and check that we have all
@@ -94,7 +113,13 @@ impl PublicGroup {
             }
         })?;
 
-        // Validate the staged proposals by doing the following checks:
+        // https://validation.openmls.tech/#valn1207
+        if let Some(update_path) = &commit.path {
+            self.validate_leaf_node(update_path.leaf_node())?;
+        }
+
+        // Validate the staged proposals. This implements https://validation.openmls.tech/#valn1204.
+        // This is done by doing the following checks:
 
         // ValSem101
         // ValSem102
@@ -126,6 +151,8 @@ impl PublicGroup {
                 // ValSem111
                 // ValSem112
                 self.validate_update_proposals(&proposal_queue, *leaf_index)?;
+
+                self.validate_no_external_init_proposals(&proposal_queue)?;
             }
             Sender::External(_) => {
                 // A commit cannot be issued by a pre-configured sender.
@@ -164,6 +191,24 @@ impl PublicGroup {
         Ok((commit, proposal_queue, sender_index))
     }
 
+    // Check that no external init proposal occurs. Needed only for regular commits.
+    // [valn0310](https://validation.openmls.tech/#valn0310)
+    fn validate_no_external_init_proposals(
+        &self,
+        proposal_queue: &ProposalQueue,
+    ) -> Result<(), ProposalValidationError> {
+        for proposal in proposal_queue.queued_proposals() {
+            if matches!(
+                proposal.proposal().proposal_type(),
+                ProposalType::ExternalInit
+            ) {
+                return Err(ProposalValidationError::ExternalInitProposalInRegularCommit);
+            }
+        }
+
+        Ok(())
+    }
+
     /// Stages a commit message that was sent by another group member.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
@@ -191,7 +236,7 @@ impl PublicGroup {
     ///  - ValSem202: Path must be the right length
     ///  - ValSem203: Path secrets must decrypt correctly
     ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
+    ///    private keys from the direct path
     ///  - ValSem205
     ///  - ValSem240
     ///  - ValSem241
@@ -242,6 +287,7 @@ impl PublicGroup {
             diff.apply_received_update_path(crypto, ciphersuite, sender_index, update_path)?;
         } else if apply_proposals_values.path_required {
             // ValSem201
+            // https://validation.openmls.tech/#valn1206
             return Err(StageCommitError::RequiredPathNotFound);
         };
 
@@ -273,7 +319,7 @@ impl PublicGroup {
         &mut self,
         storage: &Storage,
         staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<Storage::PublicError>> {
+    ) -> Result<(), MergeCommitError<Storage::Error>> {
         match staged_commit.into_state() {
             StagedCommitState::PublicState(staged_state) => {
                 self.merge_diff(staged_state.staged_diff);

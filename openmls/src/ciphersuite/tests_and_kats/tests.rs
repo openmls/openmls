@@ -2,7 +2,7 @@
 
 use openmls_traits::types::HpkeCiphertext;
 
-use crate::{ciphersuite::*, test_utils::*};
+use crate::ciphersuite::*;
 
 // Spot test to make sure hpke seal/open work.
 #[openmls_test::openmls_test]

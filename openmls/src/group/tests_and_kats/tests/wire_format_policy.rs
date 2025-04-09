@@ -14,7 +14,7 @@ fn create_group(
     provider: &impl crate::storage::OpenMlsProvider,
     wire_format_policy: WireFormatPolicy,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
-    let group_id = GroupId::from_slice(b"Test Group");
+    let group_id = GroupId::random(provider.rand());
 
     // Generate credentials with keys
     let credential_with_key_and_signer =
@@ -91,7 +91,8 @@ fn receive_message(
             &bob_credential_with_key_and_signer.signer,
             LeafNodeParameters::default(),
         )
-        .expect("An unexpected error occurred.");
+        .expect("An unexpected error occurred.")
+        .into_contents();
     message.into()
 }
 

@@ -19,7 +19,7 @@ fn test_add_member_with_aad(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
     ] {
-        let group_id = GroupId::from_slice(b"Test Group");
+        let group_id = GroupId::random(provider.rand());
 
         // Generate credentials with keys
         let alice_credential_with_key_and_signer = generate_credential_with_key(

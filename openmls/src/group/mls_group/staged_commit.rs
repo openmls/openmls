@@ -72,6 +72,7 @@ impl MlsGroup {
         };
 
         // Prepare the PskSecret
+        // Fails if PSKs are missing ([valn1205](https://validation.openmls.tech/#valn1205))
         let psk_secret = {
             let psks: Vec<(&PreSharedKeyId, Secret)> = load_psks(
                 provider.storage(),
@@ -120,19 +121,19 @@ impl MlsGroup {
     ///  - ValSem111
     ///  - ValSem112
     ///  - ValSem113: All Proposals: The proposal type must be supported by all
-    ///               members of the group
+    ///    members of the group
     ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
     ///  - ValSem203: Path secrets must decrypt correctly
     ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
+    ///    private keys from the direct path
     ///  - ValSem205
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244 Returns an error if the given commit was sent by the owner
-    ///              of this group.
+    ///    of this group.
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
@@ -333,7 +334,9 @@ impl MlsGroup {
     ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage());
+        let old_epoch_keypairs = self
+            .read_epoch_keypairs(provider.storage())
+            .map_err(MergeCommitError::StorageError)?;
         match staged_commit.state {
             StagedCommitState::PublicState(staged_state) => {
                 self.public_group

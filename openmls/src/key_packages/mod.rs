@@ -1,8 +1,7 @@
 //! # Key Packages
 //!
-//! Key packages are pre-published public keys that provide some information
-//! about a user in order to facilitate the asynchronous addition of clients to
-//! a group.
+//! Key packages are pre-published public keys that carry information about a
+//! user, allowing for the asynchronous addition of clients to an MLS group.
 //!
 //! A key package object specifies:
 //!
@@ -12,20 +11,19 @@
 //! - A list of **extensions** for the key package (see
 //!   [Extensions](`mod@crate::extensions`) for details)
 //!
-//! Key packages are intended to be used only once and SHOULD NOT be reused
-//! except in case of last resort, i.e. if there's no other key package
-//! available. Clients MAY generate and publish multiple KeyPackages to support
-//! multiple ciphersuites.
+//! Key packages are meant to be used only once and SHOULD NOT be reused,
+//! except as a last resort—i.e., when no other key package is available.
+//! Clients MAY generate and publish multiple key packages to support multiple
+//! ciphersuites.
 //!
-//! The value for HPKE init key MUST be a public key for the asymmetric
-//! encryption scheme defined by ciphersuite, and it MUST be unique among the
-//! set of key packages created by this client. The whole structure is signed
-//! using the client's signature key. A key package object with an invalid
-//! signature field is considered malformed.
+//! The HPKE init key MUST be a public key for the asymmetric encryption scheme
+//! defined by the ciphersuite. It MUST be unique among key packages created by
+//! the client. The entire structure is signed using the client's signature key.
+//! A key package object with an invalid signature field is considered malformed.
 //!
 //! ## Creating key package bundles
 //!
-//! Key package bundles are key packages including their private key. A key
+//! Key package bundles are key packages that include their private key. A key
 //! package bundle can be created as follows:
 //!
 //! ```
@@ -404,6 +402,9 @@ impl KeyPackage {
 
     /// Get the lifetime of the KeyPackage
     pub fn life_time(&self) -> &Lifetime {
+        // Leaf nodes contain a lifetime if an only if they are inside a KeyPackage. Since we are
+        // in a KeyPackage, this can never be None and unwrap is safe.
+        // TODO: get rid of the unwrap, see https://github.com/openmls/openmls/issues/1663.
         self.payload.leaf_node.life_time().unwrap()
     }
 }

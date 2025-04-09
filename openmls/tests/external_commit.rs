@@ -125,9 +125,10 @@ fn test_group_info() {
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, true);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group
+    let group_info = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .unwrap();
+        .unwrap()
+        .into_group_info();
     alice_group.merge_pending_commit(provider).unwrap();
 
     // Bob wants to join
@@ -216,9 +217,10 @@ fn test_not_present_group_info(
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group
+    let group_info = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .unwrap();
+        .unwrap()
+        .into_group_info();
     alice_group.merge_pending_commit(provider).unwrap();
 
     assert!(group_info.is_none());

@@ -1,7 +1,6 @@
 //! This module tests the validation of commits as defined in
 //! https://book.openmls.tech/message_validation.html#commit-message-validation
 
-use create_commit::CreateCommitParams;
 use openmls_traits::{prelude::*, signatures::Signer, types::Ciphersuite};
 use proposal_store::QueuedProposal;
 use tls_codec::{Deserialize, Serialize};
@@ -177,6 +176,7 @@ fn test_valsem200() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -353,14 +353,19 @@ fn test_valsem201() {
                 .unwrap()
         });
 
-        let params = CreateCommitParams::builder()
-            .framing_parameters(alice_group.framing_parameters())
-            // has to be turned off otherwise commit path is always present
-            .force_self_update(false)
-            .build();
         let commit = alice_group
-            .create_commit(params, provider, &alice_credential.signer)
+            .commit_builder()
+            .force_self_update(false)
+            .load_psks(provider.storage())
             .unwrap()
+            .build(
+                provider.rand(),
+                provider.crypto(),
+                &alice_credential.signer,
+                |_| true,
+            )
+            .unwrap()
+            .commit_result()
             .commit;
 
         // verify that path can be omitted in some situations
@@ -464,6 +469,7 @@ fn test_valsem202() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -545,6 +551,7 @@ fn test_valsem203() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -628,6 +635,7 @@ fn test_valsem204() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -754,6 +762,7 @@ fn test_valsem205() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 

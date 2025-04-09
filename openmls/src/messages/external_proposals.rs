@@ -88,4 +88,33 @@ impl ExternalProposal {
         .map(MlsMessageOut::from)
         .map_err(ProposeRemoveMemberError::from)
     }
+
+    /// Creates an external Add proposal. For delivery services requesting to add a client.
+    /// This proposal will have to be committed later by a group member.
+    ///
+    /// # Arguments
+    /// * `key_package` - key package of the client to add
+    /// * `group_id` - unique group identifier of the group to join
+    /// * `epoch` - group's epoch
+    /// * `signer` - of the sender to sign the message
+    /// * `sender` - index of the sender of the proposal (in the [crate::extensions::ExternalSendersExtension] array
+    ///   from the Group Context)
+    pub fn new_add<Provider: OpenMlsProvider>(
+        key_package: KeyPackage,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        signer: &impl Signer,
+        sender_index: SenderExtensionIndex,
+    ) -> Result<MlsMessageOut, ProposeAddMemberError<Provider::StorageError>> {
+        AuthenticatedContent::new_external_proposal(
+            Proposal::Add(AddProposal { key_package }),
+            group_id,
+            epoch,
+            signer,
+            sender_index,
+        )
+        .map(PublicMessage::from)
+        .map(MlsMessageOut::from)
+        .map_err(ProposeAddMemberError::from)
+    }
 }

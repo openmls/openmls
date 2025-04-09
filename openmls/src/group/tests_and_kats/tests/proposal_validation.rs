@@ -1,11 +1,12 @@
 //! This module tests the validation of proposals as defined in
 //! https://book.openmls.tech/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use crate::{storage::OpenMlsProvider, test_utils::frankenstein::*, treesync::LeafNodeParameters};
-use openmls_traits::{
-    prelude::{openmls_types::*, *},
-    signatures::Signer,
+use crate::{
+    storage::OpenMlsProvider,
+    test_utils::frankenstein::*,
+    treesync::{errors::LeafNodeValidationError, LeafNodeParameters},
 };
+use openmls_traits::{prelude::openmls_types::*, signatures::Signer};
 use proposal_store::QueuedProposal;
 use tls_codec::{Deserialize, Serialize};
 
@@ -68,7 +69,7 @@ fn create_group_with_members<Provider: OpenMlsProvider>(
         &MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
             .build(),
-        GroupId::from_slice(b"Alice's Friends"),
+        GroupId::random(provider.rand()),
         alice_credential_with_key_and_signer
             .credential_with_key
             .clone(),
@@ -103,7 +104,7 @@ fn new_test_group(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
-    let group_id = GroupId::from_slice(b"Test Group");
+    let group_id = GroupId::random(provider.rand());
 
     // Generate credentials with keys
     let credential_with_key_and_signer =
@@ -645,7 +646,7 @@ fn test_valsem101b() {
             &MlsGroupCreateConfig::builder()
                 .ciphersuite(ciphersuite)
                 .build(),
-            GroupId::from_slice(b"Alice's Friends"),
+            GroupId::random(provider.rand()),
             alice_credential_with_key.credential_with_key.clone(),
         )
         .unwrap();
@@ -918,6 +919,7 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_contents()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -1046,6 +1048,8 @@ fn test_valsem105() {
         KeyPackageTestVersion::UnsupportedCiphersuite,
         KeyPackageTestVersion::ValidTestCase,
     ] {
+        println!("# running test {key_package_version:?}");
+
         // Let's set up a group with Alice and Bob as members.
         let ProposalValidationTestSetup {
             mut alice_group,
@@ -1193,6 +1197,7 @@ fn test_valsem105() {
                 LeafNodeParameters::default(),
             )
             .unwrap()
+            .into_messages()
             .tls_serialize_detached()
             .unwrap();
 
@@ -1329,21 +1334,31 @@ fn test_valsem105() {
                             err,
                             ProcessMessageError::InvalidCommit(
                                 StageCommitError::ProposalValidationError(
-                                    ProposalValidationError::InsufficientCapabilities,
+                                    ProposalValidationError::LeafNodeValidation(
+                                        LeafNodeValidationError::CiphersuiteNotInCapabilities
+                                    ),
                                 ),
                             )
-                        )
+                        ),
+                        "unexpected error: {:?}",
+                        err
                     );
                 }
                 KeyPackageTestVersion::UnsupportedCiphersuite => {
-                    assert!(matches!(
-                        err,
-                        ProcessMessageError::InvalidCommit(
-                            StageCommitError::ProposalValidationError(
-                                ProposalValidationError::InsufficientCapabilities,
-                            ),
-                        )
-                    ));
+                    assert!(
+                        matches!(
+                            err,
+                            ProcessMessageError::InvalidCommit(
+                                StageCommitError::ProposalValidationError(
+                                    ProposalValidationError::LeafNodeValidation(
+                                        LeafNodeValidationError::CiphersuiteNotInCapabilities
+                                    ),
+                                ),
+                            )
+                        ),
+                        "unexpected error: {:?}",
+                        err
+                    );
                 }
             };
 
@@ -1600,6 +1615,7 @@ fn test_valsem108() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -1748,8 +1764,7 @@ fn test_valsem110() {
     );
 
     // And turn it into a protocol message
-    let protocol_message =
-        ProtocolMessage::PublicMessage(PublicMessage::from(new_public_message).into());
+    let protocol_message = ProtocolMessage::from(PublicMessage::from(new_public_message));
 
     // Have Alice process this proposal.
     if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
@@ -1798,6 +1813,7 @@ fn test_valsem110() {
             LeafNodeParameters::default(),
         )
         .expect("Error creating self-update")
+        .into_contents()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -1829,6 +1845,7 @@ fn test_valsem110() {
     // process the commit.
     let leaf_keypair = alice_group
         .read_epoch_keypairs(provider.storage())
+        .unwrap()
         .into_iter()
         .find(|keypair| keypair.public_key() == &alice_encryption_key)
         .unwrap();
@@ -1881,7 +1898,7 @@ fn test_valsem111() {
 
     // We now have Alice create a commit. That commit should not contain any
     // proposals, just a path.
-    let commit = alice_group
+    let commit_bundle = alice_group
         .self_update(
             provider,
             &alice_credential_with_key_and_signer.signer,
@@ -1890,7 +1907,8 @@ fn test_valsem111() {
         .expect("Error creating self-update");
 
     // Check that there's no proposal in it.
-    let serialized_message = commit
+    let serialized_message = commit_bundle
+        .contents()
         .tls_serialize_detached()
         .expect("error serializing plaintext");
 
@@ -1908,7 +1926,8 @@ fn test_valsem111() {
     // The commit should contain no proposals.
     assert_eq!(commit_content.proposals.len(), 0);
 
-    let serialized_update = commit
+    let serialized_update = commit_bundle
+        .contents()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -1975,6 +1994,7 @@ fn test_valsem111() {
         .expect("Error creating self-update");
 
     let serialized_update = commit
+        .into_contents()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 

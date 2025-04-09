@@ -1,9 +1,8 @@
+use commit_builder::CommitMessageBundle;
 use errors::{ProposeSelfUpdateError, SelfUpdateError};
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
-use crate::{
-    messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNodeParameters,
-};
+use crate::{storage::OpenMlsProvider, treesync::LeafNodeParameters};
 
 use super::*;
 
@@ -21,52 +20,71 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    // FIXME: #1217
-    #[allow(clippy::type_complexity)]
     pub fn self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         leaf_node_parameters: LeafNodeParameters,
-    ) -> Result<
-        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
-        SelfUpdateError<Provider::StorageError>,
-    > {
+    ) -> Result<CommitMessageBundle, SelfUpdateError<Provider::StorageError>> {
         self.is_operational()?;
 
-        let params = CreateCommitParams::builder()
-            .framing_parameters(self.framing_parameters())
+        let bundle = self
+            .commit_builder()
             .leaf_node_parameters(leaf_node_parameters)
-            .build();
-        // Create Commit over all proposals.
-        // TODO #751
-        let create_commit_result = self.create_commit(params, provider, signer)?;
-
-        // Convert PublicMessage messages to MLSMessage and encrypt them if required by
-        // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, provider)?;
-
-        // Set the current group state to [`MlsGroupState::PendingCommit`],
-        // storing the current [`StagedCommit`] from the commit results
-        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-            create_commit_result.staged_commit,
-        )));
-
-        provider
-            .storage()
-            .write_group_state(self.group_id(), &self.group_state)
-            .map_err(SelfUpdateError::StorageError)?;
-        self.store(provider.storage())
-            .map_err(SelfUpdateError::StorageError)?;
+            .consume_proposal_store(true)
+            .load_psks(provider.storage())?
+            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .stage_commit(provider)?;
 
         self.reset_aad();
-        Ok((
-            mls_message,
-            create_commit_result
-                .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, self.version())),
-            create_commit_result.group_info,
-        ))
+
+        Ok(bundle)
+    }
+
+    /// Updates the own leaf node. The application can choose to update the
+    /// credential, the capabilities, and the extensions by buliding the
+    /// [`LeafNodeParameters`].
+    ///
+    /// In contrast to `self_update`, this function allows updating the
+    /// signature public key in the senders leaf node. Note that `new_signer`
+    /// MUST be the private key corresponding to the public key set in the
+    /// `leaf_node_parameters`.
+    ///
+    /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
+    /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and
+    /// the [GroupInfo]. The [`Welcome`] is [Some] when the queue of pending
+    /// proposals contained add proposals The [GroupInfo] is [Some] if the group
+    /// has the `use_ratchet_tree_extension` flag set.
+    ///
+    /// Returns an error if there is a pending commit.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
+    pub fn self_update_with_new_signer<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        old_signer: &impl Signer,
+        new_signer: &impl Signer,
+        leaf_node_parameters: LeafNodeParameters,
+    ) -> Result<CommitMessageBundle, SelfUpdateError<Provider::StorageError>> {
+        self.is_operational()?;
+
+        let bundle = self
+            .commit_builder()
+            .leaf_node_parameters(leaf_node_parameters)
+            .consume_proposal_store(true)
+            .load_psks(provider.storage())?
+            .build_with_new_signer(
+                provider.rand(),
+                provider.crypto(),
+                old_signer,
+                new_signer,
+                |_| true,
+            )?
+            .stage_commit(provider)?;
+
+        self.reset_aad();
+
+        Ok(bundle)
     }
 
     /// Creates a proposal to update the own leaf node. Optionally, a

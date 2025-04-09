@@ -1,5 +1,7 @@
 //! # Preshared keys.
 
+use std::borrow::Borrow;
+
 use openmls_traits::{random::OpenMlsRand, storage::StorageProvider as StorageProviderTrait};
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
@@ -383,7 +385,7 @@ impl PskSecret {
     pub(crate) fn new(
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-        psks: Vec<(&PreSharedKeyId, Secret)>,
+        psks: Vec<(impl Borrow<PreSharedKeyId>, Secret)>,
     ) -> Result<Self, PskError> {
         // Check that we don't have too many PSKs
         let num_psks = u16::try_from(psks.len()).map_err(|_| PskError::TooManyKeys)?;
@@ -404,7 +406,7 @@ impl PskSecret {
 
             // psk_input_[i] = ExpandWithLabel( psk_extracted_[i], "derived psk", PSKLabel, KDF.Nh)
             let psk_input = {
-                let psk_label = PskLabel::new(psk_id, index as u16, num_psks)
+                let psk_label = PskLabel::new(psk_id.borrow(), index as u16, num_psks)
                     .tls_serialize_detached()
                     .map_err(LibraryError::missing_bound_check)?;
 

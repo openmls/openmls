@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- [#1688](https://github.com/openmls/openmls/pull/1688): Add `unknown()` getter method to `Extensions`.
+- [#1666](https://github.com/openmls/openmls/pull/1666): Add `members()` and `group_context()` getter methods to `StagedWelcome`.
+- [#1672](https://github.com/openmls/openmls/pull/1672): Add `epoch()` getter method to `VerifiableGroupInfo`.
+- [#1673](https://github.com/openmls/openmls/pull/1673): Return more specific error when attempting to decrypt own messages: `ProcessMessageError::ValidationError(ValidationError::CannotDecryptOwnMessage)`.
+- [#1735](https://github.com/openmls/openmls/pull/1735): Add `self_update_with_new_signer` function to `MlsGroup`, as well as a `build_with_new_signer` build option for the `CommitBuilder`. Both can be used to create commits that rotate the creator's signature key.
+- [#1673](https://github.com/openmls/openmls/pull/1673): Return more specific error when attemtping to decrypt own messages: `ProcessMessageError::ValidationError(ValidationError::CannotDecryptOwnMessage)`.
+- [#1731](https://github.com/openmls/openmls/pull/1731): Add helpers to recover from group state forks, hidden behind the new `fork-resolution` feature flag.
+- [#1750](https://github.com/openmls/openmls/pull/1750): Support add proposals from external senders, using `ExternalProposal::new_add()`.
+
+### Fixed
+
+- [#1703](https://github.com/openmls/openmls/pull/1703): Fix a bug where updates proposals were not properly cleared if a remove proposal is present for the same group member.
+
+### Changed
+
+- [#1700](https://github.com/openmls/openmls/pull/1700): During commit processing, OpenMLS will now return a `StorageError` if the storage provider fails while fetching `encryption_epoch_key_pairs`. Previously, it would ignore any error returned by the storage provider and just assume that no keys could be found (which typically lead to an error later during commit processing).
+
 ## 0.6.0 (2024-09-04)
 
 ### Added
@@ -19,7 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1642](https://github.com/openmls/openmls/pull/1642): `OpenMlsProvider` is no longer required for the `PublicGroup` API. The `PublicGroup` API now uses the `PublicStorageProvider` trait directly. `ProcessMessageError::InvalidSignature` was removed and replaced with `ValidationError::InvalidSignature`.
 
 ### Removed
-
 
 ### Fixed
 

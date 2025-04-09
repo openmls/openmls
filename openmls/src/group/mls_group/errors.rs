@@ -15,7 +15,7 @@ use crate::{
             CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
             ValidationError,
         },
-        CreateGroupContextExtProposalError,
+        CommitBuilderStageError, CreateGroupContextExtProposalError,
     },
     schedule::errors::PskError,
     treesync::{
@@ -113,6 +113,9 @@ pub enum ProcessMessageError {
     /// External application messages are not permitted.
     #[error("External application messages are not permitted.")]
     UnauthorizedExternalApplicationMessage,
+    /// External commit messages are not permitted.
+    #[error("Commit messages from external senders are not permitted.")]
+    UnauthorizedExternalCommitMessage,
     /// The proposal is invalid for the Sender of type [External](crate::prelude::Sender::External)
     #[error("The proposal is invalid for the Sender of type External")]
     UnsupportedProposalType,
@@ -140,7 +143,10 @@ pub enum AddMembersError<StorageError> {
     EmptyInput(#[from] EmptyInputError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<StorageError>),
+    CreateCommitError(#[from] CreateCommitError),
+    /// See [`CommitBuilderStageError`] for more details.
+    #[error(transparent)]
+    CommitBuilderStageError(#[from] CommitBuilderStageError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -197,7 +203,10 @@ pub enum RemoveMembersError<StorageError> {
     EmptyInput(#[from] EmptyInputError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<StorageError>),
+    CreateCommitError(#[from] CreateCommitError),
+    /// See [`CommitBuilderStageError`] for more details.
+    #[error(transparent)]
+    CommitBuilderStageError(#[from] CommitBuilderStageError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -241,6 +250,9 @@ pub enum LeaveGroupError<StorageError> {
     /// An error ocurred while writing to storage
     #[error("An error ocurred while writing to storage")]
     StorageError(StorageError),
+    /// SelfRemove not allowed with pure ciphertext outgoing wire format policy.
+    #[error("SelfRemove not allowed with pure ciphertext outgoing wire format policy.")]
+    CannotSelfRemoveWithPureCiphertext,
 }
 
 /// Self update error
@@ -251,7 +263,10 @@ pub enum SelfUpdateError<StorageError> {
     LibraryError(#[from] LibraryError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<StorageError>),
+    CreateCommitError(#[from] CreateCommitError),
+    /// See [`CommitBuilderStageError`] for more details.
+    #[error(transparent)]
+    CommitBuilderStageError(#[from] CommitBuilderStageError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -289,7 +304,10 @@ pub enum CommitToPendingProposalsError<StorageError> {
     LibraryError(#[from] LibraryError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError<StorageError>),
+    CreateCommitError(#[from] CreateCommitError),
+    /// See [`CommitBuilderStageError`] for more details.
+    #[error(transparent)]
+    CommitBuilderStageError(#[from] CommitBuilderStageError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),

@@ -139,18 +139,26 @@ impl Capabilities {
         required_capabilities: &RequiredCapabilitiesExtension,
     ) -> Result<(), LeafNodeValidationError> {
         // Check if all required extensions are supported.
-        if required_capabilities
+        let unsupported_extension_types = required_capabilities
             .extension_types()
             .iter()
-            .any(|e| !(self.extensions().contains(e) || default_extensions().contains(e)))
-        {
+            .filter(|&e| !self.contains_extension(*e))
+            .collect::<Vec<_>>();
+        if !unsupported_extension_types.is_empty() {
+            log::error!(
+                "Leaf node does not support all required extension types\n
+                Supported extensions: {:?}\n
+                Required extensions: {:?}",
+                self.extensions(),
+                required_capabilities.extension_types()
+            );
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
         // Check if all required proposals are supported.
         if required_capabilities
             .proposal_types()
             .iter()
-            .any(|p| !(self.proposals().contains(p) || default_proposals().contains(p)))
+            .any(|p| !self.contains_proposal(*p))
         {
             return Err(LeafNodeValidationError::UnsupportedProposals);
         }
@@ -158,7 +166,7 @@ impl Capabilities {
         if required_capabilities
             .credential_types()
             .iter()
-            .any(|c| !(self.credentials().contains(c) || default_credentials().contains(c)))
+            .any(|c| !self.contains_credential(*c))
         {
             return Err(LeafNodeValidationError::UnsupportedCredentials);
         }
@@ -166,16 +174,36 @@ impl Capabilities {
     }
 
     /// Check if these [`Capabilities`] contain all the extensions.
-    pub(crate) fn contain_extensions(&self, extension: &Extensions) -> bool {
+    pub(crate) fn contains_extensions(&self, extension: &Extensions) -> bool {
         extension
             .iter()
             .map(Extension::extension_type)
-            .all(|e| self.extensions().contains(&e))
+            .all(|e| e.is_default() || self.extensions().contains(&e))
     }
 
-    /// Check if these [`Capabilities`] contain all the credentials.
-    pub(crate) fn contains_credential(&self, credential_type: &CredentialType) -> bool {
-        self.credentials().contains(credential_type)
+    /// Check if these [`Capabilities`] contains the credential.
+    pub(crate) fn contains_credential(&self, credential_type: CredentialType) -> bool {
+        self.credentials().contains(&credential_type)
+    }
+
+    /// Check if these [`Capabilities`] contain the extension.
+    pub(crate) fn contains_extension(&self, extension_type: ExtensionType) -> bool {
+        extension_type.is_default() || self.extensions().contains(&extension_type)
+    }
+
+    /// Check if these [`Capabilities`] contain the proposal.
+    pub(crate) fn contains_proposal(&self, proposal_type: ProposalType) -> bool {
+        proposal_type.is_default() || self.proposals().contains(&proposal_type)
+    }
+
+    /// Check if these [`Capabilities`] contain the version.
+    pub(crate) fn contains_version(&self, version: ProtocolVersion) -> bool {
+        self.versions().contains(&version)
+    }
+
+    /// Check if these [`Capabilities`] contain the ciphersuite.
+    pub(crate) fn contains_ciphersuite(&self, ciphersuite: VerifiableCiphersuite) -> bool {
+        self.ciphersuites().contains(&ciphersuite)
     }
 }
 
@@ -250,8 +278,8 @@ impl Default for Capabilities {
                 .into_iter()
                 .map(VerifiableCiphersuite::from)
                 .collect(),
-            extensions: default_extensions(),
-            proposals: default_proposals(),
+            extensions: vec![],
+            proposals: vec![],
             credentials: default_credentials(),
         }
     }
@@ -267,29 +295,6 @@ pub(super) fn default_ciphersuites() -> Vec<Ciphersuite> {
         Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
         Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
-    ]
-}
-
-/// All extensions defined in the MLS spec are considered "default" by the spec.
-pub(crate) fn default_extensions() -> Vec<ExtensionType> {
-    vec![
-        ExtensionType::ApplicationId,
-        ExtensionType::RatchetTree,
-        ExtensionType::RequiredCapabilities,
-        ExtensionType::ExternalPub,
-        ExtensionType::ExternalSenders,
-    ]
-}
-
-/// All proposals defined in the MLS spec are considered "default" by the spec.
-pub(super) fn default_proposals() -> Vec<ProposalType> {
-    vec![
-        ProposalType::Add,
-        ProposalType::Update,
-        ProposalType::Remove,
-        ProposalType::PreSharedKey,
-        ProposalType::Reinit,
-        ProposalType::GroupContextExtensions,
     ]
 }
 

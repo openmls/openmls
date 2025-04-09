@@ -17,6 +17,10 @@ pub(crate) mod is_disabled {
     pub(crate) fn confirmation_tag() -> bool {
         confirmation_tag::FLAG.load(core::sync::atomic::Ordering::Relaxed)
     }
+
+    pub(crate) fn leaf_node_lifetime() -> bool {
+        leaf_node_lifetime::FLAG.load(core::sync::atomic::Ordering::Relaxed)
+    }
 }
 
 #[cfg(test)]
@@ -67,6 +71,48 @@ pub(crate) mod checks {
 
             impl SkipValidationHandle {
                 pub fn new_confirmation_tag_handle() -> Self {
+                    Self {
+                        name: NAME,
+                        flag: &FLAG,
+                    }
+                }
+            }
+        }
+    }
+
+    /// Disables validation of leaf node lifetimes
+    pub(crate) mod leaf_node_lifetime {
+        use std::sync::atomic::AtomicBool;
+
+        /// A way of disabling verification and validation of leaf node lifetimes.
+        pub(in crate::skip_validation) static FLAG: AtomicBool = AtomicBool::new(false);
+
+        #[cfg(test)]
+        pub(crate) use lock::handle;
+
+        #[cfg(test)]
+        mod lock {
+            use super::FLAG;
+            use crate::skip_validation::SkipValidationHandle;
+            use once_cell::sync::Lazy;
+            use std::sync::{Mutex, MutexGuard};
+
+            /// The name of the check that can be skipped here
+            const NAME: &str = "leaf_node_lifetime";
+
+            /// A mutex needed to run tests that use this flag sequentially
+            static MUTEX: Lazy<Mutex<SkipValidationHandle>> =
+                Lazy::new(|| Mutex::new(SkipValidationHandle::new_leaf_node_lifetime_handle()));
+
+            /// Takes the mutex and returns the control handle to the validation skipper
+            pub(crate) fn handle() -> MutexGuard<'static, SkipValidationHandle> {
+                MUTEX.lock().unwrap_or_else(|e| {
+                    panic!("error taking skip-validation mutex for '{NAME}': {e}")
+                })
+            }
+
+            impl SkipValidationHandle {
+                pub fn new_leaf_node_lifetime_handle() -> Self {
                     Self {
                         name: NAME,
                         flag: &FLAG,

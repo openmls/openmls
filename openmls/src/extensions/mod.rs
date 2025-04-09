@@ -1,15 +1,17 @@
 //! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
+//!
 //! - In [`KeyPackages`](`crate::key_packages`), to describe client capabilities
 //!   and aspects of their participation in the group.
-//! - In the `GroupInfo`, to tell new members of a group what parameters are
-//!   being used by the group, and to provide any additional details required to
-//!   join the group.
-//! - In the `GroupContext` object, to ensure that all members of the group have
-//!   the same view of the parameters in use.
 //!
-//! Note that `GroupInfo` and `GroupContext` are not exposed in OpenMLS' public
+//! - In `GroupInfo`, to inform new members of the group's parameters and to
+//!   provide any additional information required to join the group.
+//!
+//! - In the `GroupContext` object, to ensure that all members of the group have
+//!   a consistent view of the parameters in use.
+//!
+//! Note that `GroupInfo` and `GroupContext` are not exposed via OpenMLS' public
 //! API.
 //!
 //! OpenMLS supports the following extensions:
@@ -106,6 +108,36 @@ pub enum ExtensionType {
 
     /// A currently unknown extension type.
     Unknown(u16),
+}
+
+impl ExtensionType {
+    /// Returns true for all extension types that are considered "default" by the spec.
+    pub(crate) fn is_default(self) -> bool {
+        match self {
+            ExtensionType::ApplicationId
+            | ExtensionType::RatchetTree
+            | ExtensionType::RequiredCapabilities
+            | ExtensionType::ExternalPub
+            | ExtensionType::ExternalSenders => true,
+            ExtensionType::LastResort | ExtensionType::Unknown(_) | ExtensionType::ImmutableMetadata => false,
+        }
+    }
+
+    /// Returns whether an extension type is valid when used in leaf nodes.
+    /// Returns None if validity can not be determined.
+    /// This is the case for unknown extensions.
+    pub(crate) fn is_valid_in_leaf_node(self) -> Option<bool> {
+        match self {
+            ExtensionType::ApplicationId
+            | ExtensionType::RatchetTree
+            | ExtensionType::RequiredCapabilities
+            | ExtensionType::ExternalPub
+            | ExtensionType::ImmutableMetadata
+            | ExtensionType::ExternalSenders => Some(false),
+            ExtensionType::LastResort => Some(true),
+            ExtensionType::Unknown(_) => None,
+        }
+    }
 }
 
 impl Size for ExtensionType {
@@ -427,6 +459,19 @@ impl Extensions {
                 Extension::ImmutableMetadata(e) => Some(e),
                 _ => None,
             })
+    }
+
+    /// Get a reference to the [`UnknownExtension`] with the given type id, if there is any.
+    pub fn unknown(&self, extension_type_id: u16) -> Option<&UnknownExtension> {
+        let extension_type: ExtensionType = extension_type_id.into();
+
+        match extension_type {
+            ExtensionType::Unknown(_) => self.find_by_type(extension_type).and_then(|e| match e {
+                Extension::Unknown(_, e) => Some(e),
+                _ => None,
+            }),
+            _ => None,
+        }
     }
 }
 

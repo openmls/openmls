@@ -1,8 +1,9 @@
 use thiserror::Error;
 
 use crate::{
-    error::LibraryError, extensions::errors::InvalidExtensionError,
-    treesync::errors::TreeSyncFromNodesError,
+    error::LibraryError,
+    extensions::errors::InvalidExtensionError,
+    treesync::errors::{LeafNodeValidationError, TreeSyncFromNodesError},
 };
 
 /// Public group creation from external error.
@@ -26,9 +27,21 @@ pub enum CreationFromExternalError<StorageError> {
     /// We don't support the version of the group we are trying to join.
     #[error("We don't support the version of the group we are trying to join.")]
     UnsupportedMlsVersion,
-    /// Error writing to storage
+    /// See [`LeafNodeValidationError`]
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// Error writing to storage.
     #[error("Error writing to storage: {0}")]
     WriteToStorageError(StorageError),
+    /// A parent node has an unmerged leaf that is not a descendant of the node.
+    #[error("A parent node has an unmerged leaf that is not a descendant of the node")]
+    UnmergedLeafNotADescendant,
+    /// Found a path from a parent with an unmerged leaf to the leaf with nodes that do not have that as a leaf  
+    #[error("Found a path from a parent with an unmerged leaf to the leaf with nodes that do not have that as a leaf")]
+    IntermediateNodeMissingUnmergedLeaf,
+    /// The ratchet tree contains duplcate encryption keys
+    #[error("The ratchet tree contains duplcate encryption keys")]
+    DuplicateEncryptionKey,
 }
 
 /// Public group builder error.

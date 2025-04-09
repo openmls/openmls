@@ -251,13 +251,13 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error>;
 
-    ///ANCHOR: own_leaf_nodes
+    // ANCHOR: own_leaf_nodes
     /// Returns the own leaf nodes for the group with given id
     fn own_leaf_nodes<GroupId: traits::GroupId<VERSION>, LeafNode: traits::LeafNode<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error>;
-    ///ANCHOR_END: own_leaf_nodes
+    // ANCHOR_END: own_leaf_nodes
 
     /// Returns references of all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
     fn queued_proposal_refs<
