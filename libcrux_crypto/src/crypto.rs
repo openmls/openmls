@@ -36,7 +36,7 @@ impl OpenMlsCrypto for CryptoProvider {
         }?;
 
         match ciphersuite.signature_algorithm() {
-            SignatureScheme::ECDSA_SECP256R1_SHA256 | SignatureScheme::ED25519 => Ok(()),
+            SignatureScheme::ED25519 => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }?;
 
