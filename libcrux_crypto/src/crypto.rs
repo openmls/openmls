@@ -395,9 +395,10 @@ struct GuardedRng<'a, Rng: RngCore>(MutexGuard<'a, Rng>);
 impl<Rng: RngCore> GuardedRng<'_, Rng> {
     fn generate_vec(&mut self, len: usize) -> Result<Vec<u8>, CryptoError> {
         let mut output = vec![0u8; len];
-        self.fill_bytes(&mut output);
 
         // TODO: evaluate whether try_fill_bytes() should be used here
+        self.fill_bytes(&mut output);
+
         Ok(output)
     }
 }
