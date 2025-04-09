@@ -1,29 +1,27 @@
 use std::sync::{Mutex, MutexGuard};
 
-use libcrux::drbg::{Drbg, RngCore};
-use libcrux::hpke::{self, HPKEConfig};
+use libcrux::hpke::{self, kem::Nsk, HPKEConfig};
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{
     AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext,
     HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
 };
 
-use rand::CryptoRng;
+use rand::{rngs::OsRng, rngs::ReseedingRng, CryptoRng, RngCore};
+use rand_chacha::ChaCha20Core;
+
 use tls_codec::SecretVLBytes;
 
 /// The libcrux-backed cryptography provider for OpenMLS
 pub struct CryptoProvider {
-    drbg: Mutex<Drbg>,
+    rng: Mutex<ReseedingRng<ChaCha20Core, OsRng>>,
 }
 
 impl Default for CryptoProvider {
     fn default() -> Self {
-        let mut seed = [0u8; 16];
-        getrandom::getrandom(&mut seed).unwrap();
+        let reseeding_rng = ReseedingRng::<ChaCha20Core, _>::new(0x100000000, OsRng).unwrap();
         Self {
-            drbg: Mutex::new(
-                Drbg::new_with_entropy(libcrux::digest::Algorithm::Sha256, &seed).unwrap(),
-            ),
+            rng: Mutex::new(reseeding_rng),
         }
     }
 }
@@ -111,16 +109,13 @@ impl OpenMlsCrypto for CryptoProvider {
         }
 
         // only fails on wrong length
-        let iv = libcrux::aead::Iv::new(nonce).map_err(|err| match err {
-            libcrux::aead::InvalidArgumentError::InvalidIv => CryptoError::InvalidLength,
-            _ => CryptoError::CryptoLibraryError,
-        })?;
+        let iv = <&[u8; 12]>::try_from(nonce).map_err(|_| CryptoError::InvalidLength)?;
 
         // TODO: instead, use key conversion from chachapoly crate, when available,
         let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
 
         let mut msg_ctx: Vec<u8> = vec![0; data.len() + 16];
-        libcrux_chacha20poly1305::encrypt(key, data, &mut msg_ctx, aad, &iv.0)
+        libcrux_chacha20poly1305::encrypt(key, data, &mut msg_ctx, aad, iv)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
         Ok(msg_ctx)
@@ -139,7 +134,7 @@ impl OpenMlsCrypto for CryptoProvider {
             return Err(CryptoError::UnsupportedAeadAlgorithm);
         }
 
-        if ct_tag.len() < 16 || nonce.len() != 12 {
+        if ct_tag.len() < 16 {
             return Err(CryptoError::InvalidLength);
         }
 
@@ -147,12 +142,12 @@ impl OpenMlsCrypto for CryptoProvider {
 
         let mut ptext = vec![0; boundary];
 
-        let iv = libcrux::aead::Iv::new(nonce).map_err(|_| CryptoError::InvalidLength)?;
+        let iv = <&[u8; 12]>::try_from(nonce).map_err(|_| CryptoError::InvalidLength)?;
 
         // TODO: instead, use key conversion from chachapoly crate, when available,
         let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
 
-        libcrux_chacha20poly1305::decrypt(key, &mut ptext, ct_tag, aad, &iv.0).map_err(
+        libcrux_chacha20poly1305::decrypt(key, &mut ptext, ct_tag, aad, iv).map_err(
             |e| match e {
                 libcrux_chacha20poly1305::AeadError::InvalidCiphertext => {
                     CryptoError::AeadDecryptionError
@@ -170,14 +165,19 @@ impl OpenMlsCrypto for CryptoProvider {
         }
 
         let mut rng = self
-            .drbg
+            .rng
             .lock()
             .map_err(|_| CryptoError::CryptoLibraryError)
             .map(GuardedRng)?;
 
-        // TODO: replace with key generation from libcrux-ed25519 crate, once available
-        libcrux::signature::key_gen(libcrux::signature::Algorithm::Ed25519, &mut rng)
+        libcrux_ed25519::generate_key_pair(&mut rng)
             .map_err(|_| CryptoError::SigningError)
+            .map(|(signing_key, verification_key)| {
+                (
+                    signing_key.into_bytes().to_vec(),
+                    verification_key.into_bytes().to_vec(),
+                )
+            })
     }
 
     fn verify_signature(
@@ -222,11 +222,12 @@ impl OpenMlsCrypto for CryptoProvider {
         let config = hpke_config(config);
         let randomness = {
             let mut rng = self
-                .drbg
+                .rng
                 .lock()
+                .map(GuardedRng)
                 .map_err(|_| CryptoError::CryptoLibraryError)?;
-            rng.generate_vec(libcrux::hpke::kem::Nsk(config.1))
-                .map_err(|_| CryptoError::CryptoLibraryError)?
+
+            rng.generate_vec(Nsk(config.1))?
         };
 
         let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r)
@@ -288,11 +289,11 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> Result<(KemOutput, ExporterSecret), CryptoError> {
         let config = hpke_config(config);
         let randomness = self
-            .drbg
+            .rng
             .lock()
+            .map(GuardedRng)
             .map_err(|_| CryptoError::CryptoLibraryError)?
-            .generate_vec(libcrux::hpke::kem::Nsk(config.1))
-            .map_err(|_| CryptoError::CryptoLibraryError)?;
+            .generate_vec(Nsk(config.1))?;
 
         let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r)
             .map_err(|_| CryptoError::InvalidPublicKey)?;
@@ -391,6 +392,16 @@ fn hpke_aead(aead: HpkeAeadType) -> libcrux::hpke::aead::AEAD {
 
 struct GuardedRng<'a, Rng: RngCore>(MutexGuard<'a, Rng>);
 
+impl<Rng: RngCore> GuardedRng<'_, Rng> {
+    fn generate_vec(&mut self, len: usize) -> Result<Vec<u8>, CryptoError> {
+        let mut output = vec![0u8; len];
+        self.fill_bytes(&mut output);
+
+        // TODO: evaluate whether try_fill_bytes() should be used here
+        Ok(output)
+    }
+}
+
 impl<Rng: RngCore> RngCore for GuardedRng<'_, Rng> {
     fn next_u32(&mut self) -> u32 {
         self.0.next_u32()
@@ -402,10 +413,6 @@ impl<Rng: RngCore> RngCore for GuardedRng<'_, Rng> {
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         self.0.fill_bytes(dest)
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
-        self.0.try_fill_bytes(dest)
     }
 }
 
