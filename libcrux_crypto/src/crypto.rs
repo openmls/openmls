@@ -152,7 +152,7 @@ impl OpenMlsCrypto for CryptoProvider {
         // TODO: instead, use key conversion from chachapoly crate, when available,
         let key: &[u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
 
-        libcrux_chacha20poly1305::decrypt(&key, &mut ptext, ct_tag, aad, &iv.0).map_err(
+        libcrux_chacha20poly1305::decrypt(key, &mut ptext, ct_tag, aad, &iv.0).map_err(
             |e| match e {
                 libcrux_chacha20poly1305::AeadError::InvalidCiphertext => {
                     CryptoError::AeadDecryptionError
