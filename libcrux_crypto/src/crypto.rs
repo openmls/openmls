@@ -150,7 +150,7 @@ impl OpenMlsCrypto for CryptoProvider {
 
         let iv = libcrux::aead::Iv::new(nonce).map_err(|_| CryptoError::InvalidLength)?;
 
-        // TODO: instead, use key generation from chachapoly crate
+        // TODO: instead, use key conversion from chachapoly crate, when available,
         // so that the length will be correct
         let key = key.try_into().unwrap();
 
