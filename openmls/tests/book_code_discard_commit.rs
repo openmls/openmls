@@ -515,14 +515,6 @@ fn discard_commit_self_remove() {
     clear_pending_commit_and_assert_storage_state(bob, state_before);
 }
 
-/*
-#[openmls_test]
-fn discard_commit_app_ack() {
-
-    // TODO: AppAck proposal not supported yet
-}
-*/
-
 #[openmls_test]
 fn discard_commit_custom_proposal() {
     let alice_provider = &Provider::default();
