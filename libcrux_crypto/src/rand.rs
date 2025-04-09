@@ -1,11 +1,13 @@
 use std::sync::RwLock;
 
-use libcrux::drbg::Drbg;
 use openmls_traits::random::OpenMlsRand;
+
+use rand::{rngs::OsRng, rngs::ReseedingRng, RngCore};
+use rand_chacha::ChaCha20Core;
 
 /// The libcrux-backed randomness provider for OpenMLS
 pub struct RandProvider {
-    drbg: RwLock<Drbg>,
+    rng: RwLock<ReseedingRng<ChaCha20Core, OsRng>>,
 }
 
 /// An error occurred when trying to generate a random value
@@ -28,47 +30,37 @@ impl std::fmt::Display for RandError {
         }
     }
 }
-
-impl From<libcrux::drbg::Error> for RandError {
-    fn from(value: libcrux::drbg::Error) -> Self {
-        match value {
-            libcrux::drbg::Error::InvalidInput => RandError::InvalidInput,
-            libcrux::drbg::Error::UnsupportedAlgorithm => RandError::UnsupportedAlgorithm,
-            libcrux::drbg::Error::UnableToGenerate => RandError::UnableToGenerate,
-        }
-    }
-}
-
 impl std::error::Error for RandError {}
 
 impl OpenMlsRand for RandProvider {
     type Error = RandError;
 
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
-        self.drbg
-            .write()
-            .unwrap()
-            .generate_array()
-            .map_err(<RandError as From<libcrux::drbg::Error>>::from)
+        let mut rng = self.rng.write().unwrap();
+
+        let mut output = [0u8; N];
+        // TODO: evaluate whether try_fill_bytes() should be used here
+        rng.fill_bytes(&mut output);
+
+        Ok(output)
     }
 
     fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error> {
-        self.drbg
-            .write()
-            .unwrap()
-            .generate_vec(len)
-            .map_err(<RandError as From<libcrux::drbg::Error>>::from)
+        let mut rng = self.rng.write().unwrap();
+
+        let mut output = vec![0u8; len];
+        // TODO: evaluate whether try_fill_bytes() should be used here
+        rng.fill_bytes(&mut output);
+
+        Ok(output)
     }
 }
 
 impl Default for RandProvider {
     fn default() -> Self {
-        let mut seed = [0u8; 256];
-        getrandom::getrandom(&mut seed).unwrap();
+        let reseeding_rng = ReseedingRng::<ChaCha20Core, _>::new(0x100000000, OsRng).unwrap();
         Self {
-            drbg: RwLock::new(
-                Drbg::new_with_entropy(libcrux::digest::Algorithm::Sha256, &seed).unwrap(),
-            ),
+            rng: RwLock::new(reseeding_rng),
         }
     }
 }
