@@ -33,7 +33,9 @@ impl MlsGroup {
     ) -> UpdateResult<Provider> {
         self.is_operational()?;
 
-        let bundle = self.commit_builder().propose_adds(key_packages_to_add.iter().cloned())
+        let bundle = self
+            .commit_builder()
+            .propose_adds(key_packages_to_add.iter().cloned())
             .propose_removals(leaf_nodes_to_remove.iter().cloned())
             .propose_group_context_extensions(new_extensions)
             .load_psks(provider.storage())?
@@ -47,7 +49,7 @@ impl MlsGroup {
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(UpdateGroupMembershipError::StorageError)?;
-        
+
         self.reset_aad();
 
         Ok((commit, welcome, group_info))

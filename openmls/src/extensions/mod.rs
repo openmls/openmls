@@ -119,7 +119,9 @@ impl ExtensionType {
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => true,
-            ExtensionType::LastResort | ExtensionType::Unknown(_) | ExtensionType::ImmutableMetadata => false,
+            ExtensionType::LastResort
+            | ExtensionType::Unknown(_)
+            | ExtensionType::ImmutableMetadata => false,
         }
     }
 
