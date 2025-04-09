@@ -46,7 +46,6 @@ impl OpenMlsCrypto for CryptoProvider {
 
         match ciphersuite.hpke_aead_algorithm() {
             HpkeAeadType::ChaCha20Poly1305 => Ok(()),
-            //HpkeAeadType::AesGcm128 | HpkeAeadType::AesGcm256 if self.aes_support() => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }?;
 
