@@ -487,7 +487,7 @@ fn discard_commit_self_remove() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true) // NOTE: important
+        .use_ratchet_tree_extension(true) // This is necessary in order for bob to be able to join from the welcome only.
         .build();
     let mut group_state = alice_bob_group(
         &alice_party,
