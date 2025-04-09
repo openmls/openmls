@@ -2,7 +2,7 @@ use std::sync::RwLock;
 
 use openmls_traits::random::OpenMlsRand;
 
-use rand::{rngs::OsRng, rngs::ReseedingRng, RngCore};
+use rand::{rngs::OsRng, rngs::ReseedingRng, TryRngCore};
 use rand_chacha::ChaCha20Core;
 
 /// The libcrux-backed randomness provider for OpenMLS
@@ -39,8 +39,9 @@ impl OpenMlsRand for RandProvider {
         let mut rng = self.rng.write().unwrap();
 
         let mut output = [0u8; N];
-        // TODO: evaluate whether try_fill_bytes() should be used here
-        rng.fill_bytes(&mut output);
+
+        rng.try_fill_bytes(&mut output)
+            .map_err(|_| RandError::UnableToGenerate)?;
 
         Ok(output)
     }
@@ -49,8 +50,9 @@ impl OpenMlsRand for RandProvider {
         let mut rng = self.rng.write().unwrap();
 
         let mut output = vec![0u8; len];
-        // TODO: evaluate whether try_fill_bytes() should be used here
-        rng.fill_bytes(&mut output);
+
+        rng.try_fill_bytes(&mut output)
+            .map_err(|_| RandError::UnableToGenerate)?;
 
         Ok(output)
     }
