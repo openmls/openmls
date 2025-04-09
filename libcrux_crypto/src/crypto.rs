@@ -117,7 +117,7 @@ impl OpenMlsCrypto for CryptoProvider {
         })?;
 
         // TODO: instead, use key conversion from chachapoly crate, when available,
-        let key: &[u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+        let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
 
         let mut msg_ctx: Vec<u8> = vec![0; data.len() + 16];
         libcrux_chacha20poly1305::encrypt(key, data, &mut msg_ctx, aad, &iv.0)
@@ -150,7 +150,7 @@ impl OpenMlsCrypto for CryptoProvider {
         let iv = libcrux::aead::Iv::new(nonce).map_err(|_| CryptoError::InvalidLength)?;
 
         // TODO: instead, use key conversion from chachapoly crate, when available,
-        let key: &[u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+        let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
 
         libcrux_chacha20poly1305::decrypt(key, &mut ptext, ct_tag, aad, &iv.0).map_err(
             |e| match e {
@@ -191,10 +191,8 @@ impl OpenMlsCrypto for CryptoProvider {
             return Err(CryptoError::UnsupportedSignatureScheme);
         }
 
-        let pk: &[u8; 32] = pk.try_into().map_err(|_| CryptoError::InvalidPublicKey)?;
-        let sk: &[u8; 64] = signature
-            .try_into()
-            .map_err(|_| CryptoError::InvalidSignature)?;
+        let pk = <&[u8; 32]>::try_from(pk).map_err(|_| CryptoError::InvalidPublicKey)?;
+        let sk = <&[u8; 64]>::try_from(signature).map_err(|_| CryptoError::InvalidSignature)?;
 
         libcrux_ed25519::verify(data, pk, sk).map_err(|e| match e {
             libcrux_ed25519::Error::InvalidSignature => CryptoError::InvalidSignature,
@@ -207,7 +205,7 @@ impl OpenMlsCrypto for CryptoProvider {
             return Err(CryptoError::UnsupportedSignatureScheme);
         }
 
-        let key: &[u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+        let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
         libcrux_ed25519::sign(data, key)
             .map_err(|_| CryptoError::SigningError)
             .map(|sig| sig.to_vec())
