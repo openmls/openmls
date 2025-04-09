@@ -1,14 +1,12 @@
-//! This module contains an implementation of a full, left balanced binary tree
-//! that uses the array-representation to store and index the individual nodes.
+//! This module implements a full, left-balanced binary tree using an array
+//! representation for storing and indexing nodes efficiently.
 //!
-//! # About
+//! # Overview
 //!
-//! The implementation is split between a tree implementation and a
-//! corresponding diff. While the tree is immutable safe for merging with a
-//! diff, the diff provides an API that allows mutation of parts of the tree, as
-//! well as its navigation using node references. Please see the documentation
-//! of the contained modules (especially [`tree`] and [`diff`]) for more
-//! information.
+//! The implementation is divided into a tree and a corresponding diff. The tree
+//! is immutable except for merging with a diff. The diff provides an API for
+//! mutating parts of the tree and navigating it using node references. See the
+//! [`tree`] and [`diff`] modules for detailed documentation.
 
 // Public
 pub use treemath::LeafNodeIndex;
