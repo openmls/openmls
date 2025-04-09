@@ -1,6 +1,4 @@
 //! # Group Context
-//!
-//! TODO: #779
 
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;

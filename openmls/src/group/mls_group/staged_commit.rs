@@ -365,10 +365,6 @@ impl MlsGroup {
 
                 self.public_group.merge_diff(state.staged_diff);
 
-                // TODO #1194: Group storage and key storage should be
-                // correlated s.t. there is no divergence between key material
-                // and group state.
-
                 let leaf_keypair = if let Some(keypair) = &state.new_leaf_keypair_option {
                     vec![keypair.clone()]
                 } else {

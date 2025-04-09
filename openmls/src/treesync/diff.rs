@@ -515,7 +515,6 @@ impl TreeSyncDiff<'_> {
                         for leaf_index in parent.unmerged_leaves() {
                             if !excluded_indices.contains(&leaf_index) {
                                 let leaf = self.diff.leaf(*leaf_index);
-                                // TODO #800: unmerged leaves should be checked
                                 if let Some(leaf_node) = leaf.node() {
                                     resolution.push((
                                         TreeNodeIndex::Leaf(*leaf_index),

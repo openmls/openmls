@@ -82,8 +82,6 @@ pub enum MlsMessageBodyOut {
 impl From<PublicMessage> for MlsMessageOut {
     fn from(public_message: PublicMessage) -> Self {
         Self {
-            // TODO #34: The version should be set explicitly here instead of
-            // the default.
             version: ProtocolVersion::default(),
             body: MlsMessageBodyOut::PublicMessage(public_message),
         }
@@ -93,8 +91,6 @@ impl From<PublicMessage> for MlsMessageOut {
 impl From<PrivateMessage> for MlsMessageOut {
     fn from(private_message: PrivateMessage) -> Self {
         Self {
-            // TODO #34: The version should be set explicitly here instead of
-            // the default.
             version: ProtocolVersion::default(),
             body: MlsMessageBodyOut::PrivateMessage(private_message),
         }

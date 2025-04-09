@@ -180,8 +180,6 @@ fn multiple_joins() {
     setup.check_group_states(group, noop_authentication_service);
 }
 
-// TODO #192, #286, #289: The external join test should go here.
-
 // # Update
 // A:    Create group
 // B->A: KeyPackage
@@ -279,9 +277,6 @@ fn remove() {
     // Check that group members agree on a group state.
     setup.check_group_states(group, noop_authentication_service);
 }
-
-// TODO #141, #284: The external PSK, resumption and re-init tests should go
-// here.
 
 // # Large Group, Full Lifecycle
 // * Create group
