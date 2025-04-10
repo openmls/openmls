@@ -21,3 +21,4 @@ openmls_memory_storage = { version = "0.3.0", path = "../memory_storage" }
 rand = "0.9.0"
 tls_codec.workspace = true
 rand_chacha = "0.9.0"
+hpke-rs = "0.2.0"
