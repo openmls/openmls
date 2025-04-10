@@ -13,6 +13,8 @@ use crate::{
     prelude::{commit_builder::*, *},
 };
 
+use crate::test_utils::storage_state::GroupStorageState;
+
 mod assertions;
 
 mod errors;
@@ -114,6 +116,28 @@ pub struct MemberState<'a, Provider> {
 }
 
 impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
+    /// Get member's `SignatureKeyPair` if available
+    pub fn get_storage_signature_key_pair(&self) -> Option<SignatureKeyPair> {
+        let ciphersuite = self
+            .party
+            .key_package_bundle
+            .key_package()
+            .ciphersuite()
+            .into();
+
+        SignatureKeyPair::read(
+            self.party.core_state.provider.storage(),
+            self.party.signer.public(),
+            ciphersuite,
+        )
+    }
+    /// Get the `GroupStorageState` for this group
+    pub fn group_storage_state(&self) -> GroupStorageState {
+        let storage_provider = self.party.core_state.provider.storage();
+        let group_id = self.group.group_id();
+
+        GroupStorageState::from_storage(storage_provider, group_id)
+    }
     /// Deliver_and_apply a message to this member's `MlsGroup`
     pub fn deliver_and_apply(&mut self, message: MlsMessageIn) -> Result<(), GroupError<Provider>> {
         let message = message.try_into_protocol_message()?;
@@ -172,12 +196,14 @@ impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
     pub fn create_from_pre_group(
         party: PreGroupPartyState<'a, Provider>,
         mls_group_create_config: MlsGroupCreateConfig,
+        group_id: GroupId,
     ) -> Result<Self, GroupError<Provider>> {
         // initialize MlsGroup
-        let group = MlsGroup::new(
+        let group = MlsGroup::new_with_group_id(
             &party.core_state.provider,
             &party.signer,
             &mls_group_create_config,
+            group_id,
             party.credential_with_key.clone(),
         )?;
 
@@ -220,8 +246,11 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         let mut members = HashMap::new();
 
         let name = pre_group_state.core_state.name;
-        let member_state =
-            MemberState::create_from_pre_group(pre_group_state, mls_group_create_config)?;
+        let member_state = MemberState::create_from_pre_group(
+            pre_group_state,
+            mls_group_create_config,
+            group_id.clone(),
+        )?;
 
         members.insert(name, member_state);
 
@@ -363,18 +392,20 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
 
         Ok(())
     }
+
+    /// Returns a copy of the GroupId
+    pub fn group_id(&self) -> GroupId {
+        self.group_id.clone()
+    }
 }
 
-pub struct CreateConfig(pub MlsGroupCreateConfig);
-
-impl CreateConfig {
-    fn default_from_ciphersuite(ciphersuite: Ciphersuite) -> Self {
-        let config = MlsGroupCreateConfig::builder()
+impl MlsGroupCreateConfig {
+    /// Default config for test framework
+    pub fn test_default_from_ciphersuite(ciphersuite: Ciphersuite) -> Self {
+        MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
-            .build();
-
-        Self(config)
+            .build()
     }
 }
 

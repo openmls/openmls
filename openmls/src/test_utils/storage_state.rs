@@ -8,8 +8,7 @@ use openmls_traits::storage::{traits::GroupId, StorageProvider, CURRENT_VERSION}
 
 /// All state associated only with a GroupId
 #[derive(PartialEq)]
-pub struct GroupStorageState {
-    queued_proposals: Vec<(ProposalRef, QueuedProposal)>,
+pub struct NonProposalGroupStorageState {
     own_leaf_nodes: Vec<LeafNode>,
     group_config: Option<MlsGroupJoinConfig>,
     tree: Option<TreeSync>,
@@ -23,13 +22,11 @@ pub struct GroupStorageState {
     group_epoch_secrets: Option<GroupEpochSecrets>,
 }
 
-impl GroupStorageState {
+impl NonProposalGroupStorageState {
     pub fn from_storage(
         store: &impl StorageProvider<CURRENT_VERSION>,
         group_id: &impl GroupId<CURRENT_VERSION>,
-    ) -> GroupStorageState {
-        let queued_proposals = store.queued_proposals(group_id).unwrap();
-
+    ) -> NonProposalGroupStorageState {
         let own_leaf_nodes = store.own_leaf_nodes(group_id).unwrap();
 
         let group_config = store.mls_group_join_config(group_id).unwrap();
@@ -53,8 +50,7 @@ impl GroupStorageState {
 
         let group_epoch_secrets = store.group_epoch_secrets(group_id).unwrap();
 
-        GroupStorageState {
-            queued_proposals,
+        Self {
             own_leaf_nodes,
             group_config,
             tree,
@@ -66,6 +62,31 @@ impl GroupStorageState {
             resumption_psk_secrets,
             own_leaf_index,
             group_epoch_secrets,
+        }
+    }
+}
+
+/// All state associated only with a GroupId
+#[derive(PartialEq)]
+pub struct GroupStorageState {
+    queued_proposals: Vec<(ProposalRef, QueuedProposal)>,
+    non_proposal_state: NonProposalGroupStorageState,
+}
+
+impl GroupStorageState {
+    pub fn non_proposal_state(&self) -> &NonProposalGroupStorageState {
+        &self.non_proposal_state
+    }
+    pub fn from_storage(
+        store: &impl StorageProvider<CURRENT_VERSION>,
+        group_id: &impl GroupId<CURRENT_VERSION>,
+    ) -> GroupStorageState {
+        let queued_proposals = store.queued_proposals(group_id).unwrap();
+        let non_proposal_state = NonProposalGroupStorageState::from_storage(store, group_id);
+
+        GroupStorageState {
+            queued_proposals,
+            non_proposal_state,
         }
     }
 }
