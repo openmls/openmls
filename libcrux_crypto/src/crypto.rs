@@ -1,6 +1,7 @@
+use hpke_rs_libcrux::HpkeLibcrux;
+
 use std::sync::{Mutex, MutexGuard};
 
-use libcrux::hpke::{self, kem::Nsk, HPKEConfig};
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{
     AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext,
@@ -64,7 +65,7 @@ impl OpenMlsCrypto for CryptoProvider {
         ikm: &[u8],
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hkdf_alg(hash_type);
-        let out = libcrux_hkdf::extract(alg, salt, ikm);
+        let out = libcrux_hkdf::extract(alg, salt, ikm).map_err(|_| todo!())?;
 
         Ok(out.into())
     }
@@ -80,7 +81,8 @@ impl OpenMlsCrypto for CryptoProvider {
 
         libcrux_hkdf::expand(alg, prk, info, okm_len)
             .map_err(|e| match e {
-                libcrux_hkdf::Error::OkmLengthTooLarge => CryptoError::HkdfOutputLengthInvalid,
+                libcrux_hkdf::Error::OkmTooLarge => CryptoError::HkdfOutputLengthInvalid,
+                libcrux_hkdf::Error::ArgumentsTooLarge => todo!(),
             })
             .map(<Vec<u8> as Into<SecretVLBytes>>::into)
     }
@@ -219,28 +221,21 @@ impl OpenMlsCrypto for CryptoProvider {
         aad: &[u8],
         ptxt: &[u8],
     ) -> Result<HpkeCiphertext, CryptoError> {
-        let config = hpke_config(config);
-        let randomness = {
-            let mut rng = self
-                .rng
-                .lock()
-                .map(GuardedRng)
-                .map_err(|_| CryptoError::CryptoLibraryError)?;
+        let mut config = hpke_config(config);
 
-            rng.generate_vec(Nsk(config.1))?
-        };
+        let pk_r = hpke_rs::HpkePublicKey::new(pk_r.to_vec());
 
-        let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r)
-            .map_err(|_| CryptoError::CryptoLibraryError)?;
-
-        let libcrux::hpke::HPKECiphertext(kem_output, ciphertext) =
-            libcrux::hpke::HpkeSeal(config, &pk_r, info, aad, ptxt, None, None, None, randomness)
-                .map_err(|e| match e {
-                hpke::errors::HpkeError::ValidationError => CryptoError::InvalidPublicKey,
-                hpke::errors::HpkeError::UnsupportedAlgorithm => {
+        let (kem_output, ciphertext) = config
+            .seal(&pk_r, info, aad, ptxt, None, None, None)
+            .map_err(|e| match e {
+                // TODO: error handling
+                hpke_rs::HpkeError::InvalidInput => CryptoError::InvalidPublicKey,
+                /*
+                hpke_rs::HpkeError::UnsupportedAlgorithm => {
                     CryptoError::UnsupportedCiphersuite
                 }
-                hpke::errors::HpkeError::InvalidParameters => CryptoError::InvalidLength,
+                hpke_rs::HpkeError::InvalidParameters => CryptoError::InvalidLength,
+                */
                 _ => CryptoError::CryptoLibraryError,
             })?;
 
@@ -262,21 +257,34 @@ impl OpenMlsCrypto for CryptoProvider {
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
         let config = hpke_config(config);
-        let ctxt = libcrux::hpke::HPKECiphertext(
-            input.kem_output.as_ref().to_vec(),
-            input.ciphertext.as_ref().to_vec(),
-        );
 
-        libcrux::hpke::HpkeOpen(config, &ctxt, sk_r, info, aad, None, None, None).map_err(|e| {
-            match e {
-                libcrux::hpke::errors::HpkeError::OpenError
-                | libcrux::hpke::errors::HpkeError::DecapError
-                | libcrux::hpke::errors::HpkeError::ValidationError => {
-                    CryptoError::HpkeDecryptionError
+        let sk_r = hpke_rs::HpkePrivateKey::new(sk_r.to_vec());
+
+        config
+            .open(
+                // TODO: is this correct?
+                input.kem_output.as_ref(),
+                &sk_r,
+                info,
+                aad,
+                input.ciphertext.as_ref(),
+                None,
+                None,
+                None,
+            )
+            .map_err(|e| {
+                match e {
+                    // TODO: error handling
+                    /*
+                    libcrux::hpke::errors::HpkeError::OpenError
+                    | libcrux::hpke::errors::HpkeError::DecapError
+                    | libcrux::hpke::errors::HpkeError::ValidationError => {
+                        CryptoError::HpkeDecryptionError
+                    }
+                    */
+                    _ => CryptoError::CryptoLibraryError,
                 }
-                _ => CryptoError::CryptoLibraryError,
-            }
-        })
+            })
     }
 
     fn hpke_setup_sender_and_export(
@@ -287,21 +295,15 @@ impl OpenMlsCrypto for CryptoProvider {
         exporter_context: &[u8],
         exporter_length: usize,
     ) -> Result<(KemOutput, ExporterSecret), CryptoError> {
-        let config = hpke_config(config);
-        let randomness = self
-            .rng
-            .lock()
-            .map(GuardedRng)
-            .map_err(|_| CryptoError::CryptoLibraryError)?
-            .generate_vec(Nsk(config.1))?;
+        let mut config = hpke_config(config);
 
-        let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r)
-            .map_err(|_| CryptoError::InvalidPublicKey)?;
+        let pk_r = hpke_rs::HpkePublicKey::new(pk_r.to_vec());
 
-        let (enc, ctx) = libcrux::hpke::SetupBaseS(config, &pk_r, info, randomness)
+        let (enc, ctx) = config
+            .setup_sender(&pk_r, info, None, None, None)
             .map_err(|_| CryptoError::ReceiverSetupError)?;
 
-        libcrux::hpke::Context_Export(config, &ctx, exporter_context.to_vec(), exporter_length)
+        ctx.export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)
             .map(|exported| (enc, exported.into()))
     }
@@ -317,10 +319,13 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> Result<ExporterSecret, CryptoError> {
         let config = hpke_config(config);
 
-        let ctx = libcrux::hpke::SetupBaseR(config, enc, sk_r, info)
+        let sk_r = hpke_rs::HpkePrivateKey::new(sk_r.to_vec());
+
+        let ctx = config
+            .setup_receiver(enc, &sk_r, info, None, None, None)
             .map_err(|_| CryptoError::ReceiverSetupError)?;
 
-        libcrux::hpke::Context_Export(config, &ctx, exporter_context.to_vec(), exporter_length)
+        ctx.export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)
             .map(ExporterSecret::from)
     }
@@ -331,16 +336,57 @@ impl OpenMlsCrypto for CryptoProvider {
         ikm: &[u8],
     ) -> Result<HpkeKeyPair, CryptoError> {
         let config = hpke_config(config);
-        let HPKEConfig(_, alg, _, _) = config;
-        let (sk, pk) = hpke::kem::DeriveKeyPair(alg, ikm).map_err(|e| match e {
+
+        let key_pair: hpke_rs::HpkeKeyPair = config.derive_key_pair(ikm).map_err(|e| match e {
+            // TODO: error handling
+            /*
             hpke::errors::HpkeError::InvalidParameters => CryptoError::InvalidLength,
+                */
             _ => CryptoError::CryptoLibraryError,
         })?;
 
+        let (sk, pk) = key_pair.into_keys();
+
         Ok(HpkeKeyPair {
-            private: sk.into(),
-            public: hpke::kem::SerializePublicKey(alg, pk),
+            private: sk.as_slice().to_vec().into(),
+            public: pk.as_slice().to_vec(),
         })
+    }
+}
+
+fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
+    let kem = hpke_kem(config.0);
+    let kdf = hpke_kdf(config.1);
+    let aead = hpke_aead(config.2);
+
+    hpke_rs::Hpke::new(hpke_rs::Mode::Base, kem, kdf, aead)
+}
+
+fn hpke_kdf(kdf: HpkeKdfType) -> hpke_rs_crypto::types::KdfAlgorithm {
+    match kdf {
+        HpkeKdfType::HkdfSha256 => hpke_rs_crypto::types::KdfAlgorithm::HkdfSha256,
+        HpkeKdfType::HkdfSha384 => hpke_rs_crypto::types::KdfAlgorithm::HkdfSha384,
+        HpkeKdfType::HkdfSha512 => hpke_rs_crypto::types::KdfAlgorithm::HkdfSha512,
+    }
+}
+
+fn hpke_kem(kem: HpkeKemType) -> hpke_rs_crypto::types::KemAlgorithm {
+    match kem {
+        HpkeKemType::DhKemP256 => hpke_rs_crypto::types::KemAlgorithm::DhKemP256,
+        HpkeKemType::DhKemP384 => hpke_rs_crypto::types::KemAlgorithm::DhKemP384,
+        HpkeKemType::DhKemP521 => hpke_rs_crypto::types::KemAlgorithm::DhKemP521,
+        HpkeKemType::DhKem25519 => hpke_rs_crypto::types::KemAlgorithm::DhKem25519,
+        HpkeKemType::DhKem448 => hpke_rs_crypto::types::KemAlgorithm::DhKem448,
+        HpkeKemType::XWingKemDraft2 => todo!(),
+    }
+}
+
+fn hpke_aead(aead: HpkeAeadType) -> hpke_rs_crypto::types::AeadAlgorithm {
+    match aead {
+        HpkeAeadType::AesGcm128 => hpke_rs_crypto::types::AeadAlgorithm::Aes128Gcm,
+        HpkeAeadType::AesGcm256 => hpke_rs_crypto::types::AeadAlgorithm::Aes256Gcm,
+        HpkeAeadType::ChaCha20Poly1305 => hpke_rs_crypto::types::AeadAlgorithm::ChaCha20Poly1305,
+        HpkeAeadType::Export => hpke_rs_crypto::types::AeadAlgorithm::HpkeExport,
     }
 }
 
@@ -351,57 +397,7 @@ fn hkdf_alg(hash_type: HashType) -> libcrux_hkdf::Algorithm {
         HashType::Sha2_512 => libcrux_hkdf::Algorithm::Sha512,
     }
 }
-
-fn hpke_config(config: HpkeConfig) -> libcrux::hpke::HPKEConfig {
-    libcrux::hpke::HPKEConfig(
-        libcrux::hpke::Mode::mode_base,
-        hpke_kem(config.0),
-        hpke_kdf(config.1),
-        hpke_aead(config.2),
-    )
-}
-
-fn hpke_kdf(kdf: HpkeKdfType) -> libcrux::hpke::kdf::KDF {
-    match kdf {
-        HpkeKdfType::HkdfSha256 => libcrux::hpke::kdf::KDF::HKDF_SHA256,
-        HpkeKdfType::HkdfSha384 => libcrux::hpke::kdf::KDF::HKDF_SHA384,
-        HpkeKdfType::HkdfSha512 => libcrux::hpke::kdf::KDF::HKDF_SHA512,
-    }
-}
-
-fn hpke_kem(kem: HpkeKemType) -> libcrux::hpke::kem::KEM {
-    match kem {
-        HpkeKemType::DhKemP256 => libcrux::hpke::kem::KEM::DHKEM_P256_HKDF_SHA256,
-        HpkeKemType::DhKemP384 => libcrux::hpke::kem::KEM::DHKEM_P384_HKDF_SHA384,
-        HpkeKemType::DhKemP521 => libcrux::hpke::kem::KEM::DHKEM_P521_HKDF_SHA512,
-        HpkeKemType::DhKem25519 => libcrux::hpke::kem::KEM::DHKEM_X25519_HKDF_SHA256,
-        HpkeKemType::DhKem448 => libcrux::hpke::kem::KEM::DHKEM_X448_HKDF_SHA512,
-        HpkeKemType::XWingKemDraft2 => libcrux::hpke::kem::KEM::XWingDraft02,
-    }
-}
-
-fn hpke_aead(aead: HpkeAeadType) -> libcrux::hpke::aead::AEAD {
-    use libcrux::hpke::aead::AEAD as CruxAead;
-    match aead {
-        HpkeAeadType::AesGcm128 => CruxAead::AES_128_GCM,
-        HpkeAeadType::AesGcm256 => CruxAead::AES_256_GCM,
-        HpkeAeadType::ChaCha20Poly1305 => CruxAead::ChaCha20Poly1305,
-        HpkeAeadType::Export => CruxAead::Export_only,
-    }
-}
-
 struct GuardedRng<'a, Rng: RngCore>(MutexGuard<'a, Rng>);
-
-impl<Rng: RngCore> GuardedRng<'_, Rng> {
-    fn generate_vec(&mut self, len: usize) -> Result<Vec<u8>, CryptoError> {
-        let mut output = vec![0u8; len];
-
-        // TODO: evaluate whether try_fill_bytes() should be used here
-        self.fill_bytes(&mut output);
-
-        Ok(output)
-    }
-}
 
 impl<Rng: RngCore> RngCore for GuardedRng<'_, Rng> {
     fn next_u32(&mut self) -> u32 {
