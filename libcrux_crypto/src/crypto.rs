@@ -377,7 +377,7 @@ fn hpke_kem(kem: HpkeKemType) -> hpke_rs_crypto::types::KemAlgorithm {
         HpkeKemType::DhKemP521 => hpke_rs_crypto::types::KemAlgorithm::DhKemP521,
         HpkeKemType::DhKem25519 => hpke_rs_crypto::types::KemAlgorithm::DhKem25519,
         HpkeKemType::DhKem448 => hpke_rs_crypto::types::KemAlgorithm::DhKem448,
-        HpkeKemType::XWingKemDraft2 => todo!(),
+        HpkeKemType::XWingKemDraft2 => todo!("Implement XWingKemDraft2"),
     }
 }
 
