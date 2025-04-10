@@ -81,7 +81,6 @@ pub struct PreGroupPartyState<'a, Provider> {
     pub key_package_bundle: KeyPackageBundle,
     pub signer: SignatureKeyPair,
     pub core_state: &'a CorePartyState<Provider>,
-    pub ciphersuite: Ciphersuite,
 }
 
 impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
@@ -106,7 +105,6 @@ impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
             key_package_bundle,
             signer,
             core_state: self,
-            ciphersuite,
         }
     }
 }
@@ -120,7 +118,12 @@ pub struct MemberState<'a, Provider> {
 impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
     /// Get member's `SignatureKeyPair` if available
     pub fn get_storage_signature_key_pair(&self) -> Option<SignatureKeyPair> {
-        let ciphersuite = self.party.ciphersuite.into();
+        let ciphersuite = self
+            .party
+            .key_package_bundle
+            .key_package()
+            .ciphersuite()
+            .into();
 
         SignatureKeyPair::read(
             self.party.core_state.provider.storage(),
