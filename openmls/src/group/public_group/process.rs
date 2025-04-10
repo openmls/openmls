@@ -16,7 +16,7 @@ use crate::{
         errors::ValidationError, mls_group::errors::ProcessMessageError,
         past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
     },
-    messages::proposals::Proposal,
+    messages::proposals::{Proposal, ProposalOrRefType},
 };
 
 use super::PublicGroup;
@@ -137,7 +137,7 @@ impl PublicGroup {
     ///  - ValSem202: Path must be the right length
     ///  - ValSem203: Path secrets must decrypt correctly
     ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
+    ///    private keys from the direct path
     ///  - ValSem205
     ///  - ValSem240
     ///  - ValSem241
@@ -200,7 +200,7 @@ impl PublicGroup {
     ///  - ValSem202: Path must be the right length
     ///  - ValSem203: Path secrets must decrypt correctly
     ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
+    ///    private keys from the direct path
     ///  - ValSem205
     ///  - ValSem240
     ///  - ValSem241
@@ -281,11 +281,31 @@ impl PublicGroup {
                             credential,
                         ))
                     }
+                    FramedContentBody::Proposal(Proposal::Add(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content(
+                                self.ciphersuite(),
+                                crypto,
+                                content,
+                                ProposalOrRefType::Proposal,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.group_context().epoch(),
+                            sender,
+                            data,
+                            content,
+                            credential,
+                        ))
+                    }
                     // TODO #151/#106
                     FramedContentBody::Proposal(_) => {
                         Err(ProcessMessageError::UnsupportedProposalType)
                     }
-                    FramedContentBody::Commit(_) => unimplemented!(),
+                    FramedContentBody::Commit(_) => {
+                        Err(ProcessMessageError::UnauthorizedExternalCommitMessage)
+                    }
                 }
             }
         }

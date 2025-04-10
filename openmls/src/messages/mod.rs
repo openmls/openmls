@@ -1,7 +1,7 @@
 //! # Messages
 //!
-//! This module contains the types and implementations for Commit & Welcome messages,
-//! as well as Proposals & the group info used for External Commits.
+//! This module defines types and logic for Commit and Welcome messages, as well
+//! as Proposals and group info used in External Commits.
 
 use hash_ref::HashReference;
 use openmls_traits::{

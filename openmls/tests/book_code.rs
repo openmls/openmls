@@ -69,6 +69,7 @@ fn generate_key_package(
 ///  - Charlie removes Bob
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
+///  - Bob re-added via external sender
 ///  - Test saving the group state
 #[openmls_test]
 fn book_operations() {
@@ -1331,7 +1332,7 @@ fn book_operations() {
     .expect("Could not create external Remove proposal");
     // ANCHOR_END: external_remove_proposal
 
-    // ANCHOR: decrypt_external_join_proposal
+    // ANCHOR: decrypt_external_proposal
     let alice_processed_message = alice_group
         .process_message(
             provider,
@@ -1356,34 +1357,62 @@ fn book_operations() {
         }
         _ => unreachable!(),
     }
-    // ANCHOR_END: decrypt_external_join_proposal
+    // ANCHOR_END: decrypt_external_proposal
 
-    // === Save the group state ===
+    // === Re-Add Bob with external Add proposal from external sender ===
 
     // Create a new KeyPackageBundle for Bob
     let bob_key_package = generate_key_package(
         ciphersuite,
-        bob_credential,
+        bob_credential.clone(),
         Extensions::default(),
         provider,
         &bob_signature_keys,
     );
 
-    // Add Bob to the group
-    let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(
+    // ANCHOR: external_add_proposal
+    let proposal = ExternalProposal::new_add::<Provider>(
+        bob_key_package.key_package().clone(),
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_signature_keys,
+        SenderExtensionIndex::new(0),
+    )
+    .expect("Could not create external Add proposal");
+    // ANCHOR_END: external_add_proposal
+
+    let alice_processed_message = alice_group
+        .process_message(
             provider,
-            &alice_signature_keys,
-            &[bob_key_package.key_package().clone()],
+            proposal
+                .into_protocol_message()
+                .expect("Unexpected message type"),
         )
-        .expect("Could not add Bob");
+        .expect("Could not process message.");
+
+    // Store proposal
+    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        alice_processed_message.into_content()
+    {
+        alice_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
+    } else {
+        unreachable!("Expected a QueuedProposal.");
+    }
+
+    let (_, welcome, _) = alice_group
+        .commit_to_pending_proposals(provider, &alice_signature_keys)
+        .expect("Could not commit");
+
+    // === Save the group state ===
 
     // Merge Commit
     alice_group
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let welcome: MlsMessageIn = welcome.into();
+    let welcome: MlsMessageIn = welcome.unwrap().into();
     let welcome = welcome
         .into_welcome()
         .expect("expected the message to be a welcome message");
