@@ -244,7 +244,14 @@ fn discard_commit_update_with_new_signer() {
     //ANCHOR_END: discard_commit_update
 
     // check that alice signer still stored
-    assert!(alice.get_storage_signature_key_pair().is_some());
+    let alice_stored_signer = alice
+        .get_storage_signature_key_pair()
+        .expect("should still be stored");
+
+    // check that the stored signer's public key is the old signer's public key
+    assert_eq!(alice_stored_signer.public(), old_signer.public());
+    // check that the stored signer's public key is not the old signer's public key
+    assert_ne!(alice_stored_signer.public(), new_signer.public());
 
     // assert that the new signer is not in the StorageProvider (does not need to be cleaned up)
     assert!(SignatureKeyPair::read(
