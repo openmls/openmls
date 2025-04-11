@@ -130,13 +130,13 @@ impl ExtensionType {
     /// This is the case for unknown extensions.
     pub(crate) fn is_valid_in_leaf_node(self) -> Option<bool> {
         match self {
-            ExtensionType::ApplicationId
+            ExtensionType::LastResort
+            | ExtensionType::ImmutableMetadata
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
-            | ExtensionType::ImmutableMetadata
             | ExtensionType::ExternalSenders => Some(false),
-            ExtensionType::LastResort => Some(true),
+            ExtensionType::ApplicationId => Some(true),
             ExtensionType::Unknown(_) => None,
         }
     }
