@@ -164,7 +164,6 @@ impl LeafNodeParametersBuilder {
 ///     opaque signature<V>;
 /// } LeafNode;
 /// ```
-// TODO(#1242): Do not derive `TlsDeserialize`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct LeafNode {
     payload: LeafNodePayload,
