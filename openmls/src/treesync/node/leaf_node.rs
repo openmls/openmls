@@ -573,9 +573,12 @@ struct LeafNodePayload {
 )]
 #[repr(u8)]
 pub enum LeafNodeSource {
+    /// The leaf node was added to the group as part of a key package.
     #[tls_codec(discriminant = 1)]
     KeyPackage(Lifetime),
+    /// The leaf node was added through an Update proposal.
     Update,
+    /// The leaf node was added via a Commit.
     Commit(ParentHash),
 }
 
