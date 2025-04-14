@@ -558,6 +558,7 @@ struct LeafNodePayload {
     extensions: Extensions,
 }
 
+/// The source of the `LeafNode`.
 #[derive(
     Debug,
     Clone,
