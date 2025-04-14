@@ -34,8 +34,7 @@ use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
     node::{
         leaf_node::{
-            Capabilities, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs, TreePosition,
-            VerifiableLeafNode,
+            Capabilities, NewLeafNodeParams, TreeInfoTbs, TreePosition, VerifiableLeafNode,
         },
         NodeIn,
     },
@@ -80,7 +79,10 @@ pub use node::encryption_keys::EncryptionKey;
 
 // Public re-exports
 pub use node::{
-    leaf_node::{LeafNode, LeafNodeParameters, LeafNodeParametersBuilder, LeafNodeUpdateError},
+    leaf_node::{
+        LeafNode, LeafNodeParameters, LeafNodeParametersBuilder, LeafNodeSource,
+        LeafNodeUpdateError,
+    },
     parent_node::ParentNode,
     Node,
 };
