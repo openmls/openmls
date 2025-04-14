@@ -21,8 +21,8 @@ rand = "0.9.0"
 tls_codec.workspace = true
 rand_chacha = "0.9.0"
 
-hpke_rs = { git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs" , features=["hazmat", "serialization"] }
+hpke_rs = { git = "https://github.com/cryspen/hpke-rs", branch = "wysiwys/hpke-rs-libcrux", package = "hpke-rs" , features=["hazmat", "serialization"] }
 
-hpke_rs_crypto = { git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs-crypto" }
+hpke_rs_crypto = { git = "https://github.com/cryspen/hpke-rs", branch = "wysiwys/hpke-rs-libcrux", package = "hpke-rs-crypto" }
 
-hpke_rs_libcrux = { git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs-libcrux" }
+hpke_rs_libcrux = { git = "https://github.com/cryspen/hpke-rs", branch = "wysiwys/hpke-rs-libcrux", package = "hpke-rs-libcrux" }
