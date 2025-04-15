@@ -21,7 +21,6 @@
 //!                          ProcessedMessage
 //!
 //! ```
-// TODO #106/#151: Update the above diagram
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use proposal_store::QueuedProposal;

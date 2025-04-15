@@ -209,7 +209,6 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     };
 
     // Create proposal to remove a user
-    // TODO #525: This is not a valid RemoveProposal since random_u32() is not a valid KeyPackageRef.
     let remove_proposal = RemoveProposal {
         removed: LeafNodeIndex::new(random_u32()),
     };
