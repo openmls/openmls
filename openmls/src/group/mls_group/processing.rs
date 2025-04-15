@@ -3,17 +3,40 @@
 use std::mem;
 
 use errors::{CommitToPendingProposalsError, MergePendingCommitError};
-use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, storage::StorageProvider as _,
+};
 
 use crate::{
+    ciphersuite::Secret,
     framing::mls_content::FramedContentBody,
     group::{errors::MergeCommitError, StageCommitError, ValidationError},
     messages::group_info::GroupInfo,
+    schedule::PreSharedKeyId,
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
 use super::{errors::ProcessMessageError, *};
+
+/// Placeholder for an async variant of the StorageProvider trait.
+pub trait AsyncStorageProvider {}
+
+/// Placeholder for an async variant of the OpenMlsProvider trait.
+pub trait AsyncOpenMlsProvider {
+    type CryptoProvider: OpenMlsCrypto;
+    type RandProvider: OpenMlsRand;
+    type AsyncStorageProvider: AsyncStorageProvider;
+
+    // Get the storage provider.
+    fn storage(&self) -> &Self::AsyncStorageProvider;
+
+    /// Get the crypto provider.
+    fn crypto(&self) -> &Self::CryptoProvider;
+
+    /// Get the randomness provider.
+    fn rand(&self) -> &Self::RandProvider;
+}
 
 impl MlsGroup {
     /// Parses incoming messages from the DS. Checks for syntactic errors and
@@ -30,56 +53,21 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
-        // Make sure we are still a member of the group
-        if !self.is_active() {
-            return Err(ProcessMessageError::GroupStateError(
-                MlsGroupStateError::UseAfterEviction,
-            ));
-        }
-        let message = message.into();
+        self.init_message_processing(provider.crypto(), message)?
+            .load_key_material(provider.storage())?
+            .finalize(provider.crypto())
+    }
 
-        // Check that handshake messages are compatible with the incoming wire format policy
-        if !message.is_external()
-            && message.is_handshake_message()
-            && !self
-                .configuration()
-                .wire_format_policy()
-                .incoming()
-                .is_compatible_with(message.wire_format())
-        {
-            return Err(ProcessMessageError::IncompatibleWireFormat);
-        }
-
-        // Parse the message
-        let sender_ratchet_configuration = *self.configuration().sender_ratchet_configuration();
-
-        // Checks the following semantic validation:
-        //  - ValSem002
-        //  - ValSem003
-        //  - ValSem006
-        //  - ValSem007 MembershipTag presence
-        let decrypted_message =
-            self.decrypt_message(provider.crypto(), message, &sender_ratchet_configuration)?;
-
-        let unverified_message = self
-            .public_group
-            .parse_message(decrypted_message, &self.message_secrets_store)
-            .map_err(ProcessMessageError::from)?;
-
-        // If this is a commit, we need to load the private key material we need for decryption.
-        let (old_epoch_keypairs, leaf_node_keypairs) =
-            if let ContentType::Commit = unverified_message.content_type() {
-                self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?
-            } else {
-                (vec![], vec![])
-            };
-
-        self.process_unverified_message(
-            provider,
-            unverified_message,
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-        )
+    /// Like `process_message`, but async.
+    pub async fn process_message_async<Provider: AsyncOpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        message: impl Into<ProtocolMessage>,
+    ) -> Result<ProcessedMessage, ProcessMessageError> {
+        self.init_message_processing(provider.crypto(), message)?
+            .load_key_material_async(provider.storage())
+            .await?
+            .finalize(provider.crypto())
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
@@ -199,11 +187,10 @@ impl MlsGroup {
     /// Helper function to read decryption keypairs.
     pub(super) fn read_decryption_keypairs(
         &self,
-        provider: &impl OpenMlsProvider,
-        own_leaf_nodes: &[LeafNode],
+        storage: &impl StorageProvider,
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage()).map_err(|e| {
+        let old_epoch_keypairs = self.read_epoch_keypairs(storage).map_err(|e| {
             log::error!("Error reading epoch keypairs: {:?}", e);
             StageCommitError::MissingDecryptionKey
         })?;
@@ -211,10 +198,11 @@ impl MlsGroup {
         // If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a
         // potential decryption keypair.
-        let leaf_node_keypairs = own_leaf_nodes
+        let leaf_node_keypairs = self
+            .own_leaf_nodes
             .iter()
             .map(|leaf_node| {
-                EncryptionKeyPair::read(provider, leaf_node.encryption_key())
+                EncryptionKeyPair::read(storage, leaf_node.encryption_key())
                     .ok_or(StageCommitError::MissingDecryptionKey)
             })
             .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
@@ -222,11 +210,75 @@ impl MlsGroup {
         Ok((old_epoch_keypairs, leaf_node_keypairs))
     }
 
+    /// Decrypts the message and verifies its signature.
+    ///
+    /// Returns the [`AuthenticatedContent`] of the message, as well as the
+    /// [`Credential`] of the sender if successful, or a [`ProcessMessageError`]
+    /// if not.
+    ///
+    /// Checks the following semantic validation:
+    ///  - ValSem002
+    ///  - ValSem003
+    ///  - ValSem006
+    ///  - ValSem007 MembershipTag presence
+    ///  - ValSem010
+    ///  - ValSem246 (as part of ValSem010)
+    pub(crate) fn decrypt_and_verify_message<Crypto: OpenMlsCrypto>(
+        &mut self,
+        crypto: &Crypto,
+        message: impl Into<ProtocolMessage>,
+    ) -> Result<(AuthenticatedContent, Credential), ProcessMessageError> {
+        // Make sure we are still a member of the group
+        if !self.is_active() {
+            return Err(ProcessMessageError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
+            ));
+        }
+        let message = message.into();
+
+        // Check that handshake messages are compatible with the incoming wire format policy
+        if !message.is_external()
+            && message.is_handshake_message()
+            && !self
+                .configuration()
+                .wire_format_policy()
+                .incoming()
+                .is_compatible_with(message.wire_format())
+        {
+            return Err(ProcessMessageError::IncompatibleWireFormat);
+        }
+
+        // Parse the message
+        let sender_ratchet_configuration =
+            self.configuration().sender_ratchet_configuration().clone();
+
+        // Checks the following semantic validation:
+        //  - ValSem002
+        //  - ValSem003
+        //  - ValSem006
+        //  - ValSem007 MembershipTag presence
+        let decrypted_message =
+            self.decrypt_message(crypto, message, &sender_ratchet_configuration)?;
+
+        let unverified_message = self
+            .public_group
+            .parse_message(decrypted_message, &self.message_secrets_store)
+            .map_err(ProcessMessageError::from)?;
+
+        // Checks the following semantic validation:
+        //  - ValSem010
+        //  - ValSem246 (as part of ValSem010)
+        //  - https://validation.openmls.tech/#valn1203
+        let (content, credential) =
+            unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
+
+        Ok((content, credential))
+    }
+
     /// This processing function does most of the semantic verifications.
     /// It returns a [ProcessedMessage] enum.
     /// Checks the following semantic validation:
     ///  - ValSem008
-    ///  - ValSem010
     ///  - ValSem101
     ///  - ValSem102
     ///  - ValSem104
@@ -249,22 +301,15 @@ impl MlsGroup {
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244
-    ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
+    pub(crate) fn process_authenticated_content<Crypto: OpenMlsCrypto>(
         &self,
-        provider: &Provider,
-        unverified_message: UnverifiedMessage,
+        crypto: &Crypto,
+        content: AuthenticatedContent,
+        credential: Credential,
+        psks: Vec<(PreSharedKeyId, Secret)>,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
-        // Checks the following semantic validation:
-        //  - ValSem010
-        //  - ValSem246 (as part of ValSem010)
-        //  - https://validation.openmls.tech/#valn1302
-        //  - https://validation.openmls.tech/#valn1304
-        let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
-
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 let sender = content.sender().clone();
@@ -280,7 +325,7 @@ impl MlsGroup {
                     FramedContentBody::Proposal(_) => {
                         let proposal = Box::new(QueuedProposal::from_authenticated_content_by_ref(
                             self.ciphersuite(),
-                            provider.crypto(),
+                            crypto,
                             content,
                         )?);
 
@@ -295,7 +340,8 @@ impl MlsGroup {
                             &content,
                             old_epoch_keypairs,
                             leaf_node_keypairs,
-                            provider,
+                            psks,
+                            crypto,
                         )?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
@@ -321,7 +367,7 @@ impl MlsGroup {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
-                                provider.crypto(),
+                                crypto,
                                 content,
                             )?,
                         ));
@@ -338,7 +384,7 @@ impl MlsGroup {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content(
                                 self.ciphersuite(),
-                                provider.crypto(),
+                                crypto,
                                 content,
                                 ProposalOrRefType::Proposal,
                             )?,
