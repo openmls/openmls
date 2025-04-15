@@ -3,7 +3,9 @@
 use std::mem;
 
 use errors::{CommitToPendingProposalsError, MergePendingCommitError};
-use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, storage::StorageProvider as _,
+};
 
 use crate::{
     ciphersuite::Secret,
@@ -16,6 +18,25 @@ use crate::{
 };
 
 use super::{errors::ProcessMessageError, *};
+
+/// Placeholder for an async variant of the StorageProvider trait.
+pub trait AsyncStorageProvider {}
+
+/// Placeholder for an async variant of the OpenMlsProvider trait.
+pub trait AsyncOpenMlsProvider {
+    type CryptoProvider: OpenMlsCrypto;
+    type RandProvider: OpenMlsRand;
+    type AsyncStorageProvider: AsyncStorageProvider;
+
+    // Get the storage provider.
+    fn storage(&self) -> &Self::AsyncStorageProvider;
+
+    /// Get the crypto provider.
+    fn crypto(&self) -> &Self::CryptoProvider;
+
+    /// Get the randomness provider.
+    fn rand(&self) -> &Self::RandProvider;
+}
 
 impl MlsGroup {
     /// Parses incoming messages from the DS. Checks for syntactic errors and
@@ -34,6 +55,18 @@ impl MlsGroup {
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         self.init_message_processing(provider.crypto(), message)?
             .load_key_material(provider.storage())?
+            .finalize(provider.crypto())
+    }
+
+    /// Like `process_message`, but async.
+    pub async fn process_message_async<Provider: AsyncOpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        message: impl Into<ProtocolMessage>,
+    ) -> Result<ProcessedMessage, ProcessMessageError> {
+        self.init_message_processing(provider.crypto(), message)?
+            .load_key_material_async(provider.storage())
+            .await?
             .finalize(provider.crypto())
     }
 
@@ -351,7 +384,7 @@ impl MlsGroup {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content(
                                 self.ciphersuite(),
-                                provider.crypto(),
+                                crypto,
                                 content,
                                 ProposalOrRefType::Proposal,
                             )?,

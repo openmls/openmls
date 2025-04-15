@@ -10,7 +10,7 @@ use crate::{
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
-use super::{MlsGroup, ProcessedMessage, ProtocolMessage};
+use super::{processing::AsyncStorageProvider, MlsGroup, ProcessedMessage, ProtocolMessage};
 
 impl MlsGroup {
     pub(super) fn init_message_processing(
@@ -67,6 +67,14 @@ impl<'a> InitialProcessingState<'a> {
             initial_state: self,
             loaded_key_material,
         })
+    }
+
+    pub(super) async fn load_key_material_async(
+        self,
+        _storage: &impl AsyncStorageProvider,
+    ) -> Result<LoadedRequiredKeyMaterial<'a>, ProcessMessageError> {
+        // Same as the sync version, but using async storage.
+        todo!()
     }
 
     #[cfg(test)]

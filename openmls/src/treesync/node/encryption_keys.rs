@@ -12,7 +12,7 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBy
 use crate::{
     ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
     error::LibraryError,
-    storage::{OpenMlsProvider, StorageProvider},
+    storage::StorageProvider,
 };
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
@@ -217,6 +217,8 @@ impl EncryptionKeyPair {
 
 #[cfg(feature = "test-utils")]
 pub mod test_utils {
+    use crate::storage::OpenMlsProvider;
+
     use super::*;
 
     pub fn read_keys_from_key_store(
