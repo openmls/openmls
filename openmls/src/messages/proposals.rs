@@ -478,8 +478,6 @@ impl From<Vec<u8>> for ExternalInitProposal {
     }
 }
 
-// TODO: #291 Implement AppAck
-
 /// AppAck Proposal.
 ///
 /// This is not yet supported.
@@ -644,7 +642,6 @@ impl ProposalRef {
     }
 }
 
-/// TODO: #291 Implement AppAck
 /// ```text
 /// struct {
 ///     KeyPackageRef sender;

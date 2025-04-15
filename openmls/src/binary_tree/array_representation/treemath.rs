@@ -229,7 +229,7 @@ impl TreeSize {
     pub(super) fn dec(&mut self) {
         debug_assert!(self.0 >= 2);
         if self.0 >= 2 {
-            self.0 = (self.0 + 1) / 2 - 1;
+            self.0 = self.0.div_ceil(2) - 1;
         } else {
             self.0 = 0;
         }

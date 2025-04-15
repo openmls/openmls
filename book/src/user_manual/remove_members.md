@@ -41,5 +41,5 @@ Since those proposals are crafted by outsiders, they are always public messages.
 It is then up to one of the group members to process the proposal and commit it.
 
 ```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code.rs:decrypt_external_external_proposal}}
+{{#include ../../../openmls/tests/book_code.rs:decrypt_external_proposal}}
 ```

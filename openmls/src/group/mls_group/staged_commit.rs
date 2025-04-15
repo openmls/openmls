@@ -110,19 +110,19 @@ impl MlsGroup {
     ///  - ValSem111
     ///  - ValSem112
     ///  - ValSem113: All Proposals: The proposal type must be supported by all
-    ///               members of the group
+    ///    members of the group
     ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
     ///  - ValSem203: Path secrets must decrypt correctly
     ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
+    ///    private keys from the direct path
     ///  - ValSem205
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244 Returns an error if the given commit was sent by the owner
-    ///              of this group.
+    ///    of this group.
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
@@ -343,10 +343,6 @@ impl MlsGroup {
                     .add(past_epoch, message_secrets, leaves);
 
                 self.public_group.merge_diff(state.staged_diff);
-
-                // TODO #1194: Group storage and key storage should be
-                // correlated s.t. there is no divergence between key material
-                // and group state.
 
                 let leaf_keypair = if let Some(keypair) = &state.new_leaf_keypair_option {
                     vec![keypair.clone()]
