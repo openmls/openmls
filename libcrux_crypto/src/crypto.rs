@@ -65,7 +65,10 @@ impl OpenMlsCrypto for CryptoProvider {
         ikm: &[u8],
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hkdf_alg(hash_type);
-        let out = libcrux_hkdf::extract(alg, salt, ikm).map_err(|_| todo!())?;
+        let out = libcrux_hkdf::extract(alg, salt, ikm).map_err(|e| match e {
+            libcrux_hkdf::Error::ArgumentsTooLarge => CryptoError::InvalidLength,
+            _ => CryptoError::CryptoLibraryError,
+        })?;
 
         Ok(out.into())
     }
@@ -82,7 +85,7 @@ impl OpenMlsCrypto for CryptoProvider {
         libcrux_hkdf::expand(alg, prk, info, okm_len)
             .map_err(|e| match e {
                 libcrux_hkdf::Error::OkmTooLarge => CryptoError::HkdfOutputLengthInvalid,
-                libcrux_hkdf::Error::ArgumentsTooLarge => todo!(),
+                libcrux_hkdf::Error::ArgumentsTooLarge => CryptoError::InvalidLength,
             })
             .map(<Vec<u8> as Into<SecretVLBytes>>::into)
     }
@@ -228,14 +231,8 @@ impl OpenMlsCrypto for CryptoProvider {
         let (kem_output, ciphertext) = config
             .seal(&pk_r, info, aad, ptxt, None, None, None)
             .map_err(|e| match e {
-                // TODO: error handling
+                // TODO: is this correct?
                 hpke_rs::HpkeError::InvalidInput => CryptoError::InvalidPublicKey,
-                /*
-                hpke_rs::HpkeError::UnsupportedAlgorithm => {
-                    CryptoError::UnsupportedCiphersuite
-                }
-                hpke_rs::HpkeError::InvalidParameters => CryptoError::InvalidLength,
-                */
                 _ => CryptoError::CryptoLibraryError,
             })?;
 
@@ -262,7 +259,6 @@ impl OpenMlsCrypto for CryptoProvider {
 
         config
             .open(
-                // TODO: is this correct?
                 input.kem_output.as_ref(),
                 &sk_r,
                 info,
@@ -272,18 +268,10 @@ impl OpenMlsCrypto for CryptoProvider {
                 None,
                 None,
             )
-            .map_err(|e| {
-                match e {
-                    // TODO: error handling
-                    /*
-                    libcrux::hpke::errors::HpkeError::OpenError
-                    | libcrux::hpke::errors::HpkeError::DecapError
-                    | libcrux::hpke::errors::HpkeError::ValidationError => {
-                        CryptoError::HpkeDecryptionError
-                    }
-                    */
-                    _ => CryptoError::CryptoLibraryError,
-                }
+            // TODO: should more error types be handled?
+            .map_err(|e| match e {
+                hpke_rs::HpkeError::OpenError => CryptoError::HpkeDecryptionError,
+                _ => CryptoError::CryptoLibraryError,
             })
     }
 
@@ -338,10 +326,7 @@ impl OpenMlsCrypto for CryptoProvider {
         let config = hpke_config(config);
 
         let key_pair: hpke_rs::HpkeKeyPair = config.derive_key_pair(ikm).map_err(|e| match e {
-            // TODO: error handling
-            /*
-            hpke::errors::HpkeError::InvalidParameters => CryptoError::InvalidLength,
-                */
+            hpke_rs::HpkeError::InvalidConfig => CryptoError::InvalidLength,
             _ => CryptoError::CryptoLibraryError,
         })?;
 
