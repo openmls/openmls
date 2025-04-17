@@ -105,9 +105,8 @@ impl DecryptedMessage {
         let ciphersuite = group.ciphersuite();
         // TODO: #819 The old leaves should not be needed any more.
         //       Revisit when the transition is further along.
-        let (message_secrets, _old_leaves) = group
-            .message_secrets_and_leaves_mut(ciphertext.epoch())
-            .map_err(MessageDecryptionError::from)?;
+        let (message_secrets, _old_leaves) =
+            group.message_secrets_and_leaves_mut(ciphertext.epoch())?;
         let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
         let message_secrets = group
             .message_secrets_mut(ciphertext.epoch())

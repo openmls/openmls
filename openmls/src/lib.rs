@@ -148,6 +148,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 #![cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
+#![allow(clippy::doc_overindented_list_items)]
 
 // === Testing ===
 
