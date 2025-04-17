@@ -113,13 +113,15 @@ impl OpenMlsCrypto for CryptoProvider {
             return Err(CryptoError::UnsupportedAeadAlgorithm);
         }
 
+        use libcrux_chacha20poly1305::TAG_LEN;
+
         // only fails on wrong length
         let iv = <&[u8; 12]>::try_from(nonce).map_err(|_| CryptoError::InvalidLength)?;
 
         // TODO: instead, use key conversion from the libcrux-chacha20poly1305 crate, when available
         let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
 
-        let mut msg_ctxt: Vec<u8> = vec![0; data.len() + 16];
+        let mut msg_ctxt: Vec<u8> = vec![0; data.len() + TAG_LEN];
         libcrux_chacha20poly1305::encrypt(key, data, &mut msg_ctxt, aad, iv)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
@@ -138,12 +140,13 @@ impl OpenMlsCrypto for CryptoProvider {
         if !matches!(alg, AeadType::ChaCha20Poly1305) {
             return Err(CryptoError::UnsupportedAeadAlgorithm);
         }
+        use libcrux_chacha20poly1305::TAG_LEN;
 
-        if ct_tag.len() < 16 {
+        if ct_tag.len() < TAG_LEN {
             return Err(CryptoError::InvalidLength);
         }
 
-        let boundary = ct_tag.len() - 16;
+        let boundary = ct_tag.len() - TAG_LEN;
 
         let mut ptext = vec![0; boundary];
 
