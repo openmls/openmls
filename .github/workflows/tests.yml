@@ -62,7 +62,7 @@ jobs:
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo/bin/wasm-bindgen-test-runner
           cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js
 
-      - name: Tests Wasm32 on linux with libcrux provder
+      - name: Tests Wasm32 on linux with libcrux provider
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update && sudo apt install nodejs
