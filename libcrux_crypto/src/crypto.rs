@@ -234,9 +234,8 @@ impl OpenMlsCrypto for CryptoProvider {
         let (kem_output, ciphertext) = config
             .seal(&pk_r, info, aad, ptxt, None, None, None)
             .map_err(|e| match e {
-                // TODO: is this correct?
-                hpke_rs::HpkeError::InvalidInput => CryptoError::InvalidPublicKey,
-                _ => CryptoError::CryptoLibraryError,
+                hpke_rs::HpkeError::InvalidConfig => CryptoError::SenderSetupError,
+                _ => CryptoError::HpkeEncryptionError,
             })?;
 
         let kem_output = kem_output.into();
@@ -271,10 +270,9 @@ impl OpenMlsCrypto for CryptoProvider {
                 None,
                 None,
             )
-            // TODO: should more error types be handled?
             .map_err(|e| match e {
-                hpke_rs::HpkeError::OpenError => CryptoError::HpkeDecryptionError,
-                _ => CryptoError::CryptoLibraryError,
+                hpke_rs::HpkeError::InvalidConfig => CryptoError::ReceiverSetupError,
+                _ => CryptoError::HpkeDecryptionError,
             })
     }
 
