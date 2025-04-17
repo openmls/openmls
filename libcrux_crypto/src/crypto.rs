@@ -290,7 +290,7 @@ impl OpenMlsCrypto for CryptoProvider {
 
         let (enc, ctx) = config
             .setup_sender(&pk_r, info, None, None, None)
-            .map_err(|_| CryptoError::ReceiverSetupError)?;
+            .map_err(|_| CryptoError::SenderSetupError)?;
 
         ctx.export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)
