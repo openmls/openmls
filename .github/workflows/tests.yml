@@ -13,7 +13,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: --cfg getrandom_backend="wasm_js"
 
 jobs:
   tests:
@@ -48,6 +47,8 @@ jobs:
 
       - name: Tests Wasm32 on linux with libcrux provider
         if: matrix.os == 'ubuntu-latest'
+        env:
+          RUSTFLAGS: --cfg getrandom_backend="wasm_js"
         run: |
           sudo apt update && sudo apt install nodejs
           cargo install wasm-bindgen-cli
