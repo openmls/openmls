@@ -5,7 +5,7 @@ use openmls_traits::random::OpenMlsRand;
 use rand::{rngs::OsRng, rngs::ReseedingRng, TryRngCore};
 use rand_chacha::ChaCha20Core;
 
-/// The libcrux-backed randomness provider for OpenMLS
+/// The randomness provider for the libcrux-backed OpenMLS provider
 pub struct RandProvider {
     rng: RwLock<ReseedingRng<ChaCha20Core, OsRng>>,
 }
