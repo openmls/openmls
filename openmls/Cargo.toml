@@ -37,6 +37,7 @@ serde_json = { version = "1.0", optional = true }
 itertools = { version = "0.14", optional = true }
 wasm-bindgen-test = { version = "0.3.40", optional = true }
 getrandom = { version = "0.3.2", optional = true }
+getrandom_old = { package = "getrandom", version = "0.2.15", optional = true }
 fluvio-wasm-timer = { version = "0.2.5", optional = true }
 once_cell = { version = "1.19.0", optional = true }
 
@@ -67,8 +68,10 @@ crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 js = [
   "dep:getrandom",
+  "dep:getrandom_old",
   "dep:fluvio-wasm-timer",
   "getrandom/wasm_js",
+  "getrandom_old/js",
 ] # enable js randomness source for provider
 fork-resolution = []
 
