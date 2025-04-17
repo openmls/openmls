@@ -135,7 +135,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     #[cfg(all(
         feature = "libcrux-provider",
-        not(any(all(target_arch = "x86", target_os = "windows")))
+        not(all(target_arch = "x86", target_os = "windows"))
     ))]
     {
         let libcrux = openmls_libcrux_crypto::Provider::default();
