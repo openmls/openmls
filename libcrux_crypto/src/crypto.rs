@@ -345,8 +345,6 @@ impl OpenMlsCrypto for CryptoProvider {
 fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
     let kem = hpke_kem(config.0);
     let kdf = hpke_kdf(config.1);
-
-    // TODO: should we return an error on unsupported AES algorithms here?
     let aead = hpke_aead(config.2);
 
     hpke_rs::Hpke::new(hpke_rs::Mode::Base, kem, kdf, aead)
