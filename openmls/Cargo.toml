@@ -68,7 +68,7 @@ content-debug = [] # ☣️ Enable logging of sensitive message content
 js = [
   "dep:getrandom",
   "dep:fluvio-wasm-timer",
-  "getrandom?/wasm_js",
+  "getrandom/wasm_js",
 ] # enable js randomness source for provider
 fork-resolution = []
 
