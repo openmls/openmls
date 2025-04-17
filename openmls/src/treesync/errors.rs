@@ -76,7 +76,6 @@ pub enum ApplyUpdatePathError {
 
 // === Crate errors ===
 
-// TODO: This will go away in #819 again.
 // `UnsupportedExtension` is only used in tests for now
 #[allow(dead_code)]
 /// TreeSync error
