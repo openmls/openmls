@@ -149,7 +149,7 @@ impl OpenMlsCrypto for CryptoProvider {
 
         let iv = <&[u8; 12]>::try_from(nonce).map_err(|_| CryptoError::InvalidLength)?;
 
-        // TODO: instead, use key conversion from the libcrux-chacha20poly1305 crate, when available,
+        // TODO: instead, use key conversion from the libcrux-chacha20poly1305 crate, when available
         let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
 
         libcrux_chacha20poly1305::decrypt(key, &mut ptext, ct_tag, aad, iv).map_err(
