@@ -756,13 +756,16 @@ pub async fn run_test_vector(
 
 #[apply(backends)]
 async fn read_test_vectors_mp(backend: &impl OpenMlsCryptoProvider) {
-    let _ = pretty_env_logger::try_init();
-    log::info!("Reading test vectors ...");
+    Box::pin(async {
+        let _ = pretty_env_logger::try_init();
+        log::info!("Reading test vectors ...");
 
-    let tests: Vec<MessageProtectionTest> = read("test_vectors/message-protection.json");
+        let tests: Vec<MessageProtectionTest> = read("test_vectors/message-protection.json");
 
-    for test_vector in tests.into_iter() {
-        run_test_vector(test_vector, backend).await.unwrap();
-    }
-    log::info!("Finished test vector verification");
+        for test_vector in tests.into_iter() {
+            run_test_vector(test_vector, backend).await.unwrap();
+        }
+        log::info!("Finished test vector verification");
+    })
+    .await
 }
