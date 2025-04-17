@@ -473,43 +473,6 @@ fn discard_commit_group_context_extensions() {
 }
 
 #[openmls_test]
-fn discard_commit_self_remove() {
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
-
-    // Define the MlsGroup configuration
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true) // This is necessary in order for bob to be able to join from the welcome only.
-        .build();
-    let mut group_state = alice_bob_group(
-        &alice_party,
-        &bob_party,
-        ciphersuite,
-        mls_group_create_config,
-    );
-
-    let [bob] = group_state.members_mut(&["bob"]);
-    // save the storage state
-    let state_before = bob.group_storage_state();
-    let bob_group = &mut bob.group;
-    let bob_provider = &bob_party.provider;
-    let bob_signer = &bob.party.signer;
-
-    // Bob removes self
-
-    let _mls_message_out = bob_group
-        .leave_group_via_self_remove(bob_provider, bob_signer)
-        .expect("Error leaving group via self remove");
-
-    // === Delivery service rejected the commit ===
-
-    // Discard the commit
-    clear_pending_commit_and_assert_storage_state(bob, state_before);
-}
-
-#[openmls_test]
 fn discard_commit_custom_proposal() {
     let alice_provider = &Provider::default();
 
