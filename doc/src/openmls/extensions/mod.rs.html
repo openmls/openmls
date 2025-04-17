@@ -121,12 +121,12 @@
 <a href=#121 id=121 data-nosnippet>121</a>    /// This is the case for unknown extensions.
 <a href=#122 id=122 data-nosnippet>122</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_valid_in_leaf_node(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
 <a href=#123 id=123 data-nosnippet>123</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#124 id=124 data-nosnippet>124</a>            ExtensionType::ApplicationId
+<a href=#124 id=124 data-nosnippet>124</a>            ExtensionType::LastResort
 <a href=#125 id=125 data-nosnippet>125</a>            | ExtensionType::RatchetTree
 <a href=#126 id=126 data-nosnippet>126</a>            | ExtensionType::RequiredCapabilities
 <a href=#127 id=127 data-nosnippet>127</a>            | ExtensionType::ExternalPub
 <a href=#128 id=128 data-nosnippet>128</a>            | ExtensionType::ExternalSenders =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
-<a href=#129 id=129 data-nosnippet>129</a>            ExtensionType::LastResort =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
+<a href=#129 id=129 data-nosnippet>129</a>            ExtensionType::ApplicationId =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
 <a href=#130 id=130 data-nosnippet>130</a>            ExtensionType::Unknown(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
 <a href=#131 id=131 data-nosnippet>131</a>        }
 <a href=#132 id=132 data-nosnippet>132</a>    }
