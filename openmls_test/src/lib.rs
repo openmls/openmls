@@ -136,7 +136,6 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     #[cfg(all(
         feature = "libcrux-provider",
         not(any(
-            target_arch = "wasm32",
             all(target_arch = "x86", target_os = "windows")
         ))
     ))]
