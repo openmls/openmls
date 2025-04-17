@@ -223,25 +223,12 @@ fn discard_commit_update_with_new_signer() {
     )
     .is_none());
 
-    // store for documentation purposes
-    new_signer.store(alice_provider.storage()).unwrap();
-
     // === Commit rejected by delivery service ===
-    //ANCHOR: discard_commit_update
-    // delete the unused signature key pair from the storage provider,
-    // if it was stored there earlier
-    SignatureKeyPair::delete(
-        alice_provider.storage(),
-        new_signer.public(),
-        ciphersuite.signature_algorithm(),
-    )
-    .expect("Could not delete unused signature key pair");
 
     // clear pending commit and reset state
     alice_group
         .clear_pending_commit(alice_provider.storage())
         .unwrap();
-    //ANCHOR_END: discard_commit_update
 
     // check that alice signer still stored
     let alice_stored_signer = alice
