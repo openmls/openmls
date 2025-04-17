@@ -119,11 +119,11 @@ impl OpenMlsCrypto for CryptoProvider {
         // TODO: instead, use key conversion from the libcrux-chacha20poly1305 crate, when available
         let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
 
-        let mut msg_ctx: Vec<u8> = vec![0; data.len() + 16];
-        libcrux_chacha20poly1305::encrypt(key, data, &mut msg_ctx, aad, iv)
+        let mut msg_ctxt: Vec<u8> = vec![0; data.len() + 16];
+        libcrux_chacha20poly1305::encrypt(key, data, &mut msg_ctxt, aad, iv)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
-        Ok(msg_ctx)
+        Ok(msg_ctxt)
     }
 
     fn aead_decrypt(
