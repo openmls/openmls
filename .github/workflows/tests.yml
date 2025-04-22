@@ -34,6 +34,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: i686-pc-windows-msvc, i686-unknown-linux-gnu, wasm32-unknown-unknown
+      - uses: baptiste0928/cargo-install@v3
+        with:
+          crate: wasm-bindgen-cli
       - uses: Swatinem/rust-cache@v2
 
       - name: Toggle rustc mode
@@ -49,7 +52,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update && sudo apt install nodejs
-          cargo install wasm-bindgen-cli
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo/bin/wasm-bindgen-test-runner
           cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js
 
@@ -57,7 +59,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update && sudo apt install nodejs
-          cargo install wasm-bindgen-cli
           export RUSTFLAGS="--cfg getrandom_backend=\"wasm_js\""
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo/bin/wasm-bindgen-test-runner
           cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js,libcrux-provider,libcrux-provider-js
@@ -69,7 +70,6 @@ jobs:
       - name: Test with libcrux provider
         if: matrix.os == 'ubuntu-latest'
         run: |
-          cargo install wasm-bindgen-cli
           cargo test $TEST_MODE -p openmls -vv -F libcrux-provider
 
       - name: Tests
