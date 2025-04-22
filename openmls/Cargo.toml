@@ -72,8 +72,8 @@ js = [
   "dep:fluvio-wasm-timer",
 
   # enable randomness source features for both versions of getrandom
-  "getrandom/wasm_js",
   "getrandom_old/js",
+  "getrandom/wasm_js",
 ]
 fork-resolution = []
 
@@ -101,7 +101,10 @@ openmls = { path = ".", features = [
   "libcrux-provider",
 ] }
 
-[target.'cfg(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows")))'.dev-dependencies]
+[target.'cfg(target_arch = "wasm32")'.dev_dependencies]
+openmls = { path = ".", features = ["test-utils", "libcrux-provider"] }
+
+[target.'cfg(all(target_arch = "x86", target_os = "windows"))'.dev-dependencies]
 openmls = { path = ".", features = ["test-utils"] }
 
 [[bench]]
