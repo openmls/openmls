@@ -26,5 +26,5 @@ rstest = { version = "0.24" }
 rstest_reuse = { version = "0.7" }
 openmls_rust_crypto = { version = "0.3.0", path = "../openmls_rust_crypto" }
 openmls_libcrux_crypto = { version = "0.2.0", path = "../libcrux_crypto", optional = true }
-openmls_traits = { version = "0.3.0", path = "../traits" }
+openmls_traits = { version = "0.4.0", path = "../traits" }
 openmls_sqlite_storage = { version = "0.1.0", path = "../sqlite_storage", optional = true }

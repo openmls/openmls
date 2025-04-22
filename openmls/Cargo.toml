@@ -12,7 +12,7 @@ keywords = ["MLS", "IETF", "RFC9420", "Encryption", "E2EE"]
 exclude = ["/test_vectors"]
 
 [dependencies]
-openmls_traits = { version = "0.3.0", path = "../traits" }
+openmls_traits = { version = "0.4.0", path = "../traits" }
 openmls_rust_crypto = { version = "0.3.0", path = "../openmls_rust_crypto", optional = true }
 openmls_basic_credential = { version = "0.3.0", path = "../basic_credential", optional = true, features = [
   "clonable",
@@ -86,7 +86,7 @@ fork-resolution = []
 criterion = { version = "^0.5", default-features = false } # need to disable default features for wasm
 hex = { version = "0.4", features = ["serde"] }
 lazy_static = "1.4"
-openmls_traits = { version = "0.3.0", path = "../traits", features = [
+openmls_traits = { version = "0.4.0", path = "../traits", features = [
   "test-utils",
 ] }
 pretty_env_logger = "0.5"
