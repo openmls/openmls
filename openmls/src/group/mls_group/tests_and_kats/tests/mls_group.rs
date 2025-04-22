@@ -1293,10 +1293,9 @@ fn builder_pattern() {
     assert_eq!(leaf_extensions, &test_leaf_extensions);
 
     // Make sure that building with an invalid leaf node extension fails
-    let invalid_leaf_extensions =
-        Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(&[
-            0x00, 0x01, 0x02,
-        ])));
+    let invalid_leaf_extensions = Extensions::single(Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[], &[], &[]),
+    ));
 
     let builder_err = MlsGroup::builder()
         .with_leaf_node_extensions(invalid_leaf_extensions)

@@ -14,7 +14,7 @@ openmls_traits = { version = "0.4.0", path = "../traits" }
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = { version = "0.4" }
-rusqlite = { version = "0.31", features = ["bundled"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
 refinery = { version = "0.8", features = ["rusqlite"] }
 
 [dev-dependencies]

@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [#1700](https://github.com/openmls/openmls/pull/1700): During commit processing, OpenMLS will now return a `StorageError` if the storage provider fails while fetching `encryption_epoch_key_pairs`. Previously, it would ignore any error returned by the storage provider and just assume that no keys could be found (which typically lead to an error later during commit processing).
+- [#1762](https://github.com/openmls/openmls/pull/1762): Expose `LeafNodeSource` to allow handling output of `LeafNode::leaf_node_source()`.
 
 ## 0.6.0 (2024-09-04)
 
