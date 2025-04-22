@@ -45,6 +45,14 @@ jobs:
             echo "TEST_MODE=--release" >> $GITHUB_ENV
           fi
 
+      - name: Tests Wasm32 on linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update && sudo apt install nodejs
+          cargo install wasm-bindgen-cli
+          export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo/bin/wasm-bindgen-test-runner
+          cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js
+
       - name: Tests Wasm32 on linux with libcrux provider
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -63,14 +71,6 @@ jobs:
         run: |
           cargo install wasm-bindgen-cli
           cargo test $TEST_MODE -p openmls -vv -F libcrux-provider
-
-      - name: Tests Wasm32 on linux
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt update && sudo apt install nodejs
-          cargo install wasm-bindgen-cli
-          export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo/bin/wasm-bindgen-test-runner
-          cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js
 
       - name: Tests
         if: matrix.os != 'windows-latest'
