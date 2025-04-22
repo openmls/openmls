@@ -47,11 +47,10 @@ jobs:
 
       - name: Tests Wasm32 on linux with libcrux provider
         if: matrix.os == 'ubuntu-latest'
-        env:
-          RUSTFLAGS: "--cfg getrandom_backend=\"wasm_js\""
         run: |
           sudo apt update && sudo apt install nodejs
           cargo install wasm-bindgen-cli
+          export RUSTFLAGS="--cfg getrandom_backend=\"wasm_js\""
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo/bin/wasm-bindgen-test-runner
           cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js,libcrux-provider
 
