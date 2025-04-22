@@ -50,7 +50,6 @@ jobs:
         run: |
           sudo apt update && sudo apt install nodejs
           cargo install wasm-bindgen-cli
-          export RUSTFLAGS="--cfg getrandom_backend=\"wasm_js\""
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo/bin/wasm-bindgen-test-runner
           cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js
 
@@ -61,7 +60,7 @@ jobs:
           cargo install wasm-bindgen-cli
           export RUSTFLAGS="--cfg getrandom_backend=\"wasm_js\""
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo/bin/wasm-bindgen-test-runner
-          cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js,libcrux-provider
+          cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js,libcrux-provider,libcrux-provider-js
 
 
       - name: Test with Fork Resolution helpers

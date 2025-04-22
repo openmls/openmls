@@ -67,13 +67,18 @@ sqlite-provider = [
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 js = [
-  "dep:getrandom",
   "dep:getrandom_old",
   "dep:fluvio-wasm-timer",
 
-  # enable randomness source features for both versions of getrandom
+  # enable randomness source
   "getrandom_old/js",
+]
+
+libcrux-provider-js = [
+  "dep:getrandom",
+  # enable randomness source
   "getrandom/wasm_js",
+  
 ]
 fork-resolution = []
 
@@ -101,10 +106,7 @@ openmls = { path = ".", features = [
   "libcrux-provider",
 ] }
 
-[target.'cfg(target_arch = "wasm32")'.dev_dependencies]
-openmls = { path = ".", features = ["test-utils", "libcrux-provider"] }
-
-[target.'cfg(all(target_arch = "x86", target_os = "windows"))'.dev-dependencies]
+[target.'cfg(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows")))'.dev-dependencies]
 openmls = { path = ".", features = ["test-utils"] }
 
 [[bench]]
