@@ -36,6 +36,8 @@ jobs:
           targets: i686-pc-windows-msvc, i686-unknown-linux-gnu, wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - uses: baptiste0928/cargo-install@v3
+        # we only test wasm bindings on ubuntu-latest
+        if: matrix.os == 'ubuntu-latest'
         with:
           crate: wasm-bindgen-cli
 
