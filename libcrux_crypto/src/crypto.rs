@@ -136,7 +136,7 @@ impl OpenMlsCrypto for CryptoProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        // The only supported AeadType (as of openmls_traits v0.3.0) is ChaCha20Poly1305
+        // The only supported AeadType (as of openmls_traits v0.4.0) is ChaCha20Poly1305
         if !matches!(alg, AeadType::ChaCha20Poly1305) {
             return Err(CryptoError::UnsupportedAeadAlgorithm);
         }
