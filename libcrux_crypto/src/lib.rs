@@ -1,4 +1,4 @@
-use openmls_traits::OpenMlsProvider;
+use openmls_traits::{types::CryptoError, OpenMlsProvider};
 
 mod crypto;
 mod rand;
@@ -8,11 +8,24 @@ pub use rand::RandError;
 pub use rand::RandProvider;
 
 /// The libcrux-backed provider for OpenMLS.
-#[derive(Default)]
 pub struct Provider {
     crypto: crypto::CryptoProvider,
     rand: rand::RandProvider,
     storage: openmls_memory_storage::MemoryStorage,
+}
+
+impl Provider {
+    pub fn new() -> Result<Self, CryptoError> {
+        let crypto = crypto::CryptoProvider::new()?;
+        let rand = todo!();
+        let storage = openmls_memory_storage::MemoryStorage::default();
+
+        Ok(Self {
+            crypto,
+            rand,
+            storage,
+        })
+    }
 }
 
 impl OpenMlsProvider for Provider {

@@ -18,12 +18,14 @@ pub struct CryptoProvider {
     rng: Mutex<ReseedingRng<ChaCha20Core, OsRng>>,
 }
 
-impl Default for CryptoProvider {
-    fn default() -> Self {
-        let reseeding_rng = ReseedingRng::<ChaCha20Core, _>::new(0x100000000, OsRng).unwrap();
-        Self {
+impl CryptoProvider {
+    pub fn new() -> Result<Self, CryptoError> {
+        let reseeding_rng = ReseedingRng::<ChaCha20Core, _>::new(0x100000000, OsRng)
+            .map_err(|_| CryptoError::InsufficientRandomness)?;
+
+        Ok(Self {
             rng: Mutex::new(reseeding_rng),
-        }
+        })
     }
 }
 
