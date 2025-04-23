@@ -24,4 +24,4 @@ In addition to clearing the staged commit, the application may also clear the pr
 ```
 
 ### Self Update
-The storage provider may also be used by the application to store signature keypairs. For self updates that update a signature keypair, if the application has stored a new keypair in the storage provider at this point, it can be deleted from the storage provider here.
+The storage provider may also be used by the application to store signature keypairs. For self updates that update a signature keypair for the client, if the application has stored a new keypair in the storage provider at this point, it can be deleted from the storage provider here.
