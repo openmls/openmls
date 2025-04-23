@@ -10,11 +10,9 @@ use openmls_traits::types::SignatureScheme;
 fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
-    provider: &impl openmls::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(provider.storage()).unwrap();
 
     (
         CredentialWithKey {
@@ -356,11 +354,8 @@ fn discard_commit_psk() {
 #[openmls_test]
 fn discard_commit_external_join() {
     let bob_provider = &Provider::default();
-    let (bob_credential, bob_signer) = generate_credential(
-        "bob".into(),
-        ciphersuite.signature_algorithm(),
-        bob_provider,
-    );
+    let (bob_credential, bob_signer) =
+        generate_credential("bob".into(), ciphersuite.signature_algorithm());
 
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -478,11 +473,8 @@ fn discard_commit_custom_proposal() {
 
     let group_id = GroupId::from_slice(b"Test Group");
     // Generate credentials with keys
-    let (alice_credential, alice_signer) = generate_credential(
-        "alice".into(),
-        ciphersuite.signature_algorithm(),
-        alice_provider,
-    );
+    let (alice_credential, alice_signer) =
+        generate_credential("alice".into(), ciphersuite.signature_algorithm());
 
     let custom_proposal_type = 0;
 
