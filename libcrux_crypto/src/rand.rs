@@ -1,12 +1,8 @@
-use std::sync::RwLock;
-
-use libcrux::drbg::Drbg;
 use openmls_traits::random::OpenMlsRand;
 
-/// The libcrux-backed randomness provider for OpenMLS
-pub struct RandProvider {
-    drbg: RwLock<Drbg>,
-}
+use rand::TryRngCore;
+
+use crate::CryptoProvider;
 
 /// An error occurred when trying to generate a random value
 #[derive(Clone, Debug, PartialEq)]
@@ -28,47 +24,30 @@ impl std::fmt::Display for RandError {
         }
     }
 }
-
-impl From<libcrux::drbg::Error> for RandError {
-    fn from(value: libcrux::drbg::Error) -> Self {
-        match value {
-            libcrux::drbg::Error::InvalidInput => RandError::InvalidInput,
-            libcrux::drbg::Error::UnsupportedAlgorithm => RandError::UnsupportedAlgorithm,
-            libcrux::drbg::Error::UnableToGenerate => RandError::UnableToGenerate,
-        }
-    }
-}
-
 impl std::error::Error for RandError {}
 
-impl OpenMlsRand for RandProvider {
+impl OpenMlsRand for CryptoProvider {
     type Error = RandError;
 
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
-        self.drbg
-            .write()
-            .unwrap()
-            .generate_array()
-            .map_err(<RandError as From<libcrux::drbg::Error>>::from)
+        let mut rng = self.rng.lock().map_err(|_| RandError::UnableToGenerate)?;
+
+        let mut output = [0u8; N];
+
+        rng.try_fill_bytes(&mut output)
+            .map_err(|_| RandError::UnableToGenerate)?;
+
+        Ok(output)
     }
 
     fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error> {
-        self.drbg
-            .write()
-            .unwrap()
-            .generate_vec(len)
-            .map_err(<RandError as From<libcrux::drbg::Error>>::from)
-    }
-}
+        let mut rng = self.rng.lock().map_err(|_| RandError::UnableToGenerate)?;
 
-impl Default for RandProvider {
-    fn default() -> Self {
-        let mut seed = [0u8; 256];
-        getrandom::getrandom(&mut seed).unwrap();
-        Self {
-            drbg: RwLock::new(
-                Drbg::new_with_entropy(libcrux::digest::Algorithm::Sha256, &seed).unwrap(),
-            ),
-        }
+        let mut output = vec![0u8; len];
+
+        rng.try_fill_bytes(&mut output)
+            .map_err(|_| RandError::UnableToGenerate)?;
+
+        Ok(output)
     }
 }
