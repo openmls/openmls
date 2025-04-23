@@ -14,6 +14,9 @@ pub struct Provider {
 }
 
 impl Provider {
+    /// Instantiate a libcrux-based Provider
+    /// This method uses non-panicking instantiation of the underlying CryptoProvider,
+    /// and should be preferred to `Provider::default()`.
     pub fn new() -> Result<Self, CryptoError> {
         let crypto = crypto::CryptoProvider::new()?;
         let storage = openmls_memory_storage::MemoryStorage::default();

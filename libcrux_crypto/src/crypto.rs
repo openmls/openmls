@@ -19,6 +19,7 @@ pub struct CryptoProvider {
 }
 
 impl CryptoProvider {
+    /// Instantiate a libcrux-based CryptoProvider
     pub fn new() -> Result<Self, CryptoError> {
         let reseeding_rng = ReseedingRng::<ChaCha20Core, _>::new(0x100000000, OsRng)
             .map_err(|_| CryptoError::InsufficientRandomness)?;
