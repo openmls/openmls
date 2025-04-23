@@ -11,7 +11,7 @@ readme = "../README.md"
 
 [dependencies]
 libcrux-chacha20poly1305 = { version = "0.0.2" }
-libcrux-ed25519 = { version = "0.0.2", features=["rand"] }
+libcrux-ed25519 = { version = "0.0.2", features = ["rand"] }
 libcrux-hkdf = { version = "0.0.2" }
 libcrux-sha2 = { version = "0.0.2" }
 openmls_traits = { version = "0.4.0", path = "../traits" }
@@ -19,6 +19,9 @@ openmls_memory_storage = { version = "0.3.0", path = "../memory_storage" }
 rand = "0.9"
 tls_codec.workspace = true
 rand_chacha = "0.9"
-hpke_rs = { version = "0.2.1-alpha.1", git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs" , features=["hazmat", "serialization"] }
+hpke_rs = { version = "0.2.1-alpha.1", git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs", features = [
+  "hazmat",
+  "serialization",
+] }
 hpke_rs_crypto = { version = "0.3.0-alpha.1", git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs-crypto" }
 hpke_rs_libcrux = { version = "0.2.0-alpha.1", git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs-libcrux" }
