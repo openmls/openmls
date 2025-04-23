@@ -138,7 +138,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         not(all(target_arch = "x86", target_os = "windows"))
     ))]
     {
-        let libcrux = openmls_libcrux_crypto::Provider::new().unwrap();
+        let libcrux = openmls_libcrux_crypto::Provider::default();
         let libcrux_ciphersuites = libcrux.crypto().supported_ciphersuites();
 
         for ciphersuite in libcrux_ciphersuites {

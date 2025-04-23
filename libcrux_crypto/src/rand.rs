@@ -1,14 +1,8 @@
-use std::sync::RwLock;
-
 use openmls_traits::random::OpenMlsRand;
 
-use rand::{rngs::OsRng, rngs::ReseedingRng, TryRngCore};
-use rand_chacha::ChaCha20Core;
+use rand::TryRngCore;
 
-/// The randomness provider for the libcrux-backed OpenMLS provider
-pub struct RandProvider {
-    rng: RwLock<ReseedingRng<ChaCha20Core, OsRng>>,
-}
+use crate::CryptoProvider;
 
 /// An error occurred when trying to generate a random value
 #[derive(Clone, Debug, PartialEq)]
@@ -32,11 +26,11 @@ impl std::fmt::Display for RandError {
 }
 impl std::error::Error for RandError {}
 
-impl OpenMlsRand for RandProvider {
+impl OpenMlsRand for CryptoProvider {
     type Error = RandError;
 
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
-        let mut rng = self.rng.write().unwrap();
+        let mut rng = self.rng.lock().map_err(|_| RandError::UnableToGenerate)?;
 
         let mut output = [0u8; N];
 
@@ -47,7 +41,7 @@ impl OpenMlsRand for RandProvider {
     }
 
     fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error> {
-        let mut rng = self.rng.write().unwrap();
+        let mut rng = self.rng.lock().map_err(|_| RandError::UnableToGenerate)?;
 
         let mut output = vec![0u8; len];
 
@@ -55,14 +49,5 @@ impl OpenMlsRand for RandProvider {
             .map_err(|_| RandError::UnableToGenerate)?;
 
         Ok(output)
-    }
-}
-
-impl Default for RandProvider {
-    fn default() -> Self {
-        let reseeding_rng = ReseedingRng::<ChaCha20Core, _>::new(0x100000000, OsRng).unwrap();
-        Self {
-            rng: RwLock::new(reseeding_rng),
-        }
     }
 }

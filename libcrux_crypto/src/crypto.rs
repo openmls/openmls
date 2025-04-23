@@ -15,7 +15,7 @@ use tls_codec::SecretVLBytes;
 
 /// The libcrux-backed cryptography provider for OpenMLS
 pub struct CryptoProvider {
-    rng: Mutex<ReseedingRng<ChaCha20Core, OsRng>>,
+    pub(super) rng: Mutex<ReseedingRng<ChaCha20Core, OsRng>>,
 }
 
 impl CryptoProvider {
