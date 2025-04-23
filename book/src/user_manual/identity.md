@@ -32,4 +32,4 @@ OpenMLS provides a simple implementation of [`BasicCredential`](https://github.c
 {{#include ../../../openmls/tests/book_code.rs:create_credential_keys}}
 ```
 
-All functions and structs related to credentials can be found in the [`credentials`](https://docs.rs/crate/openmls/latest/credentials/index.html) module.
+All functions and structs related to credentials can be found in the [`credentials`](https://docs.rs/openmls/latest/openmls/credentials/index.html) module.
