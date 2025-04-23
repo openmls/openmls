@@ -229,7 +229,7 @@ Note that the link between the credential and its signature keys depends on the 
 For example, the link between the <code>BasicCredential</code>'s and its keys is not defined by MLS.</p>
 <p>A credential is always embedded in a leaf node, which is ultimately used to represent a client in a group and signed by the private key corresponding to the signature public key of the leaf node.
 Clients can decide to use the same credential in multiple leaf nodes (and thus multiple groups) or to use distinct credentials per group.</p>
-<p>The binding between a given credential and owning client's identity is, in turn, authenticated by the Authentication Service, an abstract authentication layer defined by the <a href="https://github.com/mlswg/mls-architecture">MLS architecture document</a>.
+<p>The binding between a given credential and owning client's identity is, in turn, authenticated by the Authentication Service, an abstract authentication layer defined by the <a href="https://www.rfc-editor.org/rfc/rfc9750.html">MLS architecture document</a>.
 Note that the implementation of the Authentication Service and, thus, the details of how the binding is authenticated are not specified by MLS.</p>
 <h2 id="creating-and-using-credentials"><a class="header" href="#creating-and-using-credentials">Creating and using credentials</a></h2>
 <p>OpenMLS allows clients to create <code>Credentials</code>.
@@ -241,10 +241,10 @@ Thus, to create a fresh <code>Credential</code>, the following inputs are requir
 </ul>
 <pre><code class="language-rust no_run noplayground">    let credential = BasicCredential::new(identity);</code></pre>
 <p>After creating the credential bundle, clients should create keys for it.
-OpenMLS provides a simple implementation of <a href="https://github.com/openmls/openmls/tree/main/basic-credential"><code>BasicCredential</code></a> for tests and to demonstrate how to use credentials.</p>
+OpenMLS provides a simple implementation of <a href="https://github.com/openmls/openmls/tree/main/basic_credential"><code>BasicCredential</code></a> for tests and to demonstrate how to use credentials.</p>
 <pre><code class="language-rust no_run noplayground">    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.storage()).unwrap();</code></pre>
-<p>All functions and structs related to credentials can be found in the <a href="https://docs.rs/crate/openmls/latest/credentials/index.html"><code>credentials</code></a> module.</p>
+<p>All functions and structs related to credentials can be found in the <a href="https://docs.rs/openmls/latest/openmls/credentials/index.html"><code>credentials</code></a> module.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="key-packages"><a class="header" href="#key-packages">Key packages</a></h1>
 <p>To enable the asynchronous establishment of groups through pre-publishing key material, as well as to represent clients in the group, MLS relies on key packages. Key packages hold several pieces of information:</p>
 <ul>
