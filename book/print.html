@@ -1065,6 +1065,36 @@ as well as the <code>GroupId</code> of the group to be loaded. For this to work,
 must have been written to the provider previously.</p>
 <h2 id="forward-secrecy-considerations"><a class="header" href="#forward-secrecy-considerations">Forward-Secrecy Considerations</a></h2>
 <p>OpenMLS uses the <code>StorageProvider</code> to store sensitive key material. To achieve forward-secrecy (i.e. to prevent an adversary from decrypting messages sent in the past if a client is compromised), OpenMLS frequently deletes previously used key material through calls to the <code>StorageProvider</code>. <code>StorageProvider</code> implementations must thus take care to ensure that values deleted through any of the <code>delete_</code> functions of the trait are irrevocably deleted and that no copies are kept.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="discarding-commits"><a class="header" href="#discarding-commits">Discarding commits</a></h1>
+<p>The delivery service may reject a commit sent by a client. In this case, the application needs to ensure that the local state remains the same as it was before the commit was staged.</p>
+<h2 id="cleaning-up-local-state-after-discarded-commits"><a class="header" href="#cleaning-up-local-state-after-discarded-commits">Cleaning up local state after discarded commits</a></h2>
+<p>Generally, if a commit is discarded (e.g. due to being rejected by the Delivery Service), it can be cleaned up by the application in the following way:</p>
+<pre><code class="language-rust no_run noplayground">    // clear pending commit and reset state
+    alice_group
+        .clear_pending_commit(alice_provider.storage())
+        .unwrap();</code></pre>
+<p>In general, the application only needs to complete the cleanup above in order to fully restore the local state to the way it was before the commit was staged.</p>
+<p>In several other cases, additional cleanup may need to be done.</p>
+<h3 id="externaljoin"><a class="header" href="#externaljoin">ExternalJoin</a></h3>
+<p>If a staged commit containing an external join proposal must be discarded, the entire <code>MlsGroup</code> instance should be discarded by the application.</p>
+<pre><code class="language-rust no_run noplayground">    // delete the `MlsGroup`
+    bob_group
+        .delete(bob_provider.storage())
+        .expect("Could not delete the group");</code></pre>
+<h3 id="presharedkey"><a class="header" href="#presharedkey">PreSharedKey</a></h3>
+<p>In addition to clearing the staged commit, the application may also clear the pre-shared key from storage.</p>
+<pre><code class="language-rust no_run noplayground">    // clear the psk that was stored earlier, if necessary
+    alice_provider
+        .storage()
+        .delete_psk(&amp;psk)
+        .expect("Could not delete stored psk");
+
+    // clear pending commit and reset state
+    alice_group
+        .clear_pending_commit(alice_provider.storage())
+        .expect("Could not clear pending commit");</code></pre>
+<h3 id="self-update"><a class="header" href="#self-update">Self Update</a></h3>
+<p>The storage provider may also be used by the application to store signature keypairs. For self updates that update a signature keypair for the client, if the application has stored a new keypair in the storage provider at this point, it can be deleted from the storage provider here.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="credential-validation"><a class="header" href="#credential-validation">Credential validation</a></h1>
 <p>Credential validation is a process that allows a member to verify the validity
 of the credentials of other members in the group. The process is described in
