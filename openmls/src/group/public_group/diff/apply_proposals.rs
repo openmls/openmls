@@ -141,7 +141,6 @@ impl PublicGroupDiff<'_> {
             let leaf_index = self
                 .diff
                 .add_leaf(leaf_node.clone())
-                // TODO #810
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             invitation_list.push((leaf_index, add_proposal.clone()))
         }

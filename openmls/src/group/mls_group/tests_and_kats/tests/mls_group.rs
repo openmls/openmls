@@ -226,8 +226,6 @@ fn remover() {
     charlie_group
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
-
-    // TODO #524: Check that Alice removed Bob
 }
 
 #[openmls_test]

@@ -164,7 +164,6 @@ impl LeafNodeParametersBuilder {
 ///     opaque signature<V>;
 /// } LeafNode;
 /// ```
-// TODO(#1242): Do not derive `TlsDeserialize`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct LeafNode {
     payload: LeafNodePayload,
@@ -558,6 +557,7 @@ struct LeafNodePayload {
     extensions: Extensions,
 }
 
+/// The source of the `LeafNode`.
 #[derive(
     Debug,
     Clone,
@@ -572,9 +572,12 @@ struct LeafNodePayload {
 )]
 #[repr(u8)]
 pub enum LeafNodeSource {
+    /// The leaf node was added to the group as part of a key package.
     #[tls_codec(discriminant = 1)]
     KeyPackage(Lifetime),
+    /// The leaf node was added through an Update proposal.
     Update,
+    /// The leaf node was added via a Commit.
     Commit(ParentHash),
 }
 
