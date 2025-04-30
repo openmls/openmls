@@ -31,7 +31,7 @@ use crate::{
 use super::{
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
-    updates::SignerBundle,
+    updates::NewSignerBundle,
     AddProposal, CreateCommitResult, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
     MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
@@ -290,7 +290,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         signer: &S,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
-        self.build_internal(rand, crypto, signer, None::<SignerBundle<'_, S>>, f)
+        self.build_internal(rand, crypto, signer, None::<NewSignerBundle<'_, S>>, f)
     }
 
     /// Just like `build`, this function validates the inputs and builds the
@@ -305,7 +305,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         old_signer: &impl Signer,
-        new_signer: SignerBundle<'_, S>,
+        new_signer: NewSignerBundle<'_, S>,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
         self.build_internal(rand, crypto, old_signer, Some(new_signer), f)
@@ -316,7 +316,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         old_signer: &impl Signer,
-        new_signer: Option<SignerBundle<'_, S>>,
+        new_signer: Option<NewSignerBundle<'_, S>>,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
         let ciphersuite = self.group.ciphersuite();

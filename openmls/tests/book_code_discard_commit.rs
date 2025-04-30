@@ -170,7 +170,7 @@ fn discard_commit_update_with_new_signer() {
     // Alice updates own credential
     // HPKE encryption key is also updated by the commit
 
-    let signer_bundle = SignerBundle {
+    let signer_bundle = NewSignerBundle {
         signer: &new_signer,
         credential_with_key: new_credential,
     };

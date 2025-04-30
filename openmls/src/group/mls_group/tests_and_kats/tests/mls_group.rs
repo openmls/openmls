@@ -12,7 +12,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     credentials::test_utils::new_credential,
     framing::*,
-    group::{errors::*, mls_group::updates::SignerBundle, *},
+    group::{errors::*, mls_group::updates::NewSignerBundle, *},
     key_packages::*,
     messages::{
         group_info::GroupInfoTBS, proposals::*, EncryptedGroupSecrets, GroupSecretsError, Welcome,
@@ -2906,7 +2906,7 @@ fn signature_key_rotation(
         .with_credential_with_key(old_credential_with_key)
         .build();
 
-    let new_signer = SignerBundle {
+    let new_signer = NewSignerBundle {
         signer: &new_pre_group_state.signer,
         credential_with_key: new_pre_group_state.credential_with_key,
     };
