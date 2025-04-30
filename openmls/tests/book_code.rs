@@ -1692,3 +1692,42 @@ fn commit_builder() {
     // ANCHOR_END: alice_adds_bob_with_commit_builder
     _ = (mls_message_out, welcome, group_info)
 }
+
+#[openmls_test]
+fn new_signer() {
+    // Generate credentials with keys
+    let (alice_old_credential, alice_old_signature_keys) =
+        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    let mut alice_group = MlsGroup::new(
+        provider,
+        &alice_old_signature_keys,
+        &MlsGroupCreateConfig::default(),
+        alice_old_credential.clone(),
+    )
+    .expect("An unexpected error occurred.");
+
+    let (alice_new_credential, alice_new_signature_keys) =
+        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    // === Alice rotates her signature key ===
+    // ANCHOR: alice_rotates_signature_key
+
+    let new_signer_bundle = NewSignerBundle {
+        signer: &alice_new_signature_keys,
+        credential_with_key: alice_new_credential,
+    };
+
+    let message_bundle = alice_group
+        .self_update_with_new_signer(
+            provider,
+            &alice_old_signature_keys,
+            new_signer_bundle,
+            LeafNodeParameters::default(),
+        )
+        .unwrap();
+
+    let (mls_message_out, welcome, group_info) = message_bundle.into_contents();
+    // ANCHOR_END: alice_rotates_signature_key
+    _ = (mls_message_out, welcome, group_info)
+}
