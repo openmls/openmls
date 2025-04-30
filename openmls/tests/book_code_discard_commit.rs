@@ -170,15 +170,16 @@ fn discard_commit_update_with_new_signer() {
     // Alice updates own credential
     // HPKE encryption key is also updated by the commit
 
-    let leaf_node_parameters = LeafNodeParameters::builder()
-        .with_credential_with_key(new_credential)
-        .build();
+    let signer_bundle = SignerBundle {
+        signer: &new_signer,
+        credential_with_key: new_credential,
+    };
     let _commit_message_bundle = alice_group
         .self_update_with_new_signer(
             alice_provider,
             old_signer,
-            &new_signer,
-            leaf_node_parameters,
+            signer_bundle,
+            LeafNodeParameters::default(),
         )
         .expect("failed to update own leaf node");
 

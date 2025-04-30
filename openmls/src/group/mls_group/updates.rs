@@ -2,9 +2,15 @@ use commit_builder::CommitMessageBundle;
 use errors::{ProposeSelfUpdateError, SelfUpdateError};
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
-use crate::{storage::OpenMlsProvider, treesync::LeafNodeParameters};
+use crate::{prelude::CredentialWithKey, storage::OpenMlsProvider, treesync::LeafNodeParameters};
 
 use super::*;
+
+#[derive(Debug, Clone)]
+pub struct SignerBundle<'a, S: Signer> {
+    pub signer: &'a S,
+    pub credential_with_key: CredentialWithKey,
+}
 
 impl MlsGroup {
     /// Updates the own leaf node. The application can choose to update the
@@ -59,11 +65,11 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn self_update_with_new_signer<Provider: OpenMlsProvider>(
+    pub fn self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
         old_signer: &impl Signer,
-        new_signer: &impl Signer,
+        new_signer: SignerBundle<'_, S>,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<CommitMessageBundle, SelfUpdateError<Provider::StorageError>> {
         self.is_operational()?;

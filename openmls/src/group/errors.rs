@@ -248,6 +248,9 @@ pub enum CreateCommitError {
     /// See [`TreeSyncAddLeaf`] for more details.
     #[error(transparent)]
     TreeSyncAddLeaf(#[from] TreeSyncAddLeaf),
+    /// Invalid [`LeafNodeParameters`]. `[CredentialWithKey]` can't be set with new signer.
+    #[error("Invalid LeafNodeParameters. CredentialWithKey can't be set with new signer.")]
+    InvalidLeafNodeParameters,
 }
 
 /// Stage commit error

@@ -31,6 +31,7 @@ use crate::{
 use super::{
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
+    updates::SignerBundle,
     AddProposal, CreateCommitResult, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
     MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
@@ -289,7 +290,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         signer: &S,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
-        self.build_internal(rand, crypto, signer, None::<&S>, f)
+        self.build_internal(rand, crypto, signer, None::<SignerBundle<'_, S>>, f)
     }
 
     /// Just like `build`, this function validates the inputs and builds the
@@ -299,28 +300,28 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
     ///
     /// In contrast to `build`, this function can be used to create commits that
     /// rotate the own leaf node's signature key.
-    pub fn build_with_new_signer(
+    pub fn build_with_new_signer<S: Signer>(
         self,
         rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         old_signer: &impl Signer,
-        new_signer: &impl Signer,
+        new_signer: SignerBundle<'_, S>,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
         self.build_internal(rand, crypto, old_signer, Some(new_signer), f)
     }
 
-    fn build_internal(
+    fn build_internal<S: Signer>(
         self,
         rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         old_signer: &impl Signer,
-        new_signer: Option<&impl Signer>,
+        new_signer: Option<SignerBundle<'_, S>>,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
         let ciphersuite = self.group.ciphersuite();
         let sender = Sender::build_member(self.group.own_leaf_index());
-        let (cur_stage, builder) = self.take_stage();
+        let (mut cur_stage, builder) = self.take_stage();
         let psks = cur_stage.psks;
 
         // put the pending and uniform proposals into a uniform shape,
@@ -438,6 +439,16 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 // group context by updating the epoch and computing the new
                 // tree hash.
                 if let Some(new_signer) = new_signer {
+                    if let Some(credential_with_key) =
+                        cur_stage.leaf_node_parameters.credential_with_key()
+                    {
+                        if credential_with_key != &new_signer.credential_with_key {
+                            return Err(CreateCommitError::InvalidLeafNodeParameters);
+                        }
+                    }
+                    cur_stage.leaf_node_parameters.set_credential_with_key(
+                        new_signer.credential_with_key,
+                    );
                     diff.compute_path(
                         rand,
                         crypto,
@@ -445,7 +456,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                         apply_proposals_values.exclusion_list(),
                         &CommitType::Member,
                         &cur_stage.leaf_node_parameters,
-                        new_signer,
+                        new_signer.signer,
                         apply_proposals_values.extensions.clone()
                     )?
                 } else {
