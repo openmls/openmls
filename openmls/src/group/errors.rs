@@ -17,6 +17,9 @@ use crate::{
     treesync::errors::*,
 };
 
+#[cfg(doc)]
+use crate::treesync::LeafNodeParameters;
+
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum WelcomeError<StorageError> {

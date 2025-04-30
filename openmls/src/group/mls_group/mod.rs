@@ -70,8 +70,6 @@ pub(crate) mod proposal;
 pub(crate) mod proposal_store;
 pub(crate) mod staged_commit;
 
-pub use updates::NewSignerBundle;
-
 // Tests
 #[cfg(test)]
 pub(crate) mod tests_and_kats;

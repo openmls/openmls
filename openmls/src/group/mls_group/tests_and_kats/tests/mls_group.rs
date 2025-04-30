@@ -10,9 +10,9 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
-    credentials::test_utils::new_credential,
+    credentials::{test_utils::new_credential, NewSignerBundle},
     framing::*,
-    group::{errors::*, mls_group::updates::NewSignerBundle, *},
+    group::{errors::*, *},
     key_packages::*,
     messages::{
         group_info::GroupInfoTBS, proposals::*, EncryptedGroupSecrets, GroupSecretsError, Welcome,

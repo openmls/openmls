@@ -26,6 +26,7 @@
 
 use std::io::{Read, Write};
 
+use openmls_traits::signatures::Signer;
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, DeserializeBytes, Error, Serialize as TlsSerializeTrait,
@@ -288,6 +289,17 @@ impl TryFrom<Credential> for BasicCredential {
             _ => Err(errors::BasicCredentialError::WrongCredentialType),
         }
     }
+}
+
+/// Bundle consisting of a [`Signer`] and a [`CredentialWithKey`] to be used to
+/// update the signature key in an [`MlsGroup`]. The public key and credential
+/// in `credential_with_key` MUST match the signature key exposed by `signer`.
+#[derive(Debug, Clone)]
+pub struct NewSignerBundle<'a, S: Signer> {
+    /// The signer to be used with the group after the update.
+    pub signer: &'a S,
+    /// The credential and public key corresponding to the `signer`.
+    pub credential_with_key: CredentialWithKey,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

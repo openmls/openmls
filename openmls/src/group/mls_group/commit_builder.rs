@@ -19,7 +19,7 @@ use crate::{
         group_info::{GroupInfo, GroupInfoTBS},
         Commit, Welcome,
     },
-    prelude::{LeafNodeParameters, LibraryError},
+    prelude::{LeafNodeParameters, LibraryError, NewSignerBundle},
     schedule::{
         psk::{load_psks, PskSecret},
         JoinerSecret, KeySchedule, PreSharedKeyId,
@@ -31,7 +31,6 @@ use crate::{
 use super::{
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
-    updates::NewSignerBundle,
     AddProposal, CreateCommitResult, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
     MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
