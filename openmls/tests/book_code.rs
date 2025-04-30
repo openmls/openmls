@@ -1699,10 +1699,13 @@ fn new_signer() {
     let (alice_old_credential, alice_old_signature_keys) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
 
+    let config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .build();
     let mut alice_group = MlsGroup::new(
         provider,
         &alice_old_signature_keys,
-        &MlsGroupCreateConfig::default(),
+        &config,
         alice_old_credential.clone(),
     )
     .expect("An unexpected error occurred.");
