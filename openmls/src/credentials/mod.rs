@@ -39,6 +39,9 @@ mod tests;
 use crate::{ciphersuite::SignaturePublicKey, group::Member, treesync::LeafNode};
 use errors::*;
 
+#[cfg(doc)]
+use crate::group::MlsGroup;
+
 // Public
 pub mod errors;
 
