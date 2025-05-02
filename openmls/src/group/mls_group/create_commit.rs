@@ -115,7 +115,6 @@ impl MlsGroup {
             }
         })?;
 
-        // TODO: #581 Filter proposals by support
         // 11.2:
         // Proposals with a non-default proposal type MUST NOT be included in a commit
         // unless the proposal type is supported by all the members of the group that

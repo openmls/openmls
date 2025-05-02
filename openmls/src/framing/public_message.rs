@@ -98,16 +98,6 @@ impl PublicMessage {
     pub(crate) fn is_handshake_message(&self) -> bool {
         self.content_type().is_handshake_message()
     }
-    // TODO: #727 - Remove if not needed.
-    // #[cfg(test)]
-    // pub(super) fn set_signature(&mut self, signature: Signature) {
-    //     self.signature = signature;
-    // }
-
-    // #[cfg(test)]
-    // pub(super) fn set_membership_tag_test(&mut self, tag: MembershipTag) {
-    //     self.membership_tag = Some(tag);
-    // }
 }
 
 impl From<AuthenticatedContent> for PublicMessage {
@@ -161,14 +151,6 @@ impl PublicMessage {
     pub(crate) fn set_membership_tag_test(&mut self, membership_tag: MembershipTag) {
         self.membership_tag = Some(membership_tag);
     }
-
-    // TODO: #727 - Remove if not needed.
-    // #[cfg(test)]
-    // pub(crate) fn invalidate_signature(&mut self) {
-    //     let mut modified_signature = self.signature().as_slice().to_vec();
-    //     modified_signature[0] ^= 0xFF;
-    //     self.signature.modify(&modified_signature);
-    // }
 }
 
 #[cfg(test)]
