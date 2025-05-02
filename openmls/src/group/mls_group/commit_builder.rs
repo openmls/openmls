@@ -22,7 +22,7 @@ use crate::{
     prelude::{LeafNodeParameters, LibraryError},
     schedule::{
         psk::{load_psks, PskSecret},
-        ApplicationExportSecret, JoinerSecret, KeySchedule, PreSharedKeyId,
+        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId,
     },
     storage::{OpenMlsProvider, StorageProvider},
     versions::ProtocolVersion,
@@ -34,6 +34,9 @@ use super::{
     AddProposal, CreateCommitResult, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
     MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
+
+#[cfg(feature = "extensions-draft")]
+use crate::schedule::ApplicationExportSecret;
 
 /// This stage is for populating the builder.
 pub struct Initial {
@@ -521,7 +524,11 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         key_schedule
             .add_context(crypto, &serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
-        let (provisional_epoch_secrets, application_exporter) = key_schedule
+        let EpochSecretsResult {
+            epoch_secrets: provisional_epoch_secrets,
+            #[cfg(feature = "extensions-draft")]
+            application_exporter,
+        } = key_schedule
             .epoch_secrets(crypto, builder.group.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
@@ -652,6 +659,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 welcome_option,
                 staged_commit,
                 group_info: group_info.filter(|_| use_ratchet_tree_extension),
+                #[cfg(feature = "extensions-draft")]
                 application_exporter,
             },
         }))
@@ -702,6 +710,7 @@ impl CommitBuilder<'_, Complete> {
             commit: mls_message,
             welcome: create_commit_result.welcome_option,
             group_info: create_commit_result.group_info,
+            #[cfg(feature = "extensions-draft")]
             application_export_secret: create_commit_result.application_exporter,
         })
     }
@@ -715,6 +724,7 @@ pub struct CommitMessageBundle {
     commit: MlsMessageOut,
     welcome: Option<Welcome>,
     group_info: Option<GroupInfo>,
+    #[cfg(feature = "extensions-draft")]
     application_export_secret: ApplicationExportSecret,
 }
 
@@ -725,13 +735,14 @@ impl CommitMessageBundle {
         commit: MlsMessageOut,
         welcome: Option<Welcome>,
         group_info: Option<GroupInfo>,
-        application_export_secret: ApplicationExportSecret,
+        #[cfg(feature = "extensions-draft")] application_export_secret: ApplicationExportSecret,
     ) -> Self {
         Self {
             version,
             commit,
             welcome,
             group_info,
+            #[cfg(feature = "extensions-draft")]
             application_export_secret,
         }
     }
@@ -746,6 +757,7 @@ impl CommitMessageBundle {
     }
 
     /// Gets the [`ApplicationExportSecret`].
+    #[cfg(feature = "extensions-draft")]
     pub fn application_export_secret(&self) -> &ApplicationExportSecret {
         &self.application_export_secret
     }

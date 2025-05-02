@@ -14,7 +14,7 @@ use crate::{
     prelude::LeafNodeIndex,
     schedule::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
-        InitSecret, JoinerSecret, KeySchedule, PreSharedKeyId,
+        EpochSecretsResult, InitSecret, JoinerSecret, KeySchedule, PreSharedKeyId,
     },
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
@@ -119,7 +119,11 @@ impl MlsGroupBuilder {
             .add_context(provider.crypto(), &serialized_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-        let (epoch_secrets, _application_exporter) = key_schedule
+        let EpochSecretsResult {
+            epoch_secrets,
+            #[cfg(feature = "extensions-draft")]
+                application_exporter: _,
+        } = key_schedule
             .epoch_secrets(provider.crypto(), ciphersuite)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 

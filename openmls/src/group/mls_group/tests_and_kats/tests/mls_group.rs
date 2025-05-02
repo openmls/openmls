@@ -266,6 +266,7 @@ fn export_secret() {
     )
 }
 
+#[cfg(feature = "extensions-draft")]
 #[openmls_test]
 fn application_export_secret() {
     let alice_party = CorePartyState::<Provider>::new("alice");

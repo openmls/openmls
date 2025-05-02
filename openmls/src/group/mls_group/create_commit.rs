@@ -1,7 +1,9 @@
 //! Defines the `CreateCommit` trait and its implementation for `MlsGroup`.
 
 use super::*;
-use crate::{credentials::CredentialWithKey, treesync::LeafNodeParameters};
+use crate::{
+    credentials::CredentialWithKey, schedule::EpochSecretsResult, treesync::LeafNodeParameters,
+};
 
 /// Can be used to denote the type of a commit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -257,7 +259,11 @@ impl MlsGroup {
         key_schedule
             .add_context(provider.crypto(), &serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
-        let (provisional_epoch_secrets, application_exporter) = key_schedule
+        let EpochSecretsResult {
+            epoch_secrets: provisional_epoch_secrets,
+            #[cfg(feature = "extensions-draft")]
+            application_exporter,
+        } = key_schedule
             .epoch_secrets(provider.crypto(), self.ciphersuite())
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
@@ -382,6 +388,7 @@ impl MlsGroup {
             welcome_option,
             staged_commit,
             group_info: group_info.filter(|_| self.configuration().use_ratchet_tree_extension),
+            #[cfg(feature = "extensions-draft")]
             application_exporter,
         })
     }

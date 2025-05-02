@@ -19,7 +19,10 @@
 //!     from the key schedule epoch and the `confirmed_transcript_hash` from the
 //!     decrypted GroupContext
 
-use crate::{test_utils::OpenMlsRustCrypto, treesync::node::encryption_keys::EncryptionPrivateKey};
+use crate::{
+    schedule::EpochSecretsResult, test_utils::OpenMlsRustCrypto,
+    treesync::node::encryption_keys::EncryptionPrivateKey,
+};
 use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
@@ -252,7 +255,11 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         .unwrap();
 
     let (_group_epoch_secrets, message_secrets) = {
-        let (epoch_secrets, _) = key_schedule
+        let EpochSecretsResult {
+            epoch_secrets,
+            #[cfg(feature = "extensions-draft")]
+                application_exporter: _,
+        } = key_schedule
             .epoch_secrets(provider.crypto(), welcome.ciphersuite())
             .unwrap();
 

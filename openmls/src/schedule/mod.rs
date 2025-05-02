@@ -410,6 +410,12 @@ pub(crate) struct KeySchedule {
     state: State,
 }
 
+pub(crate) struct EpochSecretsResult {
+    pub(crate) epoch_secrets: EpochSecrets,
+    #[cfg(feature = "extensions-draft")]
+    pub(crate) application_exporter: ApplicationExportSecret,
+}
+
 impl KeySchedule {
     /// Initialize the key schedule and return it.
     pub(crate) fn init(
@@ -506,7 +512,7 @@ impl KeySchedule {
         &mut self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-    ) -> Result<(EpochSecrets, ApplicationExportSecret), KeyScheduleError> {
+    ) -> Result<EpochSecretsResult, KeyScheduleError> {
         if self.state != State::Context || self.epoch_secret.is_none() {
             log::error!("Trying to derive the epoch secrets while not in the right state.");
             return Err(KeyScheduleError::InvalidState(ErrorState::Context));
@@ -519,11 +525,13 @@ impl KeySchedule {
             None => return Err(LibraryError::custom("state machine error").into()),
         };
 
-        let application_export_secret =
-            ApplicationExportSecret::new(crypto, ciphersuite, &epoch_secret)?;
-        let epoch_secrets = EpochSecrets::new(crypto, ciphersuite, epoch_secret)?;
+        let res = EpochSecretsResult {
+            #[cfg(feature = "extensions-draft")]
+            application_exporter: ApplicationExportSecret::new(crypto, ciphersuite, &epoch_secret)?,
+            epoch_secrets: EpochSecrets::new(crypto, ciphersuite, epoch_secret)?,
+        };
 
-        Ok((epoch_secrets, application_export_secret))
+        Ok(res)
     }
 }
 
@@ -752,12 +760,14 @@ impl ExporterSecret {
 /// A secret that we can derive secrets from, that are used outside of OpenMLS.
 /// In contrast to `[ExporterSecret]`, the `[ApplicationExportSecret]` is not
 /// persisted. It can be deleted after use to achieve forward secrecy.
+#[cfg(feature = "extensions-draft")]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 pub struct ApplicationExportSecret {
     secret: Secret,
 }
 
+#[cfg(feature = "extensions-draft")]
 impl ApplicationExportSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
     fn new(

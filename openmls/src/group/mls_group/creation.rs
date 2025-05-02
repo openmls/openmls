@@ -11,7 +11,7 @@ use crate::{
     },
     schedule::{
         psk::{store::ResumptionPskStore, PreSharedKeyId},
-        EpochSecrets, InitSecret,
+        EpochSecrets, EpochSecretsResult, InitSecret,
     },
     storage::OpenMlsProvider,
     treesync::{
@@ -386,7 +386,18 @@ impl ProcessedWelcome {
                 PublicTreeError::MalformedTree,
             ))?;
 
-        let (group_epoch_secrets, message_secrets, application_export_secret) = {
+        struct KeyScheduleResult {
+            group_epoch_secrets: GroupEpochSecrets,
+            message_secrets: MessageSecrets,
+            #[cfg(feature = "extensions-draft")]
+            application_exporter: ApplicationExportSecret,
+        }
+        let KeyScheduleResult {
+            group_epoch_secrets,
+            message_secrets,
+            #[cfg(feature = "extensions-draft")]
+                application_exporter: application_export_secret,
+        } = {
             let serialized_group_context = public_group
                 .group_context()
                 .tls_serialize_detached()
@@ -397,7 +408,11 @@ impl ProcessedWelcome {
                 .add_context(provider.crypto(), &serialized_group_context)
                 .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-            let (epoch_secrets, application_export_secret) = self
+            let EpochSecretsResult {
+                epoch_secrets,
+                #[cfg(feature = "extensions-draft")]
+                application_exporter,
+            } = self
                 .key_schedule
                 .epoch_secrets(provider.crypto(), self.ciphersuite)
                 .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
@@ -408,11 +423,12 @@ impl ProcessedWelcome {
                 own_leaf_index,
             );
 
-            (
+            KeyScheduleResult {
                 group_epoch_secrets,
                 message_secrets,
-                application_export_secret,
-            )
+                #[cfg(feature = "extensions-draft")]
+                application_exporter,
+            }
         };
 
         let confirmation_tag = message_secrets
@@ -473,6 +489,7 @@ impl ProcessedWelcome {
             group_epoch_secrets,
             own_leaf_index,
             message_secrets_store,
+            #[cfg(feature = "extensions-draft")]
             application_export_secret,
             resumption_psk_store: self.resumption_psk_store,
             verifiable_group_info: self.verifiable_group_info,
@@ -534,6 +551,7 @@ impl StagedWelcome {
     }
 
     /// Get the [`ApplicationExportSecret`] of this welcome.
+    #[cfg(feature = "extensions-draft")]
     pub fn application_export_secret(&self) -> &ApplicationExportSecret {
         &self.application_export_secret
     }
