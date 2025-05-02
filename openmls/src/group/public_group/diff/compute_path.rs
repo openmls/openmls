@@ -14,7 +14,7 @@ use crate::{
         config::CryptoConfig, core_group::create_commit_params::CommitType,
         errors::CreateCommitError,
     },
-    key_packages::{KeyPackage, KeyPackageCreationResult},
+    key_packages::{KeyPackage, KeyPackageSecretEncapsulation},
     schedule::CommitSecret,
     treesync::{
         node::{
@@ -58,7 +58,7 @@ impl PublicGroupDiff<'_> {
             // If this is an external commit we add a fresh leaf to the diff.
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
-            let KeyPackageCreationResult {
+            let KeyPackageSecretEncapsulation {
                 key_package,
                 encryption_keypair,
                 // The KeyPackage is immediately put into the group. No need for

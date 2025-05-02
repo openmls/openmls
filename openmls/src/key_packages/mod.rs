@@ -180,11 +180,12 @@ impl MlsEntity for KeyPackage {
     const ID: MlsEntityId = MlsEntityId::KeyPackage;
 }
 
-/// Helper struct containing the results of building a new [`KeyPackage`].
-pub(crate) struct KeyPackageCreationResult {
-    pub key_package: KeyPackage,
-    pub encryption_keypair: EncryptionKeyPair,
-    pub init_private_key: HpkePrivateKey,
+/// Helper struct containing a new [`KeyPackage`] and supporting data.
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct KeyPackageSecretEncapsulation {
+    pub(crate) key_package: KeyPackage,
+    pub(crate) encryption_keypair: EncryptionKeyPair,
+    pub(crate) init_private_key: HpkePrivateKey,
 }
 
 // Public `KeyPackage` functions.
@@ -207,7 +208,7 @@ impl KeyPackage {
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
-    ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
+    ) -> Result<KeyPackageSecretEncapsulation, KeyPackageNewError<KeyStore::Error>> {
         if config.ciphersuite.signature_algorithm() != signer.signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
@@ -231,7 +232,7 @@ impl KeyPackage {
             init_key.public,
         )?;
 
-        Ok(KeyPackageCreationResult {
+        Ok(KeyPackageSecretEncapsulation {
             key_package,
             encryption_keypair,
             init_private_key: init_key.private,
@@ -581,7 +582,7 @@ impl KeyPackageBuilder {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
-    ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
+    ) -> Result<KeyPackageSecretEncapsulation, KeyPackageNewError<KeyStore::Error>> {
         KeyPackage::create(
             config,
             backend,
@@ -602,7 +603,7 @@ impl KeyPackageBuilder {
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
-        let KeyPackageCreationResult {
+        let KeyPackageSecretEncapsulation {
             key_package,
             encryption_keypair,
             init_private_key,
