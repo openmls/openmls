@@ -181,11 +181,55 @@ impl MlsEntity for KeyPackage {
 }
 
 /// Helper struct containing a new [`KeyPackage`] and supporting data.
+///
+/// This is an opaque struct meant as a serialization helper: it contains all the fundamental
+/// data associated with a [`KeyPackage`] which otherwise is kept in the keystore.
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct KeyPackageSecretEncapsulation {
     pub(crate) key_package: KeyPackage,
     pub(crate) encryption_keypair: EncryptionKeyPair,
     pub(crate) init_private_key: HpkePrivateKey,
+}
+
+impl KeyPackageSecretEncapsulation {
+    /// Store this encapsulation's data in the keystore, returning the contained key package.
+    pub async fn store<KeyStore: OpenMlsKeyStore>(
+        self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
+        let Self {
+            key_package,
+            encryption_keypair,
+            init_private_key,
+        } = self;
+
+        // Store the key package in the key store with the hash reference as id
+        // for retrieval when parsing welcome messages.
+        backend
+            .key_store()
+            .store(
+                key_package.hash_ref(backend.crypto())?.as_slice(),
+                &key_package,
+            )
+            .await
+            .map_err(KeyPackageNewError::KeyStoreError)?;
+
+        // Store the encryption key pair in the key store.
+        encryption_keypair
+            .write_to_key_store(backend)
+            .await
+            .map_err(KeyPackageNewError::KeyStoreError)?;
+
+        // Store the private part of the init_key into the key store.
+        // The key is the public key.
+        backend
+            .key_store()
+            .store::<HpkePrivateKey>(key_package.hpke_init_key().as_slice(), &init_private_key)
+            .await
+            .map_err(KeyPackageNewError::KeyStoreError)?;
+
+        Ok(key_package)
+    }
 }
 
 // Public `KeyPackage` functions.
@@ -603,11 +647,7 @@ impl KeyPackageBuilder {
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
-        let KeyPackageSecretEncapsulation {
-            key_package,
-            encryption_keypair,
-            init_private_key,
-        } = KeyPackage::create(
+        let encapsulation = KeyPackage::create(
             config,
             backend,
             signer,
@@ -618,32 +658,7 @@ impl KeyPackageBuilder {
             self.leaf_node_extensions.unwrap_or_default(),
         )?;
 
-        // Store the key package in the key store with the hash reference as id
-        // for retrieval when parsing welcome messages.
-        backend
-            .key_store()
-            .store(
-                key_package.hash_ref(backend.crypto())?.as_slice(),
-                &key_package,
-            )
-            .await
-            .map_err(KeyPackageNewError::KeyStoreError)?;
-
-        // Store the encryption key pair in the key store.
-        encryption_keypair
-            .write_to_key_store(backend)
-            .await
-            .map_err(KeyPackageNewError::KeyStoreError)?;
-
-        // Store the private part of the init_key into the key store.
-        // The key is the public key.
-        backend
-            .key_store()
-            .store::<HpkePrivateKey>(key_package.hpke_init_key().as_slice(), &init_private_key)
-            .await
-            .map_err(KeyPackageNewError::KeyStoreError)?;
-
-        Ok(key_package)
+        encapsulation.store(backend).await
     }
 }
 
