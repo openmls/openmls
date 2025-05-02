@@ -230,6 +230,35 @@ impl KeyPackageSecretEncapsulation {
 
         Ok(key_package)
     }
+
+    /// Load the data associated with this key package from the keystore and wrap it all up as an encapsulated bundle.
+    ///
+    /// Note that this contains various secrets and should be protected!
+    pub async fn load<KeyStore: OpenMlsKeyStore>(
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        key_package: KeyPackage,
+    ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
+        let encryption_key = key_package.leaf_node().encryption_key();
+        let encryption_keypair = EncryptionKeyPair::read_from_key_store(backend, encryption_key)
+            .await
+            .ok_or_else(|| {
+                LibraryError::custom("bundling keypackage: relevant encryption keypair not foud")
+            })?;
+
+        let init_private_key = backend
+            .key_store()
+            .read(key_package.hpke_init_key().as_slice())
+            .await
+            .ok_or_else(|| {
+                LibraryError::custom("bundling keypackage: relevant init_private_key not found")
+            })?;
+
+        Ok(Self {
+            key_package,
+            encryption_keypair,
+            init_private_key,
+        })
+    }
 }
 
 // Public `KeyPackage` functions.
