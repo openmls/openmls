@@ -98,6 +98,10 @@ impl LeafNodeParameters {
             && self.capabilities.is_none()
             && self.extensions.is_none()
     }
+
+    pub(crate) fn set_credential_with_key(&mut self, credential_with_key: CredentialWithKey) {
+        self.credential_with_key = Some(credential_with_key);
+    }
 }
 
 /// Builder for [`LeafNodeParameters`].

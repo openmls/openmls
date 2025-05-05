@@ -10,7 +10,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
-    credentials::test_utils::new_credential,
+    credentials::{test_utils::new_credential, NewSignerBundle},
     framing::*,
     group::{errors::*, *},
     key_packages::*,
@@ -2858,6 +2858,7 @@ fn signature_key_rotation(
     let bob_party = CorePartyState::<Provider>::new("bob");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let old_credential_with_key = alice_pre_group.credential_with_key.clone();
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
 
     // Create config
@@ -2900,17 +2901,39 @@ fn signature_key_rotation(
         .clone();
     assert_ne!(old_signature_key, new_signature_key);
 
+    // Pass leaf node parameters with old credential with key (to make it fail)
     let leaf_node_parameters = LeafNodeParameters::builder()
-        .with_credential_with_key(new_pre_group_state.credential_with_key)
+        .with_credential_with_key(old_credential_with_key)
         .build();
 
+    let new_signer = NewSignerBundle {
+        signer: &new_pre_group_state.signer,
+        credential_with_key: new_pre_group_state.credential_with_key,
+    };
+
+    let err = alice_group_state
+        .group
+        .self_update_with_new_signer(
+            &alice_group_state.party.core_state.provider,
+            &alice_group_state.party.signer,
+            new_signer.clone(),
+            leaf_node_parameters,
+        )
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        SelfUpdateError::CreateCommitError(CreateCommitError::InvalidLeafNodeParameters)
+    );
+
+    // Calling with default LeafNodeParameters should work
     let bundle = alice_group_state
         .group
         .self_update_with_new_signer(
             &alice_group_state.party.core_state.provider,
             &alice_group_state.party.signer,
-            &new_pre_group_state.signer,
-            leaf_node_parameters,
+            new_signer,
+            LeafNodeParameters::default(),
         )
         .unwrap();
 
