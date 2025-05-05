@@ -410,6 +410,12 @@ pub(crate) struct KeySchedule {
     state: State,
 }
 
+pub(crate) struct EpochSecretsResult {
+    pub(crate) epoch_secrets: EpochSecrets,
+    #[cfg(feature = "extensions-draft")]
+    pub(crate) application_exporter: ApplicationExportSecret,
+}
+
 impl KeySchedule {
     /// Initialize the key schedule and return it.
     pub(crate) fn init(
@@ -506,7 +512,7 @@ impl KeySchedule {
         &mut self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-    ) -> Result<EpochSecrets, KeyScheduleError> {
+    ) -> Result<EpochSecretsResult, KeyScheduleError> {
         if self.state != State::Context || self.epoch_secret.is_none() {
             log::error!("Trying to derive the epoch secrets while not in the right state.");
             return Err(KeyScheduleError::InvalidState(ErrorState::Context));
@@ -519,7 +525,13 @@ impl KeySchedule {
             None => return Err(LibraryError::custom("state machine error").into()),
         };
 
-        Ok(EpochSecrets::new(crypto, ciphersuite, epoch_secret)?)
+        let res = EpochSecretsResult {
+            #[cfg(feature = "extensions-draft")]
+            application_exporter: ApplicationExportSecret::new(crypto, ciphersuite, &epoch_secret)?,
+            epoch_secrets: EpochSecrets::new(crypto, ciphersuite, epoch_secret)?,
+        };
+
+        Ok(res)
     }
 }
 
@@ -740,6 +752,57 @@ impl ExporterSecret {
             .secret
             .derive_secret(crypto, ciphersuite, label)?
             .kdf_expand_label(crypto, ciphersuite, "exported", context_hash, key_length)?
+            .as_slice()
+            .to_vec())
+    }
+}
+
+/// A secret that we can derive secrets from, that are used outside of OpenMLS.
+/// In contrast to `[ExporterSecret]`, the `[ApplicationExportSecret]` is not
+/// persisted. It can be deleted after use to achieve forward secrecy.
+#[cfg(feature = "extensions-draft")]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
+pub struct ApplicationExportSecret {
+    secret: Secret,
+}
+
+#[cfg(feature = "extensions-draft")]
+impl ApplicationExportSecret {
+    /// Derive an `ExporterSecret` from an `EpochSecret`.
+    fn new(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        epoch_secret: &EpochSecret,
+    ) -> Result<Self, CryptoError> {
+        let secret =
+            epoch_secret
+                .secret
+                .derive_secret(crypto, ciphersuite, "application_export")?;
+        Ok(ApplicationExportSecret { secret })
+    }
+
+    /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
+    /// it can be used outside of OpenMLS.
+    pub fn derive_exported_secret(
+        &self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        label: &str,
+        context: &[u8],
+        key_length: usize,
+    ) -> Result<Vec<u8>, CryptoError> {
+        let context_hash = &crypto.hash(ciphersuite.hash_algorithm(), context)?;
+        Ok(self
+            .secret
+            .derive_secret(crypto, ciphersuite, label)?
+            .kdf_expand_label(
+                crypto,
+                ciphersuite,
+                "application exported",
+                context_hash,
+                key_length,
+            )?
             .as_slice()
             .to_vec())
     }

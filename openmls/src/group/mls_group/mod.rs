@@ -49,6 +49,9 @@ use crate::{
 };
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
 
+#[cfg(feature = "extensions-draft")]
+use crate::schedule::ApplicationExportSecret;
+
 // Private
 mod application;
 mod creation;
@@ -80,6 +83,8 @@ pub(crate) struct CreateCommitResult {
     pub(crate) welcome_option: Option<Welcome>,
     pub(crate) staged_commit: StagedCommit,
     pub(crate) group_info: Option<GroupInfo>,
+    #[cfg(feature = "extensions-draft")]
+    pub(crate) application_exporter: ApplicationExportSecret,
 }
 
 /// A member in the group is identified by this [`Member`] struct.
@@ -840,6 +845,11 @@ pub struct StagedWelcome {
     /// able to decrypt application messages from previous epochs, the size of
     /// the store must be increased through [`max_past_epochs()`].
     message_secrets_store: MessageSecretsStore,
+
+    /// A secret that is not stored as part of the [`MlsGroup`] after the group is created.
+    /// It can be used by the application to derive forward secure secrets.
+    #[cfg(feature = "extensions-draft")]
+    application_export_secret: ApplicationExportSecret,
 
     /// Resumption psk store. This is where the resumption psks are kept in a rollover list.
     resumption_psk_store: ResumptionPskStore,
