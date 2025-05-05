@@ -2,7 +2,7 @@
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>errors::{ProposeSelfUpdateError, SelfUpdateError};
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>};
 <a href=#4 id=4 data-nosnippet>4</a>
-<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use crate</span>::{storage::OpenMlsProvider, treesync::LeafNodeParameters};
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use crate</span>::{credentials::NewSignerBundle, storage::OpenMlsProvider, treesync::LeafNodeParameters};
 <a href=#6 id=6 data-nosnippet>6</a>
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">use super</span>::<span class="kw-2">*</span>;
 <a href=#8 id=8 data-nosnippet>8</a>
@@ -59,11 +59,11 @@
 <a href=#59 id=59 data-nosnippet>59</a>    /// Returns an error if there is a pending commit.
 <a href=#60 id=60 data-nosnippet>60</a>    ///
 <a href=#61 id=61 data-nosnippet>61</a>    /// [`Welcome`]: crate::messages::Welcome
-<a href=#62 id=62 data-nosnippet>62</a>    </span><span class="kw">pub fn </span>self_update_with_new_signer&lt;Provider: OpenMlsProvider&gt;(
+<a href=#62 id=62 data-nosnippet>62</a>    </span><span class="kw">pub fn </span>self_update_with_new_signer&lt;Provider: OpenMlsProvider, S: Signer&gt;(
 <a href=#63 id=63 data-nosnippet>63</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#64 id=64 data-nosnippet>64</a>        provider: <span class="kw-2">&amp;</span>Provider,
 <a href=#65 id=65 data-nosnippet>65</a>        old_signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-<a href=#66 id=66 data-nosnippet>66</a>        new_signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+<a href=#66 id=66 data-nosnippet>66</a>        new_signer: NewSignerBundle&lt;<span class="lifetime">'_</span>, S&gt;,
 <a href=#67 id=67 data-nosnippet>67</a>        leaf_node_parameters: LeafNodeParameters,
 <a href=#68 id=68 data-nosnippet>68</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;CommitMessageBundle, SelfUpdateError&lt;Provider::StorageError&gt;&gt; {
 <a href=#69 id=69 data-nosnippet>69</a>        <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;

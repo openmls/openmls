@@ -775,8 +775,26 @@ By default, only the HPKE encryption key is updated. The application can however
         .self_update(provider, &amp;bob_signature_keys, LeafNodeParameters::default())
         .expect("Could not update own key package.")
         .into_contents();</code></pre>
-<p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
-Even though the member updates its own leaf node only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
+<p>The function returns a <code>CommitMessageBundle</code>, which consists of the Commit message that needs to be fanned out to existing group members.
+Even though the member updates its own leaf node only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the <code>CommitMessagBundle</code> can also contain a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
+<p>Members can use the <code>.self_update_with_new_signer()</code> function to also update the <code>Signer</code> used to sign future MLS messages.</p>
+<pre><code class="language-rust no_run noplayground">
+    let new_signer_bundle = NewSignerBundle {
+        signer: &amp;alice_new_signature_keys,
+        credential_with_key: alice_new_credential,
+    };
+
+    let message_bundle = alice_group
+        .self_update_with_new_signer(
+            provider,
+            &amp;alice_old_signature_keys,
+            new_signer_bundle,
+            LeafNodeParameters::default(),
+        )
+        .unwrap();
+
+    let (mls_message_out, welcome, group_info) = message_bundle.into_contents();</code></pre>
+<p>When constructing the <code>NewSignerBundle</code>, the <code>Signer</code> must match the public key and credential in the <code>CredentialWithKey</code>. When using <code>self_update_with_new_signer</code>, <code>LeafNodeParameters</code> may not contain a <code>CredentialWithKey</code>.</p>
 <h2 id="proposal-2"><a class="header" href="#proposal-2">Proposal</a></h2>
 <p>Members can also update their leaf node as a proposal (without the corresponding Commit message) by using the <code>.propose_self_update()</code> function. Just like with the <code>.self_update()</code> function, optional parameters can be set through <code>LeafNodeParameters</code>:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
