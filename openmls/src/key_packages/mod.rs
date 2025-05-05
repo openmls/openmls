@@ -261,6 +261,20 @@ impl KeyPackageSecretEncapsulation {
     }
 }
 
+impl AsRef<KeyPackage> for KeyPackageSecretEncapsulation {
+    fn as_ref(&self) -> &KeyPackage {
+        &self.key_package
+    }
+}
+
+impl std::ops::Deref for KeyPackageSecretEncapsulation {
+    type Target = KeyPackage;
+
+    fn deref(&self) -> &Self::Target {
+        &self.key_package
+    }
+}
+
 // Public `KeyPackage` functions.
 impl KeyPackage {
     /// Create a key package builder.
