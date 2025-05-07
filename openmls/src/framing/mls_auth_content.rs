@@ -14,7 +14,7 @@ use tls_codec::{
 use super::{
     mls_content::{FramedContent, FramedContentBody, FramedContentTbs},
     Commit, ConfirmationTag, ContentType, FramingParameters, GroupContext, GroupEpoch, GroupId,
-    Proposal, Sender, Signature, WireFormat,
+    PreSharedKeyId, Proposal, ProposalOrRef, ProposalStore, Sender, Signature, WireFormat,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -87,6 +87,36 @@ pub(crate) struct AuthenticatedContent {
 }
 
 impl AuthenticatedContent {
+    /// Returns all PSKs that are proposed in the commit. If this [`AuthenticatedContent`] is
+    /// not a commit, an empty vector is returned.
+    pub fn committed_psk_proposals(&self, proposal_store: &ProposalStore) -> Vec<PreSharedKeyId> {
+        let FramedContentBody::Commit(commit) = self.content() else {
+            return vec![];
+        };
+        commit
+            .proposals
+            .iter()
+            .filter_map(|proposal_or_ref| match proposal_or_ref {
+                ProposalOrRef::Proposal(proposal) => {
+                    let Proposal::PreSharedKey(psk_proposal) = proposal else {
+                        return None;
+                    };
+                    Some(psk_proposal.psk().clone())
+                }
+                ProposalOrRef::Reference(proposal_ref) => {
+                    proposal_store.proposals().find_map(|proposal| {
+                        if &proposal.proposal_reference() == proposal_ref {
+                            if let Proposal::PreSharedKey(psk_proposal) = proposal.proposal() {
+                                return Some(psk_proposal.psk().clone());
+                            }
+                        }
+                        None
+                    })
+                }
+            })
+            .collect()
+    }
+
     /// Convenience function for creating a [`VerifiableAuthenticatedContent`].
     #[inline]
     fn new_and_sign(
