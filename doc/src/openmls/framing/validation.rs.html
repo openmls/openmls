@@ -102,7 +102,7 @@
 <a href=#102 id=102 data-nosnippet>102</a>        //       Revisit when the transition is further along.
 <a href=#103 id=103 data-nosnippet>103</a>        </span><span class="kw">let </span>(message_secrets, _old_leaves) = group
 <a href=#104 id=104 data-nosnippet>104</a>            .message_secrets_and_leaves_mut(ciphertext.epoch())
-<a href=#105 id=105 data-nosnippet>105</a>            .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
+<a href=#105 id=105 data-nosnippet>105</a>            .map_err(MessageDecryptionError::SecretTreeError)<span class="question-mark">?</span>;
 <a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span>sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)<span class="question-mark">?</span>;
 <a href=#107 id=107 data-nosnippet>107</a>        <span class="comment">// Check if we are the sender
 <a href=#108 id=108 data-nosnippet>108</a>        </span><span class="kw">if </span>sender_data.leaf_index == group.own_leaf_index() {
