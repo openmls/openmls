@@ -255,6 +255,8 @@ impl PublicGroup {
                     authenticated_data,
                     content,
                     credential,
+                    #[cfg(feature = "extensions-draft")]
+                    None,
                 ))
             }
             Sender::External(_) => {
@@ -279,6 +281,8 @@ impl PublicGroup {
                             data,
                             content,
                             credential,
+                            #[cfg(feature = "extensions-draft")]
+                            None,
                         ))
                     }
                     FramedContentBody::Proposal(Proposal::Add(_)) => {
@@ -297,6 +301,8 @@ impl PublicGroup {
                             data,
                             content,
                             credential,
+                            #[cfg(feature = "extensions-draft")]
+                            None,
                         ))
                     }
                     // TODO #151/#106
