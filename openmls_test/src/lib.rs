@@ -196,7 +196,7 @@ pub fn opendmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let rc = OpenMlsRustCrypto::default();
 
-    let mut test_funs = Vec::new();
+    let mut test_funs: Vec<proc_macro2::TokenStream> = Vec::new();
 
     #[cfg(all(feature = "sqlite-provider", not(target_arch = "wasm32",)))]
     {

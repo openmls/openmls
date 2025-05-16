@@ -10,14 +10,13 @@ use thiserror::Error;
 
 use crate::{
     group::{
-        self, mls_group::builder::MlsGroupBuilder, ExportSecretError, GroupId, MergeCommitError,
+        mls_group::builder::MlsGroupBuilder, ExportSecretError, GroupId, MergeCommitError,
         MlsGroup, MlsGroupCreateConfig, MlsGroupState, MlsGroupStateError, NewGroupError,
         StagedCommit,
     },
     prelude::CredentialWithKey,
     schedule::GroupEpochSecrets,
     storage::{DmlsStorageProvider, OpenMlsProvider},
-    treesync::TreeSync,
 };
 
 // DEBUG

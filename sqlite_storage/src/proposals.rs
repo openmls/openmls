@@ -144,7 +144,7 @@ impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
             WHERE group_id = ?1 
                 AND proposal_ref = ?2
                 AND provider_version = ?3
-                AND epoch_id = ?4",
+                AND dmls_epoch_id = ?4",
             params![
                 KeyRefWrapper::<C, _>(self.0, PhantomData),
                 KeyRefWrapper::<C, _>(proposal_ref, PhantomData),
