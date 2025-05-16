@@ -7,7 +7,7 @@ use openmls::{
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
 
-fn create_alice_group(
+pub fn create_alice_group(
     ciphersuite: Ciphersuite,
     provider: &impl openmls::storage::OpenMlsProvider,
     use_ratchet_tree_extension: bool,

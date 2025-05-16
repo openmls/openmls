@@ -74,6 +74,7 @@ impl<GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupData<GroupData> {
     pub(super) fn load<C: Codec, GroupId: Key<STORAGE_PROVIDER_VERSION>>(
         connection: &Connection,
         group_id: &GroupId,
+        epoch_id: &[u8],
         data_type: GroupDataType,
     ) -> Result<Option<GroupData>, rusqlite::Error> {
         let mut stmt = connection.prepare(
@@ -81,13 +82,15 @@ impl<GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupData<GroupData> {
             FROM openmls_group_data 
             WHERE group_id = ? 
                 AND data_type = ?
-                AND provider_version = ?",
+                AND provider_version = ?
+                AND dmls_epoch_id = ?",
         )?;
         stmt.query_row(
             params![
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
                 data_type,
-                STORAGE_PROVIDER_VERSION
+                STORAGE_PROVIDER_VERSION,
+                epoch_id
             ],
             Self::from_row::<C>,
         )
@@ -106,17 +109,23 @@ impl<GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupDataRef<'_, Group
         connection: &Connection,
         group_id: &GroupId,
         data_type: GroupDataType,
+        epoch_id: &[u8],
     ) -> Result<(), rusqlite::Error> {
-        connection.execute(
-            "INSERT OR REPLACE INTO openmls_group_data (group_id, data_type, group_data, provider_version) 
-            VALUES (?, ?, ?, ?)",
+        let rows = connection.execute(
+            "INSERT OR REPLACE INTO openmls_group_data (group_id, dmls_epoch_id, data_type, group_data, provider_version) 
+            VALUES (?, ?, ?, ?, ?)",
             params![
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
+                epoch_id,
                 data_type,
                 EntityRefWrapper::<C, _>(self.0, PhantomData),
                 STORAGE_PROVIDER_VERSION
             ],
         )?;
+        println!(
+            "Stored {:?} for epoch {:?} and inserted {} rows",
+            data_type, epoch_id, rows
+        );
         Ok(())
     }
 }
@@ -126,16 +135,19 @@ impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
         &self,
         connection: &Connection,
         data_type: GroupDataType,
+        epoch_id: &[u8],
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
             "DELETE FROM openmls_group_data 
             WHERE group_id = ? 
                 AND data_type = ?
-                AND provider_version = ?",
+                AND provider_version = ?
+                AND dmls_epoch_id = ?",
             params![
                 KeyRefWrapper::<C, _>(self.0, PhantomData),
                 data_type,
-                STORAGE_PROVIDER_VERSION
+                STORAGE_PROVIDER_VERSION,
+                epoch_id,
             ],
         )?;
         Ok(())

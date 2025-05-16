@@ -10,12 +10,12 @@ use thiserror::*;
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
+use crate::schedule::BaseCommitSecret;
 use crate::{
     binary_tree::array_representation::{LeafNodeIndex, ParentNodeIndex},
     ciphersuite::HpkePublicKey,
     error::LibraryError,
     messages::PathSecret,
-    schedule::CommitSecret,
     treesync::{hashes::ParentHashInput, treekem::UpdatePathNode},
 };
 
@@ -105,7 +105,7 @@ pub(in crate::treesync) type PathDerivationResult = (
     Vec<(ParentNodeIndex, ParentNode)>,
     Vec<PlainUpdatePathNode>,
     Vec<EncryptionKeyPair>,
-    CommitSecret,
+    BaseCommitSecret,
 );
 
 impl ParentNode {

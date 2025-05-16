@@ -1,6 +1,8 @@
 use std::{
     borrow::{Borrow, BorrowMut},
     marker::PhantomData,
+    ops::{Deref, DerefMut},
+    sync::{Arc, Mutex},
 };
 
 use openmls_traits::storage::{Entity, Key, StorageProvider};
@@ -30,7 +32,8 @@ refinery::embed_migrations!("migrations");
 /// Implements the [`StorageProvider`] trait. The codec used by the storage
 /// provider is set by the generic parameter `C`.
 pub struct SqliteStorageProvider<C: Codec, ConnectionRef: Borrow<Connection>> {
-    connection: ConnectionRef,
+    pub(super) epoch: Vec<u8>,
+    pub(super) connection: Arc<Mutex<ConnectionRef>>,
     _codec: PhantomData<C>,
 }
 
@@ -38,7 +41,16 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> SqliteStorageProvider<C, Conne
     /// Create a new instance of the [`SqliteStorageProvider`].
     pub fn new(connection: ConnectionRef) -> Self {
         Self {
-            connection,
+            epoch: Vec::new(),
+            connection: Arc::new(connection.into()),
+            _codec: PhantomData,
+        }
+    }
+
+    pub fn clone_with_epoch(&self, epoch: Vec<u8>) -> Self {
+        Self {
+            epoch,
+            connection: self.connection.clone(),
             _codec: PhantomData,
         }
     }
@@ -47,7 +59,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> SqliteStorageProvider<C, Conne
 impl<C: Codec, ConnectionRef: BorrowMut<Connection>> SqliteStorageProvider<C, ConnectionRef> {
     /// Initialize the database with the necessary tables.
     pub fn initialize(&mut self) -> Result<(), refinery::Error> {
-        migrations::runner().run(self.connection.borrow_mut())?;
+        let mut connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref_mut().borrow_mut();
+        migrations::runner().run(connection)?;
         Ok(())
     }
 }
@@ -67,10 +81,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         config: &MlsGroupJoinConfig,
     ) -> Result<(), Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupDataRef(config).store::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
             GroupDataType::JoinGroupConfig,
+            &self.epoch,
         )
     }
 
@@ -82,7 +99,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         leaf_node: &LeafNode,
     ) -> Result<(), Self::Error> {
-        StorableLeafNodeRef(leaf_node).store::<C, _>(self.connection.borrow(), group_id)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableLeafNodeRef(leaf_node).store::<C, _>(connection, group_id, &self.epoch)
     }
 
     fn queue_proposal<
@@ -95,8 +114,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         proposal_ref: &ProposalRef,
         proposal: &QueuedProposal,
     ) -> Result<(), Self::Error> {
-        StorableProposalRef(proposal_ref, proposal)
-            .store::<C, _>(self.connection.borrow(), group_id)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableProposalRef(proposal_ref, proposal).store::<C, _>(connection, group_id, &self.epoch)
     }
 
     fn write_tree<
@@ -107,10 +127,14 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         tree: &TreeSync,
     ) -> Result<(), Self::Error> {
+        println!("Storing tree for epoch {:?}", self.epoch);
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupDataRef(tree).store::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
             GroupDataType::Tree,
+            &self.epoch,
         )
     }
 
@@ -122,10 +146,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupDataRef(interim_transcript_hash).store::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
             GroupDataType::InterimTranscriptHash,
+            &self.epoch,
         )
     }
 
@@ -137,10 +164,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         group_context: &GroupContext,
     ) -> Result<(), Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupDataRef(group_context).store::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
             GroupDataType::Context,
+            &self.epoch,
         )
     }
 
@@ -152,10 +182,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupDataRef(confirmation_tag).store::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
             GroupDataType::ConfirmationTag,
+            &self.epoch,
         )
     }
 
@@ -167,10 +200,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         group_state: &GroupState,
     ) -> Result<(), Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupDataRef(group_state).store::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
             GroupDataType::GroupState,
+            &self.epoch,
         )
     }
 
@@ -182,10 +218,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         message_secrets: &MessageSecrets,
     ) -> Result<(), Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupDataRef(message_secrets).store::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
             GroupDataType::MessageSecrets,
+            &self.epoch,
         )?;
         Ok(())
     }
@@ -198,10 +237,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         resumption_psk_store: &ResumptionPskStore,
     ) -> Result<(), Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupDataRef(resumption_psk_store).store::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
             GroupDataType::ResumptionPskStore,
+            &self.epoch,
         )
     }
 
@@ -213,10 +255,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupDataRef(own_leaf_index).store::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
             GroupDataType::OwnLeafIndex,
+            &self.epoch,
         )?;
         Ok(())
     }
@@ -229,10 +274,14 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::Error> {
+        println!("Storing group epoch secrets for epoch {:?}", self.epoch);
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupDataRef(group_epoch_secrets).store::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
             GroupDataType::GroupEpochSecrets,
+            &self.epoch,
         )?;
         Ok(())
     }
@@ -245,8 +294,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         public_key: &SignaturePublicKey,
         signature_key_pair: &SignatureKeyPair,
     ) -> Result<(), Self::Error> {
-        StorableSignatureKeyPairsRef(signature_key_pair)
-            .store::<C, _>(self.connection.borrow(), public_key)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableSignatureKeyPairsRef(signature_key_pair).store::<C, _>(connection, public_key)
     }
 
     fn write_encryption_key_pair<
@@ -257,7 +307,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         public_key: &EncryptionKey,
         key_pair: &HpkeKeyPair,
     ) -> Result<(), Self::Error> {
-        StorableEncryptionKeyPairRef(key_pair).store::<C, _>(self.connection.borrow(), public_key)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableEncryptionKeyPairRef(key_pair).store::<C, _>(connection, public_key, &self.epoch)
     }
 
     fn write_encryption_epoch_key_pairs<
@@ -271,11 +323,14 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         leaf_index: u32,
         key_pairs: &[HpkeKeyPair],
     ) -> Result<(), Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableEpochKeyPairsRef(key_pairs).store::<C, _, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
             epoch,
             leaf_index,
+            &self.epoch,
         )
     }
 
@@ -287,7 +342,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         hash_ref: &HashReference,
         key_package: &KeyPackage,
     ) -> Result<(), Self::Error> {
-        StorableKeyPackageRef(key_package).store::<C, _>(self.connection.borrow(), hash_ref)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableKeyPackageRef(key_package).store::<C, _>(connection, hash_ref)
     }
 
     fn write_psk<
@@ -298,7 +355,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         psk_id: &PskId,
         psk: &PskBundle,
     ) -> Result<(), Self::Error> {
-        StorablePskBundleRef(psk).store::<C, _>(self.connection.borrow(), psk_id)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorablePskBundleRef(psk).store::<C, _>(connection, psk_id)
     }
 
     fn mls_group_join_config<
@@ -308,9 +367,12 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupData::load::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
+            &self.epoch,
             GroupDataType::JoinGroupConfig,
         )
     }
@@ -322,7 +384,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error> {
-        StorableLeafNode::load::<C, _>(self.connection.borrow(), group_id)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableLeafNode::load::<C, _>(connection, group_id, &self.epoch)
     }
 
     fn queued_proposal_refs<
@@ -332,7 +396,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<ProposalRef>, Self::Error> {
-        StorableProposal::<u8, ProposalRef>::load_refs::<C, _>(self.connection.borrow(), group_id)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableProposal::<u8, ProposalRef>::load_refs::<C, _>(connection, group_id, &self.epoch)
     }
 
     fn queued_proposals<
@@ -343,7 +409,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
-        StorableProposal::load::<C, _>(self.connection.borrow(), group_id)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableProposal::load::<C, _>(connection, group_id, &self.epoch)
     }
 
     fn tree<
@@ -353,7 +421,17 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error> {
-        StorableGroupData::load::<C, _>(self.connection.borrow(), group_id, GroupDataType::Tree)
+        println!("Loading tree for epoch {:?}", self.epoch);
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        let res =
+            StorableGroupData::load::<C, _>(connection, group_id, &self.epoch, GroupDataType::Tree);
+        if let Ok(Some(_)) = res {
+            println!("Loaded tree for epoch {:?}", self.epoch);
+        } else {
+            println!("No tree found for epoch {:?}", self.epoch);
+        }
+        res
     }
 
     fn group_context<
@@ -363,7 +441,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Option<GroupContext>, Self::Error> {
-        StorableGroupData::load::<C, _>(self.connection.borrow(), group_id, GroupDataType::Context)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupData::load::<C, _>(connection, group_id, &self.epoch, GroupDataType::Context)
     }
 
     fn interim_transcript_hash<
@@ -373,9 +453,12 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupData::load::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
+            &self.epoch,
             GroupDataType::InterimTranscriptHash,
         )
     }
@@ -387,9 +470,12 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Option<ConfirmationTag>, Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupData::load::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
+            &self.epoch,
             GroupDataType::ConfirmationTag,
         )
     }
@@ -401,9 +487,12 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Option<GroupState>, Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupData::load::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
+            &self.epoch,
             GroupDataType::GroupState,
         )
     }
@@ -415,9 +504,12 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Option<MessageSecrets>, Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupData::load::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
+            &self.epoch,
             GroupDataType::MessageSecrets,
         )
     }
@@ -429,9 +521,12 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Option<ResumptionPskStore>, Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupData::load::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
+            &self.epoch,
             GroupDataType::ResumptionPskStore,
         )
     }
@@ -443,9 +538,12 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Option<LeafNodeIndex>, Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupData::load::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
+            &self.epoch,
             GroupDataType::OwnLeafIndex,
         )
     }
@@ -457,9 +555,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
+        println!("Loading group epoch secrets for epoch {:?}", self.epoch);
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupData::load::<C, _>(
-            self.connection.borrow(),
+            connection,
             group_id,
+            &self.epoch,
             GroupDataType::GroupEpochSecrets,
         )
     }
@@ -471,7 +573,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         public_key: &SignaturePublicKey,
     ) -> Result<Option<SignatureKeyPair>, Self::Error> {
-        StorableSignatureKeyPairs::load::<C, _>(self.connection.borrow(), public_key)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableSignatureKeyPairs::load::<C, _>(connection, public_key)
     }
 
     fn encryption_key_pair<
@@ -481,7 +585,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         public_key: &EncryptionKey,
     ) -> Result<Option<HpkeKeyPair>, Self::Error> {
-        StorableEncryptionKeyPair::load::<C, _>(self.connection.borrow(), public_key)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableEncryptionKeyPair::load::<C, _>(connection, public_key, &self.epoch)
     }
 
     fn encryption_epoch_key_pairs<
@@ -494,12 +600,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         epoch: &EpochKey,
         leaf_index: u32,
     ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
-        StorableEpochKeyPairs::load::<C, _, _>(
-            self.connection.borrow(),
-            group_id,
-            epoch,
-            leaf_index,
-        )
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableEpochKeyPairs::load::<C, _, _>(connection, group_id, epoch, leaf_index, &self.epoch)
     }
 
     fn key_package<
@@ -509,7 +612,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         hash_ref: &KeyPackageRef,
     ) -> Result<Option<KeyPackage>, Self::Error> {
-        StorableKeyPackage::load::<C, _>(self.connection.borrow(), hash_ref)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableKeyPackage::load::<C, _>(connection, hash_ref)
     }
 
     fn psk<
@@ -519,7 +624,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error> {
-        StorablePskBundle::load::<C, _>(self.connection.borrow(), psk_id)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorablePskBundle::load::<C, _>(connection, psk_id)
     }
 
     fn remove_proposal<
@@ -530,7 +637,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id).delete_proposal::<C, _>(self.connection.borrow(), proposal_ref)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_proposal::<C, _>(connection, &self.epoch, proposal_ref)
     }
 
     fn delete_own_leaf_nodes<
@@ -539,7 +648,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id).delete_leaf_nodes::<C>(self.connection.borrow())
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_leaf_nodes::<C>(connection, &self.epoch)
     }
 
     fn delete_group_config<
@@ -548,16 +659,27 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
-            .delete_group_data::<C>(self.connection.borrow(), GroupDataType::JoinGroupConfig)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_group_data::<C>(
+            connection,
+            GroupDataType::JoinGroupConfig,
+            &self.epoch,
+        )
     }
 
     fn delete_tree<GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
-            .delete_group_data::<C>(self.connection.borrow(), GroupDataType::Tree)
+        println!("Deleting tree for epoch {:?}", self.epoch);
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_group_data::<C>(
+            connection,
+            GroupDataType::Tree,
+            &self.epoch,
+        )
     }
 
     fn delete_confirmation_tag<
@@ -566,8 +688,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
-            .delete_group_data::<C>(self.connection.borrow(), GroupDataType::ConfirmationTag)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_group_data::<C>(
+            connection,
+            GroupDataType::ConfirmationTag,
+            &self.epoch,
+        )
     }
 
     fn delete_group_state<
@@ -576,8 +703,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
-            .delete_group_data::<C>(self.connection.borrow(), GroupDataType::GroupState)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_group_data::<C>(
+            connection,
+            GroupDataType::GroupState,
+            &self.epoch,
+        )
     }
 
     fn delete_context<
@@ -586,8 +718,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
-            .delete_group_data::<C>(self.connection.borrow(), GroupDataType::Context)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_group_data::<C>(
+            connection,
+            GroupDataType::Context,
+            &self.epoch,
+        )
     }
 
     fn delete_interim_transcript_hash<
@@ -596,9 +733,12 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupIdRef(group_id).delete_group_data::<C>(
-            self.connection.borrow(),
+            connection,
             GroupDataType::InterimTranscriptHash,
+            &self.epoch,
         )
     }
 
@@ -608,8 +748,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
-            .delete_group_data::<C>(self.connection.borrow(), GroupDataType::MessageSecrets)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_group_data::<C>(
+            connection,
+            GroupDataType::MessageSecrets,
+            &self.epoch,
+        )
     }
 
     fn delete_all_resumption_psk_secrets<
@@ -618,8 +763,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
-            .delete_group_data::<C>(self.connection.borrow(), GroupDataType::ResumptionPskStore)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_group_data::<C>(
+            connection,
+            GroupDataType::ResumptionPskStore,
+            &self.epoch,
+        )
     }
 
     fn delete_own_leaf_index<
@@ -628,8 +778,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
-            .delete_group_data::<C>(self.connection.borrow(), GroupDataType::OwnLeafIndex)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_group_data::<C>(
+            connection,
+            GroupDataType::OwnLeafIndex,
+            &self.epoch,
+        )
     }
 
     fn delete_group_epoch_secrets<
@@ -638,8 +793,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
-            .delete_group_data::<C>(self.connection.borrow(), GroupDataType::GroupEpochSecrets)
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_group_data::<C>(
+            connection,
+            GroupDataType::GroupEpochSecrets,
+            &self.epoch,
+        )
     }
 
     fn clear_proposal_queue<
@@ -649,7 +809,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id).delete_all_proposals::<C>(self.connection.borrow())?;
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableGroupIdRef(group_id).delete_all_proposals::<C>(connection, &self.epoch)?;
         Ok(())
     }
 
@@ -659,7 +821,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         public_key: &SignaturePublicKey,
     ) -> Result<(), Self::Error> {
-        StorableSignaturePublicKeyRef(public_key).delete::<C>(self.connection.borrow())
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableSignaturePublicKeyRef(public_key).delete::<C>(connection)
     }
 
     fn delete_encryption_key_pair<
@@ -668,7 +832,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         public_key: &EncryptionKey,
     ) -> Result<(), Self::Error> {
-        StorableEncryptionPublicKeyRef(public_key).delete::<C>(self.connection.borrow())
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableEncryptionPublicKeyRef(public_key).delete::<C>(connection, &self.epoch)
     }
 
     fn delete_encryption_epoch_key_pairs<
@@ -680,10 +846,13 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         epoch: &EpochKey,
         leaf_index: u32,
     ) -> Result<(), Self::Error> {
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
         StorableGroupIdRef(group_id).delete_epoch_key_pair::<C, _>(
-            self.connection.borrow(),
+            connection,
             epoch,
             leaf_index,
+            &self.epoch,
         )
     }
 
@@ -693,14 +862,18 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
-        StorableHashRef(hash_ref).delete_key_package::<C>(self.connection.borrow())
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorableHashRef(hash_ref).delete_key_package::<C>(connection)
     }
 
     fn delete_psk<PskKey: openmls_traits::storage::traits::PskId<STORAGE_PROVIDER_VERSION>>(
         &self,
         psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
-        StorablePskIdRef(psk_id).delete::<C>(self.connection.borrow())
+        let connection_guard = self.connection.lock().unwrap();
+        let connection = connection_guard.deref().borrow();
+        StorablePskIdRef(psk_id).delete::<C>(connection)
     }
 }
 

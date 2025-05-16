@@ -9,7 +9,7 @@ use crate::{
     error::LibraryError,
     extensions::Extensions,
     group::{create_commit::CommitType, errors::CreateCommitError},
-    schedule::CommitSecret,
+    schedule::BaseCommitSecret,
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
@@ -26,7 +26,7 @@ use super::PublicGroupDiff;
 /// a commit with path.
 #[derive(Default)]
 pub(crate) struct PathComputationResult {
-    pub(crate) commit_secret: Option<CommitSecret>,
+    pub(crate) base_commit_secret: Option<BaseCommitSecret>,
     pub(crate) encrypted_path: Option<UpdatePath>,
     pub(crate) plain_path: Option<Vec<PlainUpdatePathNode>>,
     pub(crate) new_keypairs: Vec<EncryptionKeyPair>,
@@ -96,7 +96,7 @@ impl PublicGroupDiff<'_> {
 
         // Derive and apply an update path based on the previously
         // generated new leaf.
-        let (plain_path, new_keypairs, commit_secret) = self.diff.apply_own_update_path(
+        let (plain_path, new_keypairs, base_commit_secret) = self.diff.apply_own_update_path(
             rand,
             crypto,
             signer,
@@ -133,7 +133,7 @@ impl PublicGroupDiff<'_> {
             .clone();
         let encrypted_path = UpdatePath::new(leaf_node, encrypted_path);
         Ok(PathComputationResult {
-            commit_secret: Some(commit_secret),
+            base_commit_secret: Some(base_commit_secret),
             encrypted_path: Some(encrypted_path),
             plain_path: Some(plain_path),
             new_keypairs,

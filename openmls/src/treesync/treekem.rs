@@ -30,7 +30,7 @@ use crate::{
     ciphersuite::{hpke, signable::Verifiable, HpkePublicKey},
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
-    schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
+    schedule::{psk::PreSharedKeyId, BaseCommitSecret, JoinerSecret},
     treesync::node::NodeReference,
 };
 
@@ -100,7 +100,7 @@ impl TreeSyncDiff<'_> {
         params: DecryptPathParams,
         owned_keys: &[&EncryptionKeyPair],
         own_leaf_index: LeafNodeIndex,
-    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
+    ) -> Result<(Vec<EncryptionKeyPair>, BaseCommitSecret), ApplyUpdatePathError> {
         let path_position = self
             .subtree_root_position(params.sender_leaf_index, own_leaf_index)
             .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
@@ -120,7 +120,10 @@ impl TreeSyncDiff<'_> {
                 own_leaf_index,
             )
             // TODO #804
-            .map_err(|_| LibraryError::custom("Expected sender to be in the tree"))?;
+            .map_err(|e| {
+                println!("Error: {:?}", e);
+                LibraryError::custom("Expected sender to be in the tree")
+            })?;
 
         let ciphertext = update_path_node
             .encrypted_path_secrets(resolution_position)

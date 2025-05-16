@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS openmls_encryption_keys (
     provider_version INTEGER NOT NULL,
     public_key BLOB PRIMARY KEY,
+    dmls_epoch_id BLOB NOT NULL,
     key_pair BLOB NOT NULL
 );
 
@@ -8,14 +9,16 @@ CREATE TABLE IF NOT EXISTS openmls_epoch_keys_pairs (
     provider_version INTEGER NOT NULL,
     group_id BLOB NOT NULL,
     epoch_id BLOB NOT NULL,
+    dmls_epoch_id BLOB NOT NULL,
     leaf_index INTEGER NOT NULL,
     key_pairs BLOB NOT NULL,
-    PRIMARY KEY (group_id, epoch_id, leaf_index)
+    PRIMARY KEY (group_id, epoch_id, leaf_index, dmls_epoch_id)
 );      
 
 CREATE TABLE IF NOT EXISTS openmls_group_data (
     provider_version INTEGER NOT NULL,
     group_id BLOB NOT NULL,
+    dmls_epoch_id BLOB NOT NULL,
     data_type TEXT NOT NULL CHECK (data_type IN (
         'join_group_config', 
         'tree', 
@@ -30,7 +33,7 @@ CREATE TABLE IF NOT EXISTS openmls_group_data (
         'group_epoch_secrets'
     )),
     group_data BLOB NOT NULL,
-    PRIMARY KEY (group_id, data_type)
+    PRIMARY KEY (group_id, data_type, dmls_epoch_id)
 );
         
 CREATE TABLE IF NOT EXISTS openmls_key_packages (
@@ -42,6 +45,7 @@ CREATE TABLE IF NOT EXISTS openmls_key_packages (
 CREATE TABLE IF NOT EXISTS openmls_own_leaf_nodes (
     provider_version INTEGER NOT NULL,
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dmls_epoch_id BLOB NOT NULL,
     group_id BLOB NOT NULL,
     leaf_node BLOB NOT NULL
 );
@@ -49,9 +53,10 @@ CREATE TABLE IF NOT EXISTS openmls_own_leaf_nodes (
 CREATE TABLE IF NOT EXISTS openmls_proposals (
     provider_version INTEGER NOT NULL,
     group_id BLOB NOT NULL,
+    dmls_epoch_id BLOB NOT NULL,
     proposal_ref BLOB NOT NULL,
     proposal BLOB NOT NULL,
-    PRIMARY KEY (group_id, proposal_ref)
+    PRIMARY KEY (group_id, proposal_ref, dmls_epoch_id)
 );
 
 CREATE TABLE IF NOT EXISTS openmls_psks (

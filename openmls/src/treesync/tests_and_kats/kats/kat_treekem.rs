@@ -12,7 +12,7 @@ use crate::{
     group::{create_commit::CommitType, GroupContext, GroupEpoch, GroupId},
     messages::PathSecret,
     prelude_test::Secret,
-    schedule::CommitSecret,
+    schedule::BaseCommitSecret,
     test_utils::{hex_to_bytes, OpenMlsRustCrypto},
     treesync::{
         node::{encryption_keys::EncryptionKeyPair, leaf_node::UpdateLeafNodeParams},
@@ -334,7 +334,7 @@ fn apply_update_path(
     update_path: &UpdatePath,
     group_context: &GroupContext,
     leaf_node_info_test: &LeafNodeInfoTest,
-) -> CommitSecret {
+) -> BaseCommitSecret {
     let params = DecryptPathParams {
         update_path: update_path.nodes(),
         sender_leaf_index: LeafNodeIndex::new(sender),

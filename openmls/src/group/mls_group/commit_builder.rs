@@ -22,7 +22,8 @@ use crate::{
     prelude::{LeafNodeParameters, LibraryError, NewSignerBundle},
     schedule::{
         psk::{load_psks, PskSecret},
-        JoinerSecret, KeySchedule, PreSharedKeyId,
+        BaseCommitSecret, ChildInitSecret, CommitConfirmation, CommitSecret, JoinerSecret,
+        KeySchedule, PreSharedKeyId,
     },
     storage::{OpenMlsProvider, StorageProvider},
     versions::ProtocolVersion,
@@ -505,11 +506,30 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
+        let base_commit_secret = path_computation_result
+            .base_commit_secret
+            .unwrap_or_else(|| BaseCommitSecret::zero_secret(ciphersuite));
+        let commit_secret = CommitSecret::new(crypto, ciphersuite, &base_commit_secret)
+            .map_err(LibraryError::unexpected_crypto_error)?;
+
+        let commit_confirmation = CommitConfirmation::new(crypto, ciphersuite, &base_commit_secret)
+            .map_err(LibraryError::unexpected_crypto_error)?;
+
+        let mut old_init_secret = builder.group.group_epoch_secrets.init_secret().clone();
+        let child_init_secret = ChildInitSecret::new(
+            crypto,
+            ciphersuite,
+            &mut old_init_secret,
+            &commit_confirmation,
+            &serialized_provisional_group_context,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+
         let joiner_secret = JoinerSecret::new(
             crypto,
             ciphersuite,
-            path_computation_result.commit_secret,
-            builder.group.group_epoch_secrets().init_secret(),
+            commit_secret,
+            &child_init_secret,
             &serialized_provisional_group_context,
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
@@ -640,6 +660,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             );
 
         let staged_commit_state = MemberStagedCommitState::new(
+            old_init_secret,
             provisional_group_epoch_secrets,
             provisional_message_secrets,
             diff.into_staged_diff(crypto, ciphersuite)?,
