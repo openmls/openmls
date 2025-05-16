@@ -13,10 +13,7 @@ use tls_codec::Serialize as _;
 #[cfg(test)]
 use crate::treesync::node::leaf_node::TreePosition;
 
-use super::{
-    diff::compute_path::PathComputationResult,
-    proposal_store::{ProposalStore, QueuedProposal},
-};
+use super::proposal_store::{ProposalStore, QueuedProposal};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::ProposalRef, signable::Signable},
@@ -62,6 +59,7 @@ pub(crate) mod builder;
 pub(crate) mod commit_builder;
 pub(crate) mod config;
 pub(crate) mod create_commit;
+pub mod dmls;
 pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod past_secrets;
@@ -812,10 +810,10 @@ impl MlsGroup {
         &self.message_secrets_store
     }
 
-    #[cfg(test)]
-    pub(crate) fn resumption_psk_store(&self) -> &ResumptionPskStore {
-        &self.resumption_psk_store
-    }
+    //#[cfg(test)]
+    //pub(crate) fn resumption_psk_store(&self) -> &ResumptionPskStore {
+    //    &self.resumption_psk_store
+    //}
 
     #[cfg(test)]
     pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {

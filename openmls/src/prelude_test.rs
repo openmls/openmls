@@ -6,7 +6,8 @@ pub use crate::ciphersuite::{signable::Verifiable, *};
 // KATs
 pub use crate::binary_tree::array_representation::kat_treemath;
 pub use crate::key_packages::KeyPackage;
-pub use crate::schedule::tests_and_kats::kats::key_schedule::{self, KeyScheduleTestVector};
+//#[cfg(any(feature = "test-utils", test))]
+//pub use crate::schedule::tests_and_kats::kats::key_schedule::{self, KeyScheduleTestVector};
 // TODO: #624 - re-enable test vectors.
 // pub use crate::group::tests::{
 //     kat_messages::{self, MessagesTestVector},

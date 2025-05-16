@@ -14,7 +14,7 @@ use crate::{
     prelude::LeafNodeIndex,
     schedule::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
-        InitSecret, JoinerSecret, KeySchedule, PreSharedKeyId,
+        JoinerSecret, KeySchedule, PreSharedKeyId,
     },
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
@@ -92,12 +92,13 @@ impl MlsGroupBuilder {
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
+        let init_secret = crate::schedule::ChildInitSecret::random(ciphersuite, provider.rand())
+            .map_err(LibraryError::unexpected_crypto_error)?;
         let joiner_secret = JoinerSecret::new(
             provider.crypto(),
             ciphersuite,
             commit_secret,
-            &InitSecret::random(ciphersuite, provider.rand())
-                .map_err(LibraryError::unexpected_crypto_error)?,
+            &init_secret,
             &serialized_group_context,
         )
         .map_err(LibraryError::unexpected_crypto_error)?;

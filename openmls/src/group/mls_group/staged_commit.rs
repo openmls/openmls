@@ -1,7 +1,7 @@
 use core::fmt::Debug;
 use std::mem;
 
-use openmls_traits::storage::StorageProvider;
+use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as _;
 
@@ -14,6 +14,7 @@ use super::{
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
+use crate::storage::StorageProvider;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
@@ -21,84 +22,97 @@ use crate::{
         diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff},
         staged_commit::PublicStagedCommitState,
     },
-    schedule::{CommitSecret, EpochAuthenticator, EpochSecrets, InitSecret, PreSharedKeyId},
+    schedule::{
+        psk::store::ResumptionPskStore, BaseCommitSecret, ChildInitSecret, CommitConfirmation,
+        CommitSecret, EpochAuthenticator, EpochSecrets, InitSecret, PreSharedKeyId,
+    },
     treesync::node::encryption_keys::EncryptionKeyPair,
+    versions::ProtocolVersion,
 };
 
-impl MlsGroup {
+impl GroupEpochSecrets {
     fn derive_epoch_secrets(
         &self,
         provider: &impl OpenMlsProvider,
         apply_proposals_values: ApplyProposalsValues,
-        epoch_secrets: &GroupEpochSecrets,
-        commit_secret: CommitSecret,
+        base_commit_secret: BaseCommitSecret,
         serialized_provisional_group_context: &[u8],
-    ) -> Result<EpochSecrets, StageCommitError> {
+        ciphersuite: Ciphersuite,
+        version: ProtocolVersion,
+        resumption_psk_store: &ResumptionPskStore,
+    ) -> Result<(EpochSecrets, InitSecret), StageCommitError> {
         // Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
-        let joiner_secret = if let Some(ref external_init_proposal) =
+
+        let commit_confirmation =
+            CommitConfirmation::new(provider.crypto(), ciphersuite, &base_commit_secret)
+                .map_err(LibraryError::unexpected_crypto_error)?;
+        let commit_secret = CommitSecret::new(provider.crypto(), ciphersuite, &base_commit_secret)
+            .map_err(LibraryError::unexpected_crypto_error)?;
+
+        let mut old_init_secret = if let Some(ref external_init_proposal) =
             apply_proposals_values.external_init_proposal_option
         {
             // Decrypt the content and derive the external init secret.
-            let external_priv = epoch_secrets
+            let external_priv = self
                 .external_secret()
-                .derive_external_keypair(provider.crypto(), self.ciphersuite())
+                .derive_external_keypair(provider.crypto(), ciphersuite)
                 .map_err(LibraryError::unexpected_crypto_error)?
                 .private;
-            let init_secret = InitSecret::from_kem_output(
+            InitSecret::from_kem_output(
                 provider.crypto(),
-                self.ciphersuite(),
-                self.version(),
+                ciphersuite,
+                version,
                 &external_priv,
                 external_init_proposal.kem_output(),
-            )?;
-            JoinerSecret::new(
-                provider.crypto(),
-                self.ciphersuite(),
-                commit_secret,
-                &init_secret,
-                serialized_provisional_group_context,
-            )
-            .map_err(LibraryError::unexpected_crypto_error)?
+            )?
         } else {
-            JoinerSecret::new(
-                provider.crypto(),
-                self.ciphersuite(),
-                commit_secret,
-                epoch_secrets.init_secret(),
-                serialized_provisional_group_context,
-            )
-            .map_err(LibraryError::unexpected_crypto_error)?
+            self.init_secret().clone()
         };
+        let child_init_secret = ChildInitSecret::new(
+            provider.crypto(),
+            ciphersuite,
+            &mut old_init_secret,
+            &commit_confirmation,
+            serialized_provisional_group_context,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+        let joiner_secret = JoinerSecret::new(
+            provider.crypto(),
+            ciphersuite,
+            commit_secret,
+            &child_init_secret,
+            serialized_provisional_group_context,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Prepare the PskSecret
         // Fails if PSKs are missing ([valn1205](https://validation.openmls.tech/#valn1205))
         let psk_secret = {
             let psks: Vec<(&PreSharedKeyId, Secret)> = load_psks(
                 provider.storage(),
-                &self.resumption_psk_store,
+                resumption_psk_store,
                 &apply_proposals_values.presharedkeys,
             )?;
 
-            PskSecret::new(provider.crypto(), self.ciphersuite(), psks)?
+            PskSecret::new(provider.crypto(), ciphersuite, psks)?
         };
 
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(
-            self.ciphersuite(),
-            provider.crypto(),
-            &joiner_secret,
-            psk_secret,
-        )?;
+        let mut key_schedule =
+            KeySchedule::init(ciphersuite, provider.crypto(), &joiner_secret, psk_secret)?;
 
         key_schedule
             .add_context(provider.crypto(), serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
-        Ok(key_schedule
-            .epoch_secrets(provider.crypto(), self.ciphersuite())
-            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
+        let epoch_secrets = key_schedule
+            .epoch_secrets(provider.crypto(), ciphersuite)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+        Ok((epoch_secrets, old_init_secret))
     }
+}
 
+impl MlsGroup {
     /// Stages a commit message that was sent by another group member. This
     /// function does the following:
     ///  - Applies the proposals covered by the commit to the tree
@@ -162,7 +176,7 @@ impl MlsGroup {
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
 
         // Determine if Commit has a path
-        let (commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =
+        let (base_commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =
             if let Some(path) = commit.path.clone() {
                 // Update the public group
                 // ValSem202: Path must be the right length
@@ -251,8 +265,9 @@ impl MlsGroup {
                     provider.crypto(),
                     apply_proposals_values.extensions.clone(),
                 )?;
+                let base_commit_secret = BaseCommitSecret::zero_secret(ciphersuite);
 
-                (CommitSecret::zero_secret(ciphersuite), vec![], None, None)
+                (base_commit_secret, vec![], None, None)
             };
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
@@ -267,19 +282,20 @@ impl MlsGroup {
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
-        let (provisional_group_secrets, provisional_message_secrets) = self
-            .derive_epoch_secrets(
-                provider,
-                apply_proposals_values,
-                self.group_epoch_secrets(),
-                commit_secret,
-                &serialized_provisional_group_context,
-            )?
-            .split_secrets(
-                serialized_provisional_group_context,
-                diff.tree_size(),
-                self.own_leaf_index(),
-            );
+        let (epoch_secrets, old_init_secret) = self.group_epoch_secrets.derive_epoch_secrets(
+            provider,
+            apply_proposals_values,
+            base_commit_secret,
+            &serialized_provisional_group_context,
+            self.ciphersuite(),
+            self.version(),
+            &self.resumption_psk_store,
+        )?;
+        let (provisional_group_secrets, provisional_message_secrets) = epoch_secrets.split_secrets(
+            serialized_provisional_group_context,
+            diff.tree_size(),
+            self.own_leaf_index(),
+        );
 
         // Verify confirmation tag
         // ValSem205
@@ -311,6 +327,7 @@ impl MlsGroup {
         let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
         let staged_commit_state =
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
+                old_init_secret,
                 provisional_group_secrets,
                 provisional_message_secrets,
                 staged_diff,
@@ -327,21 +344,21 @@ impl MlsGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub(crate) fn merge_commit<Provider: OpenMlsProvider>(
+    pub(crate) fn merge_commit<Provider: StorageProvider>(
         &mut self,
-        provider: &Provider,
+        storage: &Provider,
         staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<Provider::StorageError>> {
+    ) -> Result<(), MergeCommitError<Provider::Error>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self
-            .read_epoch_keypairs(provider.storage())
+            .read_epoch_keypairs(storage)
             .map_err(MergeCommitError::StorageError)?;
         match staged_commit.state {
             StagedCommitState::PublicState(staged_state) => {
                 self.public_group
                     .merge_diff(staged_state.into_staged_diff());
-                self.store(provider.storage())
+                self.store(storage)
                     .map_err(MergeCommitError::StorageError)?;
                 Ok(())
             }
@@ -393,7 +410,6 @@ impl MlsGroup {
                 }
 
                 // Store the updated group state
-                let storage = provider.storage();
                 let group_id = self.group_id();
 
                 self.public_group
@@ -569,12 +585,21 @@ impl StagedCommit {
             None
         }
     }
+
+    pub(crate) fn init_secret(&self) -> Option<&InitSecret> {
+        if let StagedCommitState::GroupMember(ref gm) = self.state {
+            Some(&gm.old_init_secret)
+        } else {
+            None
+        }
+    }
 }
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct MemberStagedCommitState {
+    old_init_secret: InitSecret,
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,
     staged_diff: StagedPublicGroupDiff,
@@ -585,6 +610,7 @@ pub(crate) struct MemberStagedCommitState {
 
 impl MemberStagedCommitState {
     pub(crate) fn new(
+        old_init_secret: InitSecret,
         group_epoch_secrets: GroupEpochSecrets,
         message_secrets: MessageSecrets,
         staged_diff: StagedPublicGroupDiff,
@@ -593,6 +619,7 @@ impl MemberStagedCommitState {
         update_path_leaf_node: Option<LeafNode>,
     ) -> Self {
         Self {
+            old_init_secret,
             group_epoch_secrets,
             message_secrets,
             staged_diff,

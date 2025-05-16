@@ -435,10 +435,10 @@ impl PskSecret {
         &self.secret
     }
 
-    #[cfg(any(feature = "test-utils", feature = "crypto-debug", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.as_slice()
-    }
+    //#[cfg(any(feature = "test-utils", feature = "crypto-debug", test))]
+    //pub(crate) fn as_slice(&self) -> &[u8] {
+    //    self.secret.as_slice()
+    //}
 }
 
 #[cfg(any(feature = "test-utils", test))]
@@ -535,10 +535,10 @@ pub mod store {
         }
     }
 
-    #[cfg(test)]
-    impl ResumptionPskStore {
-        pub(crate) fn cursor(&self) -> usize {
-            self.cursor
-        }
-    }
+    //#[cfg(test)]
+    //impl ResumptionPskStore {
+    //    pub(crate) fn cursor(&self) -> usize {
+    //        self.cursor
+    //    }
+    //}
 }

@@ -3,7 +3,7 @@
 use std::mem;
 
 use errors::{CommitToPendingProposalsError, MergePendingCommitError};
-use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
 use crate::{
     framing::mls_content::FramedContentBody,
@@ -142,36 +142,44 @@ impl MlsGroup {
         provider: &Provider,
         staged_commit: StagedCommit,
     ) -> Result<(), MergeCommitError<Provider::StorageError>> {
+        self.merge_staged_commit_inner(provider.storage(), staged_commit)
+    }
+
+    // TODO: Maybe remove? This exists just to avoid changing the public API of
+    // `merge_staged_commit`. We need to be able to pass in a StorageProvider
+    // instead of an OpenMlsProvider, though.
+    pub(super) fn merge_staged_commit_inner<Provider: StorageProvider>(
+        &mut self,
+        storage: &Provider,
+        staged_commit: StagedCommit,
+    ) -> Result<(), MergeCommitError<Provider::Error>> {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
         }
-        provider
-            .storage()
+        storage
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(MergeCommitError::StorageError)?;
 
         // Merge staged commit
-        self.merge_commit(provider, staged_commit)?;
+        self.merge_commit(storage, staged_commit)?;
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group_epoch_secrets().resumption_psk();
         self.resumption_psk_store
             .add(self.context().epoch(), resumption_psk.clone());
-        provider
-            .storage()
+        storage
             .write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)
             .map_err(MergeCommitError::StorageError)?;
 
         // Delete own KeyPackageBundles
         self.own_leaf_nodes.clear();
-        provider
-            .storage()
+        storage
             .delete_own_leaf_nodes(self.group_id())
             .map_err(MergeCommitError::StorageError)?;
 
         // Delete a potential pending commit
-        self.clear_pending_commit(provider.storage())
+        self.clear_pending_commit(storage)
             .map_err(MergeCommitError::StorageError)?;
 
         Ok(())
@@ -187,7 +195,10 @@ impl MlsGroup {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
                 if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    self.merge_staged_commit(provider, (*pending_commit_state).into())?;
+                    self.merge_staged_commit_inner(
+                        provider.storage(),
+                        (*pending_commit_state).into(),
+                    )?;
                 }
                 Ok(())
             }

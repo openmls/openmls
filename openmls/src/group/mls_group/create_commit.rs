@@ -1,7 +1,11 @@
 //! Defines the `CreateCommit` trait and its implementation for `MlsGroup`.
 
 use super::*;
-use crate::{credentials::CredentialWithKey, treesync::LeafNodeParameters};
+use crate::{
+    credentials::CredentialWithKey,
+    schedule::{ChildInitSecret, CommitConfirmation, CommitSecret},
+    treesync::LeafNodeParameters,
+};
 
 /// Can be used to denote the type of a commit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -15,7 +19,6 @@ pub(crate) struct CreateCommitParams<'a> {
     credential_with_key: CredentialWithKey,
 
     inline_proposals: Vec<Proposal>,          // Optional
-    force_self_update: bool,                  // Optional
     leaf_node_parameters: LeafNodeParameters, // Optional
 }
 
@@ -38,7 +41,6 @@ impl TempBuilderCCPM0 {
 
                 // defaults:
                 inline_proposals: vec![],
-                force_self_update: true,
                 leaf_node_parameters: LeafNodeParameters::default(),
             },
         }
@@ -64,9 +66,6 @@ impl CreateCommitParams<'_> {
     }
     pub(crate) fn set_inline_proposals(&mut self, inline_proposals: Vec<Proposal>) {
         self.inline_proposals = inline_proposals;
-    }
-    pub(crate) fn force_self_update(&self) -> bool {
-        self.force_self_update
     }
     pub(crate) fn credential_with_key(&self) -> &CredentialWithKey {
         &self.credential_with_key
@@ -98,7 +97,7 @@ impl MlsGroup {
         };
 
         // Filter proposals
-        let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
+        let (proposal_queue, _contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
             provider.crypto(),
             sender.clone(),
@@ -168,12 +167,6 @@ impl MlsGroup {
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
 
         let path_computation_result =
-            // If path is needed, compute path values
-            if apply_proposals_values.path_required
-                || contains_own_updates
-                || params.force_self_update()
-                || !params.leaf_node_parameters().is_empty()
-            {
                 // Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
                 // tree hash.
@@ -186,13 +179,7 @@ impl MlsGroup {
                     params.leaf_node_parameters(),
                     signer,
                     apply_proposals_values.extensions.clone()
-                )?
-            } else {
-                // If path is not needed, update the group context and return
-                // empty path processing results
-                diff.update_group_context(provider.crypto(), apply_proposals_values.extensions.clone())?;
-                PathComputationResult::default()
-            };
+                )?;
 
         let update_path_leaf_node = path_computation_result
             .encrypted_path
@@ -222,11 +209,34 @@ impl MlsGroup {
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
+        let base_commit_secret =
+            path_computation_result
+                .base_commit_secret
+                .ok_or(LibraryError::custom(
+                    "Base commit secret is None. This should not happen.",
+                ))?;
+        let commit_secret = CommitSecret::new(provider.crypto(), ciphersuite, &base_commit_secret)
+            .map_err(LibraryError::unexpected_crypto_error)?;
+
+        let commit_confirmation =
+            CommitConfirmation::new(provider.crypto(), ciphersuite, &base_commit_secret)
+                .map_err(LibraryError::unexpected_crypto_error)?;
+
+        let mut old_init_secret = self.group_epoch_secrets.init_secret().clone();
+        let child_init_secret = ChildInitSecret::new(
+            provider.crypto(),
+            ciphersuite,
+            &mut old_init_secret,
+            &commit_confirmation,
+            &serialized_provisional_group_context,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+
         let joiner_secret = JoinerSecret::new(
             provider.crypto(),
             ciphersuite,
-            path_computation_result.commit_secret,
-            self.group_epoch_secrets().init_secret(),
+            commit_secret,
+            &child_init_secret,
             &serialized_provisional_group_context,
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
@@ -363,6 +373,7 @@ impl MlsGroup {
             );
 
         let staged_commit_state = MemberStagedCommitState::new(
+            old_init_secret,
             provisional_group_epoch_secrets,
             provisional_message_secrets,
             diff.into_staged_diff(provider.crypto(), ciphersuite)?,

@@ -27,18 +27,21 @@ impl<Proposal: Entity<STORAGE_PROVIDER_VERSION>, ProposalRef: Entity<STORAGE_PRO
     pub(super) fn load<C: Codec, GroupId: Key<STORAGE_PROVIDER_VERSION>>(
         connection: &rusqlite::Connection,
         group_id: &GroupId,
+        epoch_id: &[u8],
     ) -> Result<Vec<(ProposalRef, Proposal)>, rusqlite::Error> {
         let mut stmt = connection.prepare(
             "SELECT proposal_ref, proposal 
             FROM openmls_proposals 
             WHERE group_id = ?1
-                AND provider_version = ?2",
+                AND provider_version = ?2
+                AND dmls_epoch_id = ?3",
         )?;
         let proposals = stmt
             .query_map(
                 params![
                     KeyRefWrapper::<C, _>(group_id, PhantomData),
-                    STORAGE_PROVIDER_VERSION
+                    STORAGE_PROVIDER_VERSION,
+                    epoch_id,
                 ],
                 |row| Self::from_row::<C>(row).map(|x| (x.0, x.1)),
             )?
@@ -49,18 +52,21 @@ impl<Proposal: Entity<STORAGE_PROVIDER_VERSION>, ProposalRef: Entity<STORAGE_PRO
     pub(super) fn load_refs<C: Codec, GroupId: Key<STORAGE_PROVIDER_VERSION>>(
         connection: &rusqlite::Connection,
         group_id: &GroupId,
+        epoch_id: &[u8],
     ) -> Result<Vec<ProposalRef>, rusqlite::Error> {
         let mut stmt = connection.prepare(
             "SELECT proposal_ref 
                 FROM openmls_proposals 
                 WHERE group_id = ?1
-                    AND provider_version = ?2",
+                    AND provider_version = ?2
+                    AND dmls_epoch_id = ?3",
         )?;
         let proposal_refs = stmt
             .query_map(
                 params![
                     KeyRefWrapper::<C, _>(group_id, PhantomData),
-                    STORAGE_PROVIDER_VERSION
+                    STORAGE_PROVIDER_VERSION,
+                    epoch_id,
                 ],
                 |row| {
                     let EntityWrapper::<C, _>(proposal_ref, PhantomData) = row.get(0)?;
@@ -85,14 +91,16 @@ impl<Proposal: Entity<STORAGE_PROVIDER_VERSION>, ProposalRef: Entity<STORAGE_PRO
         &self,
         connection: &rusqlite::Connection,
         group_id: &GroupId,
+        epoch_id: &[u8],
     ) -> Result<(), rusqlite::Error> {
         // We insert or ignore here, because if the proposal ref matches, the
         // content will match as well.
         connection.execute(
-            "INSERT OR IGNORE INTO openmls_proposals (group_id, proposal_ref, proposal, provider_version) 
-            VALUES (?1, ?2, ?3, ?4)",
+            "INSERT OR IGNORE INTO openmls_proposals (group_id, dmls_epoch_id, proposal_ref, proposal, provider_version) 
+            VALUES (?1, ?2, ?3, ?4, ?5)",
             params![
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
+                epoch_id,
                 EntityRefWrapper::<C, _>(self.0, PhantomData),
                 EntityRefWrapper::<C, _>(self.1, PhantomData),
                 STORAGE_PROVIDER_VERSION
@@ -106,14 +114,17 @@ impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
     pub(super) fn delete_all_proposals<C: Codec>(
         &self,
         connection: &rusqlite::Connection,
+        epoch_id: &[u8],
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
             "DELETE FROM openmls_proposals 
             WHERE group_id = ?1 
-                AND provider_version = ?2",
+                AND provider_version = ?2
+                AND dmls_epoch_id = ?3",
             params![
                 KeyRefWrapper::<C, _>(self.0, PhantomData),
-                STORAGE_PROVIDER_VERSION
+                STORAGE_PROVIDER_VERSION,
+                epoch_id,
             ],
         )?;
         Ok(())
@@ -125,17 +136,20 @@ impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
     >(
         &self,
         connection: &rusqlite::Connection,
+        epoch_id: &[u8],
         proposal_ref: &ProposalRef,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
             "DELETE FROM openmls_proposals 
             WHERE group_id = ?1 
                 AND proposal_ref = ?2
-                AND provider_version = ?3",
+                AND provider_version = ?3
+                AND epoch_id = ?4",
             params![
                 KeyRefWrapper::<C, _>(self.0, PhantomData),
                 KeyRefWrapper::<C, _>(proposal_ref, PhantomData),
-                STORAGE_PROVIDER_VERSION
+                STORAGE_PROVIDER_VERSION,
+                epoch_id,
             ],
         )?;
         Ok(())

@@ -442,7 +442,7 @@ impl ProcessedWelcome {
 
         let welcome_sender_index = self.verifiable_group_info.signer();
         let path_keypairs = if let Some(path_secret) = self.group_secrets.path_secret {
-            let (path_keypairs, _commit_secret) = public_group
+            let path_keypairs = public_group
                 .derive_path_secrets(
                     provider.crypto(),
                     self.ciphersuite,

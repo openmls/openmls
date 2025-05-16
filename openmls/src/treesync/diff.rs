@@ -38,6 +38,7 @@ use super::{
     LeafNode, TreeSync, TreeSyncParentHashError,
 };
 use crate::group::{create_commit::CommitType, GroupId};
+use crate::schedule::BaseCommitSecret;
 use crate::{
     binary_tree::{
         array_representation::{
@@ -48,14 +49,13 @@ use crate::{
     ciphersuite::Secret,
     error::LibraryError,
     messages::PathSecret,
-    schedule::CommitSecret,
     treesync::RatchetTree,
 };
 
 pub(crate) type UpdatePathResult = (
     Vec<PlainUpdatePathNode>,
     Vec<EncryptionKeyPair>,
-    CommitSecret,
+    BaseCommitSecret,
 );
 
 /// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined

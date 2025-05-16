@@ -40,7 +40,6 @@ use crate::{
         proposals::{Proposal, ProposalOrRefType, ProposalType},
         ConfirmationTag, PathSecret,
     },
-    schedule::CommitSecret,
     storage::PublicStorageProvider,
     treesync::{
         errors::{DerivePathError, TreeSyncFromNodesError},
@@ -53,7 +52,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 #[cfg(doc)]
-use crate::{framing::PublicMessage, group::MlsGroup};
+use crate::{framing::PublicMessage, group::MlsGroup, schedule::CommitSecret};
 
 pub(crate) mod builder;
 pub(crate) mod diff;
@@ -371,7 +370,7 @@ impl PublicGroup {
         path_secret: PathSecret,
         sender_index: LeafNodeIndex,
         leaf_index: LeafNodeIndex,
-    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), DerivePathError> {
+    ) -> Result<Vec<EncryptionKeyPair>, DerivePathError> {
         self.treesync.derive_path_secrets(
             crypto,
             ciphersuite,

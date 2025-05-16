@@ -116,6 +116,7 @@
 // ```
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::*};
+use pprf::Pprf;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
@@ -142,6 +143,7 @@ use errors::*;
 use message_secrets::MessageSecrets;
 use openmls_traits::random::OpenMlsRand;
 use psk::PskSecret;
+mod pprf;
 
 // Tests and kats
 #[cfg(any(feature = "test-utils", test))]
@@ -206,6 +208,24 @@ impl EpochAuthenticator {
 
 // Crate-only types
 
+pub(crate) struct CommitConfirmation {
+    secret: Secret,
+}
+
+impl CommitConfirmation {
+    pub(crate) fn new(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        base_commit_secret: &BaseCommitSecret,
+    ) -> Result<Self, CryptoError> {
+        let secret = base_commit_secret
+            .secret
+            .derive_secret(crypto, ciphersuite, "conf")?;
+        log_crypto!(trace, "Commit confirmation secret: {:x?}", secret);
+        Ok(Self { secret })
+    }
+}
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 #[cfg_attr(any(feature = "test-utils", test), derive(Clone))]
@@ -213,33 +233,47 @@ pub(crate) struct CommitSecret {
     secret: Secret,
 }
 
-impl From<PathSecret> for CommitSecret {
+#[derive(Debug)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
+pub(crate) struct BaseCommitSecret {
+    secret: Secret,
+}
+
+impl BaseCommitSecret {
+    /// Create a CommitSecret consisting of an all-zero string of length
+    /// `hash_length`.
+    pub(crate) fn zero_secret(ciphersuite: Ciphersuite) -> Self {
+        Self {
+            secret: Secret::zero(ciphersuite),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.as_slice()
+    }
+}
+
+impl From<PathSecret> for BaseCommitSecret {
     fn from(path_secret: PathSecret) -> Self {
-        CommitSecret {
+        BaseCommitSecret {
             secret: path_secret.secret(),
         }
     }
 }
 
 impl CommitSecret {
-    /// Create a CommitSecret consisting of an all-zero string of length
-    /// `hash_length`.
-    pub(crate) fn zero_secret(ciphersuite: Ciphersuite) -> Self {
-        CommitSecret {
-            secret: Secret::zero(ciphersuite),
-        }
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsRand) -> Self {
-        Self {
-            secret: Secret::random(ciphersuite, rng).expect("Not enough randomness."),
-        }
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.as_slice()
+    /// Derive a `CommitSecret` from a `BaseCommitSecret`.
+    pub(crate) fn new(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        base_commit_secret: &BaseCommitSecret,
+    ) -> Result<Self, CryptoError> {
+        let secret = base_commit_secret
+            .secret
+            .derive_secret(crypto, ciphersuite, "commit")?;
+        log_crypto!(trace, "Commit secret: {:x?}", secret);
+        Ok(Self { secret })
     }
 }
 
@@ -247,12 +281,14 @@ impl CommitSecret {
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub(crate) struct InitSecret {
-    secret: Secret,
+    pprf: Pprf,
 }
 
 impl From<Secret> for InitSecret {
     fn from(secret: Secret) -> Self {
-        Self { secret }
+        Self {
+            pprf: Pprf::new(secret),
+        }
     }
 }
 
@@ -273,21 +309,12 @@ impl InitSecret {
         ciphersuite: Ciphersuite,
         epoch_secret: EpochSecret,
     ) -> Result<Self, CryptoError> {
+        let label = "parent_init";
         let secret = epoch_secret
             .secret
-            .derive_secret(crypto, ciphersuite, "init")?;
+            .derive_secret(crypto, ciphersuite, label)?;
         log_crypto!(trace, "Init secret: {:x?}", secret);
-        Ok(InitSecret { secret })
-    }
-
-    /// Sample a fresh, random `InitSecret` for the creation of a new group.
-    pub(crate) fn random(
-        ciphersuite: Ciphersuite,
-        rand: &impl OpenMlsRand,
-    ) -> Result<Self, CryptoError> {
-        Ok(InitSecret {
-            secret: Secret::random(ciphersuite, rand)?,
-        })
+        Ok(secret.into())
     }
 
     /// Create an `InitSecret` and the corresponding `kem_output` from a group info.
@@ -305,15 +332,9 @@ impl InitSecret {
             hpke_info_from_version(version).as_bytes(),
             ciphersuite.hash_length(),
         )?;
-        Ok((
-            InitSecret {
-                secret: Secret::from_slice(&raw_init_secret),
-            },
-            kem_output,
-        ))
+        Ok((Secret::from_slice(&raw_init_secret).into(), kem_output))
     }
 
-    /// Create an `InitSecret` from a `kem_output`.
     pub(crate) fn from_kem_output(
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
@@ -331,21 +352,48 @@ impl InitSecret {
                 ciphersuite.hash_length(),
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
-        Ok(InitSecret {
-            secret: Secret::from_slice(&raw_init_secret),
+        Ok(Secret::from_slice(&raw_init_secret).into())
+    }
+}
+
+pub(crate) struct ChildInitSecret {
+    secret: Secret,
+}
+
+impl ChildInitSecret {
+    pub(crate) fn new(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        init_secret: &mut InitSecret,
+        commit_confirmation: &CommitConfirmation,
+        serialized_group_context: &[u8],
+    ) -> Result<Self, CryptoError> {
+        let pprf_input = commit_confirmation.secret.kdf_expand_label(
+            crypto,
+            ciphersuite,
+            "child_init",
+            serialized_group_context,
+            ciphersuite.hash_length(),
+        )?;
+        let secret = init_secret
+            .pprf
+            .evaluate(crypto, ciphersuite, pprf_input.as_slice())
+            .map_err(|e| {
+                log::error!("Error deriving child init secret: {:?}", e);
+                CryptoError::InvalidLength
+            })?;
+        log_crypto!(trace, "Child init secret: {:x?}", secret);
+        Ok(Self { secret })
+    }
+
+    /// Sample a fresh, random `ChildInitSecret` for the creation of a new group.
+    pub(crate) fn random(
+        ciphersuite: Ciphersuite,
+        rand: &impl OpenMlsRand,
+    ) -> Result<Self, CryptoError> {
+        Ok(Self {
+            secret: Secret::random(ciphersuite, rand)?,
         })
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn clone(&self) -> Self {
-        Self {
-            secret: self.secret.clone(),
-        }
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.as_slice()
     }
 }
 
@@ -363,10 +411,10 @@ impl JoinerSecret {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         commit_secret_option: impl Into<Option<CommitSecret>>,
-        init_secret: &InitSecret,
+        child_init_secret: &ChildInitSecret,
         serialized_group_context: &[u8],
     ) -> Result<Self, CryptoError> {
-        let intermediate_secret = init_secret.secret.hkdf_extract(
+        let intermediate_secret = child_init_secret.secret.hkdf_extract(
             crypto,
             ciphersuite,
             commit_secret_option.into().as_ref().map(|cs| &cs.secret),
@@ -382,7 +430,7 @@ impl JoinerSecret {
         Ok(JoinerSecret { secret })
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -610,7 +658,7 @@ impl WelcomeSecret {
         Ok(AeadNonce::from_secret(nonce_secret))
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -685,7 +733,7 @@ impl EncryptionSecret {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -719,7 +767,7 @@ impl ExporterSecret {
         Ok(ExporterSecret { secret })
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -774,7 +822,7 @@ impl ExternalSecret {
         crypto.derive_hpke_keypair(ciphersuite.hpke_config(), self.secret.as_slice())
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -847,6 +895,7 @@ impl ConfirmationKey {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -903,7 +952,7 @@ impl MembershipKey {
         Self { secret }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -1071,10 +1120,10 @@ impl PartialEq for EpochSecrets {
 
 impl EpochSecrets {
     /// Get the sender_data secret.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn sender_data_secret(&self) -> &SenderDataSecret {
-        &self.sender_data_secret
-    }
+    //#[cfg(any(feature = "test-utils", test))]
+    //pub(crate) fn sender_data_secret(&self) -> &SenderDataSecret {
+    //    &self.sender_data_secret
+    //}
 
     /// Get the confirmation key.
     pub(crate) fn confirmation_key(&self) -> &ConfirmationKey {
@@ -1082,45 +1131,45 @@ impl EpochSecrets {
     }
 
     /// Epoch authenticator
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn epoch_authenticator(&self) -> &EpochAuthenticator {
-        &self.epoch_authenticator
-    }
+    //#[cfg(any(feature = "test-utils", test))]
+    //pub(crate) fn epoch_authenticator(&self) -> &EpochAuthenticator {
+    //    &self.epoch_authenticator
+    //}
 
-    /// Exporter secret
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
-        &self.exporter_secret
-    }
+    ///// Exporter secret
+    //#[cfg(any(feature = "test-utils", test))]
+    //pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
+    //    &self.exporter_secret
+    //}
 
-    /// Membership key
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn membership_key(&self) -> &MembershipKey {
-        &self.membership_key
-    }
+    ///// Membership key
+    //#[cfg(any(feature = "test-utils", test))]
+    //pub(crate) fn membership_key(&self) -> &MembershipKey {
+    //    &self.membership_key
+    //}
 
     /// External secret
     pub(crate) fn external_secret(&self) -> &ExternalSecret {
         &self.external_secret
     }
 
-    /// External secret
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn resumption_psk(&self) -> &ResumptionPskSecret {
-        &self.resumption_psk
-    }
+    ///// External secret
+    //#[cfg(any(feature = "test-utils", test))]
+    //pub(crate) fn resumption_psk(&self) -> &ResumptionPskSecret {
+    //    &self.resumption_psk
+    //}
 
-    /// Init secret
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn init_secret(&self) -> &InitSecret {
-        &self.init_secret
-    }
+    ///// Init secret
+    //#[cfg(any(feature = "test-utils", test))]
+    //pub(crate) fn init_secret(&self) -> &InitSecret {
+    //    &self.init_secret
+    //}
 
-    /// Encryption secret
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn encryption_secret(&self) -> &EncryptionSecret {
-        &self.encryption_secret
-    }
+    ///// Encryption secret
+    //#[cfg(any(feature = "test-utils", test))]
+    //pub(crate) fn encryption_secret(&self) -> &EncryptionSecret {
+    //    &self.encryption_secret
+    //}
 
     /// Derive `EpochSecrets` from an `EpochSecret`.
     /// If the `with_init_secret` argument is `true`, the init secret is derived and
@@ -1237,7 +1286,6 @@ impl PartialEq for GroupEpochSecrets {
 }
 
 impl GroupEpochSecrets {
-    /// Init secret
     pub(crate) fn init_secret(&self) -> &InitSecret {
         &self.init_secret
     }
@@ -1260,5 +1308,11 @@ impl GroupEpochSecrets {
     /// External secret
     pub(crate) fn resumption_psk(&self) -> &ResumptionPskSecret {
         &self.resumption_psk
+    }
+
+    /// Set the init secret. This should onlye be used to update the PPRF state
+    /// when merging a staged commit.
+    pub(crate) fn set_init_secret(&mut self, init_secret: InitSecret) {
+        self.init_secret = init_secret;
     }
 }

@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
 use super::PublicGroup;
+#[cfg(doc)]
+use crate::schedule::CommitSecret;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     error::LibraryError,
@@ -17,7 +19,7 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, public_message::InterimTranscriptHashInput},
     group::GroupContext,
     messages::{proposals::AddProposal, ConfirmationTag, EncryptedGroupSecrets},
-    schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
+    schedule::{psk::PreSharedKeyId, BaseCommitSecret, JoinerSecret},
     treesync::{
         diff::{StagedTreeSyncDiff, TreeSyncDiff},
         errors::ApplyUpdatePathError,
@@ -129,7 +131,7 @@ impl<'a> PublicGroupDiff<'a> {
         sender_leaf_index: LeafNodeIndex,
         update_path: &[UpdatePathNode],
         exclusion_list: &HashSet<&LeafNodeIndex>,
-    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
+    ) -> Result<(Vec<EncryptionKeyPair>, BaseCommitSecret), ApplyUpdatePathError> {
         let params = DecryptPathParams {
             update_path,
             sender_leaf_index,

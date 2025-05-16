@@ -21,18 +21,21 @@ impl<LeafNode: Entity<STORAGE_PROVIDER_VERSION>> StorableLeafNode<LeafNode> {
     pub(super) fn load<C: Codec, GroupId: Key<STORAGE_PROVIDER_VERSION>>(
         connection: &rusqlite::Connection,
         group_id: &GroupId,
+        epoch_id: &[u8],
     ) -> Result<Vec<LeafNode>, rusqlite::Error> {
         let mut stmt = connection.prepare(
             "SELECT leaf_node 
             FROM openmls_own_leaf_nodes 
             WHERE group_id = ?
-                AND provider_version = ?",
+                AND provider_version = ?
+                AND dmls_epoch_id = ?",
         )?;
         let leaf_nodes = stmt
             .query_map(
                 params![
                     KeyRefWrapper::<C, _>(group_id, PhantomData),
-                    STORAGE_PROVIDER_VERSION
+                    STORAGE_PROVIDER_VERSION,
+                    epoch_id,
                 ],
                 |row| Self::from_row::<C>(row).map(|x| x.0),
             )?
@@ -50,14 +53,16 @@ impl<LeafNode: Entity<STORAGE_PROVIDER_VERSION>> StorableLeafNodeRef<'_, LeafNod
         &self,
         connection: &rusqlite::Connection,
         group_id: &GroupId,
+        epoch_id: &[u8],
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO openmls_own_leaf_nodes (group_id, leaf_node, provider_version) 
-            VALUES (?1, ?2, ?3)",
+            "INSERT INTO openmls_own_leaf_nodes (group_id, leaf_node, provider_version, dmls_epoch_id) 
+            VALUES (?1, ?2, ?3, ?4)",
             params![
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
                 EntityRefWrapper::<C, _>(self.0, PhantomData),
-                STORAGE_PROVIDER_VERSION
+                STORAGE_PROVIDER_VERSION,
+                epoch_id,
             ],
         )?;
         Ok(())
@@ -68,14 +73,17 @@ impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
     pub(super) fn delete_leaf_nodes<C: Codec>(
         &self,
         connection: &rusqlite::Connection,
+        epoch_id: &[u8],
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
             "DELETE FROM openmls_own_leaf_nodes 
             WHERE group_id = ?
-                AND provider_version = ?",
+                AND provider_version = ?
+                AND dmls_epoch_id = ?",
             params![
                 KeyRefWrapper::<C, _>(self.0, PhantomData),
-                STORAGE_PROVIDER_VERSION
+                STORAGE_PROVIDER_VERSION,
+                epoch_id,
             ],
         )?;
         Ok(())

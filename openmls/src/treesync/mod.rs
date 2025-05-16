@@ -405,9 +405,13 @@ impl TreeSync {
         let path_secret: PathSecret = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?
             .into();
-        let commit_secret: CommitSecret = path_secret
-            .derive_path_secret(provider.crypto(), ciphersuite)?
-            .into();
+        let commit_secret = {
+            let base_commit_secret = path_secret
+                .derive_path_secret(provider.crypto(), ciphersuite)?
+                .into();
+            CommitSecret::new(provider.crypto(), ciphersuite, &base_commit_secret)
+                .map_err(|_| LibraryError::custom("Error deriving commit secret"))?
+        };
         let nodes = vec![TreeSyncNode::from(node).into()];
         let tree = MlsBinaryTree::new(nodes)
             .map_err(|_| LibraryError::custom("Unexpected error creating the binary tree."))?;
@@ -681,7 +685,7 @@ impl TreeSync {
         mut path_secret: PathSecret,
         sender_index: LeafNodeIndex,
         leaf_index: LeafNodeIndex,
-    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), DerivePathError> {
+    ) -> Result<Vec<EncryptionKeyPair>, DerivePathError> {
         // We assume both nodes are in the tree, since the sender_index must be in the tree
         // Skip the nodes in the subtree path for which we are an unmerged leaf.
         let subtree_path = self.tree.subtree_path(leaf_index, sender_index);
@@ -710,7 +714,7 @@ impl TreeSync {
                 // leaves, go to the next node.
             }
         }
-        Ok((keypairs, path_secret.into()))
+        Ok(keypairs)
     }
 
     /// Return a reference to the parent node at the given `ParentNodeIndex` or

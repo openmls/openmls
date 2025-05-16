@@ -175,6 +175,7 @@ pub mod framing;
 pub mod group;
 pub mod key_packages;
 pub mod messages;
+#[allow(dead_code)]
 pub mod schedule;
 pub mod treesync;
 pub mod versions;
@@ -185,6 +186,8 @@ pub mod storage;
 
 // Private
 mod binary_tree;
+#[allow(unused_imports)]
+#[allow(dead_code)]
 mod skip_validation;
 mod tree;
 
