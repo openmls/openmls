@@ -8,8 +8,131 @@ use crate::{
     treesync::errors::UpdatePathError,
 };
 
+impl frankenstein::FrankenMlsMessage {
+    /// Create a FrankenMlsMessage from the provided MlsMessageOut,
+    /// with the specified LeafNodeSource.
+    fn with_leaf_node_source<P: OpenMlsProvider>(
+        member: &MemberState<'_, P>,
+        mls_message_out: MlsMessageOut,
+        leaf_node_source: frankenstein::FrankenLeafNodeSource,
+    ) -> Self {
+        // extract values we need later
+        let frankenstein::FrankenMlsMessage {
+            version,
+            body:
+                frankenstein::FrankenMlsMessageBody::PublicMessage(frankenstein::FrankenPublicMessage {
+                    content:
+                        frankenstein::FrankenFramedContent {
+                            group_id,
+                            epoch,
+                            sender,
+                            authenticated_data,
+                            body:
+                                frankenstein::FrankenFramedContentBody::Commit(
+                                    frankenstein::FrankenCommit {
+                                        mut path,
+                                        proposals,
+                                    },
+                                ),
+                        },
+                    auth:
+                        frankenstein::FrankenFramedContentAuthData {
+                            signature: _,
+                            confirmation_tag,
+                        },
+                    ..
+                }),
+        } = frankenstein::FrankenMlsMessage::from(mls_message_out)
+        else {
+            unreachable!()
+        };
+
+        match path {
+            Some(ref mut update_path_in) => {
+                update_path_in.leaf_node.payload.leaf_node_source = leaf_node_source;
+            }
+            None => unreachable!(),
+        }
+
+        let body = frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
+            path,
+            proposals,
+        });
+
+        let group_context = member.group.export_group_context().clone();
+        let commit_content = frankenstein::FrankenFramedContent {
+            body,
+            group_id,
+            epoch,
+            sender,
+            authenticated_data,
+        };
+
+        let secrets = member.group.message_secrets();
+        let membership_key = secrets.membership_key().as_slice();
+
+        frankenstein::FrankenMlsMessage {
+            version,
+            body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+                frankenstein::FrankenPublicMessage::auth(
+                    &member.party.core_state.provider,
+                    member.group.ciphersuite(),
+                    &member.party.signer,
+                    commit_content,
+                    Some(&group_context.into()),
+                    Some(membership_key),
+                    confirmation_tag,
+                ),
+            ),
+        }
+    }
+}
+
+impl<P: OpenMlsProvider> GroupState<'_, P> {
+    /// Test that the correct error variant is returned when a message is processed whose
+    /// leaf_node_source does not have the type Commit.
+    fn test_valn_1207(
+        &mut self,
+        mls_message_out: &MlsMessageOut,
+        leaf_node_source: frankenstein::FrankenLeafNodeSource,
+    ) {
+        let [alice, bob] = self.members_mut(&["alice", "bob"]);
+        let franken_commit = frankenstein::FrankenMlsMessage::with_leaf_node_source(
+            alice,
+            mls_message_out.clone(),
+            leaf_node_source,
+        );
+        let fake_commit = MlsMessageIn::tls_deserialize(
+            &mut franken_commit.tls_serialize_detached().unwrap().as_slice(),
+        )
+        .unwrap();
+        let protocol_message = fake_commit.try_into_protocol_message().unwrap();
+
+        let err = bob
+            .group
+            .process_message(&bob.party.core_state.provider, protocol_message)
+            .expect_err("should return an error");
+
+        assert_eq!(
+            err,
+            ProcessMessageError::ValidationError(ValidationError::UpdatePathError(
+                UpdatePathError::InvalidType
+            ))
+        );
+    }
+}
+
+/// This test makes sure that validation check 1207 (valn1207) is performed:
+///
+///   If the path value is populated, validate it and apply it to the tree:
+///   Validate the LeafNode as specified in Section 7.3. The leaf_node_source
+///   field MUST be set to commit.
+///
+///   We test whether the correct error is returned when the leaf_node_source
+///   is set to `Update`.
 #[openmls_test]
 fn valn1207() {
+    // Set up a new group with Alice
     let group_id = GroupId::from_slice(b"Test Group");
 
     let create_config = MlsGroupCreateConfig::builder()
@@ -36,6 +159,7 @@ fn valn1207() {
     )
     .unwrap();
 
+    // Add Bob to group
     group_state
         .add_member(AddMemberConfig {
             adder: "alice",
@@ -46,6 +170,7 @@ fn valn1207() {
         .expect("Could not add member");
     let [alice] = group_state.members_mut(&["alice"]);
 
+    // Alice creates commit to add Charlie to group
     let (mls_message_out, _welcome, _group_info) = alice
         .group
         .add_members(
@@ -55,94 +180,16 @@ fn valn1207() {
         )
         .unwrap();
 
-    // extract values we need later
-    let frankenstein::FrankenMlsMessage {
-        version,
-        body:
-            frankenstein::FrankenMlsMessageBody::PublicMessage(frankenstein::FrankenPublicMessage {
-                content:
-                    frankenstein::FrankenFramedContent {
-                        group_id,
-                        epoch,
-                        sender,
-                        authenticated_data,
-                        body:
-                            frankenstein::FrankenFramedContentBody::Commit(
-                                frankenstein::FrankenCommit {
-                                    mut path,
-                                    proposals,
-                                },
-                            ),
-                    },
-                auth:
-                    frankenstein::FrankenFramedContentAuthData {
-                        signature: _,
-                        confirmation_tag,
-                    },
-                ..
-            }),
-    } = frankenstein::FrankenMlsMessage::from(mls_message_out)
-    else {
-        unreachable!()
-    };
-
-    match path {
-        Some(ref mut update_path_in) => {
-            update_path_in.leaf_node.payload.leaf_node_source =
-                frankenstein::FrankenLeafNodeSource::Update
-        }
-        None => unreachable!(),
-    }
-
-    let body = frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
-        path,
-        proposals,
-    });
-
-    let group_context = alice.group.export_group_context().clone();
-    let commit_content = frankenstein::FrankenFramedContent {
-        body,
-        group_id,
-        epoch,
-        sender,
-        authenticated_data,
-    };
-
-    let secrets = alice.group.message_secrets();
-    let membership_key = secrets.membership_key().as_slice();
-
-    let franken_commit = frankenstein::FrankenMlsMessage {
-        version,
-        body: frankenstein::FrankenMlsMessageBody::PublicMessage(
-            frankenstein::FrankenPublicMessage::auth(
-                &alice_party.provider,
-                ciphersuite,
-                &alice.party.signer,
-                commit_content,
-                Some(&group_context.into()),
-                Some(membership_key),
-                confirmation_tag,
-            ),
-        ),
-    };
-
-    let fake_commit = MlsMessageIn::tls_deserialize(
-        &mut franken_commit.tls_serialize_detached().unwrap().as_slice(),
-    )
-    .unwrap();
-    let protocol_message = fake_commit.try_into_protocol_message().unwrap();
-
-    let [bob] = group_state.members_mut(&["bob"]);
-
-    let err = bob
-        .group
-        .process_message(&bob_party.provider, protocol_message)
-        .expect_err("should return an error");
-
-    assert_eq!(
-        err,
-        ProcessMessageError::ValidationError(ValidationError::UpdatePathError(
-            UpdatePathError::InvalidType
-        ))
+    // Test that correct error returned
+    group_state.test_valn_1207(
+        &mls_message_out,
+        frankenstein::FrankenLeafNodeSource::Update,
+    );
+    group_state.test_valn_1207(
+        &mls_message_out,
+        frankenstein::FrankenLeafNodeSource::KeyPackage(frankenstein::FrankenLifetime {
+            not_before: 0,
+            not_after: 1,
+        }),
     );
 }
