@@ -28,6 +28,9 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+#[cfg(doc)]
+use super::MlsGroupJoinConfig;
+
 use super::{
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
@@ -40,6 +43,7 @@ pub struct Initial {
     own_proposals: Vec<Proposal>,
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
+    create_group_info: bool,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
@@ -52,6 +56,7 @@ impl Default for Initial {
             consume_proposal_store: true,
             force_self_update: false,
             leaf_node_parameters: LeafNodeParameters::default(),
+            create_group_info: false,
             own_proposals: vec![],
         }
     }
@@ -62,6 +67,7 @@ pub struct LoadedPsks {
     own_proposals: Vec<Proposal>,
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
+    create_group_info: bool,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
@@ -167,16 +173,22 @@ impl MlsGroup {
 impl<'a> CommitBuilder<'a, Initial> {
     /// returns a new [`CommitBuilder`] for the given [`MlsGroup`].
     pub fn new(group: &'a mut MlsGroup) -> Self {
-        Self {
-            group,
-            stage: Initial::default(),
-        }
+        let mut stage = Initial::default();
+        stage.create_group_info = group.configuration().use_ratchet_tree_extension;
+        Self { group, stage }
     }
 
     /// Sets whether or not the proposals in the proposal store of the group should be included in
     /// the commit. Defaults to `true`.
     pub fn consume_proposal_store(mut self, consume_proposal_store: bool) -> Self {
         self.stage.consume_proposal_store = consume_proposal_store;
+        self
+    }
+
+    /// Sets whether or not a [`GroupInfo`] should be created when the commit is staged. Defaults to
+    /// the value of the [`MlsGroup`]s [`MlsGroupJoinConfig`].
+    pub fn create_group_info(mut self, create_group_info: bool) -> Self {
+        self.stage.create_group_info = create_group_info;
         self
     }
 
@@ -271,6 +283,7 @@ impl<'a> CommitBuilder<'a, Initial> {
                         force_self_update: stage.force_self_update,
                         leaf_node_parameters: stage.leaf_node_parameters,
                         consume_proposal_store: stage.consume_proposal_store,
+                        create_group_info: stage.create_group_info,
                     },
                 )
             })
@@ -553,10 +566,10 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         // If there are invitations, we need to build a welcome
         let needs_welcome = !apply_proposals_values.invitation_list.is_empty();
 
-        // We need a GroupInfo if we need to build a Welcome. If the ratchet tree extension
-        // should be used, always build a GroupInfo.
-        let needs_group_info =
-            needs_welcome || builder.group.configuration().use_ratchet_tree_extension;
+        // We need a GroupInfo if we need to build a Welcome, or if
+        // `create_group_info` is set to `true`. If not overridden, `create_group_info`
+        // is set to the `use_ratchet_tree` flag in the group configuration.
+        let needs_group_info = needs_welcome || cur_stage.create_group_info;
 
         let group_info = if !needs_group_info {
             None
@@ -654,14 +667,12 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
         );
 
-        let use_ratchet_tree_extension = builder.group.configuration().use_ratchet_tree_extension;
-
         Ok(builder.into_stage(Complete {
             result: CreateCommitResult {
                 commit: authenticated_content,
                 welcome_option,
                 staged_commit,
-                group_info: group_info.filter(|_| use_ratchet_tree_extension),
+                group_info: group_info.filter(|_| cur_stage.create_group_info),
             },
         }))
     }
