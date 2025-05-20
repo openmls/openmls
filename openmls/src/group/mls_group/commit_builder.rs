@@ -173,8 +173,10 @@ impl MlsGroup {
 impl<'a> CommitBuilder<'a, Initial> {
     /// returns a new [`CommitBuilder`] for the given [`MlsGroup`].
     pub fn new(group: &'a mut MlsGroup) -> Self {
-        let mut stage = Initial::default();
-        stage.create_group_info = group.configuration().use_ratchet_tree_extension;
+        let stage = Initial {
+            create_group_info: group.configuration().use_ratchet_tree_extension,
+            ..Default::default()
+        };
         Self { group, stage }
     }
 
