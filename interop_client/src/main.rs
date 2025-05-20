@@ -3,6 +3,8 @@
 //!
 //! It is based on the Mock client in that repository.
 
+#![allow(clippy::result_large_err)]
+
 use std::{collections::HashMap, fmt::Display, fs::File, io::Write, sync::Mutex};
 
 use clap::Parser;
