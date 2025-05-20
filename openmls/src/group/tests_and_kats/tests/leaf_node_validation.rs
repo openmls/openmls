@@ -91,7 +91,7 @@ fn valn1207() {
             update_path_in.leaf_node.payload.leaf_node_source =
                 frankenstein::FrankenLeafNodeSource::Update
         }
-        None => unimplemented!(),
+        None => unreachable!(),
     }
 
     let body = frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
