@@ -132,6 +132,13 @@ impl<P: OpenMlsProvider> GroupState<'_, P> {
 ///   is set to `Update`.
 #[openmls_test]
 fn valn1207() {
+    // Set up parties
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let charlie_party = CorePartyState::<Provider>::new("charlie");
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+    let charlie_key_package = charlie_pre_group.key_package_bundle.key_package().clone();
+
     // Set up a new group with Alice
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -145,12 +152,6 @@ fn valn1207() {
         .build();
 
     let join_config = create_config.join_config().clone();
-
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
-    let charlie_party = CorePartyState::<Provider>::new("charlie");
-    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
-    let charlie_key_package = charlie_pre_group.key_package_bundle.key_package().clone();
 
     let mut group_state = GroupState::new_from_party(
         group_id,
