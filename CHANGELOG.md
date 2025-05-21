@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1731](https://github.com/openmls/openmls/pull/1731): Add helpers to recover from group state forks, hidden behind the new `fork-resolution` feature flag.
 - [#1750](https://github.com/openmls/openmls/pull/1750): Support add proposals from external senders, using `ExternalProposal::new_add()`.
 - [#1766](https://github.com/openmls/openmls/pull/1766): New error variant for commit creation: If a new signer is introduced via `self_update_with_new_signer` and additionally a `CredentialWithKey` is provided via `LeafNodeParameters`, an `InvalidLeafNodeParameters` error is thrown.
+- [#1774](https://github.com/openmls/openmls/pull/1774): Add flag to control the return of a `GroupInfo` when building a commit using the `CommitBuilder`. Setting that flag overrides the `use_ratchet_tree_extension` flag in `MlsGroupJoinConfig`.
 
 ### Fixed
 
