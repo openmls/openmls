@@ -218,7 +218,7 @@ impl ProposalQueue {
     /// don't need filtering.
     /// This functions does the following checks:
     ///  - ValSem200
-    pub fn from_committed_proposals(
+    pub(crate) fn from_committed_proposals(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         committed_proposals: Vec<ProposalOrRef>,
