@@ -177,12 +177,6 @@ pub struct MlsGroup {
     state_changed: InnerState,
 }
 
-impl AsRef<PublicGroup> for MlsGroup {
-    fn as_ref(&self) -> &PublicGroup {
-        self.group.public_group()
-    }
-}
-
 impl MlsGroup {
     // === Configuration ===
 
