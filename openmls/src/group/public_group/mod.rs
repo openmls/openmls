@@ -329,10 +329,6 @@ impl PublicGroup {
     pub(crate) fn owned_encryption_keys(&self, leaf_index: LeafNodeIndex) -> Vec<EncryptionKey> {
         self.treesync().owned_encryption_keys(leaf_index)
     }
-
-    pub fn proposal_store(&self) -> &ProposalStore {
-        &self.proposal_store
-    }
 }
 
 // Test functions
