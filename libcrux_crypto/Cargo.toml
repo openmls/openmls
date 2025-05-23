@@ -24,4 +24,4 @@ hpke_rs = { version = "0.2.1-alpha.1", git = "https://github.com/cryspen/hpke-rs
   "serialization",
 ] }
 hpke_rs_crypto = { version = "0.3.0-alpha.1", git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs-crypto" }
-hpke_rs_libcrux = { version = "0.2.0-alpha.1", git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs-libcrux" }
+hpke_rs_libcrux = { version = "0.2.0-alpha.1", git = "https://github.com/JamesParrott/hpke-rs", branch = "main", package = "hpke-rs-libcrux" }
