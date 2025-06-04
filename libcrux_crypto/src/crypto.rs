@@ -1,4 +1,4 @@
-use hpke_rs_libcrux::HpkeLibcrux;
+use hpke_rs::libcrux::HpkeLibcrux;
 
 use std::sync::{Mutex, MutexGuard};
 
@@ -349,31 +349,31 @@ fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
     hpke_rs::Hpke::new(hpke_rs::Mode::Base, kem, kdf, aead)
 }
 
-fn hpke_kdf(kdf: HpkeKdfType) -> hpke_rs_crypto::types::KdfAlgorithm {
+fn hpke_kdf(kdf: HpkeKdfType) -> hpke_rs::hpke_types::KdfAlgorithm {
     match kdf {
-        HpkeKdfType::HkdfSha256 => hpke_rs_crypto::types::KdfAlgorithm::HkdfSha256,
-        HpkeKdfType::HkdfSha384 => hpke_rs_crypto::types::KdfAlgorithm::HkdfSha384,
-        HpkeKdfType::HkdfSha512 => hpke_rs_crypto::types::KdfAlgorithm::HkdfSha512,
+        HpkeKdfType::HkdfSha256 => hpke_rs::hpke_types::KdfAlgorithm::HkdfSha256,
+        HpkeKdfType::HkdfSha384 => hpke_rs::hpke_types::KdfAlgorithm::HkdfSha384,
+        HpkeKdfType::HkdfSha512 => hpke_rs::hpke_types::KdfAlgorithm::HkdfSha512,
     }
 }
 
-fn hpke_kem(kem: HpkeKemType) -> hpke_rs_crypto::types::KemAlgorithm {
+fn hpke_kem(kem: HpkeKemType) -> hpke_rs::hpke_types::KemAlgorithm {
     match kem {
-        HpkeKemType::DhKemP256 => hpke_rs_crypto::types::KemAlgorithm::DhKemP256,
-        HpkeKemType::DhKemP384 => hpke_rs_crypto::types::KemAlgorithm::DhKemP384,
-        HpkeKemType::DhKemP521 => hpke_rs_crypto::types::KemAlgorithm::DhKemP521,
-        HpkeKemType::DhKem25519 => hpke_rs_crypto::types::KemAlgorithm::DhKem25519,
-        HpkeKemType::DhKem448 => hpke_rs_crypto::types::KemAlgorithm::DhKem448,
-        HpkeKemType::XWingKemDraft6 => hpke_rs_crypto::types::KemAlgorithm::XWingDraft06,
+        HpkeKemType::DhKemP256 => hpke_rs::hpke_types::KemAlgorithm::DhKemP256,
+        HpkeKemType::DhKemP384 => hpke_rs::hpke_types::KemAlgorithm::DhKemP384,
+        HpkeKemType::DhKemP521 => hpke_rs::hpke_types::KemAlgorithm::DhKemP521,
+        HpkeKemType::DhKem25519 => hpke_rs::hpke_types::KemAlgorithm::DhKem25519,
+        HpkeKemType::DhKem448 => hpke_rs::hpke_types::KemAlgorithm::DhKem448,
+        HpkeKemType::XWingKemDraft6 => hpke_rs::hpke_types::KemAlgorithm::XWingDraft06,
     }
 }
 
-fn hpke_aead(aead: HpkeAeadType) -> hpke_rs_crypto::types::AeadAlgorithm {
+fn hpke_aead(aead: HpkeAeadType) -> hpke_rs::hpke_types::AeadAlgorithm {
     match aead {
-        HpkeAeadType::AesGcm128 => hpke_rs_crypto::types::AeadAlgorithm::Aes128Gcm,
-        HpkeAeadType::AesGcm256 => hpke_rs_crypto::types::AeadAlgorithm::Aes256Gcm,
-        HpkeAeadType::ChaCha20Poly1305 => hpke_rs_crypto::types::AeadAlgorithm::ChaCha20Poly1305,
-        HpkeAeadType::Export => hpke_rs_crypto::types::AeadAlgorithm::HpkeExport,
+        HpkeAeadType::AesGcm128 => hpke_rs::hpke_types::AeadAlgorithm::Aes128Gcm,
+        HpkeAeadType::AesGcm256 => hpke_rs::hpke_types::AeadAlgorithm::Aes256Gcm,
+        HpkeAeadType::ChaCha20Poly1305 => hpke_rs::hpke_types::AeadAlgorithm::ChaCha20Poly1305,
+        HpkeAeadType::Export => hpke_rs::hpke_types::AeadAlgorithm::HpkeExport,
     }
 }
 
