@@ -1,4 +1,4 @@
-use hpke_rs_libcrux::HpkeLibcrux;
+use hpke_rs::libcrux::HpkeLibcrux;
 
 use std::sync::{Mutex, MutexGuard};
 
