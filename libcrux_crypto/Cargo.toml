@@ -24,4 +24,3 @@ hpke_rs = { version = "0.2.1-alpha.1", package = "hpke-rs", features = [
     "serialization",
     "libcrux",
 ] }
-hpke_rs_crypto = { version = "0.3.0-alpha.1", package = "hpke-rs-crypto" }

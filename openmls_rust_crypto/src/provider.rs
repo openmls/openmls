@@ -7,9 +7,9 @@ use aes_gcm::{
 use chacha20poly1305::ChaCha20Poly1305;
 use ed25519_dalek::Signer;
 use hkdf::Hkdf;
+use hpke::hpke_types;
+use hpke::rustcrypto::HpkeRustCrypto;
 use hpke::Hpke;
-use hpke_rs_crypto::types as hpke_types;
-use hpke_rs_rust_crypto::HpkeRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
