@@ -28,6 +28,10 @@ impl OpenMlsProvider for OpenMlsRustPersistentCrypto {
     fn storage(&self) -> &Self::StorageProvider {
         &self.storage
     }
+
+    fn name(&self) -> String {
+        "PersistantTestProvider".to_string()
+    }
 }
 
 impl OpenMlsRustPersistentCrypto {

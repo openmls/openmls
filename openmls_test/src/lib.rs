@@ -114,6 +114,10 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         fn rand(&self) -> &Self::RandProvider {
                             &self.crypto
                         }
+
+                        fn name(&self) -> String {
+                            "OpenMlsSqliteTestProvider".to_string()
+                        }
                     }
 
                     type Provider = OpenMlsSqliteTestProvider;

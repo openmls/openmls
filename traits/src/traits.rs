@@ -38,5 +38,8 @@ pub trait OpenMlsProvider {
 
     /// Get the randomness provider.
     fn rand(&self) -> &Self::RandProvider;
+
+    /// Get the name of this provider.
+    fn name(&self) -> String;
 }
 // ANCHOR_END: openmls_provider

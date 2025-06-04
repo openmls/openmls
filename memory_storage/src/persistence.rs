@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     env,
     fs::File,
-    io::{BufReader, BufWriter},
+    io::{BufReader, BufWriter, Read, Write},
     path::PathBuf,
 };
 
@@ -24,9 +24,7 @@ impl super::MemoryStorage {
         get_file_path(&("openmls_cli_".to_owned() + user_name + "_ks.json"))
     }
 
-    pub fn save_to_file(&self, output_file: &File) -> Result<(), String> {
-        let writer = BufWriter::new(output_file);
-
+    pub fn save_to_writer(&self, writer: impl Write) -> Result<(), String> {
         let mut ser_ks = SerializableKeyStore::default();
         for (key, value) in &*self.values.read().unwrap() {
             ser_ks.values.insert(
@@ -41,6 +39,11 @@ impl super::MemoryStorage {
         }
     }
 
+    pub fn save_to_file(&self, output_file: &File) -> Result<(), String> {
+        let writer = BufWriter::new(output_file);
+        self.save_to_writer(writer)
+    }
+
     pub fn save(&self, user_name: String) -> Result<(), String> {
         let ks_output_path = Self::get_file_path(&user_name);
 
@@ -50,12 +53,9 @@ impl super::MemoryStorage {
         }
     }
 
-    pub fn load_from_file(&mut self, input_file: &File) -> Result<(), String> {
-        // Prepare file reader.
-        let reader = BufReader::new(input_file);
-
+    pub fn load_from_reader<R: Read>(&mut self, reader: R) -> Result<(), String> {
         // Read the JSON contents of the file as an instance of `SerializableKeyStore`.
-        match serde_json::from_reader::<BufReader<&File>, SerializableKeyStore>(reader) {
+        match serde_json::from_reader::<R, SerializableKeyStore>(reader) {
             Ok(ser_ks) => {
                 let mut ks_map = self.values.write().unwrap();
                 for (key, value) in ser_ks.values {
@@ -68,6 +68,12 @@ impl super::MemoryStorage {
             }
             Err(e) => Err(e.to_string()),
         }
+    }
+
+    pub fn load_from_file(&mut self, input_file: &File) -> Result<(), String> {
+        // Prepare file reader.
+        let reader = BufReader::new(input_file);
+        self.load_from_reader(reader)
     }
 
     pub fn load(&mut self, user_name: String) -> Result<(), String> {

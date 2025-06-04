@@ -16,6 +16,13 @@ pub struct OpenMlsRustCrypto {
     key_store: MemoryStorage,
 }
 
+impl OpenMlsRustCrypto {
+    /// A mutable reference to the underlying storage
+    pub fn storage_mut(&mut self) -> &mut MemoryStorage {
+        &mut self.key_store
+    }
+}
+
 impl OpenMlsProvider for OpenMlsRustCrypto {
     type CryptoProvider = RustCrypto;
     type RandProvider = RustCrypto;
@@ -31,5 +38,9 @@ impl OpenMlsProvider for OpenMlsRustCrypto {
 
     fn rand(&self) -> &Self::RandProvider {
         &self.crypto
+    }
+
+    fn name(&self) -> String {
+        "Rust crypto org".to_string()
     }
 }

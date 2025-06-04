@@ -1,3 +1,4 @@
+use openmls_memory_storage::MemoryStorage;
 use openmls_traits::{types::CryptoError, OpenMlsProvider};
 
 mod crypto;
@@ -22,6 +23,11 @@ impl Provider {
         let storage = openmls_memory_storage::MemoryStorage::default();
 
         Ok(Self { crypto, storage })
+    }
+
+    /// A mutable reference to the underlying storage
+    pub fn storage_mut(&mut self) -> &mut MemoryStorage {
+        &mut self.storage
     }
 }
 
@@ -49,5 +55,9 @@ impl OpenMlsProvider for Provider {
 
     fn rand(&self) -> &Self::RandProvider {
         &self.crypto
+    }
+
+    fn name(&self) -> String {
+        "libcrux".to_string()
     }
 }

@@ -135,6 +135,10 @@ impl<Provider: OpenMlsProvider + Default> openmls_traits::OpenMlsProvider
     fn rand(&self) -> &Self::RandProvider {
         &self.rand
     }
+
+    fn name(&self) -> String {
+        "StorageTestProvier".to_string()
+    }
 }
 
 fn deserialize_provider<R: std::io::Read, Provider: OpenMlsProvider + Default>(

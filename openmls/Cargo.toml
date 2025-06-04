@@ -50,7 +50,7 @@ test-utils = [
   "dep:rand",
   "dep:wasm-bindgen-test",
   "dep:openmls_basic_credential",
-  "dep:openmls_memory_storage",
+  "openmls_memory_storage/persistence",
   "dep:openmls_test",
   "dep:once_cell",
   "backtrace",
@@ -78,7 +78,6 @@ libcrux-provider-js = [
   "dep:getrandom",
   # enable randomness source
   "getrandom/wasm_js",
-  
 ]
 fork-resolution = []
 
@@ -95,8 +94,12 @@ wasm-bindgen = "0.2.100"
 wasm-bindgen-test = "0.3.50"
 clap = { version = "4", features = ["derive"] }
 base64 = "0.22.1"
-flate2 = "1.0"
+flate2 = { version = "1.0", features = ["zlib-rs"], default-features = false }
 indicatif = "0.17.8"
+bincode = "2.0"
+rusqlite = { version = "0.32", features = ["bundled"] }
+bitcode = { version = "0.6.6", features = ["serde"] }
+# r2d2_sqlite = { version = "0.29", features = ["bunlded"] }
 
 # Disable for wasm32 and Win32
 [target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows"))))'.dev-dependencies]
