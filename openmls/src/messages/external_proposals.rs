@@ -2,7 +2,7 @@
 //!
 //! Contains the types and methods to build external proposal to add/remove a client from a MLS group
 //!
-//! `Add` (from external sender), `Remove` & `ReInit are not yet implemented`
+//! `ReInit` is not yet implemented
 
 use crate::{
     binary_tree::LeafNodeIndex,
