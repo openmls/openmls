@@ -159,8 +159,6 @@ impl DecryptedMessage {
     ///  - Prepares ValSem246 by setting the right credential. The remainder
     ///    of ValSem246 is validated as part of ValSem010.
     ///  - [valn1301](https://validation.openmls.tech/#valn1301)
-    ///  - [valn1501](https://validation.openmls.tech/#valn1501)
-    ///  - [valn1504](https://validation.openmls.tech/#valn1504)
     ///
     /// Returns the [`Credential`] and the leaf's [`SignaturePublicKey`].
     pub(crate) fn credential(
