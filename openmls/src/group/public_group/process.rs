@@ -237,6 +237,7 @@ impl PublicGroup {
                             content,
                         )?);
                         if matches!(sender, Sender::NewMemberProposal) {
+                            // TODO: https://validation.openmls.tech/#valn1504
                             ProcessedMessageContent::ExternalJoinProposalMessage(proposal)
                         } else {
                             ProcessedMessageContent::ProposalMessage(proposal)
@@ -264,6 +265,7 @@ impl PublicGroup {
                     FramedContentBody::Application(_) => {
                         Err(ProcessMessageError::UnauthorizedExternalApplicationMessage)
                     }
+                    // TODO: https://validation.openmls.tech/#valn1502
                     FramedContentBody::Proposal(Proposal::Remove(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
