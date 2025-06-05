@@ -237,7 +237,6 @@ impl PublicGroup {
                             content,
                         )?);
                         if matches!(sender, Sender::NewMemberProposal) {
-                            // TODO: https://validation.openmls.tech/#valn1504
                             ProcessedMessageContent::ExternalJoinProposalMessage(proposal)
                         } else {
                             ProcessedMessageContent::ProposalMessage(proposal)
