@@ -160,6 +160,7 @@ impl VerifiableAuthenticatedContentIn {
             }
             Sender::NewMemberProposal => {
                 // only External Add proposals can have a sender type `NewMemberProposal`
+                // https://validation.openmls.tech/#valn1503
                 // https://validation.openmls.tech/#valn1504
                 match &self.tbs.content.body {
                     FramedContentBodyIn::Proposal(ProposalIn::Add(add_proposal)) => {
