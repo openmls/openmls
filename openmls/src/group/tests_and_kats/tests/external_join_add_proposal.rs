@@ -274,6 +274,9 @@ fn external_join_add_proposal_should_be_signed_by_key_package_it_references<
     ));
 }
 
+/// This test ensures that validation check 1504 (valn1504) is performed:
+/// sender_type: new_member_proposal: The proposal_type of the Proposal MUST be add.
+/// [valn1504](https://validation.openmls.tech/#valn1504)
 #[openmls_test]
 fn test_valn1504() {
     for policy in WIRE_FORMAT_POLICIES {
