@@ -260,6 +260,7 @@ impl PublicGroup {
             Sender::External(_) => {
                 let sender = content.sender().clone();
                 let data = content.authenticated_data().to_owned();
+                // https://validation.openmls.tech/#valn1501
                 match content.content() {
                     FramedContentBody::Application(_) => {
                         Err(ProcessMessageError::UnauthorizedExternalApplicationMessage)
