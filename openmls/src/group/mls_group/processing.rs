@@ -313,10 +313,12 @@ impl MlsGroup {
             Sender::External(_) => {
                 let sender = content.sender().clone();
                 let data = content.authenticated_data().to_owned();
+                // https://validation.openmls.tech/#valn1501
                 match content.content() {
                     FramedContentBody::Application(_) => {
                         Err(ProcessMessageError::UnauthorizedExternalApplicationMessage)
                     }
+                    // TODO: https://validation.openmls.tech/#valn1502
                     FramedContentBody::Proposal(Proposal::Remove(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
