@@ -106,7 +106,7 @@ fn validation_test_setup(
 
 #[openmls_test]
 fn external_group_context_ext_proposal_should_succeed() {
-    // delivery service credentials. DS will craft an external add proposal
+    // delivery service credentials. DS will craft a proposal
     let ds_credential_with_key = generate_credential_with_key(
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
@@ -196,7 +196,7 @@ fn external_group_context_ext_proposal_should_succeed() {
 
 #[openmls_test]
 fn external_group_context_ext_proposal_should_succeed_unknown_extension() {
-    // delivery service credentials. DS will craft an external add proposal
+    // delivery service credentials. DS will craft a proposal
     let ds_credential_with_key = generate_credential_with_key(
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
@@ -304,7 +304,7 @@ fn external_group_context_ext_proposal_should_fail_when_invalid_external_senders
         )),
     ])
     .unwrap();
-    // delivery service credentials. DS will craft an external add proposal
+    // delivery service credentials. DS will craft a proposal
     let ds_credential_with_key = generate_credential_with_key(
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
@@ -327,22 +327,9 @@ fn external_group_context_ext_proposal_should_fail_when_invalid_external_senders
         )],
     );
 
-    // A new client, Charlie, wants to be in the group
-    let charlie_credential = generate_credential_with_key(
-        "Charlie".into(),
-        ciphersuite.signature_algorithm(),
-        provider,
-    );
-
-    let charlie_kp = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        provider,
-        charlie_credential.clone(),
-    );
-
-    // Now Delivery Service wants to add Charlie with invalid sender index
-    let charlie_external_group_context_ext_proposal: MlsMessageIn =
+    // Now Delivery Service wants to make group context extensions proposal,
+    // with invalid sender index
+    let external_group_context_ext_proposal: MlsMessageIn =
         ExternalProposal::new_group_context_extensions::<Provider>(
             extensions,
             alice_group.group_id().clone(),
@@ -357,7 +344,7 @@ fn external_group_context_ext_proposal_should_fail_when_invalid_external_senders
     let error = alice_group
         .process_message(
             provider,
-            charlie_external_group_context_ext_proposal
+            external_group_context_ext_proposal
                 .try_into_protocol_message()
                 .unwrap(),
         )
@@ -380,7 +367,7 @@ fn external_group_context_ext_proposal_should_fail_when_invalid_signature() {
         )),
     ])
     .unwrap();
-    // delivery service credentials. DS will craft an external add proposal
+    // delivery service credentials. DS will craft a proposal
     let ds_credential_with_key = generate_credential_with_key(
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
@@ -406,22 +393,8 @@ fn external_group_context_ext_proposal_should_fail_when_invalid_signature() {
         provider,
     );
 
-    // A new client, Charlie, wants to be in the group
-    let charlie_credential = generate_credential_with_key(
-        "Charlie".into(),
-        ciphersuite.signature_algorithm(),
-        provider,
-    );
-
-    let charlie_kp = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        provider,
-        charlie_credential.clone(),
-    );
-
-    // Now Delivery Service wants to add Charlie with invalid sender signature
-    let charlie_external_group_context_ext_proposal: MlsMessageIn =
+    // Now Delivery Service wants to make group context extensions proposal
+    let external_group_context_ext_proposal: MlsMessageIn =
         ExternalProposal::new_group_context_extensions::<Provider>(
             extensions,
             alice_group.group_id().clone(),
@@ -436,7 +409,7 @@ fn external_group_context_ext_proposal_should_fail_when_invalid_signature() {
     let error = alice_group
         .process_message(
             provider,
-            charlie_external_group_context_ext_proposal
+            external_group_context_ext_proposal
                 .try_into_protocol_message()
                 .unwrap(),
         )
@@ -467,29 +440,15 @@ fn external_group_context_ext_proposal_should_fail_when_no_external_senders() {
         vec![],
     );
 
-    // delivery service credentials. DS will craft an external add proposal
+    // delivery service credentials. DS will craft a proposal
     let ds_credential_with_key = generate_credential_with_key(
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         provider,
     );
 
-    // A new client, Charlie, wants to be in the group
-    let charlie_credential = generate_credential_with_key(
-        "Charlie".into(),
-        ciphersuite.signature_algorithm(),
-        provider,
-    );
-
-    let charlie_kp = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        provider,
-        charlie_credential.clone(),
-    );
-
-    // Now Delivery Service wants to add Charlie with invalid sender index but there's no extension
-    let charlie_external_group_context_ext_proposal: MlsMessageIn =
+    // Now Delivery Service wants to make group context extensions proposal
+    let external_group_context_ext_proposal: MlsMessageIn =
         ExternalProposal::new_group_context_extensions::<Provider>(
             extensions,
             alice_group.group_id().clone(),
@@ -504,7 +463,7 @@ fn external_group_context_ext_proposal_should_fail_when_no_external_senders() {
     let error = alice_group
         .process_message(
             provider,
-            charlie_external_group_context_ext_proposal
+            external_group_context_ext_proposal
                 .try_into_protocol_message()
                 .unwrap(),
         )
