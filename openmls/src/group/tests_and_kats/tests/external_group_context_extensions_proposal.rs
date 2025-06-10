@@ -143,6 +143,96 @@ fn external_group_context_ext_proposal_should_succeed() {
         .extensions()
         .contains(&ExtensionType::Unknown(0xf001)));
     let old_extensions = alice_group.extensions().to_owned();
+    assert!(!old_extensions.contains(ExtensionType::ExternalPub));
+
+    // define the new group context extensions
+    let extensions = Extensions::single(Extension::ExternalPub(ExternalPubExtension::new(
+        vec![1, 2, 3].into(),
+    )));
+
+    // Now Delivery Service wants to update the group context extensions
+    let external_group_context_ext_proposal: MlsMessageIn =
+        ExternalProposal::new_group_context_extensions::<Provider>(
+            extensions,
+            alice_group.group_id().clone(),
+            alice_group.epoch(),
+            &ds_credential_with_key.signer,
+            SenderExtensionIndex::new(0),
+        )
+        .unwrap()
+        .into();
+
+    // Alice validates the message
+    let processed_message = alice_group
+        .process_message(
+            provider,
+            external_group_context_ext_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap();
+
+    // commit the proposal
+    let ProcessedMessageContent::ProposalMessage(proposal) = processed_message.into_content()
+    else {
+        panic!("Not a proposal");
+    };
+    if !matches!(proposal.proposal(), Proposal::GroupContextExtensions(_)) {
+        panic!("Not a group context extensions proposal");
+    }
+    alice_group
+        .store_pending_proposal(provider.storage(), *proposal)
+        .unwrap();
+    let (_, _, _) = alice_group
+        .commit_to_pending_proposals(provider, &alice_credential.signer)
+        .unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
+
+    assert_ne!(*alice_group.extensions(), old_extensions);
+    assert!(alice_group
+        .extensions()
+        .contains(ExtensionType::ExternalPub));
+}
+
+#[openmls_test]
+fn external_group_context_ext_proposal_should_succeed_unknown_extension() {
+    // delivery service credentials. DS will craft an external add proposal
+    let ds_credential_with_key = generate_credential_with_key(
+        "delivery-service".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let (mut alice_group, alice_credential) = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        provider,
+        vec![ExternalSender::new(
+            ds_credential_with_key
+                .credential_with_key
+                .signature_key
+                .clone(),
+            ds_credential_with_key
+                .credential_with_key
+                .credential
+                .clone(),
+        )],
+    );
+
+    // DS is an allowed external sender of the group
+    assert!(alice_group
+        .context()
+        .extensions()
+        .iter()
+        .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
+
+    assert!(alice_group
+        .own_leaf_node()
+        .unwrap()
+        .capabilities()
+        .extensions()
+        .contains(&ExtensionType::Unknown(0xf001)));
+    let old_extensions = alice_group.extensions().to_owned();
     assert!(!old_extensions.contains(ExtensionType::Unknown(0xf001)));
 
     // define the new group context extensions
