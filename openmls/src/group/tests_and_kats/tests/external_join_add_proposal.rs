@@ -9,6 +9,7 @@ use crate::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
     },
+    test_utils::frankenstein::*,
     treesync::LeafNodeParameters,
 };
 
@@ -271,6 +272,68 @@ fn external_join_add_proposal_should_be_signed_by_key_package_it_references<
             .unwrap_err(),
         ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
     ));
+}
+
+/// This test ensures that validation check 1504 (valn1504) is performed:
+/// sender_type: new_member_proposal: The proposal_type of the Proposal MUST be add.
+/// [valn1504](https://validation.openmls.tech/#valn1504)
+#[openmls_test]
+fn test_valn1504() {
+    for policy in WIRE_FORMAT_POLICIES {
+        let ProposalValidationTestSetup {
+            alice_group,
+            bob_group,
+        } = validation_test_setup(policy, ciphersuite, provider);
+        let (mut alice_group, _alice_signer) = alice_group;
+        let (bob_group, _bob_signer) = bob_group;
+
+        assert_eq!(alice_group.members().count(), 2);
+        assert_eq!(bob_group.members().count(), 2);
+
+        // A new client, Charlie, will now ask joining with an external Add proposal
+        let charlie_credential = generate_credential_with_key(
+            "Charlie".into(),
+            ciphersuite.signature_algorithm(),
+            provider,
+        );
+
+        let charlie_kp = generate_key_package(
+            ciphersuite,
+            Extensions::empty(),
+            provider,
+            charlie_credential.clone(),
+        );
+
+        let proposal =
+            JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
+                charlie_kp.key_package().clone(),
+                alice_group.group_id().clone(),
+                alice_group.epoch(),
+                &charlie_credential.signer,
+            )
+            .unwrap();
+
+        // set incorrect proposal type
+        let mut franken_message = FrankenMlsMessage::from(proposal);
+        match franken_message.body {
+            FrankenMlsMessageBody::PublicMessage(ref mut message) => {
+                let incorrect_proposal =
+                    FrankenProposal::Remove(FrankenRemoveProposal { removed: 0 });
+                message.content.body = FrankenFramedContentBody::Proposal(incorrect_proposal);
+            }
+            _ => unreachable!(),
+        }
+
+        let proposal: MlsMessageOut = franken_message.into();
+
+        let err = alice_group
+            .process_message(provider, proposal.clone().into_protocol_message().unwrap())
+            .expect_err("Should return an error");
+        assert_eq!(
+            err,
+            ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal,)
+        );
+    }
 }
 
 // TODO #1093: move this test to a dedicated external proposal ValSem test module once all external proposals implemented
