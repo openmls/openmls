@@ -226,10 +226,18 @@ fn add_member(
 fn setup(
     num: usize,
     max_members_in_chunk: usize,
-    db: Db,
     variant: Option<SetupVariants>,
     members: Option<(Vec<MlsGroup>, Vec<Member>)>,
 ) {
+    // parameters
+    let members_per_iteration = max_members_in_chunk.min(num);
+    let num_iterations = num / members_per_iteration;
+
+    let db = DbBuilder {
+        members_per_chunk: max_members_in_chunk,
+        num_members: num,
+    }
+    .build();
     // We default to a bare group unless variant wants something else.
     let variant = variant.unwrap_or(SetupVariants::Bare);
 
@@ -281,8 +289,6 @@ fn setup(
     println!("Inviting everyone ...");
 
     // We keep up to X member and groups in memory before writing them out.
-    let members_per_iteration = max_members_in_chunk.min(num);
-    let num_iterations = num / members_per_iteration;
 
     for iteration in 0..num_iterations + 1 {
         // We go one further to do the rest.
@@ -646,9 +652,7 @@ fn main() {
         println!("Generating group of size {num} ...");
         // Generate and write out groups.
         // let new_groups =
-        let db = Db::default();
-        db.reset();
-        setup(num, chunk_size, db, args.setup, None);
+        setup(num, chunk_size, args.setup, None);
         // let (new_groups, new_members): (Vec<MlsGroup>, Vec<Member>) =
         //     new_groups.into_iter().unzip();
         // smaller_groups = Some((new_groups.clone(), new_members.clone()));
