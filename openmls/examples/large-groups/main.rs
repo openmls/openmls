@@ -41,6 +41,8 @@ use storage::*;
 pub const CIPHERSUITE: Ciphersuite =
     Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
 
+const CHUNK_SIZE: usize = 4000;
+
 // #[derive(Debug, Clone)]
 pub struct Member {
     pub id: u64,
@@ -223,6 +225,7 @@ fn add_member(
 /// All of them committed after joining.
 fn setup(
     num: usize,
+    max_members_in_chunk: usize,
     db: Db,
     variant: Option<SetupVariants>,
     members: Option<(Vec<MlsGroup>, Vec<Member>)>,
@@ -278,8 +281,7 @@ fn setup(
     println!("Inviting everyone ...");
 
     // We keep up to X member and groups in memory before writing them out.
-    const MAX_MEMBERS: usize = 4000;
-    let members_per_iteration = MAX_MEMBERS.min(num);
+    let members_per_iteration = max_members_in_chunk.min(num);
     let num_iterations = num / members_per_iteration;
 
     for iteration in 0..num_iterations + 1 {
@@ -522,6 +524,10 @@ struct Args {
     /// The group setup to use.
     #[clap(short, long)]
     setup: Option<SetupVariants>,
+
+    /// The max number of members in a chunk
+    #[clap(short, long)]
+    chunk_size: Option<usize>,
 }
 
 // mod util {
@@ -630,6 +636,8 @@ fn main() {
         pub const GROUP_SIZES: &[usize] = &[10];
 
         let group_sizes = args.groups.unwrap_or(GROUP_SIZES.to_vec());
+        let chunk_size = args.chunk_size.unwrap_or(CHUNK_SIZE);
+
         let num = group_sizes[0]; // XXX: Only one
         println!("Generating groups for benchmarks {group_sizes:?}...");
 
@@ -640,7 +648,7 @@ fn main() {
         // let new_groups =
         let db = Db::default();
         db.reset();
-        setup(num, db, args.setup, None);
+        setup(num, chunk_size, db, args.setup, None);
         // let (new_groups, new_members): (Vec<MlsGroup>, Vec<Member>) =
         //     new_groups.into_iter().unzip();
         // smaller_groups = Some((new_groups.clone(), new_members.clone()));
