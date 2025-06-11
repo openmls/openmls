@@ -301,6 +301,7 @@ fn setup(
         }
         println!("\n\n > Adding clients {start}..{end} ... ");
 
+        // Members held in memory, with space for groups
         let mut new_members = vec![];
         let mut new_members_kps = vec![];
 
@@ -333,6 +334,7 @@ fn setup(
 
             // Merge commit on all other members
             println!("   ... Merge commit on clients ... ");
+            let start_time = std::time::Instant::now();
             let pb = ProgressBar::new(start as u64 - 1);
             (1..start).into_par_iter().for_each(|i| {
                 // Read, process, write back
@@ -344,6 +346,8 @@ fn setup(
                 pb.inc(1);
             });
             pb.finish();
+            let end_time = std::time::Instant::now();
+            println!("Time: {:?}", end_time - start_time);
 
             welcome
         };
@@ -355,8 +359,12 @@ fn setup(
         let tree = Some(creator_group.export_ratchet_tree().into());
 
         let pb = ProgressBar::new(members_per_iteration as u64 - 1);
+
         println!("   ... Join ...");
+        let start_time = std::time::Instant::now();
         new_members.par_iter_mut().for_each(|(group, member)| {
+            let tree = tree.clone();
+
             let new_group = StagedWelcome::new_from_welcome(
                 &member.provider,
                 mls_group_create_config.join_config(),
@@ -372,6 +380,8 @@ fn setup(
             pb.inc(1);
         });
         pb.finish();
+        let end_time = std::time::Instant::now();
+        println!("Time: {:?}", end_time - start_time);
 
         // Depending on the variant we do something once everyone was added.
         match variant {
@@ -417,6 +427,7 @@ fn setup(
 
         // Store values
         println!("   ... Store ...");
+        let start_time = std::time::Instant::now();
         let pb = ProgressBar::new(new_members.len() as u64);
 
         // Store new members
@@ -427,6 +438,8 @@ fn setup(
         });
 
         pb.finish();
+        let end_time = std::time::Instant::now();
+        println!("Time: {:?}", end_time - start_time);
     }
 
     // Store creator
