@@ -14,6 +14,11 @@ struct SerializableKeyStore {
     values: HashMap<String, String>,
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct SerializableKeyStoreBytes {
+    values: HashMap<Vec<u8>, Vec<u8>>,
+}
+
 pub fn get_file_path(file_name: &String) -> PathBuf {
     let tmp_folder = env::temp_dir();
     tmp_folder.join(file_name)
@@ -22,6 +27,20 @@ pub fn get_file_path(file_name: &String) -> PathBuf {
 impl super::MemoryStorage {
     fn get_file_path(user_name: &str) -> PathBuf {
         get_file_path(&("openmls_cli_".to_owned() + user_name + "_ks.json"))
+    }
+
+    pub fn save_to_binary_writer(&self, mut writer: impl Write) -> Result<(), String> {
+        let mut ser_ks = SerializableKeyStoreBytes::default();
+        for (key, value) in &*self.values.read().unwrap() {
+            ser_ks
+                .values
+                .insert(bitcode::encode(key), bitcode::encode(value));
+        }
+
+        match writer.write_all(&bitcode::serialize(&ser_ks).unwrap()) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e.to_string()),
+        }
     }
 
     pub fn save_to_writer(&self, writer: impl Write) -> Result<(), String> {

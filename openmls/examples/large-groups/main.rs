@@ -297,7 +297,7 @@ fn setup(
         let mut new_members_kps = vec![];
 
         // Generate members_per_iteration clients.
-        let pb = ProgressBar::new(num as u64);
+        let pb = ProgressBar::new((end - start) as u64);
         (start..end).into_iter().for_each(|i| {
             let (member, key_package) = Member::new(i as u64);
             new_members_kps.push(key_package.key_package().clone());
