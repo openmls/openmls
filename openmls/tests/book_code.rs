@@ -69,6 +69,7 @@ fn generate_key_package(
 ///  - Charlie removes Bob
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
+///  - Bob re-added via external sender
 ///  - Test saving the group state
 #[openmls_test]
 fn book_operations() {
@@ -120,11 +121,12 @@ fn book_operations() {
         ])))
         .expect("error adding external senders extension to group context extensions")
         .ciphersuite(ciphersuite)
+        // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
             None, // Defaults to the group's ciphersuite
+            Some(&[ExtensionType::Unknown(0xff00)]),
             None, // Defaults to all basic extension types
-            None, // Defaults to all basic proposal types
             Some(&[CredentialType::Basic]),
         ))
         // Example leaf extension
@@ -391,7 +393,8 @@ fn book_operations() {
     // ANCHOR: self_update
     let (mls_message_out, welcome_option, _group_info) = bob_group
         .self_update(provider, &bob_signature_keys, LeafNodeParameters::default())
-        .expect("Could not update own key package.");
+        .expect("Could not update own key package.")
+        .into_contents();
     // ANCHOR_END: self_update
 
     let alice_processed_message = alice_group
@@ -640,7 +643,8 @@ fn book_operations() {
             &charlie_signature_keys,
             LeafNodeParameters::default(),
         )
-        .unwrap();
+        .unwrap()
+        .into_contents();
 
     let alice_processed_message = alice_group
         .process_message(
@@ -1328,7 +1332,7 @@ fn book_operations() {
     .expect("Could not create external Remove proposal");
     // ANCHOR_END: external_remove_proposal
 
-    // ANCHOR: decrypt_external_join_proposal
+    // ANCHOR: decrypt_external_proposal
     let alice_processed_message = alice_group
         .process_message(
             provider,
@@ -1353,34 +1357,62 @@ fn book_operations() {
         }
         _ => unreachable!(),
     }
-    // ANCHOR_END: decrypt_external_join_proposal
+    // ANCHOR_END: decrypt_external_proposal
 
-    // === Save the group state ===
+    // === Re-Add Bob with external Add proposal from external sender ===
 
     // Create a new KeyPackageBundle for Bob
     let bob_key_package = generate_key_package(
         ciphersuite,
-        bob_credential,
+        bob_credential.clone(),
         Extensions::default(),
         provider,
         &bob_signature_keys,
     );
 
-    // Add Bob to the group
-    let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(
+    // ANCHOR: external_add_proposal
+    let proposal = ExternalProposal::new_add::<Provider>(
+        bob_key_package.key_package().clone(),
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_signature_keys,
+        SenderExtensionIndex::new(0),
+    )
+    .expect("Could not create external Add proposal");
+    // ANCHOR_END: external_add_proposal
+
+    let alice_processed_message = alice_group
+        .process_message(
             provider,
-            &alice_signature_keys,
-            &[bob_key_package.key_package().clone()],
+            proposal
+                .into_protocol_message()
+                .expect("Unexpected message type"),
         )
-        .expect("Could not add Bob");
+        .expect("Could not process message.");
+
+    // Store proposal
+    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        alice_processed_message.into_content()
+    {
+        alice_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
+    } else {
+        unreachable!("Expected a QueuedProposal.");
+    }
+
+    let (_, welcome, _) = alice_group
+        .commit_to_pending_proposals(provider, &alice_signature_keys)
+        .expect("Could not commit");
+
+    // === Save the group state ===
 
     // Merge Commit
     alice_group
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let welcome: MlsMessageIn = welcome.into();
+    let welcome: MlsMessageIn = welcome.unwrap().into();
     let welcome = welcome
         .into_welcome()
         .expect("expected the message to be a welcome message");
@@ -1572,4 +1604,91 @@ fn custom_proposal_usage(
     }));
 
     // ANCHOR_END: custom_proposal_usage
+}
+
+#[openmls_test]
+fn commit_builder() {
+    // Generate credentials with keys
+    let (alice_credential, alice_signature_keys) =
+        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    let (bob_credential, bob_signature_keys) =
+        generate_credential("Bob".into(), ciphersuite.signature_algorithm(), provider);
+
+    // Generate KeyPackages
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        bob_credential.clone(),
+        Extensions::default(),
+        provider,
+        &bob_signature_keys,
+    );
+
+    // Define the MlsGroup configuration
+    // delivery service credentials
+    let (ds_credential_with_key, _) = generate_credential(
+        "delivery-service".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .padding_size(100)
+        .sender_ratchet_configuration(SenderRatchetConfiguration::new(
+            10,   // out_of_order_tolerance
+            2000, // maximum_forward_distance
+        ))
+        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(vec![
+            ExternalSender::new(
+                ds_credential_with_key.signature_key.clone(),
+                ds_credential_with_key.credential.clone(),
+            ),
+        ])))
+        .expect("error adding external senders extension to group context extensions")
+        .ciphersuite(ciphersuite)
+        // we need to specify the non-default extension here
+        .capabilities(Capabilities::new(
+            None, // Defaults to the group's protocol version
+            None, // Defaults to the group's ciphersuite
+            Some(&[ExtensionType::Unknown(0xff00)]),
+            None, // Defaults to all basic extension types
+            Some(&[CredentialType::Basic]),
+        ))
+        // Example leaf extension
+        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
+            0xff00,
+            UnknownExtension(vec![0, 1, 2, 3]),
+        )))
+        .expect("failed to configure leaf extensions")
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    let mut alice_group = MlsGroup::new(
+        provider,
+        &alice_signature_keys,
+        &mls_group_create_config,
+        alice_credential.clone(),
+    )
+    .expect("An unexpected error occurred.");
+
+    // === Alice adds Bob ===
+    // ANCHOR: alice_adds_bob_with_commit_builder
+    let message_bundle = alice_group
+        .commit_builder()
+        .propose_adds(Some(bob_key_package.key_package().clone()))
+        .load_psks(provider.storage())
+        .expect("error loading psks")
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &alice_signature_keys,
+            |_proposal| true,
+        )
+        .expect("error validating data and building commit")
+        .stage_commit(provider)
+        .expect("error staging commit");
+
+    let (mls_message_out, welcome, group_info) = message_bundle.into_contents();
+    // ANCHOR_END: alice_adds_bob_with_commit_builder
+    _ = (mls_message_out, welcome, group_info)
 }

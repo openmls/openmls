@@ -18,7 +18,7 @@ use crate::{
     },
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::node::leaf_node::Capabilities,
+    treesync::{errors::LeafNodeValidationError, node::leaf_node::Capabilities},
 };
 
 use super::{past_secrets::MessageSecretsStore, MlsGroup, MlsGroupState};
@@ -27,7 +27,6 @@ use super::{past_secrets::MessageSecretsStore, MlsGroup, MlsGroupState};
 pub struct MlsGroupBuilder {
     group_id: Option<GroupId>,
     mls_group_create_config_builder: MlsGroupCreateConfigBuilder,
-    max_past_epochs: Option<usize>,
     psk_ids: Vec<PreSharedKeyId>,
 }
 
@@ -136,8 +135,7 @@ impl MlsGroupBuilder {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         let message_secrets_store = MessageSecretsStore::new_with_secret(
-            self.max_past_epochs
-                .unwrap_or(mls_group_create_config.max_past_epochs()),
+            mls_group_create_config.max_past_epochs(),
             message_secrets,
         );
 
@@ -264,7 +262,7 @@ impl MlsGroupBuilder {
     pub fn with_leaf_node_extensions(
         mut self,
         extensions: Extensions,
-    ) -> Result<Self, InvalidExtensionError> {
+    ) -> Result<Self, LeafNodeValidationError> {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
             .with_leaf_node_extensions(extensions)?;

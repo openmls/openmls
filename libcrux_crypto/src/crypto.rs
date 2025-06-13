@@ -1,52 +1,44 @@
+use hpke_rs_libcrux::HpkeLibcrux;
+
 use std::sync::{Mutex, MutexGuard};
 
-use libcrux::drbg::{Drbg, RngCore};
-use libcrux::hpke::{self, HPKEConfig};
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{
     AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext,
     HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
 };
 
-use rand::CryptoRng;
+use rand::{rngs::OsRng, rngs::ReseedingRng, CryptoRng, RngCore};
+use rand_chacha::ChaCha20Core;
+
 use tls_codec::SecretVLBytes;
 
 /// The libcrux-backed cryptography provider for OpenMLS
 pub struct CryptoProvider {
-    drbg: Mutex<Drbg>,
-}
-
-impl Default for CryptoProvider {
-    fn default() -> Self {
-        let mut seed = [0u8; 16];
-        getrandom::getrandom(&mut seed).unwrap();
-        Self {
-            drbg: Mutex::new(
-                Drbg::new_with_entropy(libcrux::digest::Algorithm::Sha256, &seed).unwrap(),
-            ),
-        }
-    }
+    pub(super) rng: Mutex<ReseedingRng<ChaCha20Core, OsRng>>,
 }
 
 impl CryptoProvider {
-    #[inline(always)]
-    fn aes_support(&self) -> bool {
-        libcrux::aes_ni_support() && cfg!(target_arch = "x86_64")
+    /// Instantiate a libcrux-based CryptoProvider
+    pub fn new() -> Result<Self, CryptoError> {
+        let reseeding_rng = ReseedingRng::<ChaCha20Core, _>::new(0x100000000, OsRng)
+            .map_err(|_| CryptoError::InsufficientRandomness)?;
+
+        Ok(Self {
+            rng: Mutex::new(reseeding_rng),
+        })
     }
 }
 
 impl OpenMlsCrypto for CryptoProvider {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
-        match (ciphersuite.aead_algorithm(), self.aes_support()) {
-            (AeadType::Aes128Gcm, true)
-            | (AeadType::Aes256Gcm, true)
-            | (AeadType::ChaCha20Poly1305, true)
-            | (AeadType::ChaCha20Poly1305, false) => Ok(()),
+        match ciphersuite.aead_algorithm() {
+            AeadType::ChaCha20Poly1305 => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }?;
 
         match ciphersuite.signature_algorithm() {
-            SignatureScheme::ECDSA_SECP256R1_SHA256 | SignatureScheme::ED25519 => Ok(()),
+            SignatureScheme::ED25519 => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }?;
 
@@ -56,7 +48,6 @@ impl OpenMlsCrypto for CryptoProvider {
 
         match ciphersuite.hpke_aead_algorithm() {
             HpkeAeadType::ChaCha20Poly1305 => Ok(()),
-            HpkeAeadType::AesGcm128 | HpkeAeadType::AesGcm256 if self.aes_support() => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }?;
 
@@ -64,19 +55,10 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 
     fn supported_ciphersuites(&self) -> Vec<Ciphersuite> {
-        if self.aes_support() {
-            vec![
-                Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-                Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
-                Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
-            ]
-        } else {
-            vec![
-                Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
-            ]
-        }
+        vec![
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+            Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
+        ]
     }
 
     fn hkdf_extract(
@@ -86,7 +68,10 @@ impl OpenMlsCrypto for CryptoProvider {
         ikm: &[u8],
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hkdf_alg(hash_type);
-        let out = libcrux::hkdf::extract(alg, salt, ikm);
+        let out = libcrux_hkdf::extract(alg, salt, ikm).map_err(|e| match e {
+            libcrux_hkdf::Error::ArgumentsTooLarge => CryptoError::InvalidLength,
+            _ => CryptoError::CryptoLibraryError,
+        })?;
 
         Ok(out.into())
     }
@@ -100,18 +85,19 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hkdf_alg(hash_type);
 
-        libcrux::hkdf::expand(alg, prk, info, okm_len)
+        libcrux_hkdf::expand(alg, prk, info, okm_len)
             .map_err(|e| match e {
-                libcrux::hkdf::Error::OkmLengthTooLarge => CryptoError::HkdfOutputLengthInvalid,
+                libcrux_hkdf::Error::OkmTooLarge => CryptoError::HkdfOutputLengthInvalid,
+                libcrux_hkdf::Error::ArgumentsTooLarge => CryptoError::InvalidLength,
             })
             .map(<Vec<u8> as Into<SecretVLBytes>>::into)
     }
 
     fn hash(&self, hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let out = match hash_type {
-            HashType::Sha2_256 => libcrux::digest::sha2_256(data).to_vec(),
-            HashType::Sha2_384 => libcrux::digest::sha2_384(data).to_vec(),
-            HashType::Sha2_512 => libcrux::digest::sha2_512(data).to_vec(),
+            HashType::Sha2_256 => libcrux_sha2::sha256(data).to_vec(),
+            HashType::Sha2_384 => libcrux_sha2::sha384(data).to_vec(),
+            HashType::Sha2_512 => libcrux_sha2::sha512(data).to_vec(),
         };
 
         Ok(out)
@@ -125,23 +111,23 @@ impl OpenMlsCrypto for CryptoProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
+        // The only supported AeadType (as of openmls_traits v0.3.0) is ChaCha20Poly1305
+        if !matches!(alg, AeadType::ChaCha20Poly1305) {
+            return Err(CryptoError::UnsupportedAeadAlgorithm);
+        }
+
+        use libcrux_chacha20poly1305::TAG_LEN;
+
         // only fails on wrong length
-        let iv = libcrux::aead::Iv::new(nonce).map_err(|err| match err {
-            libcrux::aead::InvalidArgumentError::InvalidIv => CryptoError::InvalidLength,
-            _ => CryptoError::CryptoLibraryError,
-        })?;
-        let key = aead_key(alg, key)?;
+        let iv = <&[u8; 12]>::try_from(nonce).map_err(|_| CryptoError::InvalidLength)?;
 
-        let mut msg_ctx: Vec<u8> = data.to_vec();
-        let tag = libcrux::aead::encrypt(&key, &mut msg_ctx, iv, aad).map_err(|e| match e {
-            libcrux::aead::EncryptError::InvalidArgument(
-                libcrux::aead::InvalidArgumentError::UnsupportedAlgorithm,
-            ) => CryptoError::UnsupportedAeadAlgorithm,
-            _ => CryptoError::CryptoLibraryError,
-        })?;
+        let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
 
-        msg_ctx.extend_from_slice(tag.as_ref());
-        Ok(msg_ctx)
+        let mut msg_ctxt: Vec<u8> = vec![0; data.len() + TAG_LEN];
+        libcrux_chacha20poly1305::encrypt(key, data, &mut msg_ctxt, aad, iv)
+            .map_err(|_| CryptoError::CryptoLibraryError)?;
+
+        Ok(msg_ctxt)
     }
 
     fn aead_decrypt(
@@ -152,38 +138,55 @@ impl OpenMlsCrypto for CryptoProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        if ct_tag.len() < 16 || nonce.len() != 12 {
+        // The only supported AeadType (as of openmls_traits v0.4.0) is ChaCha20Poly1305
+        if !matches!(alg, AeadType::ChaCha20Poly1305) {
+            return Err(CryptoError::UnsupportedAeadAlgorithm);
+        }
+        use libcrux_chacha20poly1305::TAG_LEN;
+
+        if ct_tag.len() < TAG_LEN {
             return Err(CryptoError::InvalidLength);
         }
 
-        let boundary = ct_tag.len() - 16;
-        let mut c = ct_tag[..boundary].to_vec();
-        let tag = &ct_tag[boundary..];
+        let boundary = ct_tag.len() - TAG_LEN;
 
-        let iv = libcrux::aead::Iv::new(nonce).map_err(|_| CryptoError::InvalidLength)?;
-        let key = aead_key(alg, key)?;
-        let tag = libcrux::aead::Tag::from_slice(tag).expect("failed despite correct length");
+        let mut ptext = vec![0; boundary];
 
-        libcrux::aead::decrypt(&key, &mut c, iv, aad, &tag).map_err(|e| match e {
-            libcrux::aead::DecryptError::InvalidArgument(
-                libcrux::aead::InvalidArgumentError::UnsupportedAlgorithm,
-            ) => CryptoError::UnsupportedAeadAlgorithm,
-            libcrux::aead::DecryptError::DecryptionFailed => CryptoError::AeadDecryptionError,
-            _ => CryptoError::CryptoLibraryError,
-        })?;
+        let iv = <&[u8; 12]>::try_from(nonce).map_err(|_| CryptoError::InvalidLength)?;
 
-        Ok(c)
+        let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
+
+        libcrux_chacha20poly1305::decrypt(key, &mut ptext, ct_tag, aad, iv).map_err(
+            |e| match e {
+                libcrux_chacha20poly1305::AeadError::InvalidCiphertext => {
+                    CryptoError::AeadDecryptionError
+                }
+                _ => CryptoError::CryptoLibraryError,
+            },
+        )?;
+
+        Ok(ptext)
     }
 
     fn signature_key_gen(&self, alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
-        let alg = sig_alg(alg)?;
+        if !matches!(alg, SignatureScheme::ED25519) {
+            return Err(CryptoError::UnsupportedSignatureScheme);
+        }
+
         let mut rng = self
-            .drbg
+            .rng
             .lock()
             .map_err(|_| CryptoError::CryptoLibraryError)
             .map(GuardedRng)?;
 
-        libcrux::signature::key_gen(alg, &mut rng).map_err(|_| CryptoError::SigningError)
+        libcrux_ed25519::generate_key_pair(&mut rng)
+            .map_err(|_| CryptoError::SigningError)
+            .map(|(signing_key, verification_key)| {
+                (
+                    signing_key.into_bytes().to_vec(),
+                    verification_key.into_bytes().to_vec(),
+                )
+            })
     }
 
     fn verify_signature(
@@ -193,20 +196,28 @@ impl OpenMlsCrypto for CryptoProvider {
         pk: &[u8],
         signature: &[u8],
     ) -> Result<(), CryptoError> {
-        let signature = sig(alg, signature)?;
-        libcrux::signature::verify(data, &signature, pk).map_err(|_| CryptoError::InvalidSignature)
+        if !matches!(alg, SignatureScheme::ED25519) {
+            return Err(CryptoError::UnsupportedSignatureScheme);
+        }
+
+        let pk = <&[u8; 32]>::try_from(pk).map_err(|_| CryptoError::InvalidLength)?;
+        let sk = <&[u8; 64]>::try_from(signature).map_err(|_| CryptoError::InvalidLength)?;
+
+        libcrux_ed25519::verify(data, pk, sk).map_err(|e| match e {
+            libcrux_ed25519::Error::InvalidSignature => CryptoError::InvalidSignature,
+            _ => CryptoError::SigningError,
+        })
     }
 
     fn sign(&self, alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        let alg = sig_alg(alg)?;
-        let drbg = self
-            .drbg
-            .lock()
-            .map_err(|_| CryptoError::CryptoLibraryError)?;
+        if !matches!(alg, SignatureScheme::ED25519) {
+            return Err(CryptoError::UnsupportedSignatureScheme);
+        }
 
-        libcrux::signature::sign(alg, data, key, &mut GuardedRng(drbg))
+        let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
+        libcrux_ed25519::sign(data, key)
             .map_err(|_| CryptoError::SigningError)
-            .map(|sig| sig.into_vec())
+            .map(|sig| sig.to_vec())
     }
 
     fn hpke_seal(
@@ -217,28 +228,15 @@ impl OpenMlsCrypto for CryptoProvider {
         aad: &[u8],
         ptxt: &[u8],
     ) -> Result<HpkeCiphertext, CryptoError> {
-        let config = hpke_config(config);
-        let randomness = {
-            let mut rng = self
-                .drbg
-                .lock()
-                .map_err(|_| CryptoError::CryptoLibraryError)?;
-            rng.generate_vec(libcrux::hpke::kem::Nsk(config.1))
-                .map_err(|_| CryptoError::CryptoLibraryError)?
-        };
+        let mut config = hpke_config(config);
 
-        let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r)
-            .map_err(|_| CryptoError::CryptoLibraryError)?;
+        let pk_r = hpke_rs::HpkePublicKey::new(pk_r.to_vec());
 
-        let libcrux::hpke::HPKECiphertext(kem_output, ciphertext) =
-            libcrux::hpke::HpkeSeal(config, &pk_r, info, aad, ptxt, None, None, None, randomness)
-                .map_err(|e| match e {
-                hpke::errors::HpkeError::ValidationError => CryptoError::InvalidPublicKey,
-                hpke::errors::HpkeError::UnsupportedAlgorithm => {
-                    CryptoError::UnsupportedCiphersuite
-                }
-                hpke::errors::HpkeError::InvalidParameters => CryptoError::InvalidLength,
-                _ => CryptoError::CryptoLibraryError,
+        let (kem_output, ciphertext) = config
+            .seal(&pk_r, info, aad, ptxt, None, None, None)
+            .map_err(|e| match e {
+                hpke_rs::HpkeError::InvalidConfig => CryptoError::SenderSetupError,
+                _ => CryptoError::HpkeEncryptionError,
             })?;
 
         let kem_output = kem_output.into();
@@ -259,21 +257,24 @@ impl OpenMlsCrypto for CryptoProvider {
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
         let config = hpke_config(config);
-        let ctxt = libcrux::hpke::HPKECiphertext(
-            input.kem_output.as_ref().to_vec(),
-            input.ciphertext.as_ref().to_vec(),
-        );
 
-        libcrux::hpke::HpkeOpen(config, &ctxt, sk_r, info, aad, None, None, None).map_err(|e| {
-            match e {
-                libcrux::hpke::errors::HpkeError::OpenError
-                | libcrux::hpke::errors::HpkeError::DecapError
-                | libcrux::hpke::errors::HpkeError::ValidationError => {
-                    CryptoError::HpkeDecryptionError
-                }
-                _ => CryptoError::CryptoLibraryError,
-            }
-        })
+        let sk_r = hpke_rs::HpkePrivateKey::new(sk_r.to_vec());
+
+        config
+            .open(
+                input.kem_output.as_ref(),
+                &sk_r,
+                info,
+                aad,
+                input.ciphertext.as_ref(),
+                None,
+                None,
+                None,
+            )
+            .map_err(|e| match e {
+                hpke_rs::HpkeError::InvalidConfig => CryptoError::ReceiverSetupError,
+                _ => CryptoError::HpkeDecryptionError,
+            })
     }
 
     fn hpke_setup_sender_and_export(
@@ -284,21 +285,15 @@ impl OpenMlsCrypto for CryptoProvider {
         exporter_context: &[u8],
         exporter_length: usize,
     ) -> Result<(KemOutput, ExporterSecret), CryptoError> {
-        let config = hpke_config(config);
-        let randomness = self
-            .drbg
-            .lock()
-            .map_err(|_| CryptoError::CryptoLibraryError)?
-            .generate_vec(libcrux::hpke::kem::Nsk(config.1))
-            .map_err(|_| CryptoError::CryptoLibraryError)?;
+        let mut config = hpke_config(config);
 
-        let pk_r = libcrux::hpke::kem::DeserializePublicKey(config.1, pk_r)
-            .map_err(|_| CryptoError::InvalidPublicKey)?;
+        let pk_r = hpke_rs::HpkePublicKey::new(pk_r.to_vec());
 
-        let (enc, ctx) = libcrux::hpke::SetupBaseS(config, &pk_r, info, randomness)
-            .map_err(|_| CryptoError::ReceiverSetupError)?;
+        let (enc, ctx) = config
+            .setup_sender(&pk_r, info, None, None, None)
+            .map_err(|_| CryptoError::SenderSetupError)?;
 
-        libcrux::hpke::Context_Export(config, &ctx, exporter_context.to_vec(), exporter_length)
+        ctx.export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)
             .map(|exported| (enc, exported.into()))
     }
@@ -314,10 +309,13 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> Result<ExporterSecret, CryptoError> {
         let config = hpke_config(config);
 
-        let ctx = libcrux::hpke::SetupBaseR(config, enc, sk_r, info)
+        let sk_r = hpke_rs::HpkePrivateKey::new(sk_r.to_vec());
+
+        let ctx = config
+            .setup_receiver(enc, &sk_r, info, None, None, None)
             .map_err(|_| CryptoError::ReceiverSetupError)?;
 
-        libcrux::hpke::Context_Export(config, &ctx, exporter_context.to_vec(), exporter_length)
+        ctx.export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)
             .map(ExporterSecret::from)
     }
@@ -328,250 +326,67 @@ impl OpenMlsCrypto for CryptoProvider {
         ikm: &[u8],
     ) -> Result<HpkeKeyPair, CryptoError> {
         let config = hpke_config(config);
-        let HPKEConfig(_, alg, _, _) = config;
-        let (sk, pk) = hpke::kem::DeriveKeyPair(alg, ikm).map_err(|e| match e {
-            hpke::errors::HpkeError::InvalidParameters => CryptoError::InvalidLength,
+
+        let key_pair: hpke_rs::HpkeKeyPair = config.derive_key_pair(ikm).map_err(|e| match e {
+            hpke_rs::HpkeError::InvalidConfig => CryptoError::InvalidLength,
             _ => CryptoError::CryptoLibraryError,
         })?;
 
+        let (sk, pk) = key_pair.into_keys();
+
         Ok(HpkeKeyPair {
-            private: sk.into(),
-            public: hpke::kem::SerializePublicKey(alg, pk),
+            private: sk.as_slice().to_vec().into(),
+            public: pk.as_slice().to_vec(),
         })
     }
 }
 
-fn hkdf_alg(hash_type: HashType) -> libcrux::hkdf::Algorithm {
-    match hash_type {
-        HashType::Sha2_256 => libcrux::hkdf::Algorithm::Sha256,
-        HashType::Sha2_384 => libcrux::hkdf::Algorithm::Sha384,
-        HashType::Sha2_512 => libcrux::hkdf::Algorithm::Sha512,
-    }
+fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
+    let kem = hpke_kem(config.0);
+    let kdf = hpke_kdf(config.1);
+    let aead = hpke_aead(config.2);
+
+    hpke_rs::Hpke::new(hpke_rs::Mode::Base, kem, kdf, aead)
 }
 
-fn aead_key(alg: AeadType, key: &[u8]) -> Result<libcrux::aead::Key, CryptoError> {
-    let key = match alg {
-        AeadType::Aes128Gcm => {
-            const ALG: libcrux::aead::Algorithm = libcrux::aead::Algorithm::Aes128Gcm;
-            let key: [u8; ALG.key_size()] =
-                key.try_into().map_err(|_| CryptoError::InvalidLength)?;
-            libcrux::aead::Key::Aes128(libcrux::aead::Aes128Key(key))
-        }
-        AeadType::Aes256Gcm => {
-            const ALG: libcrux::aead::Algorithm = libcrux::aead::Algorithm::Aes256Gcm;
-            let key: [u8; ALG.key_size()] =
-                key.try_into().map_err(|_| CryptoError::InvalidLength)?;
-            libcrux::aead::Key::Aes256(libcrux::aead::Aes256Key(key))
-        }
-        AeadType::ChaCha20Poly1305 => {
-            const ALG: libcrux::aead::Algorithm = libcrux::aead::Algorithm::Chacha20Poly1305;
-            let key: [u8; ALG.key_size()] =
-                key.try_into().map_err(|_| CryptoError::InvalidLength)?;
-            libcrux::aead::Key::Chacha20Poly1305(libcrux::aead::Chacha20Key(key))
-        }
-    };
-
-    Ok(key)
-}
-
-fn sig(alg: SignatureScheme, sig: &[u8]) -> Result<libcrux::signature::Signature, CryptoError> {
-    match alg {
-        SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-            let decoded: [u8; 64] = der_decode(sig)?
-                .try_into()
-                .map_err(|_| CryptoError::InvalidSignature)?;
-
-            Ok(libcrux::signature::Signature::EcDsaP256(
-                libcrux::signature::EcDsaP256Signature::from_bytes(
-                    decoded,
-                    libcrux::signature::Algorithm::EcDsaP256(
-                        libcrux::signature::DigestAlgorithm::Sha256,
-                    ),
-                ),
-            ))
-        }
-        SignatureScheme::ED25519 => libcrux::signature::Ed25519Signature::from_slice(sig)
-            .map(libcrux::signature::Signature::Ed25519)
-            .map_err(|e| match e {
-                libcrux::signature::Error::InvalidSignature => CryptoError::InvalidSignature,
-                _ => CryptoError::CryptoLibraryError,
-            }),
-        _ => Err(CryptoError::UnsupportedSignatureScheme),
-    }
-}
-
-fn sig_alg(alg: SignatureScheme) -> Result<libcrux::signature::Algorithm, CryptoError> {
-    match alg {
-        SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(libcrux::signature::Algorithm::EcDsaP256(
-            libcrux::signature::DigestAlgorithm::Sha256,
-        )),
-        SignatureScheme::ED25519 => Ok(libcrux::signature::Algorithm::Ed25519),
-        _ => Err(CryptoError::UnsupportedSignatureScheme),
-    }
-}
-
-fn hpke_config(config: HpkeConfig) -> libcrux::hpke::HPKEConfig {
-    libcrux::hpke::HPKEConfig(
-        libcrux::hpke::Mode::mode_base,
-        hpke_kem(config.0),
-        hpke_kdf(config.1),
-        hpke_aead(config.2),
-    )
-}
-
-fn hpke_kdf(kdf: HpkeKdfType) -> libcrux::hpke::kdf::KDF {
+fn hpke_kdf(kdf: HpkeKdfType) -> hpke_rs_crypto::types::KdfAlgorithm {
     match kdf {
-        HpkeKdfType::HkdfSha256 => libcrux::hpke::kdf::KDF::HKDF_SHA256,
-        HpkeKdfType::HkdfSha384 => libcrux::hpke::kdf::KDF::HKDF_SHA384,
-        HpkeKdfType::HkdfSha512 => libcrux::hpke::kdf::KDF::HKDF_SHA512,
+        HpkeKdfType::HkdfSha256 => hpke_rs_crypto::types::KdfAlgorithm::HkdfSha256,
+        HpkeKdfType::HkdfSha384 => hpke_rs_crypto::types::KdfAlgorithm::HkdfSha384,
+        HpkeKdfType::HkdfSha512 => hpke_rs_crypto::types::KdfAlgorithm::HkdfSha512,
     }
 }
 
-fn hpke_kem(kem: HpkeKemType) -> libcrux::hpke::kem::KEM {
+fn hpke_kem(kem: HpkeKemType) -> hpke_rs_crypto::types::KemAlgorithm {
     match kem {
-        HpkeKemType::DhKemP256 => libcrux::hpke::kem::KEM::DHKEM_P256_HKDF_SHA256,
-        HpkeKemType::DhKemP384 => libcrux::hpke::kem::KEM::DHKEM_P384_HKDF_SHA384,
-        HpkeKemType::DhKemP521 => libcrux::hpke::kem::KEM::DHKEM_P521_HKDF_SHA512,
-        HpkeKemType::DhKem25519 => libcrux::hpke::kem::KEM::DHKEM_X25519_HKDF_SHA256,
-        HpkeKemType::DhKem448 => libcrux::hpke::kem::KEM::DHKEM_X448_HKDF_SHA512,
-        HpkeKemType::XWingKemDraft2 => libcrux::hpke::kem::KEM::XWingDraft02,
+        HpkeKemType::DhKemP256 => hpke_rs_crypto::types::KemAlgorithm::DhKemP256,
+        HpkeKemType::DhKemP384 => hpke_rs_crypto::types::KemAlgorithm::DhKemP384,
+        HpkeKemType::DhKemP521 => hpke_rs_crypto::types::KemAlgorithm::DhKemP521,
+        HpkeKemType::DhKem25519 => hpke_rs_crypto::types::KemAlgorithm::DhKem25519,
+        HpkeKemType::DhKem448 => hpke_rs_crypto::types::KemAlgorithm::DhKem448,
+        HpkeKemType::XWingKemDraft6 => hpke_rs_crypto::types::KemAlgorithm::XWingDraft06,
     }
 }
 
-fn hpke_aead(aead: HpkeAeadType) -> libcrux::hpke::aead::AEAD {
-    use libcrux::hpke::aead::AEAD as CruxAead;
+fn hpke_aead(aead: HpkeAeadType) -> hpke_rs_crypto::types::AeadAlgorithm {
     match aead {
-        HpkeAeadType::AesGcm128 => CruxAead::AES_128_GCM,
-        HpkeAeadType::AesGcm256 => CruxAead::AES_256_GCM,
-        HpkeAeadType::ChaCha20Poly1305 => CruxAead::ChaCha20Poly1305,
-        HpkeAeadType::Export => CruxAead::Export_only,
+        HpkeAeadType::AesGcm128 => hpke_rs_crypto::types::AeadAlgorithm::Aes128Gcm,
+        HpkeAeadType::AesGcm256 => hpke_rs_crypto::types::AeadAlgorithm::Aes256Gcm,
+        HpkeAeadType::ChaCha20Poly1305 => hpke_rs_crypto::types::AeadAlgorithm::ChaCha20Poly1305,
+        HpkeAeadType::Export => hpke_rs_crypto::types::AeadAlgorithm::HpkeExport,
     }
 }
 
-// The length of the individual scalars. Since we only support ECDSA with P256,
-// this is 32. It would be great if libcrux were able to return the scalar
-// size of a given curve.
-const P256_SCALAR_LENGTH: usize = 32;
-
-// DER encoding INTEGER tag.
-const INTEGER_TAG: u8 = 0x02;
-
-// DER encoding SEQUENCE tag.
-const SEQUENCE_TAG: u8 = 0x30;
-
-// The following two traits (ReadU8, Writeu8)are inlined from the byteorder
-// crate to avoid a full dependency.
-impl<R: std::io::Read + ?Sized> ReadU8 for R {}
-
-pub trait ReadU8: std::io::Read {
-    /// A small helper function to read a u8 from a Reader.
-    #[inline]
-    fn read_u8(&mut self) -> std::io::Result<u8> {
-        let mut buf = [0; 1];
-        self.read_exact(&mut buf)?;
-        Ok(buf[0])
+fn hkdf_alg(hash_type: HashType) -> libcrux_hkdf::Algorithm {
+    match hash_type {
+        HashType::Sha2_256 => libcrux_hkdf::Algorithm::Sha256,
+        HashType::Sha2_384 => libcrux_hkdf::Algorithm::Sha384,
+        HashType::Sha2_512 => libcrux_hkdf::Algorithm::Sha512,
     }
 }
-
-/// This function takes a DER encoded ECDSA signature and decodes it to the
-/// bytes representing the concatenated scalars. If the decoding fails, it
-/// will throw a `CryptoError`.
-fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
-    // A small function to DER decode a single scalar.
-    fn decode_scalar<R: std::io::Read>(mut buffer: R) -> Result<Vec<u8>, CryptoError> {
-        // Check header bytes of encoded scalar.
-
-        // 1 byte INTEGER tag should be 0x02
-        let integer_tag = buffer
-            .read_u8()
-            .map_err(|_| CryptoError::SignatureDecodingError)?;
-        if integer_tag != INTEGER_TAG {
-            return Err(CryptoError::SignatureDecodingError);
-        };
-
-        // 1 byte length tag should be at most 0x21, i.e. 32 plus at most 1
-        // byte indicating that the integer is unsigned.
-        let mut scalar_length = buffer
-            .read_u8()
-            .map_err(|_| CryptoError::SignatureDecodingError)?
-            as usize;
-        if scalar_length > P256_SCALAR_LENGTH + 1 {
-            return Err(CryptoError::SignatureDecodingError);
-        };
-
-        // If the scalar is 0x21 long, the first byte has to be 0x00,
-        // indicating that the following integer is unsigned. We can discard
-        // this byte safely. If it's not 0x00, the scalar is too large not
-        // thus not a valid point on the curve.
-        if scalar_length == P256_SCALAR_LENGTH + 1 {
-            if buffer
-                .read_u8()
-                .map_err(|_| CryptoError::SignatureDecodingError)?
-                != 0x00
-            {
-                return Err(CryptoError::SignatureDecodingError);
-            };
-            // Since we just read that byte, we decrease the length by 1.
-            scalar_length -= 1;
-        };
-
-        let mut scalar = vec![0; scalar_length];
-        buffer
-            .read_exact(&mut scalar)
-            .map_err(|_| CryptoError::SignatureDecodingError)?;
-
-        // The verification algorithm expects the scalars to be 32 bytes
-        // long, buffered with zeroes.
-        let mut padded_scalar = vec![0u8; P256_SCALAR_LENGTH - scalar_length];
-        padded_scalar.append(&mut scalar);
-
-        Ok(padded_scalar)
-    }
-
-    // Check header bytes:
-    // 1 byte SEQUENCE tag should be 0x30
-    let sequence_tag = signature_bytes
-        .read_u8()
-        .map_err(|_| CryptoError::SignatureDecodingError)?;
-    if sequence_tag != SEQUENCE_TAG {
-        return Err(CryptoError::SignatureDecodingError);
-    };
-
-    // At most 1 byte encoding the length of the scalars (short form DER
-    // length encoding). Length has to be encoded in the short form, as we
-    // expect the length not to exceed the maximum length of 70: Two times
-    // at most 32 (scalar value) + 1 byte integer tag + 1 byte length tag +
-    // at most 1 byte to indicating that the integer is unsigned.
-    let length = signature_bytes
-        .read_u8()
-        .map_err(|_| CryptoError::SignatureDecodingError)? as usize;
-    if length > 2 * (P256_SCALAR_LENGTH + 3) {
-        return Err(CryptoError::SignatureDecodingError);
-    }
-
-    // The remaining bytes should be equal to the encoded length.
-    if signature_bytes.len() != length {
-        return Err(CryptoError::SignatureDecodingError);
-    }
-
-    let mut r = decode_scalar(&mut signature_bytes)?;
-    let mut s = decode_scalar(&mut signature_bytes)?;
-
-    // If there are bytes remaining, the encoded length was larger than the
-    // length of the individual scalars..
-    if !signature_bytes.is_empty() {
-        return Err(CryptoError::SignatureDecodingError);
-    }
-
-    let mut out = Vec::with_capacity(2 * P256_SCALAR_LENGTH);
-    out.append(&mut r);
-    out.append(&mut s);
-    Ok(out)
-}
-
 struct GuardedRng<'a, Rng: RngCore>(MutexGuard<'a, Rng>);
 
-impl<'a, Rng: RngCore> RngCore for GuardedRng<'a, Rng> {
+impl<Rng: RngCore> RngCore for GuardedRng<'_, Rng> {
     fn next_u32(&mut self) -> u32 {
         self.0.next_u32()
     }
@@ -583,10 +398,6 @@ impl<'a, Rng: RngCore> RngCore for GuardedRng<'a, Rng> {
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         self.0.fill_bytes(dest)
     }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
-        self.0.try_fill_bytes(dest)
-    }
 }
 
-impl<'a, Rng: RngCore + CryptoRng> CryptoRng for GuardedRng<'a, Rng> {}
+impl<Rng: RngCore + CryptoRng> CryptoRng for GuardedRng<'_, Rng> {}

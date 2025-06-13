@@ -154,23 +154,6 @@ fn test_diff_merging() {
 }
 
 #[test]
-fn test_new_tree_error() {
-    // Let's test what happens when the tree is getting too large.
-    let mut nodes: Vec<TreeNode<u32, u32>> = Vec::new();
-
-    // We allow uninitialized vectors because we don't want to allocate so much memory
-    #[allow(clippy::uninit_vec)]
-    unsafe {
-        nodes.set_len(u32::MAX as usize);
-
-        assert_eq!(
-            MlsBinaryTree::new(nodes).expect_err("no error adding beyond TREE_MAX"),
-            MlsBinaryTreeError::OutOfRange
-        )
-    }
-}
-
-#[test]
 fn test_diff_iter() {
     let nodes = (0..101)
         .map(|i| {

@@ -79,7 +79,25 @@ pub enum ProposalType {
     ExternalInit,
     GroupContextExtensions,
     AppAck,
+    SelfRemove,
     Custom(u16),
+}
+
+impl ProposalType {
+    /// Returns true for all proposal types that are considered "default" by the
+    /// spec.
+    pub(crate) fn is_default(self) -> bool {
+        match self {
+            ProposalType::Add
+            | ProposalType::Update
+            | ProposalType::Remove
+            | ProposalType::PreSharedKey
+            | ProposalType::Reinit
+            | ProposalType::ExternalInit
+            | ProposalType::GroupContextExtensions => true,
+            ProposalType::SelfRemove | ProposalType::AppAck | ProposalType::Custom(_) => false,
+        }
+    }
 }
 
 impl Size for ProposalType {
@@ -125,7 +143,11 @@ impl ProposalType {
     pub fn is_path_required(&self) -> bool {
         matches!(
             self,
-            Self::Update | Self::Remove | Self::ExternalInit | Self::GroupContextExtensions
+            Self::Update
+                | Self::Remove
+                | Self::ExternalInit
+                | Self::GroupContextExtensions
+                | Self::SelfRemove
         )
     }
 }
@@ -141,6 +163,7 @@ impl From<u16> for ProposalType {
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
             8 => ProposalType::AppAck,
+            0x000c => ProposalType::SelfRemove,
             other => ProposalType::Custom(other),
         }
     }
@@ -157,6 +180,7 @@ impl From<ProposalType> for u16 {
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
             ProposalType::AppAck => 8,
+            ProposalType::SelfRemove => 0x000c,
             ProposalType::Custom(id) => id,
         }
     }
@@ -197,6 +221,8 @@ pub enum Proposal {
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
     AppAck(AppAckProposal),
+    // A SelfRemove proposal is an empty struct.
+    SelfRemove,
     Custom(CustomProposal),
 }
 
@@ -212,6 +238,7 @@ impl Proposal {
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             Proposal::AppAck(_) => ProposalType::AppAck,
+            Proposal::SelfRemove => ProposalType::SelfRemove,
             Proposal::Custom(CustomProposal {
                 proposal_type,
                 payload: _,
@@ -227,11 +254,30 @@ impl Proposal {
     pub fn is_path_required(&self) -> bool {
         self.proposal_type().is_path_required()
     }
+
+    pub(crate) fn has_lower_priority_than(&self, new_proposal: &Proposal) -> bool {
+        match (self, new_proposal) {
+            // Updates have the lowest priority.
+            (Proposal::Update(_), _) => true,
+            // Removes have a higher priority than Updates.
+            (Proposal::Remove(_), Proposal::Update(_)) => false,
+            // Later Removes trump earlier Removes
+            (Proposal::Remove(_), Proposal::Remove(_)) => true,
+            // SelfRemoves have the highest priority.
+            (_, Proposal::SelfRemove) => true,
+            // All other combinations are invalid
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
+    }
 }
 
 /// Add Proposal.
 ///
-/// An Add proposal requests that a client with a specified [`KeyPackage`] be added to the group.
+/// An Add proposal requests that a client with a specified [`KeyPackage`] be
+/// added to the group.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -253,8 +299,9 @@ impl AddProposal {
 
 /// Update Proposal.
 ///
-/// An Update proposal is a similar mechanism to [`AddProposal`] with the distinction that it
-/// replaces the sender's [`LeafNode`] in the tree instead of adding a new leaf to the tree.
+/// An Update proposal is a similar mechanism to [`AddProposal`] with the
+/// distinction that it replaces the sender's [`LeafNode`] in the tree instead
+/// of adding a new leaf to the tree.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -268,7 +315,7 @@ pub struct UpdateProposal {
 }
 
 impl UpdateProposal {
-    /// Returns a reference to the key package in the proposal.
+    /// Returns a reference to the leaf node in the proposal.
     pub fn leaf_node(&self) -> &LeafNode {
         &self.leaf_node
     }
@@ -276,7 +323,8 @@ impl UpdateProposal {
 
 /// Remove Proposal.
 ///
-/// A Remove proposal requests that the member with the leaf index removed be removed from the group.
+/// A Remove proposal requests that the member with the leaf index removed be
+/// removed from the group.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -309,8 +357,8 @@ impl RemoveProposal {
 
 /// PreSharedKey Proposal.
 ///
-/// A PreSharedKey proposal can be used to request that a pre-shared key be injected into the key
-/// schedule in the process of advancing the epoch.
+/// A PreSharedKey proposal can be used to request that a pre-shared key be
+/// injected into the key schedule in the process of advancing the epoch.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -350,9 +398,10 @@ impl PreSharedKeyProposal {
 
 /// ReInit Proposal.
 ///
-/// A ReInit proposal represents a request to reinitialize the group with different parameters, for
-/// example, to increase the version number or to change the ciphersuite. The reinitialization is
-/// done by creating a completely new group and shutting down the old one.
+/// A ReInit proposal represents a request to reinitialize the group with
+/// different parameters, for example, to increase the version number or to
+/// change the ciphersuite. The reinitialization is done by creating a
+/// completely new group and shutting down the old one.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -384,8 +433,8 @@ pub struct ReInitProposal {
 
 /// ExternalInit Proposal.
 ///
-/// An ExternalInit proposal is used by new members that want to join a group by using an external
-/// commit. This proposal can only be used in that context.
+/// An ExternalInit proposal is used by new members that want to join a group by
+/// using an external commit. This proposal can only be used in that context.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -424,8 +473,6 @@ impl From<Vec<u8>> for ExternalInitProposal {
     }
 }
 
-// TODO: #291 Implement AppAck
-
 /// AppAck Proposal.
 ///
 /// This is not yet supported.
@@ -446,8 +493,8 @@ pub struct AppAckProposal {
 
 /// GroupContextExtensions Proposal.
 ///
-/// A GroupContextExtensions proposal is used to update the list of extensions in the GroupContext
-/// for the group.
+/// A GroupContextExtensions proposal is used to update the list of extensions
+/// in the GroupContext for the group.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -567,9 +614,11 @@ impl ProposalRef {
             .map_err(|error| ProposalRefError::Other(LibraryError::unexpected_crypto_error(error)))
     }
 
-    /// Note: A [`ProposalRef`] should be calculated by using TLS-serialized [`AuthenticatedContent`]
-    ///       as value input and not the TLS-serialized proposal. However, to spare us a major refactoring,
-    ///       we calculate it from the raw value in some places that do not interact with the outside world.
+    /// Note: A [`ProposalRef`] should be calculated by using TLS-serialized
+    /// [`AuthenticatedContent`]       as value input and not the
+    /// TLS-serialized proposal. However, to spare us a major refactoring,
+    ///       we calculate it from the raw value in some places that do not
+    /// interact with the outside world.
     pub(crate) fn from_raw_proposal(
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
@@ -588,7 +637,6 @@ impl ProposalRef {
     }
 }
 
-/// TODO: #291 Implement AppAck
 /// ```text
 /// struct {
 ///     KeyPackageRef sender;

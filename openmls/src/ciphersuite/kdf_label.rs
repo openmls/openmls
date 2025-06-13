@@ -29,7 +29,7 @@ impl KdfLabel {
         label: String,
         length: usize,
     ) -> Result<Vec<u8>, CryptoError> {
-        if length > u16::MAX.into() {
+        if length > u16::MAX as usize {
             debug_assert!(
                 false,
                 "Library error: Trying to derive a key with a too large length field!"

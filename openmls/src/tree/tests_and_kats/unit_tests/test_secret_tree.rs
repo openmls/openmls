@@ -3,7 +3,6 @@ use openmls_traits::random::OpenMlsRand;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     schedule::EncryptionSecret,
-    test_utils::*,
     tree::{secret_tree::*, sender_ratchet::SenderRatchetConfiguration},
 };
 use std::collections::HashMap;

@@ -1,25 +1,10 @@
-use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
 
-use crate::{
-    binary_tree::LeafNodeIndex,
-    framing::*,
-    group::*,
-    messages::{
-        external_proposals::*,
-        proposals::{AddProposal, Proposal, ProposalType},
-    },
-    treesync::LeafNodeParameters,
-};
+use crate::{framing::*, group::*, messages::external_proposals::*};
 
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider as _};
+use openmls_traits::types::Ciphersuite;
 
 use crate::group::tests_and_kats::utils::*;
-
-struct ProposalValidationTestSetup {
-    alice_group: (MlsGroup, SignatureKeyPair),
-    bob_group: (MlsGroup, SignatureKeyPair),
-}
 
 // Creates a standalone group
 fn new_test_group(
@@ -27,6 +12,7 @@ fn new_test_group(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
+    external_senders: ExternalSendersExtension,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -35,16 +21,20 @@ fn new_test_group(
         generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider);
 
     // Define the MlsGroup configuration
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
+    let mls_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
         .ciphersuite(ciphersuite)
+        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(
+            external_senders,
+        )))
+        .unwrap()
         .build();
 
     (
         MlsGroup::new_with_group_id(
             provider,
             &credential_with_keys.signer,
-            &mls_group_create_config,
+            &mls_group_config,
             group_id,
             credential_with_keys.credential_with_key.clone(),
         )
@@ -58,10 +48,16 @@ fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
-) -> ProposalValidationTestSetup {
+    external_senders: ExternalSendersExtension,
+) -> (MlsGroup, CredentialWithKeyAndSigner) {
     // === Alice creates a group ===
-    let (mut alice_group, alice_signer_with_keys) =
-        new_test_group("Alice", wire_format_policy, ciphersuite, provider);
+    let (mut alice_group, alice_signer_when_keys) = new_test_group(
+        "Alice",
+        wire_format_policy,
+        ciphersuite,
+        provider,
+        external_senders,
+    );
 
     let bob_credential_with_key =
         generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
@@ -70,13 +66,13 @@ fn validation_test_setup(
         ciphersuite,
         Extensions::empty(),
         provider,
-        bob_credential_with_key.clone(),
+        bob_credential_with_key,
     );
 
-    let (_message, welcome, _group_info) = alice_group
+    alice_group
         .add_members(
             provider,
-            &alice_signer_with_keys.signer,
+            &alice_signer_when_keys.signer,
             &[bob_key_package.key_package().clone()],
         )
         .expect("error adding Bob to group");
@@ -84,164 +80,44 @@ fn validation_test_setup(
     alice_group
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
+    assert_eq!(alice_group.members().count(), 2);
 
-    // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupJoinConfig::builder()
-        .wire_format_policy(wire_format_policy)
-        .build();
-
-    let welcome: MlsMessageIn = welcome.into();
-    let welcome = welcome
-        .into_welcome()
-        .expect("expected message to be a welcome");
-
-    let bob_group = StagedWelcome::new_from_welcome(
-        provider,
-        &mls_group_config,
-        welcome,
-        Some(alice_group.export_ratchet_tree().into()),
-    )
-    .expect("error creating group from welcome")
-    .into_group(provider)
-    .expect("error creating group from welcome");
-
-    ProposalValidationTestSetup {
-        alice_group: (alice_group, alice_signer_with_keys.signer),
-        bob_group: (bob_group, bob_credential_with_key.signer),
-    }
+    (alice_group, alice_signer_when_keys)
 }
 
 #[openmls_test]
-fn external_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
-    for policy in WIRE_FORMAT_POLICIES {
-        let ProposalValidationTestSetup {
-            alice_group,
-            bob_group,
-        } = validation_test_setup(policy, ciphersuite, provider);
-        let (mut alice_group, alice_signer) = alice_group;
-        let (mut bob_group, _bob_signer) = bob_group;
-
-        assert_eq!(alice_group.members().count(), 2);
-        assert_eq!(bob_group.members().count(), 2);
-
-        // A new client, Charlie, will now ask joining with an external Add proposal
-        let charlie_credential = generate_credential_with_key(
-            "Charlie".into(),
-            ciphersuite.signature_algorithm(),
-            provider,
-        );
-
-        let charlie_kp = generate_key_package(
-            ciphersuite,
-            Extensions::empty(),
-            provider,
-            charlie_credential.clone(),
-        );
-
-        let proposal =
-            JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
-                charlie_kp.key_package().clone(),
-                alice_group.group_id().clone(),
-                alice_group.epoch(),
-                &charlie_credential.signer,
-            )
-            .unwrap();
-
-        // an external proposal is always plaintext and has sender type 'new_member_proposal'
-        let verify_proposal = |msg: &PublicMessage| {
-            *msg.sender() == Sender::NewMemberProposal
-                && msg.content_type() == ContentType::Proposal
-                && matches!(msg.content(), FramedContentBody::Proposal(p) if p.proposal_type() == ProposalType::Add)
-        };
-        assert!(
-            matches!(proposal.body, MlsMessageBodyOut::PublicMessage(ref msg) if verify_proposal(msg))
-        );
-
-        let msg = alice_group
-            .process_message(provider, proposal.clone().into_protocol_message().unwrap())
-            .unwrap();
-
-        match msg.into_content() {
-            ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
-                assert!(matches!(proposal.sender(), Sender::NewMemberProposal));
-                assert!(matches!(
-                    proposal.proposal(),
-                    Proposal::Add(AddProposal { key_package }) if key_package == charlie_kp.key_package()
-                ));
-                alice_group
-                    .store_pending_proposal(provider.storage(), *proposal)
-                    .unwrap()
-            }
-            _ => unreachable!(),
-        }
-
-        let msg = bob_group
-            .process_message(provider, proposal.into_protocol_message().unwrap())
-            .unwrap();
-
-        match msg.into_content() {
-            ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => bob_group
-                .store_pending_proposal(provider.storage(), *proposal)
-                .unwrap(),
-            _ => unreachable!(),
-        }
-
-        // and Alice will commit it
-        let (commit, welcome, _group_info) = alice_group
-            .commit_to_pending_proposals(provider, &alice_signer)
-            .unwrap();
-        alice_group.merge_pending_commit(provider).unwrap();
-        assert_eq!(alice_group.members().count(), 3);
-
-        // Bob will also process the commit
-        let msg = bob_group
-            .process_message(provider, commit.into_protocol_message().unwrap())
-            .unwrap();
-        match msg.into_content() {
-            ProcessedMessageContent::StagedCommitMessage(commit) => {
-                bob_group.merge_staged_commit(provider, *commit).unwrap()
-            }
-            _ => unreachable!(),
-        }
-        assert_eq!(bob_group.members().count(), 3);
-
-        let welcome: MlsMessageIn = welcome.expect("expected a welcome").into();
-        let welcome = welcome
-            .into_welcome()
-            .expect("expected message to be a welcome");
-
-        // Finally, Charlie can join with the Welcome
-        let mls_group_config = MlsGroupJoinConfig::builder()
-            .wire_format_policy(policy)
-            .build();
-        let charlie_group = StagedWelcome::new_from_welcome(
-            provider,
-            &mls_group_config,
-            welcome,
-            Some(alice_group.export_ratchet_tree().into()),
-        )
-        .unwrap()
-        .into_group(provider)
-        .unwrap();
-        assert_eq!(charlie_group.members().count(), 3);
-    }
-}
-
-#[openmls_test]
-fn external_add_proposal_should_be_signed_by_key_package_it_references<
-    Provider: OpenMlsProvider,
->() {
-    let ProposalValidationTestSetup { alice_group, .. } =
-        validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
-    let (mut alice_group, _alice_signer) = alice_group;
-
-    let attacker_credential = generate_credential_with_key(
-        "Attacker".into(),
+fn external_add_proposal_should_suceeed() {
+    // delivery service credentials. DS will craft an external add proposal
+    let ds_credential_with_key = generate_credential_with_key(
+        "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         provider,
     );
 
-    // A new client, Charlie, will now ask joining with an external Add proposal
+    let (mut alice_group, alice_credential) = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        provider,
+        vec![ExternalSender::new(
+            ds_credential_with_key
+                .credential_with_key
+                .signature_key
+                .clone(),
+            ds_credential_with_key
+                .credential_with_key
+                .credential
+                .clone(),
+        )],
+    );
+
+    // DS is an allowed external sender of the group
+    assert!(alice_group
+        .context()
+        .extensions()
+        .iter()
+        .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
+
+    // A new client, Charlie, wants to be in the group
     let charlie_credential = generate_credential_with_key(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
@@ -252,111 +128,252 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references<
         ciphersuite,
         Extensions::empty(),
         provider,
-        attacker_credential,
+        charlie_credential.clone(),
     );
 
-    let invalid_proposal =
-        JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
-            charlie_kp.key_package().clone(),
-            alice_group.group_id().clone(),
-            alice_group.epoch(),
-            &charlie_credential.signer,
+    // Now Delivery Service wants to add Charlie
+    let charlie_external_add_proposal: MlsMessageIn = ExternalProposal::new_add::<Provider>(
+        charlie_kp.key_package,
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_credential_with_key.signer,
+        SenderExtensionIndex::new(0),
+    )
+    .unwrap()
+    .into();
+
+    // Alice validates the message
+    let processed_message = alice_group
+        .process_message(
+            provider,
+            charlie_external_add_proposal
+                .try_into_protocol_message()
+                .unwrap(),
         )
         .unwrap();
 
-    // fails because the message was not signed by the same credential as the one in the Add proposal
+    // commit the proposal
+    let ProcessedMessageContent::ProposalMessage(add_proposal) = processed_message.into_content()
+    else {
+        panic!("Not an add proposal");
+    };
+    alice_group
+        .store_pending_proposal(provider.storage(), *add_proposal)
+        .unwrap();
+    let (_, welcome, _) = alice_group
+        .commit_to_pending_proposals(provider, &alice_credential.signer)
+        .unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
+    assert_eq!(alice_group.members().count(), 3);
+
+    let welcome: MlsMessageIn = welcome.expect("expected a welcome").into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    // Finally, Charlie can join with the Welcome
+    let mls_group_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build();
+    let charlie_group = StagedWelcome::new_from_welcome(
+        provider,
+        &mls_group_config,
+        welcome,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .unwrap()
+    .into_group(provider)
+    .unwrap();
+    assert_eq!(charlie_group.members().count(), 3);
+}
+
+#[openmls_test]
+fn external_add_proposal_should_fail_when_invalid_external_senders_index<
+    Provider: OpenMlsProvider,
+>() {
+    // delivery service credentials. DS will craft an external add proposal
+    let ds_credential_with_key = generate_credential_with_key(
+        "delivery-service".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let (mut alice_group, _alice_credential) = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        provider,
+        vec![ExternalSender::new(
+            ds_credential_with_key
+                .credential_with_key
+                .signature_key
+                .clone(),
+            ds_credential_with_key
+                .credential_with_key
+                .credential
+                .clone(),
+        )],
+    );
+
+    // A new client, Charlie, wants to be in the group
+    let charlie_credential = generate_credential_with_key(
+        "Charlie".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let charlie_kp = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        provider,
+        charlie_credential.clone(),
+    );
+
+    // Now Delivery Service wants to add Charlie with invalid sender index
+    let charlie_external_add_proposal: MlsMessageIn = ExternalProposal::new_add::<Provider>(
+        charlie_kp.key_package,
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_credential_with_key.signer,
+        SenderExtensionIndex::new(10), // invalid sender index
+    )
+    .unwrap()
+    .into();
+
+    // Alice tries to validate the message and should fail as sender is invalid
+    let error = alice_group
+        .process_message(
+            provider,
+            charlie_external_add_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap_err();
     assert!(matches!(
-        alice_group
-            .process_message(provider, invalid_proposal.into_protocol_message().unwrap())
-            .unwrap_err(),
+        error,
+        ProcessMessageError::ValidationError(ValidationError::UnauthorizedExternalSender)
+    ));
+}
+
+#[openmls_test]
+fn external_add_proposal_should_fail_when_invalid_signature() {
+    // delivery service credentials. DS will craft an external add proposal
+    let ds_credential_with_key = generate_credential_with_key(
+        "delivery-service".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let (mut alice_group, _alice_credential) = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        provider,
+        vec![ExternalSender::new(
+            ds_credential_with_key
+                .credential_with_key
+                .signature_key
+                .clone(),
+            ds_credential_with_key.credential_with_key.credential,
+        )],
+    );
+
+    let ds_invalid_credential_with_key = generate_credential_with_key(
+        "delivery-service-invalid".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    // A new client, Charlie, wants to be in the group
+    let charlie_credential = generate_credential_with_key(
+        "Charlie".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let charlie_kp = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        provider,
+        charlie_credential.clone(),
+    );
+
+    // Now Delivery Service wants to add Charlie with invalid sender signature
+    let charlie_external_add_proposal: MlsMessageIn = ExternalProposal::new_add::<Provider>(
+        charlie_kp.key_package,
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_invalid_credential_with_key.signer,
+        SenderExtensionIndex::new(0),
+    )
+    .unwrap()
+    .into();
+
+    // Alice tries to validate the message and should fail as sender is invalid
+    let error = alice_group
+        .process_message(
+            provider,
+            charlie_external_add_proposal
+                .try_into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap_err();
+    assert!(matches!(
+        error,
         ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
     ));
 }
 
-// TODO #1093: move this test to a dedicated external proposal ValSem test module once all external proposals implemented
 #[openmls_test]
-fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: OpenMlsProvider>() {
-    let ProposalValidationTestSetup {
-        alice_group,
-        bob_group,
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
-    let (mut alice_group, alice_signer) = alice_group;
-    let (mut bob_group, _bob_signer) = bob_group;
+fn external_add_proposal_should_fail_when_no_external_senders() {
+    let (mut alice_group, _) = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        provider,
+        vec![],
+    );
 
-    // Add proposal can have a 'new_member_proposal' sender
-    let any_credential =
-        generate_credential_with_key("Any".into(), ciphersuite.signature_algorithm(), provider);
+    // delivery service credentials. DS will craft an external add proposal
+    let ds_credential_with_key = generate_credential_with_key(
+        "delivery-service".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
 
-    let any_kp = generate_key_package(
+    // A new client, Charlie, wants to be in the group
+    let charlie_credential = generate_credential_with_key(
+        "Charlie".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let charlie_kp = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         provider,
-        any_credential.clone(),
+        charlie_credential.clone(),
     );
 
-    let join_proposal =
-        JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
-            any_kp.key_package().clone(),
-            alice_group.group_id().clone(),
-            alice_group.epoch(),
-            &any_credential.signer,
+    // Now Delivery Service wants to add Charlie with invalid sender index but there's no extension
+    let charlie_external_add_proposal: MlsMessageIn = ExternalProposal::new_add::<Provider>(
+        charlie_kp.key_package,
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_credential_with_key.signer,
+        SenderExtensionIndex::new(1), // invalid sender index
+    )
+    .unwrap()
+    .into();
+
+    // Alice tries to validate the message and should fail as sender is invalid
+    let error = alice_group
+        .process_message(
+            provider,
+            charlie_external_add_proposal
+                .try_into_protocol_message()
+                .unwrap(),
         )
-        .unwrap();
-
-    if let MlsMessageBodyOut::PublicMessage(plaintext) = &join_proposal.body {
-        // Make sure it's an add proposal...
-        assert!(matches!(
-            plaintext.content(),
-            FramedContentBody::Proposal(Proposal::Add(_))
-        ));
-
-        // ... and that it has the right sender type
-        assert!(matches!(plaintext.sender(), Sender::NewMemberProposal));
-
-        // Finally check that the message can be processed without errors
-        assert!(bob_group
-            .process_message(provider, join_proposal.into_protocol_message().unwrap())
-            .is_ok());
-    } else {
-        panic!()
-    };
-    alice_group
-        .clear_pending_proposals(provider.storage())
-        .unwrap();
-
-    // Remove proposal cannot have a 'new_member_proposal' sender
-    let remove_proposal = alice_group
-        .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
-        .map(|(out, _)| MlsMessageIn::from(out))
-        .unwrap();
-    if let MlsMessageBodyIn::PublicMessage(mut plaintext) = remove_proposal.body {
-        plaintext.set_sender(Sender::NewMemberProposal);
-        assert!(matches!(
-            bob_group.process_message(provider, plaintext).unwrap_err(),
-            ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
-        ));
-    } else {
-        panic!()
-    };
-    alice_group
-        .clear_pending_proposals(provider.storage())
-        .unwrap();
-
-    // Update proposal cannot have a 'new_member_proposal' sender
-    let update_proposal = alice_group
-        .propose_self_update(provider, &alice_signer, LeafNodeParameters::default())
-        .map(|(out, _)| MlsMessageIn::from(out))
-        .unwrap();
-    if let MlsMessageBodyIn::PublicMessage(mut plaintext) = update_proposal.body {
-        plaintext.set_sender(Sender::NewMemberProposal);
-        assert!(matches!(
-            bob_group.process_message(provider, plaintext).unwrap_err(),
-            ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
-        ));
-    } else {
-        panic!()
-    };
-    alice_group
-        .clear_pending_proposals(provider.storage())
-        .unwrap();
+        .unwrap_err();
+    assert!(matches!(
+        error,
+        ProcessMessageError::ValidationError(ValidationError::UnauthorizedExternalSender)
+    ));
 }

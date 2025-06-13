@@ -21,7 +21,6 @@
 //!                          ProcessedMessage
 //!
 //! ```
-// TODO #106/#151: Update the above diagram
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use proposal_store::QueuedProposal;
@@ -33,7 +32,6 @@ use crate::{
     extensions::ExternalSendersExtension,
     group::{errors::ValidationError, mls_group::staged_commit::StagedCommit},
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::TreeSync,
     versions::ProtocolVersion,
 };
 
@@ -75,6 +73,7 @@ impl DecryptedMessage {
                 // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
                 // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
                 // ValSem008
+                // https://validation.openmls.tech/#valn1302
                 public_message.verify_membership(
                     crypto,
                     ciphersuite,
@@ -105,6 +104,10 @@ impl DecryptedMessage {
             .message_secrets_and_leaves_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
+        // Check if we are the sender
+        if sender_data.leaf_index == group.own_leaf_index() {
+            return Err(ValidationError::CannotDecryptOwnMessage);
+        }
         let message_secrets = group
             .message_secrets_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
@@ -145,59 +148,29 @@ impl DecryptedMessage {
     }
 
     /// Gets the correct credential from the message depending on the sender type.
+    ///
+    /// The closure argument is used to look up the credential and signature key. If the epoch of
+    /// the message is the same as that of the group, look it up in the tree; else, look in up in
+    /// the past trees of the message secret store.
+    ///
     /// Checks the following semantic validation:
     ///  - ValSem112
     ///  - ValSem245
     ///  - Prepares ValSem246 by setting the right credential. The remainder
     ///    of ValSem246 is validated as part of ValSem010.
+    ///  - [valn1301](https://validation.openmls.tech/#valn1301)
     ///
     /// Returns the [`Credential`] and the leaf's [`SignaturePublicKey`].
     pub(crate) fn credential(
         &self,
-        treesync: &TreeSync,
-        old_leaves: &[Member],
+        look_up_credential_with_key: impl Fn(LeafNodeIndex) -> Option<CredentialWithKey>,
         external_senders: Option<&ExternalSendersExtension>,
     ) -> Result<CredentialWithKey, ValidationError> {
         let sender = self.sender();
         match sender {
             Sender::Member(leaf_index) => {
-                match treesync.leaf(*leaf_index) {
-                    Some(sender_leaf) => {
-                        let credential = sender_leaf.credential().clone();
-                        let pk = sender_leaf.signature_key().clone();
-                        Ok(CredentialWithKey {
-                            credential,
-                            signature_key: pk,
-                        })
-                    }
-                    None => {
-                        // This might not actually be an error but the sender's
-                        // key package changed. Let's check old leaves we still
-                        // have around.
-                        // TODO: As part of #819 looking up old leaves changes.
-                        //       Just checking the index is probably not enough.
-                        //       Revisit when the transition is further along
-                        //       and we have better test cases.
-                        if let Some(Member { index, .. }) = old_leaves
-                            .iter()
-                            .find(|&old_member| *leaf_index == old_member.index)
-                        {
-                            match treesync.leaf(*index) {
-                                Some(node) => {
-                                    let credential = node.credential().clone();
-                                    let signature_key = node.signature_key().clone();
-                                    Ok(CredentialWithKey {
-                                        credential,
-                                        signature_key,
-                                    })
-                                }
-                                None => Err(ValidationError::UnknownMember),
-                            }
-                        } else {
-                            Err(ValidationError::UnknownMember)
-                        }
-                    }
-                }
+                // https://validation.openmls.tech/#valn1306
+                look_up_credential_with_key(*leaf_index).ok_or(ValidationError::UnknownMember)
             }
             Sender::External(index) => {
                 let sender = external_senders
@@ -211,6 +184,7 @@ impl DecryptedMessage {
             }
             Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 // Fetch the credential from the message itself.
+                // https://validation.openmls.tech/#valn0407
                 self.verifiable_content.new_member_credential()
             }
         }
@@ -276,6 +250,8 @@ impl UnverifiedMessage {
             .verifiable_content
             .verify(crypto, &self.sender_pk)
             .map_err(|_| ValidationError::InvalidSignature)?;
+        // https://validation.openmls.tech/#valn1302
+        // https://validation.openmls.tech/#valn1304
         let content =
             content.validate(ciphersuite, crypto, self.sender_context, protocol_version)?;
         Ok((content, self.credential))

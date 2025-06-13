@@ -229,7 +229,7 @@ impl TreeSize {
     pub(super) fn dec(&mut self) {
         debug_assert!(self.0 >= 2);
         if self.0 >= 2 {
-            self.0 = (self.0 + 1) / 2 - 1;
+            self.0 = self.0.div_ceil(2) - 1;
         } else {
             self.0 = 0;
         }
@@ -276,11 +276,7 @@ fn log2(x: u32) -> usize {
     if x == 0 {
         return 0;
     }
-    let mut k = 0;
-    while (x >> k) > 0 {
-        k += 1
-    }
-    k - 1
+    (31 - x.leading_zeros()) as usize
 }
 
 pub fn level(index: u32) -> usize {

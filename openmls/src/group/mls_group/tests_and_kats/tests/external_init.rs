@@ -1,17 +1,15 @@
-use crate::{
-    group::{
-        errors::ExternalCommitError,
-        mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client},
-        public_group::errors::CreationFromExternalError,
-        MlsGroup, MlsGroupJoinConfig,
-    },
-    storage::OpenMlsProvider,
+use crate::group::{
+    errors::ExternalCommitError,
+    mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client},
+    public_group::errors::CreationFromExternalError,
+    MlsGroup, MlsGroupJoinConfig,
 };
 
 #[openmls_test::openmls_test]
 fn test_external_init_broken_signature() {
-    let (group_alice, alice_signer, _group_bob, _bob_signer, _bob_credential_with_key) =
-        setup_alice_bob_group(ciphersuite, provider);
+    let (group_alice, alice_signer, _group_bob, _bob_signer, _alice_credetial_with_key, _bob_credential_with_key) =
+        // TODO: don't let alice and bob share the provider
+        setup_alice_bob_group(ciphersuite, provider, provider);
 
     // Now set up charly and try to init externally.
     let (charlie_credential, _charlie_kpb, charlie_signer, _charlie_pk) =
@@ -41,8 +39,6 @@ fn test_external_init_broken_signature() {
     .expect_err("Signature was corrupted. This should have failed.");
     assert!(matches!(
         result,
-        ExternalCommitError::<<Provider as OpenMlsProvider>::StorageError>::PublicGroupError(
-            CreationFromExternalError::InvalidGroupInfoSignature
-        )
+        ExternalCommitError::PublicGroupError(CreationFromExternalError::InvalidGroupInfoSignature)
     ));
 }

@@ -21,6 +21,7 @@ use std::collections::HashSet;
 
 use log::debug;
 use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::random::OpenMlsRand;
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 
@@ -48,7 +49,6 @@ use crate::{
     error::LibraryError,
     messages::PathSecret,
     schedule::CommitSecret,
-    storage::OpenMlsProvider,
     treesync::RatchetTree,
 };
 
@@ -96,7 +96,7 @@ impl<'a> From<&'a TreeSync> for TreeSyncDiff<'a> {
     }
 }
 
-impl<'a> TreeSyncDiff<'a> {
+impl TreeSyncDiff<'_> {
     /// Filtered direct path, skips the nodes whose copath resolution is empty.
     pub(crate) fn filtered_direct_path(&self, leaf_index: LeafNodeIndex) -> Vec<ParentNodeIndex> {
         // Full direct path
@@ -269,18 +269,18 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns an error if the leaf is not in the tree
     fn derive_path(
         &self,
-        provider: &impl OpenMlsProvider,
+        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
     ) -> Result<PathDerivationResult, LibraryError> {
         let path_secret = PathSecret::from(
-            Secret::random(ciphersuite, provider.rand())
-                .map_err(LibraryError::unexpected_crypto_error)?,
+            Secret::random(ciphersuite, rand).map_err(LibraryError::unexpected_crypto_error)?,
         );
 
         let path_indices = self.filtered_direct_path(leaf_index);
 
-        ParentNode::derive_path(provider.crypto(), ciphersuite, path_secret, path_indices)
+        ParentNode::derive_path(crypto, ciphersuite, path_secret, path_indices)
     }
 
     /// Given a new [`LeafNode`], use it to create a new path starting from
@@ -294,7 +294,8 @@ impl<'a> TreeSyncDiff<'a> {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn apply_own_update_path(
         &mut self,
-        provider: &impl OpenMlsProvider,
+        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
         commit_type: &CommitType,
@@ -314,13 +315,13 @@ impl<'a> TreeSyncDiff<'a> {
 
         // We calculate the parent hash so that we can use it for a fresh leaf
         let (path, update_path_nodes, parent_keypairs, commit_secret) =
-            self.derive_path(provider, ciphersuite, leaf_index)?;
-        let parent_hash =
-            self.process_update_path(provider.crypto(), ciphersuite, leaf_index, path)?;
+            self.derive_path(rand, crypto, ciphersuite, leaf_index)?;
+        let parent_hash = self.process_update_path(crypto, ciphersuite, leaf_index, path)?;
 
         // We generate the new leaf with all parameters
         let (leaf_node, node_keypair) = LeafNode::new_with_parent_hash(
-            provider,
+            rand,
+            crypto,
             ciphersuite,
             &parent_hash,
             leaf_node_params,
@@ -372,11 +373,13 @@ impl<'a> TreeSyncDiff<'a> {
             }
         }
 
-        let filtered_direct_path = self.filtered_direct_path(sender_leaf_index);
         // ValSem202: Path must be the right length
+        // https://validation.openmls.tech/#valn1101
+        let filtered_direct_path = self.filtered_direct_path(sender_leaf_index);
         if filtered_direct_path.len() != path.len() {
             return Err(ApplyUpdatePathError::PathLengthMismatch);
         };
+
         let path = filtered_direct_path
             .into_iter()
             .zip(
@@ -384,9 +387,9 @@ impl<'a> TreeSyncDiff<'a> {
                     .map(|update_path_node| update_path_node.public_key.clone().into()),
             )
             .collect();
-        let parent_hash = self.process_update_path(crypto, ciphersuite, sender_leaf_index, path)?;
 
         // Verify the parent hash.
+        let parent_hash = self.process_update_path(crypto, ciphersuite, sender_leaf_index, path)?;
         let leaf_node_parent_hash = update_path
             .leaf_node()
             .parent_hash()
@@ -512,7 +515,6 @@ impl<'a> TreeSyncDiff<'a> {
                         for leaf_index in parent.unmerged_leaves() {
                             if !excluded_indices.contains(&leaf_index) {
                                 let leaf = self.diff.leaf(*leaf_index);
-                                // TODO #800: unmerged leaves should be checked
                                 if let Some(leaf_node) = leaf.node() {
                                     resolution.push((
                                         TreeNodeIndex::Leaf(*leaf_index),
@@ -606,6 +608,8 @@ impl<'a> TreeSyncDiff<'a> {
     ///
     /// Returns an error if one of the parent nodes in the tree has an invalid
     /// parent hash.
+    ///
+    /// Checks [valn1406](https://validation.openmls.tech/#valn1406).
     pub(super) fn verify_parent_hashes(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -635,7 +639,7 @@ impl<'a> TreeSyncDiff<'a> {
                 let right_child = self.diff.right_child(parent_index);
 
                 // We exclude the unmerged leaves from the parent node for the
-                // following computations. Those leaves were obviously addede
+                // following computations. Those leaves were obviously added
                 // after the parent node was populated during a commit and must
                 // therefore be removed to recreate the tree state at the time
                 // of the commit.
