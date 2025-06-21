@@ -17,7 +17,7 @@ fn test_external_init_broken_signature() {
 
     let verifiable_group_info = {
         let mut verifiable_group_info = group_alice
-            .export_group_info(provider, &alice_signer, true)
+            .export_group_info(provider.crypto(), &alice_signer, true)
             .unwrap()
             .into_verifiable_group_info()
             .unwrap();

@@ -14,7 +14,7 @@ fn export_group_info() {
     let (group_alice, _, signer, pk) = setup_alice_group(ciphersuite, provider);
 
     let group_info_message = group_alice
-        .export_group_info(provider, &signer, true)
+        .export_group_info(provider.crypto(), &signer, true)
         .unwrap();
 
     let group_info = match group_info_message.body() {

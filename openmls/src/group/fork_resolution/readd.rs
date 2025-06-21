@@ -234,15 +234,15 @@ mod test {
         .unwrap();
 
         let alice_comparison = alice_group
-            .export_secret(alice_provider, "comparison", b"", 32)
+            .export_secret(alice_provider.crypto(), "comparison", b"", 32)
             .unwrap();
 
         let bob_comparison = new_group_bob
-            .export_secret(bob_provider, "comparison", b"", 32)
+            .export_secret(bob_provider.crypto(), "comparison", b"", 32)
             .unwrap();
 
         let charlie_comparison = new_group_charlie
-            .export_secret(charlie_provider, "comparison", b"", 32)
+            .export_secret(charlie_provider.crypto(), "comparison", b"", 32)
             .unwrap();
 
         assert_eq!(alice_comparison, bob_comparison);

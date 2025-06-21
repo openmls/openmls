@@ -63,13 +63,13 @@ fn test_mls_group_persistence<Provider: OpenMlsProvider>() {
         (
             alice_group.export_ratchet_tree(),
             alice_group
-                .export_secret(provider, "test", &[], 32)
+                .export_secret(provider.crypto(), "test", &[], 32)
                 .unwrap()
         ),
         (
             alice_group_deserialized.export_ratchet_tree(),
             alice_group_deserialized
-                .export_secret(provider, "test", &[], 32)
+                .export_secret(provider.crypto(), "test", &[], 32)
                 .unwrap()
         )
     );
@@ -250,18 +250,18 @@ fn export_secret() {
 
     assert!(
         alice_group
-            .export_secret(provider, "test1", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test1", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(provider, "test2", &[], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test2", &[], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     );
     assert!(
         alice_group
-            .export_secret(provider, "test", &[0u8], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[0u8], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(provider, "test", &[1u8], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test", &[1u8], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     )
 }
@@ -324,10 +324,10 @@ fn staged_join() {
 
     assert_eq!(
         alice_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred."),
         bob_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
     );
 }
@@ -524,10 +524,10 @@ fn test_verify_staged_commit_credentials(
     );
     assert_eq!(
         bob_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap(),
         alice_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap()
     );
     // Bob is added and the state aligns.
@@ -606,10 +606,10 @@ fn test_verify_staged_commit_credentials(
         );
         assert_eq!(
             bob_group
-                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
                 .unwrap(),
             alice_group
-                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
                 .unwrap()
         );
     } else {
@@ -707,10 +707,10 @@ fn test_commit_with_update_path_leaf_node(
     );
     assert_eq!(
         bob_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap(),
         alice_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap()
     );
     // Bob is added and the state aligns.
@@ -801,10 +801,10 @@ fn test_commit_with_update_path_leaf_node(
         );
         assert_eq!(
             bob_group
-                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
                 .unwrap(),
             alice_group
-                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
                 .unwrap()
         );
     } else {
@@ -971,10 +971,10 @@ fn test_pending_commit_logic(
     );
     assert_eq!(
         bob_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap(),
         alice_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap()
     );
 

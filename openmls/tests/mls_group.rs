@@ -550,9 +550,11 @@ fn mls_group_operations() {
         // Check that both groups have the same state
         assert_eq!(
             alice_group
-                .export_secret(alice_provider, "", &[], 32)
+                .export_secret(alice_provider.crypto(), "", &[], 32)
                 .unwrap(),
-            bob_group.export_secret(bob_provider, "", &[], 32).unwrap()
+            bob_group
+                .export_secret(bob_provider.crypto(), "", &[], 32)
+                .unwrap()
         );
 
         // Make sure that both groups have the same public tree
@@ -639,9 +641,11 @@ fn mls_group_operations() {
         // Check that both groups have the same state
         assert_eq!(
             alice_group
-                .export_secret(alice_provider, "", &[], 32)
+                .export_secret(alice_provider.crypto(), "", &[], 32)
                 .unwrap(),
-            bob_group.export_secret(bob_provider, "", &[], 32).unwrap()
+            bob_group
+                .export_secret(bob_provider.crypto(), "", &[], 32)
+                .unwrap()
         );
 
         // Make sure that both groups have the same public tree
@@ -806,16 +810,18 @@ fn mls_group_operations() {
         // Check that all groups have the same state
         assert_eq!(
             alice_group
-                .export_secret(alice_provider, "", &[], 32)
+                .export_secret(alice_provider.crypto(), "", &[], 32)
                 .unwrap(),
-            bob_group.export_secret(bob_provider, "", &[], 32).unwrap()
+            bob_group
+                .export_secret(bob_provider.crypto(), "", &[], 32)
+                .unwrap()
         );
         assert_eq!(
             alice_group
-                .export_secret(alice_provider, "", &[], 32)
+                .export_secret(alice_provider.crypto(), "", &[], 32)
                 .unwrap(),
             charlie_group
-                .export_secret(charlie_provider, "", &[], 32)
+                .export_secret(charlie_provider.crypto(), "", &[], 32)
                 .unwrap()
         );
 
@@ -1291,10 +1297,10 @@ fn mls_group_operations() {
 
         assert_eq!(
             alice_group
-                .export_secret(alice_provider, "before load", &[], 32)
+                .export_secret(alice_provider.crypto(), "before load", &[], 32)
                 .unwrap(),
             bob_group
-                .export_secret(bob_provider, "before load", &[], 32)
+                .export_secret(bob_provider.crypto(), "before load", &[], 32)
                 .unwrap()
         );
 
@@ -1305,10 +1311,10 @@ fn mls_group_operations() {
         // Make sure the state is still the same
         assert_eq!(
             alice_group
-                .export_secret(alice_provider, "after load", &[], 32)
+                .export_secret(alice_provider.crypto(), "after load", &[], 32)
                 .unwrap(),
             bob_group
-                .export_secret(bob_provider, "after load", &[], 32)
+                .export_secret(bob_provider.crypto(), "after load", &[], 32)
                 .unwrap()
         );
     }

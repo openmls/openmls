@@ -373,7 +373,7 @@ fn discard_commit_external_join() {
     // export the group info so Bob can join
     let group_info_msg_out = alice_group
         .export_group_info(
-            alice_provider,
+            alice_provider.crypto(),
             alice_signer,
             true, // with ratchet tree
         )

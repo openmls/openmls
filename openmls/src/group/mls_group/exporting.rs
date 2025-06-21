@@ -1,10 +1,9 @@
 use errors::{ExportGroupInfoError, ExportSecretError};
-use openmls_traits::signatures::Signer;
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
 use crate::{
     ciphersuite::HpkePublicKey,
     schedule::{EpochAuthenticator, ResumptionPskSecret},
-    storage::OpenMlsProvider,
 };
 
 use super::*;
@@ -17,15 +16,13 @@ impl MlsGroup {
     /// key length is too long.
     /// Returns [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`](MlsGroupStateError::UseAfterEviction)
     /// if the group is not active.
-    pub fn export_secret<Provider: OpenMlsProvider>(
+    pub fn export_secret<CryptoProvider: OpenMlsCrypto>(
         &self,
-        provider: &Provider,
+        crypto: &CryptoProvider,
         label: &str,
         context: &[u8],
         key_length: usize,
     ) -> Result<Vec<u8>, ExportSecretError> {
-        let crypto = provider.crypto();
-
         if key_length > u16::MAX as usize {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExportSecretError::KeyLengthTooLong);
@@ -61,9 +58,9 @@ impl MlsGroup {
     }
 
     /// Export a group info object for this group.
-    pub fn export_group_info<Provider: OpenMlsProvider>(
+    pub fn export_group_info<CryptoProvider: OpenMlsCrypto>(
         &self,
-        provider: &Provider,
+        crypto: &CryptoProvider,
         signer: &impl Signer,
         with_ratchet_tree: bool,
     ) -> Result<MlsMessageOut, ExportGroupInfoError> {
@@ -78,7 +75,7 @@ impl MlsGroup {
                 let external_pub = self
                     .group_epoch_secrets()
                     .external_secret()
-                    .derive_external_keypair(provider.crypto(), self.ciphersuite())
+                    .derive_external_keypair(crypto, self.ciphersuite())
                     .map_err(LibraryError::unexpected_crypto_error)?
                     .public;
                 Ok(Extension::ExternalPub(ExternalPubExtension::new(
@@ -105,7 +102,7 @@ impl MlsGroup {
             self.message_secrets()
                 .confirmation_key()
                 .tag(
-                    provider.crypto(),
+                    crypto,
                     self.ciphersuite(),
                     self.context().confirmed_transcript_hash(),
                 )

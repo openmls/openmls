@@ -43,7 +43,7 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
 
     // === Create a public group that tracks the changes throughout this test ===
     let verifiable_group_info = alice_group
-        .export_group_info(provider, &alice_signer, false)
+        .export_group_info(provider.crypto(), &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();

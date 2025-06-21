@@ -542,7 +542,8 @@ fn group_operations() {
     // Now alice tries to derive an exporter with too large of a key length.
     let exporter_length: usize = u16::MAX.into();
     let exporter_length = exporter_length + 1;
-    let alice_exporter = alice_group.export_secret(provider, "export test", &[], exporter_length);
+    let alice_exporter =
+        alice_group.export_secret(provider.crypto(), "export test", &[], exporter_length);
     assert!(alice_exporter.is_err())
 }
 
@@ -736,7 +737,7 @@ fn create_group_info_flag() {
     let group_info = commit_bundle.into_group_info_msg().unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
     let exported_group_info = alice_group
-        .export_group_info(provider, &alice_signer, false)
+        .export_group_info(provider.crypto(), &alice_signer, false)
         .unwrap();
     assert_eq!(group_info, exported_group_info);
 }

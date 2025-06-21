@@ -347,7 +347,7 @@ fn test_welcome_processing() {
     let group_id = unverified_group_info.group_id();
     assert_eq!(group_id, alice_group.group_id());
     let alice_group_info = alice_group
-        .export_group_info(provider, &alice_signer, false)
+        .export_group_info(provider.crypto(), &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
