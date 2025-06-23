@@ -150,7 +150,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     let alice_group_info = alice_group
         .export_group_info(
-            &provider,
+            provider.crypto(),
             &alice_credential_with_key_and_signer.signer,
             true,
         )
