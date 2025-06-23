@@ -180,7 +180,7 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
         .expect("Could not add members.");</code></pre>
 <p>Or from a call to a function that results in a staged commit:</p>
 <pre><code class="language-rust no_run noplayground">    let verifiable_group_info = alice_group
-        .export_group_info(provider, &amp;alice_signature_keys, true)
+        .export_group_info(provider.crypto(), &amp;alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");</code></pre>
