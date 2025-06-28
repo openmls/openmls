@@ -12,7 +12,7 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBy
 use crate::{
     ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
     error::LibraryError,
-    storage::{OpenMlsProvider, StorageProvider},
+    storage::StorageProvider,
 };
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
@@ -175,14 +175,10 @@ impl EncryptionKeyPair {
     ///
     /// Returns `None` if the keypair cannot be read from the store.
     pub(crate) fn read(
-        provider: &impl OpenMlsProvider,
+        provider: &impl StorageProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
-        provider
-            .storage()
-            .encryption_key_pair(encryption_key)
-            .ok()
-            .flatten()
+        provider.encryption_key_pair(encryption_key).ok().flatten()
     }
 
     /// Delete the [`EncryptionKeyPair`] from the store of the `provider`.
@@ -221,13 +217,15 @@ impl EncryptionKeyPair {
 
 #[cfg(feature = "test-utils")]
 pub mod test_utils {
+    use crate::storage::OpenMlsProvider;
+
     use super::*;
 
     pub fn read_keys_from_key_store(
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> HpkeKeyPair {
-        let keys = EncryptionKeyPair::read(provider, encryption_key).unwrap();
+        let keys = EncryptionKeyPair::read(provider.storage(), encryption_key).unwrap();
 
         HpkeKeyPair {
             private: keys.private_key.key,
