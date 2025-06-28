@@ -266,6 +266,25 @@ impl PublicGroup {
                         Err(ProcessMessageError::UnauthorizedExternalApplicationMessage)
                     }
                     // TODO: https://validation.openmls.tech/#valn1502
+                    FramedContentBody::Proposal(Proposal::GroupContextExtensions(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content(
+                                self.ciphersuite(),
+                                crypto,
+                                content,
+                                ProposalOrRefType::Proposal,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.group_context().epoch(),
+                            sender,
+                            data,
+                            content,
+                            credential,
+                        ))
+                    }
+
                     FramedContentBody::Proposal(Proposal::Remove(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
