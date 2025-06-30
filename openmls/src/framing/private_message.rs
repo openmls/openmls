@@ -43,6 +43,10 @@ pub(crate) struct MlsMessageHeader {
 }
 
 impl PrivateMessage {
+    /// Retrieve the AAD as a byte slice
+    pub fn aad(&self) -> &[u8] {
+        self.authenticated_data.as_slice()
+    }
     #[cfg(test)]
     pub(crate) fn new(
         group_id: GroupId,
