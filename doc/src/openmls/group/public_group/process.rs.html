@@ -16,7 +16,7 @@
 <a href=#16 id=16 data-nosnippet>16</a>        errors::ValidationError, mls_group::errors::ProcessMessageError,
 <a href=#17 id=17 data-nosnippet>17</a>        past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
 <a href=#18 id=18 data-nosnippet>18</a>    },
-<a href=#19 id=19 data-nosnippet>19</a>    messages::proposals::{Proposal, ProposalOrRefType},
+<a href=#19 id=19 data-nosnippet>19</a>    messages::proposals::Proposal,
 <a href=#20 id=20 data-nosnippet>20</a>};
 <a href=#21 id=21 data-nosnippet>21</a>
 <a href=#22 id=22 data-nosnippet>22</a><span class="kw">use </span><span class="kw">super</span>::PublicGroup;
@@ -266,7 +266,7 @@
 <a href=#266 id=266 data-nosnippet>266</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnauthorizedExternalApplicationMessage)
 <a href=#267 id=267 data-nosnippet>267</a>                    }
 <a href=#268 id=268 data-nosnippet>268</a>                    <span class="comment">// TODO: https://validation.openmls.tech/#valn1502
-<a href=#269 id=269 data-nosnippet>269</a>                    </span>FramedContentBody::Proposal(Proposal::Remove(<span class="kw">_</span>)) =&gt; {
+<a href=#269 id=269 data-nosnippet>269</a>                    </span>FramedContentBody::Proposal(Proposal::GroupContextExtensions(<span class="kw">_</span>)) =&gt; {
 <a href=#270 id=270 data-nosnippet>270</a>                        <span class="kw">let </span>content = ProcessedMessageContent::ProposalMessage(Box::new(
 <a href=#271 id=271 data-nosnippet>271</a>                            QueuedProposal::from_authenticated_content_by_ref(
 <a href=#272 id=272 data-nosnippet>272</a>                                <span class="self">self</span>.ciphersuite(),
@@ -283,13 +283,13 @@
 <a href=#283 id=283 data-nosnippet>283</a>                            credential,
 <a href=#284 id=284 data-nosnippet>284</a>                        ))
 <a href=#285 id=285 data-nosnippet>285</a>                    }
-<a href=#286 id=286 data-nosnippet>286</a>                    FramedContentBody::Proposal(Proposal::Add(<span class="kw">_</span>)) =&gt; {
-<a href=#287 id=287 data-nosnippet>287</a>                        <span class="kw">let </span>content = ProcessedMessageContent::ProposalMessage(Box::new(
-<a href=#288 id=288 data-nosnippet>288</a>                            QueuedProposal::from_authenticated_content(
-<a href=#289 id=289 data-nosnippet>289</a>                                <span class="self">self</span>.ciphersuite(),
-<a href=#290 id=290 data-nosnippet>290</a>                                crypto,
-<a href=#291 id=291 data-nosnippet>291</a>                                content,
-<a href=#292 id=292 data-nosnippet>292</a>                                ProposalOrRefType::Proposal,
+<a href=#286 id=286 data-nosnippet>286</a>
+<a href=#287 id=287 data-nosnippet>287</a>                    FramedContentBody::Proposal(Proposal::Remove(<span class="kw">_</span>)) =&gt; {
+<a href=#288 id=288 data-nosnippet>288</a>                        <span class="kw">let </span>content = ProcessedMessageContent::ProposalMessage(Box::new(
+<a href=#289 id=289 data-nosnippet>289</a>                            QueuedProposal::from_authenticated_content_by_ref(
+<a href=#290 id=290 data-nosnippet>290</a>                                <span class="self">self</span>.ciphersuite(),
+<a href=#291 id=291 data-nosnippet>291</a>                                crypto,
+<a href=#292 id=292 data-nosnippet>292</a>                                content,
 <a href=#293 id=293 data-nosnippet>293</a>                            )<span class="question-mark">?</span>,
 <a href=#294 id=294 data-nosnippet>294</a>                        ));
 <a href=#295 id=295 data-nosnippet>295</a>                        <span class="prelude-val">Ok</span>(ProcessedMessage::new(
@@ -301,15 +301,32 @@
 <a href=#301 id=301 data-nosnippet>301</a>                            credential,
 <a href=#302 id=302 data-nosnippet>302</a>                        ))
 <a href=#303 id=303 data-nosnippet>303</a>                    }
-<a href=#304 id=304 data-nosnippet>304</a>                    <span class="comment">// TODO #151/#106
-<a href=#305 id=305 data-nosnippet>305</a>                    </span>FramedContentBody::Proposal(<span class="kw">_</span>) =&gt; {
-<a href=#306 id=306 data-nosnippet>306</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnsupportedProposalType)
-<a href=#307 id=307 data-nosnippet>307</a>                    }
-<a href=#308 id=308 data-nosnippet>308</a>                    FramedContentBody::Commit(<span class="kw">_</span>) =&gt; {
-<a href=#309 id=309 data-nosnippet>309</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnauthorizedExternalCommitMessage)
-<a href=#310 id=310 data-nosnippet>310</a>                    }
-<a href=#311 id=311 data-nosnippet>311</a>                }
-<a href=#312 id=312 data-nosnippet>312</a>            }
-<a href=#313 id=313 data-nosnippet>313</a>        }
-<a href=#314 id=314 data-nosnippet>314</a>    }
-<a href=#315 id=315 data-nosnippet>315</a>}</code></pre></div></section></main></body></html>
+<a href=#304 id=304 data-nosnippet>304</a>                    FramedContentBody::Proposal(Proposal::Add(<span class="kw">_</span>)) =&gt; {
+<a href=#305 id=305 data-nosnippet>305</a>                        <span class="kw">let </span>content = ProcessedMessageContent::ProposalMessage(Box::new(
+<a href=#306 id=306 data-nosnippet>306</a>                            QueuedProposal::from_authenticated_content_by_ref(
+<a href=#307 id=307 data-nosnippet>307</a>                                <span class="self">self</span>.ciphersuite(),
+<a href=#308 id=308 data-nosnippet>308</a>                                crypto,
+<a href=#309 id=309 data-nosnippet>309</a>                                content,
+<a href=#310 id=310 data-nosnippet>310</a>                            )<span class="question-mark">?</span>,
+<a href=#311 id=311 data-nosnippet>311</a>                        ));
+<a href=#312 id=312 data-nosnippet>312</a>                        <span class="prelude-val">Ok</span>(ProcessedMessage::new(
+<a href=#313 id=313 data-nosnippet>313</a>                            <span class="self">self</span>.group_id().clone(),
+<a href=#314 id=314 data-nosnippet>314</a>                            <span class="self">self</span>.group_context().epoch(),
+<a href=#315 id=315 data-nosnippet>315</a>                            sender,
+<a href=#316 id=316 data-nosnippet>316</a>                            data,
+<a href=#317 id=317 data-nosnippet>317</a>                            content,
+<a href=#318 id=318 data-nosnippet>318</a>                            credential,
+<a href=#319 id=319 data-nosnippet>319</a>                        ))
+<a href=#320 id=320 data-nosnippet>320</a>                    }
+<a href=#321 id=321 data-nosnippet>321</a>                    <span class="comment">// TODO #151/#106
+<a href=#322 id=322 data-nosnippet>322</a>                    </span>FramedContentBody::Proposal(<span class="kw">_</span>) =&gt; {
+<a href=#323 id=323 data-nosnippet>323</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnsupportedProposalType)
+<a href=#324 id=324 data-nosnippet>324</a>                    }
+<a href=#325 id=325 data-nosnippet>325</a>                    FramedContentBody::Commit(<span class="kw">_</span>) =&gt; {
+<a href=#326 id=326 data-nosnippet>326</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnauthorizedExternalCommitMessage)
+<a href=#327 id=327 data-nosnippet>327</a>                    }
+<a href=#328 id=328 data-nosnippet>328</a>                }
+<a href=#329 id=329 data-nosnippet>329</a>            }
+<a href=#330 id=330 data-nosnippet>330</a>        }
+<a href=#331 id=331 data-nosnippet>331</a>    }
+<a href=#332 id=332 data-nosnippet>332</a>}</code></pre></div></section></main></body></html>

@@ -319,7 +319,7 @@
 <a href=#319 id=319 data-nosnippet>319</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnauthorizedExternalApplicationMessage)
 <a href=#320 id=320 data-nosnippet>320</a>                    }
 <a href=#321 id=321 data-nosnippet>321</a>                    <span class="comment">// TODO: https://validation.openmls.tech/#valn1502
-<a href=#322 id=322 data-nosnippet>322</a>                    </span>FramedContentBody::Proposal(Proposal::Remove(<span class="kw">_</span>)) =&gt; {
+<a href=#322 id=322 data-nosnippet>322</a>                    </span>FramedContentBody::Proposal(Proposal::GroupContextExtensions(<span class="kw">_</span>)) =&gt; {
 <a href=#323 id=323 data-nosnippet>323</a>                        <span class="kw">let </span>content = ProcessedMessageContent::ProposalMessage(Box::new(
 <a href=#324 id=324 data-nosnippet>324</a>                            QueuedProposal::from_authenticated_content_by_ref(
 <a href=#325 id=325 data-nosnippet>325</a>                                <span class="self">self</span>.ciphersuite(),
@@ -336,13 +336,13 @@
 <a href=#336 id=336 data-nosnippet>336</a>                            credential,
 <a href=#337 id=337 data-nosnippet>337</a>                        ))
 <a href=#338 id=338 data-nosnippet>338</a>                    }
-<a href=#339 id=339 data-nosnippet>339</a>                    FramedContentBody::Proposal(Proposal::Add(<span class="kw">_</span>)) =&gt; {
-<a href=#340 id=340 data-nosnippet>340</a>                        <span class="kw">let </span>content = ProcessedMessageContent::ProposalMessage(Box::new(
-<a href=#341 id=341 data-nosnippet>341</a>                            QueuedProposal::from_authenticated_content(
-<a href=#342 id=342 data-nosnippet>342</a>                                <span class="self">self</span>.ciphersuite(),
-<a href=#343 id=343 data-nosnippet>343</a>                                provider.crypto(),
-<a href=#344 id=344 data-nosnippet>344</a>                                content,
-<a href=#345 id=345 data-nosnippet>345</a>                                ProposalOrRefType::Proposal,
+<a href=#339 id=339 data-nosnippet>339</a>
+<a href=#340 id=340 data-nosnippet>340</a>                    FramedContentBody::Proposal(Proposal::Remove(<span class="kw">_</span>)) =&gt; {
+<a href=#341 id=341 data-nosnippet>341</a>                        <span class="kw">let </span>content = ProcessedMessageContent::ProposalMessage(Box::new(
+<a href=#342 id=342 data-nosnippet>342</a>                            QueuedProposal::from_authenticated_content_by_ref(
+<a href=#343 id=343 data-nosnippet>343</a>                                <span class="self">self</span>.ciphersuite(),
+<a href=#344 id=344 data-nosnippet>344</a>                                provider.crypto(),
+<a href=#345 id=345 data-nosnippet>345</a>                                content,
 <a href=#346 id=346 data-nosnippet>346</a>                            )<span class="question-mark">?</span>,
 <a href=#347 id=347 data-nosnippet>347</a>                        ));
 <a href=#348 id=348 data-nosnippet>348</a>                        <span class="prelude-val">Ok</span>(ProcessedMessage::new(
@@ -354,73 +354,90 @@
 <a href=#354 id=354 data-nosnippet>354</a>                            credential,
 <a href=#355 id=355 data-nosnippet>355</a>                        ))
 <a href=#356 id=356 data-nosnippet>356</a>                    }
-<a href=#357 id=357 data-nosnippet>357</a>                    <span class="comment">// TODO #151/#106
-<a href=#358 id=358 data-nosnippet>358</a>                    </span>FramedContentBody::Proposal(<span class="kw">_</span>) =&gt; {
-<a href=#359 id=359 data-nosnippet>359</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnsupportedProposalType)
-<a href=#360 id=360 data-nosnippet>360</a>                    }
-<a href=#361 id=361 data-nosnippet>361</a>                    FramedContentBody::Commit(<span class="kw">_</span>) =&gt; {
-<a href=#362 id=362 data-nosnippet>362</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnauthorizedExternalCommitMessage)
-<a href=#363 id=363 data-nosnippet>363</a>                    }
-<a href=#364 id=364 data-nosnippet>364</a>                }
-<a href=#365 id=365 data-nosnippet>365</a>            }
-<a href=#366 id=366 data-nosnippet>366</a>        }
-<a href=#367 id=367 data-nosnippet>367</a>    }
-<a href=#368 id=368 data-nosnippet>368</a>
-<a href=#369 id=369 data-nosnippet>369</a>    <span class="doccomment">/// Performs framing validation and, if necessary, decrypts the given message.
-<a href=#370 id=370 data-nosnippet>370</a>    ///
-<a href=#371 id=371 data-nosnippet>371</a>    /// Returns the [`DecryptedMessage`] if processing is successful, or a
-<a href=#372 id=372 data-nosnippet>372</a>    /// [`ValidationError`] if it is not.
-<a href=#373 id=373 data-nosnippet>373</a>    ///
-<a href=#374 id=374 data-nosnippet>374</a>    /// Checks the following semantic validation:
-<a href=#375 id=375 data-nosnippet>375</a>    ///  - ValSem002
-<a href=#376 id=376 data-nosnippet>376</a>    ///  - ValSem003
-<a href=#377 id=377 data-nosnippet>377</a>    ///  - ValSem006
-<a href=#378 id=378 data-nosnippet>378</a>    ///  - ValSem007 MembershipTag presence
-<a href=#379 id=379 data-nosnippet>379</a>    ///  - https://validation.openmls.tech/#valn1202
-<a href=#380 id=380 data-nosnippet>380</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt_message(
-<a href=#381 id=381 data-nosnippet>381</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#382 id=382 data-nosnippet>382</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#383 id=383 data-nosnippet>383</a>        message: ProtocolMessage,
-<a href=#384 id=384 data-nosnippet>384</a>        sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
-<a href=#385 id=385 data-nosnippet>385</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;DecryptedMessage, ValidationError&gt; {
-<a href=#386 id=386 data-nosnippet>386</a>        <span class="comment">// Checks the following semantic validation:
-<a href=#387 id=387 data-nosnippet>387</a>        //  - ValSem002
-<a href=#388 id=388 data-nosnippet>388</a>        //  - ValSem003
-<a href=#389 id=389 data-nosnippet>389</a>        </span><span class="self">self</span>.public_group.validate_framing(<span class="kw-2">&amp;</span>message)<span class="question-mark">?</span>;
-<a href=#390 id=390 data-nosnippet>390</a>
-<a href=#391 id=391 data-nosnippet>391</a>        <span class="kw">let </span>epoch = message.epoch();
-<a href=#392 id=392 data-nosnippet>392</a>
-<a href=#393 id=393 data-nosnippet>393</a>        <span class="comment">// Checks the following semantic validation:
-<a href=#394 id=394 data-nosnippet>394</a>        //  - ValSem006
-<a href=#395 id=395 data-nosnippet>395</a>        //  - ValSem007 MembershipTag presence
-<a href=#396 id=396 data-nosnippet>396</a>        </span><span class="kw">match </span>message {
-<a href=#397 id=397 data-nosnippet>397</a>            ProtocolMessage::PublicMessage(public_message) =&gt; {
-<a href=#398 id=398 data-nosnippet>398</a>                <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first.
-<a href=#399 id=399 data-nosnippet>399</a>                </span><span class="kw">let </span>message_secrets =
-<a href=#400 id=400 data-nosnippet>400</a>                    <span class="self">self</span>.message_secrets_for_epoch(epoch).map_err(|e| <span class="kw">match </span>e {
-<a href=#401 id=401 data-nosnippet>401</a>                        SecretTreeError::TooDistantInThePast =&gt; ValidationError::NoPastEpochData,
-<a href=#402 id=402 data-nosnippet>402</a>                        <span class="kw">_ </span>=&gt; LibraryError::custom(
-<a href=#403 id=403 data-nosnippet>403</a>                            <span class="string">"Unexpected error while retrieving message secrets for epoch."</span>,
-<a href=#404 id=404 data-nosnippet>404</a>                        )
-<a href=#405 id=405 data-nosnippet>405</a>                        .into(),
-<a href=#406 id=406 data-nosnippet>406</a>                    })<span class="question-mark">?</span>;
-<a href=#407 id=407 data-nosnippet>407</a>                DecryptedMessage::from_inbound_public_message(
-<a href=#408 id=408 data-nosnippet>408</a>                    <span class="kw-2">*</span>public_message,
-<a href=#409 id=409 data-nosnippet>409</a>                    message_secrets,
-<a href=#410 id=410 data-nosnippet>410</a>                    message_secrets.serialized_context().to_vec(),
-<a href=#411 id=411 data-nosnippet>411</a>                    crypto,
-<a href=#412 id=412 data-nosnippet>412</a>                    <span class="self">self</span>.ciphersuite(),
-<a href=#413 id=413 data-nosnippet>413</a>                )
-<a href=#414 id=414 data-nosnippet>414</a>            }
-<a href=#415 id=415 data-nosnippet>415</a>            ProtocolMessage::PrivateMessage(ciphertext) =&gt; {
-<a href=#416 id=416 data-nosnippet>416</a>                <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first
-<a href=#417 id=417 data-nosnippet>417</a>                </span>DecryptedMessage::from_inbound_ciphertext(
-<a href=#418 id=418 data-nosnippet>418</a>                    ciphertext,
-<a href=#419 id=419 data-nosnippet>419</a>                    crypto,
-<a href=#420 id=420 data-nosnippet>420</a>                    <span class="self">self</span>,
-<a href=#421 id=421 data-nosnippet>421</a>                    sender_ratchet_configuration,
-<a href=#422 id=422 data-nosnippet>422</a>                )
-<a href=#423 id=423 data-nosnippet>423</a>            }
-<a href=#424 id=424 data-nosnippet>424</a>        }
-<a href=#425 id=425 data-nosnippet>425</a>    }
-<a href=#426 id=426 data-nosnippet>426</a>}</code></pre></div></section></main></body></html>
+<a href=#357 id=357 data-nosnippet>357</a>                    FramedContentBody::Proposal(Proposal::Add(<span class="kw">_</span>)) =&gt; {
+<a href=#358 id=358 data-nosnippet>358</a>                        <span class="kw">let </span>content = ProcessedMessageContent::ProposalMessage(Box::new(
+<a href=#359 id=359 data-nosnippet>359</a>                            QueuedProposal::from_authenticated_content_by_ref(
+<a href=#360 id=360 data-nosnippet>360</a>                                <span class="self">self</span>.ciphersuite(),
+<a href=#361 id=361 data-nosnippet>361</a>                                provider.crypto(),
+<a href=#362 id=362 data-nosnippet>362</a>                                content,
+<a href=#363 id=363 data-nosnippet>363</a>                            )<span class="question-mark">?</span>,
+<a href=#364 id=364 data-nosnippet>364</a>                        ));
+<a href=#365 id=365 data-nosnippet>365</a>                        <span class="prelude-val">Ok</span>(ProcessedMessage::new(
+<a href=#366 id=366 data-nosnippet>366</a>                            <span class="self">self</span>.group_id().clone(),
+<a href=#367 id=367 data-nosnippet>367</a>                            <span class="self">self</span>.context().epoch(),
+<a href=#368 id=368 data-nosnippet>368</a>                            sender,
+<a href=#369 id=369 data-nosnippet>369</a>                            data,
+<a href=#370 id=370 data-nosnippet>370</a>                            content,
+<a href=#371 id=371 data-nosnippet>371</a>                            credential,
+<a href=#372 id=372 data-nosnippet>372</a>                        ))
+<a href=#373 id=373 data-nosnippet>373</a>                    }
+<a href=#374 id=374 data-nosnippet>374</a>                    <span class="comment">// TODO #151/#106
+<a href=#375 id=375 data-nosnippet>375</a>                    </span>FramedContentBody::Proposal(<span class="kw">_</span>) =&gt; {
+<a href=#376 id=376 data-nosnippet>376</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnsupportedProposalType)
+<a href=#377 id=377 data-nosnippet>377</a>                    }
+<a href=#378 id=378 data-nosnippet>378</a>                    FramedContentBody::Commit(<span class="kw">_</span>) =&gt; {
+<a href=#379 id=379 data-nosnippet>379</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnauthorizedExternalCommitMessage)
+<a href=#380 id=380 data-nosnippet>380</a>                    }
+<a href=#381 id=381 data-nosnippet>381</a>                }
+<a href=#382 id=382 data-nosnippet>382</a>            }
+<a href=#383 id=383 data-nosnippet>383</a>        }
+<a href=#384 id=384 data-nosnippet>384</a>    }
+<a href=#385 id=385 data-nosnippet>385</a>
+<a href=#386 id=386 data-nosnippet>386</a>    <span class="doccomment">/// Performs framing validation and, if necessary, decrypts the given message.
+<a href=#387 id=387 data-nosnippet>387</a>    ///
+<a href=#388 id=388 data-nosnippet>388</a>    /// Returns the [`DecryptedMessage`] if processing is successful, or a
+<a href=#389 id=389 data-nosnippet>389</a>    /// [`ValidationError`] if it is not.
+<a href=#390 id=390 data-nosnippet>390</a>    ///
+<a href=#391 id=391 data-nosnippet>391</a>    /// Checks the following semantic validation:
+<a href=#392 id=392 data-nosnippet>392</a>    ///  - ValSem002
+<a href=#393 id=393 data-nosnippet>393</a>    ///  - ValSem003
+<a href=#394 id=394 data-nosnippet>394</a>    ///  - ValSem006
+<a href=#395 id=395 data-nosnippet>395</a>    ///  - ValSem007 MembershipTag presence
+<a href=#396 id=396 data-nosnippet>396</a>    ///  - https://validation.openmls.tech/#valn1202
+<a href=#397 id=397 data-nosnippet>397</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt_message(
+<a href=#398 id=398 data-nosnippet>398</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#399 id=399 data-nosnippet>399</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#400 id=400 data-nosnippet>400</a>        message: ProtocolMessage,
+<a href=#401 id=401 data-nosnippet>401</a>        sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
+<a href=#402 id=402 data-nosnippet>402</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;DecryptedMessage, ValidationError&gt; {
+<a href=#403 id=403 data-nosnippet>403</a>        <span class="comment">// Checks the following semantic validation:
+<a href=#404 id=404 data-nosnippet>404</a>        //  - ValSem002
+<a href=#405 id=405 data-nosnippet>405</a>        //  - ValSem003
+<a href=#406 id=406 data-nosnippet>406</a>        </span><span class="self">self</span>.public_group.validate_framing(<span class="kw-2">&amp;</span>message)<span class="question-mark">?</span>;
+<a href=#407 id=407 data-nosnippet>407</a>
+<a href=#408 id=408 data-nosnippet>408</a>        <span class="kw">let </span>epoch = message.epoch();
+<a href=#409 id=409 data-nosnippet>409</a>
+<a href=#410 id=410 data-nosnippet>410</a>        <span class="comment">// Checks the following semantic validation:
+<a href=#411 id=411 data-nosnippet>411</a>        //  - ValSem006
+<a href=#412 id=412 data-nosnippet>412</a>        //  - ValSem007 MembershipTag presence
+<a href=#413 id=413 data-nosnippet>413</a>        </span><span class="kw">match </span>message {
+<a href=#414 id=414 data-nosnippet>414</a>            ProtocolMessage::PublicMessage(public_message) =&gt; {
+<a href=#415 id=415 data-nosnippet>415</a>                <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first.
+<a href=#416 id=416 data-nosnippet>416</a>                </span><span class="kw">let </span>message_secrets =
+<a href=#417 id=417 data-nosnippet>417</a>                    <span class="self">self</span>.message_secrets_for_epoch(epoch).map_err(|e| <span class="kw">match </span>e {
+<a href=#418 id=418 data-nosnippet>418</a>                        SecretTreeError::TooDistantInThePast =&gt; ValidationError::NoPastEpochData,
+<a href=#419 id=419 data-nosnippet>419</a>                        <span class="kw">_ </span>=&gt; LibraryError::custom(
+<a href=#420 id=420 data-nosnippet>420</a>                            <span class="string">"Unexpected error while retrieving message secrets for epoch."</span>,
+<a href=#421 id=421 data-nosnippet>421</a>                        )
+<a href=#422 id=422 data-nosnippet>422</a>                        .into(),
+<a href=#423 id=423 data-nosnippet>423</a>                    })<span class="question-mark">?</span>;
+<a href=#424 id=424 data-nosnippet>424</a>                DecryptedMessage::from_inbound_public_message(
+<a href=#425 id=425 data-nosnippet>425</a>                    <span class="kw-2">*</span>public_message,
+<a href=#426 id=426 data-nosnippet>426</a>                    message_secrets,
+<a href=#427 id=427 data-nosnippet>427</a>                    message_secrets.serialized_context().to_vec(),
+<a href=#428 id=428 data-nosnippet>428</a>                    crypto,
+<a href=#429 id=429 data-nosnippet>429</a>                    <span class="self">self</span>.ciphersuite(),
+<a href=#430 id=430 data-nosnippet>430</a>                )
+<a href=#431 id=431 data-nosnippet>431</a>            }
+<a href=#432 id=432 data-nosnippet>432</a>            ProtocolMessage::PrivateMessage(ciphertext) =&gt; {
+<a href=#433 id=433 data-nosnippet>433</a>                <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first
+<a href=#434 id=434 data-nosnippet>434</a>                </span>DecryptedMessage::from_inbound_ciphertext(
+<a href=#435 id=435 data-nosnippet>435</a>                    ciphertext,
+<a href=#436 id=436 data-nosnippet>436</a>                    crypto,
+<a href=#437 id=437 data-nosnippet>437</a>                    <span class="self">self</span>,
+<a href=#438 id=438 data-nosnippet>438</a>                    sender_ratchet_configuration,
+<a href=#439 id=439 data-nosnippet>439</a>                )
+<a href=#440 id=440 data-nosnippet>440</a>            }
+<a href=#441 id=441 data-nosnippet>441</a>        }
+<a href=#442 id=442 data-nosnippet>442</a>    }
+<a href=#443 id=443 data-nosnippet>443</a>}</code></pre></div></section></main></body></html>
