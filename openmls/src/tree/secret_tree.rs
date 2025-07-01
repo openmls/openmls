@@ -82,10 +82,7 @@ pub(crate) fn derive_tree_secret(
     crypto: &impl OpenMlsCrypto,
 ) -> Result<Secret, SecretTreeError> {
     log::debug!(
-        "Derive tree secret with label \"{}\" in generation {} of length {}",
-        label,
-        generation,
-        length
+        "Derive tree secret with label \"{label}\" in generation {generation} of length {length}"
     );
     log_crypto!(trace, "Input secret {:x?}", secret.as_slice());
 
@@ -206,7 +203,7 @@ impl SecretTree {
             // found
             let mut empty_nodes: Vec<ParentNodeIndex> = Vec::new();
             let direct_path = direct_path(index, self.size);
-            log::trace!("Direct path for node {index:?}: {:?}", direct_path);
+            log::trace!("Direct path for node {index:?}: {direct_path:?}");
             for parent_node in direct_path {
                 empty_nodes.push(parent_node);
                 // Stop if we find a non-empty node
@@ -307,11 +304,7 @@ impl SecretTree {
         configuration: &SenderRatchetConfiguration,
     ) -> Result<RatchetKeyMaterial, SecretTreeError> {
         log::debug!(
-            "Generating {:?} decryption secret for {:?} in generation {} with {}",
-            secret_type,
-            index,
-            generation,
-            ciphersuite,
+            "Generating {secret_type:?} decryption secret for {index:?} in generation {generation} with {ciphersuite}",
         );
         // Check tree bounds
         if index.u32() >= self.size.leaf_count() {
