@@ -46,7 +46,7 @@ fn test_external_commit() {
     // Bob wants to commit externally.
 
     let verifiable_group_info = alice_group
-        .export_group_info(provider, &alice_credential.signer, false)
+        .export_group_info(provider.crypto(), &alice_credential.signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -98,8 +98,8 @@ fn test_external_commit() {
     // Compare Alice's and Bob's private & public state
 
     assert_eq!(
-        alice_group.export_secret(provider, "label", b"context", 32),
-        bob_group.export_secret(provider, "label", b"context", 32)
+        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
+        bob_group.export_secret(provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),
@@ -111,7 +111,7 @@ fn test_external_commit() {
     // Charlie wants to commit externally.
 
     let verifiable_group_info = alice_group
-        .export_group_info(provider, &alice_credential.signer, false)
+        .export_group_info(provider.crypto(), &alice_credential.signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -164,12 +164,12 @@ fn test_external_commit() {
     // Compare Alice's, Bob's and Charlie's private & public state
 
     assert_eq!(
-        alice_group.export_secret(provider, "label", b"context", 32),
-        bob_group.export_secret(provider, "label", b"context", 32)
+        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
+        bob_group.export_secret(provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
-        alice_group.export_secret(provider, "label", b"context", 32),
-        charlie_group.export_secret(provider, "label", b"context", 32)
+        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
+        charlie_group.export_secret(provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),
@@ -185,7 +185,7 @@ fn test_external_commit() {
     // Alice wants to resync
 
     let verifiable_group_info = bob_group
-        .export_group_info(provider, &bob_credential.signer, false)
+        .export_group_info(provider.crypto(), &bob_credential.signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -245,12 +245,12 @@ fn test_external_commit() {
     // Compare Alice's, Bob's and Charlie's private & public state
 
     assert_eq!(
-        alice_group.export_secret(provider, "label", b"context", 32),
-        bob_group.export_secret(provider, "label", b"context", 32)
+        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
+        bob_group.export_secret(provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
-        alice_group.export_secret(provider, "label", b"context", 32),
-        charlie_group.export_secret(provider, "label", b"context", 32)
+        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
+        charlie_group.export_secret(provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),
