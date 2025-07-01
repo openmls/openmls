@@ -41,17 +41,23 @@ fn new_test_group(
         .unwrap()
         .build();
 
-    (
-        MlsGroup::new_with_group_id(
-            provider,
-            &credential_with_keys.signer,
-            &mls_group_config,
-            group_id,
-            credential_with_keys.credential_with_key.clone(),
-        )
-        .unwrap(),
-        credential_with_keys,
+    let group = MlsGroup::new_with_group_id(
+        provider,
+        &credential_with_keys.signer,
+        &mls_group_config,
+        group_id,
+        credential_with_keys.credential_with_key.clone(),
     )
+    .unwrap();
+
+    assert!(group
+        .own_leaf_node()
+        .unwrap()
+        .capabilities()
+        .extensions()
+        .contains(&ExtensionType::Unknown(0xf001)));
+
+    (group, credential_with_keys)
 }
 
 // Validation test setup
@@ -136,12 +142,6 @@ fn external_group_context_ext_proposal_should_succeed() {
         .iter()
         .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
 
-    assert!(alice_group
-        .own_leaf_node()
-        .unwrap()
-        .capabilities()
-        .extensions()
-        .contains(&ExtensionType::Unknown(0xf001)));
     let old_extensions = alice_group.extensions().to_owned();
     assert!(!old_extensions.contains(ExtensionType::ExternalPub));
 
@@ -226,12 +226,6 @@ fn external_group_context_ext_proposal_should_succeed_unknown_extension() {
         .iter()
         .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
 
-    assert!(alice_group
-        .own_leaf_node()
-        .unwrap()
-        .capabilities()
-        .extensions()
-        .contains(&ExtensionType::Unknown(0xf001)));
     let old_extensions = alice_group.extensions().to_owned();
     assert!(!old_extensions.contains(ExtensionType::Unknown(0xf001)));
 
