@@ -1340,7 +1340,8 @@ fn test_valsem105() {
                                 ),
                             )
                         ),
-                        "unexpected error: {err:?}"
+                        "unexpected error: {:?}",
+                        err
                     );
                 }
                 KeyPackageTestVersion::UnsupportedCiphersuite => {
@@ -1355,7 +1356,8 @@ fn test_valsem105() {
                                 ),
                             )
                         ),
-                        "unexpected error: {err:?}"
+                        "unexpected error: {:?}",
+                        err
                     );
                 }
             };

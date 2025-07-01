@@ -487,7 +487,7 @@ pub fn run_test_vector(
     }
     let size = TreeSize::from_leaf_count(n_leaves);
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
-    log::debug!("Running test vector with {ciphersuite:?}");
+    log::debug!("Running test vector with {:?}", ciphersuite);
 
     let sender_data_secret =
         SenderDataSecret::from_slice(hex_to_bytes(&test_vector.sender_data_secret).as_slice());
@@ -565,7 +565,9 @@ pub fn run_test_vector(
                 )
                 .expect("Error getting decryption secret");
             log::debug!(
-                "  Secret tree after deriving application keys for leaf {leaf_index:?} in generation {generation:?}"
+                "  Secret tree after deriving application keys for leaf {:?} in generation {:?}",
+                leaf_index,
+                generation
             );
             log_crypto!(debug, "  {:?}", secret_tree);
             if hex_to_bytes(&application.key) != application_secret_key.as_slice() {
@@ -803,7 +805,7 @@ pub fn run_test_vector(
                 .message_secrets_test_mut()
                 .replace_secret_tree(fresh_secret_tree.clone());
         }
-        log::trace!("Finished test vector for leaf {leaf_index:?}");
+        log::trace!("Finished test vector for leaf {:?}", leaf_index);
     }
     log::trace!("Finished test vector verification");
     Ok(())

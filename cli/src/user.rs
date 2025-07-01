@@ -213,7 +213,7 @@ impl User {
                 log::debug!("Created new user: {:?}", self.username());
                 self.set_auth_token(token)
             }
-            Err(e) => log::error!("Error creating user: {e:?}"),
+            Err(e) => log::error!("Error creating user: {:?}", e),
         }
     }
 
@@ -304,7 +304,7 @@ impl User {
             .map_err(|e| format!("{e}"))?;
 
         let msg = GroupMessage::new(message_out.into(), &self.recipients(group));
-        log::debug!(" >>> send: {msg:?}");
+        log::debug!(" >>> send: {:?}", msg);
         match self.backend.send_msg(&msg) {
             Ok(()) => (),
             Err(e) => println!("Error sending group message: {e:?}"),
@@ -345,7 +345,7 @@ impl User {
                     }
                 }
             }
-            Err(e) => log::debug!("update_clients::Error reading clients from DS: {e:?}"),
+            Err(e) => log::debug!("update_clients::Error reading clients from DS: {:?}", e),
         }
         log::debug!("update::Processing clients done, contact list is:");
         for contact_id in self.contacts.borrow().keys() {
@@ -386,7 +386,10 @@ impl User {
         processed_message = match mls_group.process_message(&self.provider, message) {
             Ok(msg) => msg,
             Err(e) => {
-                log::error!("Error processing unverified message: {e:?} -  Dropping message.");
+                log::error!(
+                    "Error processing unverified message: {:?} -  Dropping message.",
+                    e
+                );
                 return Err("error".to_string());
             }
         };
@@ -567,7 +570,7 @@ impl User {
         };
 
         if self.groups.borrow().contains_key(&name) {
-            panic!("Group '{name}' existed already");
+            panic!("Group '{}' existed already", name);
         }
 
         self.groups.borrow_mut().insert(name, group);
@@ -712,7 +715,7 @@ impl User {
             mls_group: RefCell::new(mls_group),
         };
 
-        log::trace!("   {group_name}");
+        log::trace!("   {}", group_name);
 
         match self.groups.borrow_mut().insert(group_name, group) {
             Some(old) => Err(format!("Overrode the group {:?}", old.group_name)),

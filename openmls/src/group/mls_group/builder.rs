@@ -109,7 +109,7 @@ impl MlsGroupBuilder {
         let psk_secret = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)
             .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
             .map_err(|e| {
-                log::debug!("Unexpected PSK error: {e:?}");
+                log::debug!("Unexpected PSK error: {:?}", e);
                 LibraryError::custom("Unexpected PSK error")
             })?;
 

@@ -704,7 +704,7 @@ fn test(ciphersuite: Ciphersuite, provider: &Provider) {
                 &BasicCredential::new(b"charlie".to_vec()).into()
             )
         }
-        other => panic!("expected add proposal, got {other:?}"),
+        other => panic!("expected add proposal, got {:?}", other),
     }
 
     // there is no pending commit

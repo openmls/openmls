@@ -125,7 +125,7 @@ fn _into_bytes(obj: impl serde::Serialize) -> Vec<u8> {
 pub fn write(file_name: &str, payload: &[u8]) {
     let mut file = match File::create(file_name) {
         Ok(f) => f,
-        Err(_) => panic!("Couldn't open file {file_name}."),
+        Err(_) => panic!("Couldn't open file {}.", file_name),
     };
     file.write_all(payload)
         .expect("Error writing test vector file");

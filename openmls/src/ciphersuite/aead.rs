@@ -40,7 +40,7 @@ impl AeadKey {
     /// Create an `AeadKey` from a `Secret`. TODO: This function should
     /// disappear when tackling issue #103.
     pub(crate) fn from_secret(secret: Secret, ciphersuite: Ciphersuite) -> Self {
-        log::trace!("AeadKey::from_secret with {ciphersuite}");
+        log::trace!("AeadKey::from_secret with {}", ciphersuite);
         AeadKey {
             aead_mode: ciphersuite.aead_algorithm(),
             value: secret.value,

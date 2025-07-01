@@ -40,7 +40,7 @@ fn that_unknown_credential_types_are_de_serialized_correctly() {
             CredentialType::Other(got_proposal_type) => {
                 assert_eq!(credential_type, got_proposal_type);
             }
-            other => panic!("Expected `CredentialType::Unknown`, got `{other:?}`."),
+            other => panic!("Expected `CredentialType::Unknown`, got `{:?}`.", other),
         }
 
         // Test serialization.

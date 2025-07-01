@@ -87,7 +87,7 @@ impl fmt::Display for ProtocolVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
             ProtocolVersion::Mls10 => write!(f, "MLS 1.0"),
-            ProtocolVersion::Other(v) => write!(f, "Other version: {v}"),
+            ProtocolVersion::Other(v) => write!(f, "Other version: {}", v),
         }
     }
 }

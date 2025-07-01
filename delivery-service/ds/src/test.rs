@@ -358,7 +358,7 @@ async fn test_group() {
 
     let welcome = match welcome_msg.body() {
         MlsMessageBodyOut::Welcome(welcome) => welcome,
-        other => panic!("expected a welcome message, got {other:?}"),
+        other => panic!("expected a welcome message, got {:?}", other),
     };
 
     let mut group_on_client2 = StagedWelcome::new_from_welcome(

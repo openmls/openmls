@@ -75,7 +75,7 @@ impl PrivateMessage {
         padding_size: usize,
     ) -> Result<PrivateMessage, MessageEncryptionError<T>> {
         log::debug!("PrivateMessage::try_from_authenticated_content");
-        log::trace!("  ciphersuite: {ciphersuite}");
+        log::trace!("  ciphersuite: {}", ciphersuite);
         // Check the message has the correct wire format
         if public_message.wire_format() != WireFormat::PrivateMessage {
             return Err(MessageEncryptionError::WrongWireFormat);
@@ -198,7 +198,7 @@ impl PrivateMessage {
                 &prepared_nonce,
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
-        log::trace!("Encrypted ciphertext {ciphertext:x?}");
+        log::trace!("Encrypted ciphertext {:x?}", ciphertext);
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()

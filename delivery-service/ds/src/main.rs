@@ -94,7 +94,7 @@ async fn register_client(mut body: Payload, data: web::Data<DsData>) -> impl Res
     let req = match RegisterClientRequest::tls_deserialize(&mut &bytes[..]) {
         Ok(i) => i,
         Err(_) => {
-            log::error!("Invalid payload for /clients/register\n{bytes:?}");
+            log::error!("Invalid payload for /clients/register\n{:?}", bytes);
             return actix_web::HttpResponse::BadRequest().finish();
         }
     };
@@ -176,7 +176,7 @@ async fn get_key_packages(path: web::Path<String>, data: web::Data<DsData>) -> i
         Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
     };
 
-    log::debug!("Getting key packages for {id:?}");
+    log::debug!("Getting key packages for {:?}", id);
 
     let client = match clients.get(&id) {
         Some(c) => c,
@@ -213,7 +213,11 @@ async fn publish_key_packages(
     let req = match PublishKeyPackagesRequest::tls_deserialize(&mut &bytes[..]) {
         Ok(i) => i,
         Err(_) => {
-            log::error!("Invalid payload for /clients/key_packages/{id:?}\n{bytes:?}");
+            log::error!(
+                "Invalid payload for /clients/key_packages/{:?}\n{:?}",
+                id,
+                bytes
+            );
             return actix_web::HttpResponse::BadRequest().finish();
         }
     };
@@ -223,7 +227,7 @@ async fn publish_key_packages(
         return actix_web::HttpResponse::Unauthorized().finish();
     }
 
-    log::debug!("Add key package for {id:?}");
+    log::debug!("Add key package for {:?}", id);
 
     let client = match clients.get_mut(&id) {
         Some(client) => client,
@@ -250,13 +254,13 @@ async fn consume_key_package(path: web::Path<String>, data: web::Data<DsData>) -
         Ok(v) => v,
         Err(_) => return actix_web::HttpResponse::BadRequest().finish(),
     };
-    log::debug!("Consuming key package for {id:?}");
+    log::debug!("Consuming key package for {:?}", id);
 
     let key_package = match clients.get_mut(&id) {
         Some(c) => match c.consume_kp() {
             Ok(kp) => kp,
             Err(e) => {
-                log::debug!("Error consuming key package: {e}");
+                log::debug!("Error consuming key package: {}", e);
                 return actix_web::HttpResponse::NoContent().finish();
             }
         },
@@ -277,7 +281,7 @@ async fn send_welcome(mut body: Payload, data: web::Data<DsData>) -> impl Respon
     }
     let welcome_msg = unwrap_data!(MlsMessageIn::tls_deserialize(&mut &bytes[..]));
     let welcome = welcome_msg.clone().into_welcome().unwrap();
-    log::debug!("Storing welcome message: {welcome_msg:?}");
+    log::debug!("Storing welcome message: {:?}", welcome_msg);
 
     let mut clients = unwrap_data!(data.clients.lock());
     for secret in welcome.secrets().iter() {
@@ -311,7 +315,7 @@ async fn msg_send(mut body: Payload, data: web::Data<DsData>) -> impl Responder 
         bytes.extend_from_slice(&unwrap_item!(item));
     }
     let group_msg = unwrap_data!(GroupMessage::tls_deserialize(&mut &bytes[..]));
-    log::debug!("Storing group message: {group_msg:?}");
+    log::debug!("Storing group message: {:?}", group_msg);
 
     let mut clients = unwrap_data!(data.clients.lock());
     let mut groups = unwrap_data!(data.groups.lock());
@@ -386,7 +390,11 @@ async fn msg_recv(
     let req = match RecvMessageRequest::tls_deserialize(&mut &bytes[..]) {
         Ok(i) => i,
         Err(_) => {
-            log::error!("Invalid payload for /clients/key_packages/{id:?}\n{bytes:?}");
+            log::error!(
+                "Invalid payload for /clients/key_packages/{:?}\n{:?}",
+                id,
+                bytes
+            );
             return actix_web::HttpResponse::BadRequest().finish();
         }
     };
@@ -395,7 +403,7 @@ async fn msg_recv(
         return actix_web::HttpResponse::Unauthorized().finish();
     }
 
-    log::debug!("Getting messages for client {id:?}");
+    log::debug!("Getting messages for client {:?}", id);
 
     let mut out: Vec<MlsMessageIn> = Vec::new();
     let mut welcomes: Vec<MlsMessageIn> = client.welcome_queue.drain(..).collect();
@@ -437,7 +445,7 @@ async fn main() -> std::io::Result<()> {
 
     let ip = "127.0.0.1";
     let addr = format!("{ip}:{port}");
-    log::info!("Listening on: {addr}");
+    log::info!("Listening on: {}", addr);
 
     // Start the server.
     HttpServer::new(move || {

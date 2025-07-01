@@ -119,7 +119,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     let provider = OpenMlsRustCrypto::default();
     let cipher_suite = test_vector.cipher_suite.try_into().unwrap();
     if provider.crypto().supports(cipher_suite).is_err() {
-        warn!("Skipping {cipher_suite}");
+        warn!("Skipping {}", cipher_suite);
         return;
     }
 
@@ -162,7 +162,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     );
 
     for (i, epoch) in test_vector.epochs.into_iter().enumerate() {
-        info!("Epoch #{i}");
+        info!("Epoch #{}", i);
 
         for proposal in epoch.proposals {
             let message = MlsMessageIn::tls_deserialize_exact(&proposal.0).unwrap();
@@ -291,7 +291,7 @@ impl PassiveClient {
     }
 
     fn process_message(&mut self, message: MlsMessageIn) {
-        println!("{message:#?}");
+        println!("{:#?}", message);
         let processed_message = self
             .group
             .as_mut()

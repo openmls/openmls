@@ -125,10 +125,10 @@ pub fn run_test_vector(
         .supported_ciphersuites()
         .contains(&ciphersuite)
     {
-        log::debug!("Skipping unsupported ciphersuite {ciphersuite:?}");
+        log::debug!("Skipping unsupported ciphersuite {:?}", ciphersuite);
         return Ok(());
     }
-    log::debug!("Testing tv with ciphersuite {ciphersuite:?}");
+    log::debug!("Testing tv with ciphersuite {:?}", ciphersuite);
 
     let group_context = GroupContext::new(
         ciphersuite,

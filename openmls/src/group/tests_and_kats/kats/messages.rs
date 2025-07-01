@@ -343,8 +343,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
         .unwrap();
     if tv_mls_welcome != my_mls_welcome {
         log::error!("  Welcome encoding mismatch");
-        log::debug!("    Encoded: {my_mls_welcome:x?}");
-        log::debug!("    Expected: {tv_mls_welcome:x?}");
+        log::debug!("    Encoded: {:x?}", my_mls_welcome);
+        log::debug!("    Expected: {:x?}", tv_mls_welcome);
         if cfg!(test) {
             panic!("Welcome encoding mismatch");
         }
@@ -359,8 +359,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
         .unwrap();
     if tv_mls_group_info != my_mls_group_info {
         log::error!("  VerifiableGroupInfo encoding mismatch");
-        log::debug!("    Encoded: {my_mls_group_info:x?}");
-        log::debug!("    Expected: {tv_mls_group_info:x?}");
+        log::debug!("    Encoded: {:x?}", my_mls_group_info);
+        log::debug!("    Expected: {:x?}", tv_mls_group_info);
         if cfg!(test) {
             panic!("VerifiableGroupInfo encoding mismatch");
         }
@@ -375,8 +375,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
         .unwrap();
     if tv_mls_key_package != my_key_package {
         log::error!("  KeyPackage encoding mismatch");
-        log::debug!("    Encoded: {my_key_package:x?}");
-        log::debug!("    Expected: {tv_mls_key_package:x?}");
+        log::debug!("    Encoded: {:x?}", my_key_package);
+        log::debug!("    Expected: {:x?}", tv_mls_key_package);
         if cfg!(test) {
             panic!("KeyPackage encoding mismatch");
         }
@@ -389,8 +389,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     let my_ratchet_tree = dec_ratchet_tree.tls_serialize_detached().unwrap();
     if tv_ratchet_tree != my_ratchet_tree {
         log::error!("  RatchetTree encoding mismatch");
-        log::debug!("    Encoded: {my_ratchet_tree:x?}");
-        log::debug!("    Expected: {tv_ratchet_tree:x?}");
+        log::debug!("    Encoded: {:x?}", my_ratchet_tree);
+        log::debug!("    Expected: {:x?}", tv_ratchet_tree);
         if cfg!(test) {
             panic!("RatchetTree encoding mismatch");
         }
@@ -404,8 +404,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
         GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret.as_ref(), &gs.psks).unwrap();
     if tv_group_secrets != my_group_secrets {
         log::error!("  GroupSecrets encoding mismatch");
-        log::debug!("    Encoded: {my_group_secrets:x?}");
-        log::debug!("    Expected: {tv_group_secrets:x?}");
+        log::debug!("    Encoded: {:x?}", my_group_secrets);
+        log::debug!("    Expected: {:x?}", tv_group_secrets);
         if cfg!(test) {
             panic!("GroupSecrets encoding mismatch");
         }
@@ -420,8 +420,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
         .unwrap();
     if tv_add_proposal != my_add_proposal {
         log::error!("  AddProposal encoding mismatch");
-        log::debug!("    Encoded: {my_add_proposal:x?}");
-        log::debug!("    Expected: {tv_add_proposal:x?}");
+        log::debug!("    Encoded: {:x?}", my_add_proposal);
+        log::debug!("    Expected: {:x?}", tv_add_proposal);
         if cfg!(test) {
             panic!("AddProposal encoding mismatch");
         }
@@ -437,8 +437,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
         .unwrap();
     if tv_update_proposal != my_update_proposal {
         log::error!("  UpdateProposal encoding mismatch");
-        log::debug!("    Encoded: {my_update_proposal:x?}");
-        log::debug!("    Expected: {tv_update_proposal:x?}");
+        log::debug!("    Encoded: {:x?}", my_update_proposal);
+        log::debug!("    Expected: {:x?}", tv_update_proposal);
         if cfg!(test) {
             panic!("UpdateProposal encoding mismatch");
         }
@@ -453,8 +453,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
         .unwrap();
     if tv_remove_proposal != my_remove_proposal {
         log::error!("  RemoveProposal encoding mismatch");
-        log::debug!("    Encoded: {my_remove_proposal:x?}");
-        log::debug!("    Expected: {tv_remove_proposal:x?}");
+        log::debug!("    Encoded: {:x?}", my_remove_proposal);
+        log::debug!("    Expected: {:x?}", tv_remove_proposal);
         if cfg!(test) {
             panic!("RemoveProposal encoding mismatch");
         }
@@ -470,8 +470,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
             .unwrap();
     if tv_pre_shared_key_proposal != my_pre_shared_key_proposal {
         log::error!("  PreSharedKeyProposal encoding mismatch");
-        log::debug!("    Encoded: {my_pre_shared_key_proposal:x?}");
-        log::debug!("    Expected: {tv_pre_shared_key_proposal:x?}");
+        log::debug!("    Encoded: {:x?}", my_pre_shared_key_proposal);
+        log::debug!("    Expected: {:x?}", tv_pre_shared_key_proposal);
         if cfg!(test) {
             panic!("PreSharedKeyProposal encoding mismatch");
         }
@@ -488,8 +488,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
         .unwrap();
     if tv_commit != my_commit {
         log::error!("  Commit encoding mismatch");
-        log::debug!("    Encoded: {my_commit:x?}");
-        log::debug!("    Expected: {tv_commit:x?}");
+        log::debug!("    Encoded: {:x?}", my_commit);
+        log::debug!("    Expected: {:x?}", tv_commit);
         if cfg!(test) {
             panic!("Commit encoding mismatch");
         }
@@ -505,8 +505,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
             .unwrap();
     if tv_public_message_application != my_public_message_application {
         log::error!("  MlsPlaintextApplication encoding mismatch");
-        log::debug!("    Encoded: {my_public_message_application:x?}");
-        log::debug!("    Expected: {tv_public_message_application:x?}");
+        log::debug!("    Encoded: {:x?}", my_public_message_application);
+        log::debug!("    Expected: {:x?}", tv_public_message_application);
         if cfg!(test) {
             panic!("MlsPlaintextApplication encoding mismatch");
         }
@@ -522,8 +522,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
             .unwrap();
     if tv_public_message_proposal != my_public_message_proposal {
         log::error!("  PublicMessage(Proposal) encoding mismatch");
-        log::debug!("    Encoded: {my_public_message_proposal:x?}");
-        log::debug!("    Expected: {tv_public_message_proposal:x?}");
+        log::debug!("    Encoded: {:x?}", my_public_message_proposal);
+        log::debug!("    Expected: {:x?}", tv_public_message_proposal);
         if cfg!(test) {
             panic!("PublicMessage(Proposal) encoding mismatch");
         }
@@ -538,8 +538,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
         .unwrap();
     if tv_public_message_commit != my_public_message_commit {
         log::error!("  PublicMessage(Commit) encoding mismatch");
-        log::debug!("    Encoded: {my_public_message_commit:x?}");
-        log::debug!("    Expected: {tv_public_message_commit:x?}");
+        log::debug!("    Encoded: {:x?}", my_public_message_commit);
+        log::debug!("    Expected: {:x?}", tv_public_message_commit);
         if cfg!(test) {
             panic!("PublicMessage(Commit) encoding mismatch");
         }
@@ -554,8 +554,8 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
         .unwrap();
     if tv_private_message != my_private_message {
         log::error!("  PrivateMessage encoding mismatch");
-        log::debug!("    Encoded: {my_private_message:x?}");
-        log::debug!("    Expected: {tv_private_message:x?}");
+        log::debug!("    Encoded: {:x?}", my_private_message);
+        log::debug!("    Expected: {:x?}", tv_private_message);
         if cfg!(test) {
             panic!("PrivateMessage encoding mismatch");
         }
