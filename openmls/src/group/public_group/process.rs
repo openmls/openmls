@@ -16,7 +16,7 @@ use crate::{
         errors::ValidationError, mls_group::errors::ProcessMessageError,
         past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
     },
-    messages::proposals::{Proposal, ProposalOrRefType},
+    messages::proposals::Proposal,
 };
 
 use super::PublicGroup;
@@ -266,6 +266,24 @@ impl PublicGroup {
                         Err(ProcessMessageError::UnauthorizedExternalApplicationMessage)
                     }
                     // TODO: https://validation.openmls.tech/#valn1502
+                    FramedContentBody::Proposal(Proposal::GroupContextExtensions(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content_by_ref(
+                                self.ciphersuite(),
+                                crypto,
+                                content,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.group_context().epoch(),
+                            sender,
+                            data,
+                            content,
+                            credential,
+                        ))
+                    }
+
                     FramedContentBody::Proposal(Proposal::Remove(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
@@ -285,11 +303,10 @@ impl PublicGroup {
                     }
                     FramedContentBody::Proposal(Proposal::Add(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
-                            QueuedProposal::from_authenticated_content(
+                            QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
                                 crypto,
                                 content,
-                                ProposalOrRefType::Proposal,
                             )?,
                         ));
                         Ok(ProcessedMessage::new(
