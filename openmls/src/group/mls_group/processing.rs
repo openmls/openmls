@@ -204,7 +204,7 @@ impl MlsGroup {
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage()).map_err(|e| {
-            log::error!("Error reading epoch keypairs: {:?}", e);
+            log::error!("Error reading epoch keypairs: {e:?}");
             StageCommitError::MissingDecryptionKey
         })?;
 
