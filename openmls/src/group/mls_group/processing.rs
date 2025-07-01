@@ -321,11 +321,10 @@ impl MlsGroup {
                     // TODO: https://validation.openmls.tech/#valn1502
                     FramedContentBody::Proposal(Proposal::GroupContextExtensions(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
-                            QueuedProposal::from_authenticated_content(
+                            QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
                                 provider.crypto(),
                                 content,
-                                ProposalOrRefType::Proposal,
                             )?,
                         ));
                         Ok(ProcessedMessage::new(
@@ -357,11 +356,10 @@ impl MlsGroup {
                     }
                     FramedContentBody::Proposal(Proposal::Add(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
-                            QueuedProposal::from_authenticated_content(
+                            QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
                                 provider.crypto(),
                                 content,
-                                ProposalOrRefType::Proposal,
                             )?,
                         ));
                         Ok(ProcessedMessage::new(
