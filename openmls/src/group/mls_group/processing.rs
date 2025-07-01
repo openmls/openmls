@@ -125,6 +125,52 @@ impl MlsGroup {
         ))
     }
 
+    /// Like [Self::commit_to_pending_proposals] but with additional inline proposals.
+    #[allow(clippy::type_complexity)]
+    pub async fn commit_to_inline_proposals<KeyStore: OpenMlsKeyStore>(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
+        inline_proposals: Vec<Proposal>,
+    ) -> Result<
+        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
+        CommitToPendingProposalsError<KeyStore::Error>,
+    > {
+        self.is_operational()?;
+
+        let empty_proposal_store = Default::default();
+
+        // Create Commit over all inline proposals
+        // TODO #751
+        let params = CreateCommitParams::builder()
+            .framing_parameters(self.framing_parameters())
+            .proposal_store(&empty_proposal_store)
+            .inline_proposals(inline_proposals)
+            .build();
+        let create_commit_result = self.group.create_commit(params, backend, signer).await?;
+
+        // Convert PublicMessage messages to MLSMessage and encrypt them if required by
+        // the configuration
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, backend)?;
+
+        // Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        )));
+
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
+
+        Ok((
+            mls_message,
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+            create_commit_result.group_info,
+        ))
+    }
+
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
     pub async fn merge_staged_commit<KeyStore: OpenMlsKeyStore>(
