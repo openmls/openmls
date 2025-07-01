@@ -98,6 +98,10 @@ impl LeafNodeParameters {
             && self.capabilities.is_none()
             && self.extensions.is_none()
     }
+
+    pub(crate) fn set_credential_with_key(&mut self, credential_with_key: CredentialWithKey) {
+        self.credential_with_key = Some(credential_with_key);
+    }
 }
 
 /// Builder for [`LeafNodeParameters`].
@@ -479,10 +483,7 @@ impl LeafNode {
             .filter(|ext| ext.extension_type().is_valid_in_leaf_node() == Some(false))
             .collect::<Vec<_>>();
         if !invalid_extension_types.is_empty() {
-            log::error!(
-                "Invalid extension used in leaf node: {:?}",
-                invalid_extension_types
-            );
+            log::error!("Invalid extension used in leaf node: {invalid_extension_types:?}");
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
 

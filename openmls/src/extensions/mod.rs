@@ -693,7 +693,7 @@ mod test {
                         assert_eq!(extension_type, got_extension_type);
                         assert_eq!(extension_data, &got_extension_data.0);
                     }
-                    other => panic!("Expected `Extension::Unknown`, got {:?}", other),
+                    other => panic!("Expected `Extension::Unknown`, got {other:?}"),
                 }
 
                 // Test serialization.

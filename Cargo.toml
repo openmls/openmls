@@ -19,4 +19,4 @@ resolver = "2"
 
 # Central dependency management for some crates
 [workspace.dependencies]
-tls_codec = { version = "0.4.1", features = ["derive", "serde", "mls"] }
+tls_codec = { version = "0.4.2", features = ["derive", "serde", "mls"] }

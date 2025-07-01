@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1673](https://github.com/openmls/openmls/pull/1673): Return more specific error when attemtping to decrypt own messages: `ProcessMessageError::ValidationError(ValidationError::CannotDecryptOwnMessage)`.
 - [#1731](https://github.com/openmls/openmls/pull/1731): Add helpers to recover from group state forks, hidden behind the new `fork-resolution` feature flag.
 - [#1750](https://github.com/openmls/openmls/pull/1750): Support add proposals from external senders, using `ExternalProposal::new_add()`.
+- [#1766](https://github.com/openmls/openmls/pull/1766): New error variant for commit creation: If a new signer is introduced via `self_update_with_new_signer` and additionally a `CredentialWithKey` is provided via `LeafNodeParameters`, an `InvalidLeafNodeParameters` error is thrown.
+- [#1774](https://github.com/openmls/openmls/pull/1774): Add flag to control the return of a `GroupInfo` when building a commit using the `CommitBuilder`. Setting that flag overrides the `use_ratchet_tree_extension` flag in `MlsGroupJoinConfig`.
 
 ### Fixed
 
@@ -26,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#1700](https://github.com/openmls/openmls/pull/1700): During commit processing, OpenMLS will now return a `StorageError` if the storage provider fails while fetching `encryption_epoch_key_pairs`. Previously, it would ignore any error returned by the storage provider and just assume that no keys could be found (which typically lead to an error later during commit processing).
 - [#1762](https://github.com/openmls/openmls/pull/1762): Expose `LeafNodeSource` to allow handling output of `LeafNode::leaf_node_source()`.
+- [#1767](https://github.com/openmls/openmls/pull/1767): Return a more specific error when private messages that are too old are processed. The error type has changed from `ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(MessageDecryptionError::AeadError))` to `ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(MessageDecryptoinError::SecretTree(SecretTreeError::TooDistantInThePast)))`.
+- [#1786](https://github.com/openmls/openmls/pull/1786): Tighten the requirements for the providers for `MlsGroup::export_secret()` and `MlsGroup::export_group_info()`. The function now only require the `OpenMlsCrypto` provider.
 
 ## 0.6.0 (2024-09-04)
 

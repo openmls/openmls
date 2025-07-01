@@ -2,7 +2,7 @@ use commit_builder::CommitMessageBundle;
 use errors::{ProposeSelfUpdateError, SelfUpdateError};
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
-use crate::{storage::OpenMlsProvider, treesync::LeafNodeParameters};
+use crate::{credentials::NewSignerBundle, storage::OpenMlsProvider, treesync::LeafNodeParameters};
 
 use super::*;
 
@@ -59,11 +59,11 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn self_update_with_new_signer<Provider: OpenMlsProvider>(
+    pub fn self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
         old_signer: &impl Signer,
-        new_signer: &impl Signer,
+        new_signer: NewSignerBundle<'_, S>,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<CommitMessageBundle, SelfUpdateError<Provider::StorageError>> {
         self.is_operational()?;

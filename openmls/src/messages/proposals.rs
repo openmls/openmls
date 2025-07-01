@@ -719,7 +719,7 @@ mod tests {
                 ProposalType::Custom(got_proposal_type) => {
                     assert_eq!(proposal_type, got_proposal_type);
                 }
-                other => panic!("Expected `ProposalType::Unknown`, got `{:?}`.", other),
+                other => panic!("Expected `ProposalType::Unknown`, got `{other:?}`."),
             }
 
             // Test serialization.
