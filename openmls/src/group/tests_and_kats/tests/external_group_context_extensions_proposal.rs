@@ -12,7 +12,8 @@ use openmls_traits::types::Ciphersuite;
 
 use crate::group::tests_and_kats::utils::*;
 
-// Creates a standalone group
+// Creates a standalone group with extension capabilities for the Unknown extension 0xf001,
+// and with the external senders group context extension.
 fn new_test_group(
     identity: &str,
     wire_format_policy: WireFormatPolicy,
@@ -61,6 +62,9 @@ fn new_test_group(
 }
 
 // Validation test setup
+// Sets up a group with members Alice and Bob,
+// where their capabilities support the Unknown extension 0xf001,
+// and on which the external senders group context extension is enabled.
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
