@@ -162,8 +162,8 @@ impl From<u16> for ProposalType {
             5 => ProposalType::Reinit,
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
-            8 => ProposalType::AppAck,
-            0x000c => ProposalType::SelfRemove,
+            0x000a => ProposalType::SelfRemove,
+            0x000b => ProposalType::AppAck,
             other => ProposalType::Custom(other),
         }
     }
@@ -179,8 +179,8 @@ impl From<ProposalType> for u16 {
             ProposalType::Reinit => 5,
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
-            ProposalType::AppAck => 8,
-            ProposalType::SelfRemove => 0x000c,
+            ProposalType::SelfRemove => 0x000a,
+            ProposalType::AppAck => 0x000b,
             ProposalType::Custom(id) => id,
         }
     }
