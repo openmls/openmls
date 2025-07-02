@@ -148,7 +148,7 @@ impl TreeSyncDiff<'_> {
 
     /// Trims the tree by shrinking it until the last full leaf is in the
     /// right part of the tree.
-    fn trim_tree(&mut self) {
+    pub(crate) fn trim_tree(&mut self) {
         // Nothing to trim if there's only one leaf left.
         if self.leaf_count() == MIN_TREE_SIZE {
             return;
@@ -261,7 +261,6 @@ impl TreeSyncDiff<'_> {
         // This also erases any cached tree hash in the direct path.
         self.diff
             .set_direct_path_to_node(leaf_index, &TreeSyncParentNode::blank());
-        self.trim_tree();
     }
 
     /// Derive a new direct path for the leaf with the given index.
