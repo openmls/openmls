@@ -153,6 +153,8 @@ impl<'a> PublicGroupDiff<'a> {
             invitation_list.push((leaf_index, add_proposal.clone()))
         }
 
+        self.diff.trim_tree();
+
         // Process PSK proposals
         let presharedkeys: Vec<PreSharedKeyId> = proposal_queue
             .filtered_by_type(ProposalType::PreSharedKey)
