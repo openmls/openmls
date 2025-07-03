@@ -6,10 +6,11 @@ edition = "2021"
 description = "Types to interact with the OpenMLS DS."
 
 [dependencies]
+openmls = { workspace = true, features = ["test-utils"] }
+openmls_traits = { workspace = true }
+openmls_rust_crypto = { workspace = true }
+openmls_memory_storage = { workspace = true }
+openmls_basic_credential = { workspace = true }
+
 rand = { version = "^0.8" }
-openmls = { path = "../../openmls", features = ["test-utils"] }
-openmls_traits = { path = "../../traits" }
-openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
-openmls_memory_storage = { path = "../../memory_storage" }
-openmls_basic_credential = { path = "../../basic_credential" }
 serde = { version = "^1.0", features = ["derive"] }
