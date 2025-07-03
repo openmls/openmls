@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1702](https://github.com/openmls/openmls/pull/1702): Fix multiple validation checks.
 - [#1703](https://github.com/openmls/openmls/pull/1703): Fix a bug where updates proposals were not properly cleared if a remove proposal is present for the same group member.
 - [#1763](https://github.com/openmls/openmls/pull/1763): Fix which extension types are considered valid in a leaf node.
+- [#1797](https://github.com/openmls/openmls/pull/1797): Fix when tree diff trimming is performed.
 
 ### Changed
 
