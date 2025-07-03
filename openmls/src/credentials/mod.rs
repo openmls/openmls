@@ -14,7 +14,7 @@
 //!
 //! The MLS protocol allows the [`Credential`] representing a client in a group
 //! to change over time. Concretely, members can issue an Update proposal or a
-//! Full Commit to update their [`LeafNode`](crate::treesync::LeafNode),
+//! Full Commit to update their [`LeafNode`],
 //! including the [`Credential`] in it. The Update must be authenticated using
 //! the signature public key corresponding to the old [`Credential`].
 //!
