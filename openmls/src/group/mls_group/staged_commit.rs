@@ -1,7 +1,9 @@
 use core::fmt::Debug;
 use std::mem;
 
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::storage::StorageProvider;
+use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as _;
 
@@ -568,6 +570,29 @@ impl StagedCommit {
         } else {
             None
         }
+    }
+
+    /// Returns an exported secret or a library error.
+    ///
+    /// Returns a library error if something in the crypto goes wrong, and an
+    /// empty secret if this is not a group member.
+    pub(crate) fn export_secret<CryptoProvider: OpenMlsCrypto>(
+        &self,
+        ciphersuite: Ciphersuite,
+        crypto: &CryptoProvider,
+        label: &str,
+        context: &[u8],
+        key_length: usize,
+    ) -> Result<Vec<u8>, LibraryError> {
+        if let StagedCommitState::GroupMember(ref gm) = &self.state {
+            return gm
+                .group_epoch_secrets
+                .exporter_secret()
+                .derive_exported_secret(ciphersuite, crypto, label, context, key_length)
+                .map_err(LibraryError::unexpected_crypto_error);
+        }
+
+        Ok(vec![])
     }
 }
 
