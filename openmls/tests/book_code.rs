@@ -1689,7 +1689,7 @@ fn commit_builder() {
 
     // === Alice adds Bob ===
     // ANCHOR: alice_adds_bob_with_commit_builder
-    let message_bundle = alice_group
+    let commit_builder = alice_group
         .commit_builder()
         .propose_adds(Some(bob_key_package.key_package().clone()))
         .load_psks(provider.storage())
@@ -1700,12 +1700,20 @@ fn commit_builder() {
             &alice_signature_keys,
             |_proposal| true,
         )
-        .expect("error validating data and building commit")
+        .expect("error validating data and building commit");
+    let exported_new_epoch_secret = commit_builder.export_secret(
+        provider.crypto(),
+        "test exporter secret",
+        b"some app context",
+        32,
+    );
+    let message_bundle = commit_builder
         .stage_commit(provider)
         .expect("error staging commit");
 
     let (mls_message_out, welcome, group_info) = message_bundle.into_contents();
     // ANCHOR_END: alice_adds_bob_with_commit_builder
+    _ = exported_new_epoch_secret;
     _ = (mls_message_out, welcome, group_info)
 }
 

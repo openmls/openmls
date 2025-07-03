@@ -483,10 +483,7 @@ impl LeafNode {
             .filter(|ext| ext.extension_type().is_valid_in_leaf_node() == Some(false))
             .collect::<Vec<_>>();
         if !invalid_extension_types.is_empty() {
-            log::error!(
-                "Invalid extension used in leaf node: {:?}",
-                invalid_extension_types
-            );
+            log::error!("Invalid extension used in leaf node: {invalid_extension_types:?}");
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
 

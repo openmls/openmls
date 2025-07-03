@@ -79,7 +79,7 @@ pub trait Signable: Sized {
         {
             Ok(p) => p,
             Err(e) => {
-                log::error!("Serializing SignContent failed, {:?}", e);
+                log::error!("Serializing SignContent failed, {e:?}");
                 return Err(SignatureError::SigningError);
             }
         };
@@ -149,7 +149,7 @@ pub trait Verifiable: Sized {
         let payload = match sign_content.tls_serialize_detached() {
             Ok(p) => p,
             Err(e) => {
-                log::error!("Serializing SignContent failed, {:?}", e);
+                log::error!("Serializing SignContent failed, {e:?}");
                 return Err(SignatureError::VerificationError);
             }
         };

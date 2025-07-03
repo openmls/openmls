@@ -11,8 +11,9 @@ use crate::{
     ciphersuite::{signable::Signable as _, Secret},
     group::{
         create_commit::CommitType, diff::compute_path::PathComputationResult,
-        CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
-        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
+        CommitBuilderStageError, CreateCommitError, ExportSecretError, Extension, Extensions,
+        ExternalPubExtension, ProposalQueue, ProposalQueueError, QueuedProposal,
+        RatchetTreeExtension, StagedCommit,
     },
     key_packages::KeyPackage,
     messages::{
@@ -251,6 +252,8 @@ impl<'a> CommitBuilder<'a, Initial> {
         self
     }
 
+    /// Adds a Remove proposal for the provided [`LeafNodeIndex`]es to the list of proposals to be
+    /// committed.
     pub fn propose_removals(mut self, removed: impl IntoIterator<Item = LeafNodeIndex>) -> Self {
         self.stage.own_proposals.extend(
             removed
@@ -260,6 +263,8 @@ impl<'a> CommitBuilder<'a, Initial> {
         self
     }
 
+    /// Adds a GroupContextExtensions proposal for the provided [`Extensions`] to the list of
+    /// proposals to be committed.
     pub fn propose_group_context_extensions(mut self, extensions: Extensions) -> Self {
         self.stage
             .own_proposals
@@ -706,6 +711,33 @@ impl CommitBuilder<'_, Complete> {
     #[cfg(test)]
     pub(crate) fn commit_result(self) -> CreateCommitResult {
         self.stage.result
+    }
+
+    /// Get the export secret of the new epoch.
+    ///
+    /// Note that this epoch will only materialize if this commit being applied.
+    /// This secret can be used to encrypt information that should be available
+    /// only for members of the new epoch.
+    ///
+    /// This returns the same results as the [`MlsGroup::export_secret`] function
+    /// after applying this staged commit.
+    pub fn export_secret<CryptoProvider: OpenMlsCrypto>(
+        &self,
+        crypto: &CryptoProvider,
+        label: &str,
+        context: &[u8],
+        key_length: usize,
+    ) -> Result<Vec<u8>, ExportSecretError> {
+        if key_length > u16::MAX as usize {
+            log::error!("Got a key that is larger than u16::MAX");
+            return Err(ExportSecretError::KeyLengthTooLong);
+        }
+
+        self.stage
+            .result
+            .staged_commit
+            .export_secret(self.group.ciphersuite(), crypto, label, context, key_length)
+            .map_err(|e| e.into())
     }
 
     /// Stages the commit and returns the protocol messages.

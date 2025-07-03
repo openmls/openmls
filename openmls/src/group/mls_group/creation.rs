@@ -251,7 +251,7 @@ impl ProcessedWelcome {
         // seem like a bad idea.
         if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
             let e = WelcomeError::CiphersuiteMismatch;
-            log::debug!("new_from_welcome {:?}", e);
+            log::debug!("new_from_welcome {e:?}");
             return Err(e);
         }
 
@@ -306,7 +306,7 @@ impl ProcessedWelcome {
         // KeyPackage.
         if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
             let e = WelcomeError::CiphersuiteMismatch;
-            log::debug!("new_from_welcome {:?}", e);
+            log::debug!("new_from_welcome {e:?}");
             return Err(e);
         }
 
