@@ -1,6 +1,8 @@
 //! This module contains the commit builder types, which can be used to build regular (i.e.
 //! non-external) commits. See the documentation of [`CommitBuilder`] for more information.
 
+use std::{borrow::BorrowMut, marker::PhantomData};
+
 use openmls_traits::{
     crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, storage::StorageProvider as _,
 };
@@ -28,6 +30,8 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+mod external_commits;
+
 #[cfg(doc)]
 use super::MlsGroupJoinConfig;
 
@@ -44,6 +48,7 @@ pub struct Initial {
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
     create_group_info: bool,
+    commit_type: CommitType,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
@@ -58,6 +63,7 @@ impl Default for Initial {
             leaf_node_parameters: LeafNodeParameters::default(),
             create_group_info: false,
             own_proposals: vec![],
+            commit_type: CommitType::Member,
         }
     }
 }
@@ -68,6 +74,7 @@ pub struct LoadedPsks {
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
     create_group_info: bool,
+    commit_type: CommitType,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
@@ -118,43 +125,56 @@ pub struct Complete {
 ///
 /// [book]: https://book.openmls.tech/user_manual/add_members.html
 #[derive(Debug)]
-pub struct CommitBuilder<'a, T> {
+pub struct CommitBuilder<'a, T, G: BorrowMut<MlsGroup> = &'a mut MlsGroup> {
     /// A mutable reference to the MlsGroup. This means that we hold an exclusive lock on the group
     /// for the lifetime of this builder.
-    group: &'a mut MlsGroup,
+    group: G,
 
     /// The current stage
     stage: T,
+
+    pd: PhantomData<&'a T>,
 }
 
-impl<'a, T> CommitBuilder<'a, T> {
+impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
     pub(crate) fn replace_stage<NextStage>(
         self,
         next_stage: NextStage,
-    ) -> (T, CommitBuilder<'a, NextStage>) {
+    ) -> (T, CommitBuilder<'a, NextStage, G>) {
         self.map_stage(|prev_stage| (prev_stage, next_stage))
     }
 
     pub(crate) fn into_stage<NextStage>(
         self,
         next_stage: NextStage,
-    ) -> CommitBuilder<'a, NextStage> {
+    ) -> CommitBuilder<'a, NextStage, G> {
         self.replace_stage(next_stage).1
     }
 
-    pub(crate) fn take_stage(self) -> (T, CommitBuilder<'a, ()>) {
+    pub(crate) fn take_stage(self) -> (T, CommitBuilder<'a, (), G>) {
         self.replace_stage(())
     }
 
     pub(crate) fn map_stage<NextStage, Aux, F: FnOnce(T) -> (Aux, NextStage)>(
         self,
         f: F,
-    ) -> (Aux, CommitBuilder<'a, NextStage>) {
-        let Self { group, stage } = self;
+    ) -> (Aux, CommitBuilder<'a, NextStage, G>) {
+        let Self {
+            group,
+            stage,
+            pd: PhantomData,
+        } = self;
 
         let (aux, stage) = f(stage);
 
-        (aux, CommitBuilder { group, stage })
+        (
+            aux,
+            CommitBuilder {
+                group,
+                stage,
+                pd: PhantomData,
+            },
+        )
     }
 
     #[cfg(feature = "fork-resolution")]
@@ -166,18 +186,22 @@ impl<'a, T> CommitBuilder<'a, T> {
 impl MlsGroup {
     /// Returns a builder for commits.
     pub fn commit_builder(&mut self) -> CommitBuilder<Initial> {
-        CommitBuilder::new(self)
+        CommitBuilder::<'_, Initial, &mut MlsGroup>::new(self)
     }
 }
 
-impl<'a> CommitBuilder<'a, Initial> {
+impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// returns a new [`CommitBuilder`] for the given [`MlsGroup`].
-    pub fn new(group: &'a mut MlsGroup) -> Self {
+    pub fn new(group: G) -> CommitBuilder<'a, Initial, G> {
         let stage = Initial {
-            create_group_info: group.configuration().use_ratchet_tree_extension,
+            create_group_info: group.borrow().configuration().use_ratchet_tree_extension,
             ..Default::default()
         };
-        Self { group, stage }
+        CommitBuilder {
+            group,
+            stage,
+            pd: PhantomData,
+        }
     }
 
     /// Sets whether or not the proposals in the proposal store of the group should be included in
@@ -252,13 +276,14 @@ impl<'a> CommitBuilder<'a, Initial> {
     pub fn load_psks<Storage: StorageProvider>(
         self,
         storage: &'a Storage,
-    ) -> Result<CommitBuilder<'a, LoadedPsks>, CreateCommitError> {
+    ) -> Result<CommitBuilder<'a, LoadedPsks, G>, CreateCommitError> {
         let psk_ids: Vec<_> = self
             .stage
             .own_proposals
             .iter()
             .chain(
                 self.group
+                    .borrow()
                     .proposal_store()
                     .proposals()
                     .map(|queued_proposal| queued_proposal.proposal()),
@@ -270,7 +295,7 @@ impl<'a> CommitBuilder<'a, Initial> {
             .collect();
 
         // Load the PSKs and make the PskIds owned.
-        let psks = load_psks(storage, &self.group.resumption_psk_store, &psk_ids)?
+        let psks = load_psks(storage, &self.group.borrow().resumption_psk_store, &psk_ids)?
             .into_iter()
             .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
             .collect();
@@ -286,6 +311,7 @@ impl<'a> CommitBuilder<'a, Initial> {
                         leaf_node_parameters: stage.leaf_node_parameters,
                         consume_proposal_store: stage.consume_proposal_store,
                         create_group_info: stage.create_group_info,
+                        commit_type: stage.commit_type,
                     },
                 )
             })
@@ -334,8 +360,11 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
         let ciphersuite = self.group.ciphersuite();
-        let sender = Sender::build_member(self.group.own_leaf_index());
         let (mut cur_stage, builder) = self.take_stage();
+        let sender = match cur_stage.commit_type {
+            CommitType::Member => Sender::build_member(builder.group.own_leaf_index()),
+            CommitType::External(_) => Sender::NewMemberCommit,
+        };
         let psks = cur_stage.psks;
 
         // put the pending and uniform proposals into a uniform shape,
@@ -428,8 +457,13 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             .public_group
             .validate_group_context_extensions_proposal(&proposal_queue)?;
 
-        let ciphersuite = builder.group.ciphersuite();
-        let sender = Sender::build_member(builder.group.own_leaf_index());
+        if matches!(cur_stage.commit_type, CommitType::External(_)) {
+            builder
+                .group
+                .public_group
+                .validate_external_commit(&proposal_queue)?;
+        }
+
         let proposal_reference_list = proposal_queue.commit_list();
 
         // Make a copy of the public group to apply proposals safely
@@ -468,7 +502,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                         crypto,
                         builder.group.own_leaf_index(),
                         apply_proposals_values.exclusion_list(),
-                        &CommitType::Member,
+                        &cur_stage.commit_type,
                         &cur_stage.leaf_node_parameters,
                         new_signer.signer,
                         apply_proposals_values.extensions.clone()
@@ -479,7 +513,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                         crypto,
                         builder.group.own_leaf_index(),
                         apply_proposals_values.exclusion_list(),
-                        &CommitType::Member,
+                        &cur_stage.commit_type,
                         &cur_stage.leaf_node_parameters,
                         old_signer,
                         apply_proposals_values.extensions.clone()

@@ -254,6 +254,9 @@ pub enum CreateCommitError {
     /// Invalid [`LeafNodeParameters`]. `[CredentialWithKey]` can't be set with new signer.
     #[error("Invalid LeafNodeParameters. CredentialWithKey can't be set with new signer.")]
     InvalidLeafNodeParameters,
+    /// Invalid external commit.
+    #[error("Invalid external commit.")]
+    InvalidExternalCommit(#[from] ExternalCommitValidationError),
 }
 
 /// Stage commit error
