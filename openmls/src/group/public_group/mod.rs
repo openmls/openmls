@@ -11,7 +11,7 @@
 //! To avoid duplication of code and functionality, [`MlsGroup`] internally
 //! relies on a [`PublicGroup`] as well.
 
-use std::collections::HashSet;
+use std::{collections::HashSet, iter};
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
@@ -34,10 +34,10 @@ use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
-    framing::InterimTranscriptHashInput,
+    framing::{InterimTranscriptHashInput, Sender},
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
-        proposals::{Proposal, ProposalOrRefType, ProposalType},
+        proposals::Proposal,
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
@@ -288,13 +288,7 @@ impl PublicGroup {
         &self,
         commit: &StagedCommit,
     ) -> Result<LeafNodeIndex, LibraryError> {
-        self.leftmost_free_index(commit.queued_proposals().filter_map(|p| {
-            if matches!(p.proposal_or_ref_type(), ProposalOrRefType::Proposal) {
-                Some(Some(p.proposal()))
-            } else {
-                None
-            }
-        }))
+        self.leftmost_free_index(iter::empty(), commit.queued_proposals())
     }
 
     /// Returns the leftmost free leaf index.
@@ -305,33 +299,32 @@ impl PublicGroup {
     /// The proposals must be validated before calling this function.
     pub(crate) fn leftmost_free_index<'a>(
         &self,
-        mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
+        inline_proposals: impl Iterator<Item = &'a Proposal>,
+        queued_proposals: impl Iterator<Item = &'a QueuedProposal>,
     ) -> Result<LeafNodeIndex, LibraryError> {
         // Leftmost free leaf in the tree
         let free_leaf_index = self.treesync().free_leaf_index();
-        // Returns the first remove proposal (if there is one)
-        let remove_proposal_option = inline_proposals
-            .find(|proposal| match proposal {
-                Some(p) => p.is_type(ProposalType::Remove),
-                None => false,
-            })
-            .flatten();
-        let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
-            if let Proposal::Remove(remove_proposal) = remove_proposal {
-                let removed_index = remove_proposal.removed();
-                // The committer should always be in the left-most leaf.
-                if removed_index < free_leaf_index {
-                    removed_index
-                } else {
-                    free_leaf_index
-                }
-            } else {
-                return Err(LibraryError::custom("missing key package"));
+        // Indices that are freed due to queued self-remove proposals or remove
+        // proposals.
+        let removed_indices = queued_proposals.filter_map(|proposal| {
+            match (proposal.proposal(), proposal.sender()) {
+                (Proposal::Remove(r), _) => Some(r.removed),
+                (Proposal::SelfRemove, Sender::Member(sender)) => Some(*sender),
+                _ => None, // SelfRemove proposals must come from group members
             }
-        } else {
-            free_leaf_index
-        };
-        Ok(leaf_index)
+        });
+        let more_removed_indices = inline_proposals.filter_map(|proposal| match proposal {
+            Proposal::Remove(r) => Some(r.removed),
+            _ => None,
+        });
+        // Find the leftmost free leaf index, which is either the free leaf index
+        // or the leftmost index of a self-remove proposal or remove proposal.
+        removed_indices
+            .into_iter()
+            .chain(more_removed_indices)
+            .chain(std::iter::once(free_leaf_index))
+            .min()
+            .ok_or_else(|| LibraryError::custom("No free leaf index found"))
     }
 
     /// Create an empty  [`PublicGroupDiff`] based on this [`PublicGroup`].

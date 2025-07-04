@@ -4,7 +4,10 @@ use crate::{
     group::{
         mls_group::staged_commit::StagedCommitState, proposal_store::ProposalQueue, StagedCommit,
     },
-    messages::{proposals::ProposalOrRef, Commit},
+    messages::{
+        proposals::{ProposalOrRef, ProposalType},
+        Commit,
+    },
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -174,14 +177,7 @@ impl PublicGroup {
         let sender_index = match sender {
             Sender::Member(leaf_index) => *leaf_index,
             Sender::NewMemberCommit => {
-                let inline_proposals = commit.proposals.iter().filter_map(|p| {
-                    if let ProposalOrRef::Proposal(inline_proposal) = p {
-                        Some(Some(inline_proposal))
-                    } else {
-                        None
-                    }
-                });
-                self.leftmost_free_index(inline_proposals)?
+                self.leftmost_free_index(iter::empty(), proposal_queue.queued_proposals())?
             }
             _ => {
                 return Err(StageCommitError::SenderTypeExternal);
