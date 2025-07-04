@@ -1421,6 +1421,125 @@ fn addition_order() {
     }
 }
 
+/// This test demonstrates commit creation with M remove proposals and K add proposals,
+/// starting from a group size of N.
+///
+///  - Alice creates a group
+///  - Alice fills up the group to a size of N.
+///  - Alice proposes to remove M members.
+///  - Alice adds K members.
+#[openmls_test]
+fn more_remove_than_add_proposals_in_commit() {
+    // choose group size, remove proposal count and add proposal count, s.t. M > K, and M and K each
+    // pass a tree shrink/grow threshold, i.e., a power of 2.
+    more_remove_than_add_proposals_in_commit_inner::<6, 2, 1>(provider, ciphersuite);
+    more_remove_than_add_proposals_in_commit_inner::<10, 2, 1>(provider, ciphersuite);
+    more_remove_than_add_proposals_in_commit_inner::<22, 6, 5>(provider, ciphersuite);
+
+    fn more_remove_than_add_proposals_in_commit_inner<
+        const INITIAL_GROUP_SIZE: usize,
+        const REMOVE_PROPOSALS_COUNT: usize,
+        const ADD_PROPOSALS_COUNT: usize,
+    >(
+        provider: &Provider,
+        ciphersuite: Ciphersuite,
+    ) {
+        for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
+            let ALL_MEMBERS_COUNT: usize = INITIAL_GROUP_SIZE + ADD_PROPOSALS_COUNT;
+            let REMAINING_MEMBERS_COUNT: usize = INITIAL_GROUP_SIZE - REMOVE_PROPOSALS_COUNT;
+
+            let ids = (0..ALL_MEMBERS_COUNT)
+                .map(|i| format!("member {i}").into_bytes())
+                .collect::<Vec<_>>();
+
+            // Generate credentials with keys
+            let (credentials, signers): (Vec<_>, Vec<_>) = ids
+                .iter()
+                .map(|id| new_credential(provider, id, ciphersuite.signature_algorithm()))
+                .unzip();
+
+            // Define the MlsGroup configuration
+            let mls_group_create_config = MlsGroupCreateConfig::builder()
+                .wire_format_policy(*wire_format_policy)
+                .ciphersuite(ciphersuite)
+                .build();
+
+            let group_id = GroupId::random(provider.rand());
+
+            // === Alice creates a group ===
+            let mut alice_group = MlsGroup::new_with_group_id(
+                provider,
+                &signers[0],
+                &mls_group_create_config,
+                group_id.clone(),
+                credentials[0].clone(),
+            )
+            .expect("could not create group");
+
+            // Key packages for eveeryone except alice
+            let key_packages = credentials[1..]
+                .iter()
+                .zip(signers[1..].iter())
+                .map(|(credential, signer)| {
+                    generate_key_package(
+                        ciphersuite,
+                        Extensions::empty(),
+                        provider,
+                        credential.clone(),
+                        signer,
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            // === Alice adds everyone except the members to add later... ===
+            alice_group
+                .add_members(
+                    provider,
+                    &signers[0],
+                    // -1 because alice is already in the group
+                    &key_packages[..INITIAL_GROUP_SIZE - 1],
+                )
+                .expect("Could not add initial members to group");
+
+            alice_group
+                .merge_pending_commit(provider)
+                .expect("error merging pending commit");
+
+            // Setup finished, we have reached the initial group size
+            assert_eq!(alice_group.members().count(), INITIAL_GROUP_SIZE);
+
+            // Alice removes members, these removals alone _would_ cause the tree to shrink
+            let removed_indices = (REMAINING_MEMBERS_COUNT..INITIAL_GROUP_SIZE)
+                .map(|index| LeafNodeIndex::new(index as u32));
+
+            for index in removed_indices {
+                alice_group
+                    .propose_remove_member_by_value(provider, &signers[0], index)
+                    .expect("could not propose removing member");
+            }
+
+            // Alice adds members. Fewer than previously removed, but enough to get the tree back to its original size
+            alice_group
+                .add_members(
+                    provider,
+                    &signers[0],
+                    &key_packages[INITIAL_GROUP_SIZE - 1..],
+                )
+                .expect("Could not add member to group");
+
+            alice_group
+                .merge_pending_commit(provider)
+                .expect("error merging pending commit");
+
+            // Check that the group now has the expected member count
+            assert_eq!(
+                alice_group.members().count(),
+                ALL_MEMBERS_COUNT - REMOVE_PROPOSALS_COUNT
+            );
+        }
+    }
+}
+
 #[openmls_test]
 fn test_empty_input_errors(
     ciphersuite: Ciphersuite,
