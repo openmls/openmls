@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1673](https://github.com/openmls/openmls/pull/1673): Return more specific error when attempting to decrypt own messages: `ProcessMessageError::ValidationError(ValidationError::CannotDecryptOwnMessage)`.
 - [#1675](https://github.com/openmls/openmls/pull/1675): Add `CommitBuilder` that can be used to create commit messages.
 - [#1682](https://github.com/openmls/openmls/pull/1682): Add stage provider backed by Sqlite.
-- [#1704](https://github.com/openmls/openmls/pull/1704): Add support for SelfRemove proposals as specified in the MLS extensions draft specification.
+- [#1704](https://github.com/openmls/openmls/pull/1704): Add support for SelfRemove proposals as specified in the [MLS extensions draft specification](https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions).
 - [#1735](https://github.com/openmls/openmls/pull/1735): Add `self_update_with_new_signer` function to `MlsGroup`, as well as a `build_with_new_signer` build option for the `CommitBuilder`. Both can be used to create commits that rotate the creator's signature key.
 - [#1731](https://github.com/openmls/openmls/pull/1731): Add helpers to recover from group state forks, hidden behind the new `fork-resolution` feature flag.
 - [#1750](https://github.com/openmls/openmls/pull/1750): Support add proposals from external senders, using `ExternalProposal::new_add()`.
