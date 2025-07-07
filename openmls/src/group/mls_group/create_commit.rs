@@ -3,13 +3,6 @@
 use super::*;
 use crate::{credentials::CredentialWithKey, treesync::LeafNodeParameters};
 
-/// Can be used to denote the type of a commit.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) enum CommitType {
-    External(CredentialWithKey),
-    Member,
-}
-
 pub(crate) struct CreateCommitParams<'a> {
     framing_parameters: Option<FramingParameters<'a>>,
     credential_with_key: CredentialWithKey,

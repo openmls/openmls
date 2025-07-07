@@ -6,6 +6,7 @@ use std::{borrow::BorrowMut, marker::PhantomData};
 use openmls_traits::{
     crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, storage::StorageProvider as _,
 };
+use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as _;
 
 use crate::{
@@ -13,7 +14,7 @@ use crate::{
     ciphersuite::{signable::Signable as _, Secret},
     framing::{FramingParameters, WireFormat},
     group::{
-        create_commit::CommitType, diff::compute_path::PathComputationResult,
+        diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
         ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
         WireFormatPolicy,
@@ -49,6 +50,7 @@ struct ExternalCommitInfo {
     credential: CredentialWithKey,
     wire_format_policy: WireFormatPolicy,
 }
+
 /// This stage is for populating the builder.
 pub struct Initial {
     own_proposals: Vec<Proposal>,
