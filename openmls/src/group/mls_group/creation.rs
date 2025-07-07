@@ -1,5 +1,3 @@
-use std::iter;
-
 use errors::NewGroupError;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as StorageProviderTrait};
 
@@ -14,10 +12,7 @@ use crate::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
     },
-    schedule::{
-        psk::{store::ResumptionPskStore, PreSharedKeyId},
-        EpochSecrets, InitSecret,
-    },
+    schedule::psk::{store::ResumptionPskStore, PreSharedKeyId},
     storage::OpenMlsProvider,
     treesync::{
         errors::{DerivePathError, PublicTreeError},
@@ -120,7 +115,10 @@ impl MlsGroup {
             .build_group(provider, verifiable_group_info, credential_with_key)?
             .leaf_node_parameters(leaf_node_parameters)
             .load_psks(provider.storage())
-            .map_err(|e| LibraryError::custom("Error loading PSKs for external commit: {e}"))?
+            .map_err(|e| {
+                log::error!("Error loading PSKs for external commit: {e:?}");
+                LibraryError::custom("Error loading PSKs for external commit")
+            })?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .finalize(provider)?;
 

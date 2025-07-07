@@ -177,7 +177,7 @@ impl PublicGroup {
         let sender_index = match sender {
             Sender::Member(leaf_index) => *leaf_index,
             Sender::NewMemberCommit => {
-                self.leftmost_free_index(iter::empty(), proposal_queue.queued_proposals())?
+                self.leftmost_free_index(proposal_queue.queued_proposals())?
             }
             _ => {
                 return Err(StageCommitError::SenderTypeExternal);

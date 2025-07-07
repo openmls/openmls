@@ -1,9 +1,6 @@
-use openmls_traits::storage::StorageProvider as _;
 use thiserror::Error;
 use tls_codec::Serialize as _;
 
-#[cfg(test)]
-use crate::group::CreateCommitResult;
 use crate::{
     error::LibraryError,
     framing::{mls_content_in::FramedContentBodyIn, DecryptedMessage, PublicMessageIn, Sender},
@@ -200,21 +197,32 @@ impl ExternalCommitBuilder {
             }
         }
 
-        let mut inline_proposals = vec![external_init_proposal];
+        let inline_proposals = [external_init_proposal].into_iter();
 
         // If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
-        let signature_key = credential_with_key.signature_key.as_slice();
-        if let Some(us) = public_group
-            .members()
-            .find(|member| member.signature_key == signature_key)
-        {
-            let remove_proposal = Proposal::Remove(RemoveProposal { removed: us.index });
-            inline_proposals.push(remove_proposal);
-        };
+        let our_signature_key = credential_with_key.signature_key.as_slice();
+        let remove_proposal = public_group.members().find_map(|member| {
+            (member.signature_key == our_signature_key).then_some(Proposal::Remove(
+                RemoveProposal {
+                    removed: member.index,
+                },
+            ))
+        });
 
-        let own_leaf_index =
-            public_group.leftmost_free_index(inline_proposals.iter(), queued_proposals.iter())?;
+        let inline_proposals = inline_proposals
+            .chain(remove_proposal)
+            .map(|p| {
+                QueuedProposal::from_proposal_and_sender(
+                    ciphersuite,
+                    provider.crypto(),
+                    p,
+                    &Sender::NewMemberCommit,
+                )
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let own_leaf_index = public_group.leftmost_free_index(inline_proposals.iter())?;
 
         let original_wire_format_policy = config.wire_format_policy;
 
@@ -236,19 +244,9 @@ impl ExternalCommitBuilder {
             resumption_psk_store: ResumptionPskStore::new(32),
         };
 
-        for inline_proposal in inline_proposals {
-            let queued_proposal = QueuedProposal::from_proposal_and_sender(
-                ciphersuite,
-                provider.crypto(),
-                inline_proposal,
-                &Sender::NewMemberCommit,
-            )?;
-            queued_proposals.push(queued_proposal);
-        }
-
         // Add all proposals to the proposal store.
         let proposal_store = mls_group.proposal_store_mut();
-        for queued_proposal in queued_proposals {
+        for queued_proposal in queued_proposals.into_iter().chain(inline_proposals) {
             proposal_store.add(queued_proposal);
         }
 
@@ -293,11 +291,6 @@ impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
 
 // Impls that apply only to external commits.
 impl CommitBuilder<'_, super::Complete, MlsGroup> {
-    #[cfg(test)]
-    pub(crate) fn commit_result(self) -> CreateCommitResult {
-        self.stage.result
-    }
-
     /// Finalizes and returns the group state, as well as the [`CommitMessageBundle`].
     pub fn finalize<Provider: OpenMlsProvider>(
         self,

@@ -6,7 +6,6 @@ use std::{borrow::BorrowMut, marker::PhantomData};
 use openmls_traits::{
     crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, storage::StorageProvider as _,
 };
-use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as _;
 
 use crate::{
@@ -404,15 +403,16 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let proposal_queue = group_proposal_store_queue.chain(own_proposals).filter(f);
 
         let (proposal_queue, contains_own_updates) =
-            ProposalQueue::filter_proposals_without_inline(proposal_queue, group.own_leaf_index)
-                .map_err(|e| match e {
+            ProposalQueue::filter_proposals(proposal_queue, group.own_leaf_index).map_err(|e| {
+                match e {
                     ProposalQueueError::LibraryError(e) => e.into(),
                     ProposalQueueError::ProposalNotFound => CreateCommitError::MissingProposal,
                     ProposalQueueError::UpdateFromExternalSender
                     | ProposalQueueError::SelfRemoveFromNonMember => {
                         CreateCommitError::WrongProposalSenderType
                     }
-                })?;
+                }
+            })?;
 
         // Validate the proposals by doing the following checks:
 
