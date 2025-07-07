@@ -14,7 +14,7 @@ use super::*;
 /// } KDFLabel;
 /// ```
 #[derive(Debug, TlsSerialize, TlsSize)]
-pub(in crate::ciphersuite) struct KdfLabel {
+pub struct KdfLabel {
     length: u16,
     label: VLBytes,
     context: VLBytes,
@@ -24,7 +24,7 @@ impl KdfLabel {
     /// Serialize this label.
     /// Returns the serialized label as byte vector or returns a [`CryptoError`]
     /// if the parameters are invalid.
-    pub(in crate::ciphersuite) fn serialized_label(
+    pub fn serialized_label(
         context: &[u8],
         label: String,
         length: usize,

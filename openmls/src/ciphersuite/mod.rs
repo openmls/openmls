@@ -16,7 +16,7 @@ use std::hash::Hash;
 mod aead;
 mod codec;
 pub(crate) mod hpke;
-mod kdf_label;
+pub mod kdf_label;
 mod mac;
 mod reuse_guard;
 mod secret;
