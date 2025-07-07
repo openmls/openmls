@@ -14,18 +14,16 @@ use crate::{
     framing::{FramingParameters, WireFormat},
     group::{
         create_commit::CommitType, diff::compute_path::PathComputationResult,
-        CommitBuilderStageError, CreateCommitError, Extension, Extensions,
-        ExternalCommitBuilderFinalizeError, ExternalPubExtension, ProposalQueue,
-        ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
+        CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
+        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
+        WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
         group_info::{GroupInfo, GroupInfoTBS},
         Commit, Welcome,
     },
-    prelude::{
-        CredentialWithKey, LeafNodeParameters, LibraryError, NewSignerBundle, PreSharedKeyProposal,
-    },
+    prelude::{CredentialWithKey, LeafNodeParameters, LibraryError, NewSignerBundle},
     schedule::{
         psk::{load_psks, PskSecret},
         JoinerSecret, KeySchedule, PreSharedKeyId,
@@ -49,6 +47,7 @@ use super::{
 struct ExternalCommitInfo {
     aad: Vec<u8>,
     credential: CredentialWithKey,
+    wire_format_policy: WireFormatPolicy,
 }
 /// This stage is for populating the builder.
 pub struct Initial {
@@ -93,6 +92,8 @@ pub struct LoadedPsks {
 /// This stage is after we validated the data, ready for staging and exporting the messages
 pub struct Complete {
     result: CreateCommitResult,
+    // Only for external commits
+    original_wire_format_policy: Option<WireFormatPolicy>,
 }
 
 /// The [`CommitBuilder`] is used to easily and dynamically build commit messages.
@@ -252,28 +253,6 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     }
 }
 
-// Impls that only apply to external commits.
-impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
-    /// Adds a proposal to the proposals to be committed.
-    pub fn add_psk_proposal(mut self, proposal: PreSharedKeyProposal) -> Self {
-        self.stage
-            .own_proposals
-            .push(Proposal::PreSharedKey(proposal));
-        self
-    }
-
-    /// Adds the proposals in the iterator to the proposals to be committed.
-    pub fn add_psk_proposals(
-        mut self,
-        proposals: impl IntoIterator<Item = PreSharedKeyProposal>,
-    ) -> Self {
-        self.stage
-            .own_proposals
-            .extend(proposals.into_iter().map(Proposal::PreSharedKey));
-        self
-    }
-}
-
 // Impls that apply to regular and external commits.
 impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// returns a new [`CommitBuilder`] for the given [`MlsGroup`].
@@ -394,9 +373,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let group = builder.group.borrow();
         let ciphersuite = group.ciphersuite();
         let own_leaf_index = group.own_leaf_index();
-        let sender = match cur_stage.external_commit_info {
-            None => Sender::build_member(own_leaf_index),
-            Some(_) => Sender::NewMemberCommit,
+        let (sender, is_external_commit) = match cur_stage.external_commit_info {
+            None => (Sender::build_member(own_leaf_index), false),
+            Some(_) => (Sender::NewMemberCommit, true),
         };
         let psks = cur_stage.psks;
 
@@ -474,7 +453,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .public_group
             .validate_group_context_extensions_proposal(&proposal_queue)?;
 
-        if matches!(cur_stage.external_commit_info, Some(_)) {
+        if is_external_commit {
             group
                 .public_group
                 .validate_external_commit(&proposal_queue)?;
@@ -487,7 +466,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
 
         // Apply proposals to tree
         let apply_proposals_values = diff.apply_proposals(&proposal_queue, own_leaf_index)?;
-        if apply_proposals_values.self_removed {
+        if apply_proposals_values.self_removed && !is_external_commit {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
 
@@ -737,11 +716,15 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 staged_commit,
                 group_info: group_info.filter(|_| cur_stage.create_group_info),
             },
+            original_wire_format_policy: cur_stage
+                .external_commit_info
+                .as_ref()
+                .map(|info| info.wire_format_policy),
         }))
     }
 }
 
-// Impls that apply to regular and external commits.
+// Impls that apply only to regular commits.
 impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     #[cfg(test)]
     pub(crate) fn commit_result(self) -> CreateCommitResult {
@@ -755,9 +738,11 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     ) -> Result<CommitMessageBundle, CommitBuilderStageError<Provider::StorageError>> {
         let Self {
             group,
-            stage: Complete {
-                result: create_commit_result,
-            },
+            stage:
+                Complete {
+                    result: create_commit_result,
+                    original_wire_format_policy: _,
+                },
             ..
         } = self;
 
@@ -787,62 +772,6 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
             welcome: create_commit_result.welcome_option,
             group_info: create_commit_result.group_info,
         })
-    }
-}
-
-// Impls that apply only to external commits.
-impl CommitBuilder<'_, Complete, MlsGroup> {
-    #[cfg(test)]
-    pub(crate) fn commit_result(self) -> CreateCommitResult {
-        self.stage.result
-    }
-
-    /// Finalizes and returns the group state, as well as the [`CommitMessageBundle`].
-    pub fn finalize<Provider: OpenMlsProvider>(
-        self,
-        provider: &Provider,
-    ) -> Result<
-        (MlsGroup, CommitMessageBundle),
-        ExternalCommitBuilderFinalizeError<Provider::StorageError>,
-    > {
-        let Self {
-            mut group,
-            stage: Complete {
-                result: create_commit_result,
-            },
-            ..
-        } = self;
-
-        // Set the current group state to [`MlsGroupState::PendingCommit`],
-        // storing the current [`StagedCommit`] from the commit results
-        group.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-            create_commit_result.staged_commit,
-        )));
-
-        group.merge_pending_commit(provider)?;
-
-        provider
-            .storage()
-            .write_group_state(group.group_id(), &group.group_state)
-            .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
-
-        group.reset_aad();
-
-        // Convert PublicMessage messages to MLSMessage and encrypt them if required by the
-        // configuration.
-        //
-        // Note that this performs writes to the storage, so we should do that here, rather than
-        // when working with the result.
-        let mls_message = group.content_to_mls_message(create_commit_result.commit, provider)?;
-
-        let bundle = CommitMessageBundle {
-            version: group.version(),
-            commit: mls_message,
-            welcome: create_commit_result.welcome_option,
-            group_info: create_commit_result.group_info,
-        };
-
-        Ok((group, bundle))
     }
 }
 

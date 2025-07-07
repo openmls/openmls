@@ -1,20 +1,24 @@
+use openmls_traits::storage::StorageProvider as _;
 use thiserror::Error;
 use tls_codec::Serialize as _;
 
+#[cfg(test)]
+use crate::group::CreateCommitResult;
 use crate::{
     error::LibraryError,
     framing::{mls_content_in::FramedContentBodyIn, DecryptedMessage, PublicMessageIn, Sender},
     group::{
         commit_builder::{CommitBuilder, ExternalCommitInfo, Initial},
         past_secrets::MessageSecretsStore,
-        MlsGroup, MlsGroupJoinConfig, MlsGroupState, ProposalStore, PublicGroup, QueuedProposal,
-        ValidationError,
+        ExternalCommitBuilderFinalizeError, MlsGroup, MlsGroupJoinConfig, MlsGroupState,
+        PendingCommitState, ProposalStore, PublicGroup, QueuedProposal, ValidationError,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     prelude::{
         group_info::VerifiableGroupInfo,
         proposals::{self, ProposalType},
         CreationFromExternalError, CredentialWithKey, ExternalInitProposal, LeafNodeIndex,
-        Proposal, ProtocolVersion, RatchetTreeIn, RemoveProposal,
+        PreSharedKeyProposal, Proposal, ProtocolVersion, RatchetTreeIn, RemoveProposal,
     },
     schedule::{psk::store::ResumptionPskStore, EpochSecrets, InitSecret},
     storage::OpenMlsProvider,
@@ -80,6 +84,10 @@ impl ExternalCommitBuilder {
         self
     }
 
+    // TODO: When writing documentation, remind the caller that the external
+    // commit is always going to be a PublicMessage. The wire format policy set
+    // in the group config will kick in after that external commit has been
+    // sent.
     pub fn build_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
@@ -90,7 +98,7 @@ impl ExternalCommitBuilder {
         let ExternalCommitBuilder {
             proposals,
             ratchet_tree,
-            config,
+            mut config,
             aad,
         } = self;
 
@@ -208,6 +216,14 @@ impl ExternalCommitBuilder {
         let own_leaf_index =
             public_group.leftmost_free_index(inline_proposals.iter(), queued_proposals.iter())?;
 
+        let original_wire_format_policy = config.wire_format_policy;
+
+        // We set this to PURE_PLAINTEXT_WIRE_FORMAT_POLICY so that the
+        // external commit can be sent as a PublicMessageIn. The wire format
+        // policy will be set to the original wire format policy after the
+        // external commit has been sent.
+        config.wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
+
         let mut mls_group = MlsGroup {
             mls_group_config: config,
             own_leaf_nodes: vec![],
@@ -240,6 +256,7 @@ impl ExternalCommitBuilder {
 
         commit_builder.stage.force_self_update = true;
         commit_builder.stage.external_commit_info = Some(ExternalCommitInfo {
+            wire_format_policy: original_wire_format_policy,
             credential: credential_with_key.clone(),
             aad,
         });
@@ -249,5 +266,91 @@ impl ExternalCommitBuilder {
         commit_builder.stage.leaf_node_parameters = leaf_node_parameters;
 
         Ok(commit_builder)
+    }
+}
+
+// Impls that only apply to external commits.
+impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
+    /// Adds a proposal to the proposals to be committed.
+    pub fn add_psk_proposal(mut self, proposal: PreSharedKeyProposal) -> Self {
+        self.stage
+            .own_proposals
+            .push(Proposal::PreSharedKey(proposal));
+        self
+    }
+
+    /// Adds the proposals in the iterator to the proposals to be committed.
+    pub fn add_psk_proposals(
+        mut self,
+        proposals: impl IntoIterator<Item = PreSharedKeyProposal>,
+    ) -> Self {
+        self.stage
+            .own_proposals
+            .extend(proposals.into_iter().map(Proposal::PreSharedKey));
+        self
+    }
+}
+
+// Impls that apply only to external commits.
+impl CommitBuilder<'_, super::Complete, MlsGroup> {
+    #[cfg(test)]
+    pub(crate) fn commit_result(self) -> CreateCommitResult {
+        self.stage.result
+    }
+
+    /// Finalizes and returns the group state, as well as the [`CommitMessageBundle`].
+    pub fn finalize<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+    ) -> Result<
+        (MlsGroup, super::CommitMessageBundle),
+        ExternalCommitBuilderFinalizeError<Provider::StorageError>,
+    > {
+        let Self {
+            mut group,
+            stage:
+                super::Complete {
+                    result: create_commit_result,
+                    original_wire_format_policy,
+                },
+            ..
+        } = self;
+
+        // Convert AuthenticatedContent messages to MLSMessage.
+        let mls_message = group.content_to_mls_message(create_commit_result.commit, provider)?;
+
+        group.reset_aad();
+
+        // Restore the original wire format policy.
+        if let Some(wire_format_policy) = original_wire_format_policy {
+            group.mls_group_config.wire_format_policy = wire_format_policy;
+        }
+
+        // Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        group.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        )));
+
+        // Store the group so we can merge the pending commit.
+        //group
+        //    .store(provider.storage())
+        //    .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
+
+        //provider
+        //    .storage()
+        //    .write_group_state(group.group_id(), &group.group_state)
+        //    .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
+
+        group.merge_pending_commit(provider)?;
+
+        let bundle = super::CommitMessageBundle {
+            version: group.version(),
+            commit: mls_message,
+            welcome: create_commit_result.welcome_option,
+            group_info: create_commit_result.group_info,
+        };
+
+        Ok((group, bundle))
     }
 }
