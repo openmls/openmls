@@ -6,7 +6,10 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider as StorageProv
 use super::{builder::MlsGroupBuilder, *};
 use crate::{
     credentials::CredentialWithKey,
-    group::errors::{ExternalCommitError, WelcomeError},
+    group::{
+        commit_builder::external_commits::ExternalCommitBuilder,
+        errors::{ExternalCommitError, WelcomeError},
+    },
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
@@ -100,127 +103,30 @@ impl MlsGroup {
         credential_with_key: CredentialWithKey,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError<Provider::StorageError>>
     {
-        // Prepare the commit parameters
-        let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
-
         let leaf_node_parameters = LeafNodeParameters::builder()
             .with_capabilities(capabilities.unwrap_or_default())
             .with_extensions(extensions.unwrap_or_default())
             .build();
-        let mut params = CreateCommitParams::builder()
-            .external_commit(credential_with_key, framing_parameters)
+
+        let mut external_commit_builder = ExternalCommitBuilder::new()
+            .with_aad(aad.to_vec())
+            .with_config(mls_group_config.clone());
+
+        if let Some(ratchet_tree) = ratchet_tree {
+            external_commit_builder = external_commit_builder.with_ratchet_tree(ratchet_tree)
+        }
+
+        let (mls_group, commit_message_bundle) = external_commit_builder
+            .build_group(provider, verifiable_group_info, credential_with_key)?
             .leaf_node_parameters(leaf_node_parameters)
-            .build();
+            .load_psks(provider.storage())
+            .map_err(|e| LibraryError::custom("Error loading PSKs for external commit: {e}"))?
+            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .finalize(provider)?;
 
-        // Build the ratchet tree
+        let (commit, _, group_info) = commit_message_bundle.into_contents();
 
-        // Set nodes either from the extension or from the `nodes_option`.
-        // If we got a ratchet tree extension in the welcome, we enable it for
-        // this group. Note that this is not strictly necessary. But there's
-        // currently no other mechanism to enable the extension.
-        let ratchet_tree = match verifiable_group_info.extensions().ratchet_tree() {
-            Some(extension) => extension.ratchet_tree().clone(),
-            None => match ratchet_tree {
-                Some(ratchet_tree) => ratchet_tree,
-                None => return Err(ExternalCommitError::MissingRatchetTree),
-            },
-        };
-
-        let (public_group, group_info) = PublicGroup::from_external_internal(
-            provider.crypto(),
-            ratchet_tree,
-            verifiable_group_info,
-            // Existing proposals are discarded when joining by external commit.
-            ProposalStore::new(),
-        )?;
-        let group_context = public_group.group_context();
-
-        // Obtain external_pub from GroupInfo extensions.
-        let external_pub = group_info
-            .extensions()
-            .external_pub()
-            .ok_or(ExternalCommitError::MissingExternalPub)?
-            .external_pub();
-
-        let (init_secret, kem_output) = InitSecret::from_group_context(
-            provider.crypto(),
-            group_context,
-            external_pub.as_slice(),
-        )
-        .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
-
-        // The `EpochSecrets` we create here are essentially zero, with the
-        // exception of the `InitSecret`, which is all we need here for the
-        // external commit.
-        let ciphersuite = group_info.group_context().ciphersuite();
-        let epoch_secrets =
-            EpochSecrets::with_init_secret(provider.crypto(), ciphersuite, init_secret)
-                .map_err(LibraryError::unexpected_crypto_error)?;
-        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
-            group_context
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?,
-            public_group.tree_size(),
-            // We use a fake own index of 0 here, as we're not going to use the
-            // tree for encryption until after the first commit. This issue is
-            // tracked in #767.
-            LeafNodeIndex::new(0u32),
-        );
-        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
-
-        let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
-
-        let mut inline_proposals = vec![external_init_proposal];
-
-        // If there is a group member in the group with the same identity as us,
-        // commit a remove proposal.
-        let signature_key = params.credential_with_key().signature_key.as_slice();
-        if let Some(us) = public_group
-            .members()
-            .find(|member| member.signature_key == signature_key)
-        {
-            let remove_proposal = Proposal::Remove(RemoveProposal { removed: us.index });
-            inline_proposals.push(remove_proposal);
-        };
-
-        let own_leaf_index =
-            public_group.leftmost_free_index(inline_proposals.iter(), iter::empty())?;
-        params.set_inline_proposals(inline_proposals);
-
-        let mut mls_group = MlsGroup {
-            mls_group_config: mls_group_config.clone(),
-            own_leaf_nodes: vec![],
-            aad: vec![],
-            group_state: MlsGroupState::Operational,
-            public_group,
-            group_epoch_secrets,
-            own_leaf_index,
-            message_secrets_store,
-            resumption_psk_store: ResumptionPskStore::new(32),
-        };
-
-        mls_group.set_max_past_epochs(mls_group_config.max_past_epochs);
-
-        // Immediately create the commit to add ourselves to the group.
-        let create_commit_result = mls_group
-            .create_external_commit(params, provider, signer)
-            .map_err(|_| ExternalCommitError::CommitError)?;
-
-        mls_group.group_state = MlsGroupState::PendingCommit(Box::new(
-            PendingCommitState::External(create_commit_result.staged_commit),
-        ));
-
-        mls_group
-            .store(provider.storage())
-            .map_err(ExternalCommitError::StorageError)?;
-
-        let public_message: PublicMessage = create_commit_result.commit.into();
-
-        Ok((
-            mls_group,
-            public_message.into(),
-            create_commit_result.group_info,
-        ))
+        Ok((mls_group, commit, group_info))
     }
 }
 

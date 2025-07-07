@@ -1,28 +1,51 @@
+use thiserror::Error;
 use tls_codec::Serialize as _;
 
 use crate::{
     error::LibraryError,
-    framing::{
-        mls_content_in::FramedContentBodyIn, sender, DecryptedMessage, PublicMessageIn, Sender,
-    },
+    framing::{mls_content_in::FramedContentBodyIn, DecryptedMessage, PublicMessageIn, Sender},
     group::{
-        commit_builder::{CommitBuilder, Initial},
-        create_commit::CommitType,
-        mls_group,
+        commit_builder::{CommitBuilder, ExternalCommitInfo, Initial},
         past_secrets::MessageSecretsStore,
-        ExternalCommitError, MlsGroup, MlsGroupJoinConfig, MlsGroupState, ProposalStore,
-        PublicGroup, QueuedProposal,
+        MlsGroup, MlsGroupJoinConfig, MlsGroupState, ProposalStore, PublicGroup, QueuedProposal,
+        ValidationError,
     },
     prelude::{
         group_info::VerifiableGroupInfo,
         proposals::{self, ProposalType},
-        CommitIn, CredentialWithKey, ExternalInitProposal, LeafNodeIndex, Proposal, ProposalIn,
-        ProtocolVersion, RatchetTreeIn, RemoveProposal,
+        CreationFromExternalError, CredentialWithKey, ExternalInitProposal, LeafNodeIndex,
+        Proposal, ProtocolVersion, RatchetTreeIn, RemoveProposal,
     },
     schedule::{psk::store::ResumptionPskStore, EpochSecrets, InitSecret},
     storage::OpenMlsProvider,
     treesync::LeafNodeParameters,
 };
+
+#[derive(Debug, Error)]
+pub enum ExternalCommitBuilderError<StorageError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// No ratchet tree available to build initial tree.
+    #[error("No ratchet tree available to build initial tree.")]
+    MissingRatchetTree,
+    /// No external_pub extension available to join group by external commit.
+    #[error("No external_pub extension available to join group by external commit.")]
+    MissingExternalPub,
+    /// We don't support the ciphersuite of the group we are trying to join.
+    #[error("We don't support the ciphersuite of the group we are trying to join.")]
+    UnsupportedCiphersuite,
+    /// This error indicates the public tree is invalid. See
+    /// [`CreationFromExternalError`] for more details.
+    #[error(transparent)]
+    PublicGroupError(#[from] CreationFromExternalError<StorageError>),
+    /// An erorr occurred when writing group to storage
+    #[error("An error occurred when writing group to storage.")]
+    StorageError(StorageError),
+    /// Error validating proposals.
+    #[error("Error validating proposals: {0}")]
+    InvalidProposal(#[from] ValidationError),
+}
 
 #[derive(Default)]
 pub struct ExternalCommitBuilder {
@@ -57,12 +80,13 @@ impl ExternalCommitBuilder {
         self
     }
 
-    pub fn create_group<Provider: OpenMlsProvider>(
+    pub fn build_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         verifiable_group_info: VerifiableGroupInfo,
         credential_with_key: CredentialWithKey,
-    ) -> Result<CommitBuilder<Initial, MlsGroup>, ExternalCommitError<Provider::StorageError>> {
+    ) -> Result<CommitBuilder<Initial, MlsGroup>, ExternalCommitBuilderError<Provider::StorageError>>
+    {
         let ExternalCommitBuilder {
             proposals,
             ratchet_tree,
@@ -77,7 +101,7 @@ impl ExternalCommitBuilder {
             Some(extension) => extension.ratchet_tree().clone(),
             None => match ratchet_tree {
                 Some(ratchet_tree) => ratchet_tree,
-                None => return Err(ExternalCommitError::MissingRatchetTree),
+                None => return Err(ExternalCommitBuilderError::MissingRatchetTree),
             },
         };
 
@@ -93,7 +117,7 @@ impl ExternalCommitBuilder {
         let external_pub = group_info
             .extensions()
             .external_pub()
-            .ok_or(ExternalCommitError::MissingExternalPub)?
+            .ok_or(ExternalCommitBuilderError::MissingExternalPub)?
             .external_pub();
 
         let (init_secret, kem_output) = InitSecret::from_group_context(
@@ -101,7 +125,7 @@ impl ExternalCommitBuilder {
             group_context,
             external_pub.as_slice(),
         )
-        .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
+        .map_err(|_| ExternalCommitBuilderError::UnsupportedCiphersuite)?;
 
         // The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the
@@ -144,12 +168,12 @@ impl ExternalCommitBuilder {
             let decrypted_message = DecryptedMessage::from_inbound_public_message(
                 message,
                 None,
-                serialized_context,
+                serialized_context.clone(),
                 provider.crypto(),
                 ciphersuite,
             )?;
             let unverified_message = public_group.parse_message(decrypted_message, None)?;
-            let (verified_message, credential) = unverified_message.verify(
+            let (verified_message, _credential) = unverified_message.verify(
                 ciphersuite,
                 provider.crypto(),
                 ProtocolVersion::default(),
@@ -215,7 +239,10 @@ impl ExternalCommitBuilder {
         let mut commit_builder = CommitBuilder::<'_, Initial, MlsGroup>::new(mls_group);
 
         commit_builder.stage.force_self_update = true;
-        commit_builder.stage.commit_type = CommitType::External(credential_with_key);
+        commit_builder.stage.external_commit_info = Some(ExternalCommitInfo {
+            credential: credential_with_key.clone(),
+            aad,
+        });
         let leaf_node_parameters = LeafNodeParameters::builder()
             .with_credential_with_key(credential_with_key)
             .build();

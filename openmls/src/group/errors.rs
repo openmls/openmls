@@ -11,6 +11,7 @@ use crate::{
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::MessageDecryptionError,
+    group::commit_builder::external_commits::ExternalCommitBuilderError,
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
     schedule::errors::PskError,
@@ -118,7 +119,7 @@ pub enum ExternalCommitError<StorageError> {
     InvalidGroupInfoSignature,
     /// Error creating external commit.
     #[error("Error creating external commit.")]
-    CommitError,
+    CommitError(#[from] CreateCommitError),
     /// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
@@ -129,6 +130,64 @@ pub enum ExternalCommitError<StorageError> {
     /// An erorr occurred when writing group to storage
     #[error("An error occurred when writing group to storage.")]
     StorageError(StorageError),
+}
+
+impl<StorageError> From<ExternalCommitBuilderError<StorageError>>
+    for ExternalCommitError<StorageError>
+{
+    fn from(error: ExternalCommitBuilderError<StorageError>) -> Self {
+        match error {
+            ExternalCommitBuilderError::LibraryError(library_error) => {
+                ExternalCommitError::LibraryError(library_error)
+            }
+            ExternalCommitBuilderError::MissingRatchetTree => {
+                ExternalCommitError::MissingRatchetTree
+            }
+            ExternalCommitBuilderError::MissingExternalPub => {
+                ExternalCommitError::MissingExternalPub
+            }
+            ExternalCommitBuilderError::UnsupportedCiphersuite => {
+                ExternalCommitError::UnsupportedCiphersuite
+            }
+            ExternalCommitBuilderError::PublicGroupError(creation_from_external_error) => {
+                ExternalCommitError::PublicGroupError(creation_from_external_error)
+            }
+            ExternalCommitBuilderError::StorageError(error) => {
+                ExternalCommitError::StorageError(error)
+            }
+            // These should not happen since `join_by_external_commit` doesn't
+            // take proposals as input.
+            ExternalCommitBuilderError::InvalidProposal(e) => {
+                log::error!("Error validating proposal in external commit: {e}");
+                ExternalCommitError::LibraryError(LibraryError::custom(
+                    "Error creating external commit",
+                ))
+            }
+        }
+    }
+}
+
+impl<StorageError> From<ExternalCommitBuilderFinalizeError<StorageError>>
+    for ExternalCommitError<StorageError>
+{
+    fn from(error: ExternalCommitBuilderFinalizeError<StorageError>) -> Self {
+        match error {
+            ExternalCommitBuilderFinalizeError::LibraryError(library_error) => {
+                ExternalCommitError::LibraryError(library_error)
+            }
+            ExternalCommitBuilderFinalizeError::StorageError(error) => {
+                ExternalCommitError::StorageError(error)
+            }
+            ExternalCommitBuilderFinalizeError::MergeCommitError(e) => {
+                log::error!("Error merging external commit: {e}");
+                // This shouldn't happen, since we merge our own external
+                // commit.
+                ExternalCommitError::LibraryError(LibraryError::custom(
+                    "Error merging external commit",
+                ))
+            }
+        }
+    }
 }
 
 /// Stage Commit error
@@ -268,6 +327,20 @@ pub enum CommitBuilderStageError<StorageError> {
     /// Error interacting with storage.
     #[error("Error interacting with storage.")]
     KeyStoreError(StorageError),
+}
+
+/// Stage commit error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ExternalCommitBuilderFinalizeError<StorageError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// Error interacting with storage.
+    #[error("Error interacting with storage.")]
+    StorageError(StorageError),
+    /// Error merging external commit.
+    #[error("Error merging external commit.")]
+    MergeCommitError(#[from] MergePendingCommitError<StorageError>),
 }
 
 /// Validation error
