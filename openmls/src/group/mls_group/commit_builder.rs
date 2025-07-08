@@ -147,14 +147,17 @@ pub struct CommitBuilder<'a, T, G: BorrowMut<MlsGroup> = &'a mut MlsGroup> {
 }
 
 impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
-    fn replace_stage<NextStage>(
+    pub(crate) fn replace_stage<NextStage>(
         self,
         next_stage: NextStage,
     ) -> (T, CommitBuilder<'a, NextStage, G>) {
         self.map_stage(|prev_stage| (prev_stage, next_stage))
     }
 
-    fn into_stage<NextStage>(self, next_stage: NextStage) -> CommitBuilder<'a, NextStage, G> {
+    pub(crate) fn into_stage<NextStage>(
+        self,
+        next_stage: NextStage,
+    ) -> CommitBuilder<'a, NextStage, G> {
         self.replace_stage(next_stage).1
     }
 
