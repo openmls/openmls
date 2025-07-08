@@ -5,28 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## 0.7.0 (Unreleased)
 
 ### Added
 
+- [#1661](https://github.com/openmls/openmls/pull/1661): Add `member_at` getter method to `MlsGroup`, `not_before` and `not_after` getter methods to `Lifetime` and `life_time` getter method to `KeyPackage`.
 - [#1688](https://github.com/openmls/openmls/pull/1688): Add `unknown()` getter method to `Extensions`.
 - [#1666](https://github.com/openmls/openmls/pull/1666): Add `members()` and `group_context()` getter methods to `StagedWelcome`.
 - [#1672](https://github.com/openmls/openmls/pull/1672): Add `epoch()` getter method to `VerifiableGroupInfo`.
 - [#1673](https://github.com/openmls/openmls/pull/1673): Return more specific error when attempting to decrypt own messages: `ProcessMessageError::ValidationError(ValidationError::CannotDecryptOwnMessage)`.
+- [#1675](https://github.com/openmls/openmls/pull/1675): Add `CommitBuilder` that can be used to create commit messages.
+- [#1682](https://github.com/openmls/openmls/pull/1682): Add stage provider backed by Sqlite.
+- [#1704](https://github.com/openmls/openmls/pull/1704): Add support for SelfRemove proposals as specified in the [MLS extensions draft specification](https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions).
 - [#1735](https://github.com/openmls/openmls/pull/1735): Add `self_update_with_new_signer` function to `MlsGroup`, as well as a `build_with_new_signer` build option for the `CommitBuilder`. Both can be used to create commits that rotate the creator's signature key.
-- [#1673](https://github.com/openmls/openmls/pull/1673): Return more specific error when attemtping to decrypt own messages: `ProcessMessageError::ValidationError(ValidationError::CannotDecryptOwnMessage)`.
 - [#1731](https://github.com/openmls/openmls/pull/1731): Add helpers to recover from group state forks, hidden behind the new `fork-resolution` feature flag.
 - [#1750](https://github.com/openmls/openmls/pull/1750): Support add proposals from external senders, using `ExternalProposal::new_add()`.
 - [#1766](https://github.com/openmls/openmls/pull/1766): New error variant for commit creation: If a new signer is introduced via `self_update_with_new_signer` and additionally a `CredentialWithKey` is provided via `LeafNodeParameters`, an `InvalidLeafNodeParameters` error is thrown.
 - [#1774](https://github.com/openmls/openmls/pull/1774): Add flag to control the return of a `GroupInfo` when building a commit using the `CommitBuilder`. Setting that flag overrides the `use_ratchet_tree_extension` flag in `MlsGroupJoinConfig`.
+- [#1784](https://github.com/openmls/openmls/pull/1784): Support group context extension proposals from external senders, using `ExternalProposal::new_group_context_extensions()`.
 
 ### Fixed
 
+- [#1657](https://github.com/openmls/openmls/pull/1657): Fix leaf node validation checks.
+- [#1667](https://github.com/openmls/openmls/pull/1667): Fix remove proposal validation checks.
+- [#1684](https://github.com/openmls/openmls/pull/1684): Fix external init proposal validation checks.
+- [#1691](https://github.com/openmls/openmls/pull/1691): Fix the way credentials are looked up when processing messages from previous epochs.
+- [#1702](https://github.com/openmls/openmls/pull/1702): Fix multiple validation checks.
 - [#1703](https://github.com/openmls/openmls/pull/1703): Fix a bug where updates proposals were not properly cleared if a remove proposal is present for the same group member.
 - [#1793](https://github.com/openmls/openmls/pull/1793): Fix a bug where SelfRemoves were not taken into account when computing the sender index of external committers
+- [#1763](https://github.com/openmls/openmls/pull/1763): Fix which extension types are considered valid in a leaf node.
+- [#1797](https://github.com/openmls/openmls/pull/1797): Fix when tree diff trimming is performed.
 
 ### Changed
 
+- [#1661](https://github.com/openmls/openmls/pull/1661): Expose `extensions` getter method on `GroupContextExtensionProposal`.
+- [#1669](https://github.com/openmls/openmls/pull/1669): The data in the enum variant `ProtocolMessage::PublicMessage` is wrapped in `Box`.
 - [#1700](https://github.com/openmls/openmls/pull/1700): During commit processing, OpenMLS will now return a `StorageError` if the storage provider fails while fetching `encryption_epoch_key_pairs`. Previously, it would ignore any error returned by the storage provider and just assume that no keys could be found (which typically lead to an error later during commit processing).
 - [#1762](https://github.com/openmls/openmls/pull/1762): Expose `LeafNodeSource` to allow handling output of `LeafNode::leaf_node_source()`.
 - [#1767](https://github.com/openmls/openmls/pull/1767): Return a more specific error when private messages that are too old are processed. The error type has changed from `ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(MessageDecryptionError::AeadError))` to `ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(MessageDecryptoinError::SecretTree(SecretTreeError::TooDistantInThePast)))`.

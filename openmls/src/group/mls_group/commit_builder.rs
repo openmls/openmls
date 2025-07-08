@@ -223,6 +223,8 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         self
     }
 
+    /// Adds a Remove proposal for the provided [`LeafNodeIndex`]es to the list of proposals to be
+    /// committed.
     pub fn propose_removals(mut self, removed: impl IntoIterator<Item = LeafNodeIndex>) -> Self {
         self.stage.own_proposals.extend(
             removed
@@ -232,6 +234,8 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         self
     }
 
+    /// Adds a GroupContextExtensions proposal for the provided [`Extensions`] to the list of
+    /// proposals to be committed.
     pub fn propose_group_context_extensions(mut self, extensions: Extensions) -> Self {
         self.stage
             .own_proposals
