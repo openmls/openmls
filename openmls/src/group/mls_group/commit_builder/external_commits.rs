@@ -56,6 +56,12 @@ pub struct ExternalCommitBuilder {
     aad: Vec<u8>,
 }
 
+impl MlsGroup {
+    pub fn external_commit_builder() -> ExternalCommitBuilder {
+        ExternalCommitBuilder::new()
+    }
+}
+
 impl ExternalCommitBuilder {
     pub fn new() -> Self {
         Self::default()
@@ -189,12 +195,7 @@ impl ExternalCommitBuilder {
                 verified_message,
                 proposals::ProposalOrRefType::Reference,
             )?;
-            let proposal = queued_proposal.proposal();
-            if proposal.is_type(ProposalType::PreSharedKey)
-                || proposal.is_type(ProposalType::SelfRemove)
-            {
-                queued_proposals.push(queued_proposal);
-            }
+            queued_proposals.push(queued_proposal);
         }
 
         let inline_proposals = [external_init_proposal].into_iter();
@@ -222,7 +223,9 @@ impl ExternalCommitBuilder {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let own_leaf_index = public_group.leftmost_free_index(inline_proposals.iter())?;
+        queued_proposals.extend(inline_proposals);
+
+        let own_leaf_index = public_group.leftmost_free_index(queued_proposals.iter())?;
 
         let original_wire_format_policy = config.wire_format_policy;
 
@@ -246,7 +249,7 @@ impl ExternalCommitBuilder {
 
         // Add all proposals to the proposal store.
         let proposal_store = mls_group.proposal_store_mut();
-        for queued_proposal in queued_proposals.into_iter().chain(inline_proposals) {
+        for queued_proposal in queued_proposals {
             proposal_store.add(queued_proposal);
         }
 
@@ -324,16 +327,6 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
         group.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
         )));
-
-        // Store the group so we can merge the pending commit.
-        //group
-        //    .store(provider.storage())
-        //    .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
-
-        //provider
-        //    .storage()
-        //    .write_group_state(group.group_id(), &group.group_state)
-        //    .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
 
         group.merge_pending_commit(provider)?;
 

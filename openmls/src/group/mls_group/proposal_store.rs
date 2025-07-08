@@ -17,6 +17,12 @@ use crate::{
     utils::vector_converter,
 };
 
+#[derive(Debug, Clone)]
+pub(crate) struct SelfRemoveInStore {
+    pub(crate) sender: LeafNodeIndex,
+    pub(crate) proposal_ref: ProposalRef,
+}
+
 /// A [ProposalStore] can store the standalone proposals that are received from
 /// the DS in between two commit messages.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -60,6 +66,23 @@ impl ProposalStore {
             .position(|p| &p.proposal_reference() == proposal_ref)?;
         self.queued_proposals.remove(index);
         Some(())
+    }
+
+    pub(crate) fn self_removes(&self) -> Vec<SelfRemoveInStore> {
+        self.queued_proposals
+            .iter()
+            .filter_map(|queued_proposal| {
+                match (queued_proposal.proposal(), queued_proposal.sender()) {
+                    (Proposal::SelfRemove, Sender::Member(sender_index)) => {
+                        Some(SelfRemoveInStore {
+                            sender: *sender_index,
+                            proposal_ref: queued_proposal.proposal_reference(),
+                        })
+                    }
+                    _ => None,
+                }
+            })
+            .collect()
     }
 }
 
