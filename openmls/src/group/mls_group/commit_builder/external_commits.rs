@@ -1,6 +1,9 @@
 use thiserror::Error;
 use tls_codec::Serialize as _;
 
+#[cfg(doc)]
+use super::CommitMessageBundle;
+
 use crate::{
     error::LibraryError,
     framing::{ContentType, DecryptedMessage, PublicMessageIn, Sender},
@@ -22,6 +25,7 @@ use crate::{
     treesync::LeafNodeParameters,
 };
 
+/// Error type for the [`ExternalCommitBuilder`].
 #[derive(Debug, Error)]
 pub enum ExternalCommitBuilderError<StorageError> {
     /// See [`LibraryError`] for more details.
@@ -77,9 +81,7 @@ impl ExternalCommitBuilder {
         Self::default()
     }
 
-    // Note that non-proposal messages are ignored and that only SelfRemoves are
-    // allowed
-    /// Adds [`SelfRemove`] proposals to the external commit. Other proposals or
+    /// Adds SelfRemove proposals to the external commit. Other proposals or
     /// other types of messages are ignored.
     pub fn with_proposals(mut self, proposals: Vec<PublicMessageIn>) -> Self {
         self.proposals = proposals;
@@ -316,7 +318,7 @@ impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
 
 // Impls that apply only to external commits.
 impl CommitBuilder<'_, super::Complete, MlsGroup> {
-    /// Finalizes and returns the group state, as well as the [`CommitMessageBundle`].
+    /// Finalizes and returns the [`MlsGroup`], as well as the [`CommitMessageBundle`].
     pub fn finalize<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
