@@ -48,6 +48,14 @@ pub enum ExternalCommitBuilderError<StorageError> {
     InvalidProposal(#[from] ValidationError),
 }
 
+/// This is the builder for external commits. It allows you to build an external
+/// commit that can be used to join a group externally. Parameters such as
+/// optional SelfRemove proposals from other members, the ratchet tree, and the
+/// group join configuration can be set in the first builder stage.
+///
+/// The second stage of this builder is a [`CommitBuilder`] that can be used to
+/// add one or more [`PreSharedKeyProposal`]s to the external commit and specify
+/// [`LeafNodeParameters`].
 #[derive(Default)]
 pub struct ExternalCommitBuilder {
     proposals: Vec<PublicMessageIn>,
@@ -57,42 +65,57 @@ pub struct ExternalCommitBuilder {
 }
 
 impl MlsGroup {
+    /// Creates a new [`ExternalCommitBuilder`] to build an external commit.
     pub fn external_commit_builder() -> ExternalCommitBuilder {
         ExternalCommitBuilder::new()
     }
 }
 
 impl ExternalCommitBuilder {
+    /// Creates a new [`ExternalCommitBuilder`] with default values.
     pub fn new() -> Self {
         Self::default()
     }
 
     // Note that non-proposal messages are ignored and that only SelfRemoves are
     // allowed
+    /// Adds [`SelfRemove`] proposals to the external commit. Other proposals or
+    /// other types of messages are ignored.
     pub fn with_proposals(mut self, proposals: Vec<PublicMessageIn>) -> Self {
         self.proposals = proposals;
         self
     }
 
+    /// Specifies the ratchet tree to use for the external commit. This is only
+    /// used if the ratchet tree is not provided in the [`VerifiableGroupInfo`]
+    /// extensions. A ratchet tree must be provided, either in the
+    /// [`VerifiableGroupInfo`] extensions or via this method.
     pub fn with_ratchet_tree(mut self, ratchet_tree: RatchetTreeIn) -> Self {
         self.ratchet_tree = Some(ratchet_tree);
         self
     }
 
+    /// Specifies the configuration to use for the group built as part of the
+    /// external commit. Note that the external commit will always be a
+    /// `PublicMessage` regardless of the wire format policy set in the group
+    /// config.
     pub fn with_config(mut self, config: MlsGroupJoinConfig) -> Self {
         self.config = config;
         self
     }
 
+    /// Specifies additional authenticated data (AAD) to be included in the
+    /// external commit.
     pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
         self.aad = aad;
         self
     }
 
-    // TODO: When writing documentation, remind the caller that the external
-    // commit is always going to be a PublicMessage. The wire format policy set
-    // in the group config will kick in after that external commit has been
-    // sent.
+    /// Build the [`MlsGroup`] from the provided [`VerifiableGroupInfo`] and
+    /// [`CredentialWithKey`].
+    ///
+    /// Returns a [`CommitBuilder`] that can be used to further configure the
+    /// external commit.
     pub fn build_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
@@ -270,7 +293,7 @@ impl ExternalCommitBuilder {
 
 // Impls that only apply to external commits.
 impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
-    /// Adds a proposal to the proposals to be committed.
+    /// Adds a [`PreSharedKeyProposal`] to the proposals to be committed.
     pub fn add_psk_proposal(mut self, proposal: PreSharedKeyProposal) -> Self {
         self.stage
             .own_proposals
@@ -278,7 +301,8 @@ impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
         self
     }
 
-    /// Adds the proposals in the iterator to the proposals to be committed.
+    /// Adds the [`PreSharedKeyProposal`] in the iterator to the proposals to be
+    /// committed.
     pub fn add_psk_proposals(
         mut self,
         proposals: impl IntoIterator<Item = PreSharedKeyProposal>,
