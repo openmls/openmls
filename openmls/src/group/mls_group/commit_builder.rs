@@ -34,6 +34,8 @@ use crate::{
 
 pub(crate) mod external_commits;
 
+pub use external_commits::{ExternalCommitBuilder, ExternalCommitBuilderError};
+
 #[cfg(doc)]
 use super::MlsGroupJoinConfig;
 
