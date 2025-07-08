@@ -5,24 +5,29 @@ use tls_codec::Serialize as _;
 use super::CommitMessageBundle;
 
 use crate::{
+    binary_tree::LeafNodeIndex,
+    credentials::CredentialWithKey,
     error::LibraryError,
     framing::{ContentType, DecryptedMessage, PublicMessageIn, Sender},
     group::{
         commit_builder::{CommitBuilder, ExternalCommitInfo, Initial},
         past_secrets::MessageSecretsStore,
+        public_group::errors::CreationFromExternalError,
         ExternalCommitBuilderFinalizeError, MlsGroup, MlsGroupJoinConfig, MlsGroupState,
         PendingCommitState, ProposalStore, PublicGroup, QueuedProposal, ValidationError,
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
-    prelude::{
+    messages::{
         group_info::VerifiableGroupInfo,
-        proposals::{self, ProposalType},
-        CreationFromExternalError, CredentialWithKey, ExternalInitProposal, LeafNodeIndex,
-        PreSharedKeyProposal, Proposal, ProtocolVersion, RatchetTreeIn, RemoveProposal,
+        proposals::{
+            ExternalInitProposal, PreSharedKeyProposal, Proposal, ProposalOrRefType, ProposalType,
+            RemoveProposal,
+        },
     },
     schedule::{psk::store::ResumptionPskStore, EpochSecrets, InitSecret},
     storage::OpenMlsProvider,
-    treesync::LeafNodeParameters,
+    treesync::{LeafNodeParameters, RatchetTreeIn},
+    versions::ProtocolVersion,
 };
 
 /// Error type for the [`ExternalCommitBuilder`].
@@ -213,7 +218,7 @@ impl ExternalCommitBuilder {
                 ciphersuite,
                 provider.crypto(),
                 verified_message,
-                proposals::ProposalOrRefType::Reference,
+                ProposalOrRefType::Reference,
             )?;
             // We ignore any proposal that is not a SelfRemove.
             if queued_proposal.proposal().is_type(ProposalType::SelfRemove) {

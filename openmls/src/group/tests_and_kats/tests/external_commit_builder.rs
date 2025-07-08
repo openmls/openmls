@@ -6,8 +6,9 @@ use crate::{
         tests_and_kats::utils::CredentialWithKeyAndSigner, MlsGroup, MlsGroupJoinConfig,
         WireFormatPolicy, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
-    prelude::{Capabilities, LeafNodeParameters, PreSharedKeyProposal, ProposalType},
+    messages::proposals::{PreSharedKeyProposal, ProposalType},
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
+    treesync::node::leaf_node::{Capabilities, LeafNodeParameters},
 };
 
 #[openmls_test]
