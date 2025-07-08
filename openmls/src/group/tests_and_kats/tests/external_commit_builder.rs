@@ -1,7 +1,7 @@
 use openmls_test::openmls_test;
 
 use crate::{
-    framing::{MlsMessageBodyIn, MlsMessageIn, ProcessedMessageContent},
+    framing::{ProcessedMessageContent, ProtocolMessage},
     group::{
         tests_and_kats::utils::CredentialWithKeyAndSigner, MlsGroup, MlsGroupJoinConfig,
         WireFormatPolicy, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -97,8 +97,9 @@ fn external_commit_builder() {
     // Check that the padding was set correctly.
     assert_eq!(bob_group.configuration().padding_size(), PADDING_SIZE);
 
-    let plaintext = MlsMessageIn::from(commit_message_bundle.into_commit())
-        .into_plaintext()
+    let plaintext = commit_message_bundle
+        .into_commit()
+        .into_protocol_message()
         .unwrap();
 
     alice_group.set_aad(AAD.to_vec());
@@ -118,14 +119,15 @@ fn external_commit_builder() {
         .leave_group_via_self_remove(provider, &alice_signer)
         .unwrap();
 
-    let MlsMessageBodyIn::PublicMessage(self_remove_proposal) = MlsMessageIn::from(msg_out).body
+    let ProtocolMessage::PublicMessage(self_remove_proposal) =
+        msg_out.into_protocol_message().unwrap()
     else {
         panic!("Expected a public message for the self-remove proposal.");
     };
 
     // Bob processes the self-remove proposal.
     let bob_processed_message = bob_group
-        .process_message(provider, self_remove_proposal.clone())
+        .process_message(provider, *self_remove_proposal.clone())
         .unwrap();
 
     let ProcessedMessageContent::ProposalMessage(proposal) = bob_processed_message.into_content()
@@ -151,7 +153,7 @@ fn external_commit_builder() {
     psk.store(provider, &psk_value).unwrap();
 
     let (charlie_group, commit_message_bundle) = MlsGroup::external_commit_builder()
-        .with_proposals(vec![self_remove_proposal])
+        .with_proposals(vec![*self_remove_proposal])
         .with_ratchet_tree(bob_group.export_ratchet_tree().into())
         .build_group(
             provider,
@@ -170,8 +172,9 @@ fn external_commit_builder() {
         .unwrap();
 
     // Bob processes Charlie's Commit.
-    let plaintext = MlsMessageIn::from(commit_message_bundle.into_commit())
-        .into_plaintext()
+    let plaintext = commit_message_bundle
+        .into_commit()
+        .into_protocol_message()
         .unwrap();
 
     let bob_processed_message = bob_group.process_message(provider, plaintext).unwrap();

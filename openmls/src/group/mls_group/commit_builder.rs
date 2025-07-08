@@ -145,7 +145,7 @@ pub struct CommitBuilder<'a, T, G: BorrowMut<MlsGroup> = &'a mut MlsGroup> {
     /// The current stage
     stage: T,
 
-    pd: PhantomData<&'a T>,
+    pd: PhantomData<&'a ()>,
 }
 
 impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
