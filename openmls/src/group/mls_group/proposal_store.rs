@@ -17,6 +17,12 @@ use crate::{
     utils::vector_converter,
 };
 
+#[derive(Debug, Clone)]
+pub(crate) struct SelfRemoveInStore {
+    pub(crate) sender: LeafNodeIndex,
+    pub(crate) proposal_ref: ProposalRef,
+}
+
 /// A [ProposalStore] can store the standalone proposals that are received from
 /// the DS in between two commit messages.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -60,6 +66,23 @@ impl ProposalStore {
             .position(|p| &p.proposal_reference() == proposal_ref)?;
         self.queued_proposals.remove(index);
         Some(())
+    }
+
+    pub(crate) fn self_removes(&self) -> Vec<SelfRemoveInStore> {
+        self.queued_proposals
+            .iter()
+            .filter_map(|queued_proposal| {
+                match (queued_proposal.proposal(), queued_proposal.sender()) {
+                    (Proposal::SelfRemove, Sender::Member(sender_index)) => {
+                        Some(SelfRemoveInStore {
+                            sender: *sender_index,
+                            proposal_ref: queued_proposal.proposal_reference(),
+                        })
+                    }
+                    _ => None,
+                }
+            })
+            .collect()
     }
 }
 
@@ -403,162 +426,7 @@ impl ProposalQueue {
     ///
     /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for
     /// the own node were included
-    pub(crate) fn filter_proposals<'a>(
-        ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
-        sender: Sender,
-        proposal_store: &'a ProposalStore,
-        inline_proposals: &'a [Proposal],
-        own_index: LeafNodeIndex,
-    ) -> Result<(Self, bool), ProposalQueueError> {
-        // We use a HashSet to filter out duplicate Adds and use a vector in
-        // addition to keep the order as they come in.
-        let mut adds: OrderedProposalRefs = OrderedProposalRefs::new();
-        let mut valid_proposals: OrderedProposalRefs = OrderedProposalRefs::new();
-        let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
-        let mut contains_own_updates = false;
-        let mut contains_external_init = false;
-
-        let mut member_specific_proposals: HashMap<LeafNodeIndex, QueuedProposal> = HashMap::new();
-        let mut register_member_specific_proposal =
-            |member: LeafNodeIndex, proposal: QueuedProposal| {
-                // Only replace if the existing proposal is an Update.
-                match member_specific_proposals.entry(member) {
-                    // Insert if no entry exists for this sender.
-                    Entry::Vacant(vacant_entry) => {
-                        vacant_entry.insert(proposal);
-                    }
-                    // Replace the existing proposal if the new proposal has
-                    // priority.
-                    Entry::Occupied(mut occupied_entry)
-                        if occupied_entry
-                            .get()
-                            .proposal()
-                            .has_lower_priority_than(&proposal.proposal) =>
-                    {
-                        occupied_entry.insert(proposal);
-                    }
-                    // Otherwise ignore the new proposal.
-                    Entry::Occupied(_) => {}
-                }
-            };
-
-        // Aggregate both proposal types to a common iterator
-        // We checked earlier that only proposals can end up here
-        let mut queued_proposal_list: Vec<QueuedProposal> =
-            proposal_store.proposals().cloned().collect();
-
-        queued_proposal_list.extend(
-            inline_proposals
-                .iter()
-                .map(|p| {
-                    QueuedProposal::from_proposal_and_sender(
-                        ciphersuite,
-                        crypto,
-                        p.clone(),
-                        &sender,
-                    )
-                })
-                .collect::<Result<Vec<QueuedProposal>, _>>()?,
-        );
-
-        // Parse proposals and build adds and member list
-        for queued_proposal in queued_proposal_list {
-            proposal_pool.insert(
-                queued_proposal.proposal_reference(),
-                queued_proposal.clone(),
-            );
-            match queued_proposal.proposal {
-                Proposal::Add(_) => {
-                    adds.add(queued_proposal.proposal_reference());
-                }
-                Proposal::Update(_) => {
-                    // Only members can send update proposals
-                    // ValSem112
-                    let Sender::Member(sender_index) = queued_proposal.sender() else {
-                        return Err(ProposalQueueError::UpdateFromExternalSender);
-                    };
-                    if sender_index == &own_index {
-                        contains_own_updates = true;
-                        continue;
-                    }
-                    register_member_specific_proposal(*sender_index, queued_proposal);
-                }
-                Proposal::Remove(ref remove_proposal) => {
-                    let removed = remove_proposal.removed();
-                    register_member_specific_proposal(removed, queued_proposal);
-                }
-                Proposal::PreSharedKey(_) => {
-                    valid_proposals.add(queued_proposal.proposal_reference());
-                }
-                Proposal::ReInit(_) => {
-                    // TODO #751: Only keep one ReInit
-                }
-                Proposal::ExternalInit(_) => {
-                    // Only use the first external init proposal we find.
-                    if !contains_external_init {
-                        valid_proposals.add(queued_proposal.proposal_reference());
-                        contains_external_init = true;
-                    }
-                }
-                Proposal::GroupContextExtensions(_) => {
-                    valid_proposals.add(queued_proposal.proposal_reference());
-                }
-                Proposal::AppAck(_) => unimplemented!("See #291"),
-                Proposal::SelfRemove => {
-                    let Sender::Member(removed) = queued_proposal.sender() else {
-                        return Err(ProposalQueueError::SelfRemoveFromNonMember);
-                    };
-                    register_member_specific_proposal(*removed, queued_proposal);
-                }
-                Proposal::Custom(_) => {
-                    // Other/unknown proposals are always considered valid and
-                    // have to be checked by the application instead.
-                    valid_proposals.add(queued_proposal.proposal_reference());
-                }
-            }
-        }
-
-        // Add the leaf-specific proposals to the list of valid proposals.
-        for proposal in member_specific_proposals.values() {
-            valid_proposals.add(proposal.proposal_reference());
-        }
-
-        // Only retain `adds` and `valid_proposals`
-        let mut proposal_queue = ProposalQueue::default();
-        for proposal_reference in adds.iter().chain(valid_proposals.iter()) {
-            let queued_proposal = proposal_pool
-                .get(proposal_reference)
-                .cloned()
-                .ok_or(ProposalQueueError::ProposalNotFound)?;
-            proposal_queue.add(queued_proposal);
-        }
-        Ok((proposal_queue, contains_own_updates))
-    }
-
-    /// Filters received proposals without inline proposals
-    ///
-    /// 11.2 Commit
-    /// If there are multiple proposals that apply to the same leaf,
-    /// the committer chooses one and includes only that one in the Commit,
-    /// considering the rest invalid. The committer MUST prefer any Remove
-    /// received, or the most recent Update for the leaf if there are no
-    /// Removes. If there are multiple Add proposals for the same client,
-    /// the committer again chooses one to include and considers the rest
-    /// invalid.
-    ///
-    /// The function performs the following steps:
-    ///
-    /// - Extract Adds and filter for duplicates
-    /// - Build member list with chains: Updates, Removes & SelfRemoves
-    /// - Check for invalid indexes and drop proposal
-    /// - Check for presence of SelfRemoves and delete Removes and Updates
-    /// - Check for presence of Removes and delete Updates
-    /// - Only keep the last Update
-    ///
-    /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for
-    /// the own node were included
-    pub(crate) fn filter_proposals_without_inline(
+    pub(crate) fn filter_proposals(
         iter: impl IntoIterator<Item = QueuedProposal>,
         own_index: LeafNodeIndex,
     ) -> Result<(Self, bool), ProposalQueueError> {

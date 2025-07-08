@@ -22,4 +22,10 @@ Calling `join_by_external_commit` requires an `MlsGroupJoinConfig` (see [Group c
 {{#include ../../../openmls/tests/book_code.rs:charlie_joins_external_commit}}
 ```
 
+Alternatively, external commits can be created using a builder pattern via `MlsGroup::external_commit_builder()`. The `ExternalCommitBuilder` provides more options than `join_by_external` in that it allows the inclusion of SelfRemove or PSK proposals. After its first stage, the `ExternalCommitBuilder` turns into a regular `CommitBuilder`. As external commits come with a few restrictions relative to regular commits, not all `CommitBuilder` capabilities are exposed for external commits. Also, instead of `stage_commit` this `CommitBuilder` requires a call to `finalize` before it returns the new `MlsGroup`, as well as the `MlsMessageOut` containing the external commit.
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:external_commit_builder}}
+```
+
 The resulting external commit message needs to be fanned out to the Delivery Service and accepted by the other members before merging this external commit.

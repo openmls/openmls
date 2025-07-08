@@ -3,20 +3,15 @@
 //! This module contains [`MlsGroup`] and its submodules.
 //!
 
-use create_commit::CreateCommitParams;
 use past_secrets::MessageSecretsStore;
 use proposal_store::ProposalQueue;
 use serde::{Deserialize, Serialize};
-use staged_commit::{MemberStagedCommitState, StagedCommitState};
 use tls_codec::Serialize as _;
 
 #[cfg(test)]
 use crate::treesync::node::leaf_node::TreePosition;
 
-use super::{
-    diff::compute_path::PathComputationResult,
-    proposal_store::{ProposalStore, QueuedProposal},
-};
+use super::proposal_store::{ProposalStore, QueuedProposal};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::ProposalRef, signable::Signable},
@@ -24,16 +19,16 @@ use crate::{
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{
-        CreateCommitError, CreateGroupContextExtProposalError, Extension, ExtensionType,
-        Extensions, ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
-        MlsGroupStateError, OutgoingWireFormatPolicy, ProposalQueueError, PublicGroup,
-        RatchetTreeExtension, RequiredCapabilitiesExtension, StagedCommit,
+        CreateGroupContextExtProposalError, Extension, ExtensionType, Extensions,
+        ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
+        MlsGroupStateError, OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension,
+        RequiredCapabilitiesExtension, StagedCommit,
     },
     key_packages::KeyPackageBundle,
     messages::{
         group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
         proposals::*,
-        Commit, ConfirmationTag, GroupSecrets, Welcome,
+        ConfirmationTag, GroupSecrets, Welcome,
     },
     schedule::{
         message_secrets::MessageSecrets,
@@ -61,7 +56,6 @@ use config::*;
 pub(crate) mod builder;
 pub(crate) mod commit_builder;
 pub(crate) mod config;
-pub(crate) mod create_commit;
 pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod past_secrets;

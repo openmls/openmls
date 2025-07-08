@@ -1,14 +1,15 @@
 use std::collections::HashSet;
 
 use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer};
-use tls_codec::Serialize;
+use serde::{Deserialize, Serialize};
+use tls_codec::Serialize as _;
 
 use crate::{
     binary_tree::LeafNodeIndex,
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
-    group::{create_commit::CommitType, errors::CreateCommitError},
+    group::errors::CreateCommitError,
     schedule::CommitSecret,
     treesync::{
         node::{
@@ -21,6 +22,13 @@ use crate::{
 };
 
 use super::PublicGroupDiff;
+
+/// Can be used to denote the type of a commit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub(crate) enum CommitType {
+    External(CredentialWithKey),
+    Member,
+}
 
 /// A helper struct which contains the values resulting from the preparation of
 /// a commit with path.
