@@ -3,7 +3,7 @@ use tls_codec::Serialize as _;
 
 use crate::{
     error::LibraryError,
-    framing::{mls_content_in::FramedContentBodyIn, DecryptedMessage, PublicMessageIn, Sender},
+    framing::{ContentType, DecryptedMessage, PublicMessageIn, Sender},
     group::{
         commit_builder::{CommitBuilder, ExternalCommitInfo, Initial},
         past_secrets::MessageSecretsStore,
@@ -67,6 +67,8 @@ impl ExternalCommitBuilder {
         Self::default()
     }
 
+    // Note that non-proposal messages are ignored and that only SelfRemoves are
+    // allowed
     pub fn with_proposals(mut self, proposals: Vec<PublicMessageIn>) -> Self {
         self.proposals = proposals;
         self
@@ -166,15 +168,8 @@ impl ExternalCommitBuilder {
             .map_err(LibraryError::missing_bound_check)?;
         let mut queued_proposals = Vec::new();
         for message in proposals {
-            match message.content() {
-                FramedContentBodyIn::Proposal(proposal) => {
-                    if !matches!(proposal.proposal_type(), ProposalType::SelfRemove)
-                        && !matches!(proposal.proposal_type(), ProposalType::PreSharedKey)
-                    {
-                        continue; // We are only allowed to include SelfRemove and PSK proposals in our external commit.
-                    }
-                }
-                _ => continue, // We ignore messages that are not proposals.
+            if message.content_type() != ContentType::Proposal {
+                continue; // We only want proposals.
             }
             let decrypted_message = DecryptedMessage::from_inbound_public_message(
                 message,
@@ -195,7 +190,10 @@ impl ExternalCommitBuilder {
                 verified_message,
                 proposals::ProposalOrRefType::Reference,
             )?;
-            queued_proposals.push(queued_proposal);
+            // We ignore any proposal that is not a SelfRemove.
+            if queued_proposal.proposal().is_type(ProposalType::SelfRemove) {
+                queued_proposals.push(queued_proposal);
+            }
         }
 
         let inline_proposals = [external_init_proposal].into_iter();
