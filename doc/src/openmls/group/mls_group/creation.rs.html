@@ -1,161 +1,161 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/creation.rs`."><title>creation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1a91846b.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0 (6b00bc388 2025-06-23)" data-channel="1.88.0" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../../static.files/storage-4e99c027.js"></script><script defer src="../../../../static.files/src-script-63605ae7.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>creation.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>errors::NewGroupError;
-<a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
-<a href=#3 id=3 data-nosnippet>3</a>
-<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use super</span>::{builder::MlsGroupBuilder, <span class="kw-2">*</span>};
-<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use crate</span>::{
-<a href=#6 id=6 data-nosnippet>6</a>    credentials::CredentialWithKey,
-<a href=#7 id=7 data-nosnippet>7</a>    group::errors::{ExternalCommitError, WelcomeError},
-<a href=#8 id=8 data-nosnippet>8</a>    messages::{
-<a href=#9 id=9 data-nosnippet>9</a>        group_info::{GroupInfo, VerifiableGroupInfo},
-<a href=#10 id=10 data-nosnippet>10</a>        Welcome,
-<a href=#11 id=11 data-nosnippet>11</a>    },
-<a href=#12 id=12 data-nosnippet>12</a>    schedule::{
-<a href=#13 id=13 data-nosnippet>13</a>        psk::{store::ResumptionPskStore, PreSharedKeyId},
-<a href=#14 id=14 data-nosnippet>14</a>        EpochSecrets, InitSecret,
-<a href=#15 id=15 data-nosnippet>15</a>    },
-<a href=#16 id=16 data-nosnippet>16</a>    storage::OpenMlsProvider,
-<a href=#17 id=17 data-nosnippet>17</a>    treesync::{
-<a href=#18 id=18 data-nosnippet>18</a>        errors::{DerivePathError, PublicTreeError},
-<a href=#19 id=19 data-nosnippet>19</a>        node::leaf_node::{Capabilities, LeafNodeParameters},
-<a href=#20 id=20 data-nosnippet>20</a>        RatchetTreeIn,
-<a href=#21 id=21 data-nosnippet>21</a>    },
-<a href=#22 id=22 data-nosnippet>22</a>};
-<a href=#23 id=23 data-nosnippet>23</a>
-<a href=#24 id=24 data-nosnippet>24</a><span class="attr">#[cfg(doc)]
-<a href=#25 id=25 data-nosnippet>25</a></span><span class="kw">use </span><span class="kw">crate</span>::key_packages::KeyPackage;
-<a href=#26 id=26 data-nosnippet>26</a>
-<a href=#27 id=27 data-nosnippet>27</a><span class="kw">impl </span>MlsGroup {
-<a href=#28 id=28 data-nosnippet>28</a>    <span class="comment">// === Group creation ===
-<a href=#29 id=29 data-nosnippet>29</a>
-<a href=#30 id=30 data-nosnippet>30</a>    </span><span class="doccomment">/// Creates a builder which can be used to configure and build
-<a href=#31 id=31 data-nosnippet>31</a>    /// a new [`MlsGroup`].
-<a href=#32 id=32 data-nosnippet>32</a>    </span><span class="kw">pub fn </span>builder() -&gt; MlsGroupBuilder {
-<a href=#33 id=33 data-nosnippet>33</a>        MlsGroupBuilder::new()
-<a href=#34 id=34 data-nosnippet>34</a>    }
-<a href=#35 id=35 data-nosnippet>35</a>
-<a href=#36 id=36 data-nosnippet>36</a>    <span class="doccomment">/// Creates a new group with the creator as the only member (and a random
-<a href=#37 id=37 data-nosnippet>37</a>    /// group ID).
-<a href=#38 id=38 data-nosnippet>38</a>    ///
-<a href=#39 id=39 data-nosnippet>39</a>    /// This function removes the private key corresponding to the
-<a href=#40 id=40 data-nosnippet>40</a>    /// `key_package` from the key store.
-<a href=#41 id=41 data-nosnippet>41</a>    </span><span class="kw">pub fn </span>new&lt;Provider: OpenMlsProvider&gt;(
-<a href=#42 id=42 data-nosnippet>42</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#43 id=43 data-nosnippet>43</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-<a href=#44 id=44 data-nosnippet>44</a>        mls_group_create_config: <span class="kw-2">&amp;</span>MlsGroupCreateConfig,
-<a href=#45 id=45 data-nosnippet>45</a>        credential_with_key: CredentialWithKey,
-<a href=#46 id=46 data-nosnippet>46</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&lt;Provider::StorageError&gt;&gt; {
-<a href=#47 id=47 data-nosnippet>47</a>        MlsGroupBuilder::new().build_internal(
-<a href=#48 id=48 data-nosnippet>48</a>            provider,
-<a href=#49 id=49 data-nosnippet>49</a>            signer,
-<a href=#50 id=50 data-nosnippet>50</a>            credential_with_key,
-<a href=#51 id=51 data-nosnippet>51</a>            <span class="prelude-val">Some</span>(mls_group_create_config.clone()),
-<a href=#52 id=52 data-nosnippet>52</a>        )
-<a href=#53 id=53 data-nosnippet>53</a>    }
-<a href=#54 id=54 data-nosnippet>54</a>
-<a href=#55 id=55 data-nosnippet>55</a>    <span class="doccomment">/// Creates a new group with a given group ID with the creator as the only
-<a href=#56 id=56 data-nosnippet>56</a>    /// member.
-<a href=#57 id=57 data-nosnippet>57</a>    </span><span class="kw">pub fn </span>new_with_group_id&lt;Provider: OpenMlsProvider&gt;(
-<a href=#58 id=58 data-nosnippet>58</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#59 id=59 data-nosnippet>59</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-<a href=#60 id=60 data-nosnippet>60</a>        mls_group_create_config: <span class="kw-2">&amp;</span>MlsGroupCreateConfig,
-<a href=#61 id=61 data-nosnippet>61</a>        group_id: GroupId,
-<a href=#62 id=62 data-nosnippet>62</a>        credential_with_key: CredentialWithKey,
-<a href=#63 id=63 data-nosnippet>63</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&lt;Provider::StorageError&gt;&gt; {
-<a href=#64 id=64 data-nosnippet>64</a>        MlsGroupBuilder::new()
-<a href=#65 id=65 data-nosnippet>65</a>            .with_group_id(group_id)
-<a href=#66 id=66 data-nosnippet>66</a>            .build_internal(
-<a href=#67 id=67 data-nosnippet>67</a>                provider,
-<a href=#68 id=68 data-nosnippet>68</a>                signer,
-<a href=#69 id=69 data-nosnippet>69</a>                credential_with_key,
-<a href=#70 id=70 data-nosnippet>70</a>                <span class="prelude-val">Some</span>(mls_group_create_config.clone()),
-<a href=#71 id=71 data-nosnippet>71</a>            )
-<a href=#72 id=72 data-nosnippet>72</a>    }
-<a href=#73 id=73 data-nosnippet>73</a>
-<a href=#74 id=74 data-nosnippet>74</a>    <span class="doccomment">/// Join an existing group through an External Commit.
-<a href=#75 id=75 data-nosnippet>75</a>    /// The resulting [`MlsGroup`] instance starts off with a pending
-<a href=#76 id=76 data-nosnippet>76</a>    /// commit (the external commit, which adds this client to the group).
-<a href=#77 id=77 data-nosnippet>77</a>    /// Merging this commit is necessary for this [`MlsGroup`] instance to
-<a href=#78 id=78 data-nosnippet>78</a>    /// function properly, as, for example, this client is not yet part of the
-<a href=#79 id=79 data-nosnippet>79</a>    /// tree. As a result, it is not possible to clear the pending commit. If
-<a href=#80 id=80 data-nosnippet>80</a>    /// the external commit was rejected due to an epoch change, the
-<a href=#81 id=81 data-nosnippet>81</a>    /// [`MlsGroup`] instance has to be discarded and a new one has to be
-<a href=#82 id=82 data-nosnippet>82</a>    /// created using this function based on the latest `ratchet_tree` and
-<a href=#83 id=83 data-nosnippet>83</a>    /// group info. For more information on the external init process,
-<a href=#84 id=84 data-nosnippet>84</a>    /// please see Section 11.2.1 in the MLS specification.
-<a href=#85 id=85 data-nosnippet>85</a>    ///
-<a href=#86 id=86 data-nosnippet>86</a>    /// Note: If there is a group member in the group with the same identity as
-<a href=#87 id=87 data-nosnippet>87</a>    /// us, this will create a remove proposal.
-<a href=#88 id=88 data-nosnippet>88</a>    </span><span class="attr">#[allow(clippy::too_many_arguments)]
-<a href=#89 id=89 data-nosnippet>89</a>    </span><span class="kw">pub fn </span>join_by_external_commit&lt;Provider: OpenMlsProvider&gt;(
-<a href=#90 id=90 data-nosnippet>90</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#91 id=91 data-nosnippet>91</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-<a href=#92 id=92 data-nosnippet>92</a>        ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
-<a href=#93 id=93 data-nosnippet>93</a>        verifiable_group_info: VerifiableGroupInfo,
-<a href=#94 id=94 data-nosnippet>94</a>        mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
-<a href=#95 id=95 data-nosnippet>95</a>        capabilities: <span class="prelude-ty">Option</span>&lt;Capabilities&gt;,
-<a href=#96 id=96 data-nosnippet>96</a>        extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
-<a href=#97 id=97 data-nosnippet>97</a>        aad: <span class="kw-2">&amp;</span>[u8],
-<a href=#98 id=98 data-nosnippet>98</a>        credential_with_key: CredentialWithKey,
-<a href=#99 id=99 data-nosnippet>99</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, MlsMessageOut, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;), ExternalCommitError&lt;Provider::StorageError&gt;&gt;
-<a href=#100 id=100 data-nosnippet>100</a>    {
-<a href=#101 id=101 data-nosnippet>101</a>        <span class="comment">// Prepare the commit parameters
-<a href=#102 id=102 data-nosnippet>102</a>        </span><span class="kw">let </span>framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
-<a href=#103 id=103 data-nosnippet>103</a>
-<a href=#104 id=104 data-nosnippet>104</a>        <span class="kw">let </span>leaf_node_parameters = LeafNodeParameters::builder()
-<a href=#105 id=105 data-nosnippet>105</a>            .with_capabilities(capabilities.unwrap_or_default())
-<a href=#106 id=106 data-nosnippet>106</a>            .with_extensions(extensions.unwrap_or_default())
-<a href=#107 id=107 data-nosnippet>107</a>            .build();
-<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span><span class="kw-2">mut </span>params = CreateCommitParams::builder()
-<a href=#109 id=109 data-nosnippet>109</a>            .external_commit(credential_with_key, framing_parameters)
-<a href=#110 id=110 data-nosnippet>110</a>            .leaf_node_parameters(leaf_node_parameters)
-<a href=#111 id=111 data-nosnippet>111</a>            .build();
-<a href=#112 id=112 data-nosnippet>112</a>
-<a href=#113 id=113 data-nosnippet>113</a>        <span class="comment">// Build the ratchet tree
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/creation.rs`."><title>creation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1a91846b.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0 (6b00bc388 2025-06-23)" data-channel="1.88.0" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../../static.files/storage-4e99c027.js"></script><script defer src="../../../../static.files/src-script-63605ae7.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>creation.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::iter;
+<a href=#2 id=2 data-nosnippet>2</a>
+<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>errors::NewGroupError;
+<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
+<a href=#5 id=5 data-nosnippet>5</a>
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use super</span>::{builder::MlsGroupBuilder, <span class="kw-2">*</span>};
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use crate</span>::{
+<a href=#8 id=8 data-nosnippet>8</a>    credentials::CredentialWithKey,
+<a href=#9 id=9 data-nosnippet>9</a>    group::errors::{ExternalCommitError, WelcomeError},
+<a href=#10 id=10 data-nosnippet>10</a>    messages::{
+<a href=#11 id=11 data-nosnippet>11</a>        group_info::{GroupInfo, VerifiableGroupInfo},
+<a href=#12 id=12 data-nosnippet>12</a>        Welcome,
+<a href=#13 id=13 data-nosnippet>13</a>    },
+<a href=#14 id=14 data-nosnippet>14</a>    schedule::{
+<a href=#15 id=15 data-nosnippet>15</a>        psk::{store::ResumptionPskStore, PreSharedKeyId},
+<a href=#16 id=16 data-nosnippet>16</a>        EpochSecrets, InitSecret,
+<a href=#17 id=17 data-nosnippet>17</a>    },
+<a href=#18 id=18 data-nosnippet>18</a>    storage::OpenMlsProvider,
+<a href=#19 id=19 data-nosnippet>19</a>    treesync::{
+<a href=#20 id=20 data-nosnippet>20</a>        errors::{DerivePathError, PublicTreeError},
+<a href=#21 id=21 data-nosnippet>21</a>        node::leaf_node::{Capabilities, LeafNodeParameters},
+<a href=#22 id=22 data-nosnippet>22</a>        RatchetTreeIn,
+<a href=#23 id=23 data-nosnippet>23</a>    },
+<a href=#24 id=24 data-nosnippet>24</a>};
+<a href=#25 id=25 data-nosnippet>25</a>
+<a href=#26 id=26 data-nosnippet>26</a><span class="attr">#[cfg(doc)]
+<a href=#27 id=27 data-nosnippet>27</a></span><span class="kw">use </span><span class="kw">crate</span>::key_packages::KeyPackage;
+<a href=#28 id=28 data-nosnippet>28</a>
+<a href=#29 id=29 data-nosnippet>29</a><span class="kw">impl </span>MlsGroup {
+<a href=#30 id=30 data-nosnippet>30</a>    <span class="comment">// === Group creation ===
+<a href=#31 id=31 data-nosnippet>31</a>
+<a href=#32 id=32 data-nosnippet>32</a>    </span><span class="doccomment">/// Creates a builder which can be used to configure and build
+<a href=#33 id=33 data-nosnippet>33</a>    /// a new [`MlsGroup`].
+<a href=#34 id=34 data-nosnippet>34</a>    </span><span class="kw">pub fn </span>builder() -&gt; MlsGroupBuilder {
+<a href=#35 id=35 data-nosnippet>35</a>        MlsGroupBuilder::new()
+<a href=#36 id=36 data-nosnippet>36</a>    }
+<a href=#37 id=37 data-nosnippet>37</a>
+<a href=#38 id=38 data-nosnippet>38</a>    <span class="doccomment">/// Creates a new group with the creator as the only member (and a random
+<a href=#39 id=39 data-nosnippet>39</a>    /// group ID).
+<a href=#40 id=40 data-nosnippet>40</a>    ///
+<a href=#41 id=41 data-nosnippet>41</a>    /// This function removes the private key corresponding to the
+<a href=#42 id=42 data-nosnippet>42</a>    /// `key_package` from the key store.
+<a href=#43 id=43 data-nosnippet>43</a>    </span><span class="kw">pub fn </span>new&lt;Provider: OpenMlsProvider&gt;(
+<a href=#44 id=44 data-nosnippet>44</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#45 id=45 data-nosnippet>45</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+<a href=#46 id=46 data-nosnippet>46</a>        mls_group_create_config: <span class="kw-2">&amp;</span>MlsGroupCreateConfig,
+<a href=#47 id=47 data-nosnippet>47</a>        credential_with_key: CredentialWithKey,
+<a href=#48 id=48 data-nosnippet>48</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&lt;Provider::StorageError&gt;&gt; {
+<a href=#49 id=49 data-nosnippet>49</a>        MlsGroupBuilder::new().build_internal(
+<a href=#50 id=50 data-nosnippet>50</a>            provider,
+<a href=#51 id=51 data-nosnippet>51</a>            signer,
+<a href=#52 id=52 data-nosnippet>52</a>            credential_with_key,
+<a href=#53 id=53 data-nosnippet>53</a>            <span class="prelude-val">Some</span>(mls_group_create_config.clone()),
+<a href=#54 id=54 data-nosnippet>54</a>        )
+<a href=#55 id=55 data-nosnippet>55</a>    }
+<a href=#56 id=56 data-nosnippet>56</a>
+<a href=#57 id=57 data-nosnippet>57</a>    <span class="doccomment">/// Creates a new group with a given group ID with the creator as the only
+<a href=#58 id=58 data-nosnippet>58</a>    /// member.
+<a href=#59 id=59 data-nosnippet>59</a>    </span><span class="kw">pub fn </span>new_with_group_id&lt;Provider: OpenMlsProvider&gt;(
+<a href=#60 id=60 data-nosnippet>60</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#61 id=61 data-nosnippet>61</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+<a href=#62 id=62 data-nosnippet>62</a>        mls_group_create_config: <span class="kw-2">&amp;</span>MlsGroupCreateConfig,
+<a href=#63 id=63 data-nosnippet>63</a>        group_id: GroupId,
+<a href=#64 id=64 data-nosnippet>64</a>        credential_with_key: CredentialWithKey,
+<a href=#65 id=65 data-nosnippet>65</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&lt;Provider::StorageError&gt;&gt; {
+<a href=#66 id=66 data-nosnippet>66</a>        MlsGroupBuilder::new()
+<a href=#67 id=67 data-nosnippet>67</a>            .with_group_id(group_id)
+<a href=#68 id=68 data-nosnippet>68</a>            .build_internal(
+<a href=#69 id=69 data-nosnippet>69</a>                provider,
+<a href=#70 id=70 data-nosnippet>70</a>                signer,
+<a href=#71 id=71 data-nosnippet>71</a>                credential_with_key,
+<a href=#72 id=72 data-nosnippet>72</a>                <span class="prelude-val">Some</span>(mls_group_create_config.clone()),
+<a href=#73 id=73 data-nosnippet>73</a>            )
+<a href=#74 id=74 data-nosnippet>74</a>    }
+<a href=#75 id=75 data-nosnippet>75</a>
+<a href=#76 id=76 data-nosnippet>76</a>    <span class="doccomment">/// Join an existing group through an External Commit.
+<a href=#77 id=77 data-nosnippet>77</a>    /// The resulting [`MlsGroup`] instance starts off with a pending
+<a href=#78 id=78 data-nosnippet>78</a>    /// commit (the external commit, which adds this client to the group).
+<a href=#79 id=79 data-nosnippet>79</a>    /// Merging this commit is necessary for this [`MlsGroup`] instance to
+<a href=#80 id=80 data-nosnippet>80</a>    /// function properly, as, for example, this client is not yet part of the
+<a href=#81 id=81 data-nosnippet>81</a>    /// tree. As a result, it is not possible to clear the pending commit. If
+<a href=#82 id=82 data-nosnippet>82</a>    /// the external commit was rejected due to an epoch change, the
+<a href=#83 id=83 data-nosnippet>83</a>    /// [`MlsGroup`] instance has to be discarded and a new one has to be
+<a href=#84 id=84 data-nosnippet>84</a>    /// created using this function based on the latest `ratchet_tree` and
+<a href=#85 id=85 data-nosnippet>85</a>    /// group info. For more information on the external init process,
+<a href=#86 id=86 data-nosnippet>86</a>    /// please see Section 11.2.1 in the MLS specification.
+<a href=#87 id=87 data-nosnippet>87</a>    ///
+<a href=#88 id=88 data-nosnippet>88</a>    /// Note: If there is a group member in the group with the same identity as
+<a href=#89 id=89 data-nosnippet>89</a>    /// us, this will create a remove proposal.
+<a href=#90 id=90 data-nosnippet>90</a>    </span><span class="attr">#[allow(clippy::too_many_arguments)]
+<a href=#91 id=91 data-nosnippet>91</a>    </span><span class="kw">pub fn </span>join_by_external_commit&lt;Provider: OpenMlsProvider&gt;(
+<a href=#92 id=92 data-nosnippet>92</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#93 id=93 data-nosnippet>93</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+<a href=#94 id=94 data-nosnippet>94</a>        ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
+<a href=#95 id=95 data-nosnippet>95</a>        verifiable_group_info: VerifiableGroupInfo,
+<a href=#96 id=96 data-nosnippet>96</a>        mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
+<a href=#97 id=97 data-nosnippet>97</a>        capabilities: <span class="prelude-ty">Option</span>&lt;Capabilities&gt;,
+<a href=#98 id=98 data-nosnippet>98</a>        extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
+<a href=#99 id=99 data-nosnippet>99</a>        aad: <span class="kw-2">&amp;</span>[u8],
+<a href=#100 id=100 data-nosnippet>100</a>        credential_with_key: CredentialWithKey,
+<a href=#101 id=101 data-nosnippet>101</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, MlsMessageOut, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;), ExternalCommitError&lt;Provider::StorageError&gt;&gt;
+<a href=#102 id=102 data-nosnippet>102</a>    {
+<a href=#103 id=103 data-nosnippet>103</a>        <span class="comment">// Prepare the commit parameters
+<a href=#104 id=104 data-nosnippet>104</a>        </span><span class="kw">let </span>framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
+<a href=#105 id=105 data-nosnippet>105</a>
+<a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span>leaf_node_parameters = LeafNodeParameters::builder()
+<a href=#107 id=107 data-nosnippet>107</a>            .with_capabilities(capabilities.unwrap_or_default())
+<a href=#108 id=108 data-nosnippet>108</a>            .with_extensions(extensions.unwrap_or_default())
+<a href=#109 id=109 data-nosnippet>109</a>            .build();
+<a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span><span class="kw-2">mut </span>params = CreateCommitParams::builder()
+<a href=#111 id=111 data-nosnippet>111</a>            .external_commit(credential_with_key, framing_parameters)
+<a href=#112 id=112 data-nosnippet>112</a>            .leaf_node_parameters(leaf_node_parameters)
+<a href=#113 id=113 data-nosnippet>113</a>            .build();
 <a href=#114 id=114 data-nosnippet>114</a>
-<a href=#115 id=115 data-nosnippet>115</a>        // Set nodes either from the extension or from the `nodes_option`.
-<a href=#116 id=116 data-nosnippet>116</a>        // If we got a ratchet tree extension in the welcome, we enable it for
-<a href=#117 id=117 data-nosnippet>117</a>        // this group. Note that this is not strictly necessary. But there's
-<a href=#118 id=118 data-nosnippet>118</a>        // currently no other mechanism to enable the extension.
-<a href=#119 id=119 data-nosnippet>119</a>        </span><span class="kw">let </span>ratchet_tree = <span class="kw">match </span>verifiable_group_info.extensions().ratchet_tree() {
-<a href=#120 id=120 data-nosnippet>120</a>            <span class="prelude-val">Some</span>(extension) =&gt; extension.ratchet_tree().clone(),
-<a href=#121 id=121 data-nosnippet>121</a>            <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>ratchet_tree {
-<a href=#122 id=122 data-nosnippet>122</a>                <span class="prelude-val">Some</span>(ratchet_tree) =&gt; ratchet_tree,
-<a href=#123 id=123 data-nosnippet>123</a>                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::MissingRatchetTree),
-<a href=#124 id=124 data-nosnippet>124</a>            },
-<a href=#125 id=125 data-nosnippet>125</a>        };
-<a href=#126 id=126 data-nosnippet>126</a>
-<a href=#127 id=127 data-nosnippet>127</a>        <span class="kw">let </span>(public_group, group_info) = PublicGroup::from_external_internal(
-<a href=#128 id=128 data-nosnippet>128</a>            provider.crypto(),
-<a href=#129 id=129 data-nosnippet>129</a>            ratchet_tree,
-<a href=#130 id=130 data-nosnippet>130</a>            verifiable_group_info,
-<a href=#131 id=131 data-nosnippet>131</a>            <span class="comment">// Existing proposals are discarded when joining by external commit.
-<a href=#132 id=132 data-nosnippet>132</a>            </span>ProposalStore::new(),
-<a href=#133 id=133 data-nosnippet>133</a>        )<span class="question-mark">?</span>;
-<a href=#134 id=134 data-nosnippet>134</a>        <span class="kw">let </span>group_context = public_group.group_context();
-<a href=#135 id=135 data-nosnippet>135</a>
-<a href=#136 id=136 data-nosnippet>136</a>        <span class="comment">// Obtain external_pub from GroupInfo extensions.
-<a href=#137 id=137 data-nosnippet>137</a>        </span><span class="kw">let </span>external_pub = group_info
-<a href=#138 id=138 data-nosnippet>138</a>            .extensions()
-<a href=#139 id=139 data-nosnippet>139</a>            .external_pub()
-<a href=#140 id=140 data-nosnippet>140</a>            .ok_or(ExternalCommitError::MissingExternalPub)<span class="question-mark">?
-<a href=#141 id=141 data-nosnippet>141</a>            </span>.external_pub();
-<a href=#142 id=142 data-nosnippet>142</a>
-<a href=#143 id=143 data-nosnippet>143</a>        <span class="kw">let </span>(init_secret, kem_output) = InitSecret::from_group_context(
-<a href=#144 id=144 data-nosnippet>144</a>            provider.crypto(),
-<a href=#145 id=145 data-nosnippet>145</a>            group_context,
-<a href=#146 id=146 data-nosnippet>146</a>            external_pub.as_slice(),
-<a href=#147 id=147 data-nosnippet>147</a>        )
-<a href=#148 id=148 data-nosnippet>148</a>        .map_err(|<span class="kw">_</span>| ExternalCommitError::UnsupportedCiphersuite)<span class="question-mark">?</span>;
-<a href=#149 id=149 data-nosnippet>149</a>
-<a href=#150 id=150 data-nosnippet>150</a>        <span class="comment">// The `EpochSecrets` we create here are essentially zero, with the
-<a href=#151 id=151 data-nosnippet>151</a>        // exception of the `InitSecret`, which is all we need here for the
-<a href=#152 id=152 data-nosnippet>152</a>        // external commit.
-<a href=#153 id=153 data-nosnippet>153</a>        </span><span class="kw">let </span>epoch_secrets = EpochSecrets::with_init_secret(
-<a href=#154 id=154 data-nosnippet>154</a>            provider.crypto(),
-<a href=#155 id=155 data-nosnippet>155</a>            group_info.group_context().ciphersuite(),
-<a href=#156 id=156 data-nosnippet>156</a>            init_secret,
-<a href=#157 id=157 data-nosnippet>157</a>        )
-<a href=#158 id=158 data-nosnippet>158</a>        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#115 id=115 data-nosnippet>115</a>        <span class="comment">// Build the ratchet tree
+<a href=#116 id=116 data-nosnippet>116</a>
+<a href=#117 id=117 data-nosnippet>117</a>        // Set nodes either from the extension or from the `nodes_option`.
+<a href=#118 id=118 data-nosnippet>118</a>        // If we got a ratchet tree extension in the welcome, we enable it for
+<a href=#119 id=119 data-nosnippet>119</a>        // this group. Note that this is not strictly necessary. But there's
+<a href=#120 id=120 data-nosnippet>120</a>        // currently no other mechanism to enable the extension.
+<a href=#121 id=121 data-nosnippet>121</a>        </span><span class="kw">let </span>ratchet_tree = <span class="kw">match </span>verifiable_group_info.extensions().ratchet_tree() {
+<a href=#122 id=122 data-nosnippet>122</a>            <span class="prelude-val">Some</span>(extension) =&gt; extension.ratchet_tree().clone(),
+<a href=#123 id=123 data-nosnippet>123</a>            <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>ratchet_tree {
+<a href=#124 id=124 data-nosnippet>124</a>                <span class="prelude-val">Some</span>(ratchet_tree) =&gt; ratchet_tree,
+<a href=#125 id=125 data-nosnippet>125</a>                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::MissingRatchetTree),
+<a href=#126 id=126 data-nosnippet>126</a>            },
+<a href=#127 id=127 data-nosnippet>127</a>        };
+<a href=#128 id=128 data-nosnippet>128</a>
+<a href=#129 id=129 data-nosnippet>129</a>        <span class="kw">let </span>(public_group, group_info) = PublicGroup::from_external_internal(
+<a href=#130 id=130 data-nosnippet>130</a>            provider.crypto(),
+<a href=#131 id=131 data-nosnippet>131</a>            ratchet_tree,
+<a href=#132 id=132 data-nosnippet>132</a>            verifiable_group_info,
+<a href=#133 id=133 data-nosnippet>133</a>            <span class="comment">// Existing proposals are discarded when joining by external commit.
+<a href=#134 id=134 data-nosnippet>134</a>            </span>ProposalStore::new(),
+<a href=#135 id=135 data-nosnippet>135</a>        )<span class="question-mark">?</span>;
+<a href=#136 id=136 data-nosnippet>136</a>        <span class="kw">let </span>group_context = public_group.group_context();
+<a href=#137 id=137 data-nosnippet>137</a>
+<a href=#138 id=138 data-nosnippet>138</a>        <span class="comment">// Obtain external_pub from GroupInfo extensions.
+<a href=#139 id=139 data-nosnippet>139</a>        </span><span class="kw">let </span>external_pub = group_info
+<a href=#140 id=140 data-nosnippet>140</a>            .extensions()
+<a href=#141 id=141 data-nosnippet>141</a>            .external_pub()
+<a href=#142 id=142 data-nosnippet>142</a>            .ok_or(ExternalCommitError::MissingExternalPub)<span class="question-mark">?
+<a href=#143 id=143 data-nosnippet>143</a>            </span>.external_pub();
+<a href=#144 id=144 data-nosnippet>144</a>
+<a href=#145 id=145 data-nosnippet>145</a>        <span class="kw">let </span>(init_secret, kem_output) = InitSecret::from_group_context(
+<a href=#146 id=146 data-nosnippet>146</a>            provider.crypto(),
+<a href=#147 id=147 data-nosnippet>147</a>            group_context,
+<a href=#148 id=148 data-nosnippet>148</a>            external_pub.as_slice(),
+<a href=#149 id=149 data-nosnippet>149</a>        )
+<a href=#150 id=150 data-nosnippet>150</a>        .map_err(|<span class="kw">_</span>| ExternalCommitError::UnsupportedCiphersuite)<span class="question-mark">?</span>;
+<a href=#151 id=151 data-nosnippet>151</a>
+<a href=#152 id=152 data-nosnippet>152</a>        <span class="comment">// The `EpochSecrets` we create here are essentially zero, with the
+<a href=#153 id=153 data-nosnippet>153</a>        // exception of the `InitSecret`, which is all we need here for the
+<a href=#154 id=154 data-nosnippet>154</a>        // external commit.
+<a href=#155 id=155 data-nosnippet>155</a>        </span><span class="kw">let </span>ciphersuite = group_info.group_context().ciphersuite();
+<a href=#156 id=156 data-nosnippet>156</a>        <span class="kw">let </span>epoch_secrets =
+<a href=#157 id=157 data-nosnippet>157</a>            EpochSecrets::with_init_secret(provider.crypto(), ciphersuite, init_secret)
+<a href=#158 id=158 data-nosnippet>158</a>                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 <a href=#159 id=159 data-nosnippet>159</a>        <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
 <a href=#160 id=160 data-nosnippet>160</a>            group_context
 <a href=#161 id=161 data-nosnippet>161</a>                .tls_serialize_detached()
@@ -183,418 +183,419 @@
 <a href=#183 id=183 data-nosnippet>183</a>            inline_proposals.push(remove_proposal);
 <a href=#184 id=184 data-nosnippet>184</a>        };
 <a href=#185 id=185 data-nosnippet>185</a>
-<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">let </span>own_leaf_index = public_group.leftmost_free_index(inline_proposals.iter().map(<span class="prelude-val">Some</span>))<span class="question-mark">?</span>;
-<a href=#187 id=187 data-nosnippet>187</a>        params.set_inline_proposals(inline_proposals);
-<a href=#188 id=188 data-nosnippet>188</a>
-<a href=#189 id=189 data-nosnippet>189</a>        <span class="kw">let </span><span class="kw-2">mut </span>mls_group = MlsGroup {
-<a href=#190 id=190 data-nosnippet>190</a>            mls_group_config: mls_group_config.clone(),
-<a href=#191 id=191 data-nosnippet>191</a>            own_leaf_nodes: <span class="macro">vec!</span>[],
-<a href=#192 id=192 data-nosnippet>192</a>            aad: <span class="macro">vec!</span>[],
-<a href=#193 id=193 data-nosnippet>193</a>            group_state: MlsGroupState::Operational,
-<a href=#194 id=194 data-nosnippet>194</a>            public_group,
-<a href=#195 id=195 data-nosnippet>195</a>            group_epoch_secrets,
-<a href=#196 id=196 data-nosnippet>196</a>            own_leaf_index,
-<a href=#197 id=197 data-nosnippet>197</a>            message_secrets_store,
-<a href=#198 id=198 data-nosnippet>198</a>            resumption_psk_store: ResumptionPskStore::new(<span class="number">32</span>),
-<a href=#199 id=199 data-nosnippet>199</a>        };
-<a href=#200 id=200 data-nosnippet>200</a>
-<a href=#201 id=201 data-nosnippet>201</a>        mls_group.set_max_past_epochs(mls_group_config.max_past_epochs);
-<a href=#202 id=202 data-nosnippet>202</a>
-<a href=#203 id=203 data-nosnippet>203</a>        <span class="comment">// Immediately create the commit to add ourselves to the group.
-<a href=#204 id=204 data-nosnippet>204</a>        </span><span class="kw">let </span>create_commit_result = mls_group
-<a href=#205 id=205 data-nosnippet>205</a>            .create_external_commit(params, provider, signer)
-<a href=#206 id=206 data-nosnippet>206</a>            .map_err(|<span class="kw">_</span>| ExternalCommitError::CommitError)<span class="question-mark">?</span>;
-<a href=#207 id=207 data-nosnippet>207</a>
-<a href=#208 id=208 data-nosnippet>208</a>        mls_group.group_state = MlsGroupState::PendingCommit(Box::new(
-<a href=#209 id=209 data-nosnippet>209</a>            PendingCommitState::External(create_commit_result.staged_commit),
-<a href=#210 id=210 data-nosnippet>210</a>        ));
-<a href=#211 id=211 data-nosnippet>211</a>
-<a href=#212 id=212 data-nosnippet>212</a>        mls_group
-<a href=#213 id=213 data-nosnippet>213</a>            .store(provider.storage())
-<a href=#214 id=214 data-nosnippet>214</a>            .map_err(ExternalCommitError::StorageError)<span class="question-mark">?</span>;
-<a href=#215 id=215 data-nosnippet>215</a>
-<a href=#216 id=216 data-nosnippet>216</a>        <span class="kw">let </span>public_message: PublicMessage = create_commit_result.commit.into();
-<a href=#217 id=217 data-nosnippet>217</a>
-<a href=#218 id=218 data-nosnippet>218</a>        <span class="prelude-val">Ok</span>((
-<a href=#219 id=219 data-nosnippet>219</a>            mls_group,
-<a href=#220 id=220 data-nosnippet>220</a>            public_message.into(),
-<a href=#221 id=221 data-nosnippet>221</a>            create_commit_result.group_info,
-<a href=#222 id=222 data-nosnippet>222</a>        ))
-<a href=#223 id=223 data-nosnippet>223</a>    }
-<a href=#224 id=224 data-nosnippet>224</a>}
-<a href=#225 id=225 data-nosnippet>225</a>
-<a href=#226 id=226 data-nosnippet>226</a><span class="kw">impl </span>ProcessedWelcome {
-<a href=#227 id=227 data-nosnippet>227</a>    <span class="doccomment">/// Creates a new processed [`Welcome`] message , which can be
-<a href=#228 id=228 data-nosnippet>228</a>    /// inspected before creating a [`StagedWelcome`].
-<a href=#229 id=229 data-nosnippet>229</a>    ///
-<a href=#230 id=230 data-nosnippet>230</a>    /// This does not require a ratchet tree yet.
-<a href=#231 id=231 data-nosnippet>231</a>    ///
-<a href=#232 id=232 data-nosnippet>232</a>    /// [`Welcome`]: crate::messages::Welcome
-<a href=#233 id=233 data-nosnippet>233</a>    </span><span class="kw">pub fn </span>new_from_welcome&lt;Provider: OpenMlsProvider&gt;(
-<a href=#234 id=234 data-nosnippet>234</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#235 id=235 data-nosnippet>235</a>        mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
-<a href=#236 id=236 data-nosnippet>236</a>        welcome: Welcome,
-<a href=#237 id=237 data-nosnippet>237</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;Provider::StorageError&gt;&gt; {
-<a href=#238 id=238 data-nosnippet>238</a>        <span class="kw">let </span>(resumption_psk_store, key_package_bundle) =
-<a href=#239 id=239 data-nosnippet>239</a>            keys_for_welcome(mls_group_config, <span class="kw-2">&amp;</span>welcome, provider)<span class="question-mark">?</span>;
-<a href=#240 id=240 data-nosnippet>240</a>
-<a href=#241 id=241 data-nosnippet>241</a>        <span class="kw">let </span>ciphersuite = welcome.ciphersuite();
-<a href=#242 id=242 data-nosnippet>242</a>        <span class="kw">let </span><span class="prelude-val">Some</span>(egs) = welcome.find_encrypted_group_secret(
-<a href=#243 id=243 data-nosnippet>243</a>            key_package_bundle
-<a href=#244 id=244 data-nosnippet>244</a>                .key_package()
-<a href=#245 id=245 data-nosnippet>245</a>                .hash_ref(provider.crypto())<span class="question-mark">?</span>,
-<a href=#246 id=246 data-nosnippet>246</a>        ) <span class="kw">else </span>{
-<a href=#247 id=247 data-nosnippet>247</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::JoinerSecretNotFound);
-<a href=#248 id=248 data-nosnippet>248</a>        };
-<a href=#249 id=249 data-nosnippet>249</a>
-<a href=#250 id=250 data-nosnippet>250</a>        <span class="comment">// This check seems to be superfluous from the perspective of the RFC, but still doesn't
-<a href=#251 id=251 data-nosnippet>251</a>        // seem like a bad idea.
-<a href=#252 id=252 data-nosnippet>252</a>        </span><span class="kw">if </span>welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
-<a href=#253 id=253 data-nosnippet>253</a>            <span class="kw">let </span>e = WelcomeError::CiphersuiteMismatch;
-<a href=#254 id=254 data-nosnippet>254</a>            <span class="macro">log::debug!</span>(<span class="string">"new_from_welcome {e:?}"</span>);
-<a href=#255 id=255 data-nosnippet>255</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(e);
-<a href=#256 id=256 data-nosnippet>256</a>        }
-<a href=#257 id=257 data-nosnippet>257</a>
-<a href=#258 id=258 data-nosnippet>258</a>        <span class="kw">let </span>group_secrets = GroupSecrets::try_from_ciphertext(
-<a href=#259 id=259 data-nosnippet>259</a>            key_package_bundle.init_private_key(),
-<a href=#260 id=260 data-nosnippet>260</a>            egs.encrypted_group_secrets(),
-<a href=#261 id=261 data-nosnippet>261</a>            welcome.encrypted_group_info(),
-<a href=#262 id=262 data-nosnippet>262</a>            ciphersuite,
-<a href=#263 id=263 data-nosnippet>263</a>            provider.crypto(),
-<a href=#264 id=264 data-nosnippet>264</a>        )<span class="question-mark">?</span>;
-<a href=#265 id=265 data-nosnippet>265</a>        <span class="kw">let </span>psk_secret = {
-<a href=#266 id=266 data-nosnippet>266</a>            <span class="kw">let </span>psks = load_psks(
-<a href=#267 id=267 data-nosnippet>267</a>                provider.storage(),
-<a href=#268 id=268 data-nosnippet>268</a>                <span class="kw-2">&amp;</span>resumption_psk_store,
-<a href=#269 id=269 data-nosnippet>269</a>                <span class="kw-2">&amp;</span>group_secrets.psks,
-<a href=#270 id=270 data-nosnippet>270</a>            )<span class="question-mark">?</span>;
-<a href=#271 id=271 data-nosnippet>271</a>
-<a href=#272 id=272 data-nosnippet>272</a>            PskSecret::new(provider.crypto(), ciphersuite, psks)<span class="question-mark">?
-<a href=#273 id=273 data-nosnippet>273</a>        </span>};
-<a href=#274 id=274 data-nosnippet>274</a>        <span class="kw">let </span>key_schedule = KeySchedule::init(
-<a href=#275 id=275 data-nosnippet>275</a>            ciphersuite,
-<a href=#276 id=276 data-nosnippet>276</a>            provider.crypto(),
-<a href=#277 id=277 data-nosnippet>277</a>            <span class="kw-2">&amp;</span>group_secrets.joiner_secret,
-<a href=#278 id=278 data-nosnippet>278</a>            psk_secret,
-<a href=#279 id=279 data-nosnippet>279</a>        )<span class="question-mark">?</span>;
-<a href=#280 id=280 data-nosnippet>280</a>        <span class="kw">let </span>(welcome_key, welcome_nonce) = key_schedule
-<a href=#281 id=281 data-nosnippet>281</a>            .welcome(provider.crypto(), ciphersuite)
-<a href=#282 id=282 data-nosnippet>282</a>            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?
-<a href=#283 id=283 data-nosnippet>283</a>            </span>.derive_welcome_key_nonce(provider.crypto(), ciphersuite)
-<a href=#284 id=284 data-nosnippet>284</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-<a href=#285 id=285 data-nosnippet>285</a>        <span class="kw">let </span>verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
-<a href=#286 id=286 data-nosnippet>286</a>            <span class="kw-2">&amp;</span>welcome_key,
-<a href=#287 id=287 data-nosnippet>287</a>            <span class="kw-2">&amp;</span>welcome_nonce,
-<a href=#288 id=288 data-nosnippet>288</a>            welcome.encrypted_group_info(),
-<a href=#289 id=289 data-nosnippet>289</a>            <span class="kw-2">&amp;</span>[],
-<a href=#290 id=290 data-nosnippet>290</a>            provider.crypto(),
-<a href=#291 id=291 data-nosnippet>291</a>        )<span class="question-mark">?</span>;
-<a href=#292 id=292 data-nosnippet>292</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
-<a href=#293 id=293 data-nosnippet>293</a>            verifiable_group_info.extensions().required_capabilities()
-<a href=#294 id=294 data-nosnippet>294</a>        {
-<a href=#295 id=295 data-nosnippet>295</a>            <span class="comment">// Also check that our key package actually supports the extensions.
-<a href=#296 id=296 data-nosnippet>296</a>            // As per the spec, the sender must have checked this. But you never know.
-<a href=#297 id=297 data-nosnippet>297</a>            </span>key_package_bundle
-<a href=#298 id=298 data-nosnippet>298</a>                .key_package()
-<a href=#299 id=299 data-nosnippet>299</a>                .leaf_node()
-<a href=#300 id=300 data-nosnippet>300</a>                .capabilities()
-<a href=#301 id=301 data-nosnippet>301</a>                .supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
-<a href=#302 id=302 data-nosnippet>302</a>        }
-<a href=#303 id=303 data-nosnippet>303</a>
-<a href=#304 id=304 data-nosnippet>304</a>        <span class="comment">// https://validation.openmls.tech/#valn1404
-<a href=#305 id=305 data-nosnippet>305</a>        // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
-<a href=#306 id=306 data-nosnippet>306</a>        // KeyPackage.
-<a href=#307 id=307 data-nosnippet>307</a>        </span><span class="kw">if </span>verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
-<a href=#308 id=308 data-nosnippet>308</a>            <span class="kw">let </span>e = WelcomeError::CiphersuiteMismatch;
-<a href=#309 id=309 data-nosnippet>309</a>            <span class="macro">log::debug!</span>(<span class="string">"new_from_welcome {e:?}"</span>);
-<a href=#310 id=310 data-nosnippet>310</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(e);
-<a href=#311 id=311 data-nosnippet>311</a>        }
-<a href=#312 id=312 data-nosnippet>312</a>
-<a href=#313 id=313 data-nosnippet>313</a>        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-<a href=#314 id=314 data-nosnippet>314</a>            mls_group_config: mls_group_config.clone(),
-<a href=#315 id=315 data-nosnippet>315</a>            ciphersuite,
-<a href=#316 id=316 data-nosnippet>316</a>            group_secrets,
-<a href=#317 id=317 data-nosnippet>317</a>            key_schedule,
-<a href=#318 id=318 data-nosnippet>318</a>            verifiable_group_info,
-<a href=#319 id=319 data-nosnippet>319</a>            resumption_psk_store,
-<a href=#320 id=320 data-nosnippet>320</a>            key_package_bundle,
-<a href=#321 id=321 data-nosnippet>321</a>        })
-<a href=#322 id=322 data-nosnippet>322</a>    }
-<a href=#323 id=323 data-nosnippet>323</a>
-<a href=#324 id=324 data-nosnippet>324</a>    <span class="doccomment">/// Get a reference to the GroupInfo in this Welcome message.
-<a href=#325 id=325 data-nosnippet>325</a>    ///
-<a href=#326 id=326 data-nosnippet>326</a>    /// **NOTE:** The group info contains **unverified** values. Use with caution.
-<a href=#327 id=327 data-nosnippet>327</a>    </span><span class="kw">pub fn </span>unverified_group_info(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>VerifiableGroupInfo {
-<a href=#328 id=328 data-nosnippet>328</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.verifiable_group_info
-<a href=#329 id=329 data-nosnippet>329</a>    }
-<a href=#330 id=330 data-nosnippet>330</a>
-<a href=#331 id=331 data-nosnippet>331</a>    <span class="doccomment">/// Get a reference to the PSKs in this Welcome message.
-<a href=#332 id=332 data-nosnippet>332</a>    ///
-<a href=#333 id=333 data-nosnippet>333</a>    /// **NOTE:** The group info contains **unverified** values. Use with caution.
-<a href=#334 id=334 data-nosnippet>334</a>    </span><span class="kw">pub fn </span>psks(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[PreSharedKeyId] {
-<a href=#335 id=335 data-nosnippet>335</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.group_secrets.psks
-<a href=#336 id=336 data-nosnippet>336</a>    }
-<a href=#337 id=337 data-nosnippet>337</a>
-<a href=#338 id=338 data-nosnippet>338</a>    <span class="doccomment">/// Consume the `ProcessedWelcome` and combine it witht he ratchet tree into
-<a href=#339 id=339 data-nosnippet>339</a>    /// a `StagedWelcome`.
-<a href=#340 id=340 data-nosnippet>340</a>    </span><span class="kw">pub fn </span>into_staged_welcome&lt;Provider: OpenMlsProvider&gt;(
-<a href=#341 id=341 data-nosnippet>341</a>        <span class="kw-2">mut </span><span class="self">self</span>,
-<a href=#342 id=342 data-nosnippet>342</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#343 id=343 data-nosnippet>343</a>        ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
-<a href=#344 id=344 data-nosnippet>344</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedWelcome, WelcomeError&lt;Provider::StorageError&gt;&gt; {
-<a href=#345 id=345 data-nosnippet>345</a>        <span class="comment">// Build the ratchet tree and group
-<a href=#346 id=346 data-nosnippet>346</a>
-<a href=#347 id=347 data-nosnippet>347</a>        // Set nodes either from the extension or from the `nodes_option`.
-<a href=#348 id=348 data-nosnippet>348</a>        // If we got a ratchet tree extension in the welcome, we enable it for
-<a href=#349 id=349 data-nosnippet>349</a>        // this group. Note that this is not strictly necessary. But there's
-<a href=#350 id=350 data-nosnippet>350</a>        // currently no other mechanism to enable the extension.
-<a href=#351 id=351 data-nosnippet>351</a>        </span><span class="kw">let </span>ratchet_tree = <span class="kw">match </span><span class="self">self</span>.verifiable_group_info.extensions().ratchet_tree() {
-<a href=#352 id=352 data-nosnippet>352</a>            <span class="prelude-val">Some</span>(extension) =&gt; extension.ratchet_tree().clone(),
-<a href=#353 id=353 data-nosnippet>353</a>            <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>ratchet_tree {
-<a href=#354 id=354 data-nosnippet>354</a>                <span class="prelude-val">Some</span>(ratchet_tree) =&gt; ratchet_tree,
-<a href=#355 id=355 data-nosnippet>355</a>                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::MissingRatchetTree),
-<a href=#356 id=356 data-nosnippet>356</a>            },
-<a href=#357 id=357 data-nosnippet>357</a>        };
-<a href=#358 id=358 data-nosnippet>358</a>
-<a href=#359 id=359 data-nosnippet>359</a>        <span class="comment">// Since there is currently only the external pub extension, there is no
-<a href=#360 id=360 data-nosnippet>360</a>        // group info extension of interest here.
-<a href=#361 id=361 data-nosnippet>361</a>        </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external_internal(
-<a href=#362 id=362 data-nosnippet>362</a>            provider.crypto(),
-<a href=#363 id=363 data-nosnippet>363</a>            ratchet_tree,
-<a href=#364 id=364 data-nosnippet>364</a>            <span class="self">self</span>.verifiable_group_info.clone(),
-<a href=#365 id=365 data-nosnippet>365</a>            ProposalStore::new(),
-<a href=#366 id=366 data-nosnippet>366</a>        )<span class="question-mark">?</span>;
-<a href=#367 id=367 data-nosnippet>367</a>
-<a href=#368 id=368 data-nosnippet>368</a>        <span class="comment">// Find our own leaf in the tree.
-<a href=#369 id=369 data-nosnippet>369</a>        </span><span class="kw">let </span>own_leaf_index = public_group
-<a href=#370 id=370 data-nosnippet>370</a>            .members()
-<a href=#371 id=371 data-nosnippet>371</a>            .find_map(|m| {
-<a href=#372 id=372 data-nosnippet>372</a>                <span class="kw">if </span>m.signature_key
-<a href=#373 id=373 data-nosnippet>373</a>                    == <span class="self">self
-<a href=#374 id=374 data-nosnippet>374</a>                        </span>.key_package_bundle
-<a href=#375 id=375 data-nosnippet>375</a>                        .key_package()
-<a href=#376 id=376 data-nosnippet>376</a>                        .leaf_node()
-<a href=#377 id=377 data-nosnippet>377</a>                        .signature_key()
-<a href=#378 id=378 data-nosnippet>378</a>                        .as_slice()
-<a href=#379 id=379 data-nosnippet>379</a>                {
-<a href=#380 id=380 data-nosnippet>380</a>                    <span class="prelude-val">Some</span>(m.index)
-<a href=#381 id=381 data-nosnippet>381</a>                } <span class="kw">else </span>{
-<a href=#382 id=382 data-nosnippet>382</a>                    <span class="prelude-val">None
-<a href=#383 id=383 data-nosnippet>383</a>                </span>}
-<a href=#384 id=384 data-nosnippet>384</a>            })
-<a href=#385 id=385 data-nosnippet>385</a>            .ok_or(WelcomeError::PublicTreeError(
-<a href=#386 id=386 data-nosnippet>386</a>                PublicTreeError::MalformedTree,
-<a href=#387 id=387 data-nosnippet>387</a>            ))<span class="question-mark">?</span>;
-<a href=#388 id=388 data-nosnippet>388</a>
-<a href=#389 id=389 data-nosnippet>389</a>        <span class="kw">let </span>(group_epoch_secrets, message_secrets) = {
-<a href=#390 id=390 data-nosnippet>390</a>            <span class="kw">let </span>serialized_group_context = public_group
-<a href=#391 id=391 data-nosnippet>391</a>                .group_context()
-<a href=#392 id=392 data-nosnippet>392</a>                .tls_serialize_detached()
-<a href=#393 id=393 data-nosnippet>393</a>                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-<a href=#394 id=394 data-nosnippet>394</a>
-<a href=#395 id=395 data-nosnippet>395</a>            <span class="comment">// TODO #751: Implement PSK
-<a href=#396 id=396 data-nosnippet>396</a>            </span><span class="self">self</span>.key_schedule
-<a href=#397 id=397 data-nosnippet>397</a>                .add_context(provider.crypto(), <span class="kw-2">&amp;</span>serialized_group_context)
-<a href=#398 id=398 data-nosnippet>398</a>                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
-<a href=#399 id=399 data-nosnippet>399</a>
-<a href=#400 id=400 data-nosnippet>400</a>            <span class="kw">let </span>epoch_secrets = <span class="self">self
-<a href=#401 id=401 data-nosnippet>401</a>                </span>.key_schedule
-<a href=#402 id=402 data-nosnippet>402</a>                .epoch_secrets(provider.crypto(), <span class="self">self</span>.ciphersuite)
-<a href=#403 id=403 data-nosnippet>403</a>                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
-<a href=#404 id=404 data-nosnippet>404</a>
-<a href=#405 id=405 data-nosnippet>405</a>            epoch_secrets.split_secrets(
-<a href=#406 id=406 data-nosnippet>406</a>                serialized_group_context,
-<a href=#407 id=407 data-nosnippet>407</a>                public_group.tree_size(),
-<a href=#408 id=408 data-nosnippet>408</a>                own_leaf_index,
-<a href=#409 id=409 data-nosnippet>409</a>            )
-<a href=#410 id=410 data-nosnippet>410</a>        };
-<a href=#411 id=411 data-nosnippet>411</a>
-<a href=#412 id=412 data-nosnippet>412</a>        <span class="kw">let </span>confirmation_tag = message_secrets
-<a href=#413 id=413 data-nosnippet>413</a>            .confirmation_key()
-<a href=#414 id=414 data-nosnippet>414</a>            .tag(
-<a href=#415 id=415 data-nosnippet>415</a>                provider.crypto(),
-<a href=#416 id=416 data-nosnippet>416</a>                <span class="self">self</span>.ciphersuite,
-<a href=#417 id=417 data-nosnippet>417</a>                public_group.group_context().confirmed_transcript_hash(),
-<a href=#418 id=418 data-nosnippet>418</a>            )
-<a href=#419 id=419 data-nosnippet>419</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-<a href=#420 id=420 data-nosnippet>420</a>
-<a href=#421 id=421 data-nosnippet>421</a>        <span class="comment">// Verify confirmation tag
-<a href=#422 id=422 data-nosnippet>422</a>        // https://validation.openmls.tech/#valn1410
-<a href=#423 id=423 data-nosnippet>423</a>        </span><span class="kw">if </span><span class="kw-2">&amp;</span>confirmation_tag != public_group.confirmation_tag() {
-<a href=#424 id=424 data-nosnippet>424</a>            <span class="macro">log::error!</span>(<span class="string">"Confirmation tag mismatch"</span>);
-<a href=#425 id=425 data-nosnippet>425</a>            <span class="macro">log_crypto!</span>(trace, <span class="string">"  Got:      {:x?}"</span>, confirmation_tag);
-<a href=#426 id=426 data-nosnippet>426</a>            <span class="macro">log_crypto!</span>(trace, <span class="string">"  Expected: {:x?}"</span>, public_group.confirmation_tag());
-<a href=#427 id=427 data-nosnippet>427</a>            <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">"Confirmation tag mismatch"</span>);
-<a href=#428 id=428 data-nosnippet>428</a>
-<a href=#429 id=429 data-nosnippet>429</a>            <span class="comment">// in some tests we need to be able to proceed despite the tag being wrong,
-<a href=#430 id=430 data-nosnippet>430</a>            // e.g. to test whether a later validation check is performed correctly.
-<a href=#431 id=431 data-nosnippet>431</a>            </span><span class="kw">if </span>!<span class="kw">crate</span>::skip_validation::is_disabled::confirmation_tag() {
-<a href=#432 id=432 data-nosnippet>432</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ConfirmationTagMismatch);
-<a href=#433 id=433 data-nosnippet>433</a>            }
-<a href=#434 id=434 data-nosnippet>434</a>        }
-<a href=#435 id=435 data-nosnippet>435</a>
-<a href=#436 id=436 data-nosnippet>436</a>        <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
-<a href=#437 id=437 data-nosnippet>437</a>
-<a href=#438 id=438 data-nosnippet>438</a>        <span class="comment">// Extract and store the resumption PSK for the current epoch.
-<a href=#439 id=439 data-nosnippet>439</a>        </span><span class="kw">let </span>resumption_psk = group_epoch_secrets.resumption_psk();
-<a href=#440 id=440 data-nosnippet>440</a>        <span class="self">self</span>.resumption_psk_store
-<a href=#441 id=441 data-nosnippet>441</a>            .add(public_group.group_context().epoch(), resumption_psk.clone());
-<a href=#442 id=442 data-nosnippet>442</a>
-<a href=#443 id=443 data-nosnippet>443</a>        <span class="kw">let </span>welcome_sender_index = <span class="self">self</span>.verifiable_group_info.signer();
-<a href=#444 id=444 data-nosnippet>444</a>        <span class="kw">let </span>path_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_secret) = <span class="self">self</span>.group_secrets.path_secret {
-<a href=#445 id=445 data-nosnippet>445</a>            <span class="kw">let </span>(path_keypairs, _commit_secret) = public_group
-<a href=#446 id=446 data-nosnippet>446</a>                .derive_path_secrets(
-<a href=#447 id=447 data-nosnippet>447</a>                    provider.crypto(),
-<a href=#448 id=448 data-nosnippet>448</a>                    <span class="self">self</span>.ciphersuite,
-<a href=#449 id=449 data-nosnippet>449</a>                    path_secret,
-<a href=#450 id=450 data-nosnippet>450</a>                    welcome_sender_index,
-<a href=#451 id=451 data-nosnippet>451</a>                    own_leaf_index,
-<a href=#452 id=452 data-nosnippet>452</a>                )
-<a href=#453 id=453 data-nosnippet>453</a>                .map_err(|e| <span class="kw">match </span>e {
-<a href=#454 id=454 data-nosnippet>454</a>                    DerivePathError::LibraryError(e) =&gt; e.into(),
-<a href=#455 id=455 data-nosnippet>455</a>                    DerivePathError::PublicKeyMismatch =&gt; {
-<a href=#456 id=456 data-nosnippet>456</a>                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
-<a href=#457 id=457 data-nosnippet>457</a>                    }
-<a href=#458 id=458 data-nosnippet>458</a>                })<span class="question-mark">?</span>;
-<a href=#459 id=459 data-nosnippet>459</a>            <span class="prelude-val">Some</span>(path_keypairs)
-<a href=#460 id=460 data-nosnippet>460</a>        } <span class="kw">else </span>{
-<a href=#461 id=461 data-nosnippet>461</a>            <span class="prelude-val">None
-<a href=#462 id=462 data-nosnippet>462</a>        </span>};
-<a href=#463 id=463 data-nosnippet>463</a>
-<a href=#464 id=464 data-nosnippet>464</a>        <span class="kw">let </span>staged_welcome = StagedWelcome {
-<a href=#465 id=465 data-nosnippet>465</a>            mls_group_config: <span class="self">self</span>.mls_group_config,
-<a href=#466 id=466 data-nosnippet>466</a>            public_group,
-<a href=#467 id=467 data-nosnippet>467</a>            group_epoch_secrets,
-<a href=#468 id=468 data-nosnippet>468</a>            own_leaf_index,
-<a href=#469 id=469 data-nosnippet>469</a>            message_secrets_store,
-<a href=#470 id=470 data-nosnippet>470</a>            resumption_psk_store: <span class="self">self</span>.resumption_psk_store,
-<a href=#471 id=471 data-nosnippet>471</a>            verifiable_group_info: <span class="self">self</span>.verifiable_group_info,
-<a href=#472 id=472 data-nosnippet>472</a>            key_package_bundle: <span class="self">self</span>.key_package_bundle,
-<a href=#473 id=473 data-nosnippet>473</a>            path_keypairs,
-<a href=#474 id=474 data-nosnippet>474</a>        };
-<a href=#475 id=475 data-nosnippet>475</a>
-<a href=#476 id=476 data-nosnippet>476</a>        <span class="prelude-val">Ok</span>(staged_welcome)
-<a href=#477 id=477 data-nosnippet>477</a>    }
-<a href=#478 id=478 data-nosnippet>478</a>}
-<a href=#479 id=479 data-nosnippet>479</a>
-<a href=#480 id=480 data-nosnippet>480</a><span class="kw">impl </span>StagedWelcome {
-<a href=#481 id=481 data-nosnippet>481</a>    <span class="doccomment">/// Creates a new staged welcome from a [`Welcome`] message. Returns an error
-<a href=#482 id=482 data-nosnippet>482</a>    /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
-<a href=#483 id=483 data-nosnippet>483</a>    /// can be found.
-<a href=#484 id=484 data-nosnippet>484</a>    /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
-<a href=#485 id=485 data-nosnippet>485</a>    /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
-<a href=#486 id=486 data-nosnippet>486</a>    ///
-<a href=#487 id=487 data-nosnippet>487</a>    /// [`Welcome`]: crate::messages::Welcome
-<a href=#488 id=488 data-nosnippet>488</a>    </span><span class="kw">pub fn </span>new_from_welcome&lt;Provider: OpenMlsProvider&gt;(
-<a href=#489 id=489 data-nosnippet>489</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#490 id=490 data-nosnippet>490</a>        mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
-<a href=#491 id=491 data-nosnippet>491</a>        welcome: Welcome,
-<a href=#492 id=492 data-nosnippet>492</a>        ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
-<a href=#493 id=493 data-nosnippet>493</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;Provider::StorageError&gt;&gt; {
-<a href=#494 id=494 data-nosnippet>494</a>        <span class="kw">let </span>processed_welcome =
-<a href=#495 id=495 data-nosnippet>495</a>            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)<span class="question-mark">?</span>;
-<a href=#496 id=496 data-nosnippet>496</a>
-<a href=#497 id=497 data-nosnippet>497</a>        processed_welcome.into_staged_welcome(provider, ratchet_tree)
-<a href=#498 id=498 data-nosnippet>498</a>    }
-<a href=#499 id=499 data-nosnippet>499</a>
-<a href=#500 id=500 data-nosnippet>500</a>    <span class="doccomment">/// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
-<a href=#501 id=501 data-nosnippet>501</a>    ///
-<a href=#502 id=502 data-nosnippet>502</a>    /// [`Welcome`]: crate::messages::Welcome
-<a href=#503 id=503 data-nosnippet>503</a>    </span><span class="kw">pub fn </span>welcome_sender_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
-<a href=#504 id=504 data-nosnippet>504</a>        <span class="self">self</span>.verifiable_group_info.signer()
-<a href=#505 id=505 data-nosnippet>505</a>    }
-<a href=#506 id=506 data-nosnippet>506</a>
-<a href=#507 id=507 data-nosnippet>507</a>    <span class="doccomment">/// Returns the [`LeafNode`] of the group member that authored the [`Welcome`] message.
-<a href=#508 id=508 data-nosnippet>508</a>    ///
-<a href=#509 id=509 data-nosnippet>509</a>    /// [`Welcome`]: crate::messages::Welcome
-<a href=#510 id=510 data-nosnippet>510</a>    </span><span class="kw">pub fn </span>welcome_sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>LeafNode, LibraryError&gt; {
-<a href=#511 id=511 data-nosnippet>511</a>        <span class="kw">let </span>sender_index = <span class="self">self</span>.welcome_sender_index();
-<a href=#512 id=512 data-nosnippet>512</a>        <span class="self">self</span>.public_group
-<a href=#513 id=513 data-nosnippet>513</a>            .leaf(sender_index)
-<a href=#514 id=514 data-nosnippet>514</a>            .ok_or(LibraryError::custom(
-<a href=#515 id=515 data-nosnippet>515</a>                <span class="string">"no leaf with given welcome sender index exists"</span>,
-<a href=#516 id=516 data-nosnippet>516</a>            ))
-<a href=#517 id=517 data-nosnippet>517</a>    }
-<a href=#518 id=518 data-nosnippet>518</a>
-<a href=#519 id=519 data-nosnippet>519</a>    <span class="doccomment">/// Get the [`GroupContext`] of this welcome's [`PublicGroup`].
-<a href=#520 id=520 data-nosnippet>520</a>    </span><span class="kw">pub fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
-<a href=#521 id=521 data-nosnippet>521</a>        <span class="self">self</span>.public_group.group_context()
-<a href=#522 id=522 data-nosnippet>522</a>    }
-<a href=#523 id=523 data-nosnippet>523</a>
-<a href=#524 id=524 data-nosnippet>524</a>    <span class="doccomment">/// Get an iterator over all [`Member`]s of this welcome's [`PublicGroup`].
-<a href=#525 id=525 data-nosnippet>525</a>    </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">'_ </span>{
-<a href=#526 id=526 data-nosnippet>526</a>        <span class="self">self</span>.public_group.members()
-<a href=#527 id=527 data-nosnippet>527</a>    }
-<a href=#528 id=528 data-nosnippet>528</a>
-<a href=#529 id=529 data-nosnippet>529</a>    <span class="doccomment">/// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
-<a href=#530 id=530 data-nosnippet>530</a>    </span><span class="kw">pub fn </span>into_group&lt;Provider: OpenMlsProvider&gt;(
-<a href=#531 id=531 data-nosnippet>531</a>        <span class="self">self</span>,
-<a href=#532 id=532 data-nosnippet>532</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#533 id=533 data-nosnippet>533</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, WelcomeError&lt;Provider::StorageError&gt;&gt; {
-<a href=#534 id=534 data-nosnippet>534</a>        <span class="comment">// If we got a path secret, derive the path (which also checks if the
-<a href=#535 id=535 data-nosnippet>535</a>        // public keys match) and store the derived keys in the key store.
-<a href=#536 id=536 data-nosnippet>536</a>        </span><span class="kw">let </span>group_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_keypairs) = <span class="self">self</span>.path_keypairs {
-<a href=#537 id=537 data-nosnippet>537</a>            <span class="kw">let </span><span class="kw-2">mut </span>keypairs = <span class="macro">vec!</span>[<span class="self">self</span>.key_package_bundle.encryption_key_pair()];
-<a href=#538 id=538 data-nosnippet>538</a>            keypairs.extend_from_slice(<span class="kw-2">&amp;</span>path_keypairs);
-<a href=#539 id=539 data-nosnippet>539</a>            keypairs
-<a href=#540 id=540 data-nosnippet>540</a>        } <span class="kw">else </span>{
-<a href=#541 id=541 data-nosnippet>541</a>            <span class="macro">vec!</span>[<span class="self">self</span>.key_package_bundle.encryption_key_pair()]
-<a href=#542 id=542 data-nosnippet>542</a>        };
-<a href=#543 id=543 data-nosnippet>543</a>
-<a href=#544 id=544 data-nosnippet>544</a>        <span class="kw">let </span><span class="kw-2">mut </span>mls_group = MlsGroup {
-<a href=#545 id=545 data-nosnippet>545</a>            mls_group_config: <span class="self">self</span>.mls_group_config,
-<a href=#546 id=546 data-nosnippet>546</a>            own_leaf_nodes: <span class="macro">vec!</span>[],
-<a href=#547 id=547 data-nosnippet>547</a>            aad: <span class="macro">vec!</span>[],
-<a href=#548 id=548 data-nosnippet>548</a>            group_state: MlsGroupState::Operational,
-<a href=#549 id=549 data-nosnippet>549</a>            public_group: <span class="self">self</span>.public_group,
-<a href=#550 id=550 data-nosnippet>550</a>            group_epoch_secrets: <span class="self">self</span>.group_epoch_secrets,
-<a href=#551 id=551 data-nosnippet>551</a>            own_leaf_index: <span class="self">self</span>.own_leaf_index,
-<a href=#552 id=552 data-nosnippet>552</a>            message_secrets_store: <span class="self">self</span>.message_secrets_store,
-<a href=#553 id=553 data-nosnippet>553</a>            resumption_psk_store: <span class="self">self</span>.resumption_psk_store,
-<a href=#554 id=554 data-nosnippet>554</a>        };
-<a href=#555 id=555 data-nosnippet>555</a>
-<a href=#556 id=556 data-nosnippet>556</a>        mls_group
-<a href=#557 id=557 data-nosnippet>557</a>            .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
-<a href=#558 id=558 data-nosnippet>558</a>            .map_err(WelcomeError::StorageError)<span class="question-mark">?</span>;
-<a href=#559 id=559 data-nosnippet>559</a>        mls_group.set_max_past_epochs(mls_group.mls_group_config.max_past_epochs);
-<a href=#560 id=560 data-nosnippet>560</a>
-<a href=#561 id=561 data-nosnippet>561</a>        mls_group
-<a href=#562 id=562 data-nosnippet>562</a>            .store(provider.storage())
-<a href=#563 id=563 data-nosnippet>563</a>            .map_err(WelcomeError::StorageError)<span class="question-mark">?</span>;
-<a href=#564 id=564 data-nosnippet>564</a>
-<a href=#565 id=565 data-nosnippet>565</a>        <span class="prelude-val">Ok</span>(mls_group)
-<a href=#566 id=566 data-nosnippet>566</a>    }
-<a href=#567 id=567 data-nosnippet>567</a>}
-<a href=#568 id=568 data-nosnippet>568</a>
-<a href=#569 id=569 data-nosnippet>569</a><span class="kw">fn </span>keys_for_welcome&lt;Provider: OpenMlsProvider&gt;(
-<a href=#570 id=570 data-nosnippet>570</a>    mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
-<a href=#571 id=571 data-nosnippet>571</a>    welcome: <span class="kw-2">&amp;</span>Welcome,
-<a href=#572 id=572 data-nosnippet>572</a>    provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#573 id=573 data-nosnippet>573</a>) -&gt; <span class="prelude-ty">Result</span>&lt;
-<a href=#574 id=574 data-nosnippet>574</a>    (ResumptionPskStore, KeyPackageBundle),
-<a href=#575 id=575 data-nosnippet>575</a>    WelcomeError&lt;&lt;Provider <span class="kw">as </span>OpenMlsProvider&gt;::StorageError&gt;,
-<a href=#576 id=576 data-nosnippet>576</a>&gt; {
-<a href=#577 id=577 data-nosnippet>577</a>    <span class="kw">let </span>resumption_psk_store = ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
-<a href=#578 id=578 data-nosnippet>578</a>    <span class="kw">let </span>key_package_bundle: KeyPackageBundle = welcome
-<a href=#579 id=579 data-nosnippet>579</a>        .secrets()
-<a href=#580 id=580 data-nosnippet>580</a>        .iter()
-<a href=#581 id=581 data-nosnippet>581</a>        .find_map(|egs| {
-<a href=#582 id=582 data-nosnippet>582</a>            <span class="kw">let </span>hash_ref = egs.new_member();
-<a href=#583 id=583 data-nosnippet>583</a>
-<a href=#584 id=584 data-nosnippet>584</a>            provider
-<a href=#585 id=585 data-nosnippet>585</a>                .storage()
-<a href=#586 id=586 data-nosnippet>586</a>                .key_package(<span class="kw-2">&amp;</span>hash_ref)
-<a href=#587 id=587 data-nosnippet>587</a>                .map_err(WelcomeError::StorageError)
-<a href=#588 id=588 data-nosnippet>588</a>                .transpose()
-<a href=#589 id=589 data-nosnippet>589</a>        })
-<a href=#590 id=590 data-nosnippet>590</a>        .ok_or(WelcomeError::NoMatchingKeyPackage)<span class="question-mark">??</span>;
-<a href=#591 id=591 data-nosnippet>591</a>    <span class="kw">if </span>!key_package_bundle.key_package().last_resort() {
-<a href=#592 id=592 data-nosnippet>592</a>        provider
-<a href=#593 id=593 data-nosnippet>593</a>            .storage()
-<a href=#594 id=594 data-nosnippet>594</a>            .delete_key_package(<span class="kw-2">&amp;</span>key_package_bundle.key_package.hash_ref(provider.crypto())<span class="question-mark">?</span>)
-<a href=#595 id=595 data-nosnippet>595</a>            .map_err(WelcomeError::StorageError)<span class="question-mark">?</span>;
-<a href=#596 id=596 data-nosnippet>596</a>    } <span class="kw">else </span>{
-<a href=#597 id=597 data-nosnippet>597</a>        <span class="macro">log::debug!</span>(<span class="string">"Key package has last resort extension, not deleting"</span>);
-<a href=#598 id=598 data-nosnippet>598</a>    }
-<a href=#599 id=599 data-nosnippet>599</a>    <span class="prelude-val">Ok</span>((resumption_psk_store, key_package_bundle))
-<a href=#600 id=600 data-nosnippet>600</a>}</code></pre></div></section></main></body></html>
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">let </span>own_leaf_index =
+<a href=#187 id=187 data-nosnippet>187</a>            public_group.leftmost_free_index(inline_proposals.iter(), iter::empty())<span class="question-mark">?</span>;
+<a href=#188 id=188 data-nosnippet>188</a>        params.set_inline_proposals(inline_proposals);
+<a href=#189 id=189 data-nosnippet>189</a>
+<a href=#190 id=190 data-nosnippet>190</a>        <span class="kw">let </span><span class="kw-2">mut </span>mls_group = MlsGroup {
+<a href=#191 id=191 data-nosnippet>191</a>            mls_group_config: mls_group_config.clone(),
+<a href=#192 id=192 data-nosnippet>192</a>            own_leaf_nodes: <span class="macro">vec!</span>[],
+<a href=#193 id=193 data-nosnippet>193</a>            aad: <span class="macro">vec!</span>[],
+<a href=#194 id=194 data-nosnippet>194</a>            group_state: MlsGroupState::Operational,
+<a href=#195 id=195 data-nosnippet>195</a>            public_group,
+<a href=#196 id=196 data-nosnippet>196</a>            group_epoch_secrets,
+<a href=#197 id=197 data-nosnippet>197</a>            own_leaf_index,
+<a href=#198 id=198 data-nosnippet>198</a>            message_secrets_store,
+<a href=#199 id=199 data-nosnippet>199</a>            resumption_psk_store: ResumptionPskStore::new(<span class="number">32</span>),
+<a href=#200 id=200 data-nosnippet>200</a>        };
+<a href=#201 id=201 data-nosnippet>201</a>
+<a href=#202 id=202 data-nosnippet>202</a>        mls_group.set_max_past_epochs(mls_group_config.max_past_epochs);
+<a href=#203 id=203 data-nosnippet>203</a>
+<a href=#204 id=204 data-nosnippet>204</a>        <span class="comment">// Immediately create the commit to add ourselves to the group.
+<a href=#205 id=205 data-nosnippet>205</a>        </span><span class="kw">let </span>create_commit_result = mls_group
+<a href=#206 id=206 data-nosnippet>206</a>            .create_external_commit(params, provider, signer)
+<a href=#207 id=207 data-nosnippet>207</a>            .map_err(|<span class="kw">_</span>| ExternalCommitError::CommitError)<span class="question-mark">?</span>;
+<a href=#208 id=208 data-nosnippet>208</a>
+<a href=#209 id=209 data-nosnippet>209</a>        mls_group.group_state = MlsGroupState::PendingCommit(Box::new(
+<a href=#210 id=210 data-nosnippet>210</a>            PendingCommitState::External(create_commit_result.staged_commit),
+<a href=#211 id=211 data-nosnippet>211</a>        ));
+<a href=#212 id=212 data-nosnippet>212</a>
+<a href=#213 id=213 data-nosnippet>213</a>        mls_group
+<a href=#214 id=214 data-nosnippet>214</a>            .store(provider.storage())
+<a href=#215 id=215 data-nosnippet>215</a>            .map_err(ExternalCommitError::StorageError)<span class="question-mark">?</span>;
+<a href=#216 id=216 data-nosnippet>216</a>
+<a href=#217 id=217 data-nosnippet>217</a>        <span class="kw">let </span>public_message: PublicMessage = create_commit_result.commit.into();
+<a href=#218 id=218 data-nosnippet>218</a>
+<a href=#219 id=219 data-nosnippet>219</a>        <span class="prelude-val">Ok</span>((
+<a href=#220 id=220 data-nosnippet>220</a>            mls_group,
+<a href=#221 id=221 data-nosnippet>221</a>            public_message.into(),
+<a href=#222 id=222 data-nosnippet>222</a>            create_commit_result.group_info,
+<a href=#223 id=223 data-nosnippet>223</a>        ))
+<a href=#224 id=224 data-nosnippet>224</a>    }
+<a href=#225 id=225 data-nosnippet>225</a>}
+<a href=#226 id=226 data-nosnippet>226</a>
+<a href=#227 id=227 data-nosnippet>227</a><span class="kw">impl </span>ProcessedWelcome {
+<a href=#228 id=228 data-nosnippet>228</a>    <span class="doccomment">/// Creates a new processed [`Welcome`] message , which can be
+<a href=#229 id=229 data-nosnippet>229</a>    /// inspected before creating a [`StagedWelcome`].
+<a href=#230 id=230 data-nosnippet>230</a>    ///
+<a href=#231 id=231 data-nosnippet>231</a>    /// This does not require a ratchet tree yet.
+<a href=#232 id=232 data-nosnippet>232</a>    ///
+<a href=#233 id=233 data-nosnippet>233</a>    /// [`Welcome`]: crate::messages::Welcome
+<a href=#234 id=234 data-nosnippet>234</a>    </span><span class="kw">pub fn </span>new_from_welcome&lt;Provider: OpenMlsProvider&gt;(
+<a href=#235 id=235 data-nosnippet>235</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#236 id=236 data-nosnippet>236</a>        mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
+<a href=#237 id=237 data-nosnippet>237</a>        welcome: Welcome,
+<a href=#238 id=238 data-nosnippet>238</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;Provider::StorageError&gt;&gt; {
+<a href=#239 id=239 data-nosnippet>239</a>        <span class="kw">let </span>(resumption_psk_store, key_package_bundle) =
+<a href=#240 id=240 data-nosnippet>240</a>            keys_for_welcome(mls_group_config, <span class="kw-2">&amp;</span>welcome, provider)<span class="question-mark">?</span>;
+<a href=#241 id=241 data-nosnippet>241</a>
+<a href=#242 id=242 data-nosnippet>242</a>        <span class="kw">let </span>ciphersuite = welcome.ciphersuite();
+<a href=#243 id=243 data-nosnippet>243</a>        <span class="kw">let </span><span class="prelude-val">Some</span>(egs) = welcome.find_encrypted_group_secret(
+<a href=#244 id=244 data-nosnippet>244</a>            key_package_bundle
+<a href=#245 id=245 data-nosnippet>245</a>                .key_package()
+<a href=#246 id=246 data-nosnippet>246</a>                .hash_ref(provider.crypto())<span class="question-mark">?</span>,
+<a href=#247 id=247 data-nosnippet>247</a>        ) <span class="kw">else </span>{
+<a href=#248 id=248 data-nosnippet>248</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::JoinerSecretNotFound);
+<a href=#249 id=249 data-nosnippet>249</a>        };
+<a href=#250 id=250 data-nosnippet>250</a>
+<a href=#251 id=251 data-nosnippet>251</a>        <span class="comment">// This check seems to be superfluous from the perspective of the RFC, but still doesn't
+<a href=#252 id=252 data-nosnippet>252</a>        // seem like a bad idea.
+<a href=#253 id=253 data-nosnippet>253</a>        </span><span class="kw">if </span>welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+<a href=#254 id=254 data-nosnippet>254</a>            <span class="kw">let </span>e = WelcomeError::CiphersuiteMismatch;
+<a href=#255 id=255 data-nosnippet>255</a>            <span class="macro">log::debug!</span>(<span class="string">"new_from_welcome {e:?}"</span>);
+<a href=#256 id=256 data-nosnippet>256</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(e);
+<a href=#257 id=257 data-nosnippet>257</a>        }
+<a href=#258 id=258 data-nosnippet>258</a>
+<a href=#259 id=259 data-nosnippet>259</a>        <span class="kw">let </span>group_secrets = GroupSecrets::try_from_ciphertext(
+<a href=#260 id=260 data-nosnippet>260</a>            key_package_bundle.init_private_key(),
+<a href=#261 id=261 data-nosnippet>261</a>            egs.encrypted_group_secrets(),
+<a href=#262 id=262 data-nosnippet>262</a>            welcome.encrypted_group_info(),
+<a href=#263 id=263 data-nosnippet>263</a>            ciphersuite,
+<a href=#264 id=264 data-nosnippet>264</a>            provider.crypto(),
+<a href=#265 id=265 data-nosnippet>265</a>        )<span class="question-mark">?</span>;
+<a href=#266 id=266 data-nosnippet>266</a>        <span class="kw">let </span>psk_secret = {
+<a href=#267 id=267 data-nosnippet>267</a>            <span class="kw">let </span>psks = load_psks(
+<a href=#268 id=268 data-nosnippet>268</a>                provider.storage(),
+<a href=#269 id=269 data-nosnippet>269</a>                <span class="kw-2">&amp;</span>resumption_psk_store,
+<a href=#270 id=270 data-nosnippet>270</a>                <span class="kw-2">&amp;</span>group_secrets.psks,
+<a href=#271 id=271 data-nosnippet>271</a>            )<span class="question-mark">?</span>;
+<a href=#272 id=272 data-nosnippet>272</a>
+<a href=#273 id=273 data-nosnippet>273</a>            PskSecret::new(provider.crypto(), ciphersuite, psks)<span class="question-mark">?
+<a href=#274 id=274 data-nosnippet>274</a>        </span>};
+<a href=#275 id=275 data-nosnippet>275</a>        <span class="kw">let </span>key_schedule = KeySchedule::init(
+<a href=#276 id=276 data-nosnippet>276</a>            ciphersuite,
+<a href=#277 id=277 data-nosnippet>277</a>            provider.crypto(),
+<a href=#278 id=278 data-nosnippet>278</a>            <span class="kw-2">&amp;</span>group_secrets.joiner_secret,
+<a href=#279 id=279 data-nosnippet>279</a>            psk_secret,
+<a href=#280 id=280 data-nosnippet>280</a>        )<span class="question-mark">?</span>;
+<a href=#281 id=281 data-nosnippet>281</a>        <span class="kw">let </span>(welcome_key, welcome_nonce) = key_schedule
+<a href=#282 id=282 data-nosnippet>282</a>            .welcome(provider.crypto(), ciphersuite)
+<a href=#283 id=283 data-nosnippet>283</a>            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?
+<a href=#284 id=284 data-nosnippet>284</a>            </span>.derive_welcome_key_nonce(provider.crypto(), ciphersuite)
+<a href=#285 id=285 data-nosnippet>285</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#286 id=286 data-nosnippet>286</a>        <span class="kw">let </span>verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
+<a href=#287 id=287 data-nosnippet>287</a>            <span class="kw-2">&amp;</span>welcome_key,
+<a href=#288 id=288 data-nosnippet>288</a>            <span class="kw-2">&amp;</span>welcome_nonce,
+<a href=#289 id=289 data-nosnippet>289</a>            welcome.encrypted_group_info(),
+<a href=#290 id=290 data-nosnippet>290</a>            <span class="kw-2">&amp;</span>[],
+<a href=#291 id=291 data-nosnippet>291</a>            provider.crypto(),
+<a href=#292 id=292 data-nosnippet>292</a>        )<span class="question-mark">?</span>;
+<a href=#293 id=293 data-nosnippet>293</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
+<a href=#294 id=294 data-nosnippet>294</a>            verifiable_group_info.extensions().required_capabilities()
+<a href=#295 id=295 data-nosnippet>295</a>        {
+<a href=#296 id=296 data-nosnippet>296</a>            <span class="comment">// Also check that our key package actually supports the extensions.
+<a href=#297 id=297 data-nosnippet>297</a>            // As per the spec, the sender must have checked this. But you never know.
+<a href=#298 id=298 data-nosnippet>298</a>            </span>key_package_bundle
+<a href=#299 id=299 data-nosnippet>299</a>                .key_package()
+<a href=#300 id=300 data-nosnippet>300</a>                .leaf_node()
+<a href=#301 id=301 data-nosnippet>301</a>                .capabilities()
+<a href=#302 id=302 data-nosnippet>302</a>                .supports_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
+<a href=#303 id=303 data-nosnippet>303</a>        }
+<a href=#304 id=304 data-nosnippet>304</a>
+<a href=#305 id=305 data-nosnippet>305</a>        <span class="comment">// https://validation.openmls.tech/#valn1404
+<a href=#306 id=306 data-nosnippet>306</a>        // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
+<a href=#307 id=307 data-nosnippet>307</a>        // KeyPackage.
+<a href=#308 id=308 data-nosnippet>308</a>        </span><span class="kw">if </span>verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+<a href=#309 id=309 data-nosnippet>309</a>            <span class="kw">let </span>e = WelcomeError::CiphersuiteMismatch;
+<a href=#310 id=310 data-nosnippet>310</a>            <span class="macro">log::debug!</span>(<span class="string">"new_from_welcome {e:?}"</span>);
+<a href=#311 id=311 data-nosnippet>311</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(e);
+<a href=#312 id=312 data-nosnippet>312</a>        }
+<a href=#313 id=313 data-nosnippet>313</a>
+<a href=#314 id=314 data-nosnippet>314</a>        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+<a href=#315 id=315 data-nosnippet>315</a>            mls_group_config: mls_group_config.clone(),
+<a href=#316 id=316 data-nosnippet>316</a>            ciphersuite,
+<a href=#317 id=317 data-nosnippet>317</a>            group_secrets,
+<a href=#318 id=318 data-nosnippet>318</a>            key_schedule,
+<a href=#319 id=319 data-nosnippet>319</a>            verifiable_group_info,
+<a href=#320 id=320 data-nosnippet>320</a>            resumption_psk_store,
+<a href=#321 id=321 data-nosnippet>321</a>            key_package_bundle,
+<a href=#322 id=322 data-nosnippet>322</a>        })
+<a href=#323 id=323 data-nosnippet>323</a>    }
+<a href=#324 id=324 data-nosnippet>324</a>
+<a href=#325 id=325 data-nosnippet>325</a>    <span class="doccomment">/// Get a reference to the GroupInfo in this Welcome message.
+<a href=#326 id=326 data-nosnippet>326</a>    ///
+<a href=#327 id=327 data-nosnippet>327</a>    /// **NOTE:** The group info contains **unverified** values. Use with caution.
+<a href=#328 id=328 data-nosnippet>328</a>    </span><span class="kw">pub fn </span>unverified_group_info(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>VerifiableGroupInfo {
+<a href=#329 id=329 data-nosnippet>329</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.verifiable_group_info
+<a href=#330 id=330 data-nosnippet>330</a>    }
+<a href=#331 id=331 data-nosnippet>331</a>
+<a href=#332 id=332 data-nosnippet>332</a>    <span class="doccomment">/// Get a reference to the PSKs in this Welcome message.
+<a href=#333 id=333 data-nosnippet>333</a>    ///
+<a href=#334 id=334 data-nosnippet>334</a>    /// **NOTE:** The group info contains **unverified** values. Use with caution.
+<a href=#335 id=335 data-nosnippet>335</a>    </span><span class="kw">pub fn </span>psks(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[PreSharedKeyId] {
+<a href=#336 id=336 data-nosnippet>336</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.group_secrets.psks
+<a href=#337 id=337 data-nosnippet>337</a>    }
+<a href=#338 id=338 data-nosnippet>338</a>
+<a href=#339 id=339 data-nosnippet>339</a>    <span class="doccomment">/// Consume the `ProcessedWelcome` and combine it witht he ratchet tree into
+<a href=#340 id=340 data-nosnippet>340</a>    /// a `StagedWelcome`.
+<a href=#341 id=341 data-nosnippet>341</a>    </span><span class="kw">pub fn </span>into_staged_welcome&lt;Provider: OpenMlsProvider&gt;(
+<a href=#342 id=342 data-nosnippet>342</a>        <span class="kw-2">mut </span><span class="self">self</span>,
+<a href=#343 id=343 data-nosnippet>343</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#344 id=344 data-nosnippet>344</a>        ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
+<a href=#345 id=345 data-nosnippet>345</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedWelcome, WelcomeError&lt;Provider::StorageError&gt;&gt; {
+<a href=#346 id=346 data-nosnippet>346</a>        <span class="comment">// Build the ratchet tree and group
+<a href=#347 id=347 data-nosnippet>347</a>
+<a href=#348 id=348 data-nosnippet>348</a>        // Set nodes either from the extension or from the `nodes_option`.
+<a href=#349 id=349 data-nosnippet>349</a>        // If we got a ratchet tree extension in the welcome, we enable it for
+<a href=#350 id=350 data-nosnippet>350</a>        // this group. Note that this is not strictly necessary. But there's
+<a href=#351 id=351 data-nosnippet>351</a>        // currently no other mechanism to enable the extension.
+<a href=#352 id=352 data-nosnippet>352</a>        </span><span class="kw">let </span>ratchet_tree = <span class="kw">match </span><span class="self">self</span>.verifiable_group_info.extensions().ratchet_tree() {
+<a href=#353 id=353 data-nosnippet>353</a>            <span class="prelude-val">Some</span>(extension) =&gt; extension.ratchet_tree().clone(),
+<a href=#354 id=354 data-nosnippet>354</a>            <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>ratchet_tree {
+<a href=#355 id=355 data-nosnippet>355</a>                <span class="prelude-val">Some</span>(ratchet_tree) =&gt; ratchet_tree,
+<a href=#356 id=356 data-nosnippet>356</a>                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::MissingRatchetTree),
+<a href=#357 id=357 data-nosnippet>357</a>            },
+<a href=#358 id=358 data-nosnippet>358</a>        };
+<a href=#359 id=359 data-nosnippet>359</a>
+<a href=#360 id=360 data-nosnippet>360</a>        <span class="comment">// Since there is currently only the external pub extension, there is no
+<a href=#361 id=361 data-nosnippet>361</a>        // group info extension of interest here.
+<a href=#362 id=362 data-nosnippet>362</a>        </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external_internal(
+<a href=#363 id=363 data-nosnippet>363</a>            provider.crypto(),
+<a href=#364 id=364 data-nosnippet>364</a>            ratchet_tree,
+<a href=#365 id=365 data-nosnippet>365</a>            <span class="self">self</span>.verifiable_group_info.clone(),
+<a href=#366 id=366 data-nosnippet>366</a>            ProposalStore::new(),
+<a href=#367 id=367 data-nosnippet>367</a>        )<span class="question-mark">?</span>;
+<a href=#368 id=368 data-nosnippet>368</a>
+<a href=#369 id=369 data-nosnippet>369</a>        <span class="comment">// Find our own leaf in the tree.
+<a href=#370 id=370 data-nosnippet>370</a>        </span><span class="kw">let </span>own_leaf_index = public_group
+<a href=#371 id=371 data-nosnippet>371</a>            .members()
+<a href=#372 id=372 data-nosnippet>372</a>            .find_map(|m| {
+<a href=#373 id=373 data-nosnippet>373</a>                <span class="kw">if </span>m.signature_key
+<a href=#374 id=374 data-nosnippet>374</a>                    == <span class="self">self
+<a href=#375 id=375 data-nosnippet>375</a>                        </span>.key_package_bundle
+<a href=#376 id=376 data-nosnippet>376</a>                        .key_package()
+<a href=#377 id=377 data-nosnippet>377</a>                        .leaf_node()
+<a href=#378 id=378 data-nosnippet>378</a>                        .signature_key()
+<a href=#379 id=379 data-nosnippet>379</a>                        .as_slice()
+<a href=#380 id=380 data-nosnippet>380</a>                {
+<a href=#381 id=381 data-nosnippet>381</a>                    <span class="prelude-val">Some</span>(m.index)
+<a href=#382 id=382 data-nosnippet>382</a>                } <span class="kw">else </span>{
+<a href=#383 id=383 data-nosnippet>383</a>                    <span class="prelude-val">None
+<a href=#384 id=384 data-nosnippet>384</a>                </span>}
+<a href=#385 id=385 data-nosnippet>385</a>            })
+<a href=#386 id=386 data-nosnippet>386</a>            .ok_or(WelcomeError::PublicTreeError(
+<a href=#387 id=387 data-nosnippet>387</a>                PublicTreeError::MalformedTree,
+<a href=#388 id=388 data-nosnippet>388</a>            ))<span class="question-mark">?</span>;
+<a href=#389 id=389 data-nosnippet>389</a>
+<a href=#390 id=390 data-nosnippet>390</a>        <span class="kw">let </span>(group_epoch_secrets, message_secrets) = {
+<a href=#391 id=391 data-nosnippet>391</a>            <span class="kw">let </span>serialized_group_context = public_group
+<a href=#392 id=392 data-nosnippet>392</a>                .group_context()
+<a href=#393 id=393 data-nosnippet>393</a>                .tls_serialize_detached()
+<a href=#394 id=394 data-nosnippet>394</a>                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+<a href=#395 id=395 data-nosnippet>395</a>
+<a href=#396 id=396 data-nosnippet>396</a>            <span class="comment">// TODO #751: Implement PSK
+<a href=#397 id=397 data-nosnippet>397</a>            </span><span class="self">self</span>.key_schedule
+<a href=#398 id=398 data-nosnippet>398</a>                .add_context(provider.crypto(), <span class="kw-2">&amp;</span>serialized_group_context)
+<a href=#399 id=399 data-nosnippet>399</a>                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
+<a href=#400 id=400 data-nosnippet>400</a>
+<a href=#401 id=401 data-nosnippet>401</a>            <span class="kw">let </span>epoch_secrets = <span class="self">self
+<a href=#402 id=402 data-nosnippet>402</a>                </span>.key_schedule
+<a href=#403 id=403 data-nosnippet>403</a>                .epoch_secrets(provider.crypto(), <span class="self">self</span>.ciphersuite)
+<a href=#404 id=404 data-nosnippet>404</a>                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
+<a href=#405 id=405 data-nosnippet>405</a>
+<a href=#406 id=406 data-nosnippet>406</a>            epoch_secrets.split_secrets(
+<a href=#407 id=407 data-nosnippet>407</a>                serialized_group_context,
+<a href=#408 id=408 data-nosnippet>408</a>                public_group.tree_size(),
+<a href=#409 id=409 data-nosnippet>409</a>                own_leaf_index,
+<a href=#410 id=410 data-nosnippet>410</a>            )
+<a href=#411 id=411 data-nosnippet>411</a>        };
+<a href=#412 id=412 data-nosnippet>412</a>
+<a href=#413 id=413 data-nosnippet>413</a>        <span class="kw">let </span>confirmation_tag = message_secrets
+<a href=#414 id=414 data-nosnippet>414</a>            .confirmation_key()
+<a href=#415 id=415 data-nosnippet>415</a>            .tag(
+<a href=#416 id=416 data-nosnippet>416</a>                provider.crypto(),
+<a href=#417 id=417 data-nosnippet>417</a>                <span class="self">self</span>.ciphersuite,
+<a href=#418 id=418 data-nosnippet>418</a>                public_group.group_context().confirmed_transcript_hash(),
+<a href=#419 id=419 data-nosnippet>419</a>            )
+<a href=#420 id=420 data-nosnippet>420</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#421 id=421 data-nosnippet>421</a>
+<a href=#422 id=422 data-nosnippet>422</a>        <span class="comment">// Verify confirmation tag
+<a href=#423 id=423 data-nosnippet>423</a>        // https://validation.openmls.tech/#valn1410
+<a href=#424 id=424 data-nosnippet>424</a>        </span><span class="kw">if </span><span class="kw-2">&amp;</span>confirmation_tag != public_group.confirmation_tag() {
+<a href=#425 id=425 data-nosnippet>425</a>            <span class="macro">log::error!</span>(<span class="string">"Confirmation tag mismatch"</span>);
+<a href=#426 id=426 data-nosnippet>426</a>            <span class="macro">log_crypto!</span>(trace, <span class="string">"  Got:      {:x?}"</span>, confirmation_tag);
+<a href=#427 id=427 data-nosnippet>427</a>            <span class="macro">log_crypto!</span>(trace, <span class="string">"  Expected: {:x?}"</span>, public_group.confirmation_tag());
+<a href=#428 id=428 data-nosnippet>428</a>            <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">"Confirmation tag mismatch"</span>);
+<a href=#429 id=429 data-nosnippet>429</a>
+<a href=#430 id=430 data-nosnippet>430</a>            <span class="comment">// in some tests we need to be able to proceed despite the tag being wrong,
+<a href=#431 id=431 data-nosnippet>431</a>            // e.g. to test whether a later validation check is performed correctly.
+<a href=#432 id=432 data-nosnippet>432</a>            </span><span class="kw">if </span>!<span class="kw">crate</span>::skip_validation::is_disabled::confirmation_tag() {
+<a href=#433 id=433 data-nosnippet>433</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ConfirmationTagMismatch);
+<a href=#434 id=434 data-nosnippet>434</a>            }
+<a href=#435 id=435 data-nosnippet>435</a>        }
+<a href=#436 id=436 data-nosnippet>436</a>
+<a href=#437 id=437 data-nosnippet>437</a>        <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
+<a href=#438 id=438 data-nosnippet>438</a>
+<a href=#439 id=439 data-nosnippet>439</a>        <span class="comment">// Extract and store the resumption PSK for the current epoch.
+<a href=#440 id=440 data-nosnippet>440</a>        </span><span class="kw">let </span>resumption_psk = group_epoch_secrets.resumption_psk();
+<a href=#441 id=441 data-nosnippet>441</a>        <span class="self">self</span>.resumption_psk_store
+<a href=#442 id=442 data-nosnippet>442</a>            .add(public_group.group_context().epoch(), resumption_psk.clone());
+<a href=#443 id=443 data-nosnippet>443</a>
+<a href=#444 id=444 data-nosnippet>444</a>        <span class="kw">let </span>welcome_sender_index = <span class="self">self</span>.verifiable_group_info.signer();
+<a href=#445 id=445 data-nosnippet>445</a>        <span class="kw">let </span>path_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_secret) = <span class="self">self</span>.group_secrets.path_secret {
+<a href=#446 id=446 data-nosnippet>446</a>            <span class="kw">let </span>(path_keypairs, _commit_secret) = public_group
+<a href=#447 id=447 data-nosnippet>447</a>                .derive_path_secrets(
+<a href=#448 id=448 data-nosnippet>448</a>                    provider.crypto(),
+<a href=#449 id=449 data-nosnippet>449</a>                    <span class="self">self</span>.ciphersuite,
+<a href=#450 id=450 data-nosnippet>450</a>                    path_secret,
+<a href=#451 id=451 data-nosnippet>451</a>                    welcome_sender_index,
+<a href=#452 id=452 data-nosnippet>452</a>                    own_leaf_index,
+<a href=#453 id=453 data-nosnippet>453</a>                )
+<a href=#454 id=454 data-nosnippet>454</a>                .map_err(|e| <span class="kw">match </span>e {
+<a href=#455 id=455 data-nosnippet>455</a>                    DerivePathError::LibraryError(e) =&gt; e.into(),
+<a href=#456 id=456 data-nosnippet>456</a>                    DerivePathError::PublicKeyMismatch =&gt; {
+<a href=#457 id=457 data-nosnippet>457</a>                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
+<a href=#458 id=458 data-nosnippet>458</a>                    }
+<a href=#459 id=459 data-nosnippet>459</a>                })<span class="question-mark">?</span>;
+<a href=#460 id=460 data-nosnippet>460</a>            <span class="prelude-val">Some</span>(path_keypairs)
+<a href=#461 id=461 data-nosnippet>461</a>        } <span class="kw">else </span>{
+<a href=#462 id=462 data-nosnippet>462</a>            <span class="prelude-val">None
+<a href=#463 id=463 data-nosnippet>463</a>        </span>};
+<a href=#464 id=464 data-nosnippet>464</a>
+<a href=#465 id=465 data-nosnippet>465</a>        <span class="kw">let </span>staged_welcome = StagedWelcome {
+<a href=#466 id=466 data-nosnippet>466</a>            mls_group_config: <span class="self">self</span>.mls_group_config,
+<a href=#467 id=467 data-nosnippet>467</a>            public_group,
+<a href=#468 id=468 data-nosnippet>468</a>            group_epoch_secrets,
+<a href=#469 id=469 data-nosnippet>469</a>            own_leaf_index,
+<a href=#470 id=470 data-nosnippet>470</a>            message_secrets_store,
+<a href=#471 id=471 data-nosnippet>471</a>            resumption_psk_store: <span class="self">self</span>.resumption_psk_store,
+<a href=#472 id=472 data-nosnippet>472</a>            verifiable_group_info: <span class="self">self</span>.verifiable_group_info,
+<a href=#473 id=473 data-nosnippet>473</a>            key_package_bundle: <span class="self">self</span>.key_package_bundle,
+<a href=#474 id=474 data-nosnippet>474</a>            path_keypairs,
+<a href=#475 id=475 data-nosnippet>475</a>        };
+<a href=#476 id=476 data-nosnippet>476</a>
+<a href=#477 id=477 data-nosnippet>477</a>        <span class="prelude-val">Ok</span>(staged_welcome)
+<a href=#478 id=478 data-nosnippet>478</a>    }
+<a href=#479 id=479 data-nosnippet>479</a>}
+<a href=#480 id=480 data-nosnippet>480</a>
+<a href=#481 id=481 data-nosnippet>481</a><span class="kw">impl </span>StagedWelcome {
+<a href=#482 id=482 data-nosnippet>482</a>    <span class="doccomment">/// Creates a new staged welcome from a [`Welcome`] message. Returns an error
+<a href=#483 id=483 data-nosnippet>483</a>    /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
+<a href=#484 id=484 data-nosnippet>484</a>    /// can be found.
+<a href=#485 id=485 data-nosnippet>485</a>    /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
+<a href=#486 id=486 data-nosnippet>486</a>    /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
+<a href=#487 id=487 data-nosnippet>487</a>    ///
+<a href=#488 id=488 data-nosnippet>488</a>    /// [`Welcome`]: crate::messages::Welcome
+<a href=#489 id=489 data-nosnippet>489</a>    </span><span class="kw">pub fn </span>new_from_welcome&lt;Provider: OpenMlsProvider&gt;(
+<a href=#490 id=490 data-nosnippet>490</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#491 id=491 data-nosnippet>491</a>        mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
+<a href=#492 id=492 data-nosnippet>492</a>        welcome: Welcome,
+<a href=#493 id=493 data-nosnippet>493</a>        ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
+<a href=#494 id=494 data-nosnippet>494</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;Provider::StorageError&gt;&gt; {
+<a href=#495 id=495 data-nosnippet>495</a>        <span class="kw">let </span>processed_welcome =
+<a href=#496 id=496 data-nosnippet>496</a>            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)<span class="question-mark">?</span>;
+<a href=#497 id=497 data-nosnippet>497</a>
+<a href=#498 id=498 data-nosnippet>498</a>        processed_welcome.into_staged_welcome(provider, ratchet_tree)
+<a href=#499 id=499 data-nosnippet>499</a>    }
+<a href=#500 id=500 data-nosnippet>500</a>
+<a href=#501 id=501 data-nosnippet>501</a>    <span class="doccomment">/// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
+<a href=#502 id=502 data-nosnippet>502</a>    ///
+<a href=#503 id=503 data-nosnippet>503</a>    /// [`Welcome`]: crate::messages::Welcome
+<a href=#504 id=504 data-nosnippet>504</a>    </span><span class="kw">pub fn </span>welcome_sender_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
+<a href=#505 id=505 data-nosnippet>505</a>        <span class="self">self</span>.verifiable_group_info.signer()
+<a href=#506 id=506 data-nosnippet>506</a>    }
+<a href=#507 id=507 data-nosnippet>507</a>
+<a href=#508 id=508 data-nosnippet>508</a>    <span class="doccomment">/// Returns the [`LeafNode`] of the group member that authored the [`Welcome`] message.
+<a href=#509 id=509 data-nosnippet>509</a>    ///
+<a href=#510 id=510 data-nosnippet>510</a>    /// [`Welcome`]: crate::messages::Welcome
+<a href=#511 id=511 data-nosnippet>511</a>    </span><span class="kw">pub fn </span>welcome_sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>LeafNode, LibraryError&gt; {
+<a href=#512 id=512 data-nosnippet>512</a>        <span class="kw">let </span>sender_index = <span class="self">self</span>.welcome_sender_index();
+<a href=#513 id=513 data-nosnippet>513</a>        <span class="self">self</span>.public_group
+<a href=#514 id=514 data-nosnippet>514</a>            .leaf(sender_index)
+<a href=#515 id=515 data-nosnippet>515</a>            .ok_or(LibraryError::custom(
+<a href=#516 id=516 data-nosnippet>516</a>                <span class="string">"no leaf with given welcome sender index exists"</span>,
+<a href=#517 id=517 data-nosnippet>517</a>            ))
+<a href=#518 id=518 data-nosnippet>518</a>    }
+<a href=#519 id=519 data-nosnippet>519</a>
+<a href=#520 id=520 data-nosnippet>520</a>    <span class="doccomment">/// Get the [`GroupContext`] of this welcome's [`PublicGroup`].
+<a href=#521 id=521 data-nosnippet>521</a>    </span><span class="kw">pub fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
+<a href=#522 id=522 data-nosnippet>522</a>        <span class="self">self</span>.public_group.group_context()
+<a href=#523 id=523 data-nosnippet>523</a>    }
+<a href=#524 id=524 data-nosnippet>524</a>
+<a href=#525 id=525 data-nosnippet>525</a>    <span class="doccomment">/// Get an iterator over all [`Member`]s of this welcome's [`PublicGroup`].
+<a href=#526 id=526 data-nosnippet>526</a>    </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">'_ </span>{
+<a href=#527 id=527 data-nosnippet>527</a>        <span class="self">self</span>.public_group.members()
+<a href=#528 id=528 data-nosnippet>528</a>    }
+<a href=#529 id=529 data-nosnippet>529</a>
+<a href=#530 id=530 data-nosnippet>530</a>    <span class="doccomment">/// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
+<a href=#531 id=531 data-nosnippet>531</a>    </span><span class="kw">pub fn </span>into_group&lt;Provider: OpenMlsProvider&gt;(
+<a href=#532 id=532 data-nosnippet>532</a>        <span class="self">self</span>,
+<a href=#533 id=533 data-nosnippet>533</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#534 id=534 data-nosnippet>534</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, WelcomeError&lt;Provider::StorageError&gt;&gt; {
+<a href=#535 id=535 data-nosnippet>535</a>        <span class="comment">// If we got a path secret, derive the path (which also checks if the
+<a href=#536 id=536 data-nosnippet>536</a>        // public keys match) and store the derived keys in the key store.
+<a href=#537 id=537 data-nosnippet>537</a>        </span><span class="kw">let </span>group_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_keypairs) = <span class="self">self</span>.path_keypairs {
+<a href=#538 id=538 data-nosnippet>538</a>            <span class="kw">let </span><span class="kw-2">mut </span>keypairs = <span class="macro">vec!</span>[<span class="self">self</span>.key_package_bundle.encryption_key_pair()];
+<a href=#539 id=539 data-nosnippet>539</a>            keypairs.extend_from_slice(<span class="kw-2">&amp;</span>path_keypairs);
+<a href=#540 id=540 data-nosnippet>540</a>            keypairs
+<a href=#541 id=541 data-nosnippet>541</a>        } <span class="kw">else </span>{
+<a href=#542 id=542 data-nosnippet>542</a>            <span class="macro">vec!</span>[<span class="self">self</span>.key_package_bundle.encryption_key_pair()]
+<a href=#543 id=543 data-nosnippet>543</a>        };
+<a href=#544 id=544 data-nosnippet>544</a>
+<a href=#545 id=545 data-nosnippet>545</a>        <span class="kw">let </span><span class="kw-2">mut </span>mls_group = MlsGroup {
+<a href=#546 id=546 data-nosnippet>546</a>            mls_group_config: <span class="self">self</span>.mls_group_config,
+<a href=#547 id=547 data-nosnippet>547</a>            own_leaf_nodes: <span class="macro">vec!</span>[],
+<a href=#548 id=548 data-nosnippet>548</a>            aad: <span class="macro">vec!</span>[],
+<a href=#549 id=549 data-nosnippet>549</a>            group_state: MlsGroupState::Operational,
+<a href=#550 id=550 data-nosnippet>550</a>            public_group: <span class="self">self</span>.public_group,
+<a href=#551 id=551 data-nosnippet>551</a>            group_epoch_secrets: <span class="self">self</span>.group_epoch_secrets,
+<a href=#552 id=552 data-nosnippet>552</a>            own_leaf_index: <span class="self">self</span>.own_leaf_index,
+<a href=#553 id=553 data-nosnippet>553</a>            message_secrets_store: <span class="self">self</span>.message_secrets_store,
+<a href=#554 id=554 data-nosnippet>554</a>            resumption_psk_store: <span class="self">self</span>.resumption_psk_store,
+<a href=#555 id=555 data-nosnippet>555</a>        };
+<a href=#556 id=556 data-nosnippet>556</a>
+<a href=#557 id=557 data-nosnippet>557</a>        mls_group
+<a href=#558 id=558 data-nosnippet>558</a>            .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
+<a href=#559 id=559 data-nosnippet>559</a>            .map_err(WelcomeError::StorageError)<span class="question-mark">?</span>;
+<a href=#560 id=560 data-nosnippet>560</a>        mls_group.set_max_past_epochs(mls_group.mls_group_config.max_past_epochs);
+<a href=#561 id=561 data-nosnippet>561</a>
+<a href=#562 id=562 data-nosnippet>562</a>        mls_group
+<a href=#563 id=563 data-nosnippet>563</a>            .store(provider.storage())
+<a href=#564 id=564 data-nosnippet>564</a>            .map_err(WelcomeError::StorageError)<span class="question-mark">?</span>;
+<a href=#565 id=565 data-nosnippet>565</a>
+<a href=#566 id=566 data-nosnippet>566</a>        <span class="prelude-val">Ok</span>(mls_group)
+<a href=#567 id=567 data-nosnippet>567</a>    }
+<a href=#568 id=568 data-nosnippet>568</a>}
+<a href=#569 id=569 data-nosnippet>569</a>
+<a href=#570 id=570 data-nosnippet>570</a><span class="kw">fn </span>keys_for_welcome&lt;Provider: OpenMlsProvider&gt;(
+<a href=#571 id=571 data-nosnippet>571</a>    mls_group_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
+<a href=#572 id=572 data-nosnippet>572</a>    welcome: <span class="kw-2">&amp;</span>Welcome,
+<a href=#573 id=573 data-nosnippet>573</a>    provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#574 id=574 data-nosnippet>574</a>) -&gt; <span class="prelude-ty">Result</span>&lt;
+<a href=#575 id=575 data-nosnippet>575</a>    (ResumptionPskStore, KeyPackageBundle),
+<a href=#576 id=576 data-nosnippet>576</a>    WelcomeError&lt;&lt;Provider <span class="kw">as </span>OpenMlsProvider&gt;::StorageError&gt;,
+<a href=#577 id=577 data-nosnippet>577</a>&gt; {
+<a href=#578 id=578 data-nosnippet>578</a>    <span class="kw">let </span>resumption_psk_store = ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
+<a href=#579 id=579 data-nosnippet>579</a>    <span class="kw">let </span>key_package_bundle: KeyPackageBundle = welcome
+<a href=#580 id=580 data-nosnippet>580</a>        .secrets()
+<a href=#581 id=581 data-nosnippet>581</a>        .iter()
+<a href=#582 id=582 data-nosnippet>582</a>        .find_map(|egs| {
+<a href=#583 id=583 data-nosnippet>583</a>            <span class="kw">let </span>hash_ref = egs.new_member();
+<a href=#584 id=584 data-nosnippet>584</a>
+<a href=#585 id=585 data-nosnippet>585</a>            provider
+<a href=#586 id=586 data-nosnippet>586</a>                .storage()
+<a href=#587 id=587 data-nosnippet>587</a>                .key_package(<span class="kw-2">&amp;</span>hash_ref)
+<a href=#588 id=588 data-nosnippet>588</a>                .map_err(WelcomeError::StorageError)
+<a href=#589 id=589 data-nosnippet>589</a>                .transpose()
+<a href=#590 id=590 data-nosnippet>590</a>        })
+<a href=#591 id=591 data-nosnippet>591</a>        .ok_or(WelcomeError::NoMatchingKeyPackage)<span class="question-mark">??</span>;
+<a href=#592 id=592 data-nosnippet>592</a>    <span class="kw">if </span>!key_package_bundle.key_package().last_resort() {
+<a href=#593 id=593 data-nosnippet>593</a>        provider
+<a href=#594 id=594 data-nosnippet>594</a>            .storage()
+<a href=#595 id=595 data-nosnippet>595</a>            .delete_key_package(<span class="kw-2">&amp;</span>key_package_bundle.key_package.hash_ref(provider.crypto())<span class="question-mark">?</span>)
+<a href=#596 id=596 data-nosnippet>596</a>            .map_err(WelcomeError::StorageError)<span class="question-mark">?</span>;
+<a href=#597 id=597 data-nosnippet>597</a>    } <span class="kw">else </span>{
+<a href=#598 id=598 data-nosnippet>598</a>        <span class="macro">log::debug!</span>(<span class="string">"Key package has last resort extension, not deleting"</span>);
+<a href=#599 id=599 data-nosnippet>599</a>    }
+<a href=#600 id=600 data-nosnippet>600</a>    <span class="prelude-val">Ok</span>((resumption_psk_store, key_package_bundle))
+<a href=#601 id=601 data-nosnippet>601</a>}</code></pre></div></section></main></body></html>
