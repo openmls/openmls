@@ -23,6 +23,7 @@ pub(crate) mod public_group;
 // Public
 pub use errors::*;
 pub use group_context::GroupContext;
+pub use mls_group::builder::*;
 pub use mls_group::commit_builder::*;
 pub use mls_group::config::*;
 pub use mls_group::membership::*;

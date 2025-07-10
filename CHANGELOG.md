@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1691](https://github.com/openmls/openmls/pull/1691): Fix the way credentials are looked up when processing messages from previous epochs.
 - [#1702](https://github.com/openmls/openmls/pull/1702): Fix multiple validation checks.
 - [#1703](https://github.com/openmls/openmls/pull/1703): Fix a bug where updates proposals were not properly cleared if a remove proposal is present for the same group member.
+- [#1793](https://github.com/openmls/openmls/pull/1793): Fix a bug where SelfRemoves were not taken into account when computing the sender index of external committers
 - [#1763](https://github.com/openmls/openmls/pull/1763): Fix which extension types are considered valid in a leaf node.
 - [#1797](https://github.com/openmls/openmls/pull/1797): Fix when tree diff trimming is performed.
 
@@ -43,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1762](https://github.com/openmls/openmls/pull/1762): Expose `LeafNodeSource` to allow handling output of `LeafNode::leaf_node_source()`.
 - [#1767](https://github.com/openmls/openmls/pull/1767): Return a more specific error when private messages that are too old are processed. The error type has changed from `ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(MessageDecryptionError::AeadError))` to `ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(MessageDecryptoinError::SecretTree(SecretTreeError::TooDistantInThePast)))`.
 - [#1786](https://github.com/openmls/openmls/pull/1786): Tighten the requirements for the providers for `MlsGroup::export_secret()` and `MlsGroup::export_group_info()`. The function now only require the `OpenMlsCrypto` provider.
+- [#1793](https://github.com/openmls/openmls/pull/1793): Align the proposal types of the SelfRemove an AppAck proposals to version 06 of the MLS extensions draft.
 
 ## 0.6.0 (2024-09-04)
 
