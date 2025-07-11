@@ -1,6 +1,6 @@
 [package]
 name = "openmls_libcrux_crypto"
-version = "0.2.0"
+version = "0.2.0-pre.1"
 edition = "2021"
 authors = ["OpenMLS Authors"]
 description = "A crypto backend for OpenMLS based on libcrux implementing openmls_traits."
@@ -10,18 +10,17 @@ repository = "https://github.com/openmls/openmls/tree/main/openmls_libcrux_crypt
 readme = "../README.md"
 
 [dependencies]
-libcrux-chacha20poly1305 = { version = "0.0.2" }
-libcrux-ed25519 = { version = "0.0.2", features = ["rand"] }
-libcrux-hkdf = { version = "0.0.2" }
-libcrux-sha2 = { version = "0.0.2" }
-openmls_traits = { version = "0.4.0", path = "../traits" }
-openmls_memory_storage = { version = "0.3.0", path = "../memory_storage" }
+libcrux-chacha20poly1305 = { version = "0.0.3" }
+libcrux-ed25519 = { version = "0.0.3", features = ["rand"] }
+libcrux-hkdf = { version = "0.0.3" }
+libcrux-sha2 = { version = "0.0.3" }
+
+openmls_traits = { workspace = true }
+openmls_memory_storage = { workspace = true }
+
 rand = "0.9"
 tls_codec.workspace = true
 rand_chacha = "0.9"
-hpke_rs = { version = "0.2.1-alpha.1", git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs", features = [
-  "hazmat",
-  "serialization",
-] }
-hpke_rs_crypto = { version = "0.3.0-alpha.1", git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs-crypto" }
-hpke_rs_libcrux = { version = "0.2.0-alpha.1", git = "https://github.com/cryspen/hpke-rs", branch = "main", package = "hpke-rs-libcrux" }
+hpke-rs = { version = "0.3.0", features = ["hazmat", "serialization"] }
+hpke-rs-crypto = { version = "0.3.0" }
+hpke-rs-libcrux = { version = "0.3.0" }

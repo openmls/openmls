@@ -229,14 +229,14 @@ impl ProposalQueue {
                 queued_proposal.clone(),
             );
         }
-        log::trace!("   known proposals:\n{:#?}", proposals_by_reference_queue);
+        log::trace!("   known proposals:\n{proposals_by_reference_queue:#?}");
         // Build the actual queue
         let mut proposal_queue = ProposalQueue::default();
 
         // Iterate over the committed proposals and insert the proposals in the queue
         log::trace!("   committed proposals ...");
         for proposal_or_ref in committed_proposals.into_iter() {
-            log::trace!("       proposal_or_ref:\n{:#?}", proposal_or_ref);
+            log::trace!("       proposal_or_ref:\n{proposal_or_ref:#?}");
             let queued_proposal = match proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200

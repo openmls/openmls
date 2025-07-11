@@ -2,15 +2,16 @@
 //!
 //! Contains the types and methods to build external proposal to add/remove a client from a MLS group
 //!
-//! `Add` (from external sender), `Remove` & `ReInit are not yet implemented`
+//! `ReInit` is not yet implemented
 
 use crate::{
     binary_tree::LeafNodeIndex,
-    extensions::SenderExtensionIndex,
+    extensions::{Extensions, SenderExtensionIndex},
     framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut, PublicMessage},
     group::{
-        errors::ProposeRemoveMemberError, mls_group::errors::ProposeAddMemberError, GroupEpoch,
-        GroupId,
+        errors::{CreateGroupContextExtProposalError, ProposeRemoveMemberError},
+        mls_group::errors::ProposeAddMemberError,
+        GroupEpoch, GroupId,
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
@@ -18,7 +19,7 @@ use crate::{
 };
 use openmls_traits::signatures::Signer;
 
-use super::proposals::RemoveProposal;
+use super::proposals::{GroupContextExtensionProposal, RemoveProposal};
 
 /// External Add Proposal where sender is [NewMemberProposal](crate::prelude::Sender::NewMemberProposal). A client
 /// outside the group can request joining the group. This proposal should then be committed by a
@@ -60,6 +61,36 @@ impl JoinProposal {
 }
 
 impl ExternalProposal {
+    /// Creates an external GroupContextExtensions proposal. For delivery services requesting to update the group context extensions.
+    /// This proposal will have to be committed later by a group member.
+    ///
+    /// # Arguments
+    /// * `extensions` - a new set of extensions for the group context
+    /// * `group_id` - unique group identifier of the group to join
+    /// * `epoch` - group's epoch
+    /// * `signer` - of the sender to sign the message
+    /// * `sender` - index of the sender of the proposal (in the [crate::extensions::ExternalSendersExtension] array
+    ///   from the Group Context)
+    pub fn new_group_context_extensions<Provider: OpenMlsProvider>(
+        extensions: Extensions,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        signer: &impl Signer,
+        sender_index: SenderExtensionIndex,
+    ) -> Result<MlsMessageOut, CreateGroupContextExtProposalError<Provider::StorageError>> {
+        let proposal = GroupContextExtensionProposal::new(extensions);
+
+        AuthenticatedContent::new_external_proposal(
+            Proposal::GroupContextExtensions(proposal),
+            group_id,
+            epoch,
+            signer,
+            sender_index,
+        )
+        .map(PublicMessage::from)
+        .map(MlsMessageOut::from)
+        .map_err(CreateGroupContextExtProposalError::from)
+    }
     /// Creates an external Remove proposal. For delivery services requesting to remove a client.
     /// This proposal will have to be committed later by a group member.
     ///

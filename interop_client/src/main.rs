@@ -3,6 +3,8 @@
 //!
 //! It is based on the Mock client in that repository.
 
+#![allow(clippy::result_large_err)]
+
 use std::{collections::HashMap, fmt::Display, fs::File, io::Write, sync::Mutex};
 
 use clap::Parser;
@@ -123,7 +125,7 @@ fn _into_bytes(obj: impl serde::Serialize) -> Vec<u8> {
 pub fn write(file_name: &str, payload: &[u8]) {
     let mut file = match File::create(file_name) {
         Ok(f) => f,
-        Err(_) => panic!("Couldn't open file {}.", file_name),
+        Err(_) => panic!("Couldn't open file {file_name}."),
     };
     file.write_all(payload)
         .expect("Error writing test vector file");
@@ -579,7 +581,7 @@ impl MlsClient for MlsClientImpl {
         let exported_secret = interop_group
             .group
             .export_secret(
-                &interop_group.crypto_provider,
+                interop_group.crypto_provider.crypto(),
                 &request.label,
                 &request.context,
                 request.key_length as usize,
@@ -1247,7 +1249,7 @@ impl MlsClient for MlsClientImpl {
 
         let group_info = group
             .export_group_info(
-                &interop_group.crypto_provider,
+                interop_group.crypto_provider.crypto(),
                 &interop_group.signature_keys,
                 !request.external_tree,
             )

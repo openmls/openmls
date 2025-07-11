@@ -285,7 +285,7 @@ fn book_operations() {
 
     // ANCHOR: alice_exports_group_info
     let verifiable_group_info = alice_group
-        .export_group_info(provider, &alice_signature_keys, true)
+        .export_group_info(provider.crypto(), &alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");
@@ -427,8 +427,12 @@ fn book_operations() {
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider, "", &[], 32).unwrap(),
-        bob_group.export_secret(provider, "", &[], 32).unwrap()
+        alice_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap(),
+        bob_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap()
     );
 
     // Make sure that both groups have the same public tree
@@ -527,8 +531,12 @@ fn book_operations() {
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider, "", &[], 32).unwrap(),
-        bob_group.export_secret(provider, "", &[], 32).unwrap()
+        alice_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap(),
+        bob_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap()
     );
 
     // Make sure that both groups have the same public tree
@@ -694,12 +702,20 @@ fn book_operations() {
 
     // Check that all groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider, "", &[], 32).unwrap(),
-        bob_group.export_secret(provider, "", &[], 32).unwrap()
+        alice_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap(),
+        bob_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap()
     );
     assert_eq!(
-        alice_group.export_secret(provider, "", &[], 32).unwrap(),
-        charlie_group.export_secret(provider, "", &[], 32).unwrap()
+        alice_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap(),
+        charlie_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap()
     );
 
     // Make sure that all groups have the same public tree
@@ -1433,10 +1449,10 @@ fn book_operations() {
 
     assert_eq!(
         alice_group
-            .export_secret(provider, "before load", &[], 32)
+            .export_secret(provider.crypto(), "before load", &[], 32)
             .unwrap(),
         bob_group
-            .export_secret(provider, "before load", &[], 32)
+            .export_secret(provider.crypto(), "before load", &[], 32)
             .unwrap()
     );
 
@@ -1447,10 +1463,10 @@ fn book_operations() {
     // Make sure the state is still the same
     assert_eq!(
         alice_group
-            .export_secret(provider, "after load", &[], 32)
+            .export_secret(provider.crypto(), "after load", &[], 32)
             .unwrap(),
         bob_group
-            .export_secret(provider, "after load", &[], 32)
+            .export_secret(provider.crypto(), "after load", &[], 32)
             .unwrap()
     );
 }
@@ -1690,5 +1706,47 @@ fn commit_builder() {
 
     let (mls_message_out, welcome, group_info) = message_bundle.into_contents();
     // ANCHOR_END: alice_adds_bob_with_commit_builder
+    _ = (mls_message_out, welcome, group_info)
+}
+
+#[openmls_test]
+fn new_signer() {
+    // Generate credentials with keys
+    let (alice_old_credential, alice_old_signature_keys) =
+        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    let config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .build();
+    let mut alice_group = MlsGroup::new(
+        provider,
+        &alice_old_signature_keys,
+        &config,
+        alice_old_credential.clone(),
+    )
+    .expect("An unexpected error occurred.");
+
+    let (alice_new_credential, alice_new_signature_keys) =
+        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    // === Alice rotates her signature key ===
+    // ANCHOR: alice_rotates_signature_key
+
+    let new_signer_bundle = NewSignerBundle {
+        signer: &alice_new_signature_keys,
+        credential_with_key: alice_new_credential,
+    };
+
+    let message_bundle = alice_group
+        .self_update_with_new_signer(
+            provider,
+            &alice_old_signature_keys,
+            new_signer_bundle,
+            LeafNodeParameters::default(),
+        )
+        .unwrap();
+
+    let (mls_message_out, welcome, group_info) = message_bundle.into_contents();
+    // ANCHOR_END: alice_rotates_signature_key
     _ = (mls_message_out, welcome, group_info)
 }
