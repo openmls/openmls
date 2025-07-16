@@ -21,10 +21,10 @@ resolver = "2"
 [workspace.dependencies]
 tls_codec = { version = "0.4.2", features = ["derive", "serde", "mls"] }
 
-openmls = { version = "0.7.0-pre.1", path = "openmls" }
+openmls = { version = "0.7.0-pre.2", path = "openmls" }
 
 openmls_traits = { version = "0.4.0-pre.1", path = "traits" }
-openmls_test = { version = "0.2.0-pre.1", path = "openmls_test" }
+openmls_test = { version = "0.2.0-pre.2", path = "openmls_test" }
 openmls_basic_credential = { version = "0.4.0-pre.1", path = "basic_credential" }
 
 openmls_rust_crypto = { version = "0.4.0-pre.1", path = "openmls_rust_crypto" }
