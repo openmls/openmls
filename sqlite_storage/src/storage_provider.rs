@@ -46,8 +46,21 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> SqliteStorageProvider<C, Conne
 
 impl<C: Codec, ConnectionRef: BorrowMut<Connection>> SqliteStorageProvider<C, ConnectionRef> {
     /// Initialize the database with the necessary tables.
+    ///
+    /// This method is deprecated and replaced by `run_migrations`, which
+    /// specifies a unique name for the refinery migration table.
+    #[deprecated]
     pub fn initialize(&mut self) -> Result<(), refinery::Error> {
         migrations::runner().run(self.connection.borrow_mut())?;
+        Ok(())
+    }
+
+    /// Initialize the database with the necessary tables.
+    pub fn run_migrations(&mut self) -> Result<(), refinery::Error> {
+        let mut runner = migrations::runner();
+        runner.set_migration_table_name("openmls_sqlite_storage_migrations");
+
+        runner.run(self.connection.borrow_mut())?;
         Ok(())
     }
 }
