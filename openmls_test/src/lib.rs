@@ -90,7 +90,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         fn default() -> Self {
                             let connection = Connection::open_in_memory().unwrap();
                             let mut storage = SqliteStorageProvider::new(connection);
-                            storage.initialize().unwrap();
+                            storage.run_migrations().unwrap();
                             Self {
                                 crypto: RustCrypto::default(),
                                 storage,
