@@ -49,7 +49,7 @@ fn read_write_delete() {
     let mut storage =
         openmls_sqlite_storage::SqliteStorageProvider::<JsonCodec, Connection>::new(connection);
 
-    storage.initialize().unwrap();
+    storage.run_migrations().unwrap();
 
     // Store proposals
     for (i, proposal) in proposals.iter().enumerate() {
