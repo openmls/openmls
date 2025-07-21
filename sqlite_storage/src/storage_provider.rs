@@ -49,7 +49,7 @@ impl<C: Codec, ConnectionRef: BorrowMut<Connection>> SqliteStorageProvider<C, Co
     ///
     /// This method is deprecated and replaced by `run_migrations`, which
     /// specifies a unique name for the refinery migration table.
-    #[deprecated]
+    #[deprecated(since = "0.2.0", note = "use `run_migrations()` instead")]
     pub fn initialize(&mut self) -> Result<(), refinery::Error> {
         migrations::runner().run(self.connection.borrow_mut())?;
         Ok(())
