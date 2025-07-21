@@ -11,7 +11,7 @@
 //! To avoid duplication of code and functionality, [`MlsGroup`] internally
 //! relies on a [`PublicGroup`] as well.
 
-use std::collections::HashSet;
+use std::{collections::HashSet, iter};
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};

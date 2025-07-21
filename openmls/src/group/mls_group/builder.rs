@@ -23,6 +23,7 @@ use crate::{
 
 use super::{past_secrets::MessageSecretsStore, MlsGroup, MlsGroupState};
 
+/// Builder struct for an [`MlsGroup`].
 #[derive(Default, Debug)]
 pub struct MlsGroupBuilder {
     group_id: Option<GroupId>,

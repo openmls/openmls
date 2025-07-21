@@ -1,3 +1,5 @@
+use std::iter;
+
 use errors::NewGroupError;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as StorageProviderTrait};
 
