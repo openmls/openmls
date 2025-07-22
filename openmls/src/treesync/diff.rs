@@ -37,7 +37,8 @@ use super::{
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     LeafNode, TreeSync, TreeSyncParentHashError,
 };
-use crate::group::{create_commit::CommitType, GroupId};
+use crate::group::diff::compute_path::CommitType;
+use crate::group::GroupId;
 use crate::{
     binary_tree::{
         array_representation::{

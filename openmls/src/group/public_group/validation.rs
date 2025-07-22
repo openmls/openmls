@@ -493,7 +493,7 @@ impl PublicGroup {
     ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
     ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
-    pub(super) fn validate_external_commit(
+    pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ExternalCommitValidationError> {

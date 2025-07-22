@@ -140,11 +140,7 @@ fn proposal_queue_functions(
     );
 
     let (proposal_queue, own_update) = ProposalQueue::filter_proposals(
-        ciphersuite,
-        provider.crypto(),
-        Sender::build_member(LeafNodeIndex::new(1)),
-        &proposal_store,
-        &[],
+        proposal_store.proposals().map(Clone::clone),
         LeafNodeIndex::new(0),
     )
     .expect("Could not create ProposalQueue.");
