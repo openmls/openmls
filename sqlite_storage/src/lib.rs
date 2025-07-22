@@ -6,8 +6,8 @@
 //! ## Usage
 //!
 //! Generally, the [`SqliteStorageProvider`] can be used like any other storage
-//! provider. However, before first use, the tables need to be created. This can
-//! be done using the [`SqliteStorageProvider::create_tables`] method.
+//! provider. However, before first use, the database needs to be initialized.
+//! This is done using the [`SqliteStorageProvider::run_migrations()`] method.
 //!
 //! ### Codec
 //!
