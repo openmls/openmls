@@ -649,9 +649,24 @@ impl PublicGroup {
         Ok(())
     }
 
+    /// Validate a leaf node.
+    ///
+    /// This always validates the lifetime.
     pub(crate) fn validate_leaf_node(
         &self,
         leaf_node: &crate::treesync::LeafNode,
+    ) -> Result<(), LeafNodeValidationError> {
+        // Call the validation function and validate the lifetime
+        self.validate_leaf_node_inner(leaf_node, false)
+    }
+
+    /// Validate a leaf node.
+    ///
+    /// This may skip checking the lifetime when validating a ratchet tree.
+    pub(crate) fn validate_leaf_node_inner(
+        &self,
+        leaf_node: &crate::treesync::LeafNode,
+        ratchet_tree: bool,
     ) -> Result<(), LeafNodeValidationError> {
         // https://validation.openmls.tech/#valn0103
         // https://validation.openmls.tech/#valn0104
@@ -665,9 +680,18 @@ impl PublicGroup {
         // Only leaf nodes in key packages contain lifetimes, so this will return None for other
         // cases. Therefore we only check the lifetimes for leaf nodes in key packages.
         //
+        // We may want to check these in ratchet trees as well.
+        // However, this may lead to errors when leaf nodes don't get updated
+        // after being added to the tree. RFC 9420 recommends checking the lifetime
+        // but acknowledges already that this may cause issues.
+        // https://www.rfc-editor.org/rfc/rfc9420.html#section-7.3-4.5.1
+        // See #1810 for more background.
+        // We therefore DO NOT check the lifetime if this is a leaf node check
+        // for a ratchet tree.
+        //
         // Some KATs use key packages that are expired by now. In order to run these tests, we
         // provide a way to turn off this check.
-        if !crate::skip_validation::is_disabled::leaf_node_lifetime() {
+        if !ratchet_tree && !crate::skip_validation::is_disabled::leaf_node_lifetime() {
             if let Some(lifetime) = leaf_node.life_time() {
                 if !lifetime.is_valid() {
                     log::warn!("offending lifetime: {lifetime:?}");
