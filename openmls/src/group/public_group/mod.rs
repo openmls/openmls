@@ -278,7 +278,7 @@ impl PublicGroup {
         public_group
             .treesync
             .full_leaves()
-            .try_for_each(|leaf_node| public_group.validate_leaf_node(leaf_node))?;
+            .try_for_each(|leaf_node| public_group.validate_leaf_node_inner(leaf_node, true))?;
 
         Ok((public_group, group_info))
     }
