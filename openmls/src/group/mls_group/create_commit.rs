@@ -261,7 +261,7 @@ impl MlsGroup {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let EpochSecretsResult {
             epoch_secrets: provisional_epoch_secrets,
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
             application_exporter,
         } = key_schedule
             .epoch_secrets(provider.crypto(), self.ciphersuite())
@@ -388,7 +388,7 @@ impl MlsGroup {
             welcome_option,
             staged_commit,
             group_info: group_info.filter(|_| self.configuration().use_ratchet_tree_extension),
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
             application_exporter,
         })
     }

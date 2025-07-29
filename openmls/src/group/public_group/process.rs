@@ -255,7 +255,7 @@ impl PublicGroup {
                     authenticated_data,
                     content,
                     credential,
-                    #[cfg(feature = "extensions-draft")]
+                    #[cfg(feature = "extensions-draft-07")]
                     None,
                 ))
             }
@@ -301,7 +301,7 @@ impl PublicGroup {
                             data,
                             content,
                             credential,
-                            #[cfg(feature = "extensions-draft")]
+                            #[cfg(feature = "extensions-draft-07")]
                             None,
                         ))
                     }
@@ -320,7 +320,7 @@ impl PublicGroup {
                             data,
                             content,
                             credential,
-                            #[cfg(feature = "extensions-draft")]
+                            #[cfg(feature = "extensions-draft-07")]
                             None,
                         ))
                     }

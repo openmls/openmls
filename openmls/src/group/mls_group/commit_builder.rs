@@ -38,7 +38,7 @@ use super::{
     MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
 
-#[cfg(feature = "extensions-draft")]
+#[cfg(feature = "extensions-draft-07")]
 use crate::schedule::ApplicationExportSecret;
 
 /// This stage is for populating the builder.
@@ -555,7 +555,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let EpochSecretsResult {
             epoch_secrets: provisional_epoch_secrets,
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
             application_exporter,
         } = key_schedule
             .epoch_secrets(crypto, builder.group.ciphersuite())
@@ -737,7 +737,7 @@ impl CommitBuilder<'_, Complete> {
             commit: mls_message,
             welcome: create_commit_result.welcome_option,
             group_info: create_commit_result.group_info,
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
             application_export_secret: create_commit_result.application_exporter,
         })
     }
@@ -751,7 +751,7 @@ pub struct CommitMessageBundle {
     commit: MlsMessageOut,
     welcome: Option<Welcome>,
     group_info: Option<GroupInfo>,
-    #[cfg(feature = "extensions-draft")]
+    #[cfg(feature = "extensions-draft-07")]
     application_export_secret: ApplicationExportSecret,
 }
 
@@ -762,14 +762,14 @@ impl CommitMessageBundle {
         commit: MlsMessageOut,
         welcome: Option<Welcome>,
         group_info: Option<GroupInfo>,
-        #[cfg(feature = "extensions-draft")] application_export_secret: ApplicationExportSecret,
+        #[cfg(feature = "extensions-draft-07")] application_export_secret: ApplicationExportSecret,
     ) -> Self {
         Self {
             version,
             commit,
             welcome,
             group_info,
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
             application_export_secret,
         }
     }
@@ -784,7 +784,7 @@ impl CommitMessageBundle {
     }
 
     /// Gets the [`ApplicationExportSecret`].
-    #[cfg(feature = "extensions-draft")]
+    #[cfg(feature = "extensions-draft-07")]
     pub fn application_export_secret(&self) -> &ApplicationExportSecret {
         &self.application_export_secret
     }

@@ -273,13 +273,13 @@ impl MlsGroup {
 
                 struct ContentProcessingResult {
                     content: ProcessedMessageContent,
-                    #[cfg(feature = "extensions-draft")]
+                    #[cfg(feature = "extensions-draft-07")]
                     application_exporter: Option<ApplicationExportSecret>,
                 }
 
                 let ContentProcessingResult {
                     content,
-                    #[cfg(feature = "extensions-draft")]
+                    #[cfg(feature = "extensions-draft-07")]
                     application_exporter,
                 } = match content.content() {
                     FramedContentBody::Application(application_message) => {
@@ -288,7 +288,7 @@ impl MlsGroup {
                         );
                         ContentProcessingResult {
                             content,
-                            #[cfg(feature = "extensions-draft")]
+                            #[cfg(feature = "extensions-draft-07")]
                             application_exporter: None,
                         }
                     }
@@ -306,14 +306,14 @@ impl MlsGroup {
                         };
                         ContentProcessingResult {
                             content,
-                            #[cfg(feature = "extensions-draft")]
+                            #[cfg(feature = "extensions-draft-07")]
                             application_exporter: None,
                         }
                     }
                     FramedContentBody::Commit(_) => {
                         let StageCommitResult {
                             staged_commit,
-                            #[cfg(feature = "extensions-draft")]
+                            #[cfg(feature = "extensions-draft-07")]
                             application_exporter,
                         } = self.stage_commit(
                             &content,
@@ -325,7 +325,7 @@ impl MlsGroup {
                             ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit));
                         ContentProcessingResult {
                             content,
-                            #[cfg(feature = "extensions-draft")]
+                            #[cfg(feature = "extensions-draft-07")]
                             application_exporter,
                         }
                     }
@@ -338,7 +338,7 @@ impl MlsGroup {
                     authenticated_data,
                     content,
                     credential,
-                    #[cfg(feature = "extensions-draft")]
+                    #[cfg(feature = "extensions-draft-07")]
                     application_exporter,
                 ))
             }
@@ -384,7 +384,7 @@ impl MlsGroup {
                             data,
                             content,
                             credential,
-                            #[cfg(feature = "extensions-draft")]
+                            #[cfg(feature = "extensions-draft-07")]
                             None,
                         ))
                     }
@@ -403,7 +403,7 @@ impl MlsGroup {
                             data,
                             content,
                             credential,
-                            #[cfg(feature = "extensions-draft")]
+                            #[cfg(feature = "extensions-draft-07")]
                             None,
                         ))
                     }

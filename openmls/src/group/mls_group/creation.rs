@@ -390,13 +390,13 @@ impl ProcessedWelcome {
         struct KeyScheduleResult {
             group_epoch_secrets: GroupEpochSecrets,
             message_secrets: MessageSecrets,
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
             application_exporter: ApplicationExportSecret,
         }
         let KeyScheduleResult {
             group_epoch_secrets,
             message_secrets,
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
                 application_exporter: application_export_secret,
         } = {
             let serialized_group_context = public_group
@@ -411,7 +411,7 @@ impl ProcessedWelcome {
 
             let EpochSecretsResult {
                 epoch_secrets,
-                #[cfg(feature = "extensions-draft")]
+                #[cfg(feature = "extensions-draft-07")]
                 application_exporter,
             } = self
                 .key_schedule
@@ -427,7 +427,7 @@ impl ProcessedWelcome {
             KeyScheduleResult {
                 group_epoch_secrets,
                 message_secrets,
-                #[cfg(feature = "extensions-draft")]
+                #[cfg(feature = "extensions-draft-07")]
                 application_exporter,
             }
         };
@@ -490,7 +490,7 @@ impl ProcessedWelcome {
             group_epoch_secrets,
             own_leaf_index,
             message_secrets_store,
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
             application_export_secret,
             resumption_psk_store: self.resumption_psk_store,
             verifiable_group_info: self.verifiable_group_info,
@@ -552,7 +552,7 @@ impl StagedWelcome {
     }
 
     /// Get the [`ApplicationExportSecret`] of this welcome.
-    #[cfg(feature = "extensions-draft")]
+    #[cfg(feature = "extensions-draft-07")]
     pub fn application_export_secret(&self) -> &ApplicationExportSecret {
         &self.application_export_secret
     }

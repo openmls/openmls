@@ -137,7 +137,7 @@ fn generate(
         .expect("An unexpected error occurred.");
     let EpochSecretsResult {
         epoch_secrets,
-        #[cfg(feature = "extensions-draft")]
+        #[cfg(feature = "extensions-draft-07")]
             application_exporter: _,
     } = key_schedule
         .epoch_secrets(crypto.crypto(), ciphersuite)
@@ -372,7 +372,7 @@ pub fn run_test_vector(
 
         let EpochSecretsResult {
             epoch_secrets,
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
                 application_exporter: _,
         } = key_schedule
             .epoch_secrets(provider.crypto(), ciphersuite)

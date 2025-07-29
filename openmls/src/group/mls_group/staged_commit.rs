@@ -14,7 +14,7 @@ use super::{
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
-#[cfg(feature = "extensions-draft")]
+#[cfg(feature = "extensions-draft-07")]
 use crate::schedule::ApplicationExportSecret;
 
 use crate::{
@@ -30,7 +30,7 @@ use crate::{
 
 pub(crate) struct StageCommitResult {
     pub(crate) staged_commit: StagedCommit,
-    #[cfg(feature = "extensions-draft")]
+    #[cfg(feature = "extensions-draft-07")]
     pub(crate) application_exporter: Option<ApplicationExportSecret>,
 }
 
@@ -205,7 +205,7 @@ impl MlsGroup {
                     );
                     return Ok(StageCommitResult {
                         staged_commit,
-                        #[cfg(feature = "extensions-draft")]
+                        #[cfg(feature = "extensions-draft-07")]
                         application_exporter: None,
                     });
                 }
@@ -286,7 +286,7 @@ impl MlsGroup {
 
         let EpochSecretsResult {
             epoch_secrets,
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
             application_exporter,
         } = self.derive_epoch_secrets(
             provider,
@@ -342,7 +342,7 @@ impl MlsGroup {
 
         Ok(StageCommitResult {
             staged_commit,
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
             application_exporter: Some(application_exporter),
         })
     }

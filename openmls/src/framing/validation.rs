@@ -272,7 +272,7 @@ pub struct ProcessedMessage {
     authenticated_data: Vec<u8>,
     content: ProcessedMessageContent,
     credential: Credential,
-    #[cfg(feature = "extensions-draft")]
+    #[cfg(feature = "extensions-draft-07")]
     application_exporter: Option<ApplicationExportSecret>,
 }
 
@@ -285,7 +285,9 @@ impl ProcessedMessage {
         authenticated_data: Vec<u8>,
         content: ProcessedMessageContent,
         credential: Credential,
-        #[cfg(feature = "extensions-draft")] application_exporter: Option<ApplicationExportSecret>,
+        #[cfg(feature = "extensions-draft-07")] application_exporter: Option<
+            ApplicationExportSecret,
+        >,
     ) -> Self {
         Self {
             group_id,
@@ -294,7 +296,7 @@ impl ProcessedMessage {
             authenticated_data,
             content,
             credential,
-            #[cfg(feature = "extensions-draft")]
+            #[cfg(feature = "extensions-draft-07")]
             application_exporter,
         }
     }
@@ -336,7 +338,7 @@ impl ProcessedMessage {
 
     /// Returns the [`ApplicationExportSecret`] if the message was a commit and
     /// the processing party is a member of the group. Returns `None` otherwise.
-    #[cfg(feature = "extensions-draft")]
+    #[cfg(feature = "extensions-draft-07")]
     pub fn application_exporter(&self) -> Option<&ApplicationExportSecret> {
         self.application_exporter.as_ref()
     }
