@@ -10,7 +10,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
-    credentials::test_utils::new_credential,
+    credentials::{test_utils::new_credential, NewSignerBundle},
     framing::*,
     group::{errors::*, *},
     key_packages::*,
@@ -63,13 +63,13 @@ fn test_mls_group_persistence<Provider: OpenMlsProvider>() {
         (
             alice_group.export_ratchet_tree(),
             alice_group
-                .export_secret(provider, "test", &[], 32)
+                .export_secret(provider.crypto(), "test", &[], 32)
                 .unwrap()
         ),
         (
             alice_group_deserialized.export_ratchet_tree(),
             alice_group_deserialized
-                .export_secret(provider, "test", &[], 32)
+                .export_secret(provider.crypto(), "test", &[], 32)
                 .unwrap()
         )
     );
@@ -250,18 +250,18 @@ fn export_secret() {
 
     assert!(
         alice_group
-            .export_secret(provider, "test1", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test1", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(provider, "test2", &[], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test2", &[], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     );
     assert!(
         alice_group
-            .export_secret(provider, "test", &[0u8], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[0u8], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(provider, "test", &[1u8], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test", &[1u8], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     )
 }
@@ -418,10 +418,10 @@ fn staged_join() {
 
     assert_eq!(
         alice_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred."),
         bob_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
     );
 }
@@ -618,10 +618,10 @@ fn test_verify_staged_commit_credentials(
     );
     assert_eq!(
         bob_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap(),
         alice_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap()
     );
     // Bob is added and the state aligns.
@@ -700,10 +700,10 @@ fn test_verify_staged_commit_credentials(
         );
         assert_eq!(
             bob_group
-                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
                 .unwrap(),
             alice_group
-                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
                 .unwrap()
         );
     } else {
@@ -801,10 +801,10 @@ fn test_commit_with_update_path_leaf_node(
     );
     assert_eq!(
         bob_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap(),
         alice_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap()
     );
     // Bob is added and the state aligns.
@@ -895,10 +895,10 @@ fn test_commit_with_update_path_leaf_node(
         );
         assert_eq!(
             bob_group
-                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
                 .unwrap(),
             alice_group
-                .export_secret(provider, "test", &[], ciphersuite.hash_length())
+                .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
                 .unwrap()
         );
     } else {
@@ -1065,10 +1065,10 @@ fn test_pending_commit_logic(
     );
     assert_eq!(
         bob_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap(),
         alice_group
-            .export_secret(provider, "test", &[], ciphersuite.hash_length())
+            .export_secret(provider.crypto(), "test", &[], ciphersuite.hash_length())
             .unwrap()
     );
 
@@ -2952,6 +2952,7 @@ fn signature_key_rotation(
     let bob_party = CorePartyState::<Provider>::new("bob");
 
     let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let old_credential_with_key = alice_pre_group.credential_with_key.clone();
     let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
 
     // Create config
@@ -2994,17 +2995,39 @@ fn signature_key_rotation(
         .clone();
     assert_ne!(old_signature_key, new_signature_key);
 
+    // Pass leaf node parameters with old credential with key (to make it fail)
     let leaf_node_parameters = LeafNodeParameters::builder()
-        .with_credential_with_key(new_pre_group_state.credential_with_key)
+        .with_credential_with_key(old_credential_with_key)
         .build();
 
+    let new_signer = NewSignerBundle {
+        signer: &new_pre_group_state.signer,
+        credential_with_key: new_pre_group_state.credential_with_key,
+    };
+
+    let err = alice_group_state
+        .group
+        .self_update_with_new_signer(
+            &alice_group_state.party.core_state.provider,
+            &alice_group_state.party.signer,
+            new_signer.clone(),
+            leaf_node_parameters,
+        )
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        SelfUpdateError::CreateCommitError(CreateCommitError::InvalidLeafNodeParameters)
+    );
+
+    // Calling with default LeafNodeParameters should work
     let bundle = alice_group_state
         .group
         .self_update_with_new_signer(
             &alice_group_state.party.core_state.provider,
             &alice_group_state.party.signer,
-            &new_pre_group_state.signer,
-            leaf_node_parameters,
+            new_signer,
+            LeafNodeParameters::default(),
         )
         .unwrap();
 

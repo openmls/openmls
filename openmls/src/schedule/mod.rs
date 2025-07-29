@@ -424,7 +424,7 @@ impl KeySchedule {
         joiner_secret: &JoinerSecret,
         psk: PskSecret,
     ) -> Result<Self, LibraryError> {
-        log::debug!("Initializing the key schedule with {:?} ...", ciphersuite);
+        log::debug!("Initializing the key schedule with {ciphersuite:?} ...");
         log_crypto!(
             trace,
             "  joiner_secret: {:x?}",
@@ -471,10 +471,7 @@ impl KeySchedule {
         crypto: &impl OpenMlsCrypto,
         serialized_group_context: &[u8],
     ) -> Result<(), KeyScheduleError> {
-        log::trace!(
-            "Adding context to key schedule. {:?}",
-            serialized_group_context
-        );
+        log::trace!("Adding context to key schedule. {serialized_group_context:?}");
         if self.state != State::Initial || self.intermediate_secret.is_none() {
             log::error!(
                 "Trying to add context to the key schedule while not in the initial state."
@@ -595,7 +592,7 @@ impl WelcomeSecret {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<AeadKey, CryptoError> {
-        log::trace!("WelcomeSecret.derive_aead_key with {}", ciphersuite);
+        log::trace!("WelcomeSecret.derive_aead_key with {ciphersuite}");
         let aead_secret = self.secret.kdf_expand_label(
             crypto,
             ciphersuite,
@@ -982,7 +979,7 @@ impl MembershipKey {
 // Get a ciphertext sample of `hash_length` from the ciphertext.
 fn ciphertext_sample(ciphersuite: Ciphersuite, ciphertext: &[u8]) -> &[u8] {
     let sample_length = ciphersuite.hash_length();
-    log::debug!("Getting ciphertext sample of length {:?}", sample_length);
+    log::debug!("Getting ciphertext sample of length {sample_length:?}");
     if ciphertext.len() <= sample_length {
         ciphertext
     } else {
@@ -1021,10 +1018,7 @@ impl SenderDataSecret {
         ciphertext: &[u8],
     ) -> Result<AeadKey, CryptoError> {
         let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
-        log::debug!(
-            "SenderDataSecret::derive_aead_key ciphertext sample: {:x?}",
-            ciphertext_sample
-        );
+        log::debug!("SenderDataSecret::derive_aead_key ciphertext sample: {ciphertext_sample:x?}");
         let secret = self.secret.kdf_expand_label(
             crypto,
             ciphersuite,
@@ -1044,8 +1038,7 @@ impl SenderDataSecret {
     ) -> Result<AeadNonce, CryptoError> {
         let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
         log::debug!(
-            "SenderDataSecret::derive_aead_nonce ciphertext sample: {:x?}",
-            ciphertext_sample
+            "SenderDataSecret::derive_aead_nonce ciphertext sample: {ciphertext_sample:x?}"
         );
         let nonce_secret = self.secret.kdf_expand_label(
             crypto,
@@ -1193,10 +1186,7 @@ impl EpochSecrets {
         ciphersuite: Ciphersuite,
         epoch_secret: EpochSecret,
     ) -> Result<Self, CryptoError> {
-        log::debug!(
-            "Computing EpochSecrets from epoch secret with {}",
-            ciphersuite
-        );
+        log::debug!("Computing EpochSecrets from epoch secret with {ciphersuite}");
         log_crypto!(
             trace,
             "  epoch_secret: {:x?}",

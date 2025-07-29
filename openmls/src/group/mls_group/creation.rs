@@ -1,3 +1,5 @@
+use std::iter;
+
 use errors::NewGroupError;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as StorageProviderTrait};
 
@@ -150,12 +152,10 @@ impl MlsGroup {
         // The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the
         // external commit.
-        let epoch_secrets = EpochSecrets::with_init_secret(
-            provider.crypto(),
-            group_info.group_context().ciphersuite(),
-            init_secret,
-        )
-        .map_err(LibraryError::unexpected_crypto_error)?;
+        let ciphersuite = group_info.group_context().ciphersuite();
+        let epoch_secrets =
+            EpochSecrets::with_init_secret(provider.crypto(), ciphersuite, init_secret)
+                .map_err(LibraryError::unexpected_crypto_error)?;
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             group_context
                 .tls_serialize_detached()
@@ -183,7 +183,8 @@ impl MlsGroup {
             inline_proposals.push(remove_proposal);
         };
 
-        let own_leaf_index = public_group.leftmost_free_index(inline_proposals.iter().map(Some))?;
+        let own_leaf_index =
+            public_group.leftmost_free_index(inline_proposals.iter(), iter::empty())?;
         params.set_inline_proposals(inline_proposals);
 
         let mut mls_group = MlsGroup {
@@ -251,7 +252,7 @@ impl ProcessedWelcome {
         // seem like a bad idea.
         if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
             let e = WelcomeError::CiphersuiteMismatch;
-            log::debug!("new_from_welcome {:?}", e);
+            log::debug!("new_from_welcome {e:?}");
             return Err(e);
         }
 
@@ -306,7 +307,7 @@ impl ProcessedWelcome {
         // KeyPackage.
         if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
             let e = WelcomeError::CiphersuiteMismatch;
-            log::debug!("new_from_welcome {:?}", e);
+            log::debug!("new_from_welcome {e:?}");
             return Err(e);
         }
 

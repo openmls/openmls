@@ -1,4 +1,8 @@
-use crate::{framing::*, group::*, *};
+use crate::{
+    framing::*,
+    group::{mls_group::tests_and_kats::utils::setup_alice_group, *},
+    *,
+};
 use mls_group::tests_and_kats::utils::{setup_alice_bob, setup_alice_bob_group, setup_client};
 use prelude::KeyPackageBundle;
 use treesync::{node::leaf_node::Capabilities, LeafNodeParameters};
@@ -538,7 +542,8 @@ fn group_operations() {
     // Now alice tries to derive an exporter with too large of a key length.
     let exporter_length: usize = u16::MAX.into();
     let exporter_length = exporter_length + 1;
-    let alice_exporter = alice_group.export_secret(provider, "export test", &[], exporter_length);
+    let alice_exporter =
+        alice_group.export_secret(provider.crypto(), "export test", &[], exporter_length);
     assert!(alice_exporter.is_err())
 }
 
@@ -699,4 +704,40 @@ fn decrypt_after_leaf_index_reuse() {
     let _bob_incoming_appmsg = group_bob
         .process_message(&bob_provider, charlie_protocol_message)
         .unwrap();
+}
+
+#[openmls_test::openmls_test]
+fn create_group_info_flag() {
+    // The `use_ratchet_tree_extension` flag is set to `false` by default.
+    let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
+        setup_alice_group(ciphersuite, provider);
+
+    let commit_bundle = alice_group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    assert!(commit_bundle.group_info().is_none());
+
+    // Now we set the `create_group_info` flag to `true`.
+    let commit_bundle = alice_group
+        .commit_builder()
+        .create_group_info(true)
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    let group_info = commit_bundle.into_group_info_msg().unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
+    let exported_group_info = alice_group
+        .export_group_info(provider.crypto(), &alice_signer, false)
+        .unwrap();
+    assert_eq!(group_info, exported_group_info);
 }

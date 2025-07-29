@@ -550,13 +550,11 @@ impl MlsGroup {
     pub(crate) fn message_secrets_and_leaves_mut(
         &mut self,
         epoch: GroupEpoch,
-    ) -> Result<(&mut MessageSecrets, &[Member]), MessageDecryptionError> {
+    ) -> Result<(&mut MessageSecrets, &[Member]), SecretTreeError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
                 .secrets_and_leaves_for_epoch_mut(epoch)
-                .ok_or({
-                    MessageDecryptionError::SecretTreeError(SecretTreeError::TooDistantInThePast)
-                })
+                .ok_or(SecretTreeError::TooDistantInThePast)
         } else {
             // No need for leaves here. The tree of the current epoch is
             // available to the caller.

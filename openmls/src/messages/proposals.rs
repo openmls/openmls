@@ -31,43 +31,44 @@ use crate::{
 ///
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-20
+/// // RFC 9420
 /// // See IANA registry for registered values
 /// uint16 ProposalType;
 /// ```
 ///
 /// | Value           | Name                     | R | Ext | Path | Ref      |
 /// |-----------------|--------------------------|---|-----|------|----------|
-/// | 0x0000          | RESERVED                 | - | -   | -    | RFC XXXX |
-/// | 0x0001          | add                      | Y | Y   | N    | RFC XXXX |
-/// | 0x0002          | update                   | Y | N   | Y    | RFC XXXX |
-/// | 0x0003          | remove                   | Y | Y   | Y    | RFC XXXX |
-/// | 0x0004          | psk                      | Y | Y   | N    | RFC XXXX |
-/// | 0x0005          | reinit                   | Y | Y   | N    | RFC XXXX |
-/// | 0x0006          | external_init            | Y | N   | Y    | RFC XXXX |
-/// | 0x0007          | group_context_extensions | Y | Y   | Y    | RFC XXXX |
-/// | 0x0A0A          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0x1A1A          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0x2A2A          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0x3A3A          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0x4A4A          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0x5A5A          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0x6A6A          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0x7A7A          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0x8A8A          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0x9A9A          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0xAAAA          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0xBABA          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0xCACA          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0xDADA          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0xEAEA          | GREASE                   | Y | -   | -    | RFC XXXX |
-/// | 0xF000 - 0xFFFF | Reserved for Private Use | - | -   | -    | RFC XXXX |
+/// | 0x0000          | RESERVED                 | - | -   | -    | RFC 9420 |
+/// | 0x0001          | add                      | Y | Y   | N    | RFC 9420 |
+/// | 0x0002          | update                   | Y | N   | Y    | RFC 9420 |
+/// | 0x0003          | remove                   | Y | Y   | Y    | RFC 9420 |
+/// | 0x0004          | psk                      | Y | Y   | N    | RFC 9420 |
+/// | 0x0005          | reinit                   | Y | Y   | N    | RFC 9420 |
+/// | 0x0006          | external_init            | Y | N   | Y    | RFC 9420 |
+/// | 0x0007          | group_context_extensions | Y | Y   | Y    | RFC 9420 |
+/// | 0x0A0A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x1A1A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x2A2A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x3A3A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x4A4A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x5A5A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x6A6A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x7A7A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x8A8A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x9A9A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xAAAA          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xBABA          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xCACA          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xDADA          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xEAEA          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xF000 - 0xFFFF | Reserved for Private Use | - | -   | -    | RFC 9420 |
 ///
 /// # Extensions
 ///
-/// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
-/// |:=======|:========|:============|:==============|:==========|:=============================|
-/// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
+/// | Value  | Name        | Recommended | Path Required | Reference | Notes                        |
+/// |:=======|:============|:============|:==============|:==========|:=============================|
+/// | 0x000a | self_remove | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-07 |
+/// | 0x000b | app_ack     | Y           | N             | RFC XXXX  | draft-ietf-mls-extensions-07 |
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
 #[allow(missing_docs)]
 pub enum ProposalType {
@@ -162,8 +163,8 @@ impl From<u16> for ProposalType {
             5 => ProposalType::Reinit,
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
-            8 => ProposalType::AppAck,
-            0x000c => ProposalType::SelfRemove,
+            0x000a => ProposalType::SelfRemove,
+            0x000b => ProposalType::AppAck,
             other => ProposalType::Custom(other),
         }
     }
@@ -179,8 +180,8 @@ impl From<ProposalType> for u16 {
             ProposalType::Reinit => 5,
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
-            ProposalType::AppAck => 8,
-            ProposalType::SelfRemove => 0x000c,
+            ProposalType::SelfRemove => 0x000a,
+            ProposalType::AppAck => 0x000b,
             ProposalType::Custom(id) => id,
         }
     }
@@ -719,7 +720,7 @@ mod tests {
                 ProposalType::Custom(got_proposal_type) => {
                     assert_eq!(proposal_type, got_proposal_type);
                 }
-                other => panic!("Expected `ProposalType::Unknown`, got `{:?}`.", other),
+                other => panic!("Expected `ProposalType::Unknown`, got `{other:?}`."),
             }
 
             // Test serialization.

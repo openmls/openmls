@@ -284,7 +284,7 @@ pub fn run_test_vector(
     provider: &impl OpenMlsProvider,
 ) -> Result<(), KsTestVectorError> {
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
-    log::trace!("  {:?}", test_vector);
+    log::trace!("  {test_vector:?}");
 
     if !provider
         .crypto()
@@ -358,8 +358,8 @@ pub fn run_test_vector(
             .expect("An unexpected error occurred.");
         if group_context_serialized != expected_group_context {
             log::error!("  Group context mismatch");
-            log::debug!("    Computed: {:x?}", group_context_serialized);
-            log::debug!("    Expected: {:x?}", expected_group_context);
+            log::debug!("    Computed: {group_context_serialized:x?}");
+            log::debug!("    Expected: {expected_group_context:x?}");
             if cfg!(test) {
                 panic!("Group context mismatch");
             }
