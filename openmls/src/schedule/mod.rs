@@ -136,6 +136,7 @@ pub mod psk;
 
 // Crate
 pub(crate) mod message_secrets;
+pub(crate) mod pprf;
 
 // Private
 use errors::*;
