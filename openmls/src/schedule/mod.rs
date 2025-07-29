@@ -759,7 +759,7 @@ impl ExporterSecret {
 /// In contrast to `[ExporterSecret]`, the `[ApplicationExportSecret]` is not
 /// persisted. It can be deleted after use to achieve forward secrecy.
 #[cfg(feature = "extensions-draft-07")]
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 pub struct ApplicationExportSecret {
     secret: Secret,
