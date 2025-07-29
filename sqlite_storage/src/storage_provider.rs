@@ -3,7 +3,7 @@ use std::{
     marker::PhantomData,
 };
 
-use openmls_traits::storage::{Entity, Key, StorageProvider};
+use openmls_traits::storage::{traits, Entity, Key, StorageProvider};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
@@ -73,8 +73,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     type Error = rusqlite::Error;
 
     fn write_mls_join_config<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        MlsGroupJoinConfig: openmls_traits::storage::traits::MlsGroupJoinConfig<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -88,8 +88,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn append_own_leaf_node<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        LeafNode: openmls_traits::storage::traits::LeafNode<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        LeafNode: traits::LeafNode<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -99,9 +99,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn queue_proposal<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        ProposalRef: openmls_traits::storage::traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
-        QueuedProposal: openmls_traits::storage::traits::QueuedProposal<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
+        QueuedProposal: traits::QueuedProposal<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -113,8 +113,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_tree<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        TreeSync: openmls_traits::storage::traits::TreeSync<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        TreeSync: traits::TreeSync<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -128,8 +128,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_interim_transcript_hash<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        InterimTranscriptHash: openmls_traits::storage::traits::InterimTranscriptHash<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        InterimTranscriptHash: traits::InterimTranscriptHash<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -143,8 +143,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_context<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        GroupContext: openmls_traits::storage::traits::GroupContext<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        GroupContext: traits::GroupContext<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -158,8 +158,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_confirmation_tag<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        ConfirmationTag: openmls_traits::storage::traits::ConfirmationTag<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ConfirmationTag: traits::ConfirmationTag<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -173,8 +173,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_group_state<
-        GroupState: openmls_traits::storage::traits::GroupState<STORAGE_PROVIDER_VERSION>,
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        GroupState: traits::GroupState<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -188,8 +188,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_message_secrets<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        MessageSecrets: openmls_traits::storage::traits::MessageSecrets<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        MessageSecrets: traits::MessageSecrets<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -204,8 +204,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_resumption_psk_store<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        ResumptionPskStore: openmls_traits::storage::traits::ResumptionPskStore<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ResumptionPskStore: traits::ResumptionPskStore<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -219,8 +219,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_own_leaf_index<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        LeafNodeIndex: openmls_traits::storage::traits::LeafNodeIndex<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        LeafNodeIndex: traits::LeafNodeIndex<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -235,8 +235,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_group_epoch_secrets<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        GroupEpochSecrets: openmls_traits::storage::traits::GroupEpochSecrets<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        GroupEpochSecrets: traits::GroupEpochSecrets<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -251,8 +251,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_signature_key_pair<
-        SignaturePublicKey: openmls_traits::storage::traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
-        SignatureKeyPair: openmls_traits::storage::traits::SignatureKeyPair<STORAGE_PROVIDER_VERSION>,
+        SignaturePublicKey: traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
+        SignatureKeyPair: traits::SignatureKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &SignaturePublicKey,
@@ -263,8 +263,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_encryption_key_pair<
-        EncryptionKey: openmls_traits::storage::traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
-        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
+        EncryptionKey: traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
+        HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &EncryptionKey,
@@ -274,9 +274,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_encryption_epoch_key_pairs<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        EpochKey: openmls_traits::storage::traits::EpochKey<STORAGE_PROVIDER_VERSION>,
-        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        EpochKey: traits::EpochKey<STORAGE_PROVIDER_VERSION>,
+        HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -293,8 +293,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_key_package<
-        HashReference: openmls_traits::storage::traits::HashReference<STORAGE_PROVIDER_VERSION>,
-        KeyPackage: openmls_traits::storage::traits::KeyPackage<STORAGE_PROVIDER_VERSION>,
+        HashReference: traits::HashReference<STORAGE_PROVIDER_VERSION>,
+        KeyPackage: traits::KeyPackage<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         hash_ref: &HashReference,
@@ -304,8 +304,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn write_psk<
-        PskId: openmls_traits::storage::traits::PskId<STORAGE_PROVIDER_VERSION>,
-        PskBundle: openmls_traits::storage::traits::PskBundle<STORAGE_PROVIDER_VERSION>,
+        PskId: traits::PskId<STORAGE_PROVIDER_VERSION>,
+        PskBundle: traits::PskBundle<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         psk_id: &PskId,
@@ -315,8 +315,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn mls_group_join_config<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        MlsGroupJoinConfig: openmls_traits::storage::traits::MlsGroupJoinConfig<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -329,8 +329,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn own_leaf_nodes<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        LeafNode: openmls_traits::storage::traits::LeafNode<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        LeafNode: traits::LeafNode<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -339,8 +339,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn queued_proposal_refs<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        ProposalRef: openmls_traits::storage::traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -349,9 +349,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn queued_proposals<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        ProposalRef: openmls_traits::storage::traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
-        QueuedProposal: openmls_traits::storage::traits::QueuedProposal<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
+        QueuedProposal: traits::QueuedProposal<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -360,8 +360,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn tree<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        TreeSync: openmls_traits::storage::traits::TreeSync<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        TreeSync: traits::TreeSync<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -370,8 +370,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn group_context<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        GroupContext: openmls_traits::storage::traits::GroupContext<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        GroupContext: traits::GroupContext<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -380,8 +380,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn interim_transcript_hash<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        InterimTranscriptHash: openmls_traits::storage::traits::InterimTranscriptHash<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        InterimTranscriptHash: traits::InterimTranscriptHash<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -394,8 +394,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn confirmation_tag<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        ConfirmationTag: openmls_traits::storage::traits::ConfirmationTag<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ConfirmationTag: traits::ConfirmationTag<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -408,8 +408,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn group_state<
-        GroupState: openmls_traits::storage::traits::GroupState<STORAGE_PROVIDER_VERSION>,
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        GroupState: traits::GroupState<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -422,8 +422,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn message_secrets<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        MessageSecrets: openmls_traits::storage::traits::MessageSecrets<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        MessageSecrets: traits::MessageSecrets<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -436,8 +436,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn resumption_psk_store<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        ResumptionPskStore: openmls_traits::storage::traits::ResumptionPskStore<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ResumptionPskStore: traits::ResumptionPskStore<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -450,8 +450,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn own_leaf_index<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        LeafNodeIndex: openmls_traits::storage::traits::LeafNodeIndex<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        LeafNodeIndex: traits::LeafNodeIndex<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -464,8 +464,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn group_epoch_secrets<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        GroupEpochSecrets: openmls_traits::storage::traits::GroupEpochSecrets<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        GroupEpochSecrets: traits::GroupEpochSecrets<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -478,8 +478,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn signature_key_pair<
-        SignaturePublicKey: openmls_traits::storage::traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
-        SignatureKeyPair: openmls_traits::storage::traits::SignatureKeyPair<STORAGE_PROVIDER_VERSION>,
+        SignaturePublicKey: traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
+        SignatureKeyPair: traits::SignatureKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &SignaturePublicKey,
@@ -488,8 +488,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn encryption_key_pair<
-        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
-        EncryptionKey: openmls_traits::storage::traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
+        HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
+        EncryptionKey: traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &EncryptionKey,
@@ -498,9 +498,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn encryption_epoch_key_pairs<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        EpochKey: openmls_traits::storage::traits::EpochKey<STORAGE_PROVIDER_VERSION>,
-        HpkeKeyPair: openmls_traits::storage::traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        EpochKey: traits::EpochKey<STORAGE_PROVIDER_VERSION>,
+        HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -516,8 +516,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn key_package<
-        KeyPackageRef: openmls_traits::storage::traits::HashReference<STORAGE_PROVIDER_VERSION>,
-        KeyPackage: openmls_traits::storage::traits::KeyPackage<STORAGE_PROVIDER_VERSION>,
+        KeyPackageRef: traits::HashReference<STORAGE_PROVIDER_VERSION>,
+        KeyPackage: traits::KeyPackage<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         hash_ref: &KeyPackageRef,
@@ -526,8 +526,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn psk<
-        PskBundle: openmls_traits::storage::traits::PskBundle<STORAGE_PROVIDER_VERSION>,
-        PskId: openmls_traits::storage::traits::PskId<STORAGE_PROVIDER_VERSION>,
+        PskBundle: traits::PskBundle<STORAGE_PROVIDER_VERSION>,
+        PskId: traits::PskId<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         psk_id: &PskId,
@@ -536,8 +536,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn remove_proposal<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        ProposalRef: openmls_traits::storage::traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -546,18 +546,14 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableGroupIdRef(group_id).delete_proposal::<C, _>(self.connection.borrow(), proposal_ref)
     }
 
-    fn delete_own_leaf_nodes<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_own_leaf_nodes<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id).delete_leaf_nodes::<C>(self.connection.borrow())
     }
 
-    fn delete_group_config<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_group_config<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -565,7 +561,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::JoinGroupConfig)
     }
 
-    fn delete_tree<GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    fn delete_tree<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -573,9 +569,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::Tree)
     }
 
-    fn delete_confirmation_tag<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_confirmation_tag<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -583,9 +577,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::ConfirmationTag)
     }
 
-    fn delete_group_state<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_group_state<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -593,9 +585,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::GroupState)
     }
 
-    fn delete_context<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_context<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -603,9 +593,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::Context)
     }
 
-    fn delete_interim_transcript_hash<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_interim_transcript_hash<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -615,9 +603,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn delete_message_secrets<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_message_secrets<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -625,9 +611,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::MessageSecrets)
     }
 
-    fn delete_all_resumption_psk_secrets<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -635,9 +619,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::ResumptionPskStore)
     }
 
-    fn delete_own_leaf_index<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_own_leaf_index<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -645,9 +627,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::OwnLeafIndex)
     }
 
-    fn delete_group_epoch_secrets<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_group_epoch_secrets<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -656,8 +636,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn clear_proposal_queue<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        ProposalRef: openmls_traits::storage::traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -667,7 +647,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_signature_key_pair<
-        SignaturePublicKey: openmls_traits::storage::traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
+        SignaturePublicKey: traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &SignaturePublicKey,
@@ -676,7 +656,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_encryption_key_pair<
-        EncryptionKey: openmls_traits::storage::traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
+        EncryptionKey: traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         public_key: &EncryptionKey,
@@ -685,8 +665,8 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     fn delete_encryption_epoch_key_pairs<
-        GroupId: openmls_traits::storage::traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        EpochKey: openmls_traits::storage::traits::EpochKey<STORAGE_PROVIDER_VERSION>,
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        EpochKey: traits::EpochKey<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
@@ -700,20 +680,63 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn delete_key_package<
-        KeyPackageRef: openmls_traits::storage::traits::HashReference<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_key_package<KeyPackageRef: traits::HashReference<STORAGE_PROVIDER_VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         StorableHashRef(hash_ref).delete_key_package::<C>(self.connection.borrow())
     }
 
-    fn delete_psk<PskKey: openmls_traits::storage::traits::PskId<STORAGE_PROVIDER_VERSION>>(
+    fn delete_psk<PskKey: traits::PskId<STORAGE_PROVIDER_VERSION>>(
         &self,
         psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
         StorablePskIdRef(psk_id).delete::<C>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "extensions-draft-07")]
+    fn write_application_export_tree<
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        application_export_tree: &ApplicationExportTree,
+    ) -> Result<(), Self::Error> {
+        StorableGroupDataRef(application_export_tree).store::<C, _>(
+            self.connection.borrow(),
+            group_id,
+            GroupDataType::ApplicationExportTree,
+        )
+    }
+
+    #[cfg(feature = "extensions-draft-07")]
+    fn application_export_tree<
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<ApplicationExportTree>, Self::Error> {
+        StorableGroupData::load::<C, _>(
+            self.connection.borrow(),
+            group_id,
+            GroupDataType::ApplicationExportTree,
+        )
+    }
+
+    #[cfg(feature = "extensions-draft-07")]
+    fn delete_application_export_tree<
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        StorableGroupIdRef(group_id).delete_group_data::<C>(
+            self.connection.borrow(),
+            GroupDataType::ApplicationExportTree,
+        )
     }
 }
 

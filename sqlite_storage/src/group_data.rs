@@ -23,6 +23,8 @@ pub(super) enum GroupDataType {
     OwnLeafIndex,
     UseRatchetTreeExtension,
     GroupEpochSecrets,
+    #[cfg(feature = "extensions-draft-07")]
+    ApplicationExportTree,
 }
 
 impl ToSql for GroupDataType {
@@ -39,6 +41,8 @@ impl ToSql for GroupDataType {
             GroupDataType::OwnLeafIndex => "own_leaf_index".to_sql(),
             GroupDataType::UseRatchetTreeExtension => "use_ratchet_tree_extension".to_sql(),
             GroupDataType::GroupEpochSecrets => "group_epoch_secrets".to_sql(),
+            #[cfg(feature = "extensions-draft-07")]
+            GroupDataType::ApplicationExportTree => "application_export_tree".to_sql(),
         }
     }
 }
@@ -58,6 +62,8 @@ impl FromSql for GroupDataType {
             "own_leaf_index" => Ok(GroupDataType::OwnLeafIndex),
             "use_ratchet_tree_extension" => Ok(GroupDataType::UseRatchetTreeExtension),
             "group_epoch_secrets" => Ok(GroupDataType::GroupEpochSecrets),
+            #[cfg(feature = "extensions-draft-07")]
+            "application_export_tree" => Ok(GroupDataType::ApplicationExportTree),
             _ => Err(rusqlite::types::FromSqlError::InvalidType),
         }
     }
