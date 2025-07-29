@@ -255,11 +255,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
         .unwrap();
 
     let (_group_epoch_secrets, message_secrets) = {
-        let EpochSecretsResult {
-            epoch_secrets,
-            #[cfg(feature = "extensions-draft-07")]
-                application_exporter: _,
-        } = key_schedule
+        let EpochSecretsResult { epoch_secrets, .. } = key_schedule
             .epoch_secrets(provider.crypto(), welcome.ciphersuite())
             .unwrap();
 
