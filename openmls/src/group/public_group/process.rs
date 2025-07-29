@@ -283,6 +283,8 @@ impl PublicGroup {
                             data,
                             content,
                             credential,
+                            #[cfg(feature = "extensions-draft-07")]
+                            None,
                         ))
                     }
 

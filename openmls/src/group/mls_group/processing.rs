@@ -366,6 +366,8 @@ impl MlsGroup {
                             data,
                             content,
                             credential,
+                            #[cfg(feature = "extensions-draft-07")]
+                            None,
                         ))
                     }
 
