@@ -26,7 +26,7 @@ Thus, to create a fresh `Credential`, the following inputs are required:
 ```
 
 After creating the credential bundle, clients should create keys for it.
-OpenMLS provides a simple implementation of [`BasicCredential`](https://github.com/openmls/openmls/tree/main/basic_credential) for tests and to demonstrate how to use credentials.
+OpenMLS provides a simple implementation of [`BasicCredential`](https://docs.rs/openmls/latest/openmls/credentials/struct.BasicCredential.html) for tests and to demonstrate how to use credentials.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:create_credential_keys}}
