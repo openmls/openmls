@@ -244,7 +244,7 @@ impl ProcessedWelcome {
         &self.group_secrets.psks
     }
 
-    /// Consume the `ProcessedWelcome` and combine it witht he ratchet tree into
+    /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
     pub fn into_staged_welcome<Provider: OpenMlsProvider>(
         mut self,
