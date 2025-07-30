@@ -13,9 +13,9 @@ use crate::{
         commit_builder::{CommitBuilder, ExternalCommitInfo, Initial},
         past_secrets::MessageSecretsStore,
         public_group::errors::CreationFromExternalError,
-        ExternalCommitBuilderFinalizeError, MlsGroup, MlsGroupJoinConfig, MlsGroupState,
-        PendingCommitState, ProposalStore, PublicGroup, QueuedProposal, ValidationError,
-        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ExternalCommitBuilderFinalizeError, LeafNodeLifetimePolicy, MlsGroup, MlsGroupJoinConfig,
+        MlsGroupState, PendingCommitState, ProposalStore, PublicGroup, QueuedProposal,
+        ValidationError, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::{
         group_info::VerifiableGroupInfo,
@@ -70,6 +70,7 @@ pub struct ExternalCommitBuilder {
     proposals: Vec<PublicMessageIn>,
     ratchet_tree: Option<RatchetTreeIn>,
     config: MlsGroupJoinConfig,
+    validate_lifetimes: LeafNodeLifetimePolicy,
     aad: Vec<u8>,
 }
 
@@ -118,6 +119,15 @@ impl ExternalCommitBuilder {
         self
     }
 
+    /// Skip the validation of lifetimes in leaf nodes in the ratchet tree.
+    /// Note that only the leaf nodes are checked that were never updated.
+    ///
+    /// By default they are validated.
+    pub fn skip_lifetime_validation(mut self) -> Self {
+        self.validate_lifetimes = LeafNodeLifetimePolicy::Skip;
+        self
+    }
+
     /// Build the [`MlsGroup`] from the provided [`VerifiableGroupInfo`] and
     /// [`CredentialWithKey`].
     ///
@@ -135,6 +145,7 @@ impl ExternalCommitBuilder {
             ratchet_tree,
             mut config,
             aad,
+            validate_lifetimes,
         } = self;
 
         // Build the ratchet tree
@@ -148,11 +159,12 @@ impl ExternalCommitBuilder {
             },
         };
 
-        let (public_group, group_info) = PublicGroup::from_external_internal(
+        let (public_group, group_info) = PublicGroup::from_ratchet_tree(
             provider.crypto(),
             ratchet_tree,
             verifiable_group_info,
             ProposalStore::new(),
+            validate_lifetimes,
         )?;
         let group_context = public_group.group_context();
 
