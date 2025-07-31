@@ -535,8 +535,8 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
         &self,
-        group_id: &GroupId,
-        application_export_tree: &ApplicationExportTree,
+        _group_id: &GroupId,
+        _application_export_tree: &ApplicationExportTree,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -547,7 +547,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<Option<ApplicationExportTree>, Self::Error> {
         todo!()
     }
@@ -558,7 +558,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
         &self,
-        group_id: &GroupId,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
