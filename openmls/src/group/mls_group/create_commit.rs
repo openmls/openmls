@@ -377,6 +377,8 @@ impl MlsGroup {
             // proposal, so there is no extra keypair to store here.
             None,
             update_path_leaf_node,
+            #[cfg(feature = "extensions-draft-07")]
+            application_exporter,
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,
@@ -388,8 +390,6 @@ impl MlsGroup {
             welcome_option,
             staged_commit,
             group_info: group_info.filter(|_| self.configuration().use_ratchet_tree_extension),
-            #[cfg(feature = "extensions-draft-07")]
-            application_exporter,
         })
     }
 }

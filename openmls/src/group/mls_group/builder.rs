@@ -1,6 +1,8 @@
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use tls_codec::Serialize;
 
+#[cfg(feature = "extensions-draft-07")]
+use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
     binary_tree::array_representation::TreeSize,
     credentials::CredentialWithKey,
@@ -120,7 +122,11 @@ impl MlsGroupBuilder {
             .add_context(provider.crypto(), &serialized_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-        let EpochSecretsResult { epoch_secrets, .. } = key_schedule
+        let EpochSecretsResult {
+            epoch_secrets,
+            #[cfg(feature = "extensions-draft-07")]
+            application_exporter,
+        } = key_schedule
             .epoch_secrets(provider.crypto(), ciphersuite)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
@@ -148,6 +154,9 @@ impl MlsGroupBuilder {
         let resumption_psk = group_epoch_secrets.resumption_psk();
         resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
 
+        #[cfg(feature = "extensions-draft-07")]
+        let application_export_tree = ApplicationExportTree::new(application_exporter);
+
         let mls_group = MlsGroup {
             mls_group_config: mls_group_create_config.join_config.clone(),
             own_leaf_nodes: vec![],
@@ -158,6 +167,8 @@ impl MlsGroupBuilder {
             own_leaf_index: LeafNodeIndex::new(0),
             message_secrets_store,
             resumption_psk_store,
+            #[cfg(feature = "extensions-draft-07")]
+            application_export_tree: Some(application_export_tree),
         };
 
         mls_group

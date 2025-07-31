@@ -38,9 +38,6 @@ use super::{
     MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
 
-#[cfg(feature = "extensions-draft-07")]
-use crate::schedule::ApplicationExportSecret;
-
 /// This stage is for populating the builder.
 pub struct Initial {
     own_proposals: Vec<Proposal>,
@@ -674,6 +671,8 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             // proposal, so there is no extra keypair to store here.
             None,
             update_path_leaf_node,
+            #[cfg(feature = "extensions-draft-07")]
+            application_exporter,
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,
@@ -686,8 +685,6 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 welcome_option,
                 staged_commit,
                 group_info: group_info.filter(|_| cur_stage.create_group_info),
-                #[cfg(feature = "extensions-draft-07")]
-                application_exporter,
             },
         }))
     }
@@ -737,8 +734,6 @@ impl CommitBuilder<'_, Complete> {
             commit: mls_message,
             welcome: create_commit_result.welcome_option,
             group_info: create_commit_result.group_info,
-            #[cfg(feature = "extensions-draft-07")]
-            application_export_secret: create_commit_result.application_exporter,
         })
     }
 }
@@ -751,8 +746,6 @@ pub struct CommitMessageBundle {
     commit: MlsMessageOut,
     welcome: Option<Welcome>,
     group_info: Option<GroupInfo>,
-    #[cfg(feature = "extensions-draft-07")]
-    application_export_secret: ApplicationExportSecret,
 }
 
 #[cfg(test)]
@@ -762,15 +755,12 @@ impl CommitMessageBundle {
         commit: MlsMessageOut,
         welcome: Option<Welcome>,
         group_info: Option<GroupInfo>,
-        #[cfg(feature = "extensions-draft-07")] application_export_secret: ApplicationExportSecret,
     ) -> Self {
         Self {
             version,
             commit,
             welcome,
             group_info,
-            #[cfg(feature = "extensions-draft-07")]
-            application_export_secret,
         }
     }
 }
@@ -781,12 +771,6 @@ impl CommitMessageBundle {
     /// Gets the Commit messsage. For owned version, see [`Self::into_commit`].
     pub fn commit(&self) -> &MlsMessageOut {
         &self.commit
-    }
-
-    /// Gets the [`ApplicationExportSecret`].
-    #[cfg(feature = "extensions-draft-07")]
-    pub fn application_export_secret(&self) -> &ApplicationExportSecret {
-        &self.application_export_secret
     }
 
     /// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.

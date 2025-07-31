@@ -257,6 +257,8 @@ const EPOCH_KEY_PAIRS_LABEL: &[u8] = b"EpochKeyPairs";
 // related to PublicGroup
 const TREE_LABEL: &[u8] = b"Tree";
 const GROUP_CONTEXT_LABEL: &[u8] = b"GroupContext";
+#[cfg(feature = "extensions-draft-07")]
+const APPLICATION_EXPORT_TREE_LABEL: &[u8] = b"ApplicationExportTree";
 const INTERIM_TRANSCRIPT_HASH_LABEL: &[u8] = b"InterimTranscriptHash";
 const CONFIRMATION_TAG_LABEL: &[u8] = b"ConfirmationTag";
 
@@ -974,6 +976,55 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
 
         let key = serde_json::to_vec(&(group_id, proposal_ref)).unwrap();
         self.delete::<CURRENT_VERSION>(QUEUED_PROPOSAL_LABEL, &key)
+    }
+
+    #[cfg(feature = "extensions-draft-07")]
+    fn write_application_export_tree<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        application_export_tree: &ApplicationExportTree,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            APPLICATION_EXPORT_TREE_LABEL,
+            &serde_json::to_vec(&group_id).unwrap(),
+            serde_json::to_vec(&application_export_tree).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "extensions-draft-07")]
+    fn application_export_tree<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<ApplicationExportTree>, Self::Error> {
+        let values = self.values.read().unwrap();
+        let key = build_key::<CURRENT_VERSION, &GroupId>(APPLICATION_EXPORT_TREE_LABEL, group_id);
+
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        let value = serde_json::from_slice(value).unwrap();
+
+        Ok(value)
+    }
+
+    #[cfg(feature = "extensions-draft-07")]
+    fn delete_application_export_tree<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(
+            APPLICATION_EXPORT_TREE_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+        )
     }
 }
 

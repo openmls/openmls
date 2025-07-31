@@ -28,11 +28,7 @@ use crate::{
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
-pub(crate) struct StageCommitResult {
-    pub(crate) staged_commit: StagedCommit,
-    #[cfg(feature = "extensions-draft-07")]
-    pub(crate) application_exporter: Option<ApplicationExportSecret>,
-}
+pub mod v1_storage;
 
 impl MlsGroup {
     fn derive_epoch_secrets(
@@ -152,7 +148,7 @@ impl MlsGroup {
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         provider: &impl OpenMlsProvider,
-    ) -> Result<StageCommitResult, StageCommitError> {
+    ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
         if let Sender::Member(member) = mls_content.sender() {
             if member == &self.own_leaf_index() {
@@ -203,11 +199,7 @@ impl MlsGroup {
                         proposal_queue,
                         StagedCommitState::PublicState(Box::new(staged_state)),
                     );
-                    return Ok(StageCommitResult {
-                        staged_commit,
-                        #[cfg(feature = "extensions-draft-07")]
-                        application_exporter: None,
-                    });
+                    return Ok(staged_commit);
                 }
 
                 let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
@@ -337,14 +329,12 @@ impl MlsGroup {
                 new_keypairs,
                 new_leaf_keypair_option,
                 update_path_leaf_node,
+                #[cfg(feature = "extensions-draft-07")]
+                application_exporter,
             )));
         let staged_commit = StagedCommit::new(proposal_queue, staged_commit_state);
 
-        Ok(StageCommitResult {
-            staged_commit,
-            #[cfg(feature = "extensions-draft-07")]
-            application_exporter: Some(application_exporter),
-        })
+        Ok(staged_commit)
     }
 
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
@@ -606,6 +596,10 @@ pub(crate) struct MemberStagedCommitState {
     new_keypairs: Vec<EncryptionKeyPair>,
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
     update_path_leaf_node: Option<LeafNode>,
+    #[cfg(feature = "extensions-draft-07")]
+    // This is `None` only if the group was stored using an older version of
+    // OpenMLS that did not support the application exporter.
+    application_exporter: Option<ApplicationExportSecret>,
 }
 
 impl MemberStagedCommitState {
@@ -616,6 +610,7 @@ impl MemberStagedCommitState {
         new_keypairs: Vec<EncryptionKeyPair>,
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
         update_path_leaf_node: Option<LeafNode>,
+        #[cfg(feature = "extensions-draft-07")] application_exporter: ApplicationExportSecret,
     ) -> Self {
         Self {
             group_epoch_secrets,
@@ -624,6 +619,8 @@ impl MemberStagedCommitState {
             new_keypairs,
             new_leaf_keypair_option,
             update_path_leaf_node,
+            #[cfg(feature = "extensions-draft-07")]
+            application_exporter: Some(application_exporter),
         }
     }
 

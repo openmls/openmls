@@ -50,7 +50,7 @@ use crate::{
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
 
 #[cfg(feature = "extensions-draft-07")]
-use crate::schedule::ApplicationExportSecret;
+use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
 
 // Private
 mod application;
@@ -83,8 +83,6 @@ pub(crate) struct CreateCommitResult {
     pub(crate) welcome_option: Option<Welcome>,
     pub(crate) staged_commit: StagedCommit,
     pub(crate) group_info: Option<GroupInfo>,
-    #[cfg(feature = "extensions-draft-07")]
-    pub(crate) application_exporter: ApplicationExportSecret,
 }
 
 /// A member in the group is identified by this [`Member`] struct.
@@ -258,6 +256,11 @@ pub struct MlsGroup {
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
     group_state: MlsGroupState,
+    /// The state of the Application Exporter. See the MLS Extensions Draft 07
+    /// for more information. This is `None` if an old OpenMLS group state was
+    /// loaded and has not yet merged a commit.
+    #[cfg(feature = "extensions-draft-07")]
+    application_export_tree: Option<ApplicationExportTree>,
 }
 
 impl MlsGroup {
@@ -437,6 +440,8 @@ impl MlsGroup {
         let mls_group_config = storage.mls_group_join_config(group_id)?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
         let group_state = storage.group_state(group_id)?;
+        #[cfg(feature = "extensions-draft-07")]
+        let application_export_tree = storage.application_export_tree(group_id)?;
 
         let build = || -> Option<Self> {
             Some(Self {
@@ -449,6 +454,8 @@ impl MlsGroup {
                 own_leaf_nodes,
                 aad: vec![],
                 group_state: group_state?,
+                #[cfg(feature = "extensions-draft-07")]
+                application_export_tree,
             })
         };
 

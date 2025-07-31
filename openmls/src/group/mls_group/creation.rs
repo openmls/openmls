@@ -187,6 +187,13 @@ impl MlsGroup {
             public_group.leftmost_free_index(inline_proposals.iter(), iter::empty())?;
         params.set_inline_proposals(inline_proposals);
 
+        #[cfg(feature = "extensions-draft-07")]
+        let application_export_tree = {
+            let application_exporter =
+                ApplicationExportSecret::new_for_external_commit(ciphersuite);
+            ApplicationExportTree::new(application_exporter)
+        };
+
         let mut mls_group = MlsGroup {
             mls_group_config: mls_group_config.clone(),
             own_leaf_nodes: vec![],
@@ -197,6 +204,8 @@ impl MlsGroup {
             own_leaf_index,
             message_secrets_store,
             resumption_psk_store: ResumptionPskStore::new(32),
+            #[cfg(feature = "extensions-draft-07")]
+            application_export_tree: Some(application_export_tree),
         };
 
         mls_group.set_max_past_epochs(mls_group_config.max_past_epochs);
@@ -572,6 +581,9 @@ impl StagedWelcome {
             vec![self.key_package_bundle.encryption_key_pair()]
         };
 
+        #[cfg(feature = "extensions-draft-07")]
+        let application_export_tree = ApplicationExportTree::new(self.application_export_secret);
+
         let mut mls_group = MlsGroup {
             mls_group_config: self.mls_group_config,
             own_leaf_nodes: vec![],
@@ -582,6 +594,8 @@ impl StagedWelcome {
             own_leaf_index: self.own_leaf_index,
             message_secrets_store: self.message_secrets_store,
             resumption_psk_store: self.resumption_psk_store,
+            #[cfg(feature = "extensions-draft-07")]
+            application_export_tree: Some(application_export_tree),
         };
 
         mls_group

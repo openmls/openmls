@@ -132,11 +132,14 @@ use crate::{
 
 // Public
 pub mod errors;
+#[cfg(feature = "extensions-draft-07")]
+mod pprf;
 pub mod psk;
 
 // Crate
+#[cfg(feature = "extensions-draft-07")]
+pub(crate) mod application_export_tree;
 pub(crate) mod message_secrets;
-pub(crate) mod pprf;
 
 // Private
 use errors::*;
@@ -780,29 +783,13 @@ impl ApplicationExportSecret {
         Ok(ApplicationExportSecret { secret })
     }
 
-    /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
-    /// it can be used outside of OpenMLS.
-    pub fn derive_exported_secret(
-        &self,
-        ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
-        label: &str,
-        context: &[u8],
-        key_length: usize,
-    ) -> Result<Vec<u8>, CryptoError> {
-        let context_hash = &crypto.hash(ciphersuite.hash_algorithm(), context)?;
-        Ok(self
-            .secret
-            .derive_secret(crypto, ciphersuite, label)?
-            .kdf_expand_label(
-                crypto,
-                ciphersuite,
-                "application exported",
-                context_hash,
-                key_length,
-            )?
-            .as_slice()
-            .to_vec())
+    /// Only to be used in the creation of a preliminary group during an
+    /// external commit. Creates a zero secret.
+    pub(crate) fn new_for_external_commit(ciphersuite: Ciphersuite) -> Self {
+        // This is used for external commits, so we don't need to derive it from an epoch secret.
+        Self {
+            secret: Secret::zero(ciphersuite),
+        }
     }
 }
 

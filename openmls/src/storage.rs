@@ -10,8 +10,11 @@
 use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 
 use crate::binary_tree::LeafNodeIndex;
+use crate::group::mls_group::staged_commit::v1_storage::MlsGroupStateV1;
 use crate::group::proposal_store::QueuedProposal;
 use crate::group::{MlsGroupJoinConfig, MlsGroupState};
+#[cfg(feature = "extensions-draft-07")]
+use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
     ciphersuite::hash_ref::ProposalRef,
     group::{GroupContext, GroupId, InterimTranscriptHash},
@@ -127,6 +130,9 @@ impl traits::ResumptionPskStore<CURRENT_VERSION> for ResumptionPskStore {}
 impl Entity<CURRENT_VERSION> for MlsGroupJoinConfig {}
 impl traits::MlsGroupJoinConfig<CURRENT_VERSION> for MlsGroupJoinConfig {}
 
+impl Entity<1> for MlsGroupStateV1 {}
+impl traits::GroupState<1> for MlsGroupStateV1 {}
+
 impl Entity<CURRENT_VERSION> for MlsGroupState {}
 impl traits::GroupState<CURRENT_VERSION> for MlsGroupState {}
 
@@ -143,6 +149,11 @@ impl traits::PskId<CURRENT_VERSION> for Psk {}
 
 impl Entity<CURRENT_VERSION> for PskBundle {}
 impl traits::PskBundle<CURRENT_VERSION> for PskBundle {}
+
+#[cfg(feature = "extensions-draft-07")]
+impl Entity<CURRENT_VERSION> for ApplicationExportTree {}
+#[cfg(feature = "extensions-draft-07")]
+impl traits::ApplicationExportTree<CURRENT_VERSION> for ApplicationExportTree {}
 
 #[cfg(test)]
 mod test {

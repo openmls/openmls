@@ -313,7 +313,15 @@ fn application_export_secret() {
         .group
         .merge_pending_commit(&alice_group_state.party.core_state.provider)
         .unwrap();
-    let alice_application_secret = alice_commit.application_export_secret().clone();
+    let component_id = 0x8000;
+    let alice_application_secret = alice_group_state
+        .group
+        .safe_export_secret(
+            alice_group_state.party.core_state.provider.crypto(),
+            alice_group_state.party.core_state.provider.storage(),
+            component_id,
+        )
+        .unwrap();
 
     // Bob processes the update
     let processed_message = bob_group_state
@@ -325,7 +333,7 @@ fn application_export_secret() {
                 .unwrap(),
         )
         .unwrap();
-    let bob_application_secret = processed_message.application_exporter().unwrap().clone();
+
     let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         processed_message.into_content()
     else {
@@ -337,27 +345,27 @@ fn application_export_secret() {
         .merge_staged_commit(&bob_group_state.party.core_state.provider, *staged_commit)
         .unwrap();
 
+    let bob_application_secret = bob_group_state
+        .group
+        .safe_export_secret(
+            bob_group_state.party.core_state.provider.crypto(),
+            bob_group_state.party.core_state.provider.storage(),
+            component_id,
+        )
+        .unwrap();
+
     assert_eq!(alice_application_secret, bob_application_secret);
 
-    let alice_derived_secret = alice_application_secret
-        .derive_exported_secret(
-            ciphersuite,
+    let differing_component_id = 0x8001;
+    let alice_differing_application_secret = alice_group_state
+        .group
+        .safe_export_secret(
             alice_group_state.party.core_state.provider.crypto(),
-            "test",
-            &[],
-            32,
+            alice_group_state.party.core_state.provider.storage(),
+            differing_component_id,
         )
         .unwrap();
-    let bob_derived_secret = bob_application_secret
-        .derive_exported_secret(
-            ciphersuite,
-            bob_group_state.party.core_state.provider.crypto(),
-            "test",
-            &[],
-            32,
-        )
-        .unwrap();
-    assert_eq!(alice_derived_secret, bob_derived_secret);
+    assert_ne!(alice_application_secret, alice_differing_application_secret);
 }
 
 #[openmls_test]

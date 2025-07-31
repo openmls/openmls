@@ -24,6 +24,9 @@ use crate::{
     },
 };
 
+#[cfg(feature = "extensions-draft-07")]
+use crate::schedule::application_export_tree::ApplicationExportTreeError;
+
 /// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum NewGroupError<StorageError> {
@@ -305,6 +308,24 @@ pub enum ExportGroupInfoError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Export secret error
+#[cfg(feature = "extensions-draft-07")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum SafeExportSecretError<StorageError> {
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupState(#[from] MlsGroupStateError),
+    /// See [`ApplicationExportTreeError`] for more details.
+    #[error(transparent)]
+    ApplicationExportTree(#[from] ApplicationExportTreeError),
+    /// Group doesn't support application exports.
+    #[error("Group doesn't support application exports.")]
+    Unsupported,
+    /// Storage error
+    #[error("Error accessing storage: {0}")]
+    Storage(StorageError),
 }
 
 /// Export secret error

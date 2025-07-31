@@ -1,6 +1,8 @@
 use errors::{ExportGroupInfoError, ExportSecretError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
+#[cfg(feature = "extensions-draft-07")]
+use crate::group::SafeExportSecretError;
 use crate::{
     ciphersuite::HpkePublicKey,
     schedule::{EpochAuthenticator, ResumptionPskSecret},
@@ -39,6 +41,34 @@ impl MlsGroup {
                 MlsGroupStateError::UseAfterEviction,
             ))
         }
+    }
+
+    /// Export a secret from the forward secure exporter for the component with
+    /// the given component ID.
+    #[cfg(feature = "extensions-draft-07")]
+    pub fn safe_export_secret<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        &mut self,
+        crypto: &Crypto,
+        storage: &Storage,
+        component_id: u16,
+    ) -> Result<Vec<u8>, SafeExportSecretError<Storage::Error>> {
+        if !self.is_active() {
+            return Err(SafeExportSecretError::GroupState(
+                MlsGroupStateError::UseAfterEviction,
+            ));
+        }
+        let group_id = self.group_id().clone();
+        let ciphersuite = self.ciphersuite();
+        let Some(application_export_tree) = self.application_export_tree.as_mut() else {
+            return Err(SafeExportSecretError::Unsupported);
+        };
+        let component_secret =
+            application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
+        storage
+            .write_application_export_tree(&group_id, application_export_tree)
+            .map_err(SafeExportSecretError::Storage)?;
+
+        Ok(component_secret.as_slice().to_vec())
     }
 
     /// Returns the epoch authenticator of the current epoch.

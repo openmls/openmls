@@ -13,10 +13,12 @@ use crate::{binary_tree::array_representation::TreeSize, ciphersuite::Secret};
 use input::AsIndexBytes;
 use prefix::Prefix;
 
+pub use prefix::Prefix16;
+
 mod input;
 mod prefix;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error, PartialEq)]
 pub enum PprfError {
     #[error("Index out of bounds")]
     IndexOutOfBounds,
@@ -74,7 +76,7 @@ impl PprfNode {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
-pub(super) struct Pprf<P: Prefix> {
+pub(crate) struct Pprf<P: Prefix> {
     #[serde(
         serialize_with = "serialize_hashmap",
         deserialize_with = "deserialize_hashmap"
@@ -90,7 +92,7 @@ fn get_bit(index: &[u8], bit_index: usize) -> bool {
 }
 
 impl<P: Prefix> Pprf<P> {
-    pub fn new_with_size(secret: Secret, size: TreeSize) -> Self {
+    pub(super) fn new_with_size(secret: Secret, size: TreeSize) -> Self {
         let width = size.leaf_count() as usize;
         Pprf {
             // The width of the tree in bytes.
@@ -99,7 +101,8 @@ impl<P: Prefix> Pprf<P> {
         }
     }
 
-    pub fn new(secret: Secret) -> Self {
+    #[cfg(test)]
+    pub(super) fn new_for_test(secret: Secret) -> Self {
         let width = secret.as_slice().len();
         Pprf {
             // The width of the tree in bytes.
@@ -108,7 +111,7 @@ impl<P: Prefix> Pprf<P> {
         }
     }
 
-    pub fn evaluate<Input: AsIndexBytes>(
+    pub(super) fn evaluate<Input: AsIndexBytes>(
         &mut self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
@@ -226,7 +229,7 @@ mod tests {
             println!("Seed: {:?}", seed);
             let mut rng = StdRng::from_seed(seed);
             let root_secret = dummy_secret(&mut rng, ciphersuite);
-            let mut pprf = Pprf::<P>::new(root_secret);
+            let mut pprf = Pprf::<P>::new_for_test(root_secret);
             let index = dummy_index::<P>(&mut rng);
             let crypto = provider.crypto();
 
@@ -249,7 +252,7 @@ mod tests {
             println!("Seed: {:?}", seed);
             let mut rng = StdRng::from_seed(seed);
             let root_secret = dummy_secret(&mut rng, ciphersuite);
-            let mut pprf = Pprf::<P>::new(root_secret);
+            let mut pprf = Pprf::<P>::new_for_test(root_secret);
             let index = dummy_index::<P>(&mut rng);
             let crypto = provider.crypto();
 
@@ -274,7 +277,7 @@ mod tests {
             println!("Seed: {:?}", seed);
             let mut rng = StdRng::from_seed(seed);
             let root_secret = dummy_secret(&mut rng, ciphersuite);
-            let mut pprf = Pprf::<P>::new(root_secret);
+            let mut pprf = Pprf::<P>::new_for_test(root_secret);
             let index1 = dummy_index::<P>(&mut rng);
             let index2 = dummy_index::<P>(&mut rng);
             let crypto = provider.crypto();
@@ -299,7 +302,7 @@ mod tests {
             println!("Seed: {:?}", seed);
             let mut rng = StdRng::from_seed(seed);
             let root_secret = dummy_secret(&mut rng, ciphersuite);
-            let mut pprf = Pprf::<P>::new(root_secret);
+            let mut pprf = Pprf::<P>::new_for_test(root_secret);
             let index = random_vec(&mut rng, P::MAX_INPUT_LEN + 1); // Out of bounds
 
             let crypto = provider.crypto();

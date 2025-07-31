@@ -13,7 +13,7 @@ use crate::{
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
-use super::{errors::ProcessMessageError, staged_commit::StageCommitResult, *};
+use super::{errors::ProcessMessageError, *};
 
 impl MlsGroup {
     /// Parses incoming messages from the DS. Checks for syntactic errors and
@@ -271,26 +271,11 @@ impl MlsGroup {
                 let authenticated_data = content.authenticated_data().to_owned();
                 let epoch = content.epoch();
 
-                struct ContentProcessingResult {
-                    content: ProcessedMessageContent,
-                    #[cfg(feature = "extensions-draft-07")]
-                    application_exporter: Option<ApplicationExportSecret>,
-                }
-
-                let ContentProcessingResult {
-                    content,
-                    #[cfg(feature = "extensions-draft-07")]
-                    application_exporter,
-                } = match content.content() {
+                let content = match content.content() {
                     FramedContentBody::Application(application_message) => {
-                        let content = ProcessedMessageContent::ApplicationMessage(
-                            ApplicationMessage::new(application_message.as_slice().to_owned()),
-                        );
-                        ContentProcessingResult {
-                            content,
-                            #[cfg(feature = "extensions-draft-07")]
-                            application_exporter: None,
-                        }
+                        ProcessedMessageContent::ApplicationMessage(ApplicationMessage::new(
+                            application_message.as_slice().to_owned(),
+                        ))
                     }
                     FramedContentBody::Proposal(_) => {
                         let proposal = Box::new(QueuedProposal::from_authenticated_content_by_ref(
@@ -299,35 +284,20 @@ impl MlsGroup {
                             content,
                         )?);
 
-                        let content = if matches!(sender, Sender::NewMemberProposal) {
+                        if matches!(sender, Sender::NewMemberProposal) {
                             ProcessedMessageContent::ExternalJoinProposalMessage(proposal)
                         } else {
                             ProcessedMessageContent::ProposalMessage(proposal)
-                        };
-                        ContentProcessingResult {
-                            content,
-                            #[cfg(feature = "extensions-draft-07")]
-                            application_exporter: None,
                         }
                     }
                     FramedContentBody::Commit(_) => {
-                        let StageCommitResult {
-                            staged_commit,
-                            #[cfg(feature = "extensions-draft-07")]
-                            application_exporter,
-                        } = self.stage_commit(
+                        let staged_commit = self.stage_commit(
                             &content,
                             old_epoch_keypairs,
                             leaf_node_keypairs,
                             provider,
                         )?;
-                        let content =
-                            ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit));
-                        ContentProcessingResult {
-                            content,
-                            #[cfg(feature = "extensions-draft-07")]
-                            application_exporter,
-                        }
+                        ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                 };
 
@@ -338,8 +308,6 @@ impl MlsGroup {
                     authenticated_data,
                     content,
                     credential,
-                    #[cfg(feature = "extensions-draft-07")]
-                    application_exporter,
                 ))
             }
             Sender::External(_) => {
@@ -366,8 +334,6 @@ impl MlsGroup {
                             data,
                             content,
                             credential,
-                            #[cfg(feature = "extensions-draft-07")]
-                            None,
                         ))
                     }
 
@@ -386,8 +352,6 @@ impl MlsGroup {
                             data,
                             content,
                             credential,
-                            #[cfg(feature = "extensions-draft-07")]
-                            None,
                         ))
                     }
                     FramedContentBody::Proposal(Proposal::Add(_)) => {
@@ -405,8 +369,6 @@ impl MlsGroup {
                             data,
                             content,
                             credential,
-                            #[cfg(feature = "extensions-draft-07")]
-                            None,
                         ))
                     }
                     // TODO #151/#106
