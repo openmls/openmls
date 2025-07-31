@@ -398,7 +398,7 @@ impl LeafNode {
         &self.payload.signature_key
     }
 
-    /// Returns the `signature_key` as byte slice.
+    /// Returns the `credential`.
     pub fn credential(&self) -> &Credential {
         &self.payload.credential
     }
