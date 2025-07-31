@@ -196,17 +196,14 @@ fn test_valsem242() {
         .into_verifiable_group_info()
         .unwrap();
 
-    let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
+    let (_, public_message_commit, _) = MlsGroup::from_external_commit(
         provider,
         &bob_credential.signer,
-        None,
         verifiable_group_info,
         alice_group.configuration(),
-        None,
-        None,
-        &[],
-        bob_credential.credential_with_key.clone(),
+        &bob_credential.credential_with_key,
     )
+    .build()
     .unwrap();
 
     let public_message_commit = {
@@ -576,17 +573,14 @@ fn test_pure_ciphertest() {
         .into_verifiable_group_info()
         .unwrap();
 
-    let (_bob_group, message, _) = MlsGroup::join_by_external_commit(
+    let (_bob_group, message, _) = MlsGroup::from_external_commit(
         provider,
         &bob_credential.signer,
-        None,
         verifiable_group_info,
         alice_group.configuration(),
-        None,
-        None,
-        &[],
-        bob_credential.credential_with_key.clone(),
+        &bob_credential.credential_with_key,
     )
+    .build()
     .expect("Error initializing group externally.");
 
     let mls_message_in: MlsMessageIn = message.into();
@@ -661,19 +655,17 @@ mod utils {
             .unwrap()
             .into_verifiable_group_info()
             .unwrap();
-        let tree_option = alice_group.export_ratchet_tree();
+        let tree = alice_group.export_ratchet_tree();
 
-        let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
+        let (_, public_message_commit, _) = MlsGroup::from_external_commit(
             provider,
             &bob_credential.signer,
-            Some(tree_option.into()),
             verifiable_group_info,
             alice_group.configuration(),
-            None,
-            None,
-            &[],
-            bob_credential.credential_with_key.clone(),
+            &bob_credential.credential_with_key,
         )
+        .with_ratchet_tree(tree.into())
+        .build()
         .unwrap();
 
         let public_message_commit = {

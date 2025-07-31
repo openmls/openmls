@@ -491,18 +491,17 @@ impl MlsClient for MlsClientImpl {
                     .build()
             };
 
-            let (mut group, commit, _group_info) = MlsGroup::join_by_external_commit(
+            let mut external_commit = MlsGroup::from_external_commit(
                 &provider,
                 &signer,
-                ratchet_tree,
                 verifiable_group_info,
                 &mls_group_config,
-                None,
-                None,
-                b"",
-                credential_with_key,
-            )
-            .unwrap();
+                &credential_with_key,
+            );
+            if let Some(ratchet_tree) = ratchet_tree {
+                external_commit = external_commit.with_ratchet_tree(ratchet_tree);
+            }
+            let (mut group, commit, _group_info) = external_commit.build().unwrap();
 
             trace!(?commit, "Commit created.");
             debug!(commit=?group.pending_commit(), "Merging pending commit.");

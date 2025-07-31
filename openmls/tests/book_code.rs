@@ -292,17 +292,14 @@ fn book_operations() {
     // ANCHOR_END: alice_exports_group_info
 
     // ANCHOR: charlie_joins_external_commit
-    let (mut dave_group, _out, _group_info) = MlsGroup::join_by_external_commit(
+    let (mut dave_group, _out, _group_info) = MlsGroup::from_external_commit(
         provider,
         &dave_signature_keys,
-        None, // No ratchtet tree extension
         verifiable_group_info,
         &mls_group_config,
-        None, // No special capabilities
-        None, // No special extensions
-        &[],
-        dave_credential,
+        &dave_credential,
     )
+    .build()
     .expect("Error joining from external commit");
     dave_group
         .merge_pending_commit(provider)

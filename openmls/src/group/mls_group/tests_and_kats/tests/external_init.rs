@@ -25,17 +25,14 @@ fn test_external_init_broken_signature() {
         verifiable_group_info
     };
 
-    let result = MlsGroup::join_by_external_commit(
+    let result = MlsGroup::from_external_commit(
         provider,
         &charlie_signer,
-        None,
         verifiable_group_info,
         &MlsGroupJoinConfig::default(),
-        None,
-        None,
-        &[],
-        charlie_credential,
+        &charlie_credential,
     )
+    .build()
     .expect_err("Signature was corrupted. This should have failed.");
     assert!(matches!(
         result,

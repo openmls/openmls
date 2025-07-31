@@ -78,17 +78,14 @@ fn test_external_commit() {
         let (bob_credential, bob_signature_keys) =
             new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
-        let (_bob_group, _, _) = MlsGroup::join_by_external_commit(
+        let (_bob_group, _, _) = MlsGroup::from_external_commit(
             provider,
             &bob_signature_keys,
-            None,
             verifiable_group_info,
             &MlsGroupJoinConfig::default(),
-            None,
-            None,
-            b"",
-            bob_credential,
+            &bob_credential,
         )
+        .build()
         .unwrap();
     }
 
@@ -97,17 +94,14 @@ fn test_external_commit() {
         let (bob_credential, bob_signature_keys) =
             new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
-        let got_error = MlsGroup::join_by_external_commit(
+        let got_error = MlsGroup::from_external_commit(
             provider,
             &bob_signature_keys,
-            None,
             verifiable_group_info_broken,
             &MlsGroupJoinConfig::default(),
-            None,
-            None,
-            b"",
-            bob_credential,
+            &bob_credential,
         )
+        .build()
         .unwrap_err();
 
         assert!(matches!(
@@ -140,19 +134,16 @@ fn test_group_info() {
 
         VerifiableGroupInfo::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap()
     };
-    let (mut bob_group, msg, group_info) = MlsGroup::join_by_external_commit(
+    let (mut bob_group, msg, group_info) = MlsGroup::from_external_commit(
         provider,
         &bob_signature_keys,
-        None,
         verifiable_group_info,
         &MlsGroupJoinConfig::builder()
             .use_ratchet_tree_extension(true)
             .build(),
-        None,
-        None,
-        b"",
-        bob_credential,
+        &bob_credential,
     )
+    .build()
     .map(|(group, msg, group_info)| (group, MlsMessageIn::from(msg), group_info))
     .unwrap();
     bob_group.merge_pending_commit(provider).unwrap();
@@ -193,17 +184,14 @@ fn test_group_info() {
 
         VerifiableGroupInfo::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap()
     };
-    let (mut bob_group, ..) = MlsGroup::join_by_external_commit(
+    let (mut bob_group, ..) = MlsGroup::from_external_commit(
         provider,
         &bob_signature_keys,
-        None,
         verifiable_group_info,
         &MlsGroupJoinConfig::default(),
-        None,
-        None,
-        b"",
-        bob_credential,
+        &bob_credential,
     )
+    .build()
     .unwrap();
     bob_group.merge_pending_commit(provider).unwrap();
 }

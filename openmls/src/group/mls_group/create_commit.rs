@@ -12,7 +12,7 @@ pub(crate) enum CommitType {
 
 pub(crate) struct CreateCommitParams<'a> {
     framing_parameters: Option<FramingParameters<'a>>,
-    credential_with_key: CredentialWithKey,
+    credential_with_key: &'a CredentialWithKey,
 
     inline_proposals: Vec<Proposal>,          // Optional
     force_self_update: bool,                  // Optional
@@ -26,11 +26,11 @@ pub(crate) struct CreateCommitParamsBuilder<'a> {
 }
 
 impl TempBuilderCCPM0 {
-    pub(crate) fn external_commit(
+    pub(crate) fn external_commit<'a>(
         self,
-        credential_with_key: CredentialWithKey,
-        framing_parameters: FramingParameters,
-    ) -> CreateCommitParamsBuilder {
+        credential_with_key: &'a CredentialWithKey,
+        framing_parameters: FramingParameters<'a>,
+    ) -> CreateCommitParamsBuilder<'a> {
         CreateCommitParamsBuilder {
             ccp: CreateCommitParams {
                 framing_parameters: Some(framing_parameters),
@@ -69,7 +69,7 @@ impl CreateCommitParams<'_> {
         self.force_self_update
     }
     pub(crate) fn credential_with_key(&self) -> &CredentialWithKey {
-        &self.credential_with_key
+        self.credential_with_key
     }
     pub(crate) fn leaf_node_parameters(&self) -> &LeafNodeParameters {
         &self.leaf_node_parameters

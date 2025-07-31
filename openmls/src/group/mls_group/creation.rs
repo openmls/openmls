@@ -1,7 +1,9 @@
 use std::iter;
 
 use errors::NewGroupError;
-use openmls_traits::{signatures::Signer, storage::StorageProvider as StorageProviderTrait};
+use openmls_traits::{
+    signatures::Signer as SignerTrait, storage::StorageProvider as StorageProviderTrait,
+};
 
 use super::{builder::MlsGroupBuilder, *};
 use crate::{
@@ -88,6 +90,10 @@ impl MlsGroup {
     /// Note: If there is a group member in the group with the same identity as
     /// us, this will create a remove proposal.
     #[allow(clippy::too_many_arguments)]
+    #[deprecated(
+        since = "0.7.1",
+        note = "This function has too many arguments and doesn't allow disabling ratchet tree lifetime validation. Use the builder through `MlsGroup::from_exernal_commit` instead"
+    )]
     pub fn join_by_external_commit<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
@@ -100,127 +106,64 @@ impl MlsGroup {
         credential_with_key: CredentialWithKey,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError<Provider::StorageError>>
     {
-        // Prepare the commit parameters
-        let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
-
-        let leaf_node_parameters = LeafNodeParameters::builder()
-            .with_capabilities(capabilities.unwrap_or_default())
-            .with_extensions(extensions.unwrap_or_default())
-            .build();
-        let mut params = CreateCommitParams::builder()
-            .external_commit(credential_with_key, framing_parameters)
-            .leaf_node_parameters(leaf_node_parameters)
-            .build();
-
-        // Build the ratchet tree
-
-        // Set nodes either from the extension or from the `nodes_option`.
-        // If we got a ratchet tree extension in the welcome, we enable it for
-        // this group. Note that this is not strictly necessary. But there's
-        // currently no other mechanism to enable the extension.
-        let ratchet_tree = match verifiable_group_info.extensions().ratchet_tree() {
-            Some(extension) => extension.ratchet_tree().clone(),
-            None => match ratchet_tree {
-                Some(ratchet_tree) => ratchet_tree,
-                None => return Err(ExternalCommitError::MissingRatchetTree),
-            },
-        };
-
-        let (public_group, group_info) = PublicGroup::from_external_internal(
-            provider.crypto(),
-            ratchet_tree,
+        let mut builder = FromExternalCommitBuilder::new(
+            provider,
+            signer,
             verifiable_group_info,
-            // Existing proposals are discarded when joining by external commit.
-            ProposalStore::new(),
-        )?;
-        let group_context = public_group.group_context();
-
-        // Obtain external_pub from GroupInfo extensions.
-        let external_pub = group_info
-            .extensions()
-            .external_pub()
-            .ok_or(ExternalCommitError::MissingExternalPub)?
-            .external_pub();
-
-        let (init_secret, kem_output) = InitSecret::from_group_context(
-            provider.crypto(),
-            group_context,
-            external_pub.as_slice(),
-        )
-        .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
-
-        // The `EpochSecrets` we create here are essentially zero, with the
-        // exception of the `InitSecret`, which is all we need here for the
-        // external commit.
-        let ciphersuite = group_info.group_context().ciphersuite();
-        let epoch_secrets =
-            EpochSecrets::with_init_secret(provider.crypto(), ciphersuite, init_secret)
-                .map_err(LibraryError::unexpected_crypto_error)?;
-        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
-            group_context
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?,
-            public_group.tree_size(),
-            // We use a fake own index of 0 here, as we're not going to use the
-            // tree for encryption until after the first commit. This issue is
-            // tracked in #767.
-            LeafNodeIndex::new(0u32),
+            mls_group_config,
+            &credential_with_key,
         );
-        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
 
-        let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
+        if let Some(ratchet_tree) = ratchet_tree {
+            builder = builder.with_ratchet_tree(ratchet_tree);
+        }
 
-        let mut inline_proposals = vec![external_init_proposal];
+        if let Some(capabilities) = capabilities {
+            builder = builder.with_capabilities(capabilities);
+        }
 
-        // If there is a group member in the group with the same identity as us,
-        // commit a remove proposal.
-        let signature_key = params.credential_with_key().signature_key.as_slice();
-        if let Some(us) = public_group
-            .members()
-            .find(|member| member.signature_key == signature_key)
-        {
-            let remove_proposal = Proposal::Remove(RemoveProposal { removed: us.index });
-            inline_proposals.push(remove_proposal);
-        };
+        if let Some(extensions) = extensions {
+            builder = builder.with_extensions(extensions);
+        }
 
-        let own_leaf_index =
-            public_group.leftmost_free_index(inline_proposals.iter(), iter::empty())?;
-        params.set_inline_proposals(inline_proposals);
+        if !aad.is_empty() {
+            builder = builder.with_aad(aad);
+        }
 
-        let mut mls_group = MlsGroup {
-            mls_group_config: mls_group_config.clone(),
-            own_leaf_nodes: vec![],
-            aad: vec![],
-            group_state: MlsGroupState::Operational,
-            public_group,
-            group_epoch_secrets,
-            own_leaf_index,
-            message_secrets_store,
-            resumption_psk_store: ResumptionPskStore::new(32),
-        };
+        builder.build()
+    }
 
-        mls_group.set_max_past_epochs(mls_group_config.max_past_epochs);
-
-        // Immediately create the commit to add ourselves to the group.
-        let create_commit_result = mls_group
-            .create_external_commit(params, provider, signer)
-            .map_err(|_| ExternalCommitError::CommitError)?;
-
-        mls_group.group_state = MlsGroupState::PendingCommit(Box::new(
-            PendingCommitState::External(create_commit_result.staged_commit),
-        ));
-
-        mls_group
-            .store(provider.storage())
-            .map_err(ExternalCommitError::StorageError)?;
-
-        let public_message: PublicMessage = create_commit_result.commit.into();
-
-        Ok((
-            mls_group,
-            public_message.into(),
-            create_commit_result.group_info,
-        ))
+    /// Join an existing group through an External Commit.
+    /// The resulting [`MlsGroup`] instance starts off with a pending
+    /// commit (the external commit, which adds this client to the group).
+    /// Merging this commit is necessary for this [`MlsGroup`] instance to
+    /// function properly, as, for example, this client is not yet part of the
+    /// tree. As a result, it is not possible to clear the pending commit. If
+    /// the external commit was rejected due to an epoch change, the
+    /// [`MlsGroup`] instance has to be discarded and a new one has to be
+    /// created using this function based on the latest `ratchet_tree` and
+    /// group info. For more information on the external init process,
+    /// please see Section 11.2.1 in the MLS specification.
+    ///
+    /// Note: If there is a group member in the group with the same identity as
+    /// us, this will create a remove proposal.
+    ///
+    /// Returns a [`FromExternalCommitBuilder`] (see for more details).
+    /// Use [`FromExternalCommitBuilder::build`] to generate the group and commit.
+    pub fn from_external_commit<'a, Provider: OpenMlsProvider, Signer: SignerTrait>(
+        provider: &'a Provider,
+        signer: &'a Signer,
+        verifiable_group_info: VerifiableGroupInfo,
+        mls_group_config: &'a MlsGroupJoinConfig,
+        credential_with_key: &'a CredentialWithKey,
+    ) -> FromExternalCommitBuilder<'a, Provider, Signer> {
+        FromExternalCommitBuilder::new(
+            provider,
+            signer,
+            verifiable_group_info,
+            mls_group_config,
+            credential_with_key,
+        )
     }
 }
 
@@ -336,12 +279,23 @@ impl ProcessedWelcome {
         &self.group_secrets.psks
     }
 
-    /// Consume the `ProcessedWelcome` and combine it witht he ratchet tree into
+    /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
     pub fn into_staged_welcome<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+        ratchet_tree: Option<RatchetTreeIn>,
+    ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+        self.into_staged_welcome_inner(provider, ratchet_tree, LeafNodeLifetime::Verify)
+    }
+
+    /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
+    /// a `StagedWelcome`.
+    pub(crate) fn into_staged_welcome_inner<Provider: OpenMlsProvider>(
         mut self,
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
+        validate_lifetimes: LeafNodeLifetime,
     ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
         // Build the ratchet tree and group
 
@@ -359,11 +313,12 @@ impl ProcessedWelcome {
 
         // Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
-        let (public_group, _group_info_extensions) = PublicGroup::from_external_internal(
+        let (public_group, _group_info_extensions) = PublicGroup::from_ratchet_tree(
             provider.crypto(),
             ratchet_tree,
             self.verifiable_group_info.clone(),
             ProposalStore::new(),
+            validate_lifetimes,
         )?;
 
         // Find our own leaf in the tree.
@@ -498,6 +453,23 @@ impl StagedWelcome {
         processed_welcome.into_staged_welcome(provider, ratchet_tree)
     }
 
+    /// Similar to [`StagedWelcome::new_from_welcome`] but as a builder.
+    ///
+    /// The builder allows to set the ratchet tree, skip leaf node lifetime
+    /// validation, and get the [`ProcessedWelcome`] for inspection before staging.
+    pub fn build_from_welcome<'a, Provider: OpenMlsProvider>(
+        provider: &'a Provider,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+        // ratchet_tree: Option<RatchetTreeIn>,
+    ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
+        let processed_welcome =
+            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
+
+        // processed_welcome.into_staged_welcome(provider, ratchet_tree)
+        Ok(JoinBuilder::new(provider, processed_welcome))
+    }
+
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
     ///
     /// [`Welcome`]: crate::messages::Welcome
@@ -598,4 +570,293 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         log::debug!("Key package has last resort extension, not deleting");
     }
     Ok((resumption_psk_store, key_package_bundle))
+}
+
+/// Verify or skip the validation of leaf node lifetimes in the ratchet tree
+/// when joining a group.
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LeafNodeLifetime {
+    /// Verify the lifetime of leaf nodes in the ratchet tree.
+    ///
+    /// **NOTE:** that only leaf nodes that have never been updated have a lifetime.
+    #[default]
+    Verify,
+
+    /// Skip the verification of the lifeimte in leaf nodes in the ratchet tree.
+    Skip,
+}
+
+/// Builder for joining a group with an external commit.
+///
+/// This should be preferred over [`MlsGroup::join_by_external_commit`].
+pub struct FromExternalCommitBuilder<'a, Provider: OpenMlsProvider, Signer: SignerTrait> {
+    provider: &'a Provider,
+    signer: &'a Signer,
+    ratchet_tree: Option<RatchetTreeIn>,
+    verifiable_group_info: VerifiableGroupInfo,
+    mls_group_config: &'a MlsGroupJoinConfig,
+    capabilities: Option<Capabilities>,
+    extensions: Option<Extensions>,
+    aad: &'a [u8],
+    credential_with_key: &'a CredentialWithKey,
+    validate_lifetimes: LeafNodeLifetime,
+}
+
+impl<'a, Provider: OpenMlsProvider, Signer: SignerTrait>
+    FromExternalCommitBuilder<'a, Provider, Signer>
+{
+    /// Creates a new builder for constructing an `MlsGroup` from an external commit.
+    ///
+    /// This function initializes the builder with all the mandatory fields.
+    /// Optional fields can be added later using the `with_*` methods.
+    ///
+    /// # Arguments
+    ///
+    /// * `provider` - A reference to an [`OpenMlsProvider`] instance.
+    /// * `signer` - A reference to a [`Signer`].
+    /// * `verifiable_group_info` - The [`VerifiableGroupInfo`] for the group.
+    /// * `mls_group_config` - The join configuration for the [`MlsGroup`].
+    /// * `credential_with_key` - The credential and private key of the new member.
+    pub fn new(
+        provider: &'a Provider,
+        signer: &'a Signer,
+        verifiable_group_info: VerifiableGroupInfo,
+        mls_group_config: &'a MlsGroupJoinConfig,
+        credential_with_key: &'a CredentialWithKey,
+    ) -> Self {
+        Self {
+            provider,
+            signer,
+            ratchet_tree: None, // Optional, defaults to None
+            verifiable_group_info,
+            mls_group_config,
+            capabilities: None, // Optional, defaults to None
+            extensions: None,   // Optional, defaults to None
+            aad: &[],           // Optional, defaults to empty
+            credential_with_key,
+            validate_lifetimes: LeafNodeLifetime::default(),
+        }
+    }
+
+    /// Sets the ratchet tree for the group.
+    ///
+    /// This is an optional field. If not provided, the provided group info must
+    /// contain the ratchet tree.
+    pub fn with_ratchet_tree(mut self, ratchet_tree: RatchetTreeIn) -> Self {
+        self.ratchet_tree = Some(ratchet_tree);
+        self
+    }
+
+    /// Sets the own capabilities .
+    pub fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
+        self.capabilities = Some(capabilities);
+        self
+    }
+
+    /// Sets the extensions for the new own leaf node.
+    pub fn with_extensions(mut self, extensions: Extensions) -> Self {
+        self.extensions = Some(extensions);
+        self
+    }
+
+    /// Configures whether to validate the lifetimes of leaf nodes in the ratchet
+    /// tree or not.
+    ///
+    /// By default they are validated.
+    pub fn validate_lifetimes(mut self, validate: LeafNodeLifetime) -> Self {
+        self.validate_lifetimes = validate;
+        self
+    }
+
+    /// Additional authenticated data, used in the framing of the external commit.
+    ///
+    /// By default this is empty.
+    pub fn with_aad(mut self, aad: &'a [u8]) -> Self {
+        self.aad = aad;
+        self
+    }
+
+    /// Consumes the builder and creates the [`MlsGroup`], [`MlsMessageOut`], and
+    /// (optionally) the [`GroupInfo`].
+    pub fn build(
+        self,
+    ) -> Result<
+        (MlsGroup, MlsMessageOut, Option<GroupInfo>),
+        ExternalCommitError<Provider::StorageError>,
+    > {
+        // Prepare the commit parameters
+        let framing_parameters = FramingParameters::new(self.aad, WireFormat::PublicMessage);
+
+        let leaf_node_parameters = LeafNodeParameters::builder()
+            .with_capabilities(self.capabilities.unwrap_or_default())
+            .with_extensions(self.extensions.unwrap_or_default())
+            .build();
+        let mut params = CreateCommitParams::builder()
+            .external_commit(self.credential_with_key, framing_parameters)
+            .leaf_node_parameters(leaf_node_parameters)
+            .build();
+
+        // Build the ratchet tree
+
+        // Set nodes either from the extension or from the `nodes_option`.
+        // If we got a ratchet tree extension in the welcome, we enable it for
+        // this group. Note that this is not strictly necessary. But there's
+        // currently no other mechanism to enable the extension.
+        let ratchet_tree = match self.verifiable_group_info.extensions().ratchet_tree() {
+            Some(extension) => extension.ratchet_tree().clone(),
+            None => match self.ratchet_tree {
+                Some(ratchet_tree) => ratchet_tree,
+                None => return Err(ExternalCommitError::MissingRatchetTree),
+            },
+        };
+
+        let (public_group, group_info) = PublicGroup::from_ratchet_tree(
+            self.provider.crypto(),
+            ratchet_tree,
+            self.verifiable_group_info,
+            // Existing proposals are discarded when joining by external commit.
+            ProposalStore::new(),
+            self.validate_lifetimes,
+        )?;
+        let group_context = public_group.group_context();
+
+        // Obtain external_pub from GroupInfo extensions.
+        let external_pub = group_info
+            .extensions()
+            .external_pub()
+            .ok_or(ExternalCommitError::MissingExternalPub)?
+            .external_pub();
+
+        let (init_secret, kem_output) = InitSecret::from_group_context(
+            self.provider.crypto(),
+            group_context,
+            external_pub.as_slice(),
+        )
+        .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
+
+        // The `EpochSecrets` we create here are essentially zero, with the
+        // exception of the `InitSecret`, which is all we need here for the
+        // external commit.
+        let ciphersuite = group_info.group_context().ciphersuite();
+        let epoch_secrets =
+            EpochSecrets::with_init_secret(self.provider.crypto(), ciphersuite, init_secret)
+                .map_err(LibraryError::unexpected_crypto_error)?;
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            group_context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?,
+            public_group.tree_size(),
+            // We use a fake own index of 0 here, as we're not going to use the
+            // tree for encryption until after the first commit. This issue is
+            // tracked in #767.
+            LeafNodeIndex::new(0u32),
+        );
+        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
+
+        let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
+
+        let mut inline_proposals = vec![external_init_proposal];
+
+        // If there is a group member in the group with the same identity as us,
+        // commit a remove proposal.
+        let signature_key = params.credential_with_key().signature_key.as_slice();
+        if let Some(us) = public_group
+            .members()
+            .find(|member| member.signature_key == signature_key)
+        {
+            let remove_proposal = Proposal::Remove(RemoveProposal { removed: us.index });
+            inline_proposals.push(remove_proposal);
+        };
+
+        let own_leaf_index =
+            public_group.leftmost_free_index(inline_proposals.iter(), iter::empty())?;
+        params.set_inline_proposals(inline_proposals);
+
+        let mut mls_group = MlsGroup {
+            mls_group_config: self.mls_group_config.clone(),
+            own_leaf_nodes: vec![],
+            aad: vec![],
+            group_state: MlsGroupState::Operational,
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            message_secrets_store,
+            resumption_psk_store: ResumptionPskStore::new(32),
+        };
+
+        mls_group.set_max_past_epochs(self.mls_group_config.max_past_epochs);
+
+        // Immediately create the commit to add ourselves to the group.
+        let create_commit_result = mls_group
+            .create_external_commit(params, self.provider, self.signer)
+            .map_err(|_| ExternalCommitError::CommitError)?;
+
+        mls_group.group_state = MlsGroupState::PendingCommit(Box::new(
+            PendingCommitState::External(create_commit_result.staged_commit),
+        ));
+
+        mls_group
+            .store(self.provider.storage())
+            .map_err(ExternalCommitError::StorageError)?;
+
+        let public_message: PublicMessage = create_commit_result.commit.into();
+
+        Ok((
+            mls_group,
+            public_message.into(),
+            create_commit_result.group_info,
+        ))
+    }
+}
+
+/// Builder for joining a group.
+///
+/// Create this with [`StagedWelcome::build_from_welcome`].
+pub struct JoinBuilder<'a, Provider: OpenMlsProvider> {
+    provider: &'a Provider,
+    processed_welcome: ProcessedWelcome,
+    ratchet_tree: Option<RatchetTreeIn>,
+    validate_lifetimes: LeafNodeLifetime,
+}
+
+impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
+    /// Create a new builder for the [`JoinBuilder`].
+    pub(crate) fn new(provider: &'a Provider, processed_welcome: ProcessedWelcome) -> Self {
+        Self {
+            provider,
+            processed_welcome,
+            ratchet_tree: None,
+            validate_lifetimes: LeafNodeLifetime::Verify,
+        }
+    }
+
+    /// The ratchet tree to use for the new group.
+    pub fn with_ratchet_tree(mut self, ratchet_tree: RatchetTreeIn) -> Self {
+        self.ratchet_tree = Some(ratchet_tree);
+        self
+    }
+
+    /// Skip the validation of lifetimes in leaf nodes in the ratchet tree.
+    ///
+    /// Note that only the leaf nodes are checked that were never updated.
+    pub fn skip_lifetime_validation(mut self) -> Self {
+        self.validate_lifetimes = LeafNodeLifetime::Skip;
+        self
+    }
+
+    /// Get a reference to the [`ProcessedWelcome`].
+    ///
+    /// Use this to inspect the [`Welcome`] message before validation.
+    pub fn processed_welcome(&self) -> &ProcessedWelcome {
+        &self.processed_welcome
+    }
+
+    /// Build the [`StagedWelcome`].
+    pub fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+        self.processed_welcome.into_staged_welcome_inner(
+            self.provider,
+            self.ratchet_tree,
+            self.validate_lifetimes,
+        )
+    }
 }

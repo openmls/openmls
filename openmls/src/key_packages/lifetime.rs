@@ -73,6 +73,14 @@ impl Lifetime {
         }
     }
 
+    /// Initialize raw lifetime without skew and explicit dates.
+    pub fn init(not_before: u64, not_after: u64) -> Self {
+        Self {
+            not_before,
+            not_after,
+        }
+    }
+
     /// Returns true if this lifetime is valid.
     pub fn is_valid(&self) -> bool {
         match SystemTime::now()

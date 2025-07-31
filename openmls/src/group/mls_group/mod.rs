@@ -51,7 +51,6 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::C
 
 // Private
 mod application;
-mod creation;
 mod exporting;
 mod updates;
 
@@ -62,6 +61,7 @@ pub(crate) mod builder;
 pub(crate) mod commit_builder;
 pub(crate) mod config;
 pub(crate) mod create_commit;
+pub(crate) mod creation;
 pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod past_secrets;
@@ -150,7 +150,7 @@ impl From<PendingCommitState> for StagedCommit {
 ///   allows access to all of its functionality, (except merging pending commits,
 ///   see the [`MlsGroupState::PendingCommit`] for more information) and it's the
 ///   state the group starts in (except when created via
-///   [`MlsGroup::join_by_external_commit()`], see the functions documentation for
+///   [`MlsGroup::from_external_commit()`], see the functions documentation for
 ///   more information). From this `Operational`, the group state can either
 ///   transition to [`MlsGroupState::Inactive`], when it processes a commit that
 ///   removes this client from the group, or to [`MlsGroupState::PendingCommit`],
@@ -180,12 +180,12 @@ impl From<PendingCommitState> for StagedCommit {
 ///
 ///   * A group can enter the [`PendingCommitState::External`] sub-state only as
 ///     the initial state when the group is created via
-///     [`MlsGroup::join_by_external_commit()`]. In contrast to the
+///     [`MlsGroup::from_external_commit()`]. In contrast to the
 ///     [`PendingCommitState::Member`] `PendingCommit` state, the only possible
 ///     functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
 ///     function, which merges the pending external commit and transitions the
 ///     state to [`MlsGroupState::PendingCommit`]. For more information on the
-///     external commit process, see [`MlsGroup::join_by_external_commit()`] or
+///     external commit process, see [`MlsGroup::from_external_commit()`] or
 ///     Section 11.2.1 of the MLS specification.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
@@ -359,7 +359,7 @@ impl MlsGroup {
     ///
     /// Note that this has no effect if the group was created through an external commit and
     /// the resulting external commit has not been merged yet. For more
-    /// information, see [`MlsGroup::join_by_external_commit()`].
+    /// information, see [`MlsGroup::from_external_commit()`].
     ///
     /// Use with caution! This function should only be used if it is clear that
     /// the pending commit will not be used in the group. In particular, if a

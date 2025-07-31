@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+- [#...](https://github.com/openmls/openmls/pull/): Added
+  - `MlsGroup::from_external_commit`: Replaces `join_by_external_commit` with a builder pattern that allows disabling checking of lifetimes in the ratchet tree.
+  - `StagedWelcome::build_from_welcome`: Alternative to `new_from_welcome` in a builder style that allows disabling lifetime validation of the incoming ratchet tree.
+  - `Lifetime::init`: Set explicit lifetimes for a key package.
+
+### Fixed
+
+### Deprecated
+- [#...](https://github.com/openmls/openmls/pull/): Deprecated `MlsGroup::join_by_external_commit` in favor of `MlsGroup::from_external_commit`.
+
 ## 0.7.0 (2025-07-17)
 
 ### Added

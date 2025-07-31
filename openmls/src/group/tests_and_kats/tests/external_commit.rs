@@ -50,19 +50,17 @@ fn test_external_commit() {
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
-    let tree_option = alice_group.export_ratchet_tree();
+    let tree = alice_group.export_ratchet_tree();
 
-    let (mut bob_group, public_message_commit, _) = MlsGroup::join_by_external_commit(
+    let (mut bob_group, public_message_commit, _) = MlsGroup::from_external_commit(
         provider,
         &bob_credential.signer,
-        Some(tree_option.into()),
         verifiable_group_info,
         alice_group.configuration(),
-        None,
-        None,
-        &[],
-        bob_credential.credential_with_key.clone(),
+        &bob_credential.credential_with_key,
     )
+    .with_ratchet_tree(tree.into())
+    .build()
     .unwrap();
     bob_group.merge_pending_commit(provider).unwrap();
 
@@ -115,19 +113,17 @@ fn test_external_commit() {
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
-    let tree_option = alice_group.export_ratchet_tree();
+    let tree = alice_group.export_ratchet_tree();
 
-    let (mut charlie_group, public_message_commit, _) = MlsGroup::join_by_external_commit(
+    let (mut charlie_group, public_message_commit, _) = MlsGroup::from_external_commit(
         provider,
         &charlie_credential.signer,
-        Some(tree_option.into()),
         verifiable_group_info,
         alice_group.configuration(),
-        None,
-        None,
-        &[],
-        charlie_credential.credential_with_key.clone(),
+        &charlie_credential.credential_with_key,
     )
+    .with_ratchet_tree(tree.into())
+    .build()
     .unwrap();
     charlie_group.merge_pending_commit(provider).unwrap();
 
@@ -189,19 +185,17 @@ fn test_external_commit() {
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
-    let tree_option = bob_group.export_ratchet_tree();
+    let tree = bob_group.export_ratchet_tree();
 
-    let (mut alice_group, public_message_commit, _) = MlsGroup::join_by_external_commit(
+    let (mut alice_group, public_message_commit, _) = MlsGroup::from_external_commit(
         provider,
         &alice_credential.signer,
-        Some(tree_option.into()),
         verifiable_group_info,
         bob_group.configuration(),
-        None,
-        None,
-        &[],
-        alice_credential.credential_with_key.clone(),
+        &alice_credential.credential_with_key,
     )
+    .with_ratchet_tree(tree.into())
+    .build()
     .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
 

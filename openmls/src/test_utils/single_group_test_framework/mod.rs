@@ -51,10 +51,16 @@ pub(crate) fn generate_key_package(
     credential_with_key: CredentialWithKey,
     extensions: Extensions,
     provider: &impl crate::storage::OpenMlsProvider,
+    lifetime: impl Into<Option<Lifetime>>,
     signer: &impl Signer,
 ) -> KeyPackageBundle {
-    KeyPackage::builder()
-        .key_package_extensions(extensions)
+    let mut builder = KeyPackage::builder().key_package_extensions(extensions);
+
+    if let Some(lifetime) = lifetime.into() {
+        builder = builder.key_package_lifetime(lifetime);
+    }
+
+    builder
         .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()
 }
@@ -83,9 +89,19 @@ pub struct PreGroupPartyState<'a, Provider> {
     pub core_state: &'a CorePartyState<Provider>,
 }
 
+// XXX: This should probably get a builder at some point.
 impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
     /// Generates the pre-group state for a `CorePartyState`
     pub fn generate_pre_group(&self, ciphersuite: Ciphersuite) -> PreGroupPartyState<'_, Provider> {
+        self.generate_pre_group_lifetime(ciphersuite, None)
+    }
+
+    /// Generates the pre-group state for a `CorePartyState`
+    pub fn generate_pre_group_lifetime(
+        &self,
+        ciphersuite: Ciphersuite,
+        lifetime: impl Into<Option<Lifetime>>,
+    ) -> PreGroupPartyState<'_, Provider> {
         let (credential_with_key, signer) = generate_credential(
             self.name.into(),
             ciphersuite.signature_algorithm(),
@@ -97,6 +113,7 @@ impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
             credential_with_key.clone(),
             Extensions::default(), // TODO: provide as argument?
             &self.provider,
+            lifetime,
             &signer,
         );
 
