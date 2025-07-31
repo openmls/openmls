@@ -528,4 +528,38 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     ) -> Result<(), Self::Error> {
         todo!()
     }
+
+    #[cfg(feature = "extensions-draft-08")]
+    fn write_application_export_tree<
+        GroupId: traits::GroupId<V_TEST>,
+        ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _application_export_tree: &ApplicationExportTree,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    fn application_export_tree<
+        GroupId: traits::GroupId<V_TEST>,
+        ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<Option<ApplicationExportTree>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    fn delete_application_export_tree<
+        GroupId: traits::GroupId<V_TEST>,
+        ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
 }

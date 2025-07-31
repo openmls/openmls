@@ -14,6 +14,9 @@ use super::{
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
+#[cfg(feature = "extensions-draft-08")]
+use crate::schedule::ApplicationExportSecret;
+
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
@@ -21,9 +24,11 @@ use crate::{
         diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff},
         staged_commit::PublicStagedCommitState,
     },
-    schedule::{CommitSecret, EpochAuthenticator, EpochSecrets, InitSecret, PreSharedKeyId},
+    schedule::{CommitSecret, EpochAuthenticator, EpochSecretsResult, InitSecret, PreSharedKeyId},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
+
+pub mod v1_storage;
 
 impl MlsGroup {
     fn derive_epoch_secrets(
@@ -33,7 +38,7 @@ impl MlsGroup {
         epoch_secrets: &GroupEpochSecrets,
         commit_secret: CommitSecret,
         serialized_provisional_group_context: &[u8],
-    ) -> Result<EpochSecrets, StageCommitError> {
+    ) -> Result<EpochSecretsResult, StageCommitError> {
         // Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
         let joiner_secret = if let Some(ref external_init_proposal) =
@@ -108,8 +113,11 @@ impl MlsGroup {
     ///  - Verifies the confirmation tag
     ///
     /// Returns a [StagedCommit] that can be inspected and later merged into the
-    /// group state with [MlsGroup::merge_commit()] This function does the
-    /// following checks:
+    /// group state with [MlsGroup::merge_commit()]. If the member was not
+    /// removed from the group, the function also returns an
+    /// [ApplicationExportSecret].
+    ///
+    /// This function does the following checks:
     ///  - ValSem101
     ///  - ValSem102
     ///  - ValSem104
@@ -187,10 +195,11 @@ impl MlsGroup {
                         staged_diff,
                         commit.path.as_ref().map(|path| path.leaf_node().clone()),
                     );
-                    return Ok(StagedCommit::new(
+                    let staged_commit = StagedCommit::new(
                         proposal_queue,
                         StagedCommitState::PublicState(Box::new(staged_state)),
-                    ));
+                    );
+                    return Ok(staged_commit);
                 }
 
                 let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
@@ -267,19 +276,22 @@ impl MlsGroup {
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
-        let (provisional_group_secrets, provisional_message_secrets) = self
-            .derive_epoch_secrets(
-                provider,
-                apply_proposals_values,
-                self.group_epoch_secrets(),
-                commit_secret,
-                &serialized_provisional_group_context,
-            )?
-            .split_secrets(
-                serialized_provisional_group_context,
-                diff.tree_size(),
-                self.own_leaf_index(),
-            );
+        let EpochSecretsResult {
+            epoch_secrets,
+            #[cfg(feature = "extensions-draft-08")]
+            application_exporter,
+        } = self.derive_epoch_secrets(
+            provider,
+            apply_proposals_values,
+            self.group_epoch_secrets(),
+            commit_secret,
+            &serialized_provisional_group_context,
+        )?;
+        let (provisional_group_secrets, provisional_message_secrets) = epoch_secrets.split_secrets(
+            serialized_provisional_group_context,
+            diff.tree_size(),
+            self.own_leaf_index(),
+        );
 
         // Verify confirmation tag
         // ValSem205
@@ -317,9 +329,12 @@ impl MlsGroup {
                 new_keypairs,
                 new_leaf_keypair_option,
                 update_path_leaf_node,
+                #[cfg(feature = "extensions-draft-08")]
+                application_exporter,
             )));
+        let staged_commit = StagedCommit::new(proposal_queue, staged_commit_state);
 
-        Ok(StagedCommit::new(proposal_queue, staged_commit_state))
+        Ok(staged_commit)
     }
 
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
@@ -581,6 +596,10 @@ pub(crate) struct MemberStagedCommitState {
     new_keypairs: Vec<EncryptionKeyPair>,
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
     update_path_leaf_node: Option<LeafNode>,
+    #[cfg(feature = "extensions-draft-08")]
+    // This is `None` only if the group was stored using an older version of
+    // OpenMLS that did not support the application exporter.
+    application_exporter: Option<ApplicationExportSecret>,
 }
 
 impl MemberStagedCommitState {
@@ -591,6 +610,7 @@ impl MemberStagedCommitState {
         new_keypairs: Vec<EncryptionKeyPair>,
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
         update_path_leaf_node: Option<LeafNode>,
+        #[cfg(feature = "extensions-draft-08")] application_exporter: ApplicationExportSecret,
     ) -> Self {
         Self {
             group_epoch_secrets,
@@ -599,6 +619,8 @@ impl MemberStagedCommitState {
             new_keypairs,
             new_leaf_keypair_option,
             update_path_leaf_node,
+            #[cfg(feature = "extensions-draft-08")]
+            application_exporter: Some(application_exporter),
         }
     }
 

@@ -13,7 +13,7 @@ use crate::{
     },
     schedule::{
         psk::{store::ResumptionPskStore, PreSharedKeyId},
-        EpochSecrets, InitSecret,
+        EpochSecrets, EpochSecretsResult, InitSecret,
     },
     storage::OpenMlsProvider,
     treesync::{
@@ -187,6 +187,13 @@ impl MlsGroup {
             public_group.leftmost_free_index(inline_proposals.iter(), iter::empty())?;
         params.set_inline_proposals(inline_proposals);
 
+        #[cfg(feature = "extensions-draft-08")]
+        let application_export_tree = {
+            let application_exporter =
+                ApplicationExportSecret::new_for_external_commit(ciphersuite);
+            ApplicationExportTree::new(application_exporter)
+        };
+
         let mut mls_group = MlsGroup {
             mls_group_config: mls_group_config.clone(),
             own_leaf_nodes: vec![],
@@ -197,6 +204,8 @@ impl MlsGroup {
             own_leaf_index,
             message_secrets_store,
             resumption_psk_store: ResumptionPskStore::new(32),
+            #[cfg(feature = "extensions-draft-08")]
+            application_export_tree: Some(application_export_tree),
         };
 
         mls_group.set_max_past_epochs(mls_group_config.max_past_epochs);
@@ -387,7 +396,18 @@ impl ProcessedWelcome {
                 PublicTreeError::MalformedTree,
             ))?;
 
-        let (group_epoch_secrets, message_secrets) = {
+        struct KeyScheduleResult {
+            group_epoch_secrets: GroupEpochSecrets,
+            message_secrets: MessageSecrets,
+            #[cfg(feature = "extensions-draft-08")]
+            application_exporter: ApplicationExportSecret,
+        }
+        let KeyScheduleResult {
+            group_epoch_secrets,
+            message_secrets,
+            #[cfg(feature = "extensions-draft-08")]
+                application_exporter: application_export_secret,
+        } = {
             let serialized_group_context = public_group
                 .group_context()
                 .tls_serialize_detached()
@@ -398,16 +418,27 @@ impl ProcessedWelcome {
                 .add_context(provider.crypto(), &serialized_group_context)
                 .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-            let epoch_secrets = self
+            let EpochSecretsResult {
+                epoch_secrets,
+                #[cfg(feature = "extensions-draft-08")]
+                application_exporter,
+            } = self
                 .key_schedule
                 .epoch_secrets(provider.crypto(), self.ciphersuite)
                 .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-            epoch_secrets.split_secrets(
+            let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
                 serialized_group_context,
                 public_group.tree_size(),
                 own_leaf_index,
-            )
+            );
+
+            KeyScheduleResult {
+                group_epoch_secrets,
+                message_secrets,
+                #[cfg(feature = "extensions-draft-08")]
+                application_exporter,
+            }
         };
 
         let confirmation_tag = message_secrets
@@ -468,6 +499,8 @@ impl ProcessedWelcome {
             group_epoch_secrets,
             own_leaf_index,
             message_secrets_store,
+            #[cfg(feature = "extensions-draft-08")]
+            application_export_secret,
             resumption_psk_store: self.resumption_psk_store,
             verifiable_group_info: self.verifiable_group_info,
             key_package_bundle: self.key_package_bundle,
@@ -527,6 +560,12 @@ impl StagedWelcome {
         self.public_group.members()
     }
 
+    /// Get the [`ApplicationExportSecret`] of this welcome.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn application_export_secret(&self) -> &ApplicationExportSecret {
+        &self.application_export_secret
+    }
+
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
     pub fn into_group<Provider: OpenMlsProvider>(
         self,
@@ -542,6 +581,9 @@ impl StagedWelcome {
             vec![self.key_package_bundle.encryption_key_pair()]
         };
 
+        #[cfg(feature = "extensions-draft-08")]
+        let application_export_tree = ApplicationExportTree::new(self.application_export_secret);
+
         let mut mls_group = MlsGroup {
             mls_group_config: self.mls_group_config,
             own_leaf_nodes: vec![],
@@ -552,6 +594,8 @@ impl StagedWelcome {
             own_leaf_index: self.own_leaf_index,
             message_secrets_store: self.message_secrets_store,
             resumption_psk_store: self.resumption_psk_store,
+            #[cfg(feature = "extensions-draft-08")]
+            application_export_tree: Some(application_export_tree),
         };
 
         mls_group

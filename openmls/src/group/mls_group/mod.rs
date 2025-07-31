@@ -49,6 +49,9 @@ use crate::{
 };
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
+
 // Private
 mod application;
 mod creation;
@@ -253,6 +256,11 @@ pub struct MlsGroup {
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
     group_state: MlsGroupState,
+    /// The state of the Application Exporter. See the MLS Extensions Draft 07
+    /// for more information. This is `None` if an old OpenMLS group state was
+    /// loaded and has not yet merged a commit.
+    #[cfg(feature = "extensions-draft-08")]
+    application_export_tree: Option<ApplicationExportTree>,
 }
 
 impl MlsGroup {
@@ -432,6 +440,8 @@ impl MlsGroup {
         let mls_group_config = storage.mls_group_join_config(group_id)?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
         let group_state = storage.group_state(group_id)?;
+        #[cfg(feature = "extensions-draft-08")]
+        let application_export_tree = storage.application_export_tree(group_id)?;
 
         let build = || -> Option<Self> {
             Some(Self {
@@ -444,6 +454,8 @@ impl MlsGroup {
                 own_leaf_nodes,
                 aad: vec![],
                 group_state: group_state?,
+                #[cfg(feature = "extensions-draft-08")]
+                application_export_tree,
             })
         };
 
@@ -838,6 +850,11 @@ pub struct StagedWelcome {
     /// able to decrypt application messages from previous epochs, the size of
     /// the store must be increased through [`max_past_epochs()`].
     message_secrets_store: MessageSecretsStore,
+
+    /// A secret that is not stored as part of the [`MlsGroup`] after the group is created.
+    /// It can be used by the application to derive forward secure secrets.
+    #[cfg(feature = "extensions-draft-08")]
+    application_export_secret: ApplicationExportSecret,
 
     /// Resumption psk store. This is where the resumption psks are kept in a rollover list.
     resumption_psk_store: ResumptionPskStore,
