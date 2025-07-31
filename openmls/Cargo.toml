@@ -77,7 +77,7 @@ js = [
     "getrandom_old/js",
 ]
 
-extensions-draft-07 = ["openmls_traits/extensions-draft-07"]
+extensions-draft-08 = ["openmls_traits/extensions-draft-08"]
 libcrux-provider-js = ["dep:getrandom", "getrandom/wasm_js"]
 # enable randomness source
 fork-resolution = []

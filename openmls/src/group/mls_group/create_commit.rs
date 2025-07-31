@@ -261,7 +261,7 @@ impl MlsGroup {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let EpochSecretsResult {
             epoch_secrets: provisional_epoch_secrets,
-            #[cfg(feature = "extensions-draft-07")]
+            #[cfg(feature = "extensions-draft-08")]
             application_exporter,
         } = key_schedule
             .epoch_secrets(provider.crypto(), self.ciphersuite())
@@ -377,7 +377,7 @@ impl MlsGroup {
             // proposal, so there is no extra keypair to store here.
             None,
             update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-07")]
+            #[cfg(feature = "extensions-draft-08")]
             application_exporter,
         );
         let staged_commit = StagedCommit::new(

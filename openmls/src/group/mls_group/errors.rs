@@ -24,7 +24,7 @@ use crate::{
     },
 };
 
-#[cfg(feature = "extensions-draft-07")]
+#[cfg(feature = "extensions-draft-08")]
 use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
 /// New group error
@@ -311,7 +311,7 @@ pub enum ExportGroupInfoError {
 }
 
 /// Export secret error
-#[cfg(feature = "extensions-draft-07")]
+#[cfg(feature = "extensions-draft-08")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum SafeExportSecretError<StorageError> {
     /// See [`MlsGroupStateError`] for more details.

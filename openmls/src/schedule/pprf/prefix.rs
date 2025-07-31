@@ -72,17 +72,6 @@ pub struct Prefix32 {
     len: u8,
 }
 
-impl Prefix32 {
-    /// The largest dummy prefix that can be used for testing.
-    pub fn large_dummy_prefix() -> Self {
-        let mut prefix = Self::new();
-        for _ in 0..Self::MAX_DEPTH {
-            prefix.push_bit(true);
-        }
-        prefix
-    }
-}
-
 impl Prefix for Prefix32 {
     const MAX_DEPTH: usize = 32;
 
@@ -122,17 +111,6 @@ impl From<SerdePrefix32> for Prefix32 {
 pub struct Prefix16 {
     bits: u16,
     len: u8,
-}
-
-impl Prefix16 {
-    /// The largest dummy prefix that can be used for testing.
-    pub fn large_dummy_prefix() -> Self {
-        let mut prefix = Self::new();
-        for _ in 0..Self::MAX_DEPTH {
-            prefix.push_bit(true);
-        }
-        prefix
-    }
 }
 
 impl Prefix for Prefix16 {

@@ -45,7 +45,7 @@ impl From<MemberStagedCommitStateV1> for MemberStagedCommitState {
             new_keypairs,
             new_leaf_keypair_option,
             update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-07")]
+            #[cfg(feature = "extensions-draft-08")]
             application_exporter: None,
         }
     }

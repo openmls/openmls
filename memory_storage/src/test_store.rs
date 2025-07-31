@@ -529,7 +529,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-07")]
+    #[cfg(feature = "extensions-draft-08")]
     fn write_application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
@@ -541,7 +541,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-07")]
+    #[cfg(feature = "extensions-draft-08")]
     fn application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
@@ -552,7 +552,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-07")]
+    #[cfg(feature = "extensions-draft-08")]
     fn delete_application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,

@@ -14,7 +14,7 @@ use super::{
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
-#[cfg(feature = "extensions-draft-07")]
+#[cfg(feature = "extensions-draft-08")]
 use crate::schedule::ApplicationExportSecret;
 
 use crate::{
@@ -278,7 +278,7 @@ impl MlsGroup {
 
         let EpochSecretsResult {
             epoch_secrets,
-            #[cfg(feature = "extensions-draft-07")]
+            #[cfg(feature = "extensions-draft-08")]
             application_exporter,
         } = self.derive_epoch_secrets(
             provider,
@@ -329,7 +329,7 @@ impl MlsGroup {
                 new_keypairs,
                 new_leaf_keypair_option,
                 update_path_leaf_node,
-                #[cfg(feature = "extensions-draft-07")]
+                #[cfg(feature = "extensions-draft-08")]
                 application_exporter,
             )));
         let staged_commit = StagedCommit::new(proposal_queue, staged_commit_state);
@@ -596,7 +596,7 @@ pub(crate) struct MemberStagedCommitState {
     new_keypairs: Vec<EncryptionKeyPair>,
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
     update_path_leaf_node: Option<LeafNode>,
-    #[cfg(feature = "extensions-draft-07")]
+    #[cfg(feature = "extensions-draft-08")]
     // This is `None` only if the group was stored using an older version of
     // OpenMLS that did not support the application exporter.
     application_exporter: Option<ApplicationExportSecret>,
@@ -610,7 +610,7 @@ impl MemberStagedCommitState {
         new_keypairs: Vec<EncryptionKeyPair>,
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
         update_path_leaf_node: Option<LeafNode>,
-        #[cfg(feature = "extensions-draft-07")] application_exporter: ApplicationExportSecret,
+        #[cfg(feature = "extensions-draft-08")] application_exporter: ApplicationExportSecret,
     ) -> Self {
         Self {
             group_epoch_secrets,
@@ -619,7 +619,7 @@ impl MemberStagedCommitState {
             new_keypairs,
             new_leaf_keypair_option,
             update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-07")]
+            #[cfg(feature = "extensions-draft-08")]
             application_exporter: Some(application_exporter),
         }
     }
