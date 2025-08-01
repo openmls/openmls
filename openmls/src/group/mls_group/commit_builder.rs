@@ -203,7 +203,7 @@ impl MlsGroup {
 }
 
 // Impls that only apply to non-external commits.
-impl<'a> CommitBuilder<'a, Initial<'a>, &mut MlsGroup> {
+impl<'builder, 'state: 'builder> CommitBuilder<'builder, Initial<'state>, &mut MlsGroup> {
     /// Sets whether or not the proposals in the proposal store of the group should be included in
     /// the commit. Defaults to `true`.
     pub fn consume_proposal_store(mut self, consume_proposal_store: bool) -> Self {
@@ -265,9 +265,9 @@ impl<'a> CommitBuilder<'a, Initial<'a>, &mut MlsGroup> {
 }
 
 // Impls that apply to regular and external commits.
-impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial<'a>, G> {
+impl<'builder, 'state, G: BorrowMut<MlsGroup>> CommitBuilder<'builder, Initial<'state>, G> {
     /// returns a new [`CommitBuilder`] for the given [`MlsGroup`].
-    pub fn new(group: G) -> CommitBuilder<'a, Initial<'a>, G> {
+    pub fn new(group: G) -> CommitBuilder<'builder, Initial<'state>, G> {
         let stage = Initial {
             create_group_info: group.borrow().configuration().use_ratchet_tree_extension,
             ..Default::default()
@@ -296,8 +296,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial<'a>, G> {
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
     pub fn load_psks<Storage: StorageProvider>(
         self,
-        storage: &'a Storage,
-    ) -> Result<CommitBuilder<'a, LoadedPsks<'a>, G>, CreateCommitError> {
+        storage: &'builder Storage,
+    ) -> Result<CommitBuilder<'builder, LoadedPsks<'state>, G>, CreateCommitError> {
         let psk_ids: Vec<_> = self
             .stage
             .own_proposals
