@@ -169,7 +169,7 @@ where
         &'b mut self,
         f: impl FnOnce(
             CommitBuilder<'commit_builder, Initial>,
-        ) -> CommitBuilder<'commit_builder, Initial>,
+        ) -> CommitBuilder<'commit_builder, Initial<'a>>,
     ) -> Result<CommitMessageBundle, GroupError<Provider>> {
         let commit_builder = f(self.group.commit_builder());
 

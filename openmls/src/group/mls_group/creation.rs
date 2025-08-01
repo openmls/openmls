@@ -104,7 +104,7 @@ impl MlsGroup {
             .build();
 
         let mut external_commit_builder = ExternalCommitBuilder::new()
-            .with_aad(aad.to_vec())
+            .with_aad(aad)
             .with_config(mls_group_config.clone());
 
         if let Some(ratchet_tree) = ratchet_tree {

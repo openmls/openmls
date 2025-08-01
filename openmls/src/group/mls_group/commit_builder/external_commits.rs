@@ -66,21 +66,21 @@ pub enum ExternalCommitBuilderError<StorageError> {
 /// add one or more [`PreSharedKeyProposal`]s to the external commit and specify
 /// [`LeafNodeParameters`].
 #[derive(Default)]
-pub struct ExternalCommitBuilder {
+pub struct ExternalCommitBuilder<'a> {
     proposals: Vec<PublicMessageIn>,
     ratchet_tree: Option<RatchetTreeIn>,
     config: MlsGroupJoinConfig,
-    aad: Vec<u8>,
+    aad: Option<&'a [u8]>,
 }
 
 impl MlsGroup {
     /// Creates a new [`ExternalCommitBuilder`] to build an external commit.
-    pub fn external_commit_builder() -> ExternalCommitBuilder {
+    pub fn external_commit_builder<'a>() -> ExternalCommitBuilder<'a> {
         ExternalCommitBuilder::new()
     }
 }
 
-impl ExternalCommitBuilder {
+impl<'a> ExternalCommitBuilder<'a> {
     /// Creates a new [`ExternalCommitBuilder`] with default values.
     pub fn new() -> Self {
         Self::default()
@@ -113,8 +113,8 @@ impl ExternalCommitBuilder {
 
     /// Specifies additional authenticated data (AAD) to be included in the
     /// external commit.
-    pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
-        self.aad = aad;
+    pub fn with_aad(mut self, aad: &'a [u8]) -> Self {
+        self.aad = Some(aad);
         self
     }
 
@@ -128,8 +128,10 @@ impl ExternalCommitBuilder {
         provider: &Provider,
         verifiable_group_info: VerifiableGroupInfo,
         credential_with_key: CredentialWithKey,
-    ) -> Result<CommitBuilder<Initial, MlsGroup>, ExternalCommitBuilderError<Provider::StorageError>>
-    {
+    ) -> Result<
+        CommitBuilder<Initial<'a>, MlsGroup>,
+        ExternalCommitBuilderError<Provider::StorageError>,
+    > {
         let ExternalCommitBuilder {
             proposals,
             ratchet_tree,
@@ -283,6 +285,8 @@ impl ExternalCommitBuilder {
 
         let mut commit_builder = CommitBuilder::<'_, Initial, MlsGroup>::new(mls_group);
 
+        let aad = aad.unwrap_or_default();
+
         commit_builder.stage.force_self_update = true;
         commit_builder.stage.external_commit_info = Some(ExternalCommitInfo {
             wire_format_policy: original_wire_format_policy,
@@ -299,7 +303,7 @@ impl ExternalCommitBuilder {
 }
 
 // Impls that only apply to external commits.
-impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
+impl<'a> CommitBuilder<'a, Initial<'a>, MlsGroup> {
     /// Adds a [`PreSharedKeyProposal`] to the proposals to be committed.
     pub fn add_psk_proposal(mut self, proposal: PreSharedKeyProposal) -> Self {
         self.stage

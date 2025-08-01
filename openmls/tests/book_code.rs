@@ -1813,7 +1813,7 @@ fn external_commit_builder() {
     let (mut bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
         .with_ratchet_tree(tree_option.into())
         .with_config(join_group_config.clone())
-        .with_aad(AAD.to_vec())
+        .with_aad(AAD)
         .build_group(
             provider,
             verifiable_group_info,
