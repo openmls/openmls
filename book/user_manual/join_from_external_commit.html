@@ -193,22 +193,24 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");</code></pre>
-<p>Calling <code>join_by_external_commit</code> requires an <code>MlsGroupJoinConfig</code> (see <a href="./group_config.html">Group configuration</a> for more details). The function creates an <code>MlsGroup</code> and leave it with a commit pending to be merged.</p>
-<pre><code class="language-rust no_run noplayground">    let (mut dave_group, _out, _group_info) = MlsGroup::join_by_external_commit(
-        provider,
-        &amp;dave_signature_keys,
-        None, // No ratchtet tree extension
-        verifiable_group_info,
-        &amp;mls_group_config,
-        None, // No special capabilities
-        None, // No special extensions
-        &amp;[],
-        dave_credential,
-    )
-    .expect("Error joining from external commit");
-    dave_group
-        .merge_pending_commit(provider)
-        .expect("Cannot merge commit");</code></pre>
+<p>External commits can be created using a builder pattern via <code>MlsGroup::external_commit_builder()</code>. The <code>ExternalCommitBuilder</code> provides more options than <code>join_by_external</code> in that it allows the inclusion of SelfRemove or PSK proposals. After its first stage, the <code>ExternalCommitBuilder</code> turns into a regular <code>CommitBuilder</code>. As external commits come with a few restrictions relative to regular commits, not all <code>CommitBuilder</code> capabilities are exposed for external commits. Also, instead of <code>stage_commit</code> this <code>CommitBuilder</code> requires a call to <code>finalize</code> before it returns the new <code>MlsGroup</code>, as well as a <code>CommitMessageBundle</code> containing the external commit, as well as a potential <code>GroupInfo</code>.</p>
+<pre><code class="language-rust no_run noplayground">    let (mut bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
+        .with_ratchet_tree(tree_option.into())
+        .with_config(join_group_config.clone())
+        .with_aad(AAD.to_vec())
+        .build_group(
+            provider,
+            verifiable_group_info,
+            bob_credential_with_key.clone(),
+        )
+        .expect("error building group")
+        .leaf_node_parameters(leaf_node_parameters)
+        .load_psks(provider.storage())
+        .expect("error loading psks")
+        .build(provider.rand(), provider.crypto(), &amp;bob_signer, |_| true)
+        .expect("error building external commit")
+        .finalize(provider)
+        .expect("error finalizing external commit");</code></pre>
 <p>The resulting external commit message needs to be fanned out to the Delivery Service and accepted by the other members before merging this external commit.</p>
 
                     </main>
