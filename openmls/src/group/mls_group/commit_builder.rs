@@ -47,27 +47,27 @@ use super::{
 };
 
 #[derive(Debug)]
-struct ExternalCommitInfo<'a> {
-    aad: &'a [u8],
+struct ExternalCommitInfo {
+    aad: Vec<u8>,
     credential: CredentialWithKey,
     wire_format_policy: WireFormatPolicy,
 }
 
 /// This stage is for populating the builder.
 #[derive(Debug)]
-pub struct Initial<'a> {
+pub struct Initial {
     own_proposals: Vec<Proposal>,
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
     create_group_info: bool,
-    external_commit_info: Option<ExternalCommitInfo<'a>>,
+    external_commit_info: Option<ExternalCommitInfo>,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
 }
 
-impl Default for Initial<'_> {
+impl Default for Initial {
     fn default() -> Self {
         Initial {
             consume_proposal_store: true,
@@ -81,12 +81,12 @@ impl Default for Initial<'_> {
 }
 
 /// This stage is after the PSKs were loaded, ready for validation
-pub struct LoadedPsks<'a> {
+pub struct LoadedPsks {
     own_proposals: Vec<Proposal>,
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
     create_group_info: bool,
-    external_commit_info: Option<ExternalCommitInfo<'a>>,
+    external_commit_info: Option<ExternalCommitInfo>,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
@@ -205,7 +205,7 @@ impl MlsGroup {
 }
 
 // Impls that only apply to non-external commits.
-impl<'builder, 'state: 'builder> CommitBuilder<'builder, Initial<'state>, &mut MlsGroup> {
+impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// Sets whether or not the proposals in the proposal store of the group should be included in
     /// the commit. Defaults to `true`.
     pub fn consume_proposal_store(mut self, consume_proposal_store: bool) -> Self {
@@ -267,9 +267,9 @@ impl<'builder, 'state: 'builder> CommitBuilder<'builder, Initial<'state>, &mut M
 }
 
 // Impls that apply to regular and external commits.
-impl<'builder, 'state, G: BorrowMut<MlsGroup>> CommitBuilder<'builder, Initial<'state>, G> {
+impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// returns a new [`CommitBuilder`] for the given [`MlsGroup`].
-    pub fn new(group: G) -> CommitBuilder<'builder, Initial<'state>, G> {
+    pub fn new(group: G) -> CommitBuilder<'a, Initial, G> {
         let stage = Initial {
             create_group_info: group.borrow().configuration().use_ratchet_tree_extension,
             ..Default::default()
@@ -298,8 +298,8 @@ impl<'builder, 'state, G: BorrowMut<MlsGroup>> CommitBuilder<'builder, Initial<'
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
     pub fn load_psks<Storage: StorageProvider>(
         self,
-        storage: &'builder Storage,
-    ) -> Result<CommitBuilder<'builder, LoadedPsks<'state>, G>, CreateCommitError> {
+        storage: &'a Storage,
+    ) -> Result<CommitBuilder<'a, LoadedPsks, G>, CreateCommitError> {
         let psk_ids: Vec<_> = self
             .stage
             .own_proposals
@@ -342,7 +342,7 @@ impl<'builder, 'state, G: BorrowMut<MlsGroup>> CommitBuilder<'builder, Initial<'
     }
 }
 
-impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks<'a>, G> {
+impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.

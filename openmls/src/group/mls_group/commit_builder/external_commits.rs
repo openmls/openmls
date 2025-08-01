@@ -66,21 +66,21 @@ pub enum ExternalCommitBuilderError<StorageError> {
 /// add one or more [`PreSharedKeyProposal`]s to the external commit and specify
 /// [`LeafNodeParameters`].
 #[derive(Default)]
-pub struct ExternalCommitBuilder<'a> {
+pub struct ExternalCommitBuilder {
     proposals: Vec<PublicMessageIn>,
     ratchet_tree: Option<RatchetTreeIn>,
     config: MlsGroupJoinConfig,
-    aad: Option<&'a [u8]>,
+    aad: Option<Vec<u8>>,
 }
 
 impl MlsGroup {
     /// Creates a new [`ExternalCommitBuilder`] to build an external commit.
-    pub fn external_commit_builder<'a>() -> ExternalCommitBuilder<'a> {
+    pub fn external_commit_builder() -> ExternalCommitBuilder {
         ExternalCommitBuilder::new()
     }
 }
 
-impl<'a> ExternalCommitBuilder<'a> {
+impl ExternalCommitBuilder {
     /// Creates a new [`ExternalCommitBuilder`] with default values.
     pub fn new() -> Self {
         Self::default()
@@ -113,7 +113,7 @@ impl<'a> ExternalCommitBuilder<'a> {
 
     /// Specifies additional authenticated data (AAD) to be included in the
     /// external commit.
-    pub fn with_aad(mut self, aad: &'a [u8]) -> Self {
+    pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
         self.aad = Some(aad);
         self
     }
@@ -128,10 +128,8 @@ impl<'a> ExternalCommitBuilder<'a> {
         provider: &Provider,
         verifiable_group_info: VerifiableGroupInfo,
         credential_with_key: CredentialWithKey,
-    ) -> Result<
-        CommitBuilder<Initial<'a>, MlsGroup>,
-        ExternalCommitBuilderError<Provider::StorageError>,
-    > {
+    ) -> Result<CommitBuilder<Initial, MlsGroup>, ExternalCommitBuilderError<Provider::StorageError>>
+    {
         let ExternalCommitBuilder {
             proposals,
             ratchet_tree,
@@ -303,7 +301,7 @@ impl<'a> ExternalCommitBuilder<'a> {
 }
 
 // Impls that only apply to external commits.
-impl<'a> CommitBuilder<'a, Initial<'a>, MlsGroup> {
+impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
     /// Adds a [`PreSharedKeyProposal`] to the proposals to be committed.
     pub fn add_psk_proposal(mut self, proposal: PreSharedKeyProposal) -> Self {
         self.stage

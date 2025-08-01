@@ -391,7 +391,7 @@ fn discard_commit_external_join() {
     let aad = vec![0; 32];
 
     let (mut bob_group, _bundle) = MlsGroup::external_commit_builder()
-        .with_aad(&aad)
+        .with_aad(aad)
         .build_group(bob_provider, verifiable_group_info, bob_credential)
         .unwrap()
         .load_psks(bob_provider.storage())

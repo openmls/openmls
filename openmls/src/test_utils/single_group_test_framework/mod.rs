@@ -160,8 +160,7 @@ impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
     }
 }
 
-impl<'commit_builder, 'state: 'commit_builder, 'b: 'state, 'a: 'b, Provider>
-    MemberState<'a, Provider>
+impl<'commit_builder, 'b: 'commit_builder, 'a: 'b, Provider> MemberState<'a, Provider>
 where
     Provider: openmls_traits::OpenMlsProvider,
 {
@@ -169,8 +168,8 @@ where
     pub fn build_commit_and_stage(
         &'b mut self,
         f: impl FnOnce(
-            CommitBuilder<'commit_builder, Initial<'state>>,
-        ) -> CommitBuilder<'commit_builder, Initial<'state>>,
+            CommitBuilder<'commit_builder, Initial>,
+        ) -> CommitBuilder<'commit_builder, Initial>,
     ) -> Result<CommitMessageBundle, GroupError<Provider>> {
         let commit_builder = f(self.group.commit_builder());
 
