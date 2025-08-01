@@ -327,7 +327,11 @@ impl<'a> CommitBuilder<'a, Initial<'a>, MlsGroup> {
 
 // Impls that apply only to external commits.
 impl CommitBuilder<'_, super::Complete, MlsGroup> {
-    /// Finalizes and returns the [`MlsGroup`], as well as the [`CommitMessageBundle`].
+    /// Finalizes and returns the [`MlsGroup`], as well as the
+    /// [`CommitMessageBundle`].
+    ///
+    /// In contrast to the deprecated [`MlsGroup::join_by_external_commit`]
+    /// there is no need to merge the pending commit.
     pub fn finalize<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
