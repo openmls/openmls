@@ -78,41 +78,34 @@ fn test_external_commit() {
         let (bob_credential, bob_signature_keys) =
             new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
-        let (_bob_group, _, _) = MlsGroup::join_by_external_commit(
-            provider,
-            &bob_signature_keys,
-            None,
-            verifiable_group_info,
-            &MlsGroupJoinConfig::default(),
-            None,
-            None,
-            b"",
-            bob_credential,
-        )
-        .unwrap();
+        let (_bob_group, _) = MlsGroup::external_commit_builder()
+            .build_group(provider, verifiable_group_info, bob_credential)
+            .unwrap()
+            .load_psks(provider.storage())
+            .unwrap()
+            .build(
+                provider.rand(),
+                provider.crypto(),
+                &bob_signature_keys,
+                |_| true,
+            )
+            .unwrap()
+            .finalize(provider)
+            .unwrap();
     }
 
     // Now, Bob wants to join Alice' group by an external commit. (Negative case, broken signature.)
     {
-        let (bob_credential, bob_signature_keys) =
+        let (bob_credential, _bob_signature_keys) =
             new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
 
-        let got_error = MlsGroup::join_by_external_commit(
-            provider,
-            &bob_signature_keys,
-            None,
-            verifiable_group_info_broken,
-            &MlsGroupJoinConfig::default(),
-            None,
-            None,
-            b"",
-            bob_credential,
-        )
-        .unwrap_err();
+        let got_error = MlsGroup::external_commit_builder()
+            .build_group(provider, verifiable_group_info_broken, bob_credential)
+            .unwrap_err();
 
         assert!(matches!(
             got_error,
-            ExternalCommitError::PublicGroupError(
+            ExternalCommitBuilderError::PublicGroupError(
                 CreationFromExternalError::InvalidGroupInfoSignature
             )
         ));
@@ -140,22 +133,27 @@ fn test_group_info() {
 
         VerifiableGroupInfo::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap()
     };
-    let (mut bob_group, msg, group_info) = MlsGroup::join_by_external_commit(
-        provider,
-        &bob_signature_keys,
-        None,
-        verifiable_group_info,
-        &MlsGroupJoinConfig::builder()
-            .use_ratchet_tree_extension(true)
-            .build(),
-        None,
-        None,
-        b"",
-        bob_credential,
-    )
-    .map(|(group, msg, group_info)| (group, MlsMessageIn::from(msg), group_info))
-    .unwrap();
-    bob_group.merge_pending_commit(provider).unwrap();
+    let (mut bob_group, bundle) = MlsGroup::external_commit_builder()
+        .with_config(
+            MlsGroupJoinConfig::builder()
+                .use_ratchet_tree_extension(true)
+                .build(),
+        )
+        .build_group(provider, verifiable_group_info, bob_credential)
+        .unwrap()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &bob_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(provider)
+        .unwrap();
+    let (msg, _, group_info) = bundle.into_contents();
+    let msg = MlsMessageIn::from(msg);
 
     // let alice process bob's new client
     let msg = alice_group
@@ -193,19 +191,20 @@ fn test_group_info() {
 
         VerifiableGroupInfo::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap()
     };
-    let (mut bob_group, ..) = MlsGroup::join_by_external_commit(
-        provider,
-        &bob_signature_keys,
-        None,
-        verifiable_group_info,
-        &MlsGroupJoinConfig::default(),
-        None,
-        None,
-        b"",
-        bob_credential,
-    )
-    .unwrap();
-    bob_group.merge_pending_commit(provider).unwrap();
+    let _ = MlsGroup::external_commit_builder()
+        .build_group(provider, verifiable_group_info, bob_credential)
+        .unwrap()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &bob_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(provider)
+        .unwrap();
 }
 
 #[openmls_test]

@@ -231,28 +231,41 @@ impl CommitIn {
                 SenderContext::Member((group_id, leaf_index)) => {
                     TreePosition::new(group_id, leaf_index)
                 }
-                SenderContext::ExternalCommit((group_id, free_leaf_index)) => {
+                SenderContext::ExternalCommit {
+                    group_id,
+                    leftmost_blank_index,
+                    self_removes_in_store,
+                } => {
                     // We need to determine if it is a a resync or a join.
                     // Find the first remove proposal and extract the leaf index.
-                    let new_leaf_index = proposals
-                        .iter()
-                        .find_map(|p| match p {
-                            ProposalOrRef::Proposal(p) => match p {
-                                Proposal::Remove(r) => Some(r.removed()),
-                                _ => None,
-                            },
-                            ProposalOrRef::Reference(_) => None,
-                        })
-                        // The committer should always be in the left-most leaf.
-                        .map(|removed_index| {
-                            if removed_index < free_leaf_index {
-                                removed_index
-                            } else {
-                                free_leaf_index
-                            }
-                        })
-                        // If there is none, the External Commit was not a resync
-                        .unwrap_or(free_leaf_index);
+                    let former_sender_index = proposals.iter().find_map(|p| {
+                        let ProposalOrRef::Proposal(Proposal::Remove(r)) = p else {
+                            return None;
+                        };
+                        Some(r.removed())
+                    });
+
+                    // Collect the sender indices of SelfRemoves that are part of
+                    // this commit.
+                    let self_removed_indices =
+                        self_removes_in_store.into_iter().filter_map(|self_remove| {
+                            proposals.iter().find_map(|committed_p| {
+                                let ProposalOrRef::Reference(committed_p_ref) = committed_p else {
+                                    return None;
+                                };
+                                (self_remove.proposal_ref == *committed_p_ref)
+                                    .then_some(self_remove.sender)
+                            })
+                        });
+
+                    let new_leaf_index = [leftmost_blank_index]
+                        .into_iter()
+                        .chain(former_sender_index)
+                        .chain(self_removed_indices)
+                        .min()
+                        .ok_or(ValidationError::LibraryError(LibraryError::custom(
+                            "The iterator should have at least one element.",
+                        )))?;
 
                     TreePosition::new(group_id, new_leaf_index)
                 }

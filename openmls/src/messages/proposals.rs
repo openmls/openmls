@@ -392,7 +392,7 @@ impl PreSharedKeyProposal {
 
 impl PreSharedKeyProposal {
     /// Create a new PSK proposal
-    pub(crate) fn new(psk: PreSharedKeyId) -> Self {
+    pub fn new(psk: PreSharedKeyId) -> Self {
         Self { psk }
     }
 }
