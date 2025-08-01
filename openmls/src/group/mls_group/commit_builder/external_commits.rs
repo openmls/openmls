@@ -70,7 +70,7 @@ pub struct ExternalCommitBuilder {
     proposals: Vec<PublicMessageIn>,
     ratchet_tree: Option<RatchetTreeIn>,
     config: MlsGroupJoinConfig,
-    aad: Option<Vec<u8>>,
+    aad: Vec<u8>,
 }
 
 impl MlsGroup {
@@ -114,7 +114,7 @@ impl ExternalCommitBuilder {
     /// Specifies additional authenticated data (AAD) to be included in the
     /// external commit.
     pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
-        self.aad = Some(aad);
+        self.aad = aad;
         self
     }
 
@@ -282,8 +282,6 @@ impl ExternalCommitBuilder {
         }
 
         let mut commit_builder = CommitBuilder::<'_, Initial, MlsGroup>::new(mls_group);
-
-        let aad = aad.unwrap_or_default();
 
         commit_builder.stage.force_self_update = true;
         commit_builder.stage.external_commit_info = Some(ExternalCommitInfo {
