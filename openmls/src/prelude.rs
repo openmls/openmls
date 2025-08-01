@@ -2,7 +2,13 @@
 //! Include this to get access to all the public functions of OpenMLS.
 
 // MlsGroup
-pub use crate::group::{Member, *};
+pub use crate::group::{
+    commit_builder::{
+        CommitBuilder, CommitMessageBundle, Complete, ExternalCommitBuilder,
+        ExternalCommitBuilderError, Initial, LoadedPsks,
+    },
+    Member, *,
+};
 
 pub use crate::group::public_group::{errors::*, PublicGroup};
 
