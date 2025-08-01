@@ -263,7 +263,9 @@ impl CommitIn {
                         .chain(former_sender_index)
                         .chain(self_removed_indices)
                         .min()
-                        .expect("We know the iterator has at least one element.");
+                        .ok_or(ValidationError::LibraryError(LibraryError::custom(
+                            "The iterator should have at least one element.",
+                        )))?;
 
                     TreePosition::new(group_id, new_leaf_index)
                 }
