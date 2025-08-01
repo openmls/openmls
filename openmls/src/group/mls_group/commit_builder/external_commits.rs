@@ -49,7 +49,7 @@ pub enum ExternalCommitBuilderError<StorageError> {
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
     PublicGroupError(#[from] CreationFromExternalError<StorageError>),
-    /// An erorr occurred when writing group to storage
+    /// An error occurred when writing group to storage
     #[error("An error occurred when writing group to storage.")]
     StorageError(StorageError),
     /// Error validating proposals.
