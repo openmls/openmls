@@ -491,22 +491,28 @@ impl MlsClient for MlsClientImpl {
                     .build()
             };
 
-            let (mut group, commit, _group_info) = MlsGroup::join_by_external_commit(
+            let builder = MlsGroup::external_commit_builder().with_config(mls_group_config.clone());
+
+            let (group, commit_bundle) = if let Some(tree_option) = ratchet_tree {
+                builder.with_ratchet_tree(tree_option)
+            } else {
+                builder
+            }
+            .build_group(
                 &provider,
-                &signer,
-                ratchet_tree,
                 verifiable_group_info,
-                &mls_group_config,
-                None,
-                None,
-                b"",
-                credential_with_key,
+                credential_with_key.clone(),
             )
+            .unwrap()
+            .load_psks(provider.storage())
+            .unwrap()
+            .build(provider.rand(), provider.crypto(), &signer, |_| true)
+            .unwrap()
+            .finalize(&provider)
             .unwrap();
 
+            let commit = commit_bundle.into_commit();
             trace!(?commit, "Commit created.");
-            debug!(commit=?group.pending_commit(), "Merging pending commit.");
-            group.merge_pending_commit(&provider).unwrap();
 
             (
                 InteropGroup {
