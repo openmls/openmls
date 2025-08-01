@@ -292,23 +292,25 @@ fn book_operations() {
         .expect("Could not get group info");
     // ANCHOR_END: alice_exports_group_info
 
-    // ANCHOR: charlie_joins_external_commit
-    let (mut dave_group, _out, _group_info) = MlsGroup::join_by_external_commit(
-        provider,
-        &dave_signature_keys,
-        None, // No ratchtet tree extension
-        verifiable_group_info,
-        &mls_group_config,
-        None, // No special capabilities
-        None, // No special extensions
-        &[],
-        dave_credential,
-    )
-    .expect("Error joining from external commit");
+    let (mut dave_group, _bundle) = MlsGroup::external_commit_builder()
+        .with_config(mls_group_config.clone())
+        .build_group(provider, verifiable_group_info, dave_credential)
+        .unwrap()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &dave_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(provider)
+        .expect("Error joining from external commit");
+
     dave_group
         .merge_pending_commit(provider)
         .expect("Cannot merge commit");
-    // ANCHOR_END: charlie_joins_external_commit
 
     // Make sure that both groups have the same members
     assert!(alice_group.members().eq(bob_group.members()));

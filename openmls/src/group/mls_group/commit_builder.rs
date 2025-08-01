@@ -46,6 +46,7 @@ use super::{
     MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
 
+#[derive(Debug)]
 struct ExternalCommitInfo<'a> {
     aad: &'a [u8],
     credential: CredentialWithKey,
@@ -53,6 +54,7 @@ struct ExternalCommitInfo<'a> {
 }
 
 /// This stage is for populating the builder.
+#[derive(Debug)]
 pub struct Initial<'a> {
     own_proposals: Vec<Proposal>,
     force_self_update: bool,

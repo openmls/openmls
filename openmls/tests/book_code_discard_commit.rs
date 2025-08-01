@@ -390,18 +390,21 @@ fn discard_commit_external_join() {
 
     let aad = vec![0; 32];
 
-    let (mut bob_group, _message, _group_info) = MlsGroup::join_by_external_commit(
-        bob_provider,
-        &bob_signer,
-        None,
-        verifiable_group_info,
-        &MlsGroupJoinConfig::default(),
-        None,
-        None,
-        &aad,
-        bob_credential,
-    )
-    .expect("could not create external join commit");
+    let (mut bob_group, _bundle) = MlsGroup::external_commit_builder()
+        .with_aad(&aad)
+        .build_group(bob_provider, verifiable_group_info, bob_credential)
+        .unwrap()
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(bob_provider)
+        .unwrap();
 
     // === Delivery service rejected the commit ===
 

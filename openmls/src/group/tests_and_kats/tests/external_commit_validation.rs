@@ -197,21 +197,31 @@ fn test_valsem242() {
         .into_verifiable_group_info()
         .unwrap();
 
-    let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
-        provider,
-        &bob_credential.signer,
-        None,
-        verifiable_group_info,
-        alice_group.configuration(),
-        None,
-        None,
-        &[],
-        bob_credential.credential_with_key.clone(),
-    )
-    .unwrap();
+    let (_, public_message_commit) = MlsGroup::external_commit_builder()
+        .with_config(alice_group.configuration().clone())
+        .build_group(
+            provider,
+            verifiable_group_info,
+            bob_credential.credential_with_key.clone(),
+        )
+        .unwrap()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &bob_credential.signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(provider)
+        .unwrap();
 
     let public_message_commit = {
-        let serialized = public_message_commit.tls_serialize_detached().unwrap();
+        let serialized = public_message_commit
+            .into_commit()
+            .tls_serialize_detached()
+            .unwrap();
         MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
             .unwrap()
             .into_plaintext()
@@ -637,20 +647,28 @@ mod utils {
             .unwrap();
         let tree_option = alice_group.export_ratchet_tree();
 
-        let (_bob_group, public_message_commit, _) = MlsGroup::join_by_external_commit(
-            provider,
-            &bob_credential.signer,
-            Some(tree_option.into()),
-            verifiable_group_info,
-            alice_group.configuration(),
-            None,
-            None,
-            &[],
-            bob_credential.credential_with_key.clone(),
-        )
-        .unwrap();
+        let (_bob_group, commit_bundle) = MlsGroup::external_commit_builder()
+            .with_config(alice_group.configuration().clone())
+            .with_ratchet_tree(tree_option.into())
+            .build_group(
+                provider,
+                verifiable_group_info,
+                bob_credential.credential_with_key.clone(),
+            )
+            .unwrap()
+            .load_psks(provider.storage())
+            .unwrap()
+            .build(
+                provider.rand(),
+                provider.crypto(),
+                &bob_credential.signer,
+                |_| true,
+            )
+            .unwrap()
+            .finalize(provider)
+            .unwrap();
 
-        let mls_message = MlsMessageIn::from(public_message_commit);
+        let mls_message = MlsMessageIn::from(commit_bundle.into_commit());
         assert_eq!(mls_message.wire_format(), WireFormat::PublicMessage);
         let public_message_commit = mls_message
             .into_plaintext()
