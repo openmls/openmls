@@ -479,6 +479,9 @@ impl MlsGroup {
         storage.delete_group_state(self.group_id())?;
         storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
 
+        #[cfg(feature = "extensions-draft-08")]
+        storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
+
         self.proposal_store_mut().empty();
         storage.delete_encryption_epoch_key_pairs(
             self.group_id(),
