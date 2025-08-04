@@ -35,6 +35,7 @@ use crate::{
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
     framing::{InterimTranscriptHashInput, Sender},
+    group::mls_group::creation::LeafNodeLifetimePolicy,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         proposals::Proposal,
@@ -123,11 +124,12 @@ impl PublicGroup {
     where
         StorageProvider: PublicStorageProvider<Error = StorageError>,
     {
-        let (public_group, group_info) = PublicGroup::from_external_internal(
+        let (public_group, group_info) = PublicGroup::from_ratchet_tree(
             crypto,
             ratchet_tree,
             verifiable_group_info,
             proposal_store,
+            LeafNodeLifetimePolicy::Verify,
         )?;
 
         public_group
@@ -136,11 +138,13 @@ impl PublicGroup {
 
         Ok((public_group, group_info))
     }
-    pub(crate) fn from_external_internal<StorageError>(
+
+    pub(crate) fn from_ratchet_tree<StorageError>(
         crypto: &impl OpenMlsCrypto,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
+        validate_lifetimes: LeafNodeLifetimePolicy,
     ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>> {
         let ciphersuite = verifiable_group_info.ciphersuite();
 
@@ -278,7 +282,9 @@ impl PublicGroup {
         public_group
             .treesync
             .full_leaves()
-            .try_for_each(|leaf_node| public_group.validate_leaf_node(leaf_node))?;
+            .try_for_each(|leaf_node| {
+                public_group.validate_leaf_node_inner(leaf_node, validate_lifetimes)
+            })?;
 
         Ok((public_group, group_info))
     }

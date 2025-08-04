@@ -1,5 +1,5 @@
 use errors::NewGroupError;
-use openmls_traits::{signatures::Signer, storage::StorageProvider as StorageProviderTrait};
+use openmls_traits::storage::StorageProvider as StorageProviderTrait;
 
 use super::{builder::MlsGroupBuilder, *};
 use crate::{
@@ -244,12 +244,23 @@ impl ProcessedWelcome {
         &self.group_secrets.psks
     }
 
-    /// Consume the `ProcessedWelcome` and combine it witht he ratchet tree into
+    /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
     pub fn into_staged_welcome<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+        ratchet_tree: Option<RatchetTreeIn>,
+    ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+        self.into_staged_welcome_inner(provider, ratchet_tree, LeafNodeLifetimePolicy::Verify)
+    }
+
+    /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
+    /// a `StagedWelcome`.
+    pub(crate) fn into_staged_welcome_inner<Provider: OpenMlsProvider>(
         mut self,
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
+        validate_lifetimes: LeafNodeLifetimePolicy,
     ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
         // Build the ratchet tree and group
 
@@ -267,11 +278,12 @@ impl ProcessedWelcome {
 
         // Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
-        let (public_group, _group_info_extensions) = PublicGroup::from_external_internal(
+        let (public_group, _group_info_extensions) = PublicGroup::from_ratchet_tree(
             provider.crypto(),
             ratchet_tree,
             self.verifiable_group_info.clone(),
             ProposalStore::new(),
+            validate_lifetimes,
         )?;
 
         // Find our own leaf in the tree.
@@ -406,6 +418,23 @@ impl StagedWelcome {
         processed_welcome.into_staged_welcome(provider, ratchet_tree)
     }
 
+    /// Similar to [`StagedWelcome::new_from_welcome`] but as a builder.
+    ///
+    /// The builder allows to set the ratchet tree, skip leaf node lifetime
+    /// validation, and get the [`ProcessedWelcome`] for inspection before staging.
+    pub fn build_from_welcome<'a, Provider: OpenMlsProvider>(
+        provider: &'a Provider,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+        // ratchet_tree: Option<RatchetTreeIn>,
+    ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
+        let processed_welcome =
+            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
+
+        // processed_welcome.into_staged_welcome(provider, ratchet_tree)
+        Ok(JoinBuilder::new(provider, processed_welcome))
+    }
+
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
     ///
     /// [`Welcome`]: crate::messages::Welcome
@@ -506,4 +535,71 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         log::debug!("Key package has last resort extension, not deleting");
     }
     Ok((resumption_psk_store, key_package_bundle))
+}
+
+/// Verify or skip the validation of leaf node lifetimes in the ratchet tree
+/// when joining a group.
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LeafNodeLifetimePolicy {
+    /// Verify the lifetime of leaf nodes in the ratchet tree.
+    ///
+    /// **NOTE:** Only leaf nodes that have never been updated have a lifetime.
+    #[default]
+    Verify,
+
+    /// Skip the verification of the lifeimte in leaf nodes in the ratchet tree.
+    Skip,
+}
+
+/// Builder for joining a group.
+///
+/// Create this with [`StagedWelcome::build_from_welcome`].
+pub struct JoinBuilder<'a, Provider: OpenMlsProvider> {
+    provider: &'a Provider,
+    processed_welcome: ProcessedWelcome,
+    ratchet_tree: Option<RatchetTreeIn>,
+    validate_lifetimes: LeafNodeLifetimePolicy,
+}
+
+impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
+    /// Create a new builder for the [`JoinBuilder`].
+    pub(crate) fn new(provider: &'a Provider, processed_welcome: ProcessedWelcome) -> Self {
+        Self {
+            provider,
+            processed_welcome,
+            ratchet_tree: None,
+            validate_lifetimes: LeafNodeLifetimePolicy::Verify,
+        }
+    }
+
+    /// The ratchet tree to use for the new group.
+    pub fn with_ratchet_tree(mut self, ratchet_tree: RatchetTreeIn) -> Self {
+        self.ratchet_tree = Some(ratchet_tree);
+        self
+    }
+
+    /// Skip the validation of lifetimes in leaf nodes in the ratchet tree.
+    /// Note that only the leaf nodes are checked that were never updated.
+    ///
+    /// By default they are validated.
+    pub fn skip_lifetime_validation(mut self) -> Self {
+        self.validate_lifetimes = LeafNodeLifetimePolicy::Skip;
+        self
+    }
+
+    /// Get a reference to the [`ProcessedWelcome`].
+    ///
+    /// Use this to inspect the [`Welcome`] message before validation.
+    pub fn processed_welcome(&self) -> &ProcessedWelcome {
+        &self.processed_welcome
+    }
+
+    /// Build the [`StagedWelcome`].
+    pub fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+        self.processed_welcome.into_staged_welcome_inner(
+            self.provider,
+            self.ratchet_tree,
+            self.validate_lifetimes,
+        )
+    }
 }
