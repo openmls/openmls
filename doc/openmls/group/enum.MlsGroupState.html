@@ -10,7 +10,7 @@ states and their transitions are as follows:</p>
 allows access to all of its functionality, (except merging pending commits,
 see the <a href="enum.MlsGroupState.html#variant.PendingCommit" title="variant openmls::group::MlsGroupState::PendingCommit"><code>MlsGroupState::PendingCommit</code></a> for more information) and it’s the
 state the group starts in (except when created via
-<a href="struct.MlsGroup.html#method.join_by_external_commit" title="associated function openmls::group::MlsGroup::join_by_external_commit"><code>MlsGroup::join_by_external_commit()</code></a>, see the functions documentation for
+<a href="struct.MlsGroup.html#method.external_commit_builder" title="associated function openmls::group::MlsGroup::external_commit_builder"><code>MlsGroup::external_commit_builder()</code></a>, see the functions documentation for
 more information). From this <code>Operational</code>, the group state can either
 transition to <a href="enum.MlsGroupState.html#variant.Inactive" title="variant openmls::group::MlsGroupState::Inactive"><code>MlsGroupState::Inactive</code></a>, when it processes a commit that
 removes this client from the group, or to <a href="enum.MlsGroupState.html#variant.PendingCommit" title="variant openmls::group::MlsGroupState::PendingCommit"><code>MlsGroupState::PendingCommit</code></a>,
@@ -44,12 +44,12 @@ entered.</p>
 <li>
 <p>A group can enter the <a href="enum.PendingCommitState.html#variant.External" title="variant openmls::group::PendingCommitState::External"><code>PendingCommitState::External</code></a> sub-state only as
 the initial state when the group is created via
-<a href="struct.MlsGroup.html#method.join_by_external_commit" title="associated function openmls::group::MlsGroup::join_by_external_commit"><code>MlsGroup::join_by_external_commit()</code></a>. In contrast to the
+<a href="struct.MlsGroup.html#method.external_commit_builder" title="associated function openmls::group::MlsGroup::external_commit_builder"><code>MlsGroup::external_commit_builder()</code></a>. In contrast to the
 <a href="enum.PendingCommitState.html#variant.Member" title="variant openmls::group::PendingCommitState::Member"><code>PendingCommitState::Member</code></a> <code>PendingCommit</code> state, the only possible
 functionality that can be used is the <a href="struct.MlsGroup.html#method.merge_pending_commit" title="method openmls::group::MlsGroup::merge_pending_commit"><code>MlsGroup::merge_pending_commit()</code></a>
 function, which merges the pending external commit and transitions the
 state to <a href="enum.MlsGroupState.html#variant.PendingCommit" title="variant openmls::group::MlsGroupState::PendingCommit"><code>MlsGroupState::PendingCommit</code></a>. For more information on the
-external commit process, see <a href="struct.MlsGroup.html#method.join_by_external_commit" title="associated function openmls::group::MlsGroup::join_by_external_commit"><code>MlsGroup::join_by_external_commit()</code></a> or
+external commit process, see <a href="struct.MlsGroup.html#method.external_commit_builder" title="associated function openmls::group::MlsGroup::external_commit_builder"><code>MlsGroup::external_commit_builder()</code></a> or
 Section 11.2.1 of the MLS specification.</p>
 </li>
 </ul>
