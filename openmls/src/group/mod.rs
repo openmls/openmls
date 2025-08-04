@@ -26,6 +26,7 @@ pub use group_context::GroupContext;
 pub use mls_group::builder::*;
 pub use mls_group::commit_builder::*;
 pub use mls_group::config::*;
+pub use mls_group::creation::*;
 pub use mls_group::membership::*;
 pub use mls_group::proposal_store::*;
 pub use mls_group::staged_commit::StagedCommit;

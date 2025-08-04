@@ -206,7 +206,11 @@ impl DecryptedMessage {
 #[derive(Debug, Clone)]
 pub(crate) enum SenderContext {
     Member((GroupId, LeafNodeIndex)),
-    ExternalCommit((GroupId, LeafNodeIndex)),
+    ExternalCommit {
+        group_id: GroupId,
+        leftmost_blank_index: LeafNodeIndex,
+        self_removes_in_store: Vec<SelfRemoveInStore>,
+    },
 }
 
 /// Partially checked and potentially decrypted message (if it was originally encrypted).

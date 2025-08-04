@@ -782,15 +782,6 @@ impl ApplicationExportSecret {
                 .derive_secret(crypto, ciphersuite, "application_export")?;
         Ok(ApplicationExportSecret { secret })
     }
-
-    /// Only to be used in the creation of a preliminary group during an
-    /// external commit. Creates a zero secret.
-    pub(crate) fn new_for_external_commit(ciphersuite: Ciphersuite) -> Self {
-        // This is used for external commits, so we don't need to derive it from an epoch secret.
-        Self {
-            secret: Secret::zero(ciphersuite),
-        }
-    }
 }
 
 /// A secret used when joining a group with an external Commit.

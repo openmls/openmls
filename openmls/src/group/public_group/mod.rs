@@ -11,7 +11,7 @@
 //! To avoid duplication of code and functionality, [`MlsGroup`] internally
 //! relies on a [`PublicGroup`] as well.
 
-use std::{collections::HashSet, iter};
+use std::collections::HashSet;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
@@ -35,6 +35,7 @@ use crate::{
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
     framing::{InterimTranscriptHashInput, Sender},
+    group::mls_group::creation::LeafNodeLifetimePolicy,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         proposals::Proposal,
@@ -123,11 +124,12 @@ impl PublicGroup {
     where
         StorageProvider: PublicStorageProvider<Error = StorageError>,
     {
-        let (public_group, group_info) = PublicGroup::from_external_internal(
+        let (public_group, group_info) = PublicGroup::from_ratchet_tree(
             crypto,
             ratchet_tree,
             verifiable_group_info,
             proposal_store,
+            LeafNodeLifetimePolicy::Verify,
         )?;
 
         public_group
@@ -136,11 +138,13 @@ impl PublicGroup {
 
         Ok((public_group, group_info))
     }
-    pub(crate) fn from_external_internal<StorageError>(
+
+    pub(crate) fn from_ratchet_tree<StorageError>(
         crypto: &impl OpenMlsCrypto,
         ratchet_tree: RatchetTreeIn,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
+        validate_lifetimes: LeafNodeLifetimePolicy,
     ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>> {
         let ciphersuite = verifiable_group_info.ciphersuite();
 
@@ -278,7 +282,9 @@ impl PublicGroup {
         public_group
             .treesync
             .full_leaves()
-            .try_for_each(|leaf_node| public_group.validate_leaf_node(leaf_node))?;
+            .try_for_each(|leaf_node| {
+                public_group.validate_leaf_node_inner(leaf_node, validate_lifetimes)
+            })?;
 
         Ok((public_group, group_info))
     }
@@ -288,7 +294,7 @@ impl PublicGroup {
         &self,
         commit: &StagedCommit,
     ) -> Result<LeafNodeIndex, LibraryError> {
-        self.leftmost_free_index(iter::empty(), commit.queued_proposals())
+        self.leftmost_free_index(commit.queued_proposals())
     }
 
     /// Returns the leftmost free leaf index.
@@ -299,7 +305,6 @@ impl PublicGroup {
     /// The proposals must be validated before calling this function.
     pub(crate) fn leftmost_free_index<'a>(
         &self,
-        inline_proposals: impl Iterator<Item = &'a Proposal>,
         queued_proposals: impl Iterator<Item = &'a QueuedProposal>,
     ) -> Result<LeafNodeIndex, LibraryError> {
         // Leftmost free leaf in the tree
@@ -313,15 +318,10 @@ impl PublicGroup {
                 _ => None, // SelfRemove proposals must come from group members
             }
         });
-        let more_removed_indices = inline_proposals.filter_map(|proposal| match proposal {
-            Proposal::Remove(r) => Some(r.removed),
-            _ => None,
-        });
         // Find the leftmost free leaf index, which is either the free leaf index
         // or the leftmost index of a self-remove proposal or remove proposal.
         removed_indices
             .into_iter()
-            .chain(more_removed_indices)
             .chain(std::iter::once(free_leaf_index))
             .min()
             .ok_or_else(|| LibraryError::custom("No free leaf index found"))

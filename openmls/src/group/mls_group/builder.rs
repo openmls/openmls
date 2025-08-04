@@ -4,16 +4,16 @@ use tls_codec::Serialize;
 #[cfg(feature = "extensions-draft-08")]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
-    binary_tree::array_representation::TreeSize,
+    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
     group::{
-        public_group::errors::PublicGroupBuildError, GroupId, MlsGroupCreateConfig,
-        MlsGroupCreateConfigBuilder, NewGroupError, PublicGroup, WireFormatPolicy,
+        past_secrets::MessageSecretsStore, public_group::errors::PublicGroupBuildError, GroupId,
+        MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
+        PublicGroup, WireFormatPolicy,
     },
     key_packages::Lifetime,
-    prelude::LeafNodeIndex,
     schedule::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         EpochSecretsResult, InitSecret, JoinerSecret, KeySchedule, PreSharedKeyId,
@@ -22,8 +22,6 @@ use crate::{
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::{errors::LeafNodeValidationError, node::leaf_node::Capabilities},
 };
-
-use super::{past_secrets::MessageSecretsStore, MlsGroup, MlsGroupState};
 
 /// Builder struct for an [`MlsGroup`].
 #[derive(Default, Debug)]

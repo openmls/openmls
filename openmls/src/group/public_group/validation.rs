@@ -7,6 +7,7 @@ use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
 use crate::extensions::RequiredCapabilitiesExtension;
+use crate::group::creation::LeafNodeLifetimePolicy;
 use crate::group::proposal_store::ProposalQueue;
 use crate::group::GroupContextExtensionsProposalValidationError;
 use crate::prelude::LibraryError;
@@ -493,7 +494,7 @@ impl PublicGroup {
     ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
     ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
-    pub(super) fn validate_external_commit(
+    pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ExternalCommitValidationError> {
@@ -649,9 +650,24 @@ impl PublicGroup {
         Ok(())
     }
 
+    /// Validate a leaf node.
+    ///
+    /// This always validates the lifetime.
     pub(crate) fn validate_leaf_node(
         &self,
         leaf_node: &crate::treesync::LeafNode,
+    ) -> Result<(), LeafNodeValidationError> {
+        // Call the validation function and validate the lifetime
+        self.validate_leaf_node_inner(leaf_node, LeafNodeLifetimePolicy::Verify)
+    }
+
+    /// Validate a leaf node.
+    ///
+    /// This may skip checking the lifetime when validating a ratchet tree.
+    pub(crate) fn validate_leaf_node_inner(
+        &self,
+        leaf_node: &crate::treesync::LeafNode,
+        validate_lifetimes: LeafNodeLifetimePolicy,
     ) -> Result<(), LeafNodeValidationError> {
         // https://validation.openmls.tech/#valn0103
         // https://validation.openmls.tech/#valn0104
@@ -665,9 +681,19 @@ impl PublicGroup {
         // Only leaf nodes in key packages contain lifetimes, so this will return None for other
         // cases. Therefore we only check the lifetimes for leaf nodes in key packages.
         //
+        // We may want to check these in ratchet trees as well.
+        // However, this may lead to errors when leaf nodes don't get updated
+        // after being added to the tree. RFC 9420 recommends checking the lifetime
+        // but acknowledges already that this may cause issues.
+        // https://www.rfc-editor.org/rfc/rfc9420.html#section-7.3-4.5.1
+        // See #1810 for more background.
+        // We therefore check the lifetime by default, but skip it if ...
+        //
         // Some KATs use key packages that are expired by now. In order to run these tests, we
         // provide a way to turn off this check.
-        if !crate::skip_validation::is_disabled::leaf_node_lifetime() {
+        if matches!(validate_lifetimes, LeafNodeLifetimePolicy::Verify)
+            && !crate::skip_validation::is_disabled::leaf_node_lifetime()
+        {
             if let Some(lifetime) = leaf_node.life_time() {
                 if !lifetime.is_valid() {
                     log::warn!("offending lifetime: {lifetime:?}");
