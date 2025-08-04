@@ -378,6 +378,27 @@ impl MlsGroup {
                 self.message_secrets_store
                     .add(past_epoch, message_secrets, leaves);
 
+                // Replace the previous exporter tree with the new one.
+                #[cfg(feature = "extensions-draft-08")]
+                {
+                    use crate::schedule::application_export_tree::ApplicationExportTree;
+
+                    // The application exporter is only None if the group was
+                    // stored using an older version of OpenMLS that did not
+                    // support the application exporter.
+                    if let Some(application_exporter) = state.application_exporter {
+                        let exporter_tree = ApplicationExportTree::new(application_exporter);
+
+                        // Overwrite the existing exporter tree in the storage.
+                        provider
+                            .storage()
+                            .write_application_export_tree(self.group_id(), &exporter_tree)
+                            .map_err(MergeCommitError::StorageError)?;
+
+                        self.application_export_tree = Some(exporter_tree);
+                    }
+                }
+
                 self.public_group.merge_diff(state.staged_diff);
 
                 let leaf_keypair = if let Some(keypair) = &state.new_leaf_keypair_option {
