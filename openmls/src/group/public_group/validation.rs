@@ -570,7 +570,9 @@ impl PublicGroup {
                             self.check_extension_support(required_capabilities_new.extension_types()).map_err(|_| GroupContextExtensionsProposalValidationError::RequiredExtensionNotSupportedByAllMembers)?;
                             required_capabilities_new
                         }
-                        None => &default_required_capabilities,
+                        None => self
+                            .required_capabilities()
+                            .unwrap_or(&default_required_capabilities),
                     };
 
                     // Make sure that all other extensions are known to be supported, by checking
