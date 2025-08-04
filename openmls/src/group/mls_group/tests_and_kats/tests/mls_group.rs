@@ -269,6 +269,8 @@ fn export_secret() {
 #[cfg(feature = "extensions-draft-08")]
 #[openmls_test]
 fn application_export_secret() {
+    use crate::schedule::application_export_tree::ApplicationExportTreeError;
+
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
@@ -356,6 +358,7 @@ fn application_export_secret() {
 
     assert_eq!(alice_application_secret, bob_application_secret);
 
+    // Trying with a different component ID (should yield a different secret)
     let differing_component_id = 0x8001;
     let alice_differing_application_secret = alice_group_state
         .group
@@ -366,6 +369,20 @@ fn application_export_secret() {
         )
         .unwrap();
     assert_ne!(alice_application_secret, alice_differing_application_secret);
+
+    // Trying with the same component ID for the second time (should fail)
+    let error = alice_group_state
+        .group
+        .safe_export_secret(
+            alice_group_state.party.core_state.provider.crypto(),
+            alice_group_state.party.core_state.provider.storage(),
+            component_id,
+        )
+        .expect_err("Expected an error when exporting the same component ID twice");
+    assert!(matches!(
+        error,
+        SafeExportSecretError::ApplicationExportTree(ApplicationExportTreeError::PuncturedInput)
+    ));
 }
 
 #[openmls_test]
