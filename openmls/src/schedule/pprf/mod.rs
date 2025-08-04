@@ -200,7 +200,6 @@ mod tests {
     use openmls_traits::OpenMlsProvider;
     use prefix::{Prefix32, PrefixVec};
     use rand::{
-        random,
         rngs::{OsRng, StdRng},
         Rng, SeedableRng,
     };
@@ -256,7 +255,7 @@ mod tests {
             let index = dummy_index::<P>(&mut rng);
             let crypto = provider.crypto();
 
-            let first = pprf.evaluate(crypto, ciphersuite, &index).unwrap();
+            let _first = pprf.evaluate(crypto, ciphersuite, &index).unwrap();
             let second = pprf
                 .evaluate(crypto, ciphersuite, &index)
                 .expect_err("Evaluation on same input should fail");
