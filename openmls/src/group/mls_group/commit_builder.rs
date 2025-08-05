@@ -58,6 +58,7 @@ struct ExternalCommitInfo {
 #[derive(Debug, Default)]
 struct GroupInfoConfig {
     create_group_info: bool,
+    use_ratchet_tree_extension: bool,
     other_extensions: Vec<Extension>,
 }
 
@@ -282,6 +283,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
 
         let stage = Initial {
             group_info_config: GroupInfoConfig {
+                use_ratchet_tree_extension,
                 create_group_info: use_ratchet_tree_extension,
                 other_extensions: vec![],
             },
@@ -301,12 +303,23 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         self
     }
 
+    /// Sets whether the [`GroupInfo`] should contain the ratchet tree extension. If set to `true`,
+    /// enables the [`GroupInfo`] to be created when the commit is staged.
+    pub fn use_ratchet_tree_extension(mut self, use_ratchet_tree_extension: bool) -> Self {
+        if use_ratchet_tree_extension {
+            self.stage.group_info_config.create_group_info = true;
+        }
+        self.stage.group_info_config.use_ratchet_tree_extension = use_ratchet_tree_extension;
+        self
+    }
+
     /// Add the provided [`Extension`]s to the [`GroupInfo`]
     pub fn create_group_info_with_extensions(
         mut self,
         extensions: impl IntoIterator<Item = Extension>,
     ) -> Self {
         self.stage.group_info_config.create_group_info = true;
+        // TODO: ensure that none of the extensions are a ratchet tree extension?
         self.stage.group_info_config.other_extensions = extensions.into_iter().collect();
         self
     }
@@ -669,7 +682,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
 
             // Create and add ratchet tree extension if necessary
-            if group.configuration().use_ratchet_tree_extension {
+            if cur_stage.group_info_config.use_ratchet_tree_extension {
                 let ratchet_tree_extension =
                     Extension::RatchetTree(RatchetTreeExtension::new(diff.export_ratchet_tree()));
                 extensions_list.push(ratchet_tree_extension);
