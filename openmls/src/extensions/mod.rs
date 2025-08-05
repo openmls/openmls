@@ -29,6 +29,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 // Private
+#[cfg(feature = "extensions-draft-08")]
+mod application_data_dict_extension;
 mod application_id_extension;
 mod codec;
 mod external_pub_extension;
@@ -42,6 +44,8 @@ use errors::*;
 pub mod errors;
 
 // Public re-exports
+#[cfg(feature = "extensions-draft-08")]
+pub use application_data_dict_extension::ApplicationDataDictionaryExtension;
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
 pub use external_sender_extension::{
@@ -99,6 +103,10 @@ pub enum ExtensionType {
     /// scenario.
     LastResort,
 
+    #[cfg(feature = "extensions-draft-08")]
+    /// ApplicationDataDictionary extension
+    ApplicationDataDictionary,
+
     /// A currently unknown extension type.
     Unknown(u16),
 }
@@ -113,6 +121,8 @@ impl ExtensionType {
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => true,
             ExtensionType::LastResort | ExtensionType::Unknown(_) => false,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::ApplicationDataDictionary => false,
         }
     }
 
@@ -128,6 +138,8 @@ impl ExtensionType {
             | ExtensionType::ExternalSenders => Some(false),
             ExtensionType::ApplicationId => Some(true),
             ExtensionType::Unknown(_) => None,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::ApplicationDataDictionary => Some(true),
         }
     }
 }
@@ -178,6 +190,8 @@ impl From<u16> for ExtensionType {
             3 => ExtensionType::RequiredCapabilities,
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
+            #[cfg(feature = "extensions-draft-08")]
+            6 => ExtensionType::ApplicationDataDictionary,
             10 => ExtensionType::LastResort,
             unknown => ExtensionType::Unknown(unknown),
         }
@@ -192,6 +206,8 @@ impl From<ExtensionType> for u16 {
             ExtensionType::RequiredCapabilities => 3,
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::ApplicationDataDictionary => 6,
             ExtensionType::LastResort => 10,
             ExtensionType::Unknown(unknown) => unknown,
         }
@@ -228,6 +244,10 @@ pub enum Extension {
 
     /// An [`ExternalSendersExtension`]
     ExternalSenders(ExternalSendersExtension),
+
+    /// An [`ApplicationDataDictionaryExtension`]
+    #[cfg(feature = "extensions-draft-08")]
+    ApplicationDataDictionary(ApplicationDataDictionaryExtension),
 
     /// A [`LastResortExtension`]
     LastResort(LastResortExtension),
@@ -511,6 +531,8 @@ impl Extension {
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
+            #[cfg(feature = "extensions-draft-08")]
+            Extension::ApplicationDataDictionary(_) => ExtensionType::ApplicationDataDictionary,
             Extension::LastResort(_) => ExtensionType::LastResort,
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
