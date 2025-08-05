@@ -1,5 +1,6 @@
 use openmls::{
     prelude::{tls_codec::*, CustomProposal, *},
+    schedule::{ExternalPsk, PreSharedKeyId, Psk},
     test_utils::*,
     *,
 };
@@ -69,6 +70,7 @@ fn generate_key_package(
 ///  - Charlie removes Bob
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
+///  - Bob re-added via external sender
 ///  - Test saving the group state
 #[openmls_test]
 fn book_operations() {
@@ -284,29 +286,31 @@ fn book_operations() {
 
     // ANCHOR: alice_exports_group_info
     let verifiable_group_info = alice_group
-        .export_group_info(provider, &alice_signature_keys, true)
+        .export_group_info(provider.crypto(), &alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");
     // ANCHOR_END: alice_exports_group_info
 
-    // ANCHOR: charlie_joins_external_commit
-    let (mut dave_group, _out, _group_info) = MlsGroup::join_by_external_commit(
-        provider,
-        &dave_signature_keys,
-        None, // No ratchtet tree extension
-        verifiable_group_info,
-        &mls_group_config,
-        None, // No special capabilities
-        None, // No special extensions
-        &[],
-        dave_credential,
-    )
-    .expect("Error joining from external commit");
+    let (mut dave_group, _bundle) = MlsGroup::external_commit_builder()
+        .with_config(mls_group_config.clone())
+        .build_group(provider, verifiable_group_info, dave_credential)
+        .unwrap()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &dave_signature_keys,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(provider)
+        .expect("Error joining from external commit");
+
     dave_group
         .merge_pending_commit(provider)
         .expect("Cannot merge commit");
-    // ANCHOR_END: charlie_joins_external_commit
 
     // Make sure that both groups have the same members
     assert!(alice_group.members().eq(bob_group.members()));
@@ -426,8 +430,12 @@ fn book_operations() {
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider, "", &[], 32).unwrap(),
-        bob_group.export_secret(provider, "", &[], 32).unwrap()
+        alice_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap(),
+        bob_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap()
     );
 
     // Make sure that both groups have the same public tree
@@ -526,8 +534,12 @@ fn book_operations() {
 
     // Check that both groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider, "", &[], 32).unwrap(),
-        bob_group.export_secret(provider, "", &[], 32).unwrap()
+        alice_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap(),
+        bob_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap()
     );
 
     // Make sure that both groups have the same public tree
@@ -693,12 +705,20 @@ fn book_operations() {
 
     // Check that all groups have the same state
     assert_eq!(
-        alice_group.export_secret(provider, "", &[], 32).unwrap(),
-        bob_group.export_secret(provider, "", &[], 32).unwrap()
+        alice_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap(),
+        bob_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap()
     );
     assert_eq!(
-        alice_group.export_secret(provider, "", &[], 32).unwrap(),
-        charlie_group.export_secret(provider, "", &[], 32).unwrap()
+        alice_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap(),
+        charlie_group
+            .export_secret(provider.crypto(), "", &[], 32)
+            .unwrap()
     );
 
     // Make sure that all groups have the same public tree
@@ -1331,7 +1351,7 @@ fn book_operations() {
     .expect("Could not create external Remove proposal");
     // ANCHOR_END: external_remove_proposal
 
-    // ANCHOR: decrypt_external_join_proposal
+    // ANCHOR: decrypt_external_proposal
     let alice_processed_message = alice_group
         .process_message(
             provider,
@@ -1356,34 +1376,62 @@ fn book_operations() {
         }
         _ => unreachable!(),
     }
-    // ANCHOR_END: decrypt_external_join_proposal
+    // ANCHOR_END: decrypt_external_proposal
 
-    // === Save the group state ===
+    // === Re-Add Bob with external Add proposal from external sender ===
 
     // Create a new KeyPackageBundle for Bob
     let bob_key_package = generate_key_package(
         ciphersuite,
-        bob_credential,
+        bob_credential.clone(),
         Extensions::default(),
         provider,
         &bob_signature_keys,
     );
 
-    // Add Bob to the group
-    let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(
+    // ANCHOR: external_add_proposal
+    let proposal = ExternalProposal::new_add::<Provider>(
+        bob_key_package.key_package().clone(),
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_signature_keys,
+        SenderExtensionIndex::new(0),
+    )
+    .expect("Could not create external Add proposal");
+    // ANCHOR_END: external_add_proposal
+
+    let alice_processed_message = alice_group
+        .process_message(
             provider,
-            &alice_signature_keys,
-            &[bob_key_package.key_package().clone()],
+            proposal
+                .into_protocol_message()
+                .expect("Unexpected message type"),
         )
-        .expect("Could not add Bob");
+        .expect("Could not process message.");
+
+    // Store proposal
+    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        alice_processed_message.into_content()
+    {
+        alice_group
+            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .unwrap();
+    } else {
+        unreachable!("Expected a QueuedProposal.");
+    }
+
+    let (_, welcome, _) = alice_group
+        .commit_to_pending_proposals(provider, &alice_signature_keys)
+        .expect("Could not commit");
+
+    // === Save the group state ===
 
     // Merge Commit
     alice_group
         .merge_pending_commit(provider)
         .expect("error merging pending commit");
 
-    let welcome: MlsMessageIn = welcome.into();
+    let welcome: MlsMessageIn = welcome.unwrap().into();
     let welcome = welcome
         .into_welcome()
         .expect("expected the message to be a welcome message");
@@ -1404,10 +1452,10 @@ fn book_operations() {
 
     assert_eq!(
         alice_group
-            .export_secret(provider, "before load", &[], 32)
+            .export_secret(provider.crypto(), "before load", &[], 32)
             .unwrap(),
         bob_group
-            .export_secret(provider, "before load", &[], 32)
+            .export_secret(provider.crypto(), "before load", &[], 32)
             .unwrap()
     );
 
@@ -1418,10 +1466,10 @@ fn book_operations() {
     // Make sure the state is still the same
     assert_eq!(
         alice_group
-            .export_secret(provider, "after load", &[], 32)
+            .export_secret(provider.crypto(), "after load", &[], 32)
             .unwrap(),
         bob_group
-            .export_secret(provider, "after load", &[], 32)
+            .export_secret(provider.crypto(), "after load", &[], 32)
             .unwrap()
     );
 }
@@ -1662,4 +1710,228 @@ fn commit_builder() {
     let (mls_message_out, welcome, group_info) = message_bundle.into_contents();
     // ANCHOR_END: alice_adds_bob_with_commit_builder
     _ = (mls_message_out, welcome, group_info)
+}
+
+#[openmls_test]
+fn new_signer() {
+    // Generate credentials with keys
+    let (alice_old_credential, alice_old_signature_keys) =
+        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    let config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .build();
+    let mut alice_group = MlsGroup::new(
+        provider,
+        &alice_old_signature_keys,
+        &config,
+        alice_old_credential.clone(),
+    )
+    .expect("An unexpected error occurred.");
+
+    let (alice_new_credential, alice_new_signature_keys) =
+        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    // === Alice rotates her signature key ===
+    // ANCHOR: alice_rotates_signature_key
+
+    let new_signer_bundle = NewSignerBundle {
+        signer: &alice_new_signature_keys,
+        credential_with_key: alice_new_credential,
+    };
+
+    let message_bundle = alice_group
+        .self_update_with_new_signer(
+            provider,
+            &alice_old_signature_keys,
+            new_signer_bundle,
+            LeafNodeParameters::default(),
+        )
+        .unwrap();
+
+    let (mls_message_out, welcome, group_info) = message_bundle.into_contents();
+    // ANCHOR_END: alice_rotates_signature_key
+    _ = (mls_message_out, welcome, group_info)
+}
+
+#[openmls_test]
+fn external_commit_builder() {
+    let (alice_credential_with_key, alice_signer) =
+        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
+
+    let (bob_credential_with_key, bob_signer) =
+        generate_credential("Bob".into(), ciphersuite.signature_algorithm(), provider);
+
+    let (charlie_credential_with_key, charlie_signer) = generate_credential(
+        "Charlie".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    // Alice creates a group.
+
+    // Make sure we support SelfRemoves
+    let capabilities = Capabilities::builder()
+        .proposals(vec![ProposalType::SelfRemove])
+        .build();
+
+    // Since SelfRemoves and PSK proposals need to be sent as public
+    // messages if we want to use them with an external commit, we need to
+    // set the wire format policy to PURE_PLAINTEXT_WIRE_FORMAT
+    const POLICY: WireFormatPolicy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(POLICY)
+        .with_capabilities(capabilities.clone())
+        .build(provider, &alice_signer, alice_credential_with_key)
+        .unwrap();
+
+    // Bob joins the group externally.
+
+    let verifiable_group_info = alice_group
+        .export_group_info(provider.crypto(), &alice_signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    let tree_option = alice_group.export_ratchet_tree();
+
+    // Test some basic builder functionality.
+    const PADDING_SIZE: usize = 256;
+
+    const AAD: &[u8] = b"some additional authenticated data";
+
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_capabilities(capabilities.clone())
+        .build();
+
+    let join_group_config = MlsGroupJoinConfig::builder()
+        .padding_size(PADDING_SIZE)
+        .wire_format_policy(POLICY)
+        .build();
+
+    // ANCHOR: external_commit_builder
+    let (mut bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
+        .with_ratchet_tree(tree_option.into())
+        .with_config(join_group_config.clone())
+        .with_aad(AAD.to_vec())
+        .build_group(
+            provider,
+            verifiable_group_info,
+            bob_credential_with_key.clone(),
+        )
+        .expect("error building group")
+        .leaf_node_parameters(leaf_node_parameters)
+        .load_psks(provider.storage())
+        .expect("error loading psks")
+        .build(provider.rand(), provider.crypto(), &bob_signer, |_| true)
+        .expect("error building external commit")
+        .finalize(provider)
+        .expect("error finalizing external commit");
+    // ANCHOR_END: external_commit_builder
+
+    // Check that the padding was set correctly.
+    assert_eq!(bob_group.configuration().padding_size(), PADDING_SIZE);
+
+    let plaintext = commit_message_bundle
+        .into_commit()
+        .into_protocol_message()
+        .unwrap();
+
+    alice_group.set_aad(AAD.to_vec());
+    let processed_message = alice_group.process_message(provider, plaintext).unwrap();
+
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a staged commit message.");
+    };
+    alice_group
+        .merge_staged_commit(provider, *staged_commit)
+        .unwrap();
+
+    // Alice issues a self-remove proposal.
+    let msg_out = alice_group
+        .leave_group_via_self_remove(provider, &alice_signer)
+        .unwrap();
+
+    let ProtocolMessage::PublicMessage(self_remove_proposal) =
+        msg_out.into_protocol_message().unwrap()
+    else {
+        panic!("Expected a public message for the self-remove proposal.");
+    };
+
+    // Bob processes the self-remove proposal.
+    let bob_processed_message = bob_group
+        .process_message(provider, *self_remove_proposal.clone())
+        .unwrap();
+
+    let ProcessedMessageContent::ProposalMessage(proposal) = bob_processed_message.into_content()
+    else {
+        panic!("Expected a proposal message.");
+    };
+
+    bob_group
+        .store_pending_proposal(provider.storage(), *proposal)
+        .unwrap();
+
+    let verifiable_group_info = bob_group
+        .export_group_info(provider.crypto(), &bob_signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    // Charlie joins the group externally and sends a PSK proposal as part of the commit.
+    let psk_id_bytes = vec![0, 1, 2, 3];
+    let psk_id = Psk::External(ExternalPsk::new(psk_id_bytes.clone()));
+    let psk = PreSharedKeyId::new(ciphersuite, provider.rand(), psk_id).unwrap();
+    let psk_value = vec![4, 5, 6, 7];
+    psk.store(provider, &psk_value).unwrap();
+
+    let (charlie_group, commit_message_bundle) = MlsGroup::external_commit_builder()
+        .with_proposals(vec![*self_remove_proposal])
+        .with_ratchet_tree(bob_group.export_ratchet_tree().into())
+        .build_group(
+            provider,
+            verifiable_group_info,
+            charlie_credential_with_key.clone(),
+        )
+        .unwrap()
+        .add_psk_proposal(PreSharedKeyProposal::new(psk))
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &charlie_signer, |_| {
+            true
+        })
+        .unwrap()
+        .finalize(provider)
+        .unwrap();
+
+    // Bob processes Charlie's Commit.
+    let plaintext = commit_message_bundle
+        .into_commit()
+        .into_protocol_message()
+        .unwrap();
+
+    let bob_processed_message = bob_group.process_message(provider, plaintext).unwrap();
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        bob_processed_message.into_content()
+    else {
+        panic!("Expected a staged commit message.");
+    };
+    bob_group
+        .merge_staged_commit(provider, *staged_commit)
+        .unwrap();
+
+    // Check that only Bob and Charlie are in the group.
+    let members = bob_group.members().collect::<Vec<_>>();
+    assert_eq!(members, charlie_group.members().collect::<Vec<_>>());
+    assert_eq!(members.len(), 2);
+    assert!(members
+        .iter()
+        .any(|m| m.credential == bob_credential_with_key.credential));
+    assert!(members
+        .iter()
+        .any(|m| m.credential == charlie_credential_with_key.credential));
 }

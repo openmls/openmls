@@ -1,29 +1,32 @@
 //! # Credentials
 //!
 //! A [`Credential`] contains identifying information about the client that
-//! created it. [`Credential`]s represent clients in MLS groups and are
-//! used to authenticate their messages. Each
-//! [`KeyPackage`](crate::key_packages::KeyPackage) as well as each client (leaf node)
-//! in the group (tree) contains a [`Credential`] and is authenticated.
-//! The [`Credential`] must the be checked by an authentication server and the
-//! application, which is out of scope of MLS.
+//! created it. [`Credential`]s represent clients in MLS groups and are used to
+//! authenticate their messages. Each
+//! [`KeyPackage`](crate::key_packages::KeyPackage), as well as each client
+//! (leaf node) in the group (tree), contains a [`Credential`] and is
+//! authenticated.
+//!
+//! The [`Credential`] must be checked by an authentication server and the
+//! application. This process is out of scope for MLS.
 //!
 //! Clients can create a [`Credential`].
 //!
-//! The MLS protocol spec allows the [`Credential`] that represents a client in a group to
-//! change over time. Concretely, members can issue an Update proposal or a Full
-//! Commit to update their [`LeafNode`](crate::treesync::LeafNode), as
-//! well as the [`Credential`] in it. The Update has to be authenticated by the
-//! signature public key corresponding to the old [`Credential`].
+//! The MLS protocol allows the [`Credential`] representing a client in a group
+//! to change over time. Concretely, members can issue an Update proposal or a
+//! Full Commit to update their [`LeafNode`],
+//! including the [`Credential`] in it. The Update must be authenticated using
+//! the signature public key corresponding to the old [`Credential`].
 //!
 //! When receiving a credential update from another member, applications must
-//! query the Authentication Service to ensure that the new credential is valid.
+//! query the Authentication Service to ensure the new credential is valid.
 //!
 //! There are multiple [`CredentialType`]s, although OpenMLS currently only
 //! supports the [`BasicCredential`].
 
 use std::io::{Read, Write};
 
+use openmls_traits::signatures::Signer;
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, DeserializeBytes, Error, Serialize as TlsSerializeTrait,
@@ -35,6 +38,9 @@ mod tests;
 
 use crate::{ciphersuite::SignaturePublicKey, group::Member, treesync::LeafNode};
 use errors::*;
+
+#[cfg(doc)]
+use crate::group::MlsGroup;
 
 // Public
 pub mod errors;
@@ -286,6 +292,17 @@ impl TryFrom<Credential> for BasicCredential {
             _ => Err(errors::BasicCredentialError::WrongCredentialType),
         }
     }
+}
+
+/// Bundle consisting of a [`Signer`] and a [`CredentialWithKey`] to be used to
+/// update the signature key in an [`MlsGroup`]. The public key and credential
+/// in `credential_with_key` MUST match the signature key exposed by `signer`.
+#[derive(Debug, Clone)]
+pub struct NewSignerBundle<'a, S: Signer> {
+    /// The signer to be used with the group after the update.
+    pub signer: &'a S,
+    /// The credential and public key corresponding to the `signer`.
+    pub credential_with_key: CredentialWithKey,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

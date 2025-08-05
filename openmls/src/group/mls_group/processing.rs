@@ -51,8 +51,7 @@ impl MlsGroup {
         }
 
         // Parse the message
-        let sender_ratchet_configuration =
-            self.configuration().sender_ratchet_configuration().clone();
+        let sender_ratchet_configuration = *self.configuration().sender_ratchet_configuration();
 
         // Checks the following semantic validation:
         //  - ValSem002
@@ -205,7 +204,7 @@ impl MlsGroup {
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
         let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage()).map_err(|e| {
-            log::error!("Error reading epoch keypairs: {:?}", e);
+            log::error!("Error reading epoch keypairs: {e:?}");
             StageCommitError::MissingDecryptionKey
         })?;
 
@@ -238,13 +237,13 @@ impl MlsGroup {
     ///  - ValSem111
     ///  - ValSem112
     ///  - ValSem113: All Proposals: The proposal type must be supported by all
-    ///               members of the group
+    ///    members of the group
     ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
     ///  - ValSem203: Path secrets must decrypt correctly
     ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
+    ///    private keys from the direct path
     ///  - ValSem205
     ///  - ValSem240
     ///  - ValSem241
@@ -314,11 +313,48 @@ impl MlsGroup {
             Sender::External(_) => {
                 let sender = content.sender().clone();
                 let data = content.authenticated_data().to_owned();
+                // https://validation.openmls.tech/#valn1501
                 match content.content() {
                     FramedContentBody::Application(_) => {
                         Err(ProcessMessageError::UnauthorizedExternalApplicationMessage)
                     }
+                    // TODO: https://validation.openmls.tech/#valn1502
+                    FramedContentBody::Proposal(Proposal::GroupContextExtensions(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content_by_ref(
+                                self.ciphersuite(),
+                                provider.crypto(),
+                                content,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.context().epoch(),
+                            sender,
+                            data,
+                            content,
+                            credential,
+                        ))
+                    }
+
                     FramedContentBody::Proposal(Proposal::Remove(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content_by_ref(
+                                self.ciphersuite(),
+                                provider.crypto(),
+                                content,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.context().epoch(),
+                            sender,
+                            data,
+                            content,
+                            credential,
+                        ))
+                    }
+                    FramedContentBody::Proposal(Proposal::Add(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
@@ -339,7 +375,9 @@ impl MlsGroup {
                     FramedContentBody::Proposal(_) => {
                         Err(ProcessMessageError::UnsupportedProposalType)
                     }
-                    FramedContentBody::Commit(_) => unimplemented!(),
+                    FramedContentBody::Commit(_) => {
+                        Err(ProcessMessageError::UnauthorizedExternalCommitMessage)
+                    }
                 }
             }
         }

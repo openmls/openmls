@@ -96,10 +96,11 @@ impl PublicGroup {
                 self.group_id().clone(),
                 *leaf_index,
             ))),
-            Sender::NewMemberCommit => Some(SenderContext::ExternalCommit((
-                self.group_id().clone(),
-                self.treesync().free_leaf_index(),
-            ))),
+            Sender::NewMemberCommit => Some(SenderContext::ExternalCommit {
+                group_id: self.group_id().clone(),
+                leftmost_blank_index: self.treesync().free_leaf_index(),
+                self_removes_in_store: self.proposal_store.self_removes(),
+            }),
             Sender::External(_) | Sender::NewMemberProposal => None,
         };
 
@@ -137,7 +138,7 @@ impl PublicGroup {
     ///  - ValSem202: Path must be the right length
     ///  - ValSem203: Path secrets must decrypt correctly
     ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
+    ///    private keys from the direct path
     ///  - ValSem205
     ///  - ValSem240
     ///  - ValSem241
@@ -200,7 +201,7 @@ impl PublicGroup {
     ///  - ValSem202: Path must be the right length
     ///  - ValSem203: Path secrets must decrypt correctly
     ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
+    ///    private keys from the direct path
     ///  - ValSem205
     ///  - ValSem240
     ///  - ValSem241
@@ -260,11 +261,48 @@ impl PublicGroup {
             Sender::External(_) => {
                 let sender = content.sender().clone();
                 let data = content.authenticated_data().to_owned();
+                // https://validation.openmls.tech/#valn1501
                 match content.content() {
                     FramedContentBody::Application(_) => {
                         Err(ProcessMessageError::UnauthorizedExternalApplicationMessage)
                     }
+                    // TODO: https://validation.openmls.tech/#valn1502
+                    FramedContentBody::Proposal(Proposal::GroupContextExtensions(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content_by_ref(
+                                self.ciphersuite(),
+                                crypto,
+                                content,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.group_context().epoch(),
+                            sender,
+                            data,
+                            content,
+                            credential,
+                        ))
+                    }
+
                     FramedContentBody::Proposal(Proposal::Remove(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content_by_ref(
+                                self.ciphersuite(),
+                                crypto,
+                                content,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.group_context().epoch(),
+                            sender,
+                            data,
+                            content,
+                            credential,
+                        ))
+                    }
+                    FramedContentBody::Proposal(Proposal::Add(_)) => {
                         let content = ProcessedMessageContent::ProposalMessage(Box::new(
                             QueuedProposal::from_authenticated_content_by_ref(
                                 self.ciphersuite(),
@@ -285,7 +323,9 @@ impl PublicGroup {
                     FramedContentBody::Proposal(_) => {
                         Err(ProcessMessageError::UnsupportedProposalType)
                     }
-                    FramedContentBody::Commit(_) => unimplemented!(),
+                    FramedContentBody::Commit(_) => {
+                        Err(ProcessMessageError::UnauthorizedExternalCommitMessage)
+                    }
                 }
             }
         }

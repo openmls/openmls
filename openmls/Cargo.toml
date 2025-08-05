@@ -1,6 +1,6 @@
 [package]
 name = "openmls"
-version = "0.6.1"
+version = "0.7.0"
 authors = ["OpenMLS Authors"]
 edition = "2021"
 description = "A Rust implementation of the Messaging Layer Security (MLS) protocol, as defined in RFC 9420."
@@ -12,18 +12,19 @@ keywords = ["MLS", "IETF", "RFC9420", "Encryption", "E2EE"]
 exclude = ["/test_vectors"]
 
 [dependencies]
-openmls_traits = { version = "0.3.0", path = "../traits" }
-openmls_rust_crypto = { version = "0.3.0", path = "../openmls_rust_crypto", optional = true }
-openmls_basic_credential = { version = "0.3.0", path = "../basic_credential", optional = true, features = [
-  "clonable",
-  "test-utils",
+openmls_traits = { workspace = true }
+openmls_rust_crypto = { workspace = true, optional = true }
+openmls_basic_credential = { workspace = true, optional = true, features = [
+    "clonable",
+    "test-utils",
 ] }
-openmls_memory_storage = { version = "0.3.0", path = "../memory_storage", features = [
-  "test-utils",
+openmls_memory_storage = { workspace = true, features = [
+    "test-utils",
 ], optional = true }
-openmls_sqlite_storage = { version = "0.1.0", path = "../sqlite_storage", optional = true }
-openmls_test = { version = "0.1.0", path = "../openmls_test", optional = true }
-openmls_libcrux_crypto = { version = "0.1.0", path = "../libcrux_crypto", optional = true }
+openmls_sqlite_storage = { workspace = true, optional = true }
+openmls_test = { workspace = true, optional = true }
+openmls_libcrux_crypto = { workspace = true, optional = true }
+
 serde = { version = "^1.0", features = ["derive"] }
 log = { version = "0.4", features = ["std"] }
 tls_codec = { workspace = true }
@@ -35,52 +36,62 @@ rand = { version = "0.8", optional = true }
 serde_json = { version = "1.0", optional = true }
 # Crypto providers required for KAT and testing - "test-utils" feature
 itertools = { version = "0.14", optional = true }
-wasm-bindgen-test = { version = "0.3.40", optional = true }
-getrandom = { version = "0.2.12", optional = true, features = ["js"] }
+wasm-bindgen-test = { version = "0.3.50", optional = true }
+getrandom = { version = "0.3.2", optional = true }
+getrandom_old = { package = "getrandom", version = "0.2.15", optional = true }
 fluvio-wasm-timer = { version = "0.2.5", optional = true }
 once_cell = { version = "1.19.0", optional = true }
 
 [features]
 crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
 test-utils = [
-  "dep:serde_json",
-  "dep:itertools",
-  "openmls_rust_crypto/test-utils",
-  "dep:rand",
-  "dep:wasm-bindgen-test",
-  "dep:openmls_basic_credential",
-  "dep:openmls_memory_storage",
-  "dep:openmls_test",
-  "dep:once_cell",
-  "backtrace",
+    "dep:serde_json",
+    "dep:itertools",
+    "openmls_rust_crypto/test-utils",
+    "dep:rand",
+    "dep:wasm-bindgen-test",
+    "dep:openmls_basic_credential",
+    "dep:openmls_memory_storage",
+    "dep:openmls_test",
+    "dep:once_cell",
+    "backtrace",
 ]
 backtrace = ["dep:backtrace"]
 libcrux-provider = [
-  "dep:openmls_libcrux_crypto",
-  "openmls_test?/libcrux-provider",
+    "dep:openmls_libcrux_crypto",
+    "openmls_test?/libcrux-provider",
 ]
 sqlite-provider = [
-  "dep:openmls_sqlite_storage",
-  "openmls_test?/sqlite-provider",
+    "dep:openmls_sqlite_storage",
+    "openmls_test?/sqlite-provider",
 ]
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 js = [
-  "dep:getrandom",
-  "dep:fluvio-wasm-timer",
-] # enable js randomness source for provider
+    "dep:getrandom_old",
+    "dep:fluvio-wasm-timer",
+
+    # enable randomness source
+    "getrandom_old/js",
+]
+
+libcrux-provider-js = [
+    "dep:getrandom",
+    # enable randomness source
+    "getrandom/wasm_js",
+
+]
+fork-resolution = []
 
 [dev-dependencies]
-criterion = { version = "^0.5", default-features = false } # need to disable default features for wasm
+criterion = { version = "^0.5", default-features = false }       # need to disable default features for wasm
 hex = { version = "0.4", features = ["serde"] }
 lazy_static = "1.4"
-openmls_traits = { version = "0.3.0", path = "../traits", features = [
-  "test-utils",
-] }
+openmls_traits = { workspace = true, features = ["test-utils"] }
 pretty_env_logger = "0.5"
 tempfile = "3"
-wasm-bindgen = "0.2"
-wasm-bindgen-test = "0.3"
+wasm-bindgen = "0.2.100"
+wasm-bindgen-test = "0.3.50"
 clap = { version = "4", features = ["derive"] }
 base64 = "0.22.1"
 flate2 = "1.0"
@@ -89,9 +100,9 @@ indicatif = "0.17.8"
 # Disable for wasm32 and Win32
 [target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows"))))'.dev-dependencies]
 openmls = { path = ".", features = [
-  "test-utils",
-  "sqlite-provider",
-  "libcrux-provider",
+    "test-utils",
+    "sqlite-provider",
+    "libcrux-provider",
 ] }
 
 [target.'cfg(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows")))'.dev-dependencies]

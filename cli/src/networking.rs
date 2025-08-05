@@ -8,8 +8,8 @@ use openmls::prelude::tls_codec::Serialize;
 
 pub fn post(url: &Url, msg: &impl Serialize) -> Result<Vec<u8>, String> {
     let serialized_msg = msg.tls_serialize_detached().unwrap();
-    log::debug!("Post {:?}", url);
-    log::trace!("Payload: {:?}", serialized_msg);
+    log::debug!("Post {url:?}");
+    log::trace!("Payload: {serialized_msg:?}");
     let client = Client::new();
     let response = client.post(url.to_string()).body(serialized_msg).send();
     if let Ok(r) = response {
@@ -35,11 +35,11 @@ pub fn get_with_body(url: &Url, body: &impl Serialize) -> Result<Vec<u8>, String
 }
 
 fn get_internal(url: &Url, msg: Option<&impl Serialize>) -> Result<Vec<u8>, String> {
-    log::debug!("Get {:?}", url);
+    log::debug!("Get {url:?}");
     let client = Client::new().get(url.to_string());
     let client = if let Some(msg) = msg {
         let serialized_msg = msg.tls_serialize_detached().unwrap();
-        log::trace!("Payload: {:?}", serialized_msg);
+        log::trace!("Payload: {serialized_msg:?}");
         client.body(serialized_msg)
     } else {
         client

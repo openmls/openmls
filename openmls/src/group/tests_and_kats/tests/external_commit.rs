@@ -46,28 +46,38 @@ fn test_external_commit() {
     // Bob wants to commit externally.
 
     let verifiable_group_info = alice_group
-        .export_group_info(provider, &alice_credential.signer, false)
+        .export_group_info(provider.crypto(), &alice_credential.signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
     let tree_option = alice_group.export_ratchet_tree();
 
-    let (mut bob_group, public_message_commit, _) = MlsGroup::join_by_external_commit(
-        provider,
-        &bob_credential.signer,
-        Some(tree_option.into()),
-        verifiable_group_info,
-        alice_group.configuration(),
-        None,
-        None,
-        &[],
-        bob_credential.credential_with_key.clone(),
-    )
-    .unwrap();
-    bob_group.merge_pending_commit(provider).unwrap();
+    let (mut bob_group, public_message_commit) = MlsGroup::external_commit_builder()
+        .with_config(alice_group.configuration().clone())
+        .with_ratchet_tree(tree_option.into())
+        .build_group(
+            provider,
+            verifiable_group_info,
+            bob_credential.credential_with_key.clone(),
+        )
+        .unwrap()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &bob_credential.signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(provider)
+        .unwrap();
 
     let public_message_commit = {
-        let serialized_message = public_message_commit.tls_serialize_detached().unwrap();
+        let serialized_message = public_message_commit
+            .into_commit()
+            .tls_serialize_detached()
+            .unwrap();
 
         MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
             .unwrap()
@@ -98,8 +108,8 @@ fn test_external_commit() {
     // Compare Alice's and Bob's private & public state
 
     assert_eq!(
-        alice_group.export_secret(provider, "label", b"context", 32),
-        bob_group.export_secret(provider, "label", b"context", 32)
+        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
+        bob_group.export_secret(provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),
@@ -111,29 +121,36 @@ fn test_external_commit() {
     // Charlie wants to commit externally.
 
     let verifiable_group_info = alice_group
-        .export_group_info(provider, &alice_credential.signer, false)
+        .export_group_info(provider.crypto(), &alice_credential.signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
     let tree_option = alice_group.export_ratchet_tree();
 
-    let (mut charlie_group, public_message_commit, _) = MlsGroup::join_by_external_commit(
-        provider,
-        &charlie_credential.signer,
-        Some(tree_option.into()),
-        verifiable_group_info,
-        alice_group.configuration(),
-        None,
-        None,
-        &[],
-        charlie_credential.credential_with_key.clone(),
-    )
-    .unwrap();
-    charlie_group.merge_pending_commit(provider).unwrap();
+    let (mut charlie_group, public_message_commit) = MlsGroup::external_commit_builder()
+        .with_config(alice_group.configuration().clone())
+        .with_ratchet_tree(tree_option.into())
+        .build_group(
+            provider,
+            verifiable_group_info,
+            charlie_credential.credential_with_key.clone(),
+        )
+        .unwrap()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &charlie_credential.signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(provider)
+        .unwrap();
 
     // Alice & Bob process Charlie's Commit
 
-    let charlie_commit = MlsMessageIn::from(public_message_commit)
+    let charlie_commit = MlsMessageIn::from(public_message_commit.into_commit())
         .into_plaintext()
         .unwrap();
 
@@ -164,12 +181,12 @@ fn test_external_commit() {
     // Compare Alice's, Bob's and Charlie's private & public state
 
     assert_eq!(
-        alice_group.export_secret(provider, "label", b"context", 32),
-        bob_group.export_secret(provider, "label", b"context", 32)
+        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
+        bob_group.export_secret(provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
-        alice_group.export_secret(provider, "label", b"context", 32),
-        charlie_group.export_secret(provider, "label", b"context", 32)
+        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
+        charlie_group.export_secret(provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),
@@ -185,29 +202,36 @@ fn test_external_commit() {
     // Alice wants to resync
 
     let verifiable_group_info = bob_group
-        .export_group_info(provider, &bob_credential.signer, false)
+        .export_group_info(provider.crypto(), &bob_credential.signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
     let tree_option = bob_group.export_ratchet_tree();
 
-    let (mut alice_group, public_message_commit, _) = MlsGroup::join_by_external_commit(
-        provider,
-        &alice_credential.signer,
-        Some(tree_option.into()),
-        verifiable_group_info,
-        bob_group.configuration(),
-        None,
-        None,
-        &[],
-        alice_credential.credential_with_key.clone(),
-    )
-    .unwrap();
-    alice_group.merge_pending_commit(provider).unwrap();
+    let (alice_group, public_message_commit) = MlsGroup::external_commit_builder()
+        .with_config(bob_group.configuration().clone())
+        .with_ratchet_tree(tree_option.into())
+        .build_group(
+            provider,
+            verifiable_group_info,
+            alice_credential.credential_with_key.clone(),
+        )
+        .unwrap()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &alice_credential.signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(provider)
+        .unwrap();
 
     // Bob & Charlie process Alice's Commit
 
-    let alice_commit = MlsMessageIn::from(public_message_commit)
+    let alice_commit = MlsMessageIn::from(public_message_commit.into_commit())
         .into_plaintext()
         .unwrap();
 
@@ -245,12 +269,12 @@ fn test_external_commit() {
     // Compare Alice's, Bob's and Charlie's private & public state
 
     assert_eq!(
-        alice_group.export_secret(provider, "label", b"context", 32),
-        bob_group.export_secret(provider, "label", b"context", 32)
+        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
+        bob_group.export_secret(provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
-        alice_group.export_secret(provider, "label", b"context", 32),
-        charlie_group.export_secret(provider, "label", b"context", 32)
+        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
+        charlie_group.export_secret(provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),

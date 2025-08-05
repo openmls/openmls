@@ -1,22 +1,34 @@
 [workspace]
 members = [
-  "openmls",
-  "traits",
-  "openmls_rust_crypto",
-  "libcrux_crypto",
-  "fuzz",
-  "cli",
-  "interop_client",
-  "memory_storage",
-  "sqlite_storage",
-  "delivery-service/ds",
-  "delivery-service/ds-lib",
-  "basic_credential",
-  "openmls-wasm",
-  "openmls_test",
+    "openmls",
+    "traits",
+    "openmls_rust_crypto",
+    "libcrux_crypto",
+    "fuzz",
+    "cli",
+    "interop_client",
+    "memory_storage",
+    "sqlite_storage",
+    "delivery-service/ds",
+    "delivery-service/ds-lib",
+    "basic_credential",
+    "openmls-wasm",
+    "openmls_test",
 ]
 resolver = "2"
 
 # Central dependency management for some crates
 [workspace.dependencies]
-tls_codec = { version = "0.4.1", features = ["derive", "serde", "mls"] }
+tls_codec = { version = "0.4.2", features = ["derive", "serde", "mls"] }
+
+openmls = { version = "0.7.0", path = "openmls" }
+
+openmls_traits = { version = "0.4.0", path = "traits" }
+openmls_test = { version = "0.2.0", path = "openmls_test" }
+openmls_basic_credential = { version = "0.4.0", path = "basic_credential" }
+
+openmls_rust_crypto = { version = "0.4.0", path = "openmls_rust_crypto" }
+openmls_libcrux_crypto = { version = "0.2.0", path = "libcrux_crypto" }
+
+openmls_memory_storage = { version = "0.4.0", path = "memory_storage" }
+openmls_sqlite_storage = { version = "0.1.0", path = "sqlite_storage" }

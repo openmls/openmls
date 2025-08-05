@@ -2,16 +2,16 @@ use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use tls_codec::Serialize;
 
 use crate::{
-    binary_tree::array_representation::TreeSize,
+    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
     group::{
-        public_group::errors::PublicGroupBuildError, GroupId, MlsGroupCreateConfig,
-        MlsGroupCreateConfigBuilder, NewGroupError, PublicGroup, WireFormatPolicy,
+        past_secrets::MessageSecretsStore, public_group::errors::PublicGroupBuildError, GroupId,
+        MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
+        PublicGroup, WireFormatPolicy,
     },
     key_packages::Lifetime,
-    prelude::LeafNodeIndex,
     schedule::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         InitSecret, JoinerSecret, KeySchedule, PreSharedKeyId,
@@ -21,8 +21,7 @@ use crate::{
     treesync::{errors::LeafNodeValidationError, node::leaf_node::Capabilities},
 };
 
-use super::{past_secrets::MessageSecretsStore, MlsGroup, MlsGroupState};
-
+/// Builder struct for an [`MlsGroup`].
 #[derive(Default, Debug)]
 pub struct MlsGroupBuilder {
     group_id: Option<GroupId>,
@@ -109,7 +108,7 @@ impl MlsGroupBuilder {
         let psk_secret = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)
             .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
             .map_err(|e| {
-                log::debug!("Unexpected PSK error: {:?}", e);
+                log::debug!("Unexpected PSK error: {e:?}");
                 LibraryError::custom("Unexpected PSK error")
             })?;
 

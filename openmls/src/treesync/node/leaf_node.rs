@@ -98,6 +98,10 @@ impl LeafNodeParameters {
             && self.capabilities.is_none()
             && self.extensions.is_none()
     }
+
+    pub(crate) fn set_credential_with_key(&mut self, credential_with_key: CredentialWithKey) {
+        self.credential_with_key = Some(credential_with_key);
+    }
 }
 
 /// Builder for [`LeafNodeParameters`].
@@ -164,7 +168,6 @@ impl LeafNodeParametersBuilder {
 ///     opaque signature<V>;
 /// } LeafNode;
 /// ```
-// TODO(#1242): Do not derive `TlsDeserialize`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct LeafNode {
     payload: LeafNodePayload,
@@ -395,7 +398,7 @@ impl LeafNode {
         &self.payload.signature_key
     }
 
-    /// Returns the `signature_key` as byte slice.
+    /// Returns the `credential`.
     pub fn credential(&self) -> &Credential {
         &self.payload.credential
     }
@@ -471,7 +474,7 @@ impl LeafNode {
     /// Perform all checks that can be done without further context:
     /// - the used extensions are not known to be invalid in leaf nodes
     /// - the types of the used extensions are covered by the capabilities
-    /// - the type of the credential is coveered by the capabilities
+    /// - the type of the credential is covered by the capabilities
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
         // Check that no extension is invalid when used in leaf nodes.
         let invalid_extension_types = self
@@ -480,10 +483,7 @@ impl LeafNode {
             .filter(|ext| ext.extension_type().is_valid_in_leaf_node() == Some(false))
             .collect::<Vec<_>>();
         if !invalid_extension_types.is_empty() {
-            log::error!(
-                "Invalid extension used in leaf node: {:?}",
-                invalid_extension_types
-            );
+            log::error!("Invalid extension used in leaf node: {invalid_extension_types:?}");
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
 
@@ -500,6 +500,7 @@ impl LeafNode {
         }
 
         // Check that the capabilities contain the leaf node's credential type.
+        // (https://validation.openmls.tech/#valn0113)
         if !self
             .capabilities()
             .contains_credential(self.credential().credential_type())
@@ -557,6 +558,7 @@ struct LeafNodePayload {
     extensions: Extensions,
 }
 
+/// The source of the `LeafNode`.
 #[derive(
     Debug,
     Clone,
@@ -571,9 +573,12 @@ struct LeafNodePayload {
 )]
 #[repr(u8)]
 pub enum LeafNodeSource {
+    /// The leaf node was added to the group as part of a key package.
     #[tls_codec(discriminant = 1)]
     KeyPackage(Lifetime),
+    /// The leaf node was added through an Update proposal.
     Update,
+    /// The leaf node was added via a Commit.
     Commit(ParentHash),
 }
 

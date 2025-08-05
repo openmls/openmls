@@ -54,3 +54,16 @@ Note that in this scenario it is up to the application to define a proper author
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:decrypt_external_join_proposal}}
 ```
+
+Outside parties can also make proposals to add other members as long as they are registered as part of the `ExternalSendersExtension` extension.
+Since those proposals are crafted by outsiders, they are always public messages.
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:external_add_proposal}}
+```
+
+It is then up to one of the group members to process the proposal and commit it.
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:decrypt_external_proposal}}
+```

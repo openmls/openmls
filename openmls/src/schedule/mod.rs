@@ -1,16 +1,14 @@
-//! # Key schedule
+//! # Key Schedule
 //!
-//! This module contains the types and implementations for key schedule operations.
-//! It exposes the [`EpochAuthenticator`] & [`ResumptionPskSecret`].
-
-// Internal documentation
-//
-// The key schedule is introduced in Section 9 of the
-// MLS specification. The key schedule evolves in epochs, where in each epoch
-// new key material is injected.
-//
-// The flow of the key schedule is as follows (from Section 9 of the MLS
-// specification):
+//! This module defines types and implementations for key schedule operations.
+//! It provides the [`EpochAuthenticator`] and [`ResumptionPskSecret`] types.
+//!
+//! ## Internal Documentation
+//!
+//! The key schedule is described in Section 9 of the MLS specification. It
+//! evolves in epochs, with new key material injected in each epoch.
+//!
+//! The key schedule flow (from Section 9 of the MLS specification) is as follows:
 //
 // ```text
 //                  init_secret_[n-1]
@@ -46,17 +44,15 @@
 //                   init_secret_[n]
 // ```
 //
-// Each of the secrets in the key schedule (with exception of the
-// welcome_secret) is represented by its own struct to ensure that the keys are
-// not confused with one-another and/or that the schedule is not derived
-// out-of-order.
+// Each secret in the key schedule (except welcome_secret) has its own struct to
+// prevent confusion or out-of-order derivation. This ensures clarity and safety
+// in the key schedule operations.
 //
-// ## The real key schedules
-// The key schedule as described in the spec isn't really one key schedule.
-// The `joiner_secret` is an intermediate value *and* an output value. This
-// must never be the case within a key schedule. The actual key schedule is
-// therefore only the second half starting with the `joiner_secret`, which
-// indeed is what happens when starting a group from a welcome message.
+// ## Key schedule structure
+// The spec's key schedule isn't a single linear process. The `joiner_secret`
+// serves as both an intermediate and output value, which violates key schedule
+// principles. The actual key schedule begins with the `joiner_secret`, as seen
+// when initializing a group from a welcome message.
 //
 // The `joiner_secret` is computed as
 //
@@ -79,11 +75,9 @@
 //                    joiner_secret
 // ```
 //
-// The remainder of the key schedule then starts with the `joiner_secret` and
-// `psk_secret`. Note that the following graph also adds the `GroupContext_[n]`
-// as input, which is omitted in the spec.
-// Further note that the derivation of the secrets from the `epoch_secret` is
-// simplified here.
+// The key schedule continues with `joiner_secret` and `psk_secret`. The graph
+// below includes `GroupContext_[n]` as input, which is omitted in the spec. The
+// derivation of secrets from `epoch_secret` is simplified for clarity.
 //
 // ```text
 //                    joiner_secret
@@ -264,7 +258,7 @@ impl From<Secret> for InitSecret {
 
 /// Creates a string from the given MLS `ProtocolVersion` for the computation of
 /// the `init_secret` when creating or processing a commit with an external init
-/// proposal. TODO: #628.
+/// proposal.
 fn hpke_info_from_version(version: ProtocolVersion) -> &'static str {
     match version {
         ProtocolVersion::Mls10 => "MLS 1.0 external init secret",
@@ -424,7 +418,7 @@ impl KeySchedule {
         joiner_secret: &JoinerSecret,
         psk: PskSecret,
     ) -> Result<Self, LibraryError> {
-        log::debug!("Initializing the key schedule with {:?} ...", ciphersuite);
+        log::debug!("Initializing the key schedule with {ciphersuite:?} ...");
         log_crypto!(
             trace,
             "  joiner_secret: {:x?}",
@@ -471,10 +465,7 @@ impl KeySchedule {
         crypto: &impl OpenMlsCrypto,
         serialized_group_context: &[u8],
     ) -> Result<(), KeyScheduleError> {
-        log::trace!(
-            "Adding context to key schedule. {:?}",
-            serialized_group_context
-        );
+        log::trace!("Adding context to key schedule. {serialized_group_context:?}");
         if self.state != State::Initial || self.intermediate_secret.is_none() {
             log::error!(
                 "Trying to add context to the key schedule while not in the initial state."
@@ -589,7 +580,7 @@ impl WelcomeSecret {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<AeadKey, CryptoError> {
-        log::trace!("WelcomeSecret.derive_aead_key with {}", ciphersuite);
+        log::trace!("WelcomeSecret.derive_aead_key with {ciphersuite}");
         let aead_secret = self.secret.kdf_expand_label(
             crypto,
             ciphersuite,
@@ -925,7 +916,7 @@ impl MembershipKey {
 // Get a ciphertext sample of `hash_length` from the ciphertext.
 fn ciphertext_sample(ciphersuite: Ciphersuite, ciphertext: &[u8]) -> &[u8] {
     let sample_length = ciphersuite.hash_length();
-    log::debug!("Getting ciphertext sample of length {:?}", sample_length);
+    log::debug!("Getting ciphertext sample of length {sample_length:?}");
     if ciphertext.len() <= sample_length {
         ciphertext
     } else {
@@ -964,10 +955,7 @@ impl SenderDataSecret {
         ciphertext: &[u8],
     ) -> Result<AeadKey, CryptoError> {
         let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
-        log::debug!(
-            "SenderDataSecret::derive_aead_key ciphertext sample: {:x?}",
-            ciphertext_sample
-        );
+        log::debug!("SenderDataSecret::derive_aead_key ciphertext sample: {ciphertext_sample:x?}");
         let secret = self.secret.kdf_expand_label(
             crypto,
             ciphersuite,
@@ -987,8 +975,7 @@ impl SenderDataSecret {
     ) -> Result<AeadNonce, CryptoError> {
         let ciphertext_sample = ciphertext_sample(ciphersuite, ciphertext);
         log::debug!(
-            "SenderDataSecret::derive_aead_nonce ciphertext sample: {:x?}",
-            ciphertext_sample
+            "SenderDataSecret::derive_aead_nonce ciphertext sample: {ciphertext_sample:x?}"
         );
         let nonce_secret = self.secret.kdf_expand_label(
             crypto,
@@ -1136,10 +1123,7 @@ impl EpochSecrets {
         ciphersuite: Ciphersuite,
         epoch_secret: EpochSecret,
     ) -> Result<Self, CryptoError> {
-        log::debug!(
-            "Computing EpochSecrets from epoch secret with {}",
-            ciphersuite
-        );
+        log::debug!("Computing EpochSecrets from epoch secret with {ciphersuite}");
         log_crypto!(
             trace,
             "  epoch_secret: {:x?}",

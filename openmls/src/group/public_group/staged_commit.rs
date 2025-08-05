@@ -4,7 +4,10 @@ use crate::{
     group::{
         mls_group::staged_commit::StagedCommitState, proposal_store::ProposalQueue, StagedCommit,
     },
-    messages::{proposals::ProposalOrRef, Commit},
+    messages::{
+        proposals::{ProposalOrRef, ProposalType},
+        Commit,
+    },
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -74,11 +77,18 @@ impl PublicGroup {
 
             // ValSem244: External Commit, There MUST NOT be any referenced proposals.
             // https://validation.openmls.tech/#valn0406
-            if commit
-                .proposals
-                .iter()
-                .any(|proposal| matches!(proposal, ProposalOrRef::Reference(_)))
-            {
+            // Only SelfRemove proposals are allowed
+            if commit.proposals.iter().any(|proposal| {
+                let ProposalOrRef::Reference(proposal_ref) = proposal else {
+                    return false;
+                };
+                // Proposal references are only allowed if they refer to a
+                // SelfRemove proposal in our store
+                !self.proposal_store.proposals().any(|p| {
+                    p.proposal_reference() == *proposal_ref
+                        && p.proposal().is_type(ProposalType::SelfRemove)
+                })
+            }) {
                 return Err(ExternalCommitValidationError::ReferencedProposal.into());
             }
 
@@ -174,14 +184,7 @@ impl PublicGroup {
         let sender_index = match sender {
             Sender::Member(leaf_index) => *leaf_index,
             Sender::NewMemberCommit => {
-                let inline_proposals = commit.proposals.iter().filter_map(|p| {
-                    if let ProposalOrRef::Proposal(inline_proposal) = p {
-                        Some(Some(inline_proposal))
-                    } else {
-                        None
-                    }
-                });
-                self.leftmost_free_index(inline_proposals)?
+                self.leftmost_free_index(proposal_queue.queued_proposals())?
             }
             _ => {
                 return Err(StageCommitError::SenderTypeExternal);
@@ -236,7 +239,7 @@ impl PublicGroup {
     ///  - ValSem202: Path must be the right length
     ///  - ValSem203: Path secrets must decrypt correctly
     ///  - ValSem204: Public keys from Path must be verified and match the
-    ///               private keys from the direct path
+    ///    private keys from the direct path
     ///  - ValSem205
     ///  - ValSem240
     ///  - ValSem241

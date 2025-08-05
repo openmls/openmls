@@ -9,7 +9,7 @@ For example, the link between the `BasicCredential`'s and its keys is not define
 A credential is always embedded in a leaf node, which is ultimately used to represent a client in a group and signed by the private key corresponding to the signature public key of the leaf node.
 Clients can decide to use the same credential in multiple leaf nodes (and thus multiple groups) or to use distinct credentials per group.
 
-The binding between a given credential and owning client's identity is, in turn, authenticated by the Authentication Service, an abstract authentication layer defined by the [MLS architecture document](https://github.com/mlswg/mls-architecture).
+The binding between a given credential and owning client's identity is, in turn, authenticated by the Authentication Service, an abstract authentication layer defined by the [MLS architecture document](https://www.rfc-editor.org/rfc/rfc9750.html).
 Note that the implementation of the Authentication Service and, thus, the details of how the binding is authenticated are not specified by MLS.
 
 ## Creating and using credentials
@@ -26,10 +26,10 @@ Thus, to create a fresh `Credential`, the following inputs are required:
 ```
 
 After creating the credential bundle, clients should create keys for it.
-OpenMLS provides a simple implementation of [`BasicCredential`](https://github.com/openmls/openmls/tree/main/basic-credential) for tests and to demonstrate how to use credentials.
+OpenMLS provides a simple implementation of [`BasicCredential`](https://github.com/openmls/openmls/tree/main/basic_credential) for tests and to demonstrate how to use credentials.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:create_credential_keys}}
 ```
 
-All functions and structs related to credentials can be found in the [`credentials`](https://docs.rs/crate/openmls/latest/credentials/index.html) module.
+All functions and structs related to credentials can be found in the [`credentials`](https://docs.rs/openmls/latest/openmls/credentials/index.html) module.

@@ -21,7 +21,6 @@
 //!                          ProcessedMessage
 //!
 //! ```
-// TODO #106/#151: Update the above diagram
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use proposal_store::QueuedProposal;
@@ -103,7 +102,7 @@ impl DecryptedMessage {
         //       Revisit when the transition is further along.
         let (message_secrets, _old_leaves) = group
             .message_secrets_and_leaves_mut(ciphertext.epoch())
-            .map_err(|_| MessageDecryptionError::AeadError)?;
+            .map_err(MessageDecryptionError::SecretTreeError)?;
         let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
         // Check if we are the sender
         if sender_data.leaf_index == group.own_leaf_index() {
@@ -207,7 +206,11 @@ impl DecryptedMessage {
 #[derive(Debug, Clone)]
 pub(crate) enum SenderContext {
     Member((GroupId, LeafNodeIndex)),
-    ExternalCommit((GroupId, LeafNodeIndex)),
+    ExternalCommit {
+        group_id: GroupId,
+        leftmost_blank_index: LeafNodeIndex,
+        self_removes_in_store: Vec<SelfRemoveInStore>,
+    },
 }
 
 /// Partially checked and potentially decrypted message (if it was originally encrypted).

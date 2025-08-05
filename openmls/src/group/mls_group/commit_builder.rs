@@ -1,6 +1,8 @@
 //! This module contains the commit builder types, which can be used to build regular (i.e.
 //! non-external) commits. See the documentation of [`CommitBuilder`] for more information.
 
+use std::{borrow::BorrowMut, marker::PhantomData};
+
 use openmls_traits::{
     crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, storage::StorageProvider as _,
 };
@@ -9,17 +11,19 @@ use tls_codec::Serialize as _;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{signable::Signable as _, Secret},
+    framing::{FramingParameters, WireFormat},
     group::{
-        create_commit::CommitType, diff::compute_path::PathComputationResult,
+        diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
         ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
+        WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
         group_info::{GroupInfo, GroupInfoTBS},
         Commit, Welcome,
     },
-    prelude::{LeafNodeParameters, LibraryError},
+    prelude::{CredentialWithKey, LeafNodeParameters, LibraryError, NewSignerBundle},
     schedule::{
         psk::{load_psks, PskSecret},
         JoinerSecret, KeySchedule, PreSharedKeyId,
@@ -28,6 +32,13 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+pub(crate) mod external_commits;
+
+pub use external_commits::{ExternalCommitBuilder, ExternalCommitBuilderError};
+
+#[cfg(doc)]
+use super::MlsGroupJoinConfig;
+
 use super::{
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
@@ -35,15 +46,38 @@ use super::{
     MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
 
+#[derive(Debug)]
+struct ExternalCommitInfo {
+    aad: Vec<u8>,
+    credential: CredentialWithKey,
+    wire_format_policy: WireFormatPolicy,
+}
+
 /// This stage is for populating the builder.
+#[derive(Debug)]
 pub struct Initial {
     own_proposals: Vec<Proposal>,
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
+    create_group_info: bool,
+    external_commit_info: Option<ExternalCommitInfo>,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
+}
+
+impl Default for Initial {
+    fn default() -> Self {
+        Initial {
+            consume_proposal_store: true,
+            force_self_update: false,
+            leaf_node_parameters: LeafNodeParameters::default(),
+            create_group_info: false,
+            own_proposals: vec![],
+            external_commit_info: None,
+        }
+    }
 }
 
 /// This stage is after the PSKs were loaded, ready for validation
@@ -51,6 +85,8 @@ pub struct LoadedPsks {
     own_proposals: Vec<Proposal>,
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
+    create_group_info: bool,
+    external_commit_info: Option<ExternalCommitInfo>,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
@@ -61,6 +97,8 @@ pub struct LoadedPsks {
 /// This stage is after we validated the data, ready for staging and exporting the messages
 pub struct Complete {
     result: CreateCommitResult,
+    // Only for external commits
+    original_wire_format_policy: Option<WireFormatPolicy>,
 }
 
 /// The [`CommitBuilder`] is used to easily and dynamically build commit messages.
@@ -101,61 +139,73 @@ pub struct Complete {
 ///
 /// [book]: https://book.openmls.tech/user_manual/add_members.html
 #[derive(Debug)]
-pub struct CommitBuilder<'a, T> {
+pub struct CommitBuilder<'a, T, G: BorrowMut<MlsGroup> = &'a mut MlsGroup> {
     /// A mutable reference to the MlsGroup. This means that we hold an exclusive lock on the group
     /// for the lifetime of this builder.
-    group: &'a mut MlsGroup,
+    group: G,
 
     /// The current stage
     stage: T,
+
+    pd: PhantomData<&'a ()>,
 }
 
-impl<'a, T> CommitBuilder<'a, T> {
-    fn replace_stage<NextStage>(self, next_stage: NextStage) -> (T, CommitBuilder<'a, NextStage>) {
+impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
+    pub(crate) fn replace_stage<NextStage>(
+        self,
+        next_stage: NextStage,
+    ) -> (T, CommitBuilder<'a, NextStage, G>) {
         self.map_stage(|prev_stage| (prev_stage, next_stage))
     }
 
-    fn into_stage<NextStage>(self, next_stage: NextStage) -> CommitBuilder<'a, NextStage> {
+    pub(crate) fn into_stage<NextStage>(
+        self,
+        next_stage: NextStage,
+    ) -> CommitBuilder<'a, NextStage, G> {
         self.replace_stage(next_stage).1
     }
 
-    fn take_stage(self) -> (T, CommitBuilder<'a, ()>) {
+    fn take_stage(self) -> (T, CommitBuilder<'a, (), G>) {
         self.replace_stage(())
     }
 
     fn map_stage<NextStage, Aux, F: FnOnce(T) -> (Aux, NextStage)>(
         self,
         f: F,
-    ) -> (Aux, CommitBuilder<'a, NextStage>) {
-        let Self { group, stage } = self;
+    ) -> (Aux, CommitBuilder<'a, NextStage, G>) {
+        let Self {
+            group,
+            stage,
+            pd: PhantomData,
+        } = self;
 
         let (aux, stage) = f(stage);
 
-        (aux, CommitBuilder { group, stage })
+        (
+            aux,
+            CommitBuilder {
+                group,
+                stage,
+                pd: PhantomData,
+            },
+        )
+    }
+
+    #[cfg(feature = "fork-resolution")]
+    pub(crate) fn stage(&self) -> &T {
+        &self.stage
     }
 }
 
 impl MlsGroup {
     /// Returns a builder for commits.
     pub fn commit_builder(&mut self) -> CommitBuilder<Initial> {
-        CommitBuilder::new(self)
+        CommitBuilder::<'_, Initial, &mut MlsGroup>::new(self)
     }
 }
 
-impl<'a> CommitBuilder<'a, Initial> {
-    /// returns a new [`CommitBuilder`] for the given [`MlsGroup`].
-    pub fn new(group: &'a mut MlsGroup) -> Self {
-        Self {
-            group,
-            stage: Initial {
-                consume_proposal_store: true,
-                force_self_update: false,
-                leaf_node_parameters: LeafNodeParameters::default(),
-                own_proposals: vec![],
-            },
-        }
-    }
-
+// Impls that only apply to non-external commits.
+impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// Sets whether or not the proposals in the proposal store of the group should be included in
     /// the commit. Defaults to `true`.
     pub fn consume_proposal_store(mut self, consume_proposal_store: bool) -> Self {
@@ -166,25 +216,6 @@ impl<'a> CommitBuilder<'a, Initial> {
     /// Sets whether or not the commit should force a self-update. Defaults to `false`.
     pub fn force_self_update(mut self, force_self_update: bool) -> Self {
         self.stage.force_self_update = force_self_update;
-        self
-    }
-
-    /// Adds a proposal to the proposals to be committed.
-    pub fn add_proposal(mut self, proposal: Proposal) -> Self {
-        self.stage.own_proposals.push(proposal);
-        self
-    }
-
-    /// Adds the proposals in the iterator to the proposals to be committed.
-    pub fn add_proposals(mut self, proposals: impl IntoIterator<Item = Proposal>) -> Self {
-        self.stage.own_proposals.extend(proposals);
-        self
-    }
-
-    /// Sets the leaf node parameters for the new leaf node in a self-update. Implies that a
-    /// self-update takes place.
-    pub fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
-        self.stage.leaf_node_parameters = leaf_node_parameters;
         self
     }
 
@@ -199,6 +230,8 @@ impl<'a> CommitBuilder<'a, Initial> {
         self
     }
 
+    /// Adds a Remove proposal for the provided [`LeafNodeIndex`]es to the list of proposals to be
+    /// committed.
     pub fn propose_removals(mut self, removed: impl IntoIterator<Item = LeafNodeIndex>) -> Self {
         self.stage.own_proposals.extend(
             removed
@@ -208,6 +241,8 @@ impl<'a> CommitBuilder<'a, Initial> {
         self
     }
 
+    /// Adds a GroupContextExtensions proposal for the provided [`Extensions`] to the list of
+    /// proposals to be committed.
     pub fn propose_group_context_extensions(mut self, extensions: Extensions) -> Self {
         self.stage
             .own_proposals
@@ -217,17 +252,61 @@ impl<'a> CommitBuilder<'a, Initial> {
         self
     }
 
+    /// Adds a proposal to the proposals to be committed. To add multiple
+    /// proposals, use [`Self::add_proposals`].
+    pub fn add_proposal(mut self, proposal: Proposal) -> Self {
+        self.stage.own_proposals.push(proposal);
+        self
+    }
+
+    /// Adds the proposals in the iterator to the proposals to be committed.
+    pub fn add_proposals(mut self, proposals: impl IntoIterator<Item = Proposal>) -> Self {
+        self.stage.own_proposals.extend(proposals);
+        self
+    }
+}
+
+// Impls that apply to regular and external commits.
+impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
+    /// returns a new [`CommitBuilder`] for the given [`MlsGroup`].
+    pub fn new(group: G) -> CommitBuilder<'a, Initial, G> {
+        let stage = Initial {
+            create_group_info: group.borrow().configuration().use_ratchet_tree_extension,
+            ..Default::default()
+        };
+        CommitBuilder {
+            group,
+            stage,
+            pd: PhantomData,
+        }
+    }
+
+    /// Sets whether or not a [`GroupInfo`] should be created when the commit is staged. Defaults to
+    /// the value of the [`MlsGroup`]s [`MlsGroupJoinConfig`].
+    pub fn create_group_info(mut self, create_group_info: bool) -> Self {
+        self.stage.create_group_info = create_group_info;
+        self
+    }
+
+    /// Sets the leaf node parameters for the new leaf node in a self-update. Implies that a
+    /// self-update takes place.
+    pub fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
+        self.stage.leaf_node_parameters = leaf_node_parameters;
+        self
+    }
+
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
     pub fn load_psks<Storage: StorageProvider>(
         self,
         storage: &'a Storage,
-    ) -> Result<CommitBuilder<'a, LoadedPsks>, CreateCommitError> {
+    ) -> Result<CommitBuilder<'a, LoadedPsks, G>, CreateCommitError> {
         let psk_ids: Vec<_> = self
             .stage
             .own_proposals
             .iter()
             .chain(
                 self.group
+                    .borrow()
                     .proposal_store()
                     .proposals()
                     .map(|queued_proposal| queued_proposal.proposal()),
@@ -239,7 +318,7 @@ impl<'a> CommitBuilder<'a, Initial> {
             .collect();
 
         // Load the PSKs and make the PskIds owned.
-        let psks = load_psks(storage, &self.group.resumption_psk_store, &psk_ids)?
+        let psks = load_psks(storage, &self.group.borrow().resumption_psk_store, &psk_ids)?
             .into_iter()
             .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
             .collect();
@@ -254,6 +333,8 @@ impl<'a> CommitBuilder<'a, Initial> {
                         force_self_update: stage.force_self_update,
                         leaf_node_parameters: stage.leaf_node_parameters,
                         consume_proposal_store: stage.consume_proposal_store,
+                        create_group_info: stage.create_group_info,
+                        external_commit_info: stage.external_commit_info,
                     },
                 )
             })
@@ -261,20 +342,54 @@ impl<'a> CommitBuilder<'a, Initial> {
     }
 }
 
-impl<'a> CommitBuilder<'a, LoadedPsks> {
+impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
-    pub fn build(
+    pub fn build<S: Signer>(
         self,
         rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
-        signer: &impl Signer,
+        signer: &S,
         f: impl FnMut(&QueuedProposal) -> bool,
-    ) -> Result<CommitBuilder<'a, Complete>, CreateCommitError> {
-        let ciphersuite = self.group.ciphersuite();
-        let sender = Sender::build_member(self.group.own_leaf_index());
-        let (cur_stage, builder) = self.take_stage();
+    ) -> Result<CommitBuilder<'a, Complete, G>, CreateCommitError> {
+        self.build_internal(rand, crypto, signer, None::<NewSignerBundle<'_, S>>, f)
+    }
+
+    /// Just like `build`, this function validates the inputs and builds the
+    /// commit. The last argument `f` is a function that lets the caller filter
+    /// the proposals that are considered for inclusion. This provides a way for
+    /// the application to enforce custom policies in the creation of commits.
+    ///
+    /// In contrast to `build`, this function can be used to create commits that
+    /// rotate the own leaf node's signature key.
+    pub fn build_with_new_signer<S: Signer>(
+        self,
+        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
+        old_signer: &impl Signer,
+        new_signer: NewSignerBundle<'_, S>,
+        f: impl FnMut(&QueuedProposal) -> bool,
+    ) -> Result<CommitBuilder<'a, Complete, G>, CreateCommitError> {
+        self.build_internal(rand, crypto, old_signer, Some(new_signer), f)
+    }
+
+    fn build_internal<S: Signer>(
+        self,
+        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
+        old_signer: &impl Signer,
+        new_signer: Option<NewSignerBundle<'_, S>>,
+        f: impl FnMut(&QueuedProposal) -> bool,
+    ) -> Result<CommitBuilder<'a, Complete, G>, CreateCommitError> {
+        let (mut cur_stage, builder) = self.take_stage();
+        let group = builder.group.borrow();
+        let ciphersuite = group.ciphersuite();
+        let own_leaf_index = group.own_leaf_index();
+        let (sender, is_external_commit) = match cur_stage.external_commit_info {
+            None => (Sender::build_member(own_leaf_index), false),
+            Some(_) => (Sender::NewMemberCommit, true),
+        };
         let psks = cur_stage.psks;
 
         // put the pending and uniform proposals into a uniform shape,
@@ -289,8 +404,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
 
         // prepare an iterator for the proposals in the group's proposal store, but only if the
         // flag is set.
-        let group_proposal_store_queue = builder
-            .group
+        let group_proposal_store_queue = group
             .pending_proposals()
             .filter(|_| cur_stage.consume_proposal_store)
             .cloned();
@@ -301,16 +415,14 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         let proposal_queue = group_proposal_store_queue.chain(own_proposals).filter(f);
 
         let (proposal_queue, contains_own_updates) =
-            ProposalQueue::filter_proposals_without_inline(
-                proposal_queue,
-                builder.group.own_leaf_index,
-            )
-            .map_err(|e| match e {
-                ProposalQueueError::LibraryError(e) => e.into(),
-                ProposalQueueError::ProposalNotFound => CreateCommitError::MissingProposal,
-                ProposalQueueError::UpdateFromExternalSender
-                | ProposalQueueError::SelfRemoveFromNonMember => {
-                    CreateCommitError::WrongProposalSenderType
+            ProposalQueue::filter_proposals(proposal_queue, group.own_leaf_index).map_err(|e| {
+                match e {
+                    ProposalQueueError::LibraryError(e) => e.into(),
+                    ProposalQueueError::ProposalNotFound => CreateCommitError::MissingProposal,
+                    ProposalQueueError::UpdateFromExternalSender
+                    | ProposalQueueError::SelfRemoveFromNonMember => {
+                        CreateCommitError::WrongProposalSenderType
+                    }
                 }
             })?;
 
@@ -318,66 +430,57 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
 
         // ValSem113: All Proposals: The proposal type must be supported by all
         // members of the group
-        builder
-            .group
+        group
             .public_group
             .validate_proposal_type_support(&proposal_queue)?;
         // ValSem101
         // ValSem102
         // ValSem103
         // ValSem104
-        builder
-            .group
+        group
             .public_group
             .validate_key_uniqueness(&proposal_queue, None)?;
         // ValSem105
-        builder
-            .group
-            .public_group
-            .validate_add_proposals(&proposal_queue)?;
+        group.public_group.validate_add_proposals(&proposal_queue)?;
         // ValSem106
         // ValSem109
-        builder
-            .group
-            .public_group
-            .validate_capabilities(&proposal_queue)?;
+        group.public_group.validate_capabilities(&proposal_queue)?;
         // ValSem107
         // ValSem108
-        builder
-            .group
+        group
             .public_group
             .validate_remove_proposals(&proposal_queue)?;
-        builder
-            .group
+        group
             .public_group
             .validate_pre_shared_key_proposals(&proposal_queue)?;
         // Validate update proposals for member commits
         // ValSem110
         // ValSem111
         // ValSem112
-        builder
-            .group
+        group
             .public_group
-            .validate_update_proposals(&proposal_queue, builder.group.own_leaf_index())?;
+            .validate_update_proposals(&proposal_queue, own_leaf_index)?;
 
         // ValSem208
         // ValSem209
-        builder
-            .group
+        group
             .public_group
             .validate_group_context_extensions_proposal(&proposal_queue)?;
 
-        let ciphersuite = builder.group.ciphersuite();
-        let sender = Sender::build_member(builder.group.own_leaf_index());
+        if is_external_commit {
+            group
+                .public_group
+                .validate_external_commit(&proposal_queue)?;
+        }
+
         let proposal_reference_list = proposal_queue.commit_list();
 
         // Make a copy of the public group to apply proposals safely
-        let mut diff = builder.group.public_group.empty_diff();
+        let mut diff = group.public_group.empty_diff();
 
         // Apply proposals to tree
-        let apply_proposals_values =
-            diff.apply_proposals(&proposal_queue, builder.group.own_leaf_index())?;
-        if apply_proposals_values.self_removed {
+        let apply_proposals_values = diff.apply_proposals(&proposal_queue, own_leaf_index)?;
+        if apply_proposals_values.self_removed && !is_external_commit {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
 
@@ -388,19 +491,48 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 || cur_stage.force_self_update
                 || !cur_stage.leaf_node_parameters.is_empty()
             {
+                let commit_type = match &cur_stage.external_commit_info {
+                    Some(ExternalCommitInfo { credential , ..}) => {
+                        CommitType::External(credential.clone())
+                    }
+                    None => CommitType::Member,
+                };
                 // Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
                 // tree hash.
-                diff.compute_path(
-                    rand,
-                    crypto,
-                    builder.group.own_leaf_index(),
-                    apply_proposals_values.exclusion_list(),
-                    &CommitType::Member,
-                    &cur_stage.leaf_node_parameters,
-                    signer,
-                    apply_proposals_values.extensions.clone()
-                )?
+                if let Some(new_signer) = new_signer {
+                    if let Some(credential_with_key) =
+                        cur_stage.leaf_node_parameters.credential_with_key()
+                    {
+                        if credential_with_key != &new_signer.credential_with_key {
+                            return Err(CreateCommitError::InvalidLeafNodeParameters);
+                        }
+                    }
+                    cur_stage.leaf_node_parameters.set_credential_with_key(
+                        new_signer.credential_with_key,
+                    );
+                    diff.compute_path(
+                        rand,
+                        crypto,
+                        own_leaf_index,
+                        apply_proposals_values.exclusion_list(),
+                        &commit_type,
+                        &cur_stage.leaf_node_parameters,
+                        new_signer.signer,
+                        apply_proposals_values.extensions.clone()
+                    )?
+                } else {
+                    diff.compute_path(
+                        rand,
+                        crypto,
+                        own_leaf_index,
+                        apply_proposals_values.exclusion_list(),
+                        &commit_type,
+                        &cur_stage.leaf_node_parameters,
+                        old_signer,
+                        apply_proposals_values.extensions.clone()
+                    )?
+                }
             } else {
                 // If path is not needed, update the group context and return
                 // empty path processing results
@@ -419,13 +551,20 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             path: path_computation_result.encrypted_path,
         };
 
+        let framing_parameters =
+            if let Some(ExternalCommitInfo { aad, .. }) = &cur_stage.external_commit_info {
+                FramingParameters::new(aad, WireFormat::PublicMessage)
+            } else {
+                group.framing_parameters()
+            };
+
         // Build AuthenticatedContent
         let mut authenticated_content = AuthenticatedContent::commit(
-            builder.group.framing_parameters(),
+            framing_parameters,
             sender,
             commit,
-            builder.group.public_group.group_context(),
-            signer,
+            group.public_group.group_context(),
+            old_signer,
         )?;
 
         // Update the confirmed transcript hash using the commit we just created.
@@ -440,7 +579,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             crypto,
             ciphersuite,
             path_computation_result.commit_secret,
-            builder.group.group_epoch_secrets().init_secret(),
+            group.group_epoch_secrets().init_secret(),
             &serialized_provisional_group_context,
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
@@ -457,13 +596,13 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             .map_err(LibraryError::missing_bound_check)?;
 
         let welcome_secret = key_schedule
-            .welcome(crypto, builder.group.ciphersuite())
+            .welcome(crypto, ciphersuite)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         key_schedule
             .add_context(crypto, &serialized_provisional_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let provisional_epoch_secrets = key_schedule
-            .epoch_secrets(crypto, builder.group.ciphersuite())
+            .epoch_secrets(crypto, ciphersuite)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         // Calculate the confirmation tag
@@ -471,7 +610,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             .confirmation_key()
             .tag(
                 crypto,
-                builder.group.ciphersuite(),
+                ciphersuite,
                 diff.group_context().confirmed_transcript_hash(),
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
@@ -484,10 +623,10 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         // If there are invitations, we need to build a welcome
         let needs_welcome = !apply_proposals_values.invitation_list.is_empty();
 
-        // We need a GroupInfo if we need to build a Welcome. If the ratchet tree extension
-        // should be used, always build a GroupInfo.
-        let needs_group_info =
-            needs_welcome || builder.group.configuration().use_ratchet_tree_extension;
+        // We need a GroupInfo if we need to build a Welcome, or if
+        // `create_group_info` is set to `true`. If not overridden, `create_group_info`
+        // is set to the `use_ratchet_tree` flag in the group configuration.
+        let needs_group_info = needs_welcome || cur_stage.create_group_info;
 
         let group_info = if !needs_group_info {
             None
@@ -502,8 +641,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
 
             // Create the ratchet tree extension if necessary
-            let extensions: Extensions = if builder.group.configuration().use_ratchet_tree_extension
-            {
+            let extensions: Extensions = if group.configuration().use_ratchet_tree_extension {
                 Extensions::from_vec(vec![
                     Extension::RatchetTree(RatchetTreeExtension::new(diff.export_ratchet_tree())),
                     external_pub_extension,
@@ -518,11 +656,11 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                     diff.group_context().clone(),
                     extensions,
                     confirmation_tag,
-                    builder.group.own_leaf_index(),
+                    own_leaf_index,
                 )
             };
             // Sign to-be-signed group info.
-            Some(group_info_tbs.sign(signer)?)
+            Some(group_info_tbs.sign(old_signer)?)
         };
 
         let welcome_option = if !needs_welcome {
@@ -530,7 +668,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
         } else {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret
-                .derive_welcome_key_nonce(crypto, builder.group.ciphersuite())
+                .derive_welcome_key_nonce(crypto, ciphersuite)
                 .map_err(LibraryError::unexpected_crypto_error)?;
             let encrypted_group_info = welcome_key
                 .aead_seal(
@@ -555,7 +693,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
                 &apply_proposals_values.presharedkeys,
                 &encrypted_group_info,
                 crypto,
-                builder.group.own_leaf_index(),
+                own_leaf_index,
             )?;
 
             // Create welcome message
@@ -567,7 +705,7 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             provisional_epoch_secrets.split_secrets(
                 serialized_provisional_group_context,
                 diff.tree_size(),
-                builder.group.own_leaf_index(),
+                own_leaf_index,
             );
 
         let staged_commit_state = MemberStagedCommitState::new(
@@ -585,20 +723,23 @@ impl<'a> CommitBuilder<'a, LoadedPsks> {
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
         );
 
-        let use_ratchet_tree_extension = builder.group.configuration().use_ratchet_tree_extension;
-
         Ok(builder.into_stage(Complete {
             result: CreateCommitResult {
                 commit: authenticated_content,
                 welcome_option,
                 staged_commit,
-                group_info: group_info.filter(|_| use_ratchet_tree_extension),
+                group_info: group_info.filter(|_| cur_stage.create_group_info),
             },
+            original_wire_format_policy: cur_stage
+                .external_commit_info
+                .as_ref()
+                .map(|info| info.wire_format_policy),
         }))
     }
 }
 
-impl CommitBuilder<'_, Complete> {
+// Impls that apply only to regular commits.
+impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     #[cfg(test)]
     pub(crate) fn commit_result(self) -> CreateCommitResult {
         self.stage.result
@@ -611,9 +752,11 @@ impl CommitBuilder<'_, Complete> {
     ) -> Result<CommitMessageBundle, CommitBuilderStageError<Provider::StorageError>> {
         let Self {
             group,
-            stage: Complete {
-                result: create_commit_result,
-            },
+            stage:
+                Complete {
+                    result: create_commit_result,
+                    original_wire_format_policy: _,
+                },
             ..
         } = self;
 

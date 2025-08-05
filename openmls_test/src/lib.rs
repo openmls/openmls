@@ -21,7 +21,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     for ciphersuite in rc_ciphersuites {
         let val = ciphersuite as u16;
-        let ciphersuite_name = format!("{:?}", ciphersuite);
+        let ciphersuite_name = format!("{ciphersuite:?}");
         let name = format_ident!("{}_rustcrypto_{}", fn_name, ciphersuite_name);
         let test_fun = quote! {
             #(#attrs)*
@@ -54,7 +54,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         let rc_ciphersuites = rc.crypto().supported_ciphersuites();
         for ciphersuite in rc_ciphersuites {
             let val = ciphersuite as u16;
-            let ciphersuite_name = format!("{:?}", ciphersuite);
+            let ciphersuite_name = format!("{ciphersuite:?}");
             let name = format_ident!("{}_sqlite_{}", fn_name, ciphersuite_name);
             let test_fun = quote! {
                 #(#attrs)*
@@ -90,7 +90,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         fn default() -> Self {
                             let connection = Connection::open_in_memory().unwrap();
                             let mut storage = SqliteStorageProvider::new(connection);
-                            storage.initialize().unwrap();
+                            storage.run_migrations().unwrap();
                             Self {
                                 crypto: RustCrypto::default(),
                                 storage,
@@ -135,10 +135,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     #[cfg(all(
         feature = "libcrux-provider",
-        not(any(
-            target_arch = "wasm32",
-            all(target_arch = "x86", target_os = "windows")
-        ))
+        not(all(target_arch = "x86", target_os = "windows"))
     ))]
     {
         let libcrux = openmls_libcrux_crypto::Provider::default();
@@ -146,7 +143,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
         for ciphersuite in libcrux_ciphersuites {
             let val = ciphersuite as u16;
-            let ciphersuite_name = format!("{:?}", ciphersuite);
+            let ciphersuite_name = format!("{ciphersuite:?}");
             let name = format_ident!("{}_libcrux_{}", fn_name, ciphersuite_name);
             let test_fun = quote! {
                 #(#attrs)*

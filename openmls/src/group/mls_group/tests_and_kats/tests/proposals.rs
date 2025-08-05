@@ -140,11 +140,7 @@ fn proposal_queue_functions(
     );
 
     let (proposal_queue, own_update) = ProposalQueue::filter_proposals(
-        ciphersuite,
-        provider.crypto(),
-        Sender::build_member(LeafNodeIndex::new(1)),
-        &proposal_store,
-        &[],
+        proposal_store.proposals().map(Clone::clone),
         LeafNodeIndex::new(0),
     )
     .expect("Could not create ProposalQueue.");
@@ -451,8 +447,9 @@ fn group_context_extension_proposal(
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
     // Basic group setup.
-    let (mut alice_group, alice_signer, mut bob_group, bob_signer, _bob_credential) =
-        setup_alice_bob_group(ciphersuite, provider);
+    let (mut alice_group, alice_signer, mut bob_group, bob_signer, _alice_credential, _bob_credential) =
+        // TODO: don't let alice and bob share the provider
+        setup_alice_bob_group(ciphersuite, provider, provider);
 
     // Alice adds a required capability.
     let required_application_id =

@@ -37,7 +37,8 @@ use super::{
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     LeafNode, TreeSync, TreeSyncParentHashError,
 };
-use crate::group::{create_commit::CommitType, GroupId};
+use crate::group::diff::compute_path::CommitType;
+use crate::group::GroupId;
 use crate::{
     binary_tree::{
         array_representation::{
@@ -148,7 +149,7 @@ impl TreeSyncDiff<'_> {
 
     /// Trims the tree by shrinking it until the last full leaf is in the
     /// right part of the tree.
-    fn trim_tree(&mut self) {
+    pub(crate) fn trim_tree(&mut self) {
         // Nothing to trim if there's only one leaf left.
         if self.leaf_count() == MIN_TREE_SIZE {
             return;
@@ -261,7 +262,6 @@ impl TreeSyncDiff<'_> {
         // This also erases any cached tree hash in the direct path.
         self.diff
             .set_direct_path_to_node(leaf_index, &TreeSyncParentNode::blank());
-        self.trim_tree();
     }
 
     /// Derive a new direct path for the leaf with the given index.
@@ -515,7 +515,6 @@ impl TreeSyncDiff<'_> {
                         for leaf_index in parent.unmerged_leaves() {
                             if !excluded_indices.contains(&leaf_index) {
                                 let leaf = self.diff.leaf(*leaf_index);
-                                // TODO #800: unmerged leaves should be checked
                                 if let Some(leaf_node) = leaf.node() {
                                     resolution.push((
                                         TreeNodeIndex::Leaf(*leaf_index),
