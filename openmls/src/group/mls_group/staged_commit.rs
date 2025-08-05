@@ -1,6 +1,7 @@
 use core::fmt::Debug;
 use std::mem;
 
+#[cfg(feature = "extensions-draft-08")]
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::storage::StorageProvider as _;
 use serde::{Deserialize, Serialize};
@@ -18,8 +19,6 @@ use super::{
 #[cfg(feature = "extensions-draft-08")]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 
-#[cfg(feature = "extensions-draft-08")]
-use crate::storage::StorageProvider;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
@@ -324,6 +323,7 @@ impl MlsGroup {
         diff.update_interim_transcript_hash(ciphersuite, provider.crypto(), own_confirmation_tag)?;
 
         let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
+        #[cfg(feature = "extensions-draft-08")]
         let application_export_tree = ApplicationExportTree::new(application_exporter);
         let staged_commit_state =
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(

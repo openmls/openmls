@@ -8,6 +8,8 @@ use openmls_traits::{
 };
 use tls_codec::Serialize as _;
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{signable::Signable as _, Secret},
@@ -15,8 +17,8 @@ use crate::{
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
-        PreMergeSafeExportSecretError, ProposalQueue, ProposalQueueError, QueuedProposal,
-        RatchetTreeExtension, StagedCommit, WireFormatPolicy,
+        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
+        WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
@@ -25,7 +27,6 @@ use crate::{
     },
     prelude::{CredentialWithKey, LeafNodeParameters, LibraryError, NewSignerBundle},
     schedule::{
-        application_export_tree::ApplicationExportTree,
         psk::{load_psks, PskSecret},
         EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId,
     },
@@ -713,6 +714,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 own_leaf_index,
             );
 
+        #[cfg(feature = "extensions-draft-08")]
         let application_export_tree = ApplicationExportTree::new(application_exporter);
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
