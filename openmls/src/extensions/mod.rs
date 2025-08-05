@@ -469,6 +469,20 @@ impl Extension {
             )),
         }
     }
+    #[cfg(feature = "extensions-draft-08")]
+    /// Get a reference to this extension as [`ApplicationDataDictionaryExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
+    /// [`Extension`] that's not an [`ApplicationDataDictionaryExtension`].
+    pub fn as_application_data_dictionary_extension(
+        &self,
+    ) -> Result<&ApplicationDataDictionaryExtension, ExtensionError> {
+        match self {
+            Self::ApplicationDataDictionary(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
+                "This is not an ApplicationDataDictionaryExtension".into(),
+            )),
+        }
+    }
 
     /// Get a reference to this extension as [`RatchetTreeExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on
