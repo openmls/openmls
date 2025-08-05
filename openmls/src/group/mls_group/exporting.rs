@@ -2,7 +2,7 @@ use errors::{ExportGroupInfoError, ExportSecretError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::group::{PreMergeSafeExportSecretError, SafeExportSecretError};
+use crate::group::{PendingSafeExportSecretError, SafeExportSecretError};
 use crate::{
     ciphersuite::HpkePublicKey,
     schedule::{EpochAuthenticator, ResumptionPskSecret},
@@ -77,20 +77,18 @@ impl MlsGroup {
         crypto: &impl OpenMlsCrypto,
         storage: &Provider,
         component_id: u16,
-    ) -> Result<Vec<u8>, PreMergeSafeExportSecretError<Provider::Error>> {
-        use openmls_traits::storage::CURRENT_VERSION;
-
+    ) -> Result<Vec<u8>, PendingSafeExportSecretError<Provider::Error>> {
         let group_id = self.group_id().clone();
         let MlsGroupState::PendingCommit(ref mut group_state) = self.group_state else {
-            return Err(PreMergeSafeExportSecretError::NoPendingCommit);
+            return Err(PendingSafeExportSecretError::NoPendingCommit);
         };
         let PendingCommitState::Member(ref mut staged_commit) = **group_state else {
-            return Err(PreMergeSafeExportSecretError::NotGroupMember);
+            return Err(PendingSafeExportSecretError::NotGroupMember);
         };
-        let secret = staged_commit.safe_export_secret::<<Provider as openmls_traits::storage::StorageProvider<CURRENT_VERSION>>::Error>(crypto, component_id)?;
+        let secret = staged_commit.safe_export_secret(crypto, component_id)?;
         storage
             .write_group_state(&group_id, &self.group_state)
-            .map_err(PreMergeSafeExportSecretError::Storage)?;
+            .map_err(PendingSafeExportSecretError::Storage)?;
         Ok(secret.as_slice().to_vec())
     }
 

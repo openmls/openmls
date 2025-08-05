@@ -612,17 +612,17 @@ impl StagedCommit {
     }
 
     #[cfg(feature = "extensions-draft-08")]
-    pub(crate) fn safe_export_secret<E>(
+    pub(crate) fn safe_export_secret(
         &mut self,
         crypto: &impl OpenMlsCrypto,
         component_id: u16,
-    ) -> Result<Vec<u8>, PreMergeSafeExportSecretError<E>> {
+    ) -> Result<Vec<u8>, StagedSafeExportSecretError> {
         let ciphersuite = self.group_context().ciphersuite();
         let StagedCommitState::GroupMember(ref mut staged_commit) = self.state else {
-            return Err(PreMergeSafeExportSecretError::NotGroupMember);
+            return Err(StagedSafeExportSecretError::NotGroupMember);
         };
         let Some(application_export_tree) = staged_commit.application_export_tree.as_mut() else {
-            return Err(PreMergeSafeExportSecretError::Unsupported);
+            return Err(StagedSafeExportSecretError::Unsupported);
         };
         let secret =
             application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
