@@ -15,8 +15,8 @@ use crate::{
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
-        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
-        WireFormatPolicy,
+        PreMergeSafeExportSecretError, ProposalQueue, ProposalQueueError, QueuedProposal,
+        RatchetTreeExtension, StagedCommit, WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
@@ -25,6 +25,7 @@ use crate::{
     },
     prelude::{CredentialWithKey, LeafNodeParameters, LibraryError, NewSignerBundle},
     schedule::{
+        application_export_tree::ApplicationExportTree,
         psk::{load_psks, PskSecret},
         EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId,
     },
@@ -712,6 +713,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 own_leaf_index,
             );
 
+        let application_export_tree = ApplicationExportTree::new(application_exporter);
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
             provisional_message_secrets,
@@ -722,7 +724,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             None,
             update_path_leaf_node,
             #[cfg(feature = "extensions-draft-08")]
-            application_exporter,
+            application_export_tree,
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,

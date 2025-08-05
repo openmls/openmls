@@ -268,7 +268,7 @@ fn export_secret() {
 
 #[cfg(feature = "extensions-draft-08")]
 #[openmls_test]
-fn application_export_secret() {
+fn safe_export_secret() {
     use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
     let alice_party = CorePartyState::<Provider>::new("alice");
@@ -311,19 +311,21 @@ fn application_export_secret() {
             LeafNodeParameters::default(),
         )
         .expect("Could not create self update");
+    // Safely export from the pending commit
+    let alice_application_secret = alice_group_state
+        .group
+        .safe_export_secret_from_pending(
+            alice_group_state.party.core_state.provider.crypto(),
+            alice_group_state.party.core_state.provider.storage(),
+            0x8000,
+        )
+        .expect("Could not export secret");
+
     alice_group_state
         .group
         .merge_pending_commit(&alice_group_state.party.core_state.provider)
         .unwrap();
     let component_id = 0x8000;
-    let alice_application_secret = alice_group_state
-        .group
-        .safe_export_secret(
-            alice_group_state.party.core_state.provider.crypto(),
-            alice_group_state.party.core_state.provider.storage(),
-            component_id,
-        )
-        .unwrap();
 
     // Bob processes the update
     let processed_message = bob_group_state

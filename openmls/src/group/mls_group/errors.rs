@@ -329,6 +329,27 @@ pub enum SafeExportSecretError<StorageError> {
 }
 
 /// Export secret error
+#[cfg(feature = "extensions-draft-08")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum PreMergeSafeExportSecretError<StorageError> {
+    /// See [`ApplicationExportTreeError`] for more details.
+    #[error(transparent)]
+    ApplicationExportTree(#[from] ApplicationExportTreeError),
+    /// Group doesn't support application exports.
+    #[error("Group doesn't support application exports.")]
+    Unsupported,
+    /// Only group members can export secrets.
+    #[error("Only group members can export secrets.")]
+    NotGroupMember,
+    /// No pending commit.
+    #[error("No pending commit.")]
+    NoPendingCommit,
+    /// Storage error
+    #[error("Error accessing storage: {0}")]
+    Storage(StorageError),
+}
+
+/// Export secret error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ExportSecretError {
     /// See [`LibraryError`] for more details.

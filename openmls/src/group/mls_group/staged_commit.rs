@@ -1,7 +1,8 @@
 use core::fmt::Debug;
 use std::mem;
 
-use openmls_traits::storage::StorageProvider;
+use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::storage::StorageProvider as _;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as _;
 
@@ -15,8 +16,10 @@ use super::{
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
 #[cfg(feature = "extensions-draft-08")]
-use crate::schedule::ApplicationExportSecret;
+use crate::schedule::application_export_tree::ApplicationExportTree;
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::storage::StorageProvider;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
@@ -321,6 +324,7 @@ impl MlsGroup {
         diff.update_interim_transcript_hash(ciphersuite, provider.crypto(), own_confirmation_tag)?;
 
         let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
+        let application_export_tree = ApplicationExportTree::new(application_exporter);
         let staged_commit_state =
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
                 provisional_group_secrets,
@@ -330,7 +334,7 @@ impl MlsGroup {
                 new_leaf_keypair_option,
                 update_path_leaf_node,
                 #[cfg(feature = "extensions-draft-08")]
-                application_exporter,
+                application_export_tree,
             )));
         let staged_commit = StagedCommit::new(proposal_queue, staged_commit_state);
 
@@ -381,21 +385,22 @@ impl MlsGroup {
                 // Replace the previous exporter tree with the new one.
                 #[cfg(feature = "extensions-draft-08")]
                 {
-                    use crate::schedule::application_export_tree::ApplicationExportTree;
-
                     // The application exporter is only None if the group was
                     // stored using an older version of OpenMLS that did not
                     // support the application exporter.
-                    if let Some(application_exporter) = state.application_exporter {
-                        let exporter_tree = ApplicationExportTree::new(application_exporter);
-
+                    if let Some(application_export_tree) = state.application_export_tree {
                         // Overwrite the existing exporter tree in the storage.
+
+                        use openmls_traits::storage::StorageProvider as _;
                         provider
                             .storage()
-                            .write_application_export_tree(self.group_id(), &exporter_tree)
+                            .write_application_export_tree(
+                                self.group_id(),
+                                &application_export_tree,
+                            )
                             .map_err(MergeCommitError::StorageError)?;
 
-                        self.application_export_tree = Some(exporter_tree);
+                        self.application_export_tree = Some(application_export_tree);
                     }
                 }
 
@@ -605,6 +610,24 @@ impl StagedCommit {
             None
         }
     }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn safe_export_secret<E>(
+        &mut self,
+        crypto: &impl OpenMlsCrypto,
+        component_id: u16,
+    ) -> Result<Vec<u8>, PreMergeSafeExportSecretError<E>> {
+        let ciphersuite = self.group_context().ciphersuite();
+        let StagedCommitState::GroupMember(ref mut staged_commit) = self.state else {
+            return Err(PreMergeSafeExportSecretError::NotGroupMember);
+        };
+        let Some(application_export_tree) = staged_commit.application_export_tree.as_mut() else {
+            return Err(PreMergeSafeExportSecretError::Unsupported);
+        };
+        let secret =
+            application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
+        Ok(secret.as_slice().to_vec())
+    }
 }
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
@@ -620,7 +643,7 @@ pub(crate) struct MemberStagedCommitState {
     #[cfg(feature = "extensions-draft-08")]
     // This is `None` only if the group was stored using an older version of
     // OpenMLS that did not support the application exporter.
-    application_exporter: Option<ApplicationExportSecret>,
+    application_export_tree: Option<ApplicationExportTree>,
 }
 
 impl MemberStagedCommitState {
@@ -631,7 +654,7 @@ impl MemberStagedCommitState {
         new_keypairs: Vec<EncryptionKeyPair>,
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
         update_path_leaf_node: Option<LeafNode>,
-        #[cfg(feature = "extensions-draft-08")] application_exporter: ApplicationExportSecret,
+        #[cfg(feature = "extensions-draft-08")] application_export_tree: ApplicationExportTree,
     ) -> Self {
         Self {
             group_epoch_secrets,
@@ -641,7 +664,7 @@ impl MemberStagedCommitState {
             new_leaf_keypair_option,
             update_path_leaf_node,
             #[cfg(feature = "extensions-draft-08")]
-            application_exporter: Some(application_exporter),
+            application_export_tree: Some(application_export_tree),
         }
     }
 
