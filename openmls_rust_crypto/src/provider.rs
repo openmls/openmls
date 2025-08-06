@@ -59,7 +59,7 @@ fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
         HpkeKemType::XWingKemDraft6 => {
             unimplemented!("XWingKemDraft6 is not supported by the RustCrypto provider.")
         }
-        HpkeKemType::XWingMlKem1024P384Kem => hpke_types::KemAlgorithm::XwingMlKem1024P384,
+        HpkeKemType::MlKem1024 => hpke_types::KemAlgorithm::MlKem1024,
     }
 }
 
@@ -88,7 +88,7 @@ impl OpenMlsCrypto for RustCrypto {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
             | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
             | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
-            | Ciphersuite::MLS_256_XWING_AES256GCM_SHA512_P384 => Ok(()),
+            | Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384 => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }
     }
@@ -98,7 +98,7 @@ impl OpenMlsCrypto for RustCrypto {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
-            Ciphersuite::MLS_256_XWING_AES256GCM_SHA512_P384,
+            Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384,
         ]
     }
 
