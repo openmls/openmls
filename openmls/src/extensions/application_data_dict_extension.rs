@@ -4,7 +4,7 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBy
 // TODO: use newtype or type alias defined elsewhere?
 pub type ComponentId = u32;
 
-/// TODO: doc comment
+/// Component data in the `AppDataDictionary`.
 #[derive(
     PartialEq,
     Eq,
@@ -36,7 +36,7 @@ impl ComponentData {
     }
 }
 
-/// TODO: doc comment
+/// App data dictionary in the `AppDataDictionaryExtension`.
 #[derive(
     PartialEq,
     Eq,
