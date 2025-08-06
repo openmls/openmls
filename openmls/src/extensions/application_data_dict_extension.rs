@@ -49,17 +49,17 @@ impl ComponentData {
     TlsDeserializeBytes,
     TlsSize,
 )]
-pub struct ApplicationDataDictionary {
+pub struct AppDataDictionary {
     component_data: Vec<ComponentData>,
 }
 
-impl ApplicationDataDictionary {
+impl AppDataDictionary {
     pub fn component_data(&self) -> &[ComponentData] {
         &self.component_data
     }
 }
 
-/// Application Data Dictionary Extension.
+/// App Data Dictionary Extension.
 #[derive(
     PartialEq,
     Eq,
@@ -72,13 +72,13 @@ impl ApplicationDataDictionary {
     TlsDeserializeBytes,
     TlsSize,
 )]
-pub struct ApplicationDataDictionaryExtension {
-    dictionary: ApplicationDataDictionary,
+pub struct AppDataDictionaryExtension {
+    dictionary: AppDataDictionary,
 }
 
-impl ApplicationDataDictionaryExtension {
-    /// Return the [`ApplicationDataDictionary`] from this extension.
-    pub fn dictionary(&self) -> &ApplicationDataDictionary {
+impl AppDataDictionaryExtension {
+    /// Return the [`AppDataDictionary`] from this extension.
+    pub fn dictionary(&self) -> &AppDataDictionary {
         &self.dictionary
     }
 }

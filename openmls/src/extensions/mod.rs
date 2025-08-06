@@ -46,7 +46,7 @@ pub mod errors;
 // Public re-exports
 #[cfg(feature = "extensions-draft-08")]
 pub use application_data_dict_extension::{
-    ApplicationDataDictionary, ApplicationDataDictionaryExtension, ComponentData,
+    AppDataDictionary, AppDataDictionaryExtension, ComponentData,
 };
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
@@ -106,8 +106,8 @@ pub enum ExtensionType {
     LastResort,
 
     #[cfg(feature = "extensions-draft-08")]
-    /// ApplicationDataDictionary extension
-    ApplicationDataDictionary,
+    /// AppDataDictionary extension
+    AppDataDictionary,
 
     /// A currently unknown extension type.
     Unknown(u16),
@@ -124,7 +124,7 @@ impl ExtensionType {
             | ExtensionType::ExternalSenders => true,
             ExtensionType::LastResort | ExtensionType::Unknown(_) => false,
             #[cfg(feature = "extensions-draft-08")]
-            ExtensionType::ApplicationDataDictionary => false,
+            ExtensionType::AppDataDictionary => false,
         }
     }
 
@@ -141,7 +141,7 @@ impl ExtensionType {
             ExtensionType::ApplicationId => Some(true),
             ExtensionType::Unknown(_) => None,
             #[cfg(feature = "extensions-draft-08")]
-            ExtensionType::ApplicationDataDictionary => Some(true),
+            ExtensionType::AppDataDictionary => Some(true),
         }
     }
 }
@@ -193,7 +193,7 @@ impl From<u16> for ExtensionType {
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
             #[cfg(feature = "extensions-draft-08")]
-            6 => ExtensionType::ApplicationDataDictionary,
+            6 => ExtensionType::AppDataDictionary,
             10 => ExtensionType::LastResort,
             unknown => ExtensionType::Unknown(unknown),
         }
@@ -209,7 +209,7 @@ impl From<ExtensionType> for u16 {
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
             #[cfg(feature = "extensions-draft-08")]
-            ExtensionType::ApplicationDataDictionary => 6,
+            ExtensionType::AppDataDictionary => 6,
             ExtensionType::LastResort => 10,
             ExtensionType::Unknown(unknown) => unknown,
         }
@@ -247,9 +247,9 @@ pub enum Extension {
     /// An [`ExternalSendersExtension`]
     ExternalSenders(ExternalSendersExtension),
 
-    /// An [`ApplicationDataDictionaryExtension`]
+    /// An [`AppDataDictionaryExtension`]
     #[cfg(feature = "extensions-draft-08")]
-    ApplicationDataDictionary(ApplicationDataDictionaryExtension),
+    AppDataDictionary(AppDataDictionaryExtension),
 
     /// A [`LastResortExtension`]
     LastResort(LastResortExtension),
@@ -472,16 +472,16 @@ impl Extension {
         }
     }
     #[cfg(feature = "extensions-draft-08")]
-    /// Get a reference to this extension as [`ApplicationDataDictionaryExtension`].
+    /// Get a reference to this extension as [`AppDataDictionaryExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
-    /// [`Extension`] that's not an [`ApplicationDataDictionaryExtension`].
+    /// [`Extension`] that's not an [`AppDataDictionaryExtension`].
     pub fn as_application_data_dictionary_extension(
         &self,
-    ) -> Result<&ApplicationDataDictionaryExtension, ExtensionError> {
+    ) -> Result<&AppDataDictionaryExtension, ExtensionError> {
         match self {
-            Self::ApplicationDataDictionary(e) => Ok(e),
+            Self::AppDataDictionary(e) => Ok(e),
             _ => Err(ExtensionError::InvalidExtensionType(
-                "This is not an ApplicationDataDictionaryExtension".into(),
+                "This is not an AppDataDictionaryExtension".into(),
             )),
         }
     }
@@ -548,7 +548,7 @@ impl Extension {
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
             #[cfg(feature = "extensions-draft-08")]
-            Extension::ApplicationDataDictionary(_) => ExtensionType::ApplicationDataDictionary,
+            Extension::AppDataDictionary(_) => ExtensionType::AppDataDictionary,
             Extension::LastResort(_) => ExtensionType::LastResort,
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
