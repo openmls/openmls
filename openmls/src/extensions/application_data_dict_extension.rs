@@ -65,6 +65,7 @@ pub struct AppDataDictionary {
     component_data: Vec<ComponentData>,
 }
 
+// TODO: rename
 #[derive(thiserror::Error, Debug)]
 enum AppDataDictionaryError {
     #[error("entries not in order")]
