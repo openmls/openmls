@@ -30,10 +30,6 @@ impl ComponentData {
     pub fn data(&self) -> &[u8] {
         self.data.as_ref()
     }
-
-    pub fn into_data(self) -> Vec<u8> {
-        self.data.into()
-    }
 }
 
 /// App data dictionary in the `AppDataDictionaryExtension`.
