@@ -22,6 +22,20 @@ pub struct ComponentData {
     data: VLBytes,
 }
 
+impl ComponentData {
+    pub fn component_id(&self) -> ComponentId {
+        self.component_id
+    }
+
+    pub fn data(&self) -> &[u8] {
+        self.data.as_ref()
+    }
+
+    pub fn into_data(self) -> Vec<u8> {
+        self.data.into()
+    }
+}
+
 /// TODO: doc comment
 #[derive(
     PartialEq,
@@ -35,8 +49,14 @@ pub struct ComponentData {
     TlsDeserializeBytes,
     TlsSize,
 )]
-pub struct AppDataDictionary {
+pub struct ApplicationDataDictionary {
     component_data: Vec<ComponentData>,
+}
+
+impl ApplicationDataDictionary {
+    pub fn component_data(&self) -> &[ComponentData] {
+        &self.component_data
+    }
 }
 
 /// Application Data Dictionary Extension.
@@ -53,5 +73,12 @@ pub struct AppDataDictionary {
     TlsSize,
 )]
 pub struct ApplicationDataDictionaryExtension {
-    dictionary: AppDataDictionary,
+    dictionary: ApplicationDataDictionary,
+}
+
+impl ApplicationDataDictionaryExtension {
+    /// Return the [`ApplicationDataDictionary`] from this extension.
+    pub fn dictionary(&self) -> &ApplicationDataDictionary {
+        &self.dictionary
+    }
 }
