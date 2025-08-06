@@ -19,6 +19,7 @@ ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 p256 = { version = "0.13" }
 p384 = { version = "0.13" }
 rand = "0.8"
+ml-dsa = "0.0.4"
 
 [features]
 clonable = []   # Make the keys clonable

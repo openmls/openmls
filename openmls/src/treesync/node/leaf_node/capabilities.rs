@@ -296,6 +296,7 @@ pub(super) fn default_ciphersuites() -> Vec<Ciphersuite> {
         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
         Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
         Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384,
+        Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87,
     ]
 }
 
