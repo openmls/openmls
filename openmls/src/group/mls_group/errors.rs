@@ -24,6 +24,9 @@ use crate::{
     },
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::schedule::application_export_tree::ApplicationExportTreeError;
+
 /// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum NewGroupError<StorageError> {
@@ -305,6 +308,67 @@ pub enum ExportGroupInfoError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Export secret error
+#[cfg(feature = "extensions-draft-08")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum SafeExportSecretError<StorageError> {
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupState(#[from] MlsGroupStateError),
+    /// See [`ApplicationExportTreeError`] for more details.
+    #[error(transparent)]
+    ApplicationExportTree(#[from] ApplicationExportTreeError),
+    /// Group doesn't support application exports.
+    #[error("Group doesn't support application exports.")]
+    Unsupported,
+    /// Storage error
+    #[error("Error accessing storage: {0}")]
+    Storage(StorageError),
+}
+
+/// Export secret error
+#[cfg(feature = "extensions-draft-08")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProcessedMessageSafeExportSecretError {
+    #[error(transparent)]
+    SafeExportSecretError(#[from] StagedSafeExportSecretError),
+    /// Processed message is not a commit.
+    #[error("Processed message is not a commit.")]
+    NotACommit,
+}
+
+/// Export secret error
+#[cfg(feature = "extensions-draft-08")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum PendingSafeExportSecretError<StorageError> {
+    #[error(transparent)]
+    SafeExportSecretError(#[from] StagedSafeExportSecretError),
+    /// No pending commit.
+    #[error("No pending commit.")]
+    NoPendingCommit,
+    /// Storage error
+    #[error("Error accessing storage: {0}")]
+    Storage(StorageError),
+    /// Only group members can export secrets.
+    #[error("Only group members can export secrets.")]
+    NotGroupMember,
+}
+
+/// Export secret from a pending commit
+#[cfg(feature = "extensions-draft-08")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum StagedSafeExportSecretError {
+    /// Only group members can export secrets.
+    #[error("Only group members can export secrets.")]
+    NotGroupMember,
+    /// See [`ApplicationExportTreeError`] for more details.
+    #[error(transparent)]
+    ApplicationExportTree(#[from] ApplicationExportTreeError),
+    /// Group doesn't support application exports.
+    #[error("Group doesn't support application exports.")]
+    Unsupported,
 }
 
 /// Export secret error

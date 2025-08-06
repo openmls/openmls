@@ -266,6 +266,127 @@ fn export_secret() {
     )
 }
 
+#[cfg(feature = "extensions-draft-08")]
+#[openmls_test]
+fn safe_export_secret() {
+    use crate::schedule::application_export_tree::ApplicationExportTreeError;
+
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+
+    // Create config
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    // Join config
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    // Initialize the group state
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let [alice_group_state, bob_group_state] = group_state.members_mut(&["alice", "bob"]);
+
+    // Alice updates her leaf node
+    let alice_commit = alice_group_state
+        .group
+        .self_update(
+            &alice_group_state.party.core_state.provider,
+            &alice_group_state.party.signer,
+            LeafNodeParameters::default(),
+        )
+        .expect("Could not create self update");
+    // Safely export from the pending commit
+    let alice_application_secret = alice_group_state
+        .group
+        .safe_export_secret_from_pending(
+            alice_group_state.party.core_state.provider.crypto(),
+            alice_group_state.party.core_state.provider.storage(),
+            0x8000,
+        )
+        .expect("Could not export secret");
+
+    alice_group_state
+        .group
+        .merge_pending_commit(&alice_group_state.party.core_state.provider)
+        .unwrap();
+    let component_id = 0x8000;
+
+    // Bob processes the update
+    let processed_message = bob_group_state
+        .group
+        .process_message(
+            &bob_group_state.party.core_state.provider,
+            MlsMessageIn::from(alice_commit.into_commit())
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap();
+
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a StagedCommitMessage");
+    };
+
+    bob_group_state
+        .group
+        .merge_staged_commit(&bob_group_state.party.core_state.provider, *staged_commit)
+        .unwrap();
+
+    let bob_application_secret = bob_group_state
+        .group
+        .safe_export_secret(
+            bob_group_state.party.core_state.provider.crypto(),
+            bob_group_state.party.core_state.provider.storage(),
+            component_id,
+        )
+        .unwrap();
+
+    assert_eq!(alice_application_secret, bob_application_secret);
+
+    // Trying with a different component ID (should yield a different secret)
+    let differing_component_id = 0x8001;
+    let alice_differing_application_secret = alice_group_state
+        .group
+        .safe_export_secret(
+            alice_group_state.party.core_state.provider.crypto(),
+            alice_group_state.party.core_state.provider.storage(),
+            differing_component_id,
+        )
+        .unwrap();
+    assert_ne!(alice_application_secret, alice_differing_application_secret);
+
+    // Trying with the same component ID for the second time (should fail)
+    let error = alice_group_state
+        .group
+        .safe_export_secret(
+            alice_group_state.party.core_state.provider.crypto(),
+            alice_group_state.party.core_state.provider.storage(),
+            component_id,
+        )
+        .expect_err("Expected an error when exporting the same component ID twice");
+    assert!(matches!(
+        error,
+        SafeExportSecretError::ApplicationExportTree(ApplicationExportTreeError::PuncturedInput)
+    ));
+}
+
 #[openmls_test]
 fn staged_join() {
     let group_id = GroupId::from_slice(b"Test Group");

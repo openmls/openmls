@@ -285,6 +285,10 @@ impl ExternalCommitBuilder {
             own_leaf_index,
             message_secrets_store,
             resumption_psk_store: ResumptionPskStore::new(32),
+            // This is set to `None` for now. It will be set once the external
+            // commit is merged.
+            #[cfg(feature = "extensions-draft-08")]
+            application_export_tree: None,
         };
 
         // Add all proposals to the proposal store.
