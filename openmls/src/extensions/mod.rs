@@ -476,7 +476,7 @@ impl Extension {
     /// Get a reference to this extension as [`AppDataDictionaryExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
     /// [`Extension`] that's not an [`AppDataDictionaryExtension`].
-    pub fn as_application_data_dictionary_extension(
+    pub fn as_app_data_dictionary_extension(
         &self,
     ) -> Result<&AppDataDictionaryExtension, ExtensionError> {
         match self {
