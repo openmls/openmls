@@ -46,7 +46,8 @@ pub mod errors;
 // Public re-exports
 #[cfg(feature = "extensions-draft-08")]
 pub use application_data_dict_extension::{
-    AppDataDictionary, AppDataDictionaryExtension, ComponentData,
+    AppDataDictionary, AppDataDictionaryBuilder, AppDataDictionaryExtension, ComponentData,
+    ComponentId,
 };
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
