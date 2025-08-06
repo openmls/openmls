@@ -194,3 +194,106 @@ impl AppDataDictionaryBuilder {
         self.component_data.into()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use tls_codec::{Deserialize, Serialize};
+
+    #[openmls_test::openmls_test]
+    fn test_serialize_deserialize() {
+        // build a dictionary with one entry
+        let dictionary = AppDataDictionary::builder()
+            .with_entry(0, &[])
+            // overwrites the last entry
+            .with_entry(0, &[1, 2, 3])
+            .build();
+
+        assert_eq!(dictionary.len(), 1);
+
+        // build a dictionary with multiple entries
+        let dictionary_orig = AppDataDictionary::builder()
+            .with_entry(5, &[])
+            .with_entry(0, &[1, 2, 3])
+            .build();
+
+        assert_eq!(dictionary_orig.len(), 2);
+
+        // create an extension from the dictionary
+        let extension_orig = AppDataDictionaryExtension::new(dictionary_orig.clone());
+
+        // test serialization and deserialization of constructed dictionary
+        let bytes = extension_orig.tls_serialize_detached().unwrap();
+        let extension_deserialized =
+            AppDataDictionaryExtension::tls_deserialize(&mut bytes.as_slice()).unwrap();
+        assert_eq!(extension_orig, extension_deserialized);
+    }
+    #[openmls_test::openmls_test]
+    fn test_serialization_empty() {
+        // build a dictionary with one entry
+        let dictionary_orig = AppDataDictionary::builder().build();
+
+        assert_eq!(dictionary_orig.len(), 0);
+
+        // create an extension from the dictionary
+        let extension_orig = AppDataDictionaryExtension::new(dictionary_orig.clone());
+
+        // test serialization and deserialization of constructed dictionary
+        let bytes = extension_orig.tls_serialize_detached().unwrap();
+        let extension_deserialized =
+            AppDataDictionaryExtension::tls_deserialize(&mut bytes.as_slice()).unwrap();
+        assert_eq!(extension_orig, extension_deserialized);
+    }
+    #[openmls_test::openmls_test]
+    fn test_serialization_invalid() {
+        // incorrect dictionary with repeat entries
+        let dictionary_orig = AppDataDictionary {
+            component_data: vec![
+                ComponentData {
+                    component_id: 5,
+                    data: vec![].into(),
+                },
+                ComponentData {
+                    component_id: 9,
+                    data: vec![].into(),
+                },
+                ComponentData {
+                    component_id: 5,
+                    data: vec![1, 2, 3].into(),
+                },
+            ],
+        };
+
+        let serialized = dictionary_orig.tls_serialize_detached().unwrap();
+        let err = AppDataDictionary::tls_deserialize_exact(serialized).unwrap_err();
+        assert_eq!(
+            err,
+            tls_codec::Error::DecodingError(AppDataDictionaryError::DuplicateEntries.to_string())
+        );
+
+        // incorrect dictionary with out-of-order entries
+        let dictionary_orig = AppDataDictionary {
+            component_data: vec![
+                ComponentData {
+                    component_id: 5,
+                    data: vec![].into(),
+                },
+                ComponentData {
+                    component_id: 9,
+                    data: vec![].into(),
+                },
+                ComponentData {
+                    component_id: 4,
+                    data: vec![1, 2, 3].into(),
+                },
+            ],
+        };
+
+        let serialized = dictionary_orig.tls_serialize_detached().unwrap();
+        let err = AppDataDictionary::tls_deserialize_exact(serialized).unwrap_err();
+        assert_eq!(
+            err,
+            tls_codec::Error::DecodingError(AppDataDictionaryError::EntriesNotInOrder.to_string())
+        );
+    }
+}
