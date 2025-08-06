@@ -39,7 +39,7 @@ pub struct AppDataDictionary {
     component_data: Vec<ComponentData>,
 }
 
-/// TODO: doc comment
+/// Application Data Dictionary Extension.
 #[derive(
     PartialEq,
     Eq,
