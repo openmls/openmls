@@ -83,8 +83,8 @@ impl AppDataDictionary {
     // TODO: Should the Vec<ComponentData> be returned here?
     /// Consumes the dictionary and returns an iterator of the [`ComponentData`] entries,
     /// ordered by [`ComponentId`].
-    pub fn into_entries(self) -> impl Iterator<Item = ComponentData> {
-        self.component_data.into_iter()
+    pub fn entries(&self) -> impl Iterator<Item = &ComponentData> {
+        self.component_data.iter()
     }
 
     /// Returns the number of elements in the dictionary.
