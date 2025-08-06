@@ -51,7 +51,15 @@ impl<Data: Into<VLBytes>> From<BTreeMap<ComponentId, Data>> for AppDataDictionar
 
 /// App data dictionary in the [`AppDataDictionaryExtension`].
 #[derive(
-    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, tls_codec::TlsSize, tls_codec::TlsSerialize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    tls_codec::TlsSize,
+    tls_codec::TlsSerialize,
+    tls_codec::TlsDeserializeBytes,
 )]
 pub struct AppDataDictionary {
     component_data: Vec<ComponentData>,
@@ -127,16 +135,6 @@ impl tls_codec::Deserialize for AppDataDictionary {
 
         // Check that the required conditions hold
         AppDataDictionary::try_from_vec(vec)
-            .map_err(|e| tls_codec::Error::DecodingError(e.to_string()))
-    }
-}
-impl tls_codec::DeserializeBytes for AppDataDictionary {
-    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error> {
-        let (vec, slice) = Vec::<ComponentData>::tls_deserialize_bytes(bytes)?;
-
-        // Check that the required conditions hold
-        AppDataDictionary::try_from_vec(vec)
-            .map(|dictionary| (dictionary, slice))
             .map_err(|e| tls_codec::Error::DecodingError(e.to_string()))
     }
 }
