@@ -217,7 +217,7 @@ fn book_operations() {
         .add_members(
             provider,
             &alice_signature_keys,
-            &[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("Could not add members.");
     // ANCHOR_END: alice_adds_bob
@@ -561,7 +561,7 @@ fn book_operations() {
         .add_members(
             provider,
             &bob_signature_keys,
-            &[charlie_key_package.key_package().clone()],
+            core::slice::from_ref(charlie_key_package.key_package()),
         )
         .unwrap();
 
@@ -1555,7 +1555,7 @@ fn custom_proposal_usage(
         .add_members(
             provider,
             &alice_signer,
-            &[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .unwrap();
 

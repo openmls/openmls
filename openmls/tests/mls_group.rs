@@ -1,3 +1,5 @@
+use std::slice::from_ref;
+
 use openmls::{
     prelude::{test_utils::new_credential, *},
     storage::OpenMlsProvider,
@@ -247,7 +249,7 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
         let welcome = match alice_group.add_members(
             alice_provider,
             &alice_signer,
-            &[bob_key_package.clone()],
+            from_ref(&bob_key_package),
         ) {
             Ok((_, welcome, _)) => welcome,
             Err(e) => panic!("Could not add member to group: {e:?}"),
@@ -1624,7 +1626,7 @@ fn mls_group_ratchet_tree_extension(
 
         // === Alice adds Bob ===
         let (_queued_message, welcome, _group_info) = alice_group
-            .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+            .add_members(provider, &alice_signer, from_ref(&bob_key_package))
             .unwrap();
 
         let welcome: MlsMessageIn = welcome.into();

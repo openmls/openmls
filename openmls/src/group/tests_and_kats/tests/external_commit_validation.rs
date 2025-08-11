@@ -186,7 +186,7 @@ fn test_valsem242() {
         .add_members(
             provider,
             &alice_credential.signer,
-            &[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();

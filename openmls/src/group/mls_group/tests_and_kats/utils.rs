@@ -143,7 +143,7 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         .add_members(
             alice_provider,
             &alice_signature_keys,
-            &[bob_key_package.clone()],
+            core::slice::from_ref(bob_key_package),
         )
         .expect("Could not create proposal.");
 

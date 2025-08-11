@@ -78,7 +78,7 @@ fn validation_test_setup(
         .add_members(
             provider,
             &alice_signer_with_keys.signer,
-            &[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("error adding Bob to group");
 

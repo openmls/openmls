@@ -1,3 +1,5 @@
+use std::slice::from_ref;
+
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::prelude::{openmls_types::*, *};
 use tls_codec::{Deserialize, Serialize};
@@ -65,7 +67,7 @@ fn test_welcome_context_mismatch(
     .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, &[bob_kp.clone()])
+        .add_members(provider, &alice_signer, from_ref(bob_kp))
         .expect("Could not add member to group.");
 
     alice_group
@@ -325,7 +327,7 @@ fn test_welcome_processing() {
     .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, &[bob_kp.clone()])
+        .add_members(provider, &alice_signer, from_ref(bob_kp))
         .expect("Could not add member to group.");
 
     alice_group

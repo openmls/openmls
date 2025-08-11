@@ -342,7 +342,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all Add proposals in the queue
     /// in the order of the the Commit message
-    pub(crate) fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
+    pub(crate) fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal<'_>> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::Add(add_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
@@ -358,7 +358,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all Remove proposals in the queue
     /// in the order of the the Commit message
-    pub(crate) fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
+    pub(crate) fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal<'_>> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
@@ -374,7 +374,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all Update in the queue
     /// in the order of the the Commit message
-    pub(crate) fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
+    pub(crate) fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal<'_>> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::Update(update_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
@@ -390,7 +390,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all PresharedKey proposals in the queue
     /// in the order of the the Commit message
-    pub(crate) fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
+    pub(crate) fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal<'_>> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::PreSharedKey(psk_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
