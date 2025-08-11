@@ -361,7 +361,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
         .add_members(
             &creator_provider,
             &creator.signature_keypair,
-            &[passive.key_package.key_package().clone()],
+            core::slice::from_ref(passive.key_package.key_package()),
         )
         .unwrap();
 

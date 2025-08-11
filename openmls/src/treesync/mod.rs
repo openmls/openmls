@@ -436,7 +436,7 @@ impl TreeSync {
 
     /// Create an empty diff based on this [`TreeSync`] instance all operations
     /// are created based on an initial, empty [`TreeSyncDiff`].
-    pub(crate) fn empty_diff(&self) -> TreeSyncDiff {
+    pub(crate) fn empty_diff(&self) -> TreeSyncDiff<'_> {
         self.into()
     }
 

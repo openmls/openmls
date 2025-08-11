@@ -486,7 +486,7 @@ impl TreeSyncDiff<'_> {
         &self,
         node_index: TreeNodeIndex,
         excluded_indices: &HashSet<&LeafNodeIndex>,
-    ) -> Vec<(TreeNodeIndex, NodeReference)> {
+    ) -> Vec<(TreeNodeIndex, NodeReference<'_>)> {
         match node_index {
             TreeNodeIndex::Leaf(leaf_index) => {
                 // If the node is a leaf, check if it is in the exclusion list.
@@ -553,7 +553,7 @@ impl TreeSyncDiff<'_> {
     pub(crate) fn copath_resolutions(
         &self,
         leaf_index: LeafNodeIndex,
-    ) -> Vec<Vec<(TreeNodeIndex, NodeReference)>> {
+    ) -> Vec<Vec<(TreeNodeIndex, NodeReference<'_>)>> {
         // If we're the only node in the tree, there's no copath.
         if self.diff.leaf_count() == MIN_TREE_SIZE {
             return vec![];
@@ -574,7 +574,7 @@ impl TreeSyncDiff<'_> {
         &self,
         leaf_index: LeafNodeIndex,
         exclusion_list: &HashSet<&LeafNodeIndex>,
-    ) -> Vec<Vec<(TreeNodeIndex, NodeReference)>> {
+    ) -> Vec<Vec<(TreeNodeIndex, NodeReference<'_>)>> {
         // If we're the only node in the tree, there's no copath.
         if self.diff.leaf_count() == 1 {
             return vec![];
