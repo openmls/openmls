@@ -528,7 +528,7 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
         .add_members(
             provider,
             &amp;alice_signature_keys,
-            &amp;[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("Could not add members.");</code></pre>
 <p>Or from a call to a function that results in a staged commit:</p>
@@ -563,7 +563,7 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
         .add_members(
             provider,
             &amp;alice_signature_keys,
-            &amp;[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("Could not add members.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Welcome, Option&lt;GroupInfo&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members, along the optional <code>GroupInfo</code> if it is available.</p>
