@@ -94,7 +94,7 @@
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
 //! let (mls_message_out, welcome_out, group_info) = sasha_group
-//!     .add_members(provider, &sasha_signer, &[maxim_key_package.key_package().clone()])
+//!     .add_members(provider, &sasha_signer, core::slice::from_ref(maxim_key_package.key_package()))
 //!     .expect("Could not add members.");
 //!
 //! // Sasha merges the pending commit that adds Maxim.

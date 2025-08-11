@@ -409,7 +409,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         .add_members(
             provider,
             &alice_signature_keys,
-            &[charlie_key_package_bundle.key_package().clone()],
+            core::slice::from_ref(charlie_key_package_bundle.key_package()),
         )
         .expect("Could not add members.");
 

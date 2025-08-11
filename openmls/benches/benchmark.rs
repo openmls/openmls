@@ -88,7 +88,7 @@ fn create_welcome(c: &mut Criterion, provider: &impl OpenMlsProvider) {
                         let _welcome = match alice_group.add_members(
                             provider,
                             &alice_signer,
-                            &[bob_key_package.key_package().clone()],
+                            core::slice::from_ref(bob_key_package.key_package()),
                         ) {
                             Ok((_, welcome, _)) => welcome,
                             Err(e) => panic!("Could not add member to group: {e:?}"),
@@ -148,7 +148,7 @@ fn join_group(c: &mut Criterion, provider: &impl OpenMlsProvider) {
                         let welcome = match alice_group.add_members(
                             provider,
                             &alice_signer,
-                            &[bob_key_package.key_package().clone()],
+                            core::slice::from_ref(bob_key_package.key_package()),
                         ) {
                             Ok((_, welcome, _)) => welcome,
                             Err(e) => panic!("Could not add member to group: {e:?}"),
@@ -228,7 +228,7 @@ fn create_commit(c: &mut Criterion, provider: &impl OpenMlsProvider) {
                         let welcome = match alice_group.add_members(
                             provider,
                             &alice_signer,
-                            &[bob_key_package.key_package().clone()],
+                            core::slice::from_ref(bob_key_package.key_package()),
                         ) {
                             Ok((_, welcome, _)) => welcome,
                             Err(e) => panic!("Could not add member to group: {e:?}"),

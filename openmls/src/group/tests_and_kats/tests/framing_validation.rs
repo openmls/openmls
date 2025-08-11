@@ -73,7 +73,7 @@ fn validation_test_setup(
         .add_members(
             provider,
             &alice_credential.signer,
-            &[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("Could not add member.");
 
