@@ -9,6 +9,8 @@ use openmls_traits::OpenMlsProvider;
 mod provider;
 pub use provider::*;
 
+mod hmac;
+
 #[derive(Default, Debug)]
 #[cfg_attr(feature = "test-utils", derive(Clone))]
 pub struct OpenMlsRustCrypto {

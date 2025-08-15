@@ -20,16 +20,16 @@ impl PartialEq for Mac {
 impl Mac {
     /// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same
     /// HMAC that is also used in HKDF.
-    /// Compute the HMAC on `salt` with key `ikm`.
+    /// Compute the HMAC on `message` with key `key`.
     pub(crate) fn new(
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-        salt: &Secret,
-        ikm: &[u8],
+        key: &Secret,
+        message: &[u8],
     ) -> Result<Self, CryptoError> {
         Ok(Mac {
-            mac_value: salt
-                .hkdf_extract(crypto, ciphersuite, &Secret::from_slice(ikm))?
+            mac_value: key
+                .hmac(crypto, ciphersuite, &Secret::from_slice(message))?
                 .value
                 .as_slice()
                 .into(),

@@ -12,7 +12,7 @@ pub fn compute_membership_tag(
 ) -> VLBytes {
     let serialized_auth_content_tbm = &auth_content_tbm.tls_serialize_detached().unwrap();
     crypto
-        .hkdf_extract(
+        .hmac(
             ciphersuite.hash_algorithm(),
             membership_key,              // Extract salt is HMAC key
             serialized_auth_content_tbm, // Extract ikm is HMAC message

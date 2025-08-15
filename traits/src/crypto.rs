@@ -28,6 +28,13 @@ pub trait OpenMlsCrypto: Send + Sync {
         ikm: &[u8],
     ) -> Result<SecretVLBytes, CryptoError>;
 
+    fn hmac(
+        &self,
+        hash_type: HashType,
+        key: &[u8],
+        message: &[u8],
+    ) -> Result<SecretVLBytes, CryptoError>;
+
     /// HKDF expand.
     ///
     /// Returns an error if the [`HashType`] is not supported or the output length
