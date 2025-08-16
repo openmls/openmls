@@ -332,6 +332,24 @@ impl ProcessedMessage {
     pub fn credential(&self) -> &Credential {
         &self.credential
     }
+
+    /// Safely export a value if the content of the processed message is a
+    /// [`StagedCommit`].
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn safe_export_secret<Crypto: OpenMlsCrypto>(
+        &mut self,
+        crypto: &Crypto,
+        component_id: u16,
+    ) -> Result<Vec<u8>, ProcessedMessageSafeExportSecretError> {
+        if let ProcessedMessageContent::StagedCommitMessage(ref mut staged_commit) =
+            &mut self.content
+        {
+            let secret = staged_commit.safe_export_secret(crypto, component_id)?;
+            Ok(secret)
+        } else {
+            Err(ProcessedMessageSafeExportSecretError::NotACommit)
+        }
+    }
 }
 
 /// Content of a processed message.
