@@ -395,6 +395,7 @@ fn hkdf_alg(hash_type: HashType) -> libcrux_hkdf::Algorithm {
         HashType::Sha2_512 => libcrux_hkdf::Algorithm::Sha512,
     }
 }
+
 fn hash_alg(hash_type: HashType) -> libcrux_hmac::Algorithm {
     match hash_type {
         HashType::Sha2_256 => libcrux_hmac::Algorithm::Sha256,
@@ -402,6 +403,7 @@ fn hash_alg(hash_type: HashType) -> libcrux_hmac::Algorithm {
         HashType::Sha2_512 => libcrux_hmac::Algorithm::Sha512,
     }
 }
+
 struct GuardedRng<'a, Rng: RngCore>(MutexGuard<'a, Rng>);
 
 impl<Rng: RngCore> RngCore for GuardedRng<'_, Rng> {
