@@ -182,24 +182,6 @@ pub(crate) enum TreeSyncDiffError {
     CreationError(#[from] MlsBinaryTreeError),
 }
 
-/// TreeKem error
-#[derive(Error, Debug, PartialEq, Clone)]
-#[allow(clippy::enum_variant_names)]
-pub(crate) enum TreeKemError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    /// See [`TreeSyncError`] for more details.
-    #[error(transparent)]
-    TreeSyncError(#[from] TreeSyncError),
-    /// See [`TreeSyncDiffError`] for more details.
-    #[error(transparent)]
-    TreeSyncDiffError(#[from] TreeSyncDiffError),
-    /// See [`PathSecretError`] for more details.
-    #[error(transparent)]
-    PathSecretError(#[from] PathSecretError),
-}
-
 /// Errors that can happen during leaf node validation.
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 pub enum LeafNodeValidationError {

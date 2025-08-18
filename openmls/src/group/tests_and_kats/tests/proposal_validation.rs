@@ -1,6 +1,8 @@
 //! This module tests the validation of proposals as defined in
 //! https://book.openmls.tech/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
+use std::slice::from_ref;
+
 use crate::{
     storage::OpenMlsProvider,
     test_utils::frankenstein::*,
@@ -153,7 +155,7 @@ fn validation_test_setup(
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[bob_key_package.key_package().clone()],
+            from_ref(bob_key_package.key_package()),
         )
         .unwrap();
 
@@ -343,7 +345,7 @@ fn test_valsem101a() {
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[charlie_key_package.key_package().clone()],
+            from_ref(charlie_key_package.key_package()),
         )
         .expect("Error creating self-update")
         .tls_serialize_detached()
@@ -510,7 +512,7 @@ fn test_valsem102() {
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[charlie_key_package.key_package().clone()],
+            from_ref(charlie_key_package.key_package()),
         )
         .expect("Error creating self-update")
         .tls_serialize_detached()
@@ -687,7 +689,7 @@ fn test_valsem101b() {
                     .add_members(
                         provider,
                         &alice_credential_with_key.signer,
-                        &[bob_key_package.key_package().clone()],
+                        from_ref(bob_key_package.key_package()),
                     )
                     .unwrap();
                 alice_group.merge_pending_commit(provider).unwrap();
@@ -705,7 +707,7 @@ fn test_valsem101b() {
                     .propose_remove_member(provider, &alice_credential_with_key.signer, bob_index)
                     .unwrap();
                 alice_group
-                    .add_members(provider, &alice_credential_with_key.signer, &[target_key_package.key_package().clone()])
+                    .add_members(provider, &alice_credential_with_key.signer, from_ref(target_key_package.key_package()))
                     .expect(
                     "failed to add a user with the same identity as someone in the group (with a remove proposal)!",
                 );
@@ -1166,7 +1168,7 @@ fn test_valsem105() {
                     let result = alice_group.add_members(
                         provider,
                         &alice_credential_with_key_and_signer.signer,
-                        &[test_kp_2.clone()],
+                        from_ref(&test_kp_2),
                     );
 
                     match key_package_version {
@@ -2186,7 +2188,7 @@ fn valsem113() {
             .add_members(
                 provider,
                 &alice_credential_with_keys.signer,
-                &[bob_key_package.key_package().clone()],
+                from_ref(bob_key_package.key_package()),
             )
             .unwrap();
 

@@ -257,7 +257,7 @@ mod generate {
                 .add_members(
                     creator_provider,
                     creator_signer,
-                    &[key_package.key_package().clone()],
+                    core::slice::from_ref(key_package.key_package()),
                 )
                 .unwrap();
 
