@@ -135,7 +135,7 @@ impl Secret {
                 ciphersuite.hash_algorithm(),
                 self.value.as_slice(),
                 info,
-        okm_len,
+                okm_len,
             )
             .map_err(|_| CryptoError::CryptoLibraryError)?;
         if key.as_slice().is_empty() {
@@ -170,7 +170,7 @@ impl Secret {
     /// Derive a new `Secret` from the this one by expanding it with the given
     /// `label` and an empty `context`.
     pub(crate) fn derive_secret(
-&self,
+        &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         label: &str,

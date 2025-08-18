@@ -12,7 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `StagedWelcome::build_from_welcome`: Alternative to `new_from_welcome` in a builder style that allows disabling lifetime validation of the incoming ratchet tree.
   - `Lifetime::init`: Set explicit lifetimes for a key package.
 - [#1801](https://github.com/openmls/openmls/pull/1801): Added `MlsGroup::external_commit_builder`.
-- [#1825](https://github.com/openmls/openmls/pull/1825): Add the `hmac` method for hashing to the `OpenMlsCrypto` trait.
 
 ### Fixed
 
