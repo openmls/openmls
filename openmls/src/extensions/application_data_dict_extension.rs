@@ -1,7 +1,6 @@
 use super::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
-// TODO: use newtype or type alias defined elsewhere?
 /// The unique ComponentId.
 pub type ComponentId = u32;
 
@@ -85,7 +84,6 @@ impl AppDataDictionary {
         AppDataDictionaryBuilder::new()
     }
 
-    // TODO: Should the Vec<ComponentData> be returned here?
     /// Consumes the dictionary and returns an iterator of the [`ComponentData`] entries,
     /// ordered by [`ComponentId`].
     pub fn entries(&self) -> impl Iterator<Item = &ComponentData> {
