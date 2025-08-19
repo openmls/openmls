@@ -753,3 +753,107 @@ fn create_group_info_flag() {
         .unwrap();
     assert_eq!(group_info, exported_group_info);
 }
+
+#[openmls_test::openmls_test]
+fn use_ratchet_tree_extension_flag() {
+    for use_ratchet_tree_extension in [true, false] {
+        // The `use_ratchet_tree_extension` flag is set to `false` by default.
+        let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
+            setup_alice_group(ciphersuite, provider);
+
+        let commit_bundle = alice_group
+            .commit_builder()
+            .load_psks(provider.storage())
+            .unwrap()
+            .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+            .unwrap()
+            .stage_commit(provider)
+            .unwrap();
+
+        assert!(commit_bundle.group_info().is_none());
+
+        // Now we set the `use_ratchet_tree_extension` flag.
+        let commit_bundle = alice_group
+            .commit_builder()
+            .create_group_info(true)
+            .use_ratchet_tree_extension(use_ratchet_tree_extension)
+            .load_psks(provider.storage())
+            .unwrap()
+            .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+            .unwrap()
+            .stage_commit(provider)
+            .unwrap();
+
+        let group_info = commit_bundle.into_group_info_msg().unwrap();
+        alice_group.merge_pending_commit(provider).unwrap();
+        let exported_group_info = alice_group
+            .export_group_info(provider.crypto(), &alice_signer, use_ratchet_tree_extension)
+            .unwrap();
+        assert_eq!(group_info, exported_group_info);
+    }
+}
+
+#[openmls_test::openmls_test]
+fn test_create_group_info_with_extensions() {
+    let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
+        setup_alice_group(ciphersuite, provider);
+
+    let commit_bundle = alice_group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    assert!(commit_bundle.group_info().is_none());
+
+    let unknown_extension = Extension::Unknown(3, extensions::UnknownExtension(vec![]));
+    let extensions = vec![
+        unknown_extension.clone(),
+        // this RatchetTreeExtension should be skipped
+        Extension::RatchetTree(RatchetTreeExtension::new(alice_group.export_ratchet_tree())),
+    ];
+    // Now we set the remaining extensions.
+    let commit_bundle = alice_group
+        .commit_builder()
+        .use_ratchet_tree_extension(false)
+        .create_group_info_with_extensions(extensions.clone())
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    let group_info = commit_bundle.into_group_info_msg().unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
+
+    // compare against exported without extensions
+    let exported_group_info = alice_group
+        .export_group_info(provider.crypto(), &alice_signer, false)
+        .unwrap();
+    assert_ne!(group_info, exported_group_info);
+
+    // compare against exported with extensions
+    let exported_group_info = alice_group
+        .export_group_info_with_additional_extensions(
+            provider.crypto(),
+            &alice_signer,
+            false,
+            extensions.clone(),
+        )
+        .unwrap();
+    assert_eq!(group_info, exported_group_info);
+
+    // extract the GroupInfo from the message
+    let group_info = if let MlsMessageBodyOut::GroupInfo(group_info) = group_info.body() {
+        group_info
+    } else {
+        unreachable!();
+    };
+
+    // ensure a RatchetTreeExtension is not contained
+    assert!(group_info.extensions().ratchet_tree().is_none());
+}
