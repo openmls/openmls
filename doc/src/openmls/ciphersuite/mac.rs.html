@@ -20,16 +20,16 @@
 <a href=#20 id=20 data-nosnippet>20</a><span class="kw">impl </span>Mac {
 <a href=#21 id=21 data-nosnippet>21</a>    <span class="doccomment">/// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same
 <a href=#22 id=22 data-nosnippet>22</a>    /// HMAC that is also used in HKDF.
-<a href=#23 id=23 data-nosnippet>23</a>    /// Compute the HMAC on `salt` with key `ikm`.
+<a href=#23 id=23 data-nosnippet>23</a>    /// Compute the HMAC on `message` with key `key`.
 <a href=#24 id=24 data-nosnippet>24</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
 <a href=#25 id=25 data-nosnippet>25</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
 <a href=#26 id=26 data-nosnippet>26</a>        ciphersuite: Ciphersuite,
-<a href=#27 id=27 data-nosnippet>27</a>        salt: <span class="kw-2">&amp;</span>Secret,
-<a href=#28 id=28 data-nosnippet>28</a>        ikm: <span class="kw-2">&amp;</span>[u8],
+<a href=#27 id=27 data-nosnippet>27</a>        key: <span class="kw-2">&amp;</span>Secret,
+<a href=#28 id=28 data-nosnippet>28</a>        message: <span class="kw-2">&amp;</span>[u8],
 <a href=#29 id=29 data-nosnippet>29</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
 <a href=#30 id=30 data-nosnippet>30</a>        <span class="prelude-val">Ok</span>(Mac {
-<a href=#31 id=31 data-nosnippet>31</a>            mac_value: salt
-<a href=#32 id=32 data-nosnippet>32</a>                .hkdf_extract(crypto, ciphersuite, <span class="kw-2">&amp;</span>Secret::from_slice(ikm))<span class="question-mark">?
+<a href=#31 id=31 data-nosnippet>31</a>            mac_value: key
+<a href=#32 id=32 data-nosnippet>32</a>                .hmac(crypto, ciphersuite, <span class="kw-2">&amp;</span>Secret::from_slice(message))<span class="question-mark">?
 <a href=#33 id=33 data-nosnippet>33</a>                </span>.value
 <a href=#34 id=34 data-nosnippet>34</a>                .as_slice()
 <a href=#35 id=35 data-nosnippet>35</a>                .into(),
