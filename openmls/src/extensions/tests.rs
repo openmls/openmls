@@ -379,3 +379,74 @@ fn last_resort_extension() {
         .expect("error retrieving key package")
         .expect("key package does not exist");
 }
+
+#[cfg(feature = "extensions-draft-08")]
+#[openmls_test::openmls_test]
+fn app_data_dictionary_extension() {
+    use crate::test_utils::single_group_test_framework::*;
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    let mut group_state = GroupState::new_from_party(
+        group_id,
+        alice_party.generate_pre_group(ciphersuite),
+        create_config.clone(),
+    )
+    .unwrap();
+
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let dictionary = AppDataDictionary::builder()
+        .with_entry(5, &[])
+        .with_entry(0, &[1, 2, 3])
+        .build();
+
+    let extension =
+        Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary.clone()));
+    // build the commit
+    let message_bundle = alice
+        .group
+        .commit_builder()
+        .create_group_info_with_extensions(Some(extension))
+        .propose_adds(Some(
+            bob_party
+                .generate_pre_group(ciphersuite)
+                .key_package_bundle
+                .key_package()
+                .clone(),
+        ))
+        .load_psks(alice_party.provider.storage())
+        .unwrap()
+        .build(
+            alice_party.provider.rand(),
+            alice_party.provider.crypto(),
+            &alice.party.signer,
+            |_proposal| true,
+        )
+        .unwrap()
+        .stage_commit(&alice_party.provider)
+        .unwrap();
+
+    // process the Welcome for Bob
+    let welcome = message_bundle.into_welcome().unwrap();
+    let processed_welcome = ProcessedWelcome::new_from_welcome(
+        &bob_party.provider,
+        create_config.join_config(),
+        welcome,
+    )
+    .unwrap();
+
+    // retrieve the extension
+    let extensions = processed_welcome.unverified_group_info().extensions();
+    let extension = extensions
+        .iter()
+        .find(|e| e.extension_type() == ExtensionType::AppDataDictionary)
+        .and_then(|e| e.as_app_data_dictionary_extension().ok())
+        .unwrap();
+
+    // check the dictionary
+    assert_eq!(&dictionary, extension.dictionary());
+}
