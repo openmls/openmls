@@ -670,7 +670,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let group_info = if !needs_group_info {
             None
         } else {
-            let mut extensions_list: Vec<Extension> = cur_stage.group_info_config.other_extensions;
+            let mut extensions_list = vec![];
             // Build ExternalPub extension
             let external_pub = provisional_epoch_secrets
                 .external_secret()
@@ -689,6 +689,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
 
             // Add ExternalPub extension
             extensions_list.push(external_pub_extension);
+
+            // Append rest of extensions
+            extensions_list.append(&mut cur_stage.group_info_config.other_extensions);
 
             // Build  extensions from vec
             let extensions = Extensions::from_vec(extensions_list)?;
