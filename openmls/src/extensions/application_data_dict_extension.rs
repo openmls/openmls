@@ -33,6 +33,11 @@ impl ComponentData {
     pub fn data(&self) -> &[u8] {
         self.data.as_ref()
     }
+
+    /// Consumes the struct and returns its component parts.
+    pub fn into_parts(self) -> (ComponentId, VLBytes) {
+        (self.component_id, self.data)
+    }
 }
 
 /// Build an [`AppDataDictionary`] from a [`BTreeMap`].
@@ -98,6 +103,19 @@ impl AppDataDictionary {
     /// Returns `true` if the dictionary contains no elements.
     pub const fn is_empty(&self) -> bool {
         self.component_data.is_empty()
+    }
+
+    /// Convert the dictionary into a [`BTreeMap`].
+    pub fn into_btree_map(self) -> BTreeMap<ComponentId, VLBytes> {
+        self.component_data
+            .into_iter()
+            .map(ComponentData::into_parts)
+            .collect()
+    }
+
+    /// Build an [`AppDataDictionary`] from a [`BTreeMap`].
+    pub fn from_btree_map(map: BTreeMap<ComponentId, impl Into<VLBytes>>) -> Self {
+        Self::from(map)
     }
 
     /// Creates an [`AppDataDictionary`] from a Vec of [`ComponentData`] entries.
