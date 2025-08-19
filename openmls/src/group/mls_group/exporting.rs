@@ -64,6 +64,20 @@ impl MlsGroup {
         signer: &impl Signer,
         with_ratchet_tree: bool,
     ) -> Result<MlsMessageOut, ExportGroupInfoError> {
+        self.export_group_info_with_additional_extensions(crypto, signer, with_ratchet_tree, None)
+    }
+
+    /// Export a group info object for this group, with additional extensions.
+    ///
+    ///  Any [`RatchetTreeExtension`]s included in `additional_extensions` will be
+    /// skipped.
+    pub fn export_group_info_with_additional_extensions<CryptoProvider: OpenMlsCrypto>(
+        &self,
+        crypto: &CryptoProvider,
+        signer: &impl Signer,
+        with_ratchet_tree: bool,
+        additional_extensions: impl IntoIterator<Item = Extension>,
+    ) -> Result<MlsMessageOut, ExportGroupInfoError> {
         let extensions = {
             let ratchet_tree_extension = || {
                 Extension::RatchetTree(RatchetTreeExtension::new(
@@ -83,16 +97,21 @@ impl MlsGroup {
                 )))
             };
 
-            if with_ratchet_tree {
-                Extensions::from_vec(vec![ratchet_tree_extension(), external_pub_extension()?])
-                    .map_err(|_| {
-                        LibraryError::custom(
-                            "There should not have been duplicate extensions here.",
-                        )
-                    })?
+            let mut extensions = if with_ratchet_tree {
+                vec![ratchet_tree_extension(), external_pub_extension()?]
             } else {
-                Extensions::single(external_pub_extension()?)
-            }
+                vec![external_pub_extension()?]
+            };
+
+            extensions.extend(
+                additional_extensions
+                    .into_iter()
+                    .filter(|extension| extension.extension_type() != ExtensionType::RatchetTree),
+            );
+
+            Extensions::from_vec(extensions).map_err(|_| {
+                LibraryError::custom("There should not have been duplicate extensions here.")
+            })?
         };
 
         // Create to-be-signed group info.
