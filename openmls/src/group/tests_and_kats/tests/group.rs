@@ -738,9 +738,9 @@ fn create_group_info_flag() {
     // Now we set the `create_group_info` flag to `true`.
     let commit_bundle = alice_group
         .commit_builder()
-        .create_group_info(true)
         .load_psks(provider.storage())
         .unwrap()
+        .create_group_info(true)
         .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
         .unwrap()
         .stage_commit(provider)
@@ -775,10 +775,10 @@ fn use_ratchet_tree_extension_flag() {
         // Now we set the `use_ratchet_tree_extension` flag.
         let commit_bundle = alice_group
             .commit_builder()
-            .create_group_info(true)
-            .use_ratchet_tree_extension(use_ratchet_tree_extension)
             .load_psks(provider.storage())
             .unwrap()
+            .create_group_info(true)
+            .use_ratchet_tree_extension(use_ratchet_tree_extension)
             .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
             .unwrap()
             .stage_commit(provider)
@@ -818,10 +818,10 @@ fn test_create_group_info_with_extensions() {
     // Now we set the remaining extensions.
     let commit_bundle = alice_group
         .commit_builder()
-        .use_ratchet_tree_extension(false)
-        .create_group_info_with_extensions(extensions.clone())
         .load_psks(provider.storage())
         .unwrap()
+        .use_ratchet_tree_extension(false)
+        .create_group_info_with_extensions(extensions.clone())
         .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
         .unwrap()
         .stage_commit(provider)

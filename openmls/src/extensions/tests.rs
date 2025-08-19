@@ -410,7 +410,6 @@ fn app_data_dictionary_extension() {
     let message_bundle = alice
         .group
         .commit_builder()
-        .create_group_info_with_extensions(Some(extension))
         .propose_adds(Some(
             bob_party
                 .generate_pre_group(ciphersuite)
@@ -420,6 +419,7 @@ fn app_data_dictionary_extension() {
         ))
         .load_psks(alice_party.provider.storage())
         .unwrap()
+        .create_group_info_with_extensions(Some(extension))
         .build(
             alice_party.provider.rand(),
             alice_party.provider.crypto(),
