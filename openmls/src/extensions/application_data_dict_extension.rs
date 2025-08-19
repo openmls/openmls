@@ -69,9 +69,8 @@ pub struct AppDataDictionary {
     component_data: Vec<ComponentData>,
 }
 
-// TODO: rename
 #[derive(thiserror::Error, Debug)]
-enum AppDataDictionaryError {
+enum BuildAppDataDictionaryError {
     #[error("entries not in order")]
     EntriesNotInOrder,
     #[error("duplicate entries")]
@@ -105,21 +104,21 @@ impl AppDataDictionary {
     ///
     /// Ensures that the list is ordered by [`ComponentId`], and that there is at most one entry per [`ComponentId`].
     /// <https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.6-5>
-    fn try_from_vec(data: Vec<ComponentData>) -> Result<Self, AppDataDictionaryError> {
+    fn try_from_vec(data: Vec<ComponentData>) -> Result<Self, BuildAppDataDictionaryError> {
         // Use an ordered set of processed ComponentIds to check conditions
         let mut seen = std::collections::BTreeSet::<ComponentId>::new();
 
         for ComponentData { component_id, .. } in data.iter() {
             // Check for duplicates
             if seen.contains(component_id) {
-                return Err(AppDataDictionaryError::DuplicateEntries);
+                return Err(BuildAppDataDictionaryError::DuplicateEntries);
             }
 
             // Check the ordering
             // The component id must be greater than all previous component ids
             if let Some(max) = seen.last() {
                 if max > component_id {
-                    return Err(AppDataDictionaryError::EntriesNotInOrder);
+                    return Err(BuildAppDataDictionaryError::EntriesNotInOrder);
                 }
             }
             // Update the map
@@ -275,7 +274,9 @@ mod test {
         let err = AppDataDictionary::tls_deserialize_exact(serialized).unwrap_err();
         assert_eq!(
             err,
-            tls_codec::Error::DecodingError(AppDataDictionaryError::DuplicateEntries.to_string())
+            tls_codec::Error::DecodingError(
+                BuildAppDataDictionaryError::DuplicateEntries.to_string()
+            )
         );
 
         // incorrect dictionary with out-of-order entries
@@ -300,7 +301,9 @@ mod test {
         let err = AppDataDictionary::tls_deserialize_exact(serialized).unwrap_err();
         assert_eq!(
             err,
-            tls_codec::Error::DecodingError(AppDataDictionaryError::EntriesNotInOrder.to_string())
+            tls_codec::Error::DecodingError(
+                BuildAppDataDictionaryError::EntriesNotInOrder.to_string()
+            )
         );
     }
 }
