@@ -14,9 +14,9 @@ use crate::{
     framing::{FramingParameters, WireFormat},
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
-        CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
-        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
-        WireFormatPolicy,
+        CommitBuilderStageError, CreateCommitError, Extension, ExtensionType, Extensions,
+        ExternalPubExtension, ProposalQueue, ProposalQueueError, QueuedProposal,
+        RatchetTreeExtension, StagedCommit, WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
@@ -311,14 +311,19 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         self
     }
 
-    /// Add the provided [`Extension`]s to the [`GroupInfo`]
+    /// Add the provided [`Extension`]s to the [`GroupInfo`].
+    ///
+    /// Note: if the `extensions` list provided to this function contains any [`RatchetTreeExtension`], these will not be included in the [`GroupInfo`].
     pub fn create_group_info_with_extensions(
         mut self,
         extensions: impl IntoIterator<Item = Extension>,
     ) -> Self {
         self.stage.group_info_config.create_group_info = true;
-        // TODO: ensure that none of the extensions are a ratchet tree extension?
-        self.stage.group_info_config.other_extensions = extensions.into_iter().collect();
+        self.stage.group_info_config.other_extensions = extensions
+            .into_iter()
+            .filter(|extension| extension.extension_type() != ExtensionType::RatchetTree)
+            .collect();
+
         self
     }
 
