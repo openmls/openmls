@@ -701,7 +701,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             extensions_list.push(external_pub_extension);
 
             // Append rest of extensions
-            extensions_list.extend(other_extensions.into_iter());
+            extensions_list.extend(other_extensions);
 
             // Build  extensions from vec
             let extensions = Extensions::from_vec(extensions_list)?;
