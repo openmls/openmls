@@ -29,17 +29,13 @@ fn test_tree_basics() {
 
     // Test tree creation: Too many nodes (only in cases where usize is 64 bit).
     #[cfg(target_pointer_width = "64")]
-    // We allow uninitialized vectors because we don't want to allocate so much memory
-    #[allow(clippy::uninit_vec)]
-    unsafe {
+    {
         let len = u32::MAX as usize + 2;
-        let mut nodes: Vec<TreeNode<u32, u32>> = Vec::new();
-
-        nodes.set_len(len);
+        let nodes: Vec<TreeNode<u32, u32>> = Vec::with_capacity(len);
 
         assert_eq!(
             MlsBinaryTree::new(nodes).expect_err("No error while creating too large tree."),
-            MlsBinaryTreeError::OutOfRange
+            MlsBinaryTreeError::InvalidNumberOfNodes
         )
     }
 
