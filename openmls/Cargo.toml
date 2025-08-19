@@ -82,6 +82,7 @@ libcrux-provider-js = [
 
 ]
 fork-resolution = []
+extensions-draft-08 = []
 
 [dev-dependencies]
 criterion = { version = "^0.5", default-features = false }       # need to disable default features for wasm
