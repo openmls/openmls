@@ -29,6 +29,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 // Private
+#[cfg(feature = "extensions-draft-08")]
+mod application_data_dict_extension;
 mod application_id_extension;
 mod codec;
 mod external_pub_extension;
@@ -42,6 +44,11 @@ use errors::*;
 pub mod errors;
 
 // Public re-exports
+#[cfg(feature = "extensions-draft-08")]
+pub use application_data_dict_extension::{
+    AppDataDictionary, AppDataDictionaryBuilder, AppDataDictionaryExtension, ComponentData,
+    ComponentId,
+};
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
 pub use external_sender_extension::{
@@ -99,6 +106,10 @@ pub enum ExtensionType {
     /// scenario.
     LastResort,
 
+    #[cfg(feature = "extensions-draft-08")]
+    /// AppDataDictionary extension
+    AppDataDictionary,
+
     /// A currently unknown extension type.
     Unknown(u16),
 }
@@ -113,6 +124,8 @@ impl ExtensionType {
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => true,
             ExtensionType::LastResort | ExtensionType::Unknown(_) => false,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::AppDataDictionary => false,
         }
     }
 
@@ -128,6 +141,8 @@ impl ExtensionType {
             | ExtensionType::ExternalSenders => Some(false),
             ExtensionType::ApplicationId => Some(true),
             ExtensionType::Unknown(_) => None,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::AppDataDictionary => Some(true),
         }
     }
 }
@@ -178,6 +193,8 @@ impl From<u16> for ExtensionType {
             3 => ExtensionType::RequiredCapabilities,
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
+            #[cfg(feature = "extensions-draft-08")]
+            6 => ExtensionType::AppDataDictionary,
             10 => ExtensionType::LastResort,
             unknown => ExtensionType::Unknown(unknown),
         }
@@ -192,6 +209,8 @@ impl From<ExtensionType> for u16 {
             ExtensionType::RequiredCapabilities => 3,
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::AppDataDictionary => 6,
             ExtensionType::LastResort => 10,
             ExtensionType::Unknown(unknown) => unknown,
         }
@@ -228,6 +247,10 @@ pub enum Extension {
 
     /// An [`ExternalSendersExtension`]
     ExternalSenders(ExternalSendersExtension),
+
+    /// An [`AppDataDictionaryExtension`]
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataDictionary(AppDataDictionaryExtension),
 
     /// A [`LastResortExtension`]
     LastResort(LastResortExtension),
@@ -449,6 +472,20 @@ impl Extension {
             )),
         }
     }
+    #[cfg(feature = "extensions-draft-08")]
+    /// Get a reference to this extension as [`AppDataDictionaryExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
+    /// [`Extension`] that's not an [`AppDataDictionaryExtension`].
+    pub fn as_app_data_dictionary_extension(
+        &self,
+    ) -> Result<&AppDataDictionaryExtension, ExtensionError> {
+        match self {
+            Self::AppDataDictionary(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
+                "This is not an AppDataDictionaryExtension".into(),
+            )),
+        }
+    }
 
     /// Get a reference to this extension as [`RatchetTreeExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on
@@ -511,6 +548,8 @@ impl Extension {
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
+            #[cfg(feature = "extensions-draft-08")]
+            Extension::AppDataDictionary(_) => ExtensionType::AppDataDictionary,
             Extension::LastResort(_) => ExtensionType::LastResort,
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
