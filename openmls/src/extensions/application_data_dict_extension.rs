@@ -2,6 +2,7 @@ use super::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 // TODO: use newtype or type alias defined elsewhere?
+/// The unique ComponentId.
 pub type ComponentId = u32;
 
 /// An entry in the [`AppDataDictionary`].
@@ -50,6 +51,10 @@ impl<Data: Into<VLBytes>> From<BTreeMap<ComponentId, Data>> for AppDataDictionar
 }
 
 /// App data dictionary in the [`AppDataDictionaryExtension`].
+///
+/// This struct contains a list of [`ComponentData`] entries.
+/// Entries are in order, and there is at most one entry per [`ComponentId`].
+/// These properties are checked upon creation, as well as upon deserialization.
 #[derive(
     PartialEq,
     Eq,
@@ -75,7 +80,7 @@ enum AppDataDictionaryError {
 }
 
 impl AppDataDictionary {
-    /// Returns an [`AppDataDictionaryBuilder`].
+    /// Returns a builder for this type.
     pub fn builder() -> AppDataDictionaryBuilder {
         AppDataDictionaryBuilder::new()
     }
@@ -101,10 +106,9 @@ impl AppDataDictionary {
     /// Creates an [`AppDataDictionary`] from a Vec of [`ComponentData`] entries.
     ///
     /// Ensures that the list is ordered by [`ComponentId`], and that there is at most one entry per [`ComponentId`].
-    // <https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.6-5>
+    /// <https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.6-5>
     fn try_from_vec(data: Vec<ComponentData>) -> Result<Self, AppDataDictionaryError> {
-        // Use an ordered map of processed ComponentIds to check conditions
-        // See
+        // Use an ordered set of processed ComponentIds to check conditions
         let mut seen = std::collections::BTreeSet::<ComponentId>::new();
 
         for ComponentData { component_id, .. } in data.iter() {
@@ -131,6 +135,10 @@ impl AppDataDictionary {
 }
 
 impl tls_codec::Deserialize for AppDataDictionary {
+    /// Deserialize from bytes.
+    ///
+    /// This function also ensures that the [`ComponentData`] entries are in order by
+    /// [`ComponentId`], and there is at most one entry per [`ComponentId`].
     fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let vec = Vec::<ComponentData>::tls_deserialize(bytes)?;
 
@@ -140,8 +148,9 @@ impl tls_codec::Deserialize for AppDataDictionary {
     }
 }
 
-// TODO: add link to extensions draft
 /// App Data Dictionary Extension.
+///
+/// <https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.6-3>
 #[derive(
     PartialEq,
     Eq,
