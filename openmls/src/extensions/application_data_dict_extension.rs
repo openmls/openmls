@@ -1,4 +1,5 @@
 use super::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 /// The unique ComponentId.
@@ -34,7 +35,7 @@ impl ComponentData {
     }
 }
 
-/// Build an AppDataDictionary from a [`BTreeMap`].
+/// Build an [`AppDataDictionary`] from a [`BTreeMap`].
 impl<Data: Into<VLBytes>> From<BTreeMap<ComponentId, Data>> for AppDataDictionary {
     fn from(map: BTreeMap<ComponentId, Data>) -> Self {
         let component_data = map
@@ -49,7 +50,7 @@ impl<Data: Into<VLBytes>> From<BTreeMap<ComponentId, Data>> for AppDataDictionar
     }
 }
 
-/// App data dictionary in the [`AppDataDictionaryExtension`].
+/// Serializable app data dictionary in the [`AppDataDictionaryExtension`].
 ///
 /// This struct contains a list of [`ComponentData`] entries.
 /// Entries are in order, and there is at most one entry per [`ComponentId`].
@@ -83,7 +84,7 @@ impl AppDataDictionary {
         AppDataDictionaryBuilder::new()
     }
 
-    /// Consumes the dictionary and returns an iterator of the [`ComponentData`] entries,
+    /// Returns an iterator over the [`ComponentData`] entries,
     /// ordered by [`ComponentId`].
     pub fn entries(&self) -> impl Iterator<Item = &ComponentData> {
         self.component_data.iter()
@@ -99,7 +100,6 @@ impl AppDataDictionary {
         self.component_data.is_empty()
     }
 
-    // TODO: Should this be added to the public API?
     /// Creates an [`AppDataDictionary`] from a Vec of [`ComponentData`] entries.
     ///
     /// Ensures that the list is ordered by [`ComponentId`], and that there is at most one entry per [`ComponentId`].
@@ -176,11 +176,12 @@ impl AppDataDictionaryExtension {
 }
 
 /// Builder struct for an [`AppDataDictionary`].
+///
+/// This struct is a wrapper around a `BTreeMap<ComponentId, VLBytes>`.
 pub struct AppDataDictionaryBuilder {
     component_data: BTreeMap<ComponentId, VLBytes>,
 }
 
-use std::collections::BTreeMap;
 impl AppDataDictionaryBuilder {
     fn new() -> Self {
         Self {
