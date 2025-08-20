@@ -363,7 +363,7 @@ impl MlsGroupCreateConfigBuilder {
         Ok(self)
     }
 
-    /// Finalizes the builder and retursn an `[MlsGroupCreateConfig`].
+    /// Finalizes the builder and retursn an [`MlsGroupCreateConfig`].
     pub fn build(self) -> MlsGroupCreateConfig {
         self.config
     }
