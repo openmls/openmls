@@ -109,9 +109,7 @@ impl MlsGroup {
                     .filter(|extension| extension.extension_type() != ExtensionType::RatchetTree),
             );
 
-            Extensions::from_vec(extensions).map_err(|_| {
-                LibraryError::custom("There should not have been duplicate extensions here.")
-            })?
+            Extensions::from_vec(extensions)?
         };
 
         // Create to-be-signed group info.
@@ -127,7 +125,7 @@ impl MlsGroup {
                 )
                 .map_err(LibraryError::unexpected_crypto_error)?,
             self.own_leaf_index(),
-        );
+        )?;
 
         // Sign to-be-signed group info.
         let group_info = group_info_tbs
