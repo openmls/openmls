@@ -118,34 +118,40 @@ impl AppDataDictionary {
         Self::from(map)
     }
 
-    /// Creates an [`AppDataDictionary`] from a Vec of [`ComponentData`] entries.
+    /// Creates an [`AppDataDictionary`] from an `impl IntoIterator<Item = ComponentData>`.
     ///
     /// Ensures that the list is ordered by [`ComponentId`], and that there is at most one entry per [`ComponentId`].
     /// <https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.6-5>
-    fn try_from_vec(data: Vec<ComponentData>) -> Result<Self, BuildAppDataDictionaryError> {
-        // Use an ordered set of processed ComponentIds to check conditions
-        let mut seen = std::collections::BTreeSet::<ComponentId>::new();
+    fn try_from_data(
+        data: impl IntoIterator<Item = ComponentData>,
+    ) -> Result<Self, BuildAppDataDictionaryError> {
+        // keep track of the last component id to ensure monotonicity
+        let mut prev = None;
 
-        for ComponentData { component_id, .. } in data.iter() {
-            // Check for duplicates
-            if seen.contains(component_id) {
-                return Err(BuildAppDataDictionaryError::DuplicateEntries);
-            }
+        let component_data = data
+            .into_iter()
+            .map(|component_data| {
+                let component_id = component_data.component_id;
+                if let Some(prev_component_id) = prev {
+                    // Check for duplicates
+                    if prev_component_id == component_id {
+                        return Err(BuildAppDataDictionaryError::DuplicateEntries);
+                    }
 
-            // Check the ordering
-            // The component id must be greater than all previous component ids
-            if let Some(max) = seen.last() {
-                if max > component_id {
-                    return Err(BuildAppDataDictionaryError::EntriesNotInOrder);
+                    // Check the ordering
+                    // The component id must be greater than all previous component ids
+                    if prev_component_id > component_id {
+                        return Err(BuildAppDataDictionaryError::EntriesNotInOrder);
+                    }
                 }
-            }
-            // Update the map
-            seen.insert(*component_id);
-        }
+                // Update the last component id
+                let _ = prev.insert(component_id);
 
-        Ok(Self {
-            component_data: data,
-        })
+                Ok(component_data)
+            })
+            .collect::<Result<_, _>>()?;
+
+        Ok(Self { component_data })
     }
 }
 
@@ -158,7 +164,7 @@ impl tls_codec::Deserialize for AppDataDictionary {
         let vec = Vec::<ComponentData>::tls_deserialize(bytes)?;
 
         // Check that the required conditions hold
-        AppDataDictionary::try_from_vec(vec)
+        AppDataDictionary::try_from_data(vec)
             .map_err(|e| tls_codec::Error::DecodingError(e.to_string()))
     }
 }
