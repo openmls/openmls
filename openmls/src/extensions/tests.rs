@@ -34,6 +34,18 @@ fn application_id() {
     assert_eq!(&data[..], &serialized_extension_struct);
 }
 
+// This tests adding an ApplicationId extension to the leaf node extensions
+#[test]
+fn application_id_in_leaf_node_extensions() {
+    let extensions = Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(&[])));
+
+    let _create_config = MlsGroupCreateConfig::builder()
+        .use_ratchet_tree_extension(true)
+        .with_leaf_node_extensions(extensions)
+        .unwrap()
+        .build();
+}
+
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[openmls_test::openmls_test]
