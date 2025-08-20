@@ -145,6 +145,18 @@ impl ExtensionType {
             ExtensionType::AppDataDictionary => Some(true),
         }
     }
+    pub(crate) fn is_valid_in_group_info(self) -> Option<bool> {
+        match self {
+            ExtensionType::LastResort
+            | ExtensionType::RequiredCapabilities
+            | ExtensionType::ExternalSenders
+            | ExtensionType::ApplicationId => Some(false),
+            ExtensionType::RatchetTree | ExtensionType::ExternalPub => Some(true),
+            ExtensionType::Unknown(_) => None,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::AppDataDictionary => Some(true),
+        }
+    }
 }
 
 impl Size for ExtensionType {

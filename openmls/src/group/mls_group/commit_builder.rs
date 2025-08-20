@@ -713,7 +713,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     extensions,
                     confirmation_tag,
                     own_leaf_index,
-                )
+                )?
             };
             // Sign to-be-signed group info.
             Some(group_info_tbs.sign(old_signer)?)
