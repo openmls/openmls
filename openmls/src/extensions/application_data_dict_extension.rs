@@ -285,12 +285,12 @@ mod test {
                     data: vec![].into(),
                 },
                 ComponentData {
-                    component_id: 9,
-                    data: vec![].into(),
-                },
-                ComponentData {
                     component_id: 5,
                     data: vec![1, 2, 3].into(),
+                },
+                ComponentData {
+                    component_id: 9,
+                    data: vec![].into(),
                 },
             ],
         };
