@@ -18,7 +18,7 @@ use crate::{
     },
     credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
-    extensions::{ExtensionType, Extensions},
+    extensions::{errors::InvalidExtensionError, Extension, ExtensionType, Extensions},
     group::GroupId,
     key_packages::{KeyPackage, Lifetime},
     prelude::KeyPackageBundle,
@@ -126,9 +126,19 @@ impl LeafNodeParametersBuilder {
     }
 
     /// Set the extensions.
-    pub fn with_extensions(mut self, extensions: Extensions) -> Self {
+    ///
+    /// Returns an error if one or more of the extensions is invalid in leaf nodes.
+    pub fn with_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        for extension_type in extensions.iter().map(Extension::extension_type) {
+            if extension_type.is_valid_in_leaf_node() == Some(false) {
+                return Err(InvalidExtensionError::IllegalInLeafNodes);
+            }
+        }
         self.extensions = Some(extensions);
-        self
+        Ok(self)
     }
 
     /// Build the [`LeafNodeParameters`].
