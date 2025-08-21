@@ -41,7 +41,6 @@ fn application_id_in_leaf_node_extensions() {
     let extensions = Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(&[])));
 
     let _create_config = MlsGroupCreateConfig::builder()
-        .use_ratchet_tree_extension(true)
         .with_leaf_node_extensions(extensions)
         .unwrap()
         .build();
