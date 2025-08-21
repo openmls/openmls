@@ -353,7 +353,7 @@ impl Extensions {
         &self,
     ) -> Result<(), InvalidExtensionError> {
         for extension_type in self.unique.iter().map(Extension::extension_type) {
-            // allow unknown extensions
+            // also allow unknown extensions, which return `None` here
             if extension_type.is_valid_in_leaf_node() == Some(false) {
                 return Err(InvalidExtensionError::IllegalInLeafNodes);
             }
