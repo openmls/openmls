@@ -96,7 +96,9 @@ use crate::{
     },
     credentials::*,
     error::LibraryError,
-    extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
+    extensions::{
+        errors::InvalidExtensionError, Extension, ExtensionType, Extensions, LastResortExtension,
+    },
     storage::OpenMlsProvider,
     treesync::{
         node::{
@@ -464,9 +466,20 @@ impl KeyPackageBuilder {
     }
 
     /// Set the leaf node extensions.
-    pub fn leaf_node_extensions(mut self, extensions: Extensions) -> Self {
+    ///
+    /// Returns an error if one or more of the provided extensions is invalid.
+    pub fn leaf_node_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        for extension_type in extensions.iter().map(Extension::extension_type) {
+            if extension_type.is_valid_in_leaf_node() == Some(false) {
+                return Err(InvalidExtensionError::IllegalInLeafNodes);
+            }
+        }
         self.leaf_node_extensions.replace(extensions);
-        self
+
+        Ok(self)
     }
 
     /// Ensure that a last-resort extension is present in the key package if the
