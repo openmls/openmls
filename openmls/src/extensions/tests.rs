@@ -34,7 +34,8 @@ fn application_id() {
     assert_eq!(&data[..], &serialized_extension_struct);
 }
 
-// This tests adding an ApplicationId extension to the leaf node extensions
+// Test adding an ApplicationId extension to the leaf node extensions
+// in an MlsGroupCreateConfig
 #[test]
 fn application_id_in_leaf_node_extensions() {
     let extensions = Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(&[])));
