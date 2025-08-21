@@ -342,7 +342,7 @@ impl MlsGroupCreateConfigBuilder {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, LeafNodeValidationError> {
-        // Ensure that these extensions are valid for leaf nodes.
+        // Ensure that these extensions are not invalid for leaf nodes.
         for extension_type in extensions.iter().map(Extension::extension_type) {
             if extension_type.is_valid_in_leaf_node() == Some(false) {
                 log::error!("Invalid leaf node extension.");

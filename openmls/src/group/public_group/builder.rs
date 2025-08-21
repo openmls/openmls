@@ -57,7 +57,7 @@ impl TempBuilderPG1 {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
-        // Ensure that these extensions are valid for leaf nodes.
+        // Ensure that these extensions are not invalid for leaf nodes.
         for extension_type in extensions.iter().map(Extension::extension_type) {
             if extension_type.is_valid_in_leaf_node() == Some(false) {
                 return Err(InvalidExtensionError::IllegalInLeafNodes);
