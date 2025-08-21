@@ -472,11 +472,7 @@ impl KeyPackageBuilder {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
-        for extension_type in extensions.iter().map(Extension::extension_type) {
-            if extension_type.is_valid_in_leaf_node() == Some(false) {
-                return Err(InvalidExtensionError::IllegalInLeafNodes);
-            }
-        }
+        extensions.validate_extension_types_for_leaf_node()?;
         self.leaf_node_extensions.replace(extensions);
 
         Ok(self)

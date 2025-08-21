@@ -347,6 +347,19 @@ impl Extensions {
             .iter()
             .any(|ext| ext.extension_type() == extension_type)
     }
+
+    // validate that all extensions can be added to a leaf node.
+    pub(crate) fn validate_extension_types_for_leaf_node(
+        &self,
+    ) -> Result<(), InvalidExtensionError> {
+        for extension_type in self.unique.iter().map(Extension::extension_type) {
+            // allow unknown extensions
+            if extension_type.is_valid_in_leaf_node() == Some(false) {
+                return Err(InvalidExtensionError::IllegalInLeafNodes);
+            }
+        }
+        Ok(())
+    }
 }
 
 impl TryFrom<Vec<Extension>> for Extensions {

@@ -343,11 +343,9 @@ impl MlsGroupCreateConfigBuilder {
         extensions: Extensions,
     ) -> Result<Self, LeafNodeValidationError> {
         // Ensure that these extensions are not invalid for leaf nodes.
-        for extension_type in extensions.iter().map(Extension::extension_type) {
-            if extension_type.is_valid_in_leaf_node() == Some(false) {
-                log::error!("Invalid leaf node extension.");
-                return Err(LeafNodeValidationError::UnsupportedExtensions);
-            }
+        if extensions.validate_extension_types_for_leaf_node().is_err() {
+            log::error!("Invalid leaf node extension.");
+            return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
 
         // Make sure that the extension type is supported in this context.
