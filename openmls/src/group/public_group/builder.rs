@@ -5,7 +5,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
-    group::{Extension, GroupContext, GroupId},
+    group::{GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
     schedule::CommitSecret,
@@ -58,11 +58,8 @@ impl TempBuilderPG1 {
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
         // Ensure that these extensions are not invalid for leaf nodes.
-        for extension_type in extensions.iter().map(Extension::extension_type) {
-            if extension_type.is_valid_in_leaf_node() == Some(false) {
-                return Err(InvalidExtensionError::IllegalInLeafNodes);
-            }
-        }
+        extensions.validate_extension_types_for_leaf_node()?;
+
         self.leaf_node_extensions = extensions;
         Ok(self)
     }
