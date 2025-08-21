@@ -5,7 +5,7 @@ use super::{Deserialize, Serialize};
 /// # Application Identifiers
 ///
 /// The application id extension allows applications to add an explicit,
-/// application-defined identifier to a [`LeafNode`].
+/// application-defined identifier to a [`LeafNode`](crate::treesync::LeafNode).
 #[derive(
     PartialEq,
     Eq,
