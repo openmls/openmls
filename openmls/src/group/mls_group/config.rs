@@ -342,14 +342,12 @@ impl MlsGroupCreateConfigBuilder {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, LeafNodeValidationError> {
-        // None of the default extensions are leaf node extensions, so only
-        // unknown extensions can be leaf node extensions.
-        let is_valid_in_leaf_node = extensions
-            .iter()
-            .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_)));
-        if !is_valid_in_leaf_node {
-            log::error!("Leaf node extensions must be unknown extensions.");
-            return Err(LeafNodeValidationError::UnsupportedExtensions);
+        // Ensure that these extensions are valid for leaf nodes.
+        for extension_type in extensions.iter().map(Extension::extension_type) {
+            if extension_type.is_valid_in_leaf_node() == Some(false) {
+                log::error!("Invalid leaf node extension.");
+                return Err(LeafNodeValidationError::UnsupportedExtensions);
+            }
         }
 
         // Make sure that the extension type is supported in this context.
