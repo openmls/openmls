@@ -484,6 +484,8 @@ impl LeafNode {
     /// - the type of the credential is covered by the capabilities
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
         // Check that no extension is invalid when used in leaf nodes.
+        // NOTE: This check is conducted manually, instead of using
+        // Extensions::validate_extension_types_for_leaf_node().
         let invalid_extension_types = self
             .extensions()
             .iter()
