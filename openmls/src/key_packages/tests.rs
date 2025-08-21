@@ -69,6 +69,7 @@ fn application_id_extension() {
         .leaf_node_extensions(Extensions::single(Extension::ApplicationId(
             ApplicationIdExtension::new(id),
         )))
+        .unwrap()
         .build(
             ciphersuite,
             provider,
