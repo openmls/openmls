@@ -467,7 +467,7 @@ impl KeyPackageBuilder {
 
     /// Set the leaf node extensions.
     ///
-    /// Returns an error if one or more of the provided extensions is invalid.
+    /// Returns an error if one or more of the extensions is invalid in leaf nodes.
     pub fn leaf_node_extensions(
         mut self,
         extensions: Extensions,
