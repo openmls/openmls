@@ -29,6 +29,21 @@ pub(crate) fn key_package(
     (key_package, credential.into(), signer)
 }
 
+/// Ensure that invalid leaf node extensions cannot be added to the KeyPackage
+#[test]
+fn key_package_builder_leaf_node_extensions_validation() {
+    // create an extension that is invalid in the leaf node
+    let extension = Extension::ExternalSenders(ExternalSendersExtension::new());
+    assert!(extension.extension_type().is_valid_in_leaf_node() == Some(false));
+
+    // add the invalid extension as a leaf node extension to the key package
+    let err = KeyPackage::builder()
+        .leaf_node_extensions(Extensions::single(extension))
+        .unwrap_err();
+
+    assert_eq!(err, InvalidExtensionError::IllegalInLeafNodes);
+}
+
 #[openmls_test::openmls_test]
 fn generate_key_package() {
     let provider = &Provider::default();
