@@ -18,7 +18,7 @@ use crate::{
     },
     credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
-    extensions::{ExtensionType, Extensions},
+    extensions::{errors::InvalidExtensionError, ExtensionType, Extensions},
     group::GroupId,
     key_packages::{KeyPackage, Lifetime},
     prelude::KeyPackageBundle,
@@ -126,9 +126,16 @@ impl LeafNodeParametersBuilder {
     }
 
     /// Set the extensions.
-    pub fn with_extensions(mut self, extensions: Extensions) -> Self {
+    ///
+    /// Returns an error if one or more of the extensions is invalid in leaf nodes.
+    pub fn with_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        extensions.validate_extension_types_for_leaf_node()?;
+
         self.extensions = Some(extensions);
-        self
+        Ok(self)
     }
 
     /// Build the [`LeafNodeParameters`].
@@ -477,6 +484,8 @@ impl LeafNode {
     /// - the type of the credential is covered by the capabilities
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
         // Check that no extension is invalid when used in leaf nodes.
+        // NOTE: This check is conducted manually, instead of using
+        // Extensions::validate_extension_types_for_leaf_node().
         let invalid_extension_types = self
             .extensions()
             .iter()
