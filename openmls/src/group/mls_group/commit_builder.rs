@@ -11,12 +11,13 @@ use tls_codec::Serialize as _;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{signable::Signable as _, Secret},
+    extensions::errors::InvalidExtensionError,
     framing::{FramingParameters, WireFormat},
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
-        CommitBuilderStageError, CreateCommitError, Extension, ExtensionType, Extensions,
-        ExternalPubExtension, ProposalQueue, ProposalQueueError, QueuedProposal,
-        RatchetTreeExtension, StagedCommit, WireFormatPolicy,
+        CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
+        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
+        WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
@@ -371,18 +372,27 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
 
     /// Add the provided [`Extension`]s to the [`GroupInfo`].
     ///
-    /// Note: if the `extensions` list provided to this function contains any [`RatchetTreeExtension`], these will not be included in the [`GroupInfo`].
+    ///  Returns an error if a  [`RatchetTreeExtension`] or [`ExternalPubExtension`] is added
+    ///  directly here.
     pub fn create_group_info_with_extensions(
         mut self,
         extensions: impl IntoIterator<Item = Extension>,
-    ) -> Self {
+    ) -> Result<Self, InvalidExtensionError> {
         self.stage.group_info_config.create_group_info = true;
         self.stage.group_info_config.other_extensions = extensions
             .into_iter()
-            .filter(|extension| extension.extension_type() != ExtensionType::RatchetTree)
-            .collect();
+            .map(|extension| {
+                if extension.as_ratchet_tree_extension().is_ok()
+                    || extension.as_external_pub_extension().is_ok()
+                {
+                    Err(InvalidExtensionError::CannotAddDirectlyToGroupInfo)
+                } else {
+                    Ok(extension)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
-        self
+        Ok(self)
     }
 
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets

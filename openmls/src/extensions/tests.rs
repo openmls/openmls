@@ -420,6 +420,7 @@ fn app_data_dictionary_extension() {
         .load_psks(alice_party.provider.storage())
         .unwrap()
         .create_group_info_with_extensions(Some(extension))
+        .unwrap()
         .build(
             alice_party.provider.rand(),
             alice_party.provider.crypto(),
