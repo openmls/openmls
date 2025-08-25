@@ -3,6 +3,7 @@ use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
 use crate::{
     ciphersuite::HpkePublicKey,
+    extensions::errors::InvalidExtensionError,
     schedule::{EpochAuthenticator, ResumptionPskSecret},
 };
 
@@ -69,8 +70,8 @@ impl MlsGroup {
 
     /// Export a group info object for this group, with additional extensions.
     ///
-    ///  Any [`RatchetTreeExtension`]s included in `additional_extensions` will be
-    /// skipped.
+    ///  Returns an error if a  [`RatchetTreeExtension`] or [`ExternalPubExtension`] is added
+    ///  directly here.
     pub fn export_group_info_with_additional_extensions<CryptoProvider: OpenMlsCrypto>(
         &self,
         crypto: &CryptoProvider,
@@ -106,7 +107,16 @@ impl MlsGroup {
             extensions.extend(
                 additional_extensions
                     .into_iter()
-                    .filter(|extension| extension.extension_type() != ExtensionType::RatchetTree),
+                    .map(|extension| {
+                        if extension.as_ratchet_tree_extension().is_ok()
+                            || extension.as_external_pub_extension().is_ok()
+                        {
+                            Err(InvalidExtensionError::CannotAddDirectlyToGroupInfo)
+                        } else {
+                            Ok(extension)
+                        }
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
             );
 
             Extensions::from_vec(extensions)?

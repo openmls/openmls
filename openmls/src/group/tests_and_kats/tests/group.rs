@@ -822,6 +822,7 @@ fn test_create_group_info_with_extensions() {
         .unwrap()
         .use_ratchet_tree_extension(false)
         .create_group_info_with_extensions(extensions.clone())
+        .unwrap()
         .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
         .unwrap()
         .stage_commit(provider)
