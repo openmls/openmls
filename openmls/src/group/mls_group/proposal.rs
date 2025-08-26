@@ -11,7 +11,7 @@ use crate::{
     credentials::Credential,
     extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut},
-    group::{errors::CreateAddProposalError, GroupId, ValidationError},
+    group::{errors::CreateAddProposalError, GroupContext, GroupId, ValidationError},
     key_packages::KeyPackage,
     messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
     prelude::LibraryError,
@@ -44,14 +44,14 @@ pub enum Propose {
         group_id: GroupId,
         version: ProtocolVersion,
         ciphersuite: Ciphersuite,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
     },
 
     /// An external init proposal gets the raw bytes from the KEM output.
     ExternalInit(Vec<u8>),
 
     /// Propose adding new group context extensions.
-    GroupContextExtensions(Extensions),
+    GroupContextExtensions(Extensions<GroupContext>),
 
     /// A custom proposal with semantics to be implemented by the application.
     Custom(CustomProposal),
@@ -354,7 +354,7 @@ impl MlsGroup {
     pub fn propose_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
         signer: &impl Signer,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
@@ -395,7 +395,7 @@ impl MlsGroup {
     pub fn update_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
@@ -406,7 +406,7 @@ impl MlsGroup {
         // Build and stage Commit containing GroupContextExtensions proposal
         let bundle = self
             .commit_builder()
-            .propose_group_context_extensions(extensions)
+            .propose_group_context_extensions(extensions)?
             .load_psks(provider.storage())?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)?;

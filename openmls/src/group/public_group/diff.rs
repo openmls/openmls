@@ -201,7 +201,7 @@ impl<'a> PublicGroupDiff<'a> {
     pub(crate) fn update_group_context(
         &mut self,
         crypto: &impl OpenMlsCrypto,
-        extensions: Option<Extensions>,
+        extensions: Option<Extensions<GroupContext>>,
     ) -> Result<(), LibraryError> {
         // Calculate tree hash
         let new_tree_hash = self

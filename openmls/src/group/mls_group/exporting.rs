@@ -142,10 +142,12 @@ impl MlsGroup {
                         LibraryError::custom(
                             "There should not have been duplicate extensions here.",
                         )
-                    })?
+                    })
             } else {
-                Extensions::single(external_pub_extension()?)
-            }
+                Extensions::single(external_pub_extension()?).map_err(|_| {
+                    LibraryError::custom("There should not have been duplicate extensions here.")
+                })
+            }?
         };
 
         // Create to-be-signed group info.

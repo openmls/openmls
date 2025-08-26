@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::{
     binary_tree::LeafNodeIndex,
     error::LibraryError,
+    extensions::Extensions,
     framing::Sender,
     group::proposal_store::ProposalQueue,
     messages::proposals::{AddProposal, ExternalInitProposal, Proposal, ProposalType},
@@ -19,7 +20,7 @@ pub(crate) struct ApplyProposalsValues {
     pub(crate) invitation_list: Vec<(LeafNodeIndex, AddProposal)>,
     pub(crate) presharedkeys: Vec<PreSharedKeyId>,
     pub(crate) external_init_proposal_option: Option<ExternalInitProposal>,
-    pub(crate) extensions: Option<Extensions>,
+    pub(crate) extensions: Option<Extensions<GroupContext>>,
 }
 
 impl ApplyProposalsValues {
