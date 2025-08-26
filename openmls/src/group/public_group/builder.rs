@@ -8,6 +8,7 @@ use crate::{
     group::{ExtensionType, GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
+    prelude::{Extension, GroupContextExtension},
     schedule::CommitSecret,
     storage::OpenMlsProvider,
     treesync::{
@@ -24,8 +25,8 @@ pub(crate) struct TempBuilderPG1 {
     credential_with_key: CredentialWithKey,
     lifetime: Option<Lifetime>,
     capabilities: Option<Capabilities>,
-    leaf_node_extensions: Extensions,
-    group_context_extensions: Extensions,
+    leaf_node_extensions: Extensions<Extension>,
+    group_context_extensions: Extensions<GroupContextExtension>,
 }
 
 impl TempBuilderPG1 {
@@ -41,21 +42,16 @@ impl TempBuilderPG1 {
 
     pub(crate) fn with_group_context_extensions(
         mut self,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
     ) -> Result<Self, InvalidExtensionError> {
-        let is_valid_in_group_context = extensions.application_id().is_none()
-            && extensions.ratchet_tree().is_none()
-            && extensions.external_pub().is_none();
-        if !is_valid_in_group_context {
-            return Err(InvalidExtensionError::IllegalInGroupContext);
-        }
-        self.group_context_extensions = extensions;
+        let group_context_extensions: Extensions<GroupContextExtension> = extensions.try_into()?;
+        self.group_context_extensions = group_context_extensions;
         Ok(self)
     }
 
     pub(crate) fn with_leaf_node_extensions(
         mut self,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
     ) -> Result<Self, InvalidExtensionError> {
         // None of the default extensions are leaf node extensions, so only
         // unknown extensions can be leaf node extensions.

@@ -144,15 +144,15 @@ fn external_group_context_ext_proposal_should_succeed() {
         .context()
         .extensions()
         .iter()
-        .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
+        .any(|e| matches!(e, GroupContextExtension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
 
     let old_extensions = alice_group.extensions().to_owned();
-    assert!(!old_extensions.contains(ExtensionType::ExternalPub));
+    assert!(!old_extensions.contains(ExtensionType::ApplicationId));
 
     // define the new group context extensions
-    let extensions = Extensions::single(Extension::ExternalPub(ExternalPubExtension::new(
-        vec![1, 2, 3].into(),
-    )));
+    let extensions = Extensions::single(Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[], &[], &[]),
+    ));
 
     // Now Delivery Service wants to update the group context extensions
     let external_group_context_ext_proposal: MlsMessageIn =
@@ -195,7 +195,7 @@ fn external_group_context_ext_proposal_should_succeed() {
     assert_ne!(*alice_group.extensions(), old_extensions);
     assert!(alice_group
         .extensions()
-        .contains(ExtensionType::ExternalPub));
+        .contains(ExtensionType::RequiredCapabilities));
 }
 
 #[openmls_test]
@@ -228,7 +228,7 @@ fn external_group_context_ext_proposal_should_succeed_unknown_extension() {
         .context()
         .extensions()
         .iter()
-        .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
+        .any(|e| matches!(e, GroupContextExtension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
 
     let old_extensions = alice_group.extensions().to_owned();
     assert!(!old_extensions.contains(ExtensionType::Unknown(0xf001)));

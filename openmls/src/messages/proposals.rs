@@ -22,7 +22,7 @@ use crate::{
     },
     group::GroupId,
     key_packages::*,
-    prelude::LeafNode,
+    prelude::{Extension, ExtensionType, GroupContextExtension, LeafNode},
     schedule::psk::*,
     versions::ProtocolVersion,
 };
@@ -483,7 +483,7 @@ pub struct ReInitProposal {
     pub(crate) group_id: GroupId,
     pub(crate) version: ProtocolVersion,
     pub(crate) ciphersuite: Ciphersuite,
-    pub(crate) extensions: Extensions,
+    pub(crate) extensions: Extensions<Extension>,
 }
 
 /// ExternalInit Proposal.
@@ -570,19 +570,25 @@ pub struct AppAckProposal {
     TlsSize,
 )]
 pub struct GroupContextExtensionProposal {
-    extensions: Extensions,
+    extensions: Extensions<GroupContextExtension>,
 }
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
-    pub(crate) fn new(extensions: Extensions) -> Self {
+    pub(crate) fn new(extensions: Extensions<GroupContextExtension>) -> Self {
         Self { extensions }
     }
 
     /// Get the extensions of the proposal
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<GroupContextExtension> {
         &self.extensions
     }
+}
+
+#[derive(Debug, Error, PartialEq, Clone)]
+pub enum GroupContextExtensionProposalError {
+    #[error("Expected valid `Extension` for `GroupContextExtension`, got `{wrong:?}`")]
+    InvalidExtensionTypeError { wrong: ExtensionType },
 }
 
 // Crate-only types

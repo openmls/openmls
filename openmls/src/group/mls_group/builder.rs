@@ -12,6 +12,7 @@ use crate::{
         PublicGroup, WireFormatPolicy,
     },
     key_packages::Lifetime,
+    prelude::Extension,
     schedule::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         InitSecret, JoinerSecret, KeySchedule, PreSharedKeyId,
@@ -72,7 +73,10 @@ impl MlsGroupBuilder {
         let (public_group_builder, commit_secret, leaf_keypair) =
             PublicGroup::builder(group_id, ciphersuite, credential_with_key)
                 .with_group_context_extensions(
-                    mls_group_create_config.group_context_extensions.clone(),
+                    mls_group_create_config
+                        .group_context_extensions
+                        .clone()
+                        .into(),
                 )?
                 .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())?
                 .with_lifetime(*mls_group_create_config.lifetime())
@@ -249,7 +253,7 @@ impl MlsGroupBuilder {
     /// Sets the initial group context extensions
     pub fn with_group_context_extensions(
         mut self,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
     ) -> Result<Self, InvalidExtensionError> {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
@@ -260,7 +264,7 @@ impl MlsGroupBuilder {
     /// Sets the initial leaf node extensions
     pub fn with_leaf_node_extensions(
         mut self,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
     ) -> Result<Self, LeafNodeValidationError> {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder

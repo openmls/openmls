@@ -14,7 +14,7 @@ use crate::{
     group::{errors::CreateAddProposalError, GroupId, ValidationError},
     key_packages::KeyPackage,
     messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
-    prelude::LibraryError,
+    prelude::{Extension, GroupContextExtension, LibraryError},
     schedule::PreSharedKeyId,
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{LeafNode, LeafNodeParameters},
@@ -44,14 +44,14 @@ pub enum Propose {
         group_id: GroupId,
         version: ProtocolVersion,
         ciphersuite: Ciphersuite,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
     },
 
     /// An external init proposal gets the raw bytes from the KEM output.
     ExternalInit(Vec<u8>),
 
     /// Propose adding new group context extensions.
-    GroupContextExtensions(Extensions),
+    GroupContextExtensions(Extensions<Extension>),
 
     /// A custom proposal with semantics to be implemented by the application.
     Custom(CustomProposal),
@@ -354,14 +354,15 @@ impl MlsGroup {
     pub fn propose_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
         signer: &impl Signer,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
+        let group_context_extensions = extensions.try_into()?;
         let proposal = self.create_group_context_ext_proposal::<Provider>(
             self.framing_parameters(),
-            extensions,
+            group_context_extensions,
             signer,
         )?;
 
@@ -395,7 +396,7 @@ impl MlsGroup {
     pub fn update_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
@@ -406,7 +407,7 @@ impl MlsGroup {
         // Build and stage Commit containing GroupContextExtensions proposal
         let bundle = self
             .commit_builder()
-            .propose_group_context_extensions(extensions)
+            .propose_group_context_extensions(extensions)?
             .load_psks(provider.storage())?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)?;
