@@ -261,7 +261,7 @@ fn test_valsem242() {
                 group_id: alice_group.group_id().clone(),
                 version: Default::default(),
                 ciphersuite,
-                extensions: alice_group.context().extensions().clone(),
+                extensions: alice_group.context().extensions().clone().into(),
             }))
         };
 

@@ -97,7 +97,7 @@ impl MlsGroup {
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupJoinConfig,
         capabilities: Option<Capabilities>,
-        extensions: Option<Extensions>,
+        extensions: Option<Extensions<Extension>>,
         aad: &[u8],
         credential_with_key: CredentialWithKey,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError<Provider::StorageError>>

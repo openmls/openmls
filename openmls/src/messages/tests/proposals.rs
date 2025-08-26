@@ -3,9 +3,14 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
+    group::mls_group::tests_and_kats::utils::setup_client,
     messages::{
         proposals::{Proposal, ProposalOrRef, RemoveProposal},
         proposals_in::ProposalOrRefIn,
+    },
+    prelude::{
+        Extension, Extensions, ExternalSender, GroupContextExtension,
+        GroupContextExtensionProposal, RequiredCapabilitiesExtension, UnknownExtension,
     },
 };
 

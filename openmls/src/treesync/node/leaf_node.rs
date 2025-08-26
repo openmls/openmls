@@ -21,7 +21,7 @@ use crate::{
     extensions::{ExtensionType, Extensions},
     group::GroupId,
     key_packages::{KeyPackage, Lifetime},
-    prelude::KeyPackageBundle,
+    prelude::{Extension, KeyPackageBundle},
     storage::OpenMlsProvider,
 };
 
@@ -37,7 +37,7 @@ pub(crate) struct NewLeafNodeParams {
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) leaf_node_source: LeafNodeSource,
     pub(crate) capabilities: Capabilities,
-    pub(crate) extensions: Extensions,
+    pub(crate) extensions: Extensions<Extension>,
     pub(crate) tree_info_tbs: TreeInfoTbs,
 }
 
@@ -47,7 +47,7 @@ pub(crate) struct NewLeafNodeParams {
 pub(crate) struct UpdateLeafNodeParams {
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) capabilities: Capabilities,
-    pub(crate) extensions: Extensions,
+    pub(crate) extensions: Extensions<Extension>,
 }
 
 impl UpdateLeafNodeParams {
@@ -69,7 +69,7 @@ impl UpdateLeafNodeParams {
 pub struct LeafNodeParameters {
     credential_with_key: Option<CredentialWithKey>,
     capabilities: Option<Capabilities>,
-    extensions: Option<Extensions>,
+    extensions: Option<Extensions<Extension>>,
 }
 
 impl LeafNodeParameters {
@@ -89,7 +89,7 @@ impl LeafNodeParameters {
     }
 
     /// Returns the extensions.
-    pub fn extensions(&self) -> Option<&Extensions> {
+    pub fn extensions(&self) -> Option<&Extensions<Extension>> {
         self.extensions.as_ref()
     }
 
@@ -109,7 +109,7 @@ impl LeafNodeParameters {
 pub struct LeafNodeParametersBuilder {
     credential_with_key: Option<CredentialWithKey>,
     capabilities: Option<Capabilities>,
-    extensions: Option<Extensions>,
+    extensions: Option<Extensions<Extension>>,
 }
 
 impl LeafNodeParametersBuilder {
@@ -126,7 +126,7 @@ impl LeafNodeParametersBuilder {
     }
 
     /// Set the extensions.
-    pub fn with_extensions(mut self, extensions: Extensions) -> Self {
+    pub fn with_extensions(mut self, extensions: Extensions<Extension>) -> Self {
         self.extensions = Some(extensions);
         self
     }
@@ -241,7 +241,7 @@ impl LeafNode {
         credential_with_key: CredentialWithKey,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
         tree_info_tbs: TreeInfoTbs,
         signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
@@ -305,7 +305,7 @@ impl LeafNode {
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
         tree_info_tbs: TreeInfoTbs,
         provider: &Provider,
         signer: &impl Signer,
@@ -437,7 +437,7 @@ impl LeafNode {
     }
 
     /// Return a reference to the leaf node extensions.
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<Extension> {
         &self.payload.extensions
     }
 
@@ -555,7 +555,7 @@ struct LeafNodePayload {
     credential: Credential,
     capabilities: Capabilities,
     leaf_node_source: LeafNodeSource,
-    extensions: Extensions,
+    extensions: Extensions<Extension>,
 }
 
 /// The source of the `LeafNode`.
@@ -634,7 +634,7 @@ impl LeafNodeTbs {
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         leaf_node_source: LeafNodeSource,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
         tree_info_tbs: TreeInfoTbs,
     ) -> Self {
         let payload = LeafNodePayload {

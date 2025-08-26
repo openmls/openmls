@@ -30,6 +30,7 @@ use crate::{
         proposals::*,
         ConfirmationTag, GroupSecrets, Welcome,
     },
+    prelude::{ExtensionError, GroupContextExtension},
     schedule::{
         message_secrets::MessageSecrets,
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
@@ -399,7 +400,7 @@ impl MlsGroup {
     }
 
     /// Get a reference to the group context [`Extensions`] of this [`MlsGroup`].
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<GroupContextExtension> {
         self.public_group().group_context().extensions()
     }
 
@@ -555,7 +556,7 @@ impl MlsGroup {
     pub(crate) fn create_group_context_ext_proposal<Provider: OpenMlsProvider>(
         &self,
         framing_parameters: FramingParameters,
-        extensions: Extensions,
+        extensions: Extensions<GroupContextExtension>,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError<Provider::StorageError>>
     {

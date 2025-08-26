@@ -94,9 +94,9 @@ pub struct MlsGroupCreateConfig {
     /// Configuration parameters relevant to group operation at runtime
     pub(crate) join_config: MlsGroupJoinConfig,
     /// List of initial group context extensions
-    pub(crate) group_context_extensions: Extensions,
+    pub(crate) group_context_extensions: Extensions<GroupContextExtension>,
     /// List of initial leaf node extensions
-    pub(crate) leaf_node_extensions: Extensions,
+    pub(crate) leaf_node_extensions: Extensions<Extension>,
 }
 
 impl Default for MlsGroupCreateConfig {
@@ -210,7 +210,7 @@ impl MlsGroupCreateConfig {
     /// Returns the [`Extensions`] set as the initial group context.
     /// This does not contain the initial group context extensions
     /// added from builder calls to `external_senders` or `required_capabilities`.
-    pub fn group_context_extensions(&self) -> &Extensions {
+    pub fn group_context_extensions(&self) -> &Extensions<GroupContextExtension> {
         &self.group_context_extensions
     }
 
@@ -325,22 +325,16 @@ impl MlsGroupCreateConfigBuilder {
     /// Sets initial group context extensions.
     pub fn with_group_context_extensions(
         mut self,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
     ) -> Result<Self, InvalidExtensionError> {
-        let is_valid_in_group_context = extensions.application_id().is_none()
-            && extensions.ratchet_tree().is_none()
-            && extensions.external_pub().is_none();
-        if !is_valid_in_group_context {
-            return Err(InvalidExtensionError::IllegalInGroupContext);
-        }
-        self.config.group_context_extensions = extensions;
+        self.config.group_context_extensions = extensions.try_into()?;
         Ok(self)
     }
 
     /// Sets extensions of the group creator's [`LeafNode`].
     pub fn with_leaf_node_extensions(
         mut self,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
     ) -> Result<Self, LeafNodeValidationError> {
         // None of the default extensions are leaf node extensions, so only
         // unknown extensions can be leaf node extensions.

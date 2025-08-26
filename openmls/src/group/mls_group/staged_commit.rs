@@ -10,7 +10,7 @@ use super::proposal_store::{
 };
 
 use super::{
-    super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
+    super::errors::*, load_psks, Credential, GroupContext, GroupEpochSecrets, GroupId,
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
@@ -512,29 +512,29 @@ impl StagedCommit {
                         Proposal::Add(add_proposal) => {
                             vec![add_proposal.key_package().leaf_node().credential()].into_iter()
                         }
-                        Proposal::GroupContextExtensions(gce_proposal) => gce_proposal
-                            .extensions()
-                            .iter()
-                            .flat_map(|extension| {
-                                match extension {
-                                    Extension::ExternalSenders(external_senders) => {
-                                        external_senders
-                                            .iter()
-                                            .map(|external_sender| external_sender.credential())
-                                            .collect()
-                                    }
-                                    _ => vec![],
-                                }
-                                .into_iter()
-                            })
-                            // TODO: ideally we wouldn't collect in between here, but the match arms
-                            //       have to all return the same type. We solve this by having them all
-                            //       be vec::IntoIter, but it would be nice if we just didn't have to
-                            //       do this.
-                            //       It might be possible to solve this by letting all match arms
-                            //       evaluate to a dyn Iterator.
-                            .collect::<Vec<_>>()
-                            .into_iter(),
+                        // Proposal::GroupContextExtensions(gce_proposal) => gce_proposal
+                        //     .extensions()
+                        //     .iter()
+                        //     .flat_map(|extension| {
+                        //         match extension {
+                        //             GroupContextExtension::ExternalSenders(external_senders) => {
+                        //                 external_senders
+                        //                     .iter()
+                        //                     .map(|external_sender| external_sender.credential())
+                        //                     .collect()
+                        //             }
+                        //             _ => vec![],
+                        //         }
+                        //         .into_iter()
+                        //     })
+                        //     // TODO: ideally we wouldn't collect in between here, but the match arms
+                        //     //       have to all return the same type. We solve this by having them all
+                        //     //       be vec::IntoIter, but it would be nice if we just didn't have to
+                        //     //       do this.
+                        //     //       It might be possible to solve this by letting all match arms
+                        //     //       evaluate to a dyn Iterator.
+                        //     .collect::<Vec<_>>()
+                        //     .into_iter(),
                         _ => vec![].into_iter(),
                     }),
             )

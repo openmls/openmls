@@ -155,7 +155,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     /// Thin wrapper around [`MlsGroup::propose_group_context_extensions`].
     fn propose_group_context_extensions(
         &mut self,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
     ) -> (MlsMessageOut, ProposalRef) {
         self.group
             .propose_group_context_extensions(&self.party.provider, extensions, &self.party.signer)
@@ -165,7 +165,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     /// Thin wrapper around [`MlsGroup::update_group_context_extensions`].
     fn update_group_context_extensions(
         &mut self,
-        extensions: Extensions,
+        extensions: Extensions<Extension>,
     ) -> (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>) {
         self.group
             .update_group_context_extensions(&self.party.provider, extensions, &self.party.signer)
@@ -861,7 +861,13 @@ fn fail_2_gce_proposals_1_commit_valn308() {
                         frankenstein::FrankenProposal::GroupContextExtensions(vec![
                             // ideally this should be some unknown extension, but it's tricky
                             // to get the payload set up correctly so we'll just go with this
-                            frankenstein::FrankenExtension::LastResort,
+                            frankenstein::FrankenExtension::RequiredCapabilities(
+                                frankenstein::FrankenRequiredCapabilitiesExtension {
+                                    extension_types: vec![],
+                                    proposal_types: vec![],
+                                    credential_types: vec![],
+                                },
+                            ),
                         ]),
                     );
 

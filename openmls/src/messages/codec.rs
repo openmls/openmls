@@ -4,6 +4,8 @@
 
 use tls_codec::{Deserialize, DeserializeBytes, Serialize, Size};
 
+use crate::prelude::GroupContextExtensionProposalIn;
+
 use super::{
     proposals::{
         AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal,
@@ -123,7 +125,7 @@ impl Deserialize for ProposalIn {
                 ProposalIn::ExternalInit(Box::new(ExternalInitProposal::tls_deserialize(bytes)?))
             }
             ProposalType::GroupContextExtensions => ProposalIn::GroupContextExtensions(Box::new(
-                GroupContextExtensionProposal::tls_deserialize(bytes)?,
+                GroupContextExtensionProposalIn::tls_deserialize(bytes)?,
             )),
             ProposalType::AppAck => {
                 ProposalIn::AppAck(Box::new(AppAckProposal::tls_deserialize(bytes)?))
