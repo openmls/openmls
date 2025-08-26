@@ -696,7 +696,10 @@ impl PublicGroup {
         {
             if let Some(lifetime) = leaf_node.life_time() {
                 if !lifetime.is_valid() {
-                    log::warn!("offending lifetime: {lifetime:?}");
+                    log::warn!(
+                        "offending lifetime: {lifetime:?} for leaf node with {credential:?}",
+                        credential = leaf_node.credential()
+                    );
                     return Err(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
                 }
             }
