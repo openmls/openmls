@@ -843,11 +843,4 @@ fn test_create_group_info_with_extensions() {
         )
         .unwrap();
     assert_eq!(group_info, exported_group_info);
-
-    // extract the GroupInfo from the message
-    let group_info = if let MlsMessageBodyOut::GroupInfo(group_info) = group_info.body() {
-        group_info
-    } else {
-        unreachable!();
-    };
 }
