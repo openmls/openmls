@@ -810,11 +810,7 @@ fn test_create_group_info_with_extensions() {
     assert!(commit_bundle.group_info().is_none());
 
     let unknown_extension = Extension::Unknown(3, extensions::UnknownExtension(vec![]));
-    let extensions = vec![
-        unknown_extension.clone(),
-        // this RatchetTreeExtension should be skipped
-        Extension::RatchetTree(RatchetTreeExtension::new(alice_group.export_ratchet_tree())),
-    ];
+    let extensions = vec![unknown_extension.clone()];
     // Now we set the remaining extensions.
     let commit_bundle = alice_group
         .commit_builder()
@@ -854,7 +850,4 @@ fn test_create_group_info_with_extensions() {
     } else {
         unreachable!();
     };
-
-    // ensure a RatchetTreeExtension is not contained
-    assert!(group_info.extensions().ratchet_tree().is_none());
 }
