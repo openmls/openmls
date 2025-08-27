@@ -770,33 +770,86 @@ pub(crate) struct MessageRange {
     last_generation: u32,
 }
 
-/// AppDataUpdate Proposal.
-///
-/// TODO: description
-/// ```c
-/// struct {
-///     ComponentID component_id;
-///     AppDataUpdateOperation op;
-///
-///     select (AppDataUpdate.op) {
-///     case update: opaque update<V>;
-///     case remove: struct{};
-///     };
-/// } AppDataUpdate;
-/// ```
+// TODO: move AppDataUpdate proposal to separate file?
 #[cfg(feature = "extensions-draft-08")]
-#[derive(
-    Debug,
-    PartialEq,
-    Clone,
-    Serialize,
-    Deserialize,
-    TlsSize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-)]
-pub struct AppDataUpdateProposal;
+mod app_data_update {
+
+    use super::*;
+    use crate::prelude::ComponentId;
+
+    /// TODO: docs
+    #[repr(u8)]
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
+    pub enum AppDataUpdateOperationType {
+        /// Update operation
+        Update = 1,
+        /// Remove operation
+        Remove = 2,
+    }
+
+    /// TODO: docs
+    #[repr(u8)]
+    #[derive(
+        Debug,
+        PartialEq,
+        Clone,
+        Serialize,
+        Deserialize,
+        TlsDeserialize,
+        TlsDeserializeBytes,
+        TlsSerialize,
+        TlsSize,
+    )]
+    pub enum AppDataUpdateOperation {
+        /// Update operation, containing update data
+        // TODO: #[tls_codec(discriminant = 1)]?
+        Update(VLBytes) = 1,
+        /// Remove operation
+        Remove = 2,
+    }
+
+    impl AppDataUpdateOperation {
+        /// Returns the operation type.
+        pub fn operation_type(&self) -> AppDataUpdateOperationType {
+            match self {
+                AppDataUpdateOperation::Update(_) => AppDataUpdateOperationType::Update,
+                AppDataUpdateOperation::Remove => AppDataUpdateOperationType::Remove,
+            }
+        }
+    }
+
+    /// AppDataUpdate Proposal.
+    ///
+    /// TODO: description
+    /// ```c
+    /// struct {
+    ///     ComponentID component_id;
+    ///     AppDataUpdateOperation op;
+    ///
+    ///     select (AppDataUpdate.op) {
+    ///     case update: opaque update<V>;
+    ///     case remove: struct{};
+    ///     };
+    /// } AppDataUpdate;
+    /// ```
+    #[derive(
+        Debug,
+        PartialEq,
+        Clone,
+        Serialize,
+        Deserialize,
+        TlsSize,
+        TlsSerialize,
+        TlsDeserialize,
+        TlsDeserializeBytes,
+    )]
+    pub struct AppDataUpdateProposal {
+        component_id: ComponentId,
+        operation: AppDataUpdateOperation,
+    }
+}
+#[cfg(feature = "extensions-draft-08")]
+pub use app_data_update::*;
 
 /// A custom proposal with semantics to be implemented by the application.
 #[derive(
