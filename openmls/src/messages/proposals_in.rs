@@ -25,6 +25,9 @@ use super::{
     CustomProposal,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use super::proposals::AppDataUpdateProposal;
+
 /// Proposal.
 ///
 /// This `enum` contains the different proposals in its variants.
@@ -56,6 +59,8 @@ pub enum ProposalIn {
     ExternalInit(Box<ExternalInitProposal>),
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
     // # Extensions
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate(AppDataUpdateProposal),
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
     AppAck(Box<AppAckProposal>),
@@ -75,6 +80,8 @@ impl ProposalIn {
             ProposalIn::ReInit(_) => ProposalType::Reinit,
             ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppDataUpdate(_) => ProposalType::AppDataUpdate,
             ProposalIn::AppAck(_) => ProposalType::AppAck,
             ProposalIn::SelfRemove => ProposalType::SelfRemove,
             ProposalIn::Custom(custom_proposal) => {
@@ -118,6 +125,8 @@ impl ProposalIn {
             ProposalIn::GroupContextExtensions(group_context_extension) => {
                 Proposal::GroupContextExtensions(group_context_extension)
             }
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppDataUpdate(app_data_update) => Proposal::AppDataUpdate(app_data_update),
             ProposalIn::AppAck(app_ack) => Proposal::AppAck(app_ack),
             ProposalIn::SelfRemove => Proposal::SelfRemove,
             ProposalIn::Custom(custom) => Proposal::Custom(custom),
@@ -366,6 +375,8 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
             Proposal::GroupContextExtensions(group_context_extension) => {
                 Self::GroupContextExtensions(group_context_extension)
             }
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppDataUpdate(app_data_update) => Self::AppDataUpdate(app_data_update),
             Proposal::AppAck(app_ack) => Self::AppAck(app_ack),
             Proposal::SelfRemove => Self::SelfRemove,
             Proposal::Custom(other) => Self::Custom(other),

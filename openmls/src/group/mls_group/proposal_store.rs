@@ -518,8 +518,11 @@ impl ProposalQueue {
                     }
                 }
                 Proposal::GroupContextExtensions(_) => {
+                    // TODO: is this affected by AppDataUpdate?
                     valid_proposals.add(queued_proposal.proposal_reference());
                 }
+                #[cfg(feature = "extensions-draft-08")]
+                Proposal::AppDataUpdate(_) => todo!(),
                 Proposal::AppAck(_) => unimplemented!("See #291"),
                 Proposal::SelfRemove => {
                     let Sender::Member(removed) = queued_proposal.sender() else {
