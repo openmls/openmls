@@ -160,6 +160,8 @@ impl PublicGroupDiff<'_> {
             .collect();
 
         // apply group context extension proposal
+        // TODO: also retrieve the AppDataUpdateProposals, since they're relevant for updating the
+        // group context, and add to the struct below
         let extensions = proposal_queue
             .filtered_by_type(ProposalType::GroupContextExtensions)
             .find_map(|queued_proposal| match queued_proposal.proposal() {

@@ -295,6 +295,7 @@ impl PublicGroup {
         };
 
         // Update group context
+        // TODO: don't clone here
         diff.update_group_context(crypto, apply_proposals_values.extensions.clone())?;
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
