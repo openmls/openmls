@@ -22,7 +22,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::ComponentId;
+use crate::{extensions::ComponentId, messages::proposals::AppDataUpdateOperation};
 
 /// Helper for building a proposal based on the raw values.
 #[derive(Debug, PartialEq, Clone)]
@@ -571,6 +571,24 @@ impl MlsGroup {
     ) -> Result<AuthenticatedContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::psk(presharedkey_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            self.own_leaf_index(),
+            proposal,
+            self.context(),
+            signer,
+        )
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn create_app_data_update_proposal(
+        &self,
+        framing_parameters: FramingParameters,
+        component_id: ComponentId,
+        operation: AppDataUpdateOperation,
+        signer: &impl Signer,
+    ) -> Result<AuthenticatedContent, LibraryError> {
+        let proposal = todo!();
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
