@@ -458,6 +458,16 @@ impl Extensions {
             })
     }
 
+    #[cfg(feature = "extensions-draft-08")]
+    /// Get a reference to the [`AppDataDictionaryExtension`] if there is any.
+    pub fn app_data_dictionary(&self) -> Option<&AppDataDictionaryExtension> {
+        self.find_by_type(ExtensionType::AppDataDictionary)
+            .and_then(|e| match e {
+                Extension::AppDataDictionary(e) => Some(e),
+                _ => None,
+            })
+    }
+
     /// Get a reference to the [`UnknownExtension`] with the given type id, if there is any.
     pub fn unknown(&self, extension_type_id: u16) -> Option<&UnknownExtension> {
         let extension_type: ExtensionType = extension_type_id.into();
