@@ -21,6 +21,9 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::ComponentId;
+
 /// Helper for building a proposal based on the raw values.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Propose {
@@ -52,6 +55,21 @@ pub enum Propose {
 
     /// Propose adding new group context extensions.
     GroupContextExtensions(Extensions),
+
+    #[cfg(feature = "extensions-draft-08")]
+    /// Propose an update to a component in the [`AppDataDictionary`]
+    UpdateAppDataComponent {
+        /// The component_id to update in the dictionary
+        component_id: ComponentId,
+        /// The data representing the update
+        update: Vec<u8>,
+    },
+    #[cfg(feature = "extensions-draft-08")]
+    /// Propose removal of a component in the [`AppDataDictionary`]
+    RemoveAppDataComponent {
+        /// The component_id to remove in the dictionary
+        component_id: ComponentId,
+    },
 
     /// A custom proposal with semantics to be implemented by the application.
     Custom(CustomProposal),
@@ -212,6 +230,16 @@ impl MlsGroup {
             Propose::GroupContextExtensions(_) => Err(ProposalError::LibraryError(
                 LibraryError::custom("Unsupported proposal type GroupContextExtensions"),
             )),
+            // extensions-draft-08
+            #[cfg(feature = "extensions-draft-08")]
+            Propose::UpdateAppDataComponent {
+                component_id,
+                update,
+            } => todo!(),
+            #[cfg(feature = "extensions-draft-08")]
+            Propose::RemoveAppDataComponent { component_id } => todo!(),
+
+            // custom
             Propose::Custom(custom_proposal) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
                     self.propose_custom_proposal_by_value(provider, signer, custom_proposal)
