@@ -847,6 +847,17 @@ mod app_data_update {
         component_id: ComponentId,
         operation: AppDataUpdateOperation,
     }
+
+    impl AppDataUpdateProposal {
+        // TODO: decide whether to make this function public, or split it up into update() and
+        // remove()
+        pub(crate) fn new(component_id: ComponentId, operation: AppDataUpdateOperation) -> Self {
+            Self {
+                component_id,
+                operation,
+            }
+        }
+    }
 }
 #[cfg(feature = "extensions-draft-08")]
 pub use app_data_update::*;
