@@ -857,6 +857,13 @@ mod app_data_update {
                 operation,
             }
         }
+
+        pub fn component_id(&self) -> ComponentId {
+            self.component_id
+        }
+        pub fn operation(&self) -> &AppDataUpdateOperation {
+            &self.operation
+        }
     }
 }
 #[cfg(feature = "extensions-draft-08")]
