@@ -641,6 +641,7 @@ pub(crate) struct MemberStagedCommitState {
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
     update_path_leaf_node: Option<LeafNode>,
     #[cfg(feature = "extensions-draft-08")]
+    #[serde(default)]
     // This is `None` only if the group was stored using an older version of
     // OpenMLS that did not support the application exporter.
     application_export_tree: Option<ApplicationExportTree>,

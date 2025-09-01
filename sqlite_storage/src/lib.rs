@@ -48,4 +48,4 @@ pub use storage_provider::SqliteStorageProvider;
 /// affected data types must be updated and a migration file must be created to
 /// migrate the database's schema and its content. Only then may this version be
 /// incremented to match the `CURRENT_VERSION`.
-const STORAGE_PROVIDER_VERSION: u16 = 2;
+const STORAGE_PROVIDER_VERSION: u16 = 1;
