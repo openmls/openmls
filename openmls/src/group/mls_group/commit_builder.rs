@@ -201,7 +201,7 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
 
 impl MlsGroup {
     /// Returns a builder for commits.
-    pub fn commit_builder(&mut self) -> CommitBuilder<Initial> {
+    pub fn commit_builder(&mut self) -> CommitBuilder<'_, Initial> {
         CommitBuilder::<'_, Initial, &mut MlsGroup>::new(self)
     }
 }

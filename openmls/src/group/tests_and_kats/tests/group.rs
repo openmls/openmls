@@ -27,7 +27,11 @@ fn create_commit_optional_path(
     // Even though there are only Add Proposals, this should generated a path field
     // on the Commit
     let (commit_message, _welcome, _) = alice_group
-        .add_members(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_kpb.key_package()),
+        )
         .unwrap();
 
     let commit = match commit_message.body() {
@@ -46,7 +50,11 @@ fn create_commit_optional_path(
 
     // Alice adds Bob without forced self-update
     let (commit_message, welcome, _) = alice_group
-        .add_members_without_update(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .add_members_without_update(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_kpb.key_package()),
+        )
         .unwrap();
 
     let commit = match commit_message.body() {
@@ -345,7 +353,11 @@ fn group_operations() {
         setup_client("Charlie", ciphersuite, provider);
 
     let (commit_message, welcome, _) = bob_group
-        .add_members(provider, &bob_signer, &[charlie_kpb.key_package().clone()])
+        .add_members(
+            provider,
+            &bob_signer,
+            core::slice::from_ref(charlie_kpb.key_package()),
+        )
         .expect("Could not create add commit.");
 
     bob_group.merge_pending_commit(provider).unwrap();

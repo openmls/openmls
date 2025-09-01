@@ -138,8 +138,10 @@ impl ExternalCommitBuilder {
         provider: &Provider,
         verifiable_group_info: VerifiableGroupInfo,
         credential_with_key: CredentialWithKey,
-    ) -> Result<CommitBuilder<Initial, MlsGroup>, ExternalCommitBuilderError<Provider::StorageError>>
-    {
+    ) -> Result<
+        CommitBuilder<'_, Initial, MlsGroup>,
+        ExternalCommitBuilderError<Provider::StorageError>,
+    > {
         let ExternalCommitBuilder {
             proposals,
             ratchet_tree,

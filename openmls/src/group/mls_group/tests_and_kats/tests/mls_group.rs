@@ -1,3 +1,5 @@
+use std::slice::from_ref;
+
 use mls_group::{
     tests_and_kats::utils::{flip_last_byte, setup_alice_bob, setup_alice_bob_group, setup_client},
     EncryptionKeyPair, GroupEpochSecrets, MessageSecretsStore,
@@ -105,7 +107,7 @@ fn remover() {
 
     // === Alice adds Bob ===
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .add_members(provider, &alice_signer, from_ref(bob_kpb.key_package()))
         .expect("Could not add member to group.");
 
     alice_group
@@ -127,7 +129,7 @@ fn remover() {
 
     // === Bob adds Charlie ===
     let (queued_messages, welcome, _group_info) = bob_group
-        .add_members(provider, &bob_signer, &[charlie_kpb.key_package().clone()])
+        .add_members(provider, &bob_signer, from_ref(charlie_kpb.key_package()))
         .unwrap();
 
     let alice_processed_message = alice_group
@@ -410,7 +412,7 @@ fn staged_join() {
     .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .add_members(provider, &alice_signer, from_ref(bob_kpb.key_package()))
         .expect("Could not add member to group.");
 
     alice_group
@@ -1003,7 +1005,7 @@ fn test_pending_commit_logic(
     // If there is a pending commit, other commit- or proposal-creating actions
     // should fail.
     let error = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(provider, &alice_signer, from_ref(bob_key_package))
         .expect_err("no error committing while a commit is pending");
     assert!(matches!(
         error,
@@ -1156,7 +1158,7 @@ fn key_package_deletion() {
 
     // === Alice adds Bob ===
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(provider, &alice_signer, from_ref(bob_key_package))
         .unwrap();
 
     alice_group.merge_pending_commit(provider).unwrap();
@@ -1497,7 +1499,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
         .add_members(
             &alice_provider,
             &alice_signer,
-            &[bob_key_package.key_package().clone()],
+            from_ref(bob_key_package.key_package()),
         )
         .unwrap();
     alice_group.merge_pending_commit(&alice_provider).unwrap();
@@ -1671,7 +1673,7 @@ fn update_proposal_bob() {
         .add_members(
             &alice_provider,
             &alice_signer,
-            &[bob_key_package.key_package().clone()],
+            from_ref(bob_key_package.key_package()),
         )
         .unwrap();
     alice_group.merge_pending_commit(&alice_provider).unwrap();
@@ -1777,7 +1779,7 @@ fn update_proposal_alice() {
         .add_members(
             &alice_provider,
             &alice_signer,
-            &[bob_key_package.key_package().clone()],
+            from_ref(bob_key_package.key_package()),
         )
         .unwrap();
     alice_group.merge_pending_commit(&alice_provider).unwrap();
@@ -2049,7 +2051,7 @@ fn unknown_extensions() {
         .add_members(
             provider,
             &alice_signer,
-            &[bob_key_package.key_package().clone()],
+            from_ref(bob_key_package.key_package()),
         )
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
@@ -2113,7 +2115,7 @@ fn join_multiple_groups_last_resort_extension(
         .add_members(
             provider,
             &alice_signer,
-            &[charlie_keypkg.key_package().clone()],
+            from_ref(charlie_keypkg.key_package()),
         )
         .expect("error adding charlie to alice's group");
     alice_group
@@ -2141,7 +2143,7 @@ fn join_multiple_groups_last_resort_extension(
         .add_members(
             provider,
             &bob_signer,
-            &[charlie_keypkg.key_package().clone()],
+            from_ref(charlie_keypkg.key_package()),
         )
         .expect("error adding charlie to bob's group");
     bob_group
@@ -2487,7 +2489,7 @@ fn psks() {
         .add_members(
             provider,
             &alice_signature_keys,
-            &[bob_key_package_bundle.key_package().clone()],
+            from_ref(bob_key_package_bundle.key_package()),
         )
         .expect("Could not create commit");
 
@@ -2538,7 +2540,7 @@ fn staged_commit_creation(
         .add_members(
             provider,
             &alice_signature_keys,
-            &[bob_key_package_bundle.key_package().clone()],
+            from_ref(bob_key_package_bundle.key_package()),
         )
         .expect("Could not create commit");
 
@@ -2639,7 +2641,7 @@ fn proposal_application_after_self_was_removed(
         .add_members(
             provider,
             &alice_signature_keys,
-            &[bob_kpb.key_package().clone()],
+            from_ref(bob_kpb.key_package()),
         )
         .expect("Could not create commit");
 
@@ -2701,7 +2703,7 @@ fn proposal_application_after_self_was_removed(
         .add_members(
             provider,
             &alice_signature_keys,
-            &[charlie_kpb.key_package().clone()],
+            from_ref(charlie_kpb.key_package()),
         )
         .expect("Could not create commit");
 
@@ -2808,7 +2810,7 @@ fn proposal_application_after_self_was_removed_ref(
         .add_members(
             provider,
             &alice_signature_keys,
-            &[bob_kpb.key_package().clone()],
+            from_ref(bob_kpb.key_package()),
         )
         .expect("Could not create commit");
 

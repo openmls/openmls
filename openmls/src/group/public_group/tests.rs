@@ -59,7 +59,11 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
 
     // === Alice adds Bob ===
     let (message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_kpb.key_package()),
+        )
         .expect("Could not add member to group.");
 
     alice_group
@@ -108,7 +112,11 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
 
     // === Bob adds Charlie ===
     let (queued_messages, welcome, _group_info) = bob_group
-        .add_members(provider, &bob_signer, &[charlie_kpb.key_package().clone()])
+        .add_members(
+            provider,
+            &bob_signer,
+            core::slice::from_ref(charlie_kpb.key_package()),
+        )
         .unwrap();
 
     // Alice processes

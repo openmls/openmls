@@ -628,7 +628,7 @@ impl MlsGroup {
     }
 
     /// Group framing parameters
-    pub(crate) fn framing_parameters(&self) -> FramingParameters {
+    pub(crate) fn framing_parameters(&self) -> FramingParameters<'_> {
         FramingParameters::new(
             &self.aad,
             self.mls_group_config.wire_format_policy().outgoing(),

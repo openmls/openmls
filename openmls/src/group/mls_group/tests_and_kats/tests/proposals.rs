@@ -352,7 +352,11 @@ fn group_context_extensions(
         .expect("Error creating MlsGroup.");
 
     let (_commit, welcome, _group_info_option) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package),
+        )
         .expect("Error adding members.");
 
     alice_group.merge_pending_commit(provider).unwrap();
@@ -404,7 +408,11 @@ fn group_context_extension_proposal_fails(
 
     // Adding Bob
     let (_commit, welcome, _group_info_option) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package),
+        )
         .expect("Error adding members.");
 
     alice_group.merge_pending_commit(provider).unwrap();
@@ -541,7 +549,11 @@ fn self_remove_proposals(
 
     // Alice adds Bob
     let (_commit, welcome, _group_info_option) = group_alice
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package),
+        )
         .expect("Could not create proposal.");
 
     group_alice
@@ -623,7 +635,11 @@ fn remove_and_update_processing(
         .expect("Error creating MlsGroup.");
 
     let (_commit, welcome, _group_info_option) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package),
+        )
         .expect("Error adding members.");
 
     alice_group.merge_pending_commit(provider).unwrap();

@@ -2,6 +2,8 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
+use std::slice::from_ref;
+
 use tls_codec::{Deserialize, Serialize};
 
 use super::*;
@@ -66,7 +68,7 @@ fn ratchet_tree_extension() {
 
     // === Alice adds Bob ===
     let (_commit, welcome, _group_info_option) = alice_group
-        .add_members(provider, &alice_signature_keys, &[bob_key_package.clone()])
+        .add_members(provider, &alice_signature_keys, from_ref(bob_key_package))
         .expect("An unexpected error occurred.");
 
     alice_group.merge_pending_commit(provider).unwrap();
@@ -114,7 +116,7 @@ fn ratchet_tree_extension() {
 
     // === Alice adds Bob ===
     let (_commit, welcome, _group_info_option) = alice_group
-        .add_members(provider, &alice_signature_keys, &[bob_key_package.clone()])
+        .add_members(provider, &alice_signature_keys, from_ref(bob_key_package))
         .expect("An unexpected error occurred.");
 
     let config = MlsGroupJoinConfig::builder()
@@ -348,7 +350,7 @@ fn last_resort_extension() {
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[kp.key_package().clone()],
+            from_ref(kp.key_package()),
         )
         .expect("An unexpected error occurred.");
 
