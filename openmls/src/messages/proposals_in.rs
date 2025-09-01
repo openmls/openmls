@@ -356,6 +356,8 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
             ProposalIn::GroupContextExtensions(group_context_extension) => {
                 Self::GroupContextExtensions(group_context_extension)
             }
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppDataUpdate(app_data_update) => Self::AppDataUpdate(app_data_update),
             ProposalIn::AppAck(app_ack) => Self::AppAck(app_ack),
             ProposalIn::SelfRemove => Self::SelfRemove,
             ProposalIn::Custom(other) => Self::Custom(other),
