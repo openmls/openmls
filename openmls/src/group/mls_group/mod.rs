@@ -254,7 +254,6 @@ pub struct MlsGroup {
     /// for more information. This is `None` if an old OpenMLS group state was
     /// loaded and has not yet merged a commit.
     #[cfg(feature = "extensions-draft-08")]
-    #[serde(default)]
     application_export_tree: Option<ApplicationExportTree>,
 }
 
