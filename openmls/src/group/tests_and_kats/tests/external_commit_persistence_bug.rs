@@ -9,7 +9,7 @@ use crate::group::{
 
 // Test to reproduce the external commit persistence bug
 #[openmls_test::openmls_test]
-fn test_external_commit_persistence_bug() {
+fn external_commit_persistence() {
     // Separate providers for Alice and Bob (distinct storage spaces)
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
