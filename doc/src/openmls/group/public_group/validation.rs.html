@@ -696,36 +696,39 @@
 <a href=#696 id=696 data-nosnippet>696</a>        {
 <a href=#697 id=697 data-nosnippet>697</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(lifetime) = leaf_node.life_time() {
 <a href=#698 id=698 data-nosnippet>698</a>                <span class="kw">if </span>!lifetime.is_valid() {
-<a href=#699 id=699 data-nosnippet>699</a>                    <span class="macro">log::warn!</span>(<span class="string">"offending lifetime: {lifetime:?}"</span>);
-<a href=#700 id=700 data-nosnippet>700</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
-<a href=#701 id=701 data-nosnippet>701</a>                }
-<a href=#702 id=702 data-nosnippet>702</a>            }
-<a href=#703 id=703 data-nosnippet>703</a>        }
-<a href=#704 id=704 data-nosnippet>704</a>
-<a href=#705 id=705 data-nosnippet>705</a>        <span class="comment">// These are done at the caller and we can't do them here:
-<a href=#706 id=706 data-nosnippet>706</a>        //
-<a href=#707 id=707 data-nosnippet>707</a>        // https://validation.openmls.tech/#valn0108
-<a href=#708 id=708 data-nosnippet>708</a>        // https://validation.openmls.tech/#valn0109
-<a href=#709 id=709 data-nosnippet>709</a>        // https://validation.openmls.tech/#valn0110
-<a href=#710 id=710 data-nosnippet>710</a>
-<a href=#711 id=711 data-nosnippet>711</a>        // These are done in validate_key_uniqueness, which is called in the context of changing
-<a href=#712 id=712 data-nosnippet>712</a>        // this group:
-<a href=#713 id=713 data-nosnippet>713</a>        //
-<a href=#714 id=714 data-nosnippet>714</a>        // https://validation.openmls.tech/#valn0111
-<a href=#715 id=715 data-nosnippet>715</a>        // https://validation.openmls.tech/#valn0112
-<a href=#716 id=716 data-nosnippet>716</a>
-<a href=#717 id=717 data-nosnippet>717</a>        </span><span class="prelude-val">Ok</span>(())
-<a href=#718 id=718 data-nosnippet>718</a>    }
+<a href=#699 id=699 data-nosnippet>699</a>                    <span class="macro">log::warn!</span>(
+<a href=#700 id=700 data-nosnippet>700</a>                        <span class="string">"offending lifetime: {lifetime:?} for leaf node with {credential:?}"</span>,
+<a href=#701 id=701 data-nosnippet>701</a>                        credential = leaf_node.credential()
+<a href=#702 id=702 data-nosnippet>702</a>                    );
+<a href=#703 id=703 data-nosnippet>703</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
+<a href=#704 id=704 data-nosnippet>704</a>                }
+<a href=#705 id=705 data-nosnippet>705</a>            }
+<a href=#706 id=706 data-nosnippet>706</a>        }
+<a href=#707 id=707 data-nosnippet>707</a>
+<a href=#708 id=708 data-nosnippet>708</a>        <span class="comment">// These are done at the caller and we can't do them here:
+<a href=#709 id=709 data-nosnippet>709</a>        //
+<a href=#710 id=710 data-nosnippet>710</a>        // https://validation.openmls.tech/#valn0108
+<a href=#711 id=711 data-nosnippet>711</a>        // https://validation.openmls.tech/#valn0109
+<a href=#712 id=712 data-nosnippet>712</a>        // https://validation.openmls.tech/#valn0110
+<a href=#713 id=713 data-nosnippet>713</a>
+<a href=#714 id=714 data-nosnippet>714</a>        // These are done in validate_key_uniqueness, which is called in the context of changing
+<a href=#715 id=715 data-nosnippet>715</a>        // this group:
+<a href=#716 id=716 data-nosnippet>716</a>        //
+<a href=#717 id=717 data-nosnippet>717</a>        // https://validation.openmls.tech/#valn0111
+<a href=#718 id=718 data-nosnippet>718</a>        // https://validation.openmls.tech/#valn0112
 <a href=#719 id=719 data-nosnippet>719</a>
-<a href=#720 id=720 data-nosnippet>720</a>    <span class="doccomment">/// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
-<a href=#721 id=721 data-nosnippet>721</a>    /// in `extensions` is not supported by a leaf in this tree.
-<a href=#722 id=722 data-nosnippet>722</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_extension_support(
-<a href=#723 id=723 data-nosnippet>723</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#724 id=724 data-nosnippet>724</a>        extensions: <span class="kw-2">&amp;</span>[<span class="kw">crate</span>::extensions::ExtensionType],
-<a href=#725 id=725 data-nosnippet>725</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LeafNodeValidationError&gt; {
-<a href=#726 id=726 data-nosnippet>726</a>        <span class="kw">for </span>leaf <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves() {
-<a href=#727 id=727 data-nosnippet>727</a>            leaf.check_extension_support(extensions)<span class="question-mark">?</span>;
-<a href=#728 id=728 data-nosnippet>728</a>        }
-<a href=#729 id=729 data-nosnippet>729</a>        <span class="prelude-val">Ok</span>(())
-<a href=#730 id=730 data-nosnippet>730</a>    }
-<a href=#731 id=731 data-nosnippet>731</a>}</code></pre></div></section></main></body></html>
+<a href=#720 id=720 data-nosnippet>720</a>        </span><span class="prelude-val">Ok</span>(())
+<a href=#721 id=721 data-nosnippet>721</a>    }
+<a href=#722 id=722 data-nosnippet>722</a>
+<a href=#723 id=723 data-nosnippet>723</a>    <span class="doccomment">/// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
+<a href=#724 id=724 data-nosnippet>724</a>    /// in `extensions` is not supported by a leaf in this tree.
+<a href=#725 id=725 data-nosnippet>725</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_extension_support(
+<a href=#726 id=726 data-nosnippet>726</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#727 id=727 data-nosnippet>727</a>        extensions: <span class="kw-2">&amp;</span>[<span class="kw">crate</span>::extensions::ExtensionType],
+<a href=#728 id=728 data-nosnippet>728</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LeafNodeValidationError&gt; {
+<a href=#729 id=729 data-nosnippet>729</a>        <span class="kw">for </span>leaf <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves() {
+<a href=#730 id=730 data-nosnippet>730</a>            leaf.check_extension_support(extensions)<span class="question-mark">?</span>;
+<a href=#731 id=731 data-nosnippet>731</a>        }
+<a href=#732 id=732 data-nosnippet>732</a>        <span class="prelude-val">Ok</span>(())
+<a href=#733 id=733 data-nosnippet>733</a>    }
+<a href=#734 id=734 data-nosnippet>734</a>}</code></pre></div></section></main></body></html>
