@@ -17,6 +17,9 @@ use crate::{
     utils::vector_converter,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals::AppDataUpdateProposal;
+
 #[derive(Debug, Clone)]
 pub(crate) struct SelfRemoveInStore {
     pub(crate) sender: LeafNodeIndex,
@@ -404,6 +407,24 @@ impl ProposalQueue {
         })
     }
 
+    #[cfg(feature = "extensions-draft-08")]
+    /// Returns an iterator over all AppDataUpdate proposals in the queue
+    pub(crate) fn app_data_update_proposals(
+        &self,
+    ) -> impl Iterator<Item = QueuedAppDataUpdateProposal<'_>> {
+        self.queued_proposals().filter_map(|queued_proposal| {
+            if let Proposal::AppDataUpdate(app_data_update_proposal) = queued_proposal.proposal() {
+                let sender = queued_proposal.sender();
+                Some(QueuedAppDataUpdateProposal {
+                    app_data_update_proposal,
+                    sender,
+                })
+            } else {
+                None
+            }
+        })
+    }
+
     /// Filters received proposals
     ///
     /// 11.2 Commit
@@ -676,6 +697,27 @@ impl QueuedPskProposal<'_> {
     /// Returns a reference to the proposal
     pub fn psk_proposal(&self) -> &PreSharedKeyProposal {
         self.psk_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+
+#[cfg(feature = "extensions-draft-08")]
+/// A queued AppDataUpdate proposal
+#[derive(PartialEq, Debug)]
+pub struct QueuedAppDataUpdateProposal<'a> {
+    app_data_update_proposal: &'a AppDataUpdateProposal,
+    sender: &'a Sender,
+}
+
+#[cfg(feature = "extensions-draft-08")]
+impl QueuedAppDataUpdateProposal<'_> {
+    /// Returns a reference to the proposal
+    pub fn app_data_update_proposal(&self) -> &AppDataUpdateProposal {
+        self.app_data_update_proposal
     }
 
     /// Returns a reference to the sender

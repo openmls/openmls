@@ -25,6 +25,9 @@ use crate::{
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use super::proposal_store::QueuedAppDataUpdateProposal;
+
 impl MlsGroup {
     fn derive_epoch_secrets(
         &self,
@@ -474,6 +477,16 @@ impl StagedCommit {
     /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].
     pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal<'_>> {
         self.staged_proposal_queue.psk_proposals()
+    }
+
+    // NOTE: this is not a default proposal type
+    #[cfg(feature = "extensions-draft-08")]
+    /// Returns the AppDataUpdate proposals that are covered by the Commit message as an iterator
+    /// over [`QueuedAppDataUpdateProposal`].
+    pub fn app_data_update_proposals(
+        &self,
+    ) -> impl Iterator<Item = QueuedAppDataUpdateProposal<'_>> {
+        self.staged_proposal_queue.app_data_update_proposals()
     }
 
     /// Returns an iterator over all [`QueuedProposal`]s.
