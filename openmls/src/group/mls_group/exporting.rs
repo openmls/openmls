@@ -71,6 +71,8 @@ impl MlsGroup {
         Ok(component_secret.as_slice().to_vec())
     }
 
+    /// Export a secret from the forward secure exporter of the pending commit
+    /// state for the component with the given component ID.
     #[cfg(feature = "extensions-draft-08")]
     pub fn safe_export_secret_from_pending<Provider: StorageProvider>(
         &mut self,
