@@ -612,16 +612,21 @@ pub enum MergeCommitError<StorageError> {
 /// Error validating an AppDataUpdate proposal.
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum AppDataUpdateValidationError {
-    /// [`AppDataUpdateProposal`]s occur before [`GroupContextExtensionsProposal`]s.
+    /// [`AppDataUpdateProposal`](crate::messages::proposals::AppDataUpdateProposal)s
+    /// occur before
+    /// [`GroupContextExtensionsProposal`](crate::messages::proposals::GroupContextExtensionProposal)s.
     #[error("AppDataUpdate proposals occur before GroupContextExtensions proposals.")]
     IncorrectOrder,
-    /// Attempted to update the [`AppDataDictionary`] in the [`GroupContextExtensions`] directly.
-    #[error("Attempted to update the AppDataDictionary in the GroupContextExtensions directly.")]
+    /// Attempted to update the [`AppDataDictionary`](crate::extensions::AppDataDictionary)
+    /// in the
+    /// [`GroupContextExtensionsProposal`](crate::messages::proposals::GroupContextExtensionProposal) directly.
+    #[error("Attempted to update the AppDataDictionary in the GroupContextExtensions proposal directly.")]
     CannotUpdateDictionaryDirectly,
-    /// More than one [`AppDataUpdate]` proposal per [`ComponentId`] had a Remove operation.
+    /// More than one [`AppDataUpdate]` proposal per
+    /// [`ComponentId`](crate::extensions::ComponentId) had a Remove operation.
     #[error("More than one AppDataUpdate proposal per ComponentId had a Remove operation.")]
     MoreThanOneRemovePerComponentId,
-    /// Proposals for a [`ComponentId`] had both Remove and Update operations.
+    /// Proposals for a [`ComponentId`](crate::extensions::ComponentId) had both Remove and Update operations.
     #[error("Proposals for a ComponentId had both Remove and Update operations.")]
     CombinedRemoveAndUpdateOperations,
 }
