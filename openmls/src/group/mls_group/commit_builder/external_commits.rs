@@ -369,8 +369,7 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
             group.mls_group_config.wire_format_policy = wire_format_policy;
         }
 
-        // Persist the initial group state before entering PendingCommit.
-        // Per documentation, store() should be called by constructors only.
+        // Persist the initial group state.
         group
             .store(provider.storage())
             .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
