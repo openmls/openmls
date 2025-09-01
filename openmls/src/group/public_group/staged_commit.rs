@@ -150,6 +150,10 @@ impl PublicGroup {
         // ValSem208
         // ValSem209
         self.validate_group_context_extensions_proposal(&proposal_queue)?;
+
+        #[cfg(feature = "extensions-draft-08")]
+        self.validate_app_data_update_proposals_and_group_context(&proposal_queue)?;
+
         // ValSem401
         // ValSem402
         // ValSem403
