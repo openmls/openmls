@@ -458,9 +458,9 @@ impl TreeSync {
                 Some(node) => TreeSyncNode::from(node).into(),
                 None => {
                     if node_index % 2 == 0 {
-                        TreeNode::Leaf(TreeSyncLeafNode::blank())
+                        TreeNode::Leaf(Box::new(TreeSyncLeafNode::blank()))
                     } else {
-                        TreeNode::Parent(TreeSyncParentNode::blank())
+                        TreeNode::Parent(Box::new(TreeSyncParentNode::blank()))
                     }
                 }
             };

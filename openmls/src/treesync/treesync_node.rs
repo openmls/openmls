@@ -14,10 +14,10 @@ use crate::{
 
 use super::{hashes::TreeHashInput, LeafNode, Node, ParentNode};
 
-#[allow(clippy::large_enum_variant)]
+/// A node in the MLS tree.
 pub(crate) enum TreeSyncNode {
-    Leaf(TreeSyncLeafNode),
-    Parent(TreeSyncParentNode),
+    Leaf(Box<TreeSyncLeafNode>),
+    Parent(Box<TreeSyncParentNode>),
 }
 
 impl From<Node> for TreeSyncNode {
@@ -32,8 +32,8 @@ impl From<Node> for TreeSyncNode {
 impl From<TreeSyncNode> for Option<Node> {
     fn from(tsn: TreeSyncNode) -> Self {
         match tsn {
-            TreeSyncNode::Leaf(leaf) => leaf.into(),
-            TreeSyncNode::Parent(parent) => parent.into(),
+            TreeSyncNode::Leaf(leaf) => (*leaf).into(),
+            TreeSyncNode::Parent(parent) => (*parent).into(),
         }
     }
 }
@@ -94,6 +94,12 @@ impl TreeSyncLeafNode {
 impl From<LeafNode> for TreeSyncLeafNode {
     fn from(node: LeafNode) -> Self {
         Self { node: Some(node) }
+    }
+}
+
+impl From<LeafNode> for Box<TreeSyncLeafNode> {
+    fn from(node: LeafNode) -> Self {
+        Box::new(TreeSyncLeafNode { node: Some(node) })
     }
 }
 
@@ -176,6 +182,12 @@ impl TreeSyncParentNode {
 impl From<ParentNode> for TreeSyncParentNode {
     fn from(node: ParentNode) -> Self {
         Self { node: Some(node) }
+    }
+}
+
+impl From<ParentNode> for Box<TreeSyncParentNode> {
+    fn from(node: ParentNode) -> Self {
+        Box::new(TreeSyncParentNode { node: Some(node) })
     }
 }
 
