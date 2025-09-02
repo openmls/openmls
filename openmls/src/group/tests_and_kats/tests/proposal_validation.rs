@@ -1405,7 +1405,7 @@ fn test_valsem107() {
 
         // The commit should contain only one proposal.
         assert_eq!(commit_content.proposals.len(), 1);
-        commit_content
+        *commit_content
     }
 
     // Before we can test creation of (invalid) proposals, we set up a new group

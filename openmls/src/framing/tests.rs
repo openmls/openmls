@@ -44,7 +44,7 @@ fn codec_plaintext() {
         1,
         sender,
         vec![1, 2, 3].into(),
-        FramedContentBody::Application(vec![4, 5, 6].into()),
+        FramedContentBody::application(&[4, 5, 6]),
     )
     .with_context(serialized_context.clone());
     let mut orig: PublicMessage = signature_input
@@ -96,7 +96,7 @@ fn codec_ciphertext() {
         1,
         sender,
         vec![1, 2, 3].into(),
-        FramedContentBody::Application(vec![4, 5, 6].into()),
+        FramedContentBody::application(&[4, 5, 6]),
     )
     .with_context(serialized_context);
     let plaintext = signature_input
@@ -306,7 +306,7 @@ fn create_content(
         1,
         sender,
         vec![1, 2, 3].into(),
-        FramedContentBody::Application(vec![4, 5, 6].into()),
+        FramedContentBody::application(&[4, 5, 6]),
     )
     .with_context(serialized_context);
 
@@ -369,7 +369,7 @@ fn membership_tag() {
         .is_ok());
 
     // Change the content of the plaintext message
-    public_message.set_content(FramedContentBodyIn::Application(vec![7, 8, 9].into()));
+    public_message.set_content(FramedContentBodyIn::application(&[7, 8, 9]));
 
     // Expect the signature & membership tag verification to fail
     assert!(public_message
