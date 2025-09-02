@@ -23,8 +23,8 @@ pub(crate) enum TreeSyncNode {
 impl From<Node> for TreeSyncNode {
     fn from(node: Node) -> Self {
         match node {
-            Node::LeafNode(leaf) => TreeSyncNode::Leaf(leaf.into()),
-            Node::ParentNode(parent) => TreeSyncNode::Parent(parent.into()),
+            Node::LeafNode(leaf) => TreeSyncNode::Leaf(Box::new((*leaf).into())),
+            Node::ParentNode(parent) => TreeSyncNode::Parent(Box::new((*parent).into())),
         }
     }
 }
@@ -105,7 +105,7 @@ impl From<LeafNode> for Box<TreeSyncLeafNode> {
 
 impl From<TreeSyncLeafNode> for Option<Node> {
     fn from(tsln: TreeSyncLeafNode) -> Self {
-        tsln.node.map(Node::LeafNode)
+        tsln.node.map(|n| Node::LeafNode(Box::new(n)))
     }
 }
 
@@ -193,6 +193,6 @@ impl From<ParentNode> for Box<TreeSyncParentNode> {
 
 impl From<TreeSyncParentNode> for Option<Node> {
     fn from(tspn: TreeSyncParentNode) -> Self {
-        tspn.node.map(Node::ParentNode)
+        tspn.node.map(|n| Node::ParentNode(Box::new(n)))
     }
 }

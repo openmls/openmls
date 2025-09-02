@@ -843,7 +843,7 @@ impl TreeSyncDiff<'_> {
 
         // Get the first leaf.
         if let Some(leaf) = leaves.next() {
-            nodes.push(leaf.node().clone().map(Node::LeafNode));
+            nodes.push(leaf.node().clone().map(Node::leaf_node));
         } else {
             // The tree was empty.
             return RatchetTree::trimmed(vec![]);
@@ -868,8 +868,8 @@ impl TreeSyncDiff<'_> {
 
         // Interleave the leaves and parents.
         for (leaf, parent) in leaves.zip(parents) {
-            nodes.push(parent.node().clone().map(Node::ParentNode));
-            nodes.push(leaf.node().clone().map(Node::LeafNode));
+            nodes.push(parent.node().clone().map(Node::parent_node));
+            nodes.push(leaf.node().clone().map(Node::leaf_node));
         }
 
         RatchetTree::trimmed(nodes)
