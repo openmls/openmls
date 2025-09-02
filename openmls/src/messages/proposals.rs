@@ -206,28 +206,68 @@ impl From<ProposalType> for u16 {
 ///     };
 /// } Proposal;
 /// ```
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 #[repr(u16)]
 pub enum Proposal {
-    Add(AddProposal),
-    Update(UpdateProposal),
-    Remove(RemoveProposal),
-    PreSharedKey(PreSharedKeyProposal),
-    ReInit(ReInitProposal),
-    ExternalInit(ExternalInitProposal),
-    GroupContextExtensions(GroupContextExtensionProposal),
+    Add(Box<AddProposal>),
+    Update(Box<UpdateProposal>),
+    Remove(Box<RemoveProposal>),
+    PreSharedKey(Box<PreSharedKeyProposal>),
+    ReInit(Box<ReInitProposal>),
+    ExternalInit(Box<ExternalInitProposal>),
+    GroupContextExtensions(Box<GroupContextExtensionProposal>),
     // # Extensions
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
-    AppAck(AppAckProposal),
+    AppAck(Box<AppAckProposal>),
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
-    Custom(CustomProposal),
+    Custom(Box<CustomProposal>),
 }
 
 impl Proposal {
+    /// Build a remove proposal.
+    pub(crate) fn remove(r: RemoveProposal) -> Self {
+        Self::Remove(Box::new(r))
+    }
+
+    /// Build an add proposal.
+    pub(crate) fn add(a: AddProposal) -> Self {
+        Self::Add(Box::new(a))
+    }
+
+    /// Build a custom proposal.
+    pub(crate) fn custom(c: CustomProposal) -> Self {
+        Self::Custom(Box::new(c))
+    }
+
+    /// Build a psk proposal.
+    pub(crate) fn psk(p: PreSharedKeyProposal) -> Self {
+        Self::PreSharedKey(Box::new(p))
+    }
+
+    /// Build an update proposal.
+    pub(crate) fn update(p: UpdateProposal) -> Self {
+        Self::Update(Box::new(p))
+    }
+
+    /// Build a GroupContextExtensionProposal proposal.
+    pub(crate) fn group_context_extensions(p: GroupContextExtensionProposal) -> Self {
+        Self::GroupContextExtensions(Box::new(p))
+    }
+
+    /// Build an ExternalInit proposal.
+    pub(crate) fn external_init(p: ExternalInitProposal) -> Self {
+        Self::ExternalInit(Box::new(p))
+    }
+
+    #[cfg(test)]
+    /// Build a ReInit proposal.
+    pub(crate) fn re_init(p: ReInitProposal) -> Self {
+        Self::ReInit(Box::new(p))
+    }
+
     /// Returns the proposal type.
     pub fn proposal_type(&self) -> ProposalType {
         match self {
@@ -240,10 +280,7 @@ impl Proposal {
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
             Proposal::AppAck(_) => ProposalType::AppAck,
             Proposal::SelfRemove => ProposalType::SelfRemove,
-            Proposal::Custom(CustomProposal {
-                proposal_type,
-                payload: _,
-            }) => ProposalType::Custom(proposal_type.to_owned()),
+            Proposal::Custom(custom) => ProposalType::Custom(custom.proposal_type.to_owned()),
         }
     }
 

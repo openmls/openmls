@@ -18,7 +18,7 @@ fn proposals_codec() {
     let remove_proposal = RemoveProposal {
         removed: LeafNodeIndex::new(72549),
     };
-    let proposal = Proposal::Remove(remove_proposal);
+    let proposal = Proposal::remove(remove_proposal);
     let proposal_or_ref = ProposalOrRef::Proposal(proposal.clone());
     let encoded = proposal_or_ref
         .tls_serialize_detached()

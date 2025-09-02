@@ -375,7 +375,7 @@ fn test_valsem101a() {
         )
         .unwrap();
 
-    let second_add_proposal = Proposal::Add(AddProposal {
+    let second_add_proposal = Proposal::add(AddProposal {
         key_package: dave_key_package.key_package().clone(),
     });
 
@@ -542,7 +542,7 @@ fn test_valsem102() {
     franken_key_package.resign(&dave_credential_with_key_and_signer.signer);
     let dave_key_package = KeyPackage::from(franken_key_package);
 
-    let second_add_proposal = Proposal::Add(AddProposal {
+    let second_add_proposal = Proposal::add(AddProposal {
         key_package: dave_key_package,
     });
 
@@ -951,7 +951,7 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
     let dave_key_package = KeyPackage::from(franken_key_package);
 
     // Use the resulting KP to create an Add proposal.
-    let add_proposal = Proposal::Add(AddProposal {
+    let add_proposal = Proposal::add(AddProposal {
         key_package: dave_key_package,
     });
 
@@ -1212,7 +1212,7 @@ fn test_valsem105() {
         let original_plaintext = plaintext.clone();
 
         // Create a proposal from the test KPB.
-        let add_proposal = Proposal::Add(AddProposal {
+        let add_proposal = Proposal::add(AddProposal {
             key_package: test_kp,
         });
 
@@ -1511,7 +1511,7 @@ fn test_valsem107() {
         let commit_content = unwrap_specific_commit(commit_inline_remove);
 
         // And it should be the proposal to remove bob.
-        let expected = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal {
+        let expected = ProposalOrRef::Proposal(Proposal::remove(RemoveProposal {
             removed: bob_leaf_index,
         }));
 
@@ -1628,7 +1628,7 @@ fn test_valsem108() {
     let original_plaintext = plaintext.clone();
 
     // Use a random leaf index that doesn't exist to create a remove proposal.
-    let remove_proposal = Proposal::Remove(RemoveProposal {
+    let remove_proposal = Proposal::remove(RemoveProposal {
         removed: LeafNodeIndex::new(987),
     });
 
@@ -1824,7 +1824,7 @@ fn test_valsem110() {
 
     let original_plaintext = plaintext.clone();
 
-    let update_proposal = Proposal::Update(UpdateProposal {
+    let update_proposal = Proposal::update(UpdateProposal {
         leaf_node: franken_leaf_node.into(),
     });
 
@@ -1892,7 +1892,7 @@ fn test_valsem111() {
         alice_credential_with_key_and_signer.clone(),
     );
 
-    let update_proposal = Proposal::Update(UpdateProposal {
+    let update_proposal = Proposal::update(UpdateProposal {
         leaf_node: update_kp.key_package().leaf_node().clone(),
     });
 

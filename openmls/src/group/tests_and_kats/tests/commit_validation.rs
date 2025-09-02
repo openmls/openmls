@@ -283,7 +283,7 @@ fn test_valsem201() {
         let dave_key_package =
             generate_key_package(ciphersuite, Extensions::empty(), provider, dave_credential);
 
-        queued(Proposal::Add(AddProposal {
+        queued(Proposal::add(AddProposal {
             key_package: dave_key_package.key_package().clone(),
         }))
     };
@@ -301,10 +301,10 @@ fn test_valsem201() {
         )
         .unwrap();
         psk_id.store(provider, secret.as_slice()).unwrap();
-        queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
+        queued(Proposal::psk(PreSharedKeyProposal::new(psk_id)))
     };
 
-    let update_proposal = queued(Proposal::Update(UpdateProposal {
+    let update_proposal = queued(Proposal::update(UpdateProposal {
         leaf_node: alice_group
             .own_leaf()
             .expect("Unable to get own leaf")
@@ -312,13 +312,13 @@ fn test_valsem201() {
     }));
 
     let remove_proposal = || {
-        queued(Proposal::Remove(RemoveProposal {
+        queued(Proposal::remove(RemoveProposal {
             removed: charlie_group.own_leaf_index(),
         }))
     };
 
     let gce_proposal = || {
-        queued(Proposal::GroupContextExtensions(
+        queued(Proposal::group_context_extensions(
             GroupContextExtensionProposal::new(alice_group.context().extensions().clone()),
         ))
     };

@@ -225,7 +225,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         self.stage.own_proposals.extend(
             key_packages
                 .into_iter()
-                .map(|key_package| Proposal::Add(AddProposal { key_package })),
+                .map(|key_package| Proposal::add(AddProposal { key_package })),
         );
         self
     }
@@ -236,7 +236,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         self.stage.own_proposals.extend(
             removed
                 .into_iter()
-                .map(|removed| Proposal::Remove(RemoveProposal { removed })),
+                .map(|removed| Proposal::remove(RemoveProposal { removed })),
         );
         self
     }
@@ -246,7 +246,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     pub fn propose_group_context_extensions(mut self, extensions: Extensions) -> Self {
         self.stage
             .own_proposals
-            .push(Proposal::GroupContextExtensions(
+            .push(Proposal::group_context_extensions(
                 GroupContextExtensionProposal::new(extensions),
             ));
         self

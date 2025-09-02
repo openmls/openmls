@@ -204,7 +204,8 @@ impl ExternalCommitBuilder {
         let message_secrets_store =
             MessageSecretsStore::new_with_secret(config.max_past_epochs, message_secrets);
 
-        let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
+        let external_init_proposal =
+            Proposal::external_init(ExternalInitProposal::from(kem_output));
 
         // Authenticate the proposals as best as we can
         let serialized_context = group_context
@@ -246,7 +247,7 @@ impl ExternalCommitBuilder {
         // commit a remove proposal.
         let our_signature_key = credential_with_key.signature_key.as_slice();
         let remove_proposal = public_group.members().find_map(|member| {
-            (member.signature_key == our_signature_key).then_some(Proposal::Remove(
+            (member.signature_key == our_signature_key).then_some(Proposal::remove(
                 RemoveProposal {
                     removed: member.index,
                 },
@@ -316,9 +317,7 @@ impl ExternalCommitBuilder {
 impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
     /// Adds a [`PreSharedKeyProposal`] to the proposals to be committed.
     pub fn add_psk_proposal(mut self, proposal: PreSharedKeyProposal) -> Self {
-        self.stage
-            .own_proposals
-            .push(Proposal::PreSharedKey(proposal));
+        self.stage.own_proposals.push(Proposal::psk(proposal));
         self
     }
 
@@ -330,7 +329,7 @@ impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
     ) -> Self {
         self.stage
             .own_proposals
-            .extend(proposals.into_iter().map(Proposal::PreSharedKey));
+            .extend(proposals.into_iter().map(Proposal::psk));
         self
     }
 }
