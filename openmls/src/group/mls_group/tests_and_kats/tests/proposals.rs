@@ -252,8 +252,8 @@ fn proposal_queue_order() {
     );
 
     let proposal_or_refs = vec![
-        ProposalOrRef::Proposal(proposal_add_bob1.clone()),
-        ProposalOrRef::Reference(proposal_reference_add_alice1),
+        ProposalOrRef::proposal(proposal_add_bob1.clone()),
+        ProposalOrRef::reference(proposal_reference_add_alice1),
     ];
 
     let sender = Sender::build_member(LeafNodeIndex::new(0));

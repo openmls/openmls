@@ -247,11 +247,10 @@ impl UpdateProposalIn {
 )]
 #[repr(u8)]
 #[allow(missing_docs)]
-#[allow(clippy::large_enum_variant)]
 pub(crate) enum ProposalOrRefIn {
     #[tls_codec(discriminant = 1)]
-    Proposal(ProposalIn),
-    Reference(ProposalRef),
+    Proposal(Box<ProposalIn>),
+    Reference(Box<ProposalRef>),
 }
 
 impl ProposalOrRefIn {
@@ -263,9 +262,9 @@ impl ProposalOrRefIn {
         protocol_version: ProtocolVersion,
     ) -> Result<ProposalOrRef, ValidationError> {
         Ok(match self {
-            ProposalOrRefIn::Proposal(proposal_in) => ProposalOrRef::Proposal(
+            ProposalOrRefIn::Proposal(proposal_in) => ProposalOrRef::Proposal(Box::new(
                 proposal_in.validate(crypto, ciphersuite, None, protocol_version)?,
-            ),
+            )),
             ProposalOrRefIn::Reference(reference) => ProposalOrRef::Reference(reference),
         })
     }
@@ -378,7 +377,7 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
 impl From<ProposalOrRefIn> for crate::messages::proposals::ProposalOrRef {
     fn from(proposal: ProposalOrRefIn) -> Self {
         match proposal {
-            ProposalOrRefIn::Proposal(proposal) => Self::Proposal(proposal.into()),
+            ProposalOrRefIn::Proposal(proposal) => Self::Proposal(Box::new((*proposal).into())),
             ProposalOrRefIn::Reference(reference) => Self::Reference(reference),
         }
     }
@@ -388,7 +387,7 @@ impl From<crate::messages::proposals::ProposalOrRef> for ProposalOrRefIn {
     fn from(proposal: crate::messages::proposals::ProposalOrRef) -> Self {
         match proposal {
             crate::messages::proposals::ProposalOrRef::Proposal(proposal) => {
-                Self::Proposal(proposal.into())
+                Self::Proposal(Box::new((*proposal).into()))
             }
             crate::messages::proposals::ProposalOrRef::Reference(reference) => {
                 Self::Reference(reference)

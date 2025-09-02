@@ -310,6 +310,23 @@ impl Proposal {
             }
         }
     }
+
+    // Get this proposal as a `RemoveProposal`.
+    pub(crate) fn as_remove(&self) -> Option<&RemoveProposal> {
+        if let Self::Remove(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns `true` if the proposal is [`Remove`].
+    ///
+    /// [`Remove`]: Proposal::Remove
+    #[must_use]
+    pub fn is_remove(&self) -> bool {
+        matches!(self, Self::Remove(..))
+    }
 }
 
 /// Add Proposal.
@@ -614,11 +631,50 @@ pub enum ProposalOrRefType {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 #[repr(u8)]
 #[allow(missing_docs)]
-#[allow(clippy::large_enum_variant)]
 pub(crate) enum ProposalOrRef {
     #[tls_codec(discriminant = 1)]
-    Proposal(Proposal),
-    Reference(ProposalRef),
+    Proposal(Box<Proposal>),
+    Reference(Box<ProposalRef>),
+}
+
+impl ProposalOrRef {
+    /// Create a proposal by value.
+    pub(crate) fn proposal(p: Proposal) -> Self {
+        Self::Proposal(Box::new(p))
+    }
+
+    /// Create a proposal by reference.
+    pub(crate) fn reference(p: ProposalRef) -> Self {
+        Self::Reference(Box::new(p))
+    }
+
+    pub(crate) fn as_proposal(&self) -> Option<&Proposal> {
+        if let Self::Proposal(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn as_reference(&self) -> Option<&ProposalRef> {
+        if let Self::Reference(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
+impl From<Proposal> for ProposalOrRef {
+    fn from(value: Proposal) -> Self {
+        Self::proposal(value)
+    }
+}
+
+impl From<ProposalRef> for ProposalOrRef {
+    fn from(value: ProposalRef) -> Self {
+        Self::reference(value)
+    }
 }
 
 #[derive(Error, Debug)]

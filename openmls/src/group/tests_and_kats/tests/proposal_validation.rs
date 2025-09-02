@@ -382,7 +382,7 @@ fn test_valsem101a() {
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(second_add_proposal)],
+        vec![ProposalOrRef::proposal(second_add_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -549,7 +549,7 @@ fn test_valsem102() {
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(second_add_proposal)],
+        vec![ProposalOrRef::proposal(second_add_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -960,7 +960,7 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(add_proposal)],
+        vec![ProposalOrRef::proposal(add_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -1218,8 +1218,8 @@ fn test_valsem105() {
 
         for proposal_inclusion in [ProposalInclusion::ByValue, ProposalInclusion::ByReference] {
             let proposal_or_ref = match proposal_inclusion {
-                ProposalInclusion::ByValue => ProposalOrRef::Proposal(add_proposal.clone()),
-                ProposalInclusion::ByReference => ProposalOrRef::Reference(
+                ProposalInclusion::ByValue => ProposalOrRef::proposal(add_proposal.clone()),
+                ProposalInclusion::ByReference => ProposalOrRef::reference(
                     ProposalRef::from_raw_proposal(ciphersuite, provider.crypto(), &add_proposal)
                         .unwrap(),
                 ),
@@ -1487,7 +1487,7 @@ fn test_valsem107() {
                 _ => panic!(),
             };
 
-            ProposalOrRef::Reference(
+            ProposalOrRef::reference(
                 ProposalRef::from_authenticated_content_by_ref(
                     provider.crypto(),
                     ciphersuite,
@@ -1511,7 +1511,7 @@ fn test_valsem107() {
         let commit_content = unwrap_specific_commit(commit_inline_remove);
 
         // And it should be the proposal to remove bob.
-        let expected = ProposalOrRef::Proposal(Proposal::remove(RemoveProposal {
+        let expected = ProposalOrRef::proposal(Proposal::remove(RemoveProposal {
             removed: bob_leaf_index,
         }));
 
@@ -1637,7 +1637,7 @@ fn test_valsem108() {
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(remove_proposal)],
+        vec![ProposalOrRef::proposal(remove_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -1832,7 +1832,7 @@ fn test_valsem110() {
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(update_proposal)],
+        vec![ProposalOrRef::proposal(update_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -1943,7 +1943,7 @@ fn test_valsem111() {
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(update_proposal.clone())],
+        vec![ProposalOrRef::proposal(update_proposal.clone())],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -2011,7 +2011,7 @@ fn test_valsem111() {
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Reference(
+        vec![ProposalOrRef::reference(
             ProposalRef::from_raw_proposal(ciphersuite, provider.crypto(), &update_proposal)
                 .expect("error creating hash reference"),
         )],

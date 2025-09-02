@@ -196,7 +196,7 @@ fn test_valsem200() {
 
     commit_content
         .proposals
-        .push(ProposalOrRef::Proposal(proposal));
+        .push(ProposalOrRef::proposal(proposal));
 
     plaintext.set_content(FramedContentBody::Commit(commit_content));
 

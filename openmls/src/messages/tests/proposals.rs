@@ -19,7 +19,7 @@ fn proposals_codec() {
         removed: LeafNodeIndex::new(72549),
     };
     let proposal = Proposal::remove(remove_proposal);
-    let proposal_or_ref = ProposalOrRef::Proposal(proposal.clone());
+    let proposal_or_ref = ProposalOrRef::proposal(proposal.clone());
     let encoded = proposal_or_ref
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
@@ -32,7 +32,7 @@ fn proposals_codec() {
 
     let reference = ProposalRef::from_raw_proposal(ciphersuite, provider.crypto(), &proposal)
         .expect("An unexpected error occurred.");
-    let proposal_or_ref = ProposalOrRef::Reference(reference);
+    let proposal_or_ref = ProposalOrRef::reference(reference);
     let encoded = proposal_or_ref
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
