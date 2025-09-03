@@ -10,7 +10,6 @@
 use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 
 use crate::binary_tree::LeafNodeIndex;
-use crate::group::mls_group::staged_commit::v1_storage::MlsGroupStateV1;
 use crate::group::proposal_store::QueuedProposal;
 use crate::group::{MlsGroupJoinConfig, MlsGroupState};
 #[cfg(feature = "extensions-draft-08")]
@@ -129,9 +128,6 @@ impl traits::ResumptionPskStore<CURRENT_VERSION> for ResumptionPskStore {}
 
 impl Entity<CURRENT_VERSION> for MlsGroupJoinConfig {}
 impl traits::MlsGroupJoinConfig<CURRENT_VERSION> for MlsGroupJoinConfig {}
-
-impl Entity<1> for MlsGroupStateV1 {}
-impl traits::GroupState<1> for MlsGroupStateV1 {}
 
 impl Entity<CURRENT_VERSION> for MlsGroupState {}
 impl traits::GroupState<CURRENT_VERSION> for MlsGroupState {}
