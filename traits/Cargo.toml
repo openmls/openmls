@@ -15,6 +15,7 @@ path = "src/traits.rs"
 [features]
 default = []
 test-utils = []
+extensions-draft-08 = []
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
