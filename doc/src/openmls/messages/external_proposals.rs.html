@@ -49,7 +49,7 @@
 <a href=#49 id=49 data-nosnippet>49</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
 <a href=#50 id=50 data-nosnippet>50</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeAddMemberError&lt;Storage::Error&gt;&gt; {
 <a href=#51 id=51 data-nosnippet>51</a>        AuthenticatedContent::new_join_proposal(
-<a href=#52 id=52 data-nosnippet>52</a>            Proposal::Add(AddProposal { key_package }),
+<a href=#52 id=52 data-nosnippet>52</a>            Proposal::add(AddProposal { key_package }),
 <a href=#53 id=53 data-nosnippet>53</a>            group_id,
 <a href=#54 id=54 data-nosnippet>54</a>            epoch,
 <a href=#55 id=55 data-nosnippet>55</a>            signer,
@@ -81,7 +81,7 @@
 <a href=#81 id=81 data-nosnippet>81</a>        <span class="kw">let </span>proposal = GroupContextExtensionProposal::new(extensions);
 <a href=#82 id=82 data-nosnippet>82</a>
 <a href=#83 id=83 data-nosnippet>83</a>        AuthenticatedContent::new_external_proposal(
-<a href=#84 id=84 data-nosnippet>84</a>            Proposal::GroupContextExtensions(proposal),
+<a href=#84 id=84 data-nosnippet>84</a>            Proposal::GroupContextExtensions(Box::new(proposal)),
 <a href=#85 id=85 data-nosnippet>85</a>            group_id,
 <a href=#86 id=86 data-nosnippet>86</a>            epoch,
 <a href=#87 id=87 data-nosnippet>87</a>            signer,
@@ -109,7 +109,7 @@
 <a href=#109 id=109 data-nosnippet>109</a>        sender_index: SenderExtensionIndex,
 <a href=#110 id=110 data-nosnippet>110</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeRemoveMemberError&lt;Provider::StorageError&gt;&gt; {
 <a href=#111 id=111 data-nosnippet>111</a>        AuthenticatedContent::new_external_proposal(
-<a href=#112 id=112 data-nosnippet>112</a>            Proposal::Remove(RemoveProposal { removed }),
+<a href=#112 id=112 data-nosnippet>112</a>            Proposal::remove(RemoveProposal { removed }),
 <a href=#113 id=113 data-nosnippet>113</a>            group_id,
 <a href=#114 id=114 data-nosnippet>114</a>            epoch,
 <a href=#115 id=115 data-nosnippet>115</a>            signer,
@@ -138,7 +138,7 @@
 <a href=#138 id=138 data-nosnippet>138</a>        sender_index: SenderExtensionIndex,
 <a href=#139 id=139 data-nosnippet>139</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeAddMemberError&lt;Provider::StorageError&gt;&gt; {
 <a href=#140 id=140 data-nosnippet>140</a>        AuthenticatedContent::new_external_proposal(
-<a href=#141 id=141 data-nosnippet>141</a>            Proposal::Add(AddProposal { key_package }),
+<a href=#141 id=141 data-nosnippet>141</a>            Proposal::add(AddProposal { key_package }),
 <a href=#142 id=142 data-nosnippet>142</a>            group_id,
 <a href=#143 id=143 data-nosnippet>143</a>            epoch,
 <a href=#144 id=144 data-nosnippet>144</a>            signer,

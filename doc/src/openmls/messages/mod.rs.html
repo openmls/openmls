@@ -239,279 +239,277 @@
 <a href=#239 id=239 data-nosnippet>239</a>                    <span class="comment">// We need to determine if it is a a resync or a join.
 <a href=#240 id=240 data-nosnippet>240</a>                    // Find the first remove proposal and extract the leaf index.
 <a href=#241 id=241 data-nosnippet>241</a>                    </span><span class="kw">let </span>former_sender_index = proposals.iter().find_map(|p| {
-<a href=#242 id=242 data-nosnippet>242</a>                        <span class="kw">let </span>ProposalOrRef::Proposal(Proposal::Remove(r)) = p <span class="kw">else </span>{
-<a href=#243 id=243 data-nosnippet>243</a>                            <span class="kw">return </span><span class="prelude-val">None</span>;
-<a href=#244 id=244 data-nosnippet>244</a>                        };
-<a href=#245 id=245 data-nosnippet>245</a>                        <span class="prelude-val">Some</span>(r.removed())
-<a href=#246 id=246 data-nosnippet>246</a>                    });
-<a href=#247 id=247 data-nosnippet>247</a>
-<a href=#248 id=248 data-nosnippet>248</a>                    <span class="comment">// Collect the sender indices of SelfRemoves that are part of
-<a href=#249 id=249 data-nosnippet>249</a>                    // this commit.
-<a href=#250 id=250 data-nosnippet>250</a>                    </span><span class="kw">let </span>self_removed_indices =
-<a href=#251 id=251 data-nosnippet>251</a>                        self_removes_in_store.into_iter().filter_map(|self_remove| {
-<a href=#252 id=252 data-nosnippet>252</a>                            proposals.iter().find_map(|committed_p| {
-<a href=#253 id=253 data-nosnippet>253</a>                                <span class="kw">let </span>ProposalOrRef::Reference(committed_p_ref) = committed_p <span class="kw">else </span>{
-<a href=#254 id=254 data-nosnippet>254</a>                                    <span class="kw">return </span><span class="prelude-val">None</span>;
-<a href=#255 id=255 data-nosnippet>255</a>                                };
-<a href=#256 id=256 data-nosnippet>256</a>                                (self_remove.proposal_ref == <span class="kw-2">*</span>committed_p_ref)
-<a href=#257 id=257 data-nosnippet>257</a>                                    .then_some(self_remove.sender)
-<a href=#258 id=258 data-nosnippet>258</a>                            })
-<a href=#259 id=259 data-nosnippet>259</a>                        });
-<a href=#260 id=260 data-nosnippet>260</a>
-<a href=#261 id=261 data-nosnippet>261</a>                    <span class="kw">let </span>new_leaf_index = [leftmost_blank_index]
-<a href=#262 id=262 data-nosnippet>262</a>                        .into_iter()
-<a href=#263 id=263 data-nosnippet>263</a>                        .chain(former_sender_index)
-<a href=#264 id=264 data-nosnippet>264</a>                        .chain(self_removed_indices)
-<a href=#265 id=265 data-nosnippet>265</a>                        .min()
-<a href=#266 id=266 data-nosnippet>266</a>                        .ok_or(ValidationError::LibraryError(LibraryError::custom(
-<a href=#267 id=267 data-nosnippet>267</a>                            <span class="string">"The iterator should have at least one element."</span>,
-<a href=#268 id=268 data-nosnippet>268</a>                        )))<span class="question-mark">?</span>;
-<a href=#269 id=269 data-nosnippet>269</a>
-<a href=#270 id=270 data-nosnippet>270</a>                    TreePosition::new(group_id, new_leaf_index)
-<a href=#271 id=271 data-nosnippet>271</a>                }
-<a href=#272 id=272 data-nosnippet>272</a>            };
-<a href=#273 id=273 data-nosnippet>273</a>            <span class="prelude-val">Some</span>(path.into_verified(ciphersuite, crypto, tree_position)<span class="question-mark">?</span>)
-<a href=#274 id=274 data-nosnippet>274</a>        } <span class="kw">else </span>{
-<a href=#275 id=275 data-nosnippet>275</a>            <span class="prelude-val">None
-<a href=#276 id=276 data-nosnippet>276</a>        </span>};
-<a href=#277 id=277 data-nosnippet>277</a>        <span class="prelude-val">Ok</span>(Commit { proposals, path })
-<a href=#278 id=278 data-nosnippet>278</a>    }
-<a href=#279 id=279 data-nosnippet>279</a>}
-<a href=#280 id=280 data-nosnippet>280</a>
-<a href=#281 id=281 data-nosnippet>281</a><span class="comment">// The following `From` implementation( breaks abstraction layers and MUST
-<a href=#282 id=282 data-nosnippet>282</a>// NOT be made available outside of tests or "test-utils".
-<a href=#283 id=283 data-nosnippet>283</a></span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-<a href=#284 id=284 data-nosnippet>284</a></span><span class="kw">impl </span>From&lt;CommitIn&gt; <span class="kw">for </span>Commit {
-<a href=#285 id=285 data-nosnippet>285</a>    <span class="kw">fn </span>from(commit: CommitIn) -&gt; <span class="self">Self </span>{
-<a href=#286 id=286 data-nosnippet>286</a>        <span class="self">Self </span>{
-<a href=#287 id=287 data-nosnippet>287</a>            proposals: commit.proposals.into_iter().map(Into::into).collect(),
-<a href=#288 id=288 data-nosnippet>288</a>            path: commit.path.map(Into::into),
-<a href=#289 id=289 data-nosnippet>289</a>        }
-<a href=#290 id=290 data-nosnippet>290</a>    }
-<a href=#291 id=291 data-nosnippet>291</a>}
-<a href=#292 id=292 data-nosnippet>292</a>
-<a href=#293 id=293 data-nosnippet>293</a><span class="kw">impl </span>From&lt;Commit&gt; <span class="kw">for </span>CommitIn {
-<a href=#294 id=294 data-nosnippet>294</a>    <span class="kw">fn </span>from(commit: Commit) -&gt; <span class="self">Self </span>{
-<a href=#295 id=295 data-nosnippet>295</a>        <span class="self">Self </span>{
-<a href=#296 id=296 data-nosnippet>296</a>            proposals: commit.proposals.into_iter().map(Into::into).collect(),
-<a href=#297 id=297 data-nosnippet>297</a>            path: commit.path.map(Into::into),
-<a href=#298 id=298 data-nosnippet>298</a>        }
-<a href=#299 id=299 data-nosnippet>299</a>    }
-<a href=#300 id=300 data-nosnippet>300</a>}
-<a href=#301 id=301 data-nosnippet>301</a>
-<a href=#302 id=302 data-nosnippet>302</a><span class="doccomment">/// Confirmation tag field of PublicMessage. For type safety this is a wrapper
-<a href=#303 id=303 data-nosnippet>303</a>/// around a `Mac`.
-<a href=#304 id=304 data-nosnippet>304</a></span><span class="attr">#[derive(
-<a href=#305 id=305 data-nosnippet>305</a>    Debug,
-<a href=#306 id=306 data-nosnippet>306</a>    PartialEq,
-<a href=#307 id=307 data-nosnippet>307</a>    Clone,
-<a href=#308 id=308 data-nosnippet>308</a>    Serialize,
-<a href=#309 id=309 data-nosnippet>309</a>    Deserialize,
-<a href=#310 id=310 data-nosnippet>310</a>    TlsDeserialize,
-<a href=#311 id=311 data-nosnippet>311</a>    TlsDeserializeBytes,
-<a href=#312 id=312 data-nosnippet>312</a>    TlsSerialize,
-<a href=#313 id=313 data-nosnippet>313</a>    TlsSize,
-<a href=#314 id=314 data-nosnippet>314</a>)]
-<a href=#315 id=315 data-nosnippet>315</a></span><span class="kw">pub struct </span>ConfirmationTag(<span class="kw">pub</span>(<span class="kw">crate</span>) Mac);
-<a href=#316 id=316 data-nosnippet>316</a>
-<a href=#317 id=317 data-nosnippet>317</a><span class="doccomment">/// PathSecret
+<a href=#242 id=242 data-nosnippet>242</a>                        p.as_proposal()
+<a href=#243 id=243 data-nosnippet>243</a>                            .and_then(|p| p.as_remove())
+<a href=#244 id=244 data-nosnippet>244</a>                            .map(|r| r.removed())
+<a href=#245 id=245 data-nosnippet>245</a>                    });
+<a href=#246 id=246 data-nosnippet>246</a>
+<a href=#247 id=247 data-nosnippet>247</a>                    <span class="comment">// Collect the sender indices of SelfRemoves that are part of
+<a href=#248 id=248 data-nosnippet>248</a>                    // this commit.
+<a href=#249 id=249 data-nosnippet>249</a>                    </span><span class="kw">let </span>self_removed_indices =
+<a href=#250 id=250 data-nosnippet>250</a>                        self_removes_in_store.into_iter().filter_map(|self_remove| {
+<a href=#251 id=251 data-nosnippet>251</a>                            proposals.iter().find_map(|committed_p| {
+<a href=#252 id=252 data-nosnippet>252</a>                                committed_p.as_reference().and_then(|committed_p_ref| {
+<a href=#253 id=253 data-nosnippet>253</a>                                    (<span class="kw-2">&amp;</span>self_remove.proposal_ref == committed_p_ref)
+<a href=#254 id=254 data-nosnippet>254</a>                                        .then_some(self_remove.sender)
+<a href=#255 id=255 data-nosnippet>255</a>                                })
+<a href=#256 id=256 data-nosnippet>256</a>                            })
+<a href=#257 id=257 data-nosnippet>257</a>                        });
+<a href=#258 id=258 data-nosnippet>258</a>
+<a href=#259 id=259 data-nosnippet>259</a>                    <span class="kw">let </span>new_leaf_index = [leftmost_blank_index]
+<a href=#260 id=260 data-nosnippet>260</a>                        .into_iter()
+<a href=#261 id=261 data-nosnippet>261</a>                        .chain(former_sender_index)
+<a href=#262 id=262 data-nosnippet>262</a>                        .chain(self_removed_indices)
+<a href=#263 id=263 data-nosnippet>263</a>                        .min()
+<a href=#264 id=264 data-nosnippet>264</a>                        .ok_or(ValidationError::LibraryError(LibraryError::custom(
+<a href=#265 id=265 data-nosnippet>265</a>                            <span class="string">"The iterator should have at least one element."</span>,
+<a href=#266 id=266 data-nosnippet>266</a>                        )))<span class="question-mark">?</span>;
+<a href=#267 id=267 data-nosnippet>267</a>
+<a href=#268 id=268 data-nosnippet>268</a>                    TreePosition::new(group_id, new_leaf_index)
+<a href=#269 id=269 data-nosnippet>269</a>                }
+<a href=#270 id=270 data-nosnippet>270</a>            };
+<a href=#271 id=271 data-nosnippet>271</a>            <span class="prelude-val">Some</span>(path.into_verified(ciphersuite, crypto, tree_position)<span class="question-mark">?</span>)
+<a href=#272 id=272 data-nosnippet>272</a>        } <span class="kw">else </span>{
+<a href=#273 id=273 data-nosnippet>273</a>            <span class="prelude-val">None
+<a href=#274 id=274 data-nosnippet>274</a>        </span>};
+<a href=#275 id=275 data-nosnippet>275</a>        <span class="prelude-val">Ok</span>(Commit { proposals, path })
+<a href=#276 id=276 data-nosnippet>276</a>    }
+<a href=#277 id=277 data-nosnippet>277</a>}
+<a href=#278 id=278 data-nosnippet>278</a>
+<a href=#279 id=279 data-nosnippet>279</a><span class="comment">// The following `From` implementation( breaks abstraction layers and MUST
+<a href=#280 id=280 data-nosnippet>280</a>// NOT be made available outside of tests or "test-utils".
+<a href=#281 id=281 data-nosnippet>281</a></span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+<a href=#282 id=282 data-nosnippet>282</a></span><span class="kw">impl </span>From&lt;CommitIn&gt; <span class="kw">for </span>Commit {
+<a href=#283 id=283 data-nosnippet>283</a>    <span class="kw">fn </span>from(commit: CommitIn) -&gt; <span class="self">Self </span>{
+<a href=#284 id=284 data-nosnippet>284</a>        <span class="self">Self </span>{
+<a href=#285 id=285 data-nosnippet>285</a>            proposals: commit.proposals.into_iter().map(Into::into).collect(),
+<a href=#286 id=286 data-nosnippet>286</a>            path: commit.path.map(Into::into),
+<a href=#287 id=287 data-nosnippet>287</a>        }
+<a href=#288 id=288 data-nosnippet>288</a>    }
+<a href=#289 id=289 data-nosnippet>289</a>}
+<a href=#290 id=290 data-nosnippet>290</a>
+<a href=#291 id=291 data-nosnippet>291</a><span class="kw">impl </span>From&lt;Commit&gt; <span class="kw">for </span>CommitIn {
+<a href=#292 id=292 data-nosnippet>292</a>    <span class="kw">fn </span>from(commit: Commit) -&gt; <span class="self">Self </span>{
+<a href=#293 id=293 data-nosnippet>293</a>        <span class="self">Self </span>{
+<a href=#294 id=294 data-nosnippet>294</a>            proposals: commit.proposals.into_iter().map(Into::into).collect(),
+<a href=#295 id=295 data-nosnippet>295</a>            path: commit.path.map(Into::into),
+<a href=#296 id=296 data-nosnippet>296</a>        }
+<a href=#297 id=297 data-nosnippet>297</a>    }
+<a href=#298 id=298 data-nosnippet>298</a>}
+<a href=#299 id=299 data-nosnippet>299</a>
+<a href=#300 id=300 data-nosnippet>300</a><span class="doccomment">/// Confirmation tag field of PublicMessage. For type safety this is a wrapper
+<a href=#301 id=301 data-nosnippet>301</a>/// around a `Mac`.
+<a href=#302 id=302 data-nosnippet>302</a></span><span class="attr">#[derive(
+<a href=#303 id=303 data-nosnippet>303</a>    Debug,
+<a href=#304 id=304 data-nosnippet>304</a>    PartialEq,
+<a href=#305 id=305 data-nosnippet>305</a>    Clone,
+<a href=#306 id=306 data-nosnippet>306</a>    Serialize,
+<a href=#307 id=307 data-nosnippet>307</a>    Deserialize,
+<a href=#308 id=308 data-nosnippet>308</a>    TlsDeserialize,
+<a href=#309 id=309 data-nosnippet>309</a>    TlsDeserializeBytes,
+<a href=#310 id=310 data-nosnippet>310</a>    TlsSerialize,
+<a href=#311 id=311 data-nosnippet>311</a>    TlsSize,
+<a href=#312 id=312 data-nosnippet>312</a>)]
+<a href=#313 id=313 data-nosnippet>313</a></span><span class="kw">pub struct </span>ConfirmationTag(<span class="kw">pub</span>(<span class="kw">crate</span>) Mac);
+<a href=#314 id=314 data-nosnippet>314</a>
+<a href=#315 id=315 data-nosnippet>315</a><span class="doccomment">/// PathSecret
+<a href=#316 id=316 data-nosnippet>316</a>///
+<a href=#317 id=317 data-nosnippet>317</a>/// &gt; 11.2.2. Welcoming New Members
 <a href=#318 id=318 data-nosnippet>318</a>///
-<a href=#319 id=319 data-nosnippet>319</a>/// &gt; 11.2.2. Welcoming New Members
-<a href=#320 id=320 data-nosnippet>320</a>///
-<a href=#321 id=321 data-nosnippet>321</a>/// ```text
-<a href=#322 id=322 data-nosnippet>322</a>/// struct {
-<a href=#323 id=323 data-nosnippet>323</a>///   opaque path_secret&lt;1..255&gt;;
-<a href=#324 id=324 data-nosnippet>324</a>/// } PathSecret;
-<a href=#325 id=325 data-nosnippet>325</a>/// ```
-<a href=#326 id=326 data-nosnippet>326</a></span><span class="attr">#[derive(
-<a href=#327 id=327 data-nosnippet>327</a>    Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
-<a href=#328 id=328 data-nosnippet>328</a>)]
-<a href=#329 id=329 data-nosnippet>329</a>#[cfg_attr(any(feature = <span class="string">"test-utils"</span>, test), derive(PartialEq, Clone))]
-<a href=#330 id=330 data-nosnippet>330</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PathSecret {
-<a href=#331 id=331 data-nosnippet>331</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: Secret,
-<a href=#332 id=332 data-nosnippet>332</a>}
-<a href=#333 id=333 data-nosnippet>333</a>
-<a href=#334 id=334 data-nosnippet>334</a><span class="kw">impl </span>From&lt;Secret&gt; <span class="kw">for </span>PathSecret {
-<a href=#335 id=335 data-nosnippet>335</a>    <span class="kw">fn </span>from(path_secret: Secret) -&gt; <span class="self">Self </span>{
-<a href=#336 id=336 data-nosnippet>336</a>        <span class="self">Self </span>{ path_secret }
-<a href=#337 id=337 data-nosnippet>337</a>    }
-<a href=#338 id=338 data-nosnippet>338</a>}
-<a href=#339 id=339 data-nosnippet>339</a>
-<a href=#340 id=340 data-nosnippet>340</a><span class="kw">impl </span>PathSecret {
-<a href=#341 id=341 data-nosnippet>341</a>    <span class="doccomment">/// Derives a node secret which in turn is used to derive an HpkeKeyPair.
-<a href=#342 id=342 data-nosnippet>342</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>derive_key_pair(
-<a href=#343 id=343 data-nosnippet>343</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#344 id=344 data-nosnippet>344</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#345 id=345 data-nosnippet>345</a>        ciphersuite: Ciphersuite,
-<a href=#346 id=346 data-nosnippet>346</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;EncryptionKeyPair, LibraryError&gt; {
-<a href=#347 id=347 data-nosnippet>347</a>        <span class="kw">let </span>node_secret = <span class="self">self
-<a href=#348 id=348 data-nosnippet>348</a>            </span>.path_secret
-<a href=#349 id=349 data-nosnippet>349</a>            .kdf_expand_label(crypto, ciphersuite, <span class="string">"node"</span>, <span class="kw-2">&amp;</span>[], ciphersuite.hash_length())
-<a href=#350 id=350 data-nosnippet>350</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-<a href=#351 id=351 data-nosnippet>351</a>        <span class="kw">let </span>HpkeKeyPair { public, private } = crypto
-<a href=#352 id=352 data-nosnippet>352</a>            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice())
-<a href=#353 id=353 data-nosnippet>353</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-<a href=#354 id=354 data-nosnippet>354</a>
-<a href=#355 id=355 data-nosnippet>355</a>        <span class="prelude-val">Ok</span>((HpkePublicKey::from(public), private).into())
-<a href=#356 id=356 data-nosnippet>356</a>    }
-<a href=#357 id=357 data-nosnippet>357</a>
-<a href=#358 id=358 data-nosnippet>358</a>    <span class="doccomment">/// Derives a path secret.
-<a href=#359 id=359 data-nosnippet>359</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>derive_path_secret(
-<a href=#360 id=360 data-nosnippet>360</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#361 id=361 data-nosnippet>361</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#362 id=362 data-nosnippet>362</a>        ciphersuite: Ciphersuite,
-<a href=#363 id=363 data-nosnippet>363</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-<a href=#364 id=364 data-nosnippet>364</a>        <span class="kw">let </span>path_secret = <span class="self">self
-<a href=#365 id=365 data-nosnippet>365</a>            </span>.path_secret
-<a href=#366 id=366 data-nosnippet>366</a>            .kdf_expand_label(crypto, ciphersuite, <span class="string">"path"</span>, <span class="kw-2">&amp;</span>[], ciphersuite.hash_length())
-<a href=#367 id=367 data-nosnippet>367</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-<a href=#368 id=368 data-nosnippet>368</a>        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ path_secret })
-<a href=#369 id=369 data-nosnippet>369</a>    }
-<a href=#370 id=370 data-nosnippet>370</a>
-<a href=#371 id=371 data-nosnippet>371</a>    <span class="doccomment">/// Encrypt the path secret under the given `HpkePublicKey` using the given
-<a href=#372 id=372 data-nosnippet>372</a>    /// `group_context`.
-<a href=#373 id=373 data-nosnippet>373</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt(
-<a href=#374 id=374 data-nosnippet>374</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#375 id=375 data-nosnippet>375</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#376 id=376 data-nosnippet>376</a>        ciphersuite: Ciphersuite,
-<a href=#377 id=377 data-nosnippet>377</a>        public_key: <span class="kw-2">&amp;</span>EncryptionKey,
-<a href=#378 id=378 data-nosnippet>378</a>        group_context: <span class="kw-2">&amp;</span>[u8],
-<a href=#379 id=379 data-nosnippet>379</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;HpkeCiphertext, LibraryError&gt; {
-<a href=#380 id=380 data-nosnippet>380</a>        public_key.encrypt(
-<a href=#381 id=381 data-nosnippet>381</a>            crypto,
-<a href=#382 id=382 data-nosnippet>382</a>            ciphersuite,
-<a href=#383 id=383 data-nosnippet>383</a>            group_context,
-<a href=#384 id=384 data-nosnippet>384</a>            <span class="self">self</span>.path_secret.as_slice(),
-<a href=#385 id=385 data-nosnippet>385</a>        )
-<a href=#386 id=386 data-nosnippet>386</a>    }
-<a href=#387 id=387 data-nosnippet>387</a>
-<a href=#388 id=388 data-nosnippet>388</a>    <span class="doccomment">/// Consume the `PathSecret`, returning the internal `Secret` value.
-<a href=#389 id=389 data-nosnippet>389</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>secret(<span class="self">self</span>) -&gt; Secret {
-<a href=#390 id=390 data-nosnippet>390</a>        <span class="self">self</span>.path_secret
-<a href=#391 id=391 data-nosnippet>391</a>    }
-<a href=#392 id=392 data-nosnippet>392</a>
-<a href=#393 id=393 data-nosnippet>393</a>    <span class="doccomment">/// Decrypt a given `HpkeCiphertext` using the `private_key` and `group_context`.
-<a href=#394 id=394 data-nosnippet>394</a>    ///
-<a href=#395 id=395 data-nosnippet>395</a>    /// Returns the decrypted `PathSecret`. Returns an error if the decryption
-<a href=#396 id=396 data-nosnippet>396</a>    /// was unsuccessful.
-<a href=#397 id=397 data-nosnippet>397</a>    ///
-<a href=#398 id=398 data-nosnippet>398</a>    /// ValSem203: Path secrets must decrypt correctly
-<a href=#399 id=399 data-nosnippet>399</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt(
-<a href=#400 id=400 data-nosnippet>400</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#401 id=401 data-nosnippet>401</a>        ciphersuite: Ciphersuite,
-<a href=#402 id=402 data-nosnippet>402</a>        ciphertext: <span class="kw-2">&amp;</span>HpkeCiphertext,
-<a href=#403 id=403 data-nosnippet>403</a>        private_key: <span class="kw-2">&amp;</span>EncryptionPrivateKey,
-<a href=#404 id=404 data-nosnippet>404</a>        group_context: <span class="kw-2">&amp;</span>[u8],
-<a href=#405 id=405 data-nosnippet>405</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;PathSecret, PathSecretError&gt; {
-<a href=#406 id=406 data-nosnippet>406</a>        <span class="comment">// ValSem203: Path secrets must decrypt correctly
-<a href=#407 id=407 data-nosnippet>407</a>        </span>private_key
-<a href=#408 id=408 data-nosnippet>408</a>            .decrypt(crypto, ciphersuite, ciphertext, group_context)
-<a href=#409 id=409 data-nosnippet>409</a>            .map(|path_secret| <span class="self">Self </span>{ path_secret })
-<a href=#410 id=410 data-nosnippet>410</a>            .map_err(|e| e.into())
-<a href=#411 id=411 data-nosnippet>411</a>    }
-<a href=#412 id=412 data-nosnippet>412</a>}
-<a href=#413 id=413 data-nosnippet>413</a>
-<a href=#414 id=414 data-nosnippet>414</a><span class="doccomment">/// Path secret error
-<a href=#415 id=415 data-nosnippet>415</a></span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-<a href=#416 id=416 data-nosnippet>416</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>PathSecretError {
-<a href=#417 id=417 data-nosnippet>417</a>    <span class="doccomment">/// See [`hpke::Error`] for more details.
-<a href=#418 id=418 data-nosnippet>418</a>    </span><span class="attr">#[error(transparent)]
-<a href=#419 id=419 data-nosnippet>419</a>    </span>DecryptionError(<span class="attr">#[from] </span>hpke::Error),
-<a href=#420 id=420 data-nosnippet>420</a>}
-<a href=#421 id=421 data-nosnippet>421</a>
-<a href=#422 id=422 data-nosnippet>422</a><span class="doccomment">/// GroupSecrets
-<a href=#423 id=423 data-nosnippet>423</a>///
-<a href=#424 id=424 data-nosnippet>424</a>/// ```c
-<a href=#425 id=425 data-nosnippet>425</a>/// // draft-ietf-mls-protocol-17
-<a href=#426 id=426 data-nosnippet>426</a>/// struct {
-<a href=#427 id=427 data-nosnippet>427</a>///   opaque joiner_secret&lt;V&gt;;
-<a href=#428 id=428 data-nosnippet>428</a>///   optional&lt;PathSecret&gt; path_secret;
-<a href=#429 id=429 data-nosnippet>429</a>///   PreSharedKeyID psks&lt;V&gt;;
-<a href=#430 id=430 data-nosnippet>430</a>/// } GroupSecrets;
-<a href=#431 id=431 data-nosnippet>431</a>/// ```
-<a href=#432 id=432 data-nosnippet>432</a></span><span class="attr">#[derive(Debug, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
-<a href=#433 id=433 data-nosnippet>433</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>GroupSecrets {
-<a href=#434 id=434 data-nosnippet>434</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) joiner_secret: JoinerSecret,
-<a href=#435 id=435 data-nosnippet>435</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: <span class="prelude-ty">Option</span>&lt;PathSecret&gt;,
-<a href=#436 id=436 data-nosnippet>436</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) psks: Vec&lt;PreSharedKeyId&gt;,
-<a href=#437 id=437 data-nosnippet>437</a>}
-<a href=#438 id=438 data-nosnippet>438</a>
-<a href=#439 id=439 data-nosnippet>439</a><span class="attr">#[derive(TlsSerialize, TlsSize)]
-<a href=#440 id=440 data-nosnippet>440</a></span><span class="kw">struct </span>EncodedGroupSecrets&lt;<span class="lifetime">'a</span>&gt; {
-<a href=#441 id=441 data-nosnippet>441</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) joiner_secret: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>JoinerSecret,
-<a href=#442 id=442 data-nosnippet>442</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PathSecret&gt;,
-<a href=#443 id=443 data-nosnippet>443</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) psks: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[PreSharedKeyId],
-<a href=#444 id=444 data-nosnippet>444</a>}
-<a href=#445 id=445 data-nosnippet>445</a>
-<a href=#446 id=446 data-nosnippet>446</a><span class="doccomment">/// Error related to group secrets.
-<a href=#447 id=447 data-nosnippet>447</a></span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-<a href=#448 id=448 data-nosnippet>448</a></span><span class="kw">pub enum </span>GroupSecretsError {
-<a href=#449 id=449 data-nosnippet>449</a>    <span class="doccomment">/// Decryption failed.
-<a href=#450 id=450 data-nosnippet>450</a>    </span><span class="attr">#[error(<span class="string">"Decryption failed."</span>)]
-<a href=#451 id=451 data-nosnippet>451</a>    </span>DecryptionFailed,
-<a href=#452 id=452 data-nosnippet>452</a>    <span class="doccomment">/// Malformed.
-<a href=#453 id=453 data-nosnippet>453</a>    </span><span class="attr">#[error(<span class="string">"Malformed."</span>)]
-<a href=#454 id=454 data-nosnippet>454</a>    </span>Malformed,
-<a href=#455 id=455 data-nosnippet>455</a>}
-<a href=#456 id=456 data-nosnippet>456</a>
-<a href=#457 id=457 data-nosnippet>457</a><span class="kw">impl </span>GroupSecrets {
-<a href=#458 id=458 data-nosnippet>458</a>    <span class="doccomment">/// Try to decrypt (and parse) a ciphertext into group secrets.
-<a href=#459 id=459 data-nosnippet>459</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_ciphertext(
-<a href=#460 id=460 data-nosnippet>460</a>        skey: <span class="kw-2">&amp;</span>HpkePrivateKey,
-<a href=#461 id=461 data-nosnippet>461</a>        ciphertext: <span class="kw-2">&amp;</span>HpkeCiphertext,
-<a href=#462 id=462 data-nosnippet>462</a>        context: <span class="kw-2">&amp;</span>[u8],
-<a href=#463 id=463 data-nosnippet>463</a>        ciphersuite: Ciphersuite,
-<a href=#464 id=464 data-nosnippet>464</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#465 id=465 data-nosnippet>465</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, GroupSecretsError&gt; {
-<a href=#466 id=466 data-nosnippet>466</a>        <span class="kw">let </span>group_secrets_plaintext =
-<a href=#467 id=467 data-nosnippet>467</a>            hpke::decrypt_with_label(skey, <span class="string">"Welcome"</span>, context, ciphertext, ciphersuite, crypto)
-<a href=#468 id=468 data-nosnippet>468</a>                .map_err(|<span class="kw">_</span>| GroupSecretsError::DecryptionFailed)<span class="question-mark">?</span>;
-<a href=#469 id=469 data-nosnippet>469</a>
-<a href=#470 id=470 data-nosnippet>470</a>        <span class="comment">// Note: This also checks that no extraneous data was encrypted.
-<a href=#471 id=471 data-nosnippet>471</a>        </span><span class="kw">let </span>group_secrets = GroupSecrets::tls_deserialize_exact(group_secrets_plaintext)
-<a href=#472 id=472 data-nosnippet>472</a>            .map_err(|<span class="kw">_</span>| GroupSecretsError::Malformed)<span class="question-mark">?</span>;
-<a href=#473 id=473 data-nosnippet>473</a>
-<a href=#474 id=474 data-nosnippet>474</a>        <span class="prelude-val">Ok</span>(group_secrets)
-<a href=#475 id=475 data-nosnippet>475</a>    }
-<a href=#476 id=476 data-nosnippet>476</a>
-<a href=#477 id=477 data-nosnippet>477</a>    <span class="doccomment">/// Create new encoded group secrets.
-<a href=#478 id=478 data-nosnippet>478</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_encoded&lt;<span class="lifetime">'a</span>&gt;(
-<a href=#479 id=479 data-nosnippet>479</a>        joiner_secret: <span class="kw-2">&amp;</span>JoinerSecret,
-<a href=#480 id=480 data-nosnippet>480</a>        path_secret: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PathSecret&gt;,
-<a href=#481 id=481 data-nosnippet>481</a>        psks: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[PreSharedKeyId],
-<a href=#482 id=482 data-nosnippet>482</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
-<a href=#483 id=483 data-nosnippet>483</a>        EncodedGroupSecrets {
-<a href=#484 id=484 data-nosnippet>484</a>            joiner_secret,
-<a href=#485 id=485 data-nosnippet>485</a>            path_secret,
-<a href=#486 id=486 data-nosnippet>486</a>            psks,
-<a href=#487 id=487 data-nosnippet>487</a>        }
-<a href=#488 id=488 data-nosnippet>488</a>        .tls_serialize_detached()
-<a href=#489 id=489 data-nosnippet>489</a>    }
-<a href=#490 id=490 data-nosnippet>490</a>}
-<a href=#491 id=491 data-nosnippet>491</a>
-<a href=#492 id=492 data-nosnippet>492</a><span class="attr">#[cfg(test)]
-<a href=#493 id=493 data-nosnippet>493</a></span><span class="kw">impl </span>GroupSecrets {
-<a href=#494 id=494 data-nosnippet>494</a>    <span class="kw">pub fn </span>random_encoded(
-<a href=#495 id=495 data-nosnippet>495</a>        ciphersuite: Ciphersuite,
-<a href=#496 id=496 data-nosnippet>496</a>        rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
-<a href=#497 id=497 data-nosnippet>497</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
-<a href=#498 id=498 data-nosnippet>498</a>        <span class="kw">let </span>psk_id = PreSharedKeyId::new(
-<a href=#499 id=499 data-nosnippet>499</a>            ciphersuite,
-<a href=#500 id=500 data-nosnippet>500</a>            rng,
-<a href=#501 id=501 data-nosnippet>501</a>            Psk::External(ExternalPsk::new(
-<a href=#502 id=502 data-nosnippet>502</a>                rng.random_vec(ciphersuite.hash_length())
-<a href=#503 id=503 data-nosnippet>503</a>                    .expect(<span class="string">"Not enough randomness."</span>),
-<a href=#504 id=504 data-nosnippet>504</a>            )),
-<a href=#505 id=505 data-nosnippet>505</a>        )
-<a href=#506 id=506 data-nosnippet>506</a>        .expect(<span class="string">"An unexpected error occurred."</span>);
-<a href=#507 id=507 data-nosnippet>507</a>        <span class="kw">let </span>psks = <span class="macro">vec!</span>[psk_id];
-<a href=#508 id=508 data-nosnippet>508</a>
-<a href=#509 id=509 data-nosnippet>509</a>        GroupSecrets::new_encoded(
-<a href=#510 id=510 data-nosnippet>510</a>            <span class="kw-2">&amp;</span>JoinerSecret::random(ciphersuite, rng),
-<a href=#511 id=511 data-nosnippet>511</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>PathSecret {
-<a href=#512 id=512 data-nosnippet>512</a>                path_secret: Secret::random(ciphersuite, rng).expect(<span class="string">"Not enough randomness."</span>),
-<a href=#513 id=513 data-nosnippet>513</a>            }),
-<a href=#514 id=514 data-nosnippet>514</a>            <span class="kw-2">&amp;</span>psks,
-<a href=#515 id=515 data-nosnippet>515</a>        )
-<a href=#516 id=516 data-nosnippet>516</a>    }
-<a href=#517 id=517 data-nosnippet>517</a>}</code></pre></div></section></main></body></html>
+<a href=#319 id=319 data-nosnippet>319</a>/// ```text
+<a href=#320 id=320 data-nosnippet>320</a>/// struct {
+<a href=#321 id=321 data-nosnippet>321</a>///   opaque path_secret&lt;1..255&gt;;
+<a href=#322 id=322 data-nosnippet>322</a>/// } PathSecret;
+<a href=#323 id=323 data-nosnippet>323</a>/// ```
+<a href=#324 id=324 data-nosnippet>324</a></span><span class="attr">#[derive(
+<a href=#325 id=325 data-nosnippet>325</a>    Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
+<a href=#326 id=326 data-nosnippet>326</a>)]
+<a href=#327 id=327 data-nosnippet>327</a>#[cfg_attr(any(feature = <span class="string">"test-utils"</span>, test), derive(PartialEq, Clone))]
+<a href=#328 id=328 data-nosnippet>328</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PathSecret {
+<a href=#329 id=329 data-nosnippet>329</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: Secret,
+<a href=#330 id=330 data-nosnippet>330</a>}
+<a href=#331 id=331 data-nosnippet>331</a>
+<a href=#332 id=332 data-nosnippet>332</a><span class="kw">impl </span>From&lt;Secret&gt; <span class="kw">for </span>PathSecret {
+<a href=#333 id=333 data-nosnippet>333</a>    <span class="kw">fn </span>from(path_secret: Secret) -&gt; <span class="self">Self </span>{
+<a href=#334 id=334 data-nosnippet>334</a>        <span class="self">Self </span>{ path_secret }
+<a href=#335 id=335 data-nosnippet>335</a>    }
+<a href=#336 id=336 data-nosnippet>336</a>}
+<a href=#337 id=337 data-nosnippet>337</a>
+<a href=#338 id=338 data-nosnippet>338</a><span class="kw">impl </span>PathSecret {
+<a href=#339 id=339 data-nosnippet>339</a>    <span class="doccomment">/// Derives a node secret which in turn is used to derive an HpkeKeyPair.
+<a href=#340 id=340 data-nosnippet>340</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>derive_key_pair(
+<a href=#341 id=341 data-nosnippet>341</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#342 id=342 data-nosnippet>342</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#343 id=343 data-nosnippet>343</a>        ciphersuite: Ciphersuite,
+<a href=#344 id=344 data-nosnippet>344</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;EncryptionKeyPair, LibraryError&gt; {
+<a href=#345 id=345 data-nosnippet>345</a>        <span class="kw">let </span>node_secret = <span class="self">self
+<a href=#346 id=346 data-nosnippet>346</a>            </span>.path_secret
+<a href=#347 id=347 data-nosnippet>347</a>            .kdf_expand_label(crypto, ciphersuite, <span class="string">"node"</span>, <span class="kw-2">&amp;</span>[], ciphersuite.hash_length())
+<a href=#348 id=348 data-nosnippet>348</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#349 id=349 data-nosnippet>349</a>        <span class="kw">let </span>HpkeKeyPair { public, private } = crypto
+<a href=#350 id=350 data-nosnippet>350</a>            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice())
+<a href=#351 id=351 data-nosnippet>351</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#352 id=352 data-nosnippet>352</a>
+<a href=#353 id=353 data-nosnippet>353</a>        <span class="prelude-val">Ok</span>((HpkePublicKey::from(public), private).into())
+<a href=#354 id=354 data-nosnippet>354</a>    }
+<a href=#355 id=355 data-nosnippet>355</a>
+<a href=#356 id=356 data-nosnippet>356</a>    <span class="doccomment">/// Derives a path secret.
+<a href=#357 id=357 data-nosnippet>357</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>derive_path_secret(
+<a href=#358 id=358 data-nosnippet>358</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#359 id=359 data-nosnippet>359</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#360 id=360 data-nosnippet>360</a>        ciphersuite: Ciphersuite,
+<a href=#361 id=361 data-nosnippet>361</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
+<a href=#362 id=362 data-nosnippet>362</a>        <span class="kw">let </span>path_secret = <span class="self">self
+<a href=#363 id=363 data-nosnippet>363</a>            </span>.path_secret
+<a href=#364 id=364 data-nosnippet>364</a>            .kdf_expand_label(crypto, ciphersuite, <span class="string">"path"</span>, <span class="kw-2">&amp;</span>[], ciphersuite.hash_length())
+<a href=#365 id=365 data-nosnippet>365</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#366 id=366 data-nosnippet>366</a>        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ path_secret })
+<a href=#367 id=367 data-nosnippet>367</a>    }
+<a href=#368 id=368 data-nosnippet>368</a>
+<a href=#369 id=369 data-nosnippet>369</a>    <span class="doccomment">/// Encrypt the path secret under the given `HpkePublicKey` using the given
+<a href=#370 id=370 data-nosnippet>370</a>    /// `group_context`.
+<a href=#371 id=371 data-nosnippet>371</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt(
+<a href=#372 id=372 data-nosnippet>372</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#373 id=373 data-nosnippet>373</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#374 id=374 data-nosnippet>374</a>        ciphersuite: Ciphersuite,
+<a href=#375 id=375 data-nosnippet>375</a>        public_key: <span class="kw-2">&amp;</span>EncryptionKey,
+<a href=#376 id=376 data-nosnippet>376</a>        group_context: <span class="kw-2">&amp;</span>[u8],
+<a href=#377 id=377 data-nosnippet>377</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;HpkeCiphertext, LibraryError&gt; {
+<a href=#378 id=378 data-nosnippet>378</a>        public_key.encrypt(
+<a href=#379 id=379 data-nosnippet>379</a>            crypto,
+<a href=#380 id=380 data-nosnippet>380</a>            ciphersuite,
+<a href=#381 id=381 data-nosnippet>381</a>            group_context,
+<a href=#382 id=382 data-nosnippet>382</a>            <span class="self">self</span>.path_secret.as_slice(),
+<a href=#383 id=383 data-nosnippet>383</a>        )
+<a href=#384 id=384 data-nosnippet>384</a>    }
+<a href=#385 id=385 data-nosnippet>385</a>
+<a href=#386 id=386 data-nosnippet>386</a>    <span class="doccomment">/// Consume the `PathSecret`, returning the internal `Secret` value.
+<a href=#387 id=387 data-nosnippet>387</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>secret(<span class="self">self</span>) -&gt; Secret {
+<a href=#388 id=388 data-nosnippet>388</a>        <span class="self">self</span>.path_secret
+<a href=#389 id=389 data-nosnippet>389</a>    }
+<a href=#390 id=390 data-nosnippet>390</a>
+<a href=#391 id=391 data-nosnippet>391</a>    <span class="doccomment">/// Decrypt a given `HpkeCiphertext` using the `private_key` and `group_context`.
+<a href=#392 id=392 data-nosnippet>392</a>    ///
+<a href=#393 id=393 data-nosnippet>393</a>    /// Returns the decrypted `PathSecret`. Returns an error if the decryption
+<a href=#394 id=394 data-nosnippet>394</a>    /// was unsuccessful.
+<a href=#395 id=395 data-nosnippet>395</a>    ///
+<a href=#396 id=396 data-nosnippet>396</a>    /// ValSem203: Path secrets must decrypt correctly
+<a href=#397 id=397 data-nosnippet>397</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt(
+<a href=#398 id=398 data-nosnippet>398</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#399 id=399 data-nosnippet>399</a>        ciphersuite: Ciphersuite,
+<a href=#400 id=400 data-nosnippet>400</a>        ciphertext: <span class="kw-2">&amp;</span>HpkeCiphertext,
+<a href=#401 id=401 data-nosnippet>401</a>        private_key: <span class="kw-2">&amp;</span>EncryptionPrivateKey,
+<a href=#402 id=402 data-nosnippet>402</a>        group_context: <span class="kw-2">&amp;</span>[u8],
+<a href=#403 id=403 data-nosnippet>403</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;PathSecret, PathSecretError&gt; {
+<a href=#404 id=404 data-nosnippet>404</a>        <span class="comment">// ValSem203: Path secrets must decrypt correctly
+<a href=#405 id=405 data-nosnippet>405</a>        </span>private_key
+<a href=#406 id=406 data-nosnippet>406</a>            .decrypt(crypto, ciphersuite, ciphertext, group_context)
+<a href=#407 id=407 data-nosnippet>407</a>            .map(|path_secret| <span class="self">Self </span>{ path_secret })
+<a href=#408 id=408 data-nosnippet>408</a>            .map_err(|e| e.into())
+<a href=#409 id=409 data-nosnippet>409</a>    }
+<a href=#410 id=410 data-nosnippet>410</a>}
+<a href=#411 id=411 data-nosnippet>411</a>
+<a href=#412 id=412 data-nosnippet>412</a><span class="doccomment">/// Path secret error
+<a href=#413 id=413 data-nosnippet>413</a></span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
+<a href=#414 id=414 data-nosnippet>414</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>PathSecretError {
+<a href=#415 id=415 data-nosnippet>415</a>    <span class="doccomment">/// See [`hpke::Error`] for more details.
+<a href=#416 id=416 data-nosnippet>416</a>    </span><span class="attr">#[error(transparent)]
+<a href=#417 id=417 data-nosnippet>417</a>    </span>DecryptionError(<span class="attr">#[from] </span>hpke::Error),
+<a href=#418 id=418 data-nosnippet>418</a>}
+<a href=#419 id=419 data-nosnippet>419</a>
+<a href=#420 id=420 data-nosnippet>420</a><span class="doccomment">/// GroupSecrets
+<a href=#421 id=421 data-nosnippet>421</a>///
+<a href=#422 id=422 data-nosnippet>422</a>/// ```c
+<a href=#423 id=423 data-nosnippet>423</a>/// // draft-ietf-mls-protocol-17
+<a href=#424 id=424 data-nosnippet>424</a>/// struct {
+<a href=#425 id=425 data-nosnippet>425</a>///   opaque joiner_secret&lt;V&gt;;
+<a href=#426 id=426 data-nosnippet>426</a>///   optional&lt;PathSecret&gt; path_secret;
+<a href=#427 id=427 data-nosnippet>427</a>///   PreSharedKeyID psks&lt;V&gt;;
+<a href=#428 id=428 data-nosnippet>428</a>/// } GroupSecrets;
+<a href=#429 id=429 data-nosnippet>429</a>/// ```
+<a href=#430 id=430 data-nosnippet>430</a></span><span class="attr">#[derive(Debug, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
+<a href=#431 id=431 data-nosnippet>431</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>GroupSecrets {
+<a href=#432 id=432 data-nosnippet>432</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) joiner_secret: JoinerSecret,
+<a href=#433 id=433 data-nosnippet>433</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: <span class="prelude-ty">Option</span>&lt;PathSecret&gt;,
+<a href=#434 id=434 data-nosnippet>434</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) psks: Vec&lt;PreSharedKeyId&gt;,
+<a href=#435 id=435 data-nosnippet>435</a>}
+<a href=#436 id=436 data-nosnippet>436</a>
+<a href=#437 id=437 data-nosnippet>437</a><span class="attr">#[derive(TlsSerialize, TlsSize)]
+<a href=#438 id=438 data-nosnippet>438</a></span><span class="kw">struct </span>EncodedGroupSecrets&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#439 id=439 data-nosnippet>439</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) joiner_secret: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>JoinerSecret,
+<a href=#440 id=440 data-nosnippet>440</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PathSecret&gt;,
+<a href=#441 id=441 data-nosnippet>441</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) psks: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[PreSharedKeyId],
+<a href=#442 id=442 data-nosnippet>442</a>}
+<a href=#443 id=443 data-nosnippet>443</a>
+<a href=#444 id=444 data-nosnippet>444</a><span class="doccomment">/// Error related to group secrets.
+<a href=#445 id=445 data-nosnippet>445</a></span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
+<a href=#446 id=446 data-nosnippet>446</a></span><span class="kw">pub enum </span>GroupSecretsError {
+<a href=#447 id=447 data-nosnippet>447</a>    <span class="doccomment">/// Decryption failed.
+<a href=#448 id=448 data-nosnippet>448</a>    </span><span class="attr">#[error(<span class="string">"Decryption failed."</span>)]
+<a href=#449 id=449 data-nosnippet>449</a>    </span>DecryptionFailed,
+<a href=#450 id=450 data-nosnippet>450</a>    <span class="doccomment">/// Malformed.
+<a href=#451 id=451 data-nosnippet>451</a>    </span><span class="attr">#[error(<span class="string">"Malformed."</span>)]
+<a href=#452 id=452 data-nosnippet>452</a>    </span>Malformed,
+<a href=#453 id=453 data-nosnippet>453</a>}
+<a href=#454 id=454 data-nosnippet>454</a>
+<a href=#455 id=455 data-nosnippet>455</a><span class="kw">impl </span>GroupSecrets {
+<a href=#456 id=456 data-nosnippet>456</a>    <span class="doccomment">/// Try to decrypt (and parse) a ciphertext into group secrets.
+<a href=#457 id=457 data-nosnippet>457</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_ciphertext(
+<a href=#458 id=458 data-nosnippet>458</a>        skey: <span class="kw-2">&amp;</span>HpkePrivateKey,
+<a href=#459 id=459 data-nosnippet>459</a>        ciphertext: <span class="kw-2">&amp;</span>HpkeCiphertext,
+<a href=#460 id=460 data-nosnippet>460</a>        context: <span class="kw-2">&amp;</span>[u8],
+<a href=#461 id=461 data-nosnippet>461</a>        ciphersuite: Ciphersuite,
+<a href=#462 id=462 data-nosnippet>462</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#463 id=463 data-nosnippet>463</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, GroupSecretsError&gt; {
+<a href=#464 id=464 data-nosnippet>464</a>        <span class="kw">let </span>group_secrets_plaintext =
+<a href=#465 id=465 data-nosnippet>465</a>            hpke::decrypt_with_label(skey, <span class="string">"Welcome"</span>, context, ciphertext, ciphersuite, crypto)
+<a href=#466 id=466 data-nosnippet>466</a>                .map_err(|<span class="kw">_</span>| GroupSecretsError::DecryptionFailed)<span class="question-mark">?</span>;
+<a href=#467 id=467 data-nosnippet>467</a>
+<a href=#468 id=468 data-nosnippet>468</a>        <span class="comment">// Note: This also checks that no extraneous data was encrypted.
+<a href=#469 id=469 data-nosnippet>469</a>        </span><span class="kw">let </span>group_secrets = GroupSecrets::tls_deserialize_exact(group_secrets_plaintext)
+<a href=#470 id=470 data-nosnippet>470</a>            .map_err(|<span class="kw">_</span>| GroupSecretsError::Malformed)<span class="question-mark">?</span>;
+<a href=#471 id=471 data-nosnippet>471</a>
+<a href=#472 id=472 data-nosnippet>472</a>        <span class="prelude-val">Ok</span>(group_secrets)
+<a href=#473 id=473 data-nosnippet>473</a>    }
+<a href=#474 id=474 data-nosnippet>474</a>
+<a href=#475 id=475 data-nosnippet>475</a>    <span class="doccomment">/// Create new encoded group secrets.
+<a href=#476 id=476 data-nosnippet>476</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_encoded&lt;<span class="lifetime">'a</span>&gt;(
+<a href=#477 id=477 data-nosnippet>477</a>        joiner_secret: <span class="kw-2">&amp;</span>JoinerSecret,
+<a href=#478 id=478 data-nosnippet>478</a>        path_secret: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PathSecret&gt;,
+<a href=#479 id=479 data-nosnippet>479</a>        psks: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[PreSharedKeyId],
+<a href=#480 id=480 data-nosnippet>480</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
+<a href=#481 id=481 data-nosnippet>481</a>        EncodedGroupSecrets {
+<a href=#482 id=482 data-nosnippet>482</a>            joiner_secret,
+<a href=#483 id=483 data-nosnippet>483</a>            path_secret,
+<a href=#484 id=484 data-nosnippet>484</a>            psks,
+<a href=#485 id=485 data-nosnippet>485</a>        }
+<a href=#486 id=486 data-nosnippet>486</a>        .tls_serialize_detached()
+<a href=#487 id=487 data-nosnippet>487</a>    }
+<a href=#488 id=488 data-nosnippet>488</a>}
+<a href=#489 id=489 data-nosnippet>489</a>
+<a href=#490 id=490 data-nosnippet>490</a><span class="attr">#[cfg(test)]
+<a href=#491 id=491 data-nosnippet>491</a></span><span class="kw">impl </span>GroupSecrets {
+<a href=#492 id=492 data-nosnippet>492</a>    <span class="kw">pub fn </span>random_encoded(
+<a href=#493 id=493 data-nosnippet>493</a>        ciphersuite: Ciphersuite,
+<a href=#494 id=494 data-nosnippet>494</a>        rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
+<a href=#495 id=495 data-nosnippet>495</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
+<a href=#496 id=496 data-nosnippet>496</a>        <span class="kw">let </span>psk_id = PreSharedKeyId::new(
+<a href=#497 id=497 data-nosnippet>497</a>            ciphersuite,
+<a href=#498 id=498 data-nosnippet>498</a>            rng,
+<a href=#499 id=499 data-nosnippet>499</a>            Psk::External(ExternalPsk::new(
+<a href=#500 id=500 data-nosnippet>500</a>                rng.random_vec(ciphersuite.hash_length())
+<a href=#501 id=501 data-nosnippet>501</a>                    .expect(<span class="string">"Not enough randomness."</span>),
+<a href=#502 id=502 data-nosnippet>502</a>            )),
+<a href=#503 id=503 data-nosnippet>503</a>        )
+<a href=#504 id=504 data-nosnippet>504</a>        .expect(<span class="string">"An unexpected error occurred."</span>);
+<a href=#505 id=505 data-nosnippet>505</a>        <span class="kw">let </span>psks = <span class="macro">vec!</span>[psk_id];
+<a href=#506 id=506 data-nosnippet>506</a>
+<a href=#507 id=507 data-nosnippet>507</a>        GroupSecrets::new_encoded(
+<a href=#508 id=508 data-nosnippet>508</a>            <span class="kw-2">&amp;</span>JoinerSecret::random(ciphersuite, rng),
+<a href=#509 id=509 data-nosnippet>509</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>PathSecret {
+<a href=#510 id=510 data-nosnippet>510</a>                path_secret: Secret::random(ciphersuite, rng).expect(<span class="string">"Not enough randomness."</span>),
+<a href=#511 id=511 data-nosnippet>511</a>            }),
+<a href=#512 id=512 data-nosnippet>512</a>            <span class="kw-2">&amp;</span>psks,
+<a href=#513 id=513 data-nosnippet>513</a>        )
+<a href=#514 id=514 data-nosnippet>514</a>    }
+<a href=#515 id=515 data-nosnippet>515</a>}</code></pre></div></section></main></body></html>

@@ -577,7 +577,7 @@
 <a href=#577 id=577 data-nosnippet>577</a>                .check_extension_support(required_capabilities.extension_types())<span class="question-mark">?</span>;
 <a href=#578 id=578 data-nosnippet>578</a>        }
 <a href=#579 id=579 data-nosnippet>579</a>        <span class="kw">let </span>proposal = GroupContextExtensionProposal::new(extensions);
-<a href=#580 id=580 data-nosnippet>580</a>        <span class="kw">let </span>proposal = Proposal::GroupContextExtensions(proposal);
+<a href=#580 id=580 data-nosnippet>580</a>        <span class="kw">let </span>proposal = Proposal::GroupContextExtensions(Box::new(proposal));
 <a href=#581 id=581 data-nosnippet>581</a>        AuthenticatedContent::member_proposal(
 <a href=#582 id=582 data-nosnippet>582</a>            framing_parameters,
 <a href=#583 id=583 data-nosnippet>583</a>            <span class="self">self</span>.own_leaf_index(),

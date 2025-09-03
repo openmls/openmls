@@ -85,7 +85,7 @@
 <a href=#85 id=85 data-nosnippet>85</a>                <span class="comment">// Proposal references are only allowed if they refer to a
 <a href=#86 id=86 data-nosnippet>86</a>                // SelfRemove proposal in our store
 <a href=#87 id=87 data-nosnippet>87</a>                </span>!<span class="self">self</span>.proposal_store.proposals().any(|p| {
-<a href=#88 id=88 data-nosnippet>88</a>                    p.proposal_reference() == <span class="kw-2">*</span>proposal_ref
+<a href=#88 id=88 data-nosnippet>88</a>                    p.proposal_reference_ref() == proposal_ref.as_ref()
 <a href=#89 id=89 data-nosnippet>89</a>                        &amp;&amp; p.proposal().is_type(ProposalType::SelfRemove)
 <a href=#90 id=90 data-nosnippet>90</a>                })
 <a href=#91 id=91 data-nosnippet>91</a>            }) {
@@ -95,7 +95,7 @@
 <a href=#95 id=95 data-nosnippet>95</a>            <span class="kw">let </span>number_of_remove_proposals = commit
 <a href=#96 id=96 data-nosnippet>96</a>                .proposals
 <a href=#97 id=97 data-nosnippet>97</a>                .iter()
-<a href=#98 id=98 data-nosnippet>98</a>                .filter(|prop| <span class="macro">matches!</span>(prop, ProposalOrRef::Proposal(Proposal::Remove(<span class="kw">_</span>))))
+<a href=#98 id=98 data-nosnippet>98</a>                .filter(|prop| prop.as_proposal().filter(|p| p.is_remove()).is_some())
 <a href=#99 id=99 data-nosnippet>99</a>                .count();
 <a href=#100 id=100 data-nosnippet>100</a>
 <a href=#101 id=101 data-nosnippet>101</a>            <span class="comment">// https://validation.openmls.tech/#valn0402

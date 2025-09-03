@@ -843,7 +843,7 @@
 <a href=#843 id=843 data-nosnippet>843</a>
 <a href=#844 id=844 data-nosnippet>844</a>        <span class="comment">// Get the first leaf.
 <a href=#845 id=845 data-nosnippet>845</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = leaves.next() {
-<a href=#846 id=846 data-nosnippet>846</a>            nodes.push(leaf.node().clone().map(Node::LeafNode));
+<a href=#846 id=846 data-nosnippet>846</a>            nodes.push(leaf.node().clone().map(Node::leaf_node));
 <a href=#847 id=847 data-nosnippet>847</a>        } <span class="kw">else </span>{
 <a href=#848 id=848 data-nosnippet>848</a>            <span class="comment">// The tree was empty.
 <a href=#849 id=849 data-nosnippet>849</a>            </span><span class="kw">return </span>RatchetTree::trimmed(<span class="macro">vec!</span>[]);
@@ -868,8 +868,8 @@
 <a href=#868 id=868 data-nosnippet>868</a>
 <a href=#869 id=869 data-nosnippet>869</a>        <span class="comment">// Interleave the leaves and parents.
 <a href=#870 id=870 data-nosnippet>870</a>        </span><span class="kw">for </span>(leaf, parent) <span class="kw">in </span>leaves.zip(parents) {
-<a href=#871 id=871 data-nosnippet>871</a>            nodes.push(parent.node().clone().map(Node::ParentNode));
-<a href=#872 id=872 data-nosnippet>872</a>            nodes.push(leaf.node().clone().map(Node::LeafNode));
+<a href=#871 id=871 data-nosnippet>871</a>            nodes.push(parent.node().clone().map(Node::parent_node));
+<a href=#872 id=872 data-nosnippet>872</a>            nodes.push(leaf.node().clone().map(Node::leaf_node));
 <a href=#873 id=873 data-nosnippet>873</a>        }
 <a href=#874 id=874 data-nosnippet>874</a>
 <a href=#875 id=875 data-nosnippet>875</a>        RatchetTree::trimmed(nodes)

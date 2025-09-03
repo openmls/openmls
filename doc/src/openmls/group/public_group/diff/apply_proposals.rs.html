@@ -67,7 +67,7 @@
 <a href=#67 id=67 data-nosnippet>67</a>            .next()
 <a href=#68 id=68 data-nosnippet>68</a>            .and_then(|queued_proposal| {
 <a href=#69 id=69 data-nosnippet>69</a>                <span class="kw">if let </span>Proposal::ExternalInit(external_init_proposal) = queued_proposal.proposal() {
-<a href=#70 id=70 data-nosnippet>70</a>                    <span class="prelude-val">Some</span>(external_init_proposal.clone())
+<a href=#70 id=70 data-nosnippet>70</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>(<span class="kw-2">*</span>external_init_proposal).clone())
 <a href=#71 id=71 data-nosnippet>71</a>                } <span class="kw">else </span>{
 <a href=#72 id=72 data-nosnippet>72</a>                    <span class="prelude-val">None
 <a href=#73 id=73 data-nosnippet>73</a>                </span>}
@@ -142,7 +142,7 @@
 <a href=#142 id=142 data-nosnippet>142</a>                </span>.diff
 <a href=#143 id=143 data-nosnippet>143</a>                .add_leaf(leaf_node.clone())
 <a href=#144 id=144 data-nosnippet>144</a>                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Tree full: cannot add more members"</span>))<span class="question-mark">?</span>;
-<a href=#145 id=145 data-nosnippet>145</a>            invitation_list.push((leaf_index, add_proposal.clone()))
+<a href=#145 id=145 data-nosnippet>145</a>            invitation_list.push((leaf_index, <span class="kw-2">*</span>(<span class="kw-2">*</span>add_proposal).clone()))
 <a href=#146 id=146 data-nosnippet>146</a>        }
 <a href=#147 id=147 data-nosnippet>147</a>
 <a href=#148 id=148 data-nosnippet>148</a>        <span class="self">self</span>.diff.trim_tree();
