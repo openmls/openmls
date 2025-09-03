@@ -338,11 +338,14 @@ impl MlsGroupCreateConfigBuilder {
     }
 
     /// Sets extensions of the group creator's [`LeafNode`].
+    ///
+    /// Returns an error if the extension types are not valid in a leaf node.
     pub fn with_leaf_node_extensions(
         mut self,
         extensions: Extensions,
     ) -> Result<Self, LeafNodeValidationError> {
         // Ensure that these extensions are not invalid for leaf nodes.
+        // https://validation.openmls.tech/#valn1601
         if extensions.validate_extension_types_for_leaf_node().is_err() {
             log::error!("Invalid leaf node extension.");
             return Err(LeafNodeValidationError::UnsupportedExtensions);

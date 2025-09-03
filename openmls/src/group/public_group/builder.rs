@@ -58,6 +58,7 @@ impl TempBuilderPG1 {
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
         // Ensure that these extensions are not invalid for leaf nodes.
+        // https://validation.openmls.tech/#valn1601
         extensions.validate_extension_types_for_leaf_node()?;
 
         self.leaf_node_extensions = extensions;
