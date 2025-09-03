@@ -13,12 +13,12 @@ pub(crate) type ApplicationExportTree = Pprf<Prefix16>;
 pub(crate) type ApplicationExportTreeError = PprfError;
 
 impl ApplicationExportTree {
-    pub fn new(application_exporter: ApplicationExportSecret) -> Self {
+    pub(crate) fn new(application_exporter: ApplicationExportSecret) -> Self {
         let size = TreeSize::from_leaf_count(u16::MAX as u32);
         Pprf::new_with_size(application_exporter.secret, size)
     }
 
-    pub fn safe_export_secret(
+    pub(crate) fn safe_export_secret(
         &mut self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
