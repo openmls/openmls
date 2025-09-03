@@ -585,7 +585,7 @@ mod test {
         // Build a commit with a single add proposal
         let bundle = alice
             .build_commit_and_stage(move |builder| {
-                let add_proposal = Proposal::Add(AddProposal {
+                let add_proposal = Proposal::add(AddProposal {
                     key_package: bob_key_package,
                 });
 

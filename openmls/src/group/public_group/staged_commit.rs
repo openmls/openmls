@@ -85,7 +85,7 @@ impl PublicGroup {
                 // Proposal references are only allowed if they refer to a
                 // SelfRemove proposal in our store
                 !self.proposal_store.proposals().any(|p| {
-                    p.proposal_reference() == *proposal_ref
+                    p.proposal_reference_ref() == proposal_ref.as_ref()
                         && p.proposal().is_type(ProposalType::SelfRemove)
                 })
             }) {
@@ -95,7 +95,7 @@ impl PublicGroup {
             let number_of_remove_proposals = commit
                 .proposals
                 .iter()
-                .filter(|prop| matches!(prop, ProposalOrRef::Proposal(Proposal::Remove(_))))
+                .filter(|prop| prop.as_proposal().filter(|p| p.is_remove()).is_some())
                 .count();
 
             // https://validation.openmls.tech/#valn0402

@@ -23,8 +23,25 @@ where
     L: Clone + Debug + Default,
     P: Clone + Debug + Default,
 {
-    Leaf(L),
-    Parent(P),
+    Leaf(Box<L>),
+    Parent(Box<P>),
+}
+
+#[cfg(test)]
+impl<L, P> TreeNode<L, P>
+where
+    L: Clone + Debug + Default,
+    P: Clone + Debug + Default,
+{
+    /// Create a new leaf.
+    pub(crate) fn leaf(l: L) -> Self {
+        Self::Leaf(Box::new(l))
+    }
+
+    /// Create a new parent.
+    pub(crate) fn parent(p: P) -> Self {
+        Self::Parent(Box::new(p))
+    }
 }
 
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
@@ -63,14 +80,14 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
             match node {
                 TreeNode::Leaf(l) => {
                     if i % 2 == 0 {
-                        leaf_nodes.push(l)
+                        leaf_nodes.push(*l)
                     } else {
                         return Err(ABinaryTreeError::WrongNodeType);
                     }
                 }
                 TreeNode::Parent(p) => {
                     if i % 2 == 1 {
-                        parent_nodes.push(p)
+                        parent_nodes.push(*p)
                     } else {
                         return Err(ABinaryTreeError::WrongNodeType);
                     }

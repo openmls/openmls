@@ -44,25 +44,24 @@ use super::{
 ///     };
 /// } Proposal;
 /// ```
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 #[repr(u16)]
 pub enum ProposalIn {
-    Add(AddProposalIn),
-    Update(UpdateProposalIn),
-    Remove(RemoveProposal),
-    PreSharedKey(PreSharedKeyProposal),
-    ReInit(ReInitProposal),
-    ExternalInit(ExternalInitProposal),
-    GroupContextExtensions(GroupContextExtensionProposal),
+    Add(Box<AddProposalIn>),
+    Update(Box<UpdateProposalIn>),
+    Remove(Box<RemoveProposal>),
+    PreSharedKey(Box<PreSharedKeyProposal>),
+    ReInit(Box<ReInitProposal>),
+    ExternalInit(Box<ExternalInitProposal>),
+    GroupContextExtensions(Box<GroupContextExtensionProposal>),
     // # Extensions
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
-    AppAck(AppAckProposal),
+    AppAck(Box<AppAckProposal>),
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
-    Custom(CustomProposal),
+    Custom(Box<CustomProposal>),
 }
 
 impl ProposalIn {
@@ -98,13 +97,19 @@ impl ProposalIn {
         protocol_version: ProtocolVersion,
     ) -> Result<Proposal, ValidationError> {
         Ok(match self {
-            ProposalIn::Add(add) => {
-                Proposal::Add(add.validate(crypto, protocol_version, ciphersuite)?)
-            }
+            ProposalIn::Add(add) => Proposal::Add(Box::new(add.validate(
+                crypto,
+                protocol_version,
+                ciphersuite,
+            )?)),
             ProposalIn::Update(update) => {
                 let sender_context =
                     sender_context.ok_or(ValidationError::CommitterIncludedOwnUpdate)?;
-                Proposal::Update(update.validate(crypto, ciphersuite, sender_context)?)
+                Proposal::Update(Box::new(update.validate(
+                    crypto,
+                    ciphersuite,
+                    sender_context,
+                )?))
             }
             ProposalIn::Remove(remove) => Proposal::Remove(remove),
             ProposalIn::PreSharedKey(psk) => Proposal::PreSharedKey(psk),
@@ -242,11 +247,10 @@ impl UpdateProposalIn {
 )]
 #[repr(u8)]
 #[allow(missing_docs)]
-#[allow(clippy::large_enum_variant)]
 pub(crate) enum ProposalOrRefIn {
     #[tls_codec(discriminant = 1)]
-    Proposal(ProposalIn),
-    Reference(ProposalRef),
+    Proposal(Box<ProposalIn>),
+    Reference(Box<ProposalRef>),
 }
 
 impl ProposalOrRefIn {
@@ -258,9 +262,9 @@ impl ProposalOrRefIn {
         protocol_version: ProtocolVersion,
     ) -> Result<ProposalOrRef, ValidationError> {
         Ok(match self {
-            ProposalOrRefIn::Proposal(proposal_in) => ProposalOrRef::Proposal(
+            ProposalOrRefIn::Proposal(proposal_in) => ProposalOrRef::Proposal(Box::new(
                 proposal_in.validate(crypto, ciphersuite, None, protocol_version)?,
-            ),
+            )),
             ProposalOrRefIn::Reference(reference) => ProposalOrRef::Reference(reference),
         })
     }
@@ -269,7 +273,7 @@ impl ProposalOrRefIn {
 // The following `From` implementation breaks abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
 #[cfg(any(feature = "test-utils", test))]
-impl From<AddProposalIn> for crate::messages::proposals::AddProposal {
+impl From<AddProposalIn> for AddProposal {
     fn from(value: AddProposalIn) -> Self {
         Self {
             key_package: value.key_package.into(),
@@ -277,18 +281,27 @@ impl From<AddProposalIn> for crate::messages::proposals::AddProposal {
     }
 }
 
-impl From<crate::messages::proposals::AddProposal> for AddProposalIn {
-    fn from(value: crate::messages::proposals::AddProposal) -> Self {
-        Self {
+#[cfg(any(feature = "test-utils", test))]
+impl From<AddProposalIn> for Box<AddProposal> {
+    fn from(value: AddProposalIn) -> Self {
+        Box::new(AddProposal {
             key_package: value.key_package.into(),
-        }
+        })
+    }
+}
+
+impl From<AddProposal> for Box<AddProposalIn> {
+    fn from(value: AddProposal) -> Self {
+        Box::new(AddProposalIn {
+            key_package: value.key_package.into(),
+        })
     }
 }
 
 // The following `From` implementation( breaks abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
 #[cfg(any(feature = "test-utils", test))]
-impl From<UpdateProposalIn> for crate::messages::proposals::UpdateProposal {
+impl From<UpdateProposalIn> for UpdateProposal {
     fn from(value: UpdateProposalIn) -> Self {
         Self {
             leaf_node: value.leaf_node.into(),
@@ -296,8 +309,8 @@ impl From<UpdateProposalIn> for crate::messages::proposals::UpdateProposal {
     }
 }
 
-impl From<crate::messages::proposals::UpdateProposal> for UpdateProposalIn {
-    fn from(value: crate::messages::proposals::UpdateProposal) -> Self {
+impl From<UpdateProposal> for UpdateProposalIn {
+    fn from(value: UpdateProposal) -> Self {
         Self {
             leaf_node: value.leaf_node.into(),
         }
@@ -305,11 +318,28 @@ impl From<crate::messages::proposals::UpdateProposal> for UpdateProposalIn {
 }
 
 #[cfg(any(feature = "test-utils", test))]
+impl From<UpdateProposalIn> for Box<UpdateProposal> {
+    fn from(value: UpdateProposalIn) -> Self {
+        Box::new(UpdateProposal {
+            leaf_node: value.leaf_node.into(),
+        })
+    }
+}
+
+impl From<UpdateProposal> for Box<UpdateProposalIn> {
+    fn from(value: UpdateProposal) -> Self {
+        Box::new(UpdateProposalIn {
+            leaf_node: value.leaf_node.into(),
+        })
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
 impl From<ProposalIn> for crate::messages::proposals::Proposal {
     fn from(proposal: ProposalIn) -> Self {
         match proposal {
-            ProposalIn::Add(add) => Self::Add(add.into()),
-            ProposalIn::Update(update) => Self::Update(update.into()),
+            ProposalIn::Add(add) => Self::Add((*add).into()),
+            ProposalIn::Update(update) => Self::Update((*update).into()),
             ProposalIn::Remove(remove) => Self::Remove(remove),
             ProposalIn::PreSharedKey(psk) => Self::PreSharedKey(psk),
             ProposalIn::ReInit(reinit) => Self::ReInit(reinit),
@@ -327,8 +357,8 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
 impl From<crate::messages::proposals::Proposal> for ProposalIn {
     fn from(proposal: crate::messages::proposals::Proposal) -> Self {
         match proposal {
-            Proposal::Add(add) => Self::Add(add.into()),
-            Proposal::Update(update) => Self::Update(update.into()),
+            Proposal::Add(add) => Self::Add((*add).into()),
+            Proposal::Update(update) => Self::Update((*update).into()),
             Proposal::Remove(remove) => Self::Remove(remove),
             Proposal::PreSharedKey(psk) => Self::PreSharedKey(psk),
             Proposal::ReInit(reinit) => Self::ReInit(reinit),
@@ -347,7 +377,7 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
 impl From<ProposalOrRefIn> for crate::messages::proposals::ProposalOrRef {
     fn from(proposal: ProposalOrRefIn) -> Self {
         match proposal {
-            ProposalOrRefIn::Proposal(proposal) => Self::Proposal(proposal.into()),
+            ProposalOrRefIn::Proposal(proposal) => Self::Proposal(Box::new((*proposal).into())),
             ProposalOrRefIn::Reference(reference) => Self::Reference(reference),
         }
     }
@@ -357,7 +387,7 @@ impl From<crate::messages::proposals::ProposalOrRef> for ProposalOrRefIn {
     fn from(proposal: crate::messages::proposals::ProposalOrRef) -> Self {
         match proposal {
             crate::messages::proposals::ProposalOrRef::Proposal(proposal) => {
-                Self::Proposal(proposal.into())
+                Self::Proposal(Box::new((*proposal).into()))
             }
             crate::messages::proposals::ProposalOrRef::Reference(reference) => {
                 Self::Reference(reference)

@@ -173,7 +173,7 @@ impl RatchetTree {
                                 .into_signature_public_key_enriched(
                                     ciphersuite.signature_algorithm(),
                                 );
-                            Some(Node::LeafNode(match verifiable_leaf_node {
+                            Some(Node::leaf_node(match verifiable_leaf_node {
                                 VerifiableLeafNode::KeyPackage(leaf_node) => leaf_node
                                     .verify(crypto, &signature_key)
                                     .map_err(|_| RatchetTreeError::InvalidNodeSignature)?,
@@ -401,7 +401,7 @@ impl TreeSync {
         };
         let (leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)?;
 
-        let node = Node::LeafNode(leaf);
+        let node = Node::leaf_node(leaf);
         let path_secret: PathSecret = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?
             .into();
@@ -458,9 +458,9 @@ impl TreeSync {
                 Some(node) => TreeSyncNode::from(node).into(),
                 None => {
                     if node_index % 2 == 0 {
-                        TreeNode::Leaf(TreeSyncLeafNode::blank())
+                        TreeNode::Leaf(Box::new(TreeSyncLeafNode::blank()))
                     } else {
-                        TreeNode::Parent(TreeSyncParentNode::blank())
+                        TreeNode::Parent(Box::new(TreeSyncParentNode::blank()))
                     }
                 }
             };
@@ -607,7 +607,7 @@ impl TreeSync {
 
         // Get the first leaf.
         if let Some(leaf) = leaves.next() {
-            nodes.push(leaf.node().clone().map(Node::LeafNode));
+            nodes.push(leaf.node().clone().map(Node::leaf_node));
         } else {
             // The tree was empty.
             return RatchetTree::trimmed(vec![]);
@@ -632,8 +632,8 @@ impl TreeSync {
 
         // Interleave the leaves and parents.
         for (leaf, parent) in leaves.zip(parents) {
-            nodes.push(parent.node().clone().map(Node::ParentNode));
-            nodes.push(leaf.node().clone().map(Node::LeafNode));
+            nodes.push(parent.node().clone().map(Node::parent_node));
+            nodes.push(leaf.node().clone().map(Node::leaf_node));
         }
 
         RatchetTree::trimmed(nodes)
@@ -754,7 +754,7 @@ mod test {
         provider: &impl OpenMlsProvider,
     ) {
         let (key_package, _, _) = crate::key_packages::tests::key_package(ciphersuite, provider);
-        let node_in = NodeIn::from(Node::LeafNode(LeafNode::from(key_package)));
+        let node_in = NodeIn::from(Node::leaf_node(LeafNode::from(key_package)));
         let tests = [
             (vec![], false),
             (vec![None], false),

@@ -16,13 +16,13 @@ fn test_free_leaf_computation() {
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
     let ratchet_tree = RatchetTree::trimmed(vec![
-        Some(Node::LeafNode(kpb_0.key_package().leaf_node().clone())), // Leaf 0
+        Some(Node::leaf_node(kpb_0.key_package().leaf_node().clone())), // Leaf 0
         None,
         None, // Leaf 1
         None,
         None, // Leaf 2
         None,
-        Some(Node::LeafNode(kpb_3.key_package().leaf_node().clone())), // Leaf 3
+        Some(Node::leaf_node(kpb_3.key_package().leaf_node().clone())), // Leaf 3
     ]);
 
     // Get the encryption key pair from the leaf.
