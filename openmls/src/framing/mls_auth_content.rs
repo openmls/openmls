@@ -131,7 +131,7 @@ impl AuthenticatedContent {
         Self::new_and_sign(
             framing_parameters,
             Sender::Member(sender_leaf_index),
-            FramedContentBody::Application(application_message.into()),
+            FramedContentBody::application(application_message),
             context,
             signer,
         )
@@ -217,7 +217,7 @@ impl AuthenticatedContent {
         Self::new_and_sign(
             framing_parameters,
             sender,
-            FramedContentBody::Commit(commit),
+            FramedContentBody::commit(commit),
             context,
             signer,
         )

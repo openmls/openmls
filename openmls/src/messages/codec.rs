@@ -106,25 +106,33 @@ impl Deserialize for ProposalIn {
     {
         let proposal_type = ProposalType::tls_deserialize(bytes)?;
         let proposal = match proposal_type {
-            ProposalType::Add => ProposalIn::Add(AddProposalIn::tls_deserialize(bytes)?),
-            ProposalType::Update => ProposalIn::Update(UpdateProposalIn::tls_deserialize(bytes)?),
-            ProposalType::Remove => ProposalIn::Remove(RemoveProposal::tls_deserialize(bytes)?),
+            ProposalType::Add => ProposalIn::Add(Box::new(AddProposalIn::tls_deserialize(bytes)?)),
+            ProposalType::Update => {
+                ProposalIn::Update(Box::new(UpdateProposalIn::tls_deserialize(bytes)?))
+            }
+            ProposalType::Remove => {
+                ProposalIn::Remove(Box::new(RemoveProposal::tls_deserialize(bytes)?))
+            }
             ProposalType::PreSharedKey => {
-                ProposalIn::PreSharedKey(PreSharedKeyProposal::tls_deserialize(bytes)?)
+                ProposalIn::PreSharedKey(Box::new(PreSharedKeyProposal::tls_deserialize(bytes)?))
             }
-            ProposalType::Reinit => ProposalIn::ReInit(ReInitProposal::tls_deserialize(bytes)?),
+            ProposalType::Reinit => {
+                ProposalIn::ReInit(Box::new(ReInitProposal::tls_deserialize(bytes)?))
+            }
             ProposalType::ExternalInit => {
-                ProposalIn::ExternalInit(ExternalInitProposal::tls_deserialize(bytes)?)
+                ProposalIn::ExternalInit(Box::new(ExternalInitProposal::tls_deserialize(bytes)?))
             }
-            ProposalType::GroupContextExtensions => ProposalIn::GroupContextExtensions(
+            ProposalType::GroupContextExtensions => ProposalIn::GroupContextExtensions(Box::new(
                 GroupContextExtensionProposal::tls_deserialize(bytes)?,
-            ),
-            ProposalType::AppAck => ProposalIn::AppAck(AppAckProposal::tls_deserialize(bytes)?),
+            )),
+            ProposalType::AppAck => {
+                ProposalIn::AppAck(Box::new(AppAckProposal::tls_deserialize(bytes)?))
+            }
             ProposalType::SelfRemove => ProposalIn::SelfRemove,
             ProposalType::Custom(_) => {
                 let payload = Vec::<u8>::tls_deserialize(bytes)?;
                 let custom_proposal = CustomProposal::new(proposal_type.into(), payload);
-                ProposalIn::Custom(custom_proposal)
+                ProposalIn::Custom(Box::new(custom_proposal))
             }
         };
         Ok(proposal)

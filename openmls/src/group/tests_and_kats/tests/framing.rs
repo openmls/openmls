@@ -140,7 +140,7 @@ fn bad_padding() {
                 1,
                 sender,
                 vec![1, 2, 3].into(),
-                FramedContentBody::Application(vec![4, 5, 6].into()),
+                FramedContentBody::application(&[4, 5, 6]),
             )
             .with_context(vec![7, 8, 9]);
 

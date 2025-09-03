@@ -47,7 +47,6 @@ impl From<AuthenticatedContent> for FramedContent {
 }
 
 /// ```c
-/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     // ... continued from [FramedContent] ...
 ///
@@ -70,10 +69,18 @@ pub(crate) enum FramedContentBody {
     #[tls_codec(discriminant = 2)]
     Proposal(Proposal),
     #[tls_codec(discriminant = 3)]
-    Commit(Commit),
+    Commit(Box<Commit>),
 }
 
 impl FramedContentBody {
+    pub(crate) fn commit(c: Commit) -> Self {
+        Self::Commit(Box::new(c))
+    }
+
+    pub(crate) fn application(bytes: &[u8]) -> Self {
+        Self::Application(bytes.into())
+    }
+
     /// Returns the [`ContentType`].
     pub(crate) fn content_type(&self) -> ContentType {
         match self {

@@ -154,6 +154,7 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
             },
             Extensions::default(),
             &self.core_state.provider,
+            None,
             &self.signer,
         );
     }
