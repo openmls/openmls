@@ -486,7 +486,8 @@ impl LeafNode {
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
         // Check that no extension is invalid when used in leaf nodes.
         // NOTE: This check is conducted manually, instead of using
-        // Extensions::validate_extension_types_for_leaf_node().
+        // Extensions::validate_extension_types_for_leaf_node(),
+        // in order to collect the invalid extension types for a log message.
         // https://validation.openmls.tech/#valn1601
         let invalid_extension_types = self
             .extensions()
