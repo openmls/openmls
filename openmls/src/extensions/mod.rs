@@ -46,8 +46,7 @@ pub mod errors;
 // Public re-exports
 #[cfg(feature = "extensions-draft-08")]
 pub use application_data_dict_extension::{
-    AppDataDictionary, AppDataDictionaryBuilder, AppDataDictionaryExtension, ComponentData,
-    ComponentId,
+    AppDataDictionary, AppDataDictionaryExtension, ComponentData, ComponentId,
 };
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
@@ -411,6 +410,11 @@ impl Extensions {
             .iter()
             .find(|ext| ext.extension_type() == extension_type)
     }
+    fn find_by_type_mut(&mut self, extension_type: ExtensionType) -> Option<&mut Extension> {
+        self.unique
+            .iter_mut()
+            .find(|ext| ext.extension_type() == extension_type)
+    }
 
     /// Get a reference to the [`ApplicationIdExtension`] if there is any.
     pub fn application_id(&self) -> Option<&ApplicationIdExtension> {
@@ -462,6 +466,16 @@ impl Extensions {
     /// Get a reference to the [`AppDataDictionaryExtension`] if there is any.
     pub fn app_data_dictionary(&self) -> Option<&AppDataDictionaryExtension> {
         self.find_by_type(ExtensionType::AppDataDictionary)
+            .and_then(|e| match e {
+                Extension::AppDataDictionary(e) => Some(e),
+                _ => None,
+            })
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    /// Get a mutable reference to the [`AppDataDictionaryExtension`] if there is any.
+    pub(crate) fn app_data_dictionary_mut(&mut self) -> Option<&mut AppDataDictionaryExtension> {
+        self.find_by_type_mut(ExtensionType::AppDataDictionary)
             .and_then(|e| match e {
                 Extension::AppDataDictionary(e) => Some(e),
                 _ => None,

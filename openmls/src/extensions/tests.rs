@@ -399,10 +399,9 @@ fn app_data_dictionary_extension() {
 
     let [alice] = group_state.members_mut(&["alice"]);
 
-    let dictionary = AppDataDictionary::builder()
-        .with_entry(5, &[])
-        .with_entry(0, &[1, 2, 3])
-        .build();
+    let mut dictionary = AppDataDictionary::new();
+    let _ = dictionary.insert(5, vec![]);
+    let _ = dictionary.insert(0, vec![1, 2, 3]);
 
     let extension =
         Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary.clone()));
