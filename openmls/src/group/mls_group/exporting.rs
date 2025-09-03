@@ -57,7 +57,7 @@ impl MlsGroup {
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
-        let group_id = self.group_id().clone();
+        let group_id = self.public_group.group_id();
         let ciphersuite = self.ciphersuite();
         let Some(application_export_tree) = self.application_export_tree.as_mut() else {
             return Err(SafeExportSecretError::Unsupported);
@@ -65,7 +65,7 @@ impl MlsGroup {
         let component_secret =
             application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
         storage
-            .write_application_export_tree(&group_id, application_export_tree)
+            .write_application_export_tree(group_id, application_export_tree)
             .map_err(SafeExportSecretError::Storage)?;
 
         Ok(component_secret.as_slice().to_vec())
