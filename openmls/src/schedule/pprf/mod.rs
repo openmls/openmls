@@ -1,3 +1,10 @@
+//! # Puncturable Pseudorandom Function (PPRF) Implementation
+//!
+//! This module implements a PPRF using the same binary tree structure as the
+//! secret tree. In contrast to the secret tree, this implementation is generic
+//! over the size of the tree. Additionally, it is designed to be efficient even
+//! for larger sizes.
+
 use std::collections::HashMap;
 
 use openmls_traits::{
@@ -8,7 +15,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 use zeroize::ZeroizeOnDrop;
 
-use crate::{binary_tree::array_representation::TreeSize, ciphersuite::Secret};
+use crate::{
+    binary_tree::array_representation::TreeSize, ciphersuite::Secret,
+    tree::secret_tree::derive_child_secrets,
+};
 
 use input::AsIndexBytes;
 use prefix::Prefix;
@@ -46,31 +56,14 @@ impl From<PprfNode> for Secret {
 }
 
 impl PprfNode {
-    fn derive_child(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
-        context: &[u8],
-    ) -> Result<Self, CryptoError> {
-        let secret = Secret::from_slice(&self.0);
-        let secret = secret.kdf_expand_label(
-            crypto,
-            ciphersuite,
-            "tree",
-            context,
-            ciphersuite.hash_length(),
-        )?;
-        Ok(secret.into())
-    }
-
     fn derive_children(
         &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<(Self, Self), CryptoError> {
-        let left_child = self.derive_child(crypto, ciphersuite, b"left")?;
-        let right_child = self.derive_child(crypto, ciphersuite, b"right")?;
-        Ok((left_child, right_child))
+        let own_secret = Secret::from_slice(&self.0);
+        let (left_secret, right_secret) = derive_child_secrets(&own_secret, crypto, ciphersuite)?;
+        Ok((left_secret.into(), right_secret.into()))
     }
 }
 
