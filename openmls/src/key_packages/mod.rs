@@ -472,6 +472,7 @@ impl KeyPackageBuilder {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
+        // https://validation.openmls.tech/#valn1601
         extensions.validate_extension_types_for_leaf_node()?;
         self.leaf_node_extensions.replace(extensions);
 

@@ -132,6 +132,7 @@ impl LeafNodeParametersBuilder {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
+        // https://validation.openmls.tech/#valn1601
         extensions.validate_extension_types_for_leaf_node()?;
 
         self.extensions = Some(extensions);
@@ -486,6 +487,7 @@ impl LeafNode {
         // Check that no extension is invalid when used in leaf nodes.
         // NOTE: This check is conducted manually, instead of using
         // Extensions::validate_extension_types_for_leaf_node().
+        // https://validation.openmls.tech/#valn1601
         let invalid_extension_types = self
             .extensions()
             .iter()
