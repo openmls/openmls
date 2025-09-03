@@ -485,10 +485,13 @@ impl LeafNode {
     /// - the type of the credential is covered by the capabilities
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
         // Check that no extension is invalid when used in leaf nodes.
-        // NOTE: This check is conducted manually, instead of using
-        // Extensions::validate_extension_types_for_leaf_node(),
-        // in order to collect the invalid extension types for a log message.
         // https://validation.openmls.tech/#valn1601
+        // NOTE: This check is conducted manually for now, instead of using the method
+        // Extensions::validate_extension_types_for_leaf_node(),
+        // in order to collect the invalid extension types for the log message below.
+        // However, it could be better to instead return the list of invalid extension types
+        // as part of Extensions::validate_extension_types_for_leaf_node(),
+        // as part of the error message.
         let invalid_extension_types = self
             .extensions()
             .iter()
