@@ -1,5 +1,9 @@
 //! This module defines a trait for prefixes to instantiate a PPRF depending on
-//! the PPRF's index (i.e. input) size.
+//! the PPRF's index (i.e. input) size. It also provides implementations for
+//! different tree sizes.
+//!
+//! Each prefix encodes a node in the binary tree of the PPRF. The root node has
+//! an empty prefix, which then grows in size with each step down the tree.
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -7,6 +11,8 @@ pub trait Prefix: Clone + Eq + std::hash::Hash + Serialize + DeserializeOwned {
     /// The maximum depth of the prefix in bits. Must be a multiple of 8.
     const MAX_DEPTH: usize;
 
+    /// The maximum input length based on the maximum depth supported by the
+    /// prefix.
     const MAX_INPUT_LEN: usize = Self::MAX_DEPTH / 8; // In bytes
 
     /// Create an empty prefix
@@ -19,7 +25,9 @@ pub trait Prefix: Clone + Eq + std::hash::Hash + Serialize + DeserializeOwned {
 /// A 256-bit prefix implementation for PPRF.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PrefixVec {
+    /// A byte vector that packs the bits of the prefix.
     bits: Vec<u8>,
+    /// The number of bits in the prefix.
     len: u16,
 }
 
@@ -33,6 +41,7 @@ impl Prefix for PrefixVec {
         }
     }
 
+    /// Push a bit into the bit-packed byte vector.
     fn push_bit(&mut self, bit: bool) {
         if self.len % 8 == 0 {
             self.bits.push(0);
@@ -68,7 +77,9 @@ impl From<SerdePrefixVec> for PrefixVec {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(from = "SerdePrefix32", into = "SerdePrefix32")]
 pub struct Prefix32 {
+    /// A u32 containing the bits of the prefix.
     bits: u32,
+    /// The number of bits in the prefix.
     len: u8,
 }
 
@@ -109,7 +120,9 @@ impl From<SerdePrefix32> for Prefix32 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(from = "SerdePrefix16", into = "SerdePrefix16")]
 pub struct Prefix16 {
+    /// A u16 containing the bits of the prefix.
     bits: u16,
+    /// The number of bits in the prefix.
     len: u8,
 }
 

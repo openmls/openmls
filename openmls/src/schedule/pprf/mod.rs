@@ -38,6 +38,7 @@ pub enum PprfError {
     ChildDerivationError(#[from] CryptoError),
 }
 
+/// A Node in the PPRF tree that contains the node's secret.
 #[derive(Debug, Serialize, Deserialize, Clone, ZeroizeOnDrop)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 #[serde(transparent)]
@@ -56,6 +57,7 @@ impl From<PprfNode> for Secret {
 }
 
 impl PprfNode {
+    /// Derives the left and right child nodes from the current node.
     fn derive_children(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -67,6 +69,13 @@ impl PprfNode {
     }
 }
 
+/// The PPRF containing the tree of nodes, where each node contains a secret. It
+/// can be evaluated at a given input only once. The struct will grow in size
+/// with each evaluation.
+///
+/// The struct is generic over the prefix, which determines how individual nodes
+/// are indexed. As prefixes are stored alongside each node, small prefixes help
+/// keep the overall tree small.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 pub(crate) struct Pprf<P: Prefix> {
@@ -78,6 +87,7 @@ pub(crate) struct Pprf<P: Prefix> {
     width: usize,
 }
 
+/// Get the bit in the given byte slice at the given index.
 fn get_bit(index: &[u8], bit_index: usize) -> bool {
     let byte = index[bit_index / 8];
     let bit = 7 - (bit_index % 8); // big-endian
@@ -85,6 +95,7 @@ fn get_bit(index: &[u8], bit_index: usize) -> bool {
 }
 
 impl<P: Prefix> Pprf<P> {
+    /// Create a new PPRF with the given secret and size.
     pub(super) fn new_with_size(secret: Secret, size: TreeSize) -> Self {
         let width = size.leaf_count() as usize;
         Pprf {
@@ -104,6 +115,7 @@ impl<P: Prefix> Pprf<P> {
         }
     }
 
+    /// Evaluates the PPRF at the given input.
     pub(super) fn evaluate<Input: AsIndexBytes>(
         &mut self,
         crypto: &impl OpenMlsCrypto,
@@ -124,9 +136,7 @@ impl<P: Prefix> Pprf<P> {
 
         // Step 1: Find the deepest existing node in the cache
         loop {
-            let key = prefix.clone();
-
-            if let Some(node) = self.nodes.remove(&key) {
+            if let Some(node) = self.nodes.remove(&prefix) {
                 if depth == P::MAX_DEPTH {
                     return Ok(node.into());
                 } // already at leaf
@@ -154,7 +164,8 @@ impl<P: Prefix> Pprf<P> {
 
             let mut copath_prefix = prefix.clone();
             copath_prefix.push_bit(!bit);
-            self.nodes.insert(copath_prefix.clone(), copath_node);
+            let node_at_copath_prefix = self.nodes.insert(copath_prefix.clone(), copath_node);
+            debug_assert!(node_at_copath_prefix.is_none());
 
             current_node = next_node;
             prefix.push_bit(bit);
