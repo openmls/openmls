@@ -111,7 +111,7 @@ impl From<AuthenticatedContentIn> for FramedContentIn {
 #[repr(u8)]
 pub(crate) enum FramedContentBodyIn {
     #[tls_codec(discriminant = 1)]
-    Application(Box<VLBytes>),
+    Application(VLBytes),
     #[tls_codec(discriminant = 2)]
     Proposal(ProposalIn),
     #[tls_codec(discriminant = 3)]
@@ -119,11 +119,6 @@ pub(crate) enum FramedContentBodyIn {
 }
 
 impl FramedContentBodyIn {
-    #[cfg(test)]
-    pub(crate) fn application(bytes: &[u8]) -> Self {
-        Self::Application(Box::new(bytes.into()))
-    }
-
     /// Returns the [`ContentType`].
     pub(crate) fn content_type(&self) -> ContentType {
         match self {
@@ -139,7 +134,7 @@ impl FramedContentBodyIn {
     ) -> Result<Self, tls_codec::Error> {
         Ok(match content_type {
             ContentType::Application => {
-                FramedContentBodyIn::Application(Box::new(VLBytes::tls_deserialize(bytes)?))
+                FramedContentBodyIn::Application(VLBytes::tls_deserialize(bytes)?)
             }
             ContentType::Proposal => {
                 FramedContentBodyIn::Proposal(ProposalIn::tls_deserialize(bytes)?)

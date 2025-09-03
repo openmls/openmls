@@ -65,7 +65,7 @@ impl From<AuthenticatedContent> for FramedContent {
 #[repr(u8)]
 pub(crate) enum FramedContentBody {
     #[tls_codec(discriminant = 1)]
-    Application(Box<VLBytes>),
+    Application(VLBytes),
     #[tls_codec(discriminant = 2)]
     Proposal(Proposal),
     #[tls_codec(discriminant = 3)]
@@ -78,7 +78,7 @@ impl FramedContentBody {
     }
 
     pub(crate) fn application(bytes: &[u8]) -> Self {
-        Self::Application(Box::new(bytes.into()))
+        Self::Application(bytes.into())
     }
 
     /// Returns the [`ContentType`].
