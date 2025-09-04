@@ -1,7 +1,7 @@
 //! This module contains validation functions for incoming messages
 //! as defined in <https://github.com/openmls/openmls/wiki/Message-validation>
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashSet};
 
 use openmls_traits::types::VerifiableCiphersuite;
 
@@ -36,6 +36,8 @@ use crate::treesync::errors::LifetimeError;
 use crate::{
     group::errors::AppDataUpdateValidationError, messages::proposals::AppDataUpdateOperationType,
 };
+#[cfg(feature = "extensions-draft-08")]
+use std::collections::BTreeMap;
 
 impl PublicGroup {
     // === Messages ===
