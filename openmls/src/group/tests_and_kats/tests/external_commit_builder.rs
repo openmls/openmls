@@ -53,7 +53,7 @@ fn external_commit_builder() {
         .build(provider, &alice_signer, alice_credential_with_key)
         .unwrap();
 
-    alice_group.ensure_persistence(provider.storage());
+    alice_group.ensure_persistence(provider.storage()).unwrap();
 
     // Bob joins the group externally.
 
@@ -97,7 +97,7 @@ fn external_commit_builder() {
         .finalize(provider)
         .unwrap();
 
-    bob_group.ensure_persistence(provider.storage());
+    bob_group.ensure_persistence(provider.storage()).unwrap();
 
     // Check that the padding was set correctly.
     assert_eq!(bob_group.configuration().padding_size(), PADDING_SIZE);

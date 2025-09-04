@@ -815,10 +815,21 @@ impl MlsGroup {
     }
 
     #[cfg(test)]
-    pub(crate) fn ensure_persistence(&self, storage: &impl StorageProvider) {
-        let other = MlsGroup::load(storage, self.group_id()).unwrap().unwrap();
+    pub(crate) fn ensure_persistence(
+        &self,
+        storage: &impl StorageProvider,
+    ) -> Result<(), LibraryError> {
+        let loaded = MlsGroup::load(storage, self.group_id())
+            .map_err(|_| LibraryError::custom("Failed to load group from storage"))?;
+        let other = loaded.ok_or_else(|| LibraryError::custom("Group not found in storage"))?;
 
-        assert_eq!(self, &other);
+        if self != &other {
+            return Err(LibraryError::custom(
+                "Loaded group does not match current group",
+            ));
+        }
+
+        Ok(())
     }
 }
 
