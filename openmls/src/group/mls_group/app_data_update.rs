@@ -14,8 +14,10 @@ pub struct StagedCommitWithPendingAppDataUpdates(pub(crate) Box<StagedCommit>);
 
 // TODO: are any other variants needed?
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
+/// An error returned by the app logic when applying an AppDataUpdate proposal.
 pub enum ApplyAppLogicError {
     #[error("The proposal is invalid.")]
+    /// The proposal is invalid.
     Invalid,
 }
 
@@ -24,15 +26,24 @@ pub enum ValidateAppDataUpdateError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    #[error("Component not registered")]
+    #[error("This ComponentId is not known to the application.")]
+    /// This [`ComponentId`] is not known to the application.
     ComponentNotRegistered,
-    #[error("Rejected by app logic")]
+    #[error("The proposal was rejected by the registered application logic.")]
+    /// The proposal was rejected by the registered application logic.
     RejectedByAppLogic,
-    #[error("Cannot apply app logic to AppDataUpdate remove proposal")]
+    #[error(
+        "Cannot apply application logic to an AppDataUpdate proposal of operation type Remove."
+    )]
+    /// Cannot apply application logic to an [`AppDataUpdateProposal`] of
+    /// [`AppDataUpdateOperationType::Remove`].
     ProposalTypeIsRemove,
-    #[error("Component not present in dictionary")]
+    #[error("A component with this ComponentId is not present in the AppDataDictionary.")]
+    /// A component with this [`ComponentId`] is not present in the
+    /// [`AppDataDictionary`](crate::extensions::AppDataDictionary).
     ComponentNotInDictionary,
-    #[error("No AppDataDictionary extension in GroupContext")]
+    #[error("The GroupContext does not contain an AppDataDictionary extension.")]
+    /// The [`GroupContext`] does not contain an [`AppDataDictionaryExtension`].
     NoAppDataDictionaryExtension,
 }
 
@@ -44,6 +55,7 @@ impl RegisteredComponentsWithLogic {
     pub fn new() -> Self {
         Self(BTreeMap::new())
     }
+    /// Register a [`ComponentId`] alongside its application logic.
     pub fn register(
         &mut self,
         component_id: ComponentId,
@@ -126,7 +138,7 @@ impl StagedCommitWithPendingAppDataUpdates {
                     if !registered_logic.contains(update.component_id()) {
                         return Err(ValidateAppDataUpdateError::ComponentNotRegistered);
                     }
-                    // remove if dictionary exists
+                    // remove the entry if the dictionary exists
                     if let Some(dictionary_ext) = extensions.app_data_dictionary_mut() {
                         let dictionary = dictionary_ext.dictionary_mut();
                         if !dictionary.contains(&update.component_id()) {
