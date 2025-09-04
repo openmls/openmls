@@ -802,7 +802,8 @@ mod app_data_update {
     /// The operation that is part of an [`AppDataUpdateProposal`].
     pub enum AppDataUpdateOperation {
         /// Update operation, containing update data
-        // TODO: #[tls_codec(discriminant = 1)]?
+        // TODO: is this the correct use of tls_codec(discriminant = ..)?
+        #[tls_codec(discriminant = 1)]
         Update(VLBytes) = 1,
         /// Remove operation
         Remove = 2,
