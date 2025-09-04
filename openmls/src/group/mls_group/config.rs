@@ -346,7 +346,7 @@ impl MlsGroupCreateConfigBuilder {
         // unknown extensions can be leaf node extensions.
         let is_valid_in_leaf_node = extensions
             .iter()
-            .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_)));
+            .all(|e| e.extension_type().is_valid_in_leaf_node() != Some(false));
         if !is_valid_in_leaf_node {
             log::error!("Leaf node extensions must be unknown extensions.");
             return Err(LeafNodeValidationError::UnsupportedExtensions);
