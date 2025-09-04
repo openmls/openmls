@@ -849,9 +849,11 @@ mod app_data_update {
     }
 
     impl AppDataUpdateProposal {
+        /// Create a new AppDataUpdateProposal containing an Update operation.
         pub fn update(component_id: ComponentId, data: impl Into<VLBytes>) -> Self {
             Self::new(component_id, AppDataUpdateOperation::Update(data.into()))
         }
+        /// Create a new AppDataUpdateProposal containing a Remove operation.
         pub fn remove(component_id: ComponentId) -> Self {
             Self::new(component_id, AppDataUpdateOperation::Remove)
         }
@@ -862,9 +864,11 @@ mod app_data_update {
             }
         }
 
+        /// Return the [`ComponentId`] for this proposal.
         pub fn component_id(&self) -> ComponentId {
             self.component_id
         }
+        /// Return the [`AppDataUpdateOperation`] for this proposal.
         pub fn operation(&self) -> &AppDataUpdateOperation {
             &self.operation
         }
