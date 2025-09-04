@@ -196,7 +196,7 @@ impl tls_codec::DeserializeBytes for AppDataDictionary {
     Deserialize,
     TlsSerialize,
     TlsDeserialize,
-    //TlsDeserializeBytes,
+    TlsDeserializeBytes,
     TlsSize,
 )]
 pub struct AppDataDictionaryExtension {
