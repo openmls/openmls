@@ -777,7 +777,7 @@ mod app_data_update {
     use super::*;
     use crate::prelude::ComponentId;
 
-    /// TODO: docs
+    /// [`AppDataUpdate`] operation types
     #[repr(u8)]
     #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
     pub enum AppDataUpdateOperationType {
@@ -787,7 +787,6 @@ mod app_data_update {
         Remove = 2,
     }
 
-    /// TODO: docs
     #[repr(u8)]
     #[derive(
         Debug,
@@ -800,6 +799,7 @@ mod app_data_update {
         TlsSerialize,
         TlsSize,
     )]
+    /// The operation that is part of an [`AppDataUpdateProposal`].
     pub enum AppDataUpdateOperation {
         /// Update operation, containing update data
         // TODO: #[tls_codec(discriminant = 1)]?
@@ -820,7 +820,6 @@ mod app_data_update {
 
     /// AppDataUpdate Proposal.
     ///
-    /// TODO: description
     /// ```c
     /// struct {
     ///     ComponentID component_id;
