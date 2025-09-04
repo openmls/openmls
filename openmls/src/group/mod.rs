@@ -23,6 +23,8 @@ pub(crate) mod public_group;
 // Public
 pub use errors::*;
 pub use group_context::GroupContext;
+#[cfg(feature = "extensions-draft-08")]
+pub use mls_group::app_data_update::*;
 pub use mls_group::builder::*;
 pub use mls_group::commit_builder::*;
 pub use mls_group::config::*;
@@ -30,6 +32,7 @@ pub use mls_group::creation::*;
 pub use mls_group::membership::*;
 pub use mls_group::proposal_store::*;
 pub use mls_group::staged_commit::StagedCommit;
+
 pub use mls_group::{Member, *};
 pub use public_group::*;
 

@@ -8,7 +8,6 @@ use tls_codec::Serialize as _;
 use super::proposal_store::{
     QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
 };
-
 use super::{
     super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
@@ -26,7 +25,9 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use super::proposal_store::QueuedAppDataUpdateProposal;
+use super::{proposal_store::QueuedAppDataUpdateProposal, ProposalType};
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::ExtensionType;
 
 impl MlsGroup {
     fn derive_epoch_secrets(
@@ -445,8 +446,8 @@ pub(crate) enum StagedCommitState {
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub struct StagedCommit {
-    staged_proposal_queue: ProposalQueue,
-    state: StagedCommitState,
+    pub(super) staged_proposal_queue: ProposalQueue,
+    pub(super) state: StagedCommitState,
 }
 
 impl StagedCommit {
@@ -580,6 +581,34 @@ impl StagedCommit {
             Some(gm.group_epoch_secrets.epoch_authenticator())
         } else {
             None
+        }
+    }
+
+    /// Check whether a
+    #[cfg(feature = "extensions-draft-08")]
+    pub(super) fn app_data_update(&self) -> bool {
+        // retrieve the required capabilities extension
+        if let Some(required_capabilities_extension) = self.group_context().required_capabilities()
+        {
+            // check whether app data update and app data dictionary are supported
+            required_capabilities_extension
+                .proposal_types()
+                .contains(&ProposalType::AppDataUpdate)
+                && required_capabilities_extension
+                    .extension_types()
+                    .contains(&ExtensionType::AppDataDictionary)
+        } else {
+            false
+        }
+    }
+}
+
+impl StagedCommitState {
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn staged_diff_mut(&mut self) -> &mut StagedPublicGroupDiff {
+        match self {
+            StagedCommitState::PublicState(ref mut ps) => &mut ps.staged_diff,
+            StagedCommitState::GroupMember(ref mut gm) => &mut gm.staged_diff,
         }
     }
 }
