@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use thiserror::Error;
 
 #[derive(Debug)]
-pub struct ProcessedCommitWithAppDataUpdates(pub(crate) Box<StagedCommit>);
+pub struct StagedCommitWithPendingAppDataUpdates(pub(crate) Box<StagedCommit>);
 
 // TODO: are any other variants needed?
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
@@ -77,7 +77,7 @@ impl RegisteredComponentsWithLogic {
     }
 }
 
-impl ProcessedCommitWithAppDataUpdates {
+impl StagedCommitWithPendingAppDataUpdates {
     pub fn apply_app_logic(
         mut self,
         registered_logic: &RegisteredComponentsWithLogic,

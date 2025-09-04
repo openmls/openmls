@@ -121,7 +121,7 @@ fn test_app_data_update() {
     });
 
     let commit = match processed_message.into_content() {
-        ProcessedMessageContent::ProcessedCommitWithAppDataUpdates(commit) => commit,
+        ProcessedMessageContent::StagedCommitWithPendingAppDataUpdates(commit) => commit,
         _ => panic!("Should be a processed commit with app data updates"),
     };
     let staged_commit = commit.apply_app_logic(&registered_components).unwrap();
@@ -184,7 +184,7 @@ fn test_case<Provider: OpenMlsProvider>(
         )
         .unwrap();
     let commit = match processed_message.into_content() {
-        ProcessedMessageContent::ProcessedCommitWithAppDataUpdates(commit) => commit,
+        ProcessedMessageContent::StagedCommitWithPendingAppDataUpdates(commit) => commit,
         _ => panic!("Should be a processed commit with app data updates"),
     };
     commit.apply_app_logic(&registered_components)?;
