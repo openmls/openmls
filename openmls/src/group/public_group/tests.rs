@@ -85,6 +85,10 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
         | ProcessedMessageContent::ExternalJoinProposalMessage(_) => {
             panic!("Unexpected message type.")
         }
+        #[cfg(feature = "extensions-draft-08")]
+        ProcessedMessageContent::ProcessedCommitWithAppDataUpdates(_) => {
+            panic!("Unexpected message type.")
+        }
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             // Merge the diff
             public_group
@@ -192,6 +196,10 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
         ProcessedMessageContent::ApplicationMessage(_)
         | ProcessedMessageContent::ExternalJoinProposalMessage(_)
         | ProcessedMessageContent::StagedCommitMessage(_) => panic!("Unexpected message type."),
+        #[cfg(feature = "extensions-draft-08")]
+        ProcessedMessageContent::ProcessedCommitWithAppDataUpdates(_) => {
+            panic!("Unexpected message type.")
+        }
         ProcessedMessageContent::ProposalMessage(p) => {
             match p.proposal() {
                 Proposal::Remove(r) => assert_eq!(r.removed(), LeafNodeIndex::new(1)),
@@ -310,6 +318,10 @@ fn extract_staged_commit(ppm: ProcessedMessage) -> StagedCommit {
         ProcessedMessageContent::ApplicationMessage(_)
         | ProcessedMessageContent::ProposalMessage(_)
         | ProcessedMessageContent::ExternalJoinProposalMessage(_) => {
+            panic!("Unexpected message type.")
+        }
+        #[cfg(feature = "extensions-draft-08")]
+        ProcessedMessageContent::ProcessedCommitWithAppDataUpdates(_) => {
             panic!("Unexpected message type.")
         }
         ProcessedMessageContent::StagedCommitMessage(staged_content) => *staged_content,

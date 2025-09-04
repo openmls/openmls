@@ -15,6 +15,9 @@ use crate::{
 
 use super::{errors::ProcessMessageError, *};
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::group::mls_group::app_data_update::ProcessedCommitWithAppDataUpdates;
+
 impl MlsGroup {
     /// Parses incoming messages from the DS. Checks for syntactic errors and
     /// makes some semantic checks as well. If the input is an encrypted
@@ -302,7 +305,19 @@ impl MlsGroup {
                             leaf_node_keypairs,
                             provider,
                         )?;
-                        ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
+
+                        // TODO: improve syntax
+                        match staged_commit {
+                            #[cfg(feature = "extensions-draft-08")]
+                            _ if staged_commit.app_data_update() => {
+                                ProcessedMessageContent::ProcessedCommitWithAppDataUpdates(
+                                    ProcessedCommitWithAppDataUpdates(Box::new(staged_commit)),
+                                )
+                            }
+                            _ => ProcessedMessageContent::StagedCommitMessage(Box::new(
+                                staged_commit,
+                            )),
+                        }
                     }
                 };
 
