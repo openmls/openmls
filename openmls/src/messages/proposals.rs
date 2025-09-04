@@ -849,8 +849,12 @@ mod app_data_update {
     }
 
     impl AppDataUpdateProposal {
-        // TODO: decide whether to make this function public, or split it up into update() and
-        // remove()
+        pub fn update(component_id: ComponentId, data: impl Into<VLBytes>) -> Self {
+            Self::new(component_id, AppDataUpdateOperation::Update(data.into()))
+        }
+        pub fn remove(component_id: ComponentId) -> Self {
+            Self::new(component_id, AppDataUpdateOperation::Remove)
+        }
         pub(crate) fn new(component_id: ComponentId, operation: AppDataUpdateOperation) -> Self {
             Self {
                 component_id,
