@@ -166,6 +166,7 @@ impl GroupContext {
         &self.extensions
     }
 
+    #[cfg(feature = "extensions-draft-08")]
     pub(crate) fn extensions_mut(&mut self) -> &mut Extensions {
         &mut self.extensions
     }

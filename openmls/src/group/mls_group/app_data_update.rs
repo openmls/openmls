@@ -1,6 +1,6 @@
 use super::{staged_commit::StagedCommit, Extension, LibraryError};
 use crate::{
-    extensions::{AppDataDictionary, AppDataDictionaryExtension, ComponentId, ExtensionType},
+    extensions::{AppDataDictionaryExtension, ComponentId, ExtensionType},
     messages::proposals::{
         AppDataUpdateOperation, AppDataUpdateOperationType, AppDataUpdateProposal,
     },

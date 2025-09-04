@@ -410,6 +410,7 @@ impl Extensions {
             .iter()
             .find(|ext| ext.extension_type() == extension_type)
     }
+    #[cfg(feature = "extensions-draft-08")]
     fn find_by_type_mut(&mut self, extension_type: ExtensionType) -> Option<&mut Extension> {
         self.unique
             .iter_mut()
