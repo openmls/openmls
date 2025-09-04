@@ -81,17 +81,10 @@ impl AppDataDictionary {
     }
 
     /// Get a reference to an entry in the dictionary.
-    pub fn get(&self, component_id: &ComponentId) -> Option<&Vec<u8>> {
+    pub fn get(&self, component_id: &ComponentId) -> Option<&[u8]> {
         self.component_data
             .get(component_id)
-            .map(|component_data| &component_data.data)
-    }
-
-    /// Get a mutable reference to an entry in the dictionary.
-    pub fn get_mut(&mut self, component_id: &ComponentId) -> Option<&mut Vec<u8>> {
-        self.component_data
-            .get_mut(component_id)
-            .map(|component_data| &mut component_data.data)
+            .map(|component_data| component_data.data.as_slice())
     }
 
     /// Insert an entry into the dictionary. If an entry for this [`ComponentId`] already exists,
@@ -100,6 +93,10 @@ impl AppDataDictionary {
         self.component_data
             .insert(component_id, ComponentData { component_id, data })
             .map(|component_data| component_data.data)
+    }
+
+    pub fn contains(&self, component_id: &ComponentId) -> bool {
+        self.component_data.contains_key(component_id)
     }
 
     /// Remove an entry from the dictionary by [`ComponentId`]. If this entry exists,
