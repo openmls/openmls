@@ -95,6 +95,7 @@ impl AppDataDictionary {
             .map(|component_data| component_data.data)
     }
 
+    /// Returns `true` if the dictionary contains an entry for the specified [`ComponentId`].
     pub fn contains(&self, component_id: &ComponentId) -> bool {
         self.component_data.contains_key(component_id)
     }
