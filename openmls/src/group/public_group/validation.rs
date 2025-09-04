@@ -612,8 +612,6 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), AppDataUpdateValidationError> {
-        // TODO: return early when not enabled?
-
         // check whether AppDataUpdate is enabled in the capabilities
         // check the new capabilities if they are updated in the proposal queue
         let group_context_extension = proposal_queue
@@ -649,7 +647,7 @@ impl PublicGroup {
                     }
                 }
                 // AppDataUpdate not in capabilities
-                // TODO: Should AppDataUpdate proposals not be allowed here?
+                // TODO: Should an error be returned from this match arm?
                 _ => return Ok(()),
             }
         }
