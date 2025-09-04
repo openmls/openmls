@@ -543,7 +543,10 @@ impl ProposalQueue {
                     valid_proposals.add(queued_proposal.proposal_reference());
                 }
                 #[cfg(feature = "extensions-draft-08")]
-                Proposal::AppDataUpdate(_) => todo!(),
+                Proposal::AppDataUpdate(_) => {
+                    // TODO: check anything here?
+                    valid_proposals.add(queued_proposal.proposal_reference())
+                }
                 Proposal::AppAck(_) => unimplemented!("See #291"),
                 Proposal::SelfRemove => {
                     let Sender::Member(removed) = queued_proposal.sender() else {
@@ -725,7 +728,7 @@ impl QueuedPskProposal<'_> {
 /// A queued AppDataUpdate proposal
 #[derive(PartialEq, Debug)]
 pub struct QueuedAppDataUpdateProposal<'a> {
-    app_data_update_proposal: &'a AppDataUpdateProposal,
+    pub(crate) app_data_update_proposal: &'a AppDataUpdateProposal,
     sender: &'a Sender,
 }
 
