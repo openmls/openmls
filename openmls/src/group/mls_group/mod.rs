@@ -813,6 +813,13 @@ impl MlsGroup {
     pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
         self.public_group.set_group_context(group_context)
     }
+
+    #[cfg(test)]
+    pub(crate) fn ensure_persistence(&self, storage: &impl StorageProvider) {
+        let other = MlsGroup::load(storage, self.group_id()).unwrap().unwrap();
+
+        assert_eq!(self, &other);
+    }
 }
 
 /// A [`StagedWelcome`] can be inspected and then turned into a [`MlsGroup`].

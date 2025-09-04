@@ -368,6 +368,11 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
             group.mls_group_config.wire_format_policy = wire_format_policy;
         }
 
+        // Store the group in storage.
+        group
+            .store(provider.storage())
+            .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
+
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
         group.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
