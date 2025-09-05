@@ -294,6 +294,7 @@ impl PublicGroup {
             return Err(StageCommitError::RequiredPathNotFound);
         };
 
+        // TODO we should probably not unwrap here
         // Update group context
         diff.update_group_context(crypto, apply_proposals_values.extensions.clone())?;
 

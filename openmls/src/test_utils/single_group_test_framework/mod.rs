@@ -49,7 +49,7 @@ pub(crate) fn generate_credential(
 pub(crate) fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
-    extensions: Extensions,
+    extensions: Extensions<Extension>,
     provider: &impl crate::storage::OpenMlsProvider,
     lifetime: impl Into<Option<Lifetime>>,
     signer: &impl Signer,

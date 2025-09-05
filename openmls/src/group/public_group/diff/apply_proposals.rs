@@ -19,7 +19,7 @@ pub(crate) struct ApplyProposalsValues {
     pub(crate) invitation_list: Vec<(LeafNodeIndex, AddProposal)>,
     pub(crate) presharedkeys: Vec<PreSharedKeyId>,
     pub(crate) external_init_proposal_option: Option<ExternalInitProposal>,
-    pub(crate) extensions: Option<Extensions>,
+    pub(crate) extensions: Option<Extensions<GroupContextExtension>>,
 }
 
 impl ApplyProposalsValues {

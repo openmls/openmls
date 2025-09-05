@@ -319,7 +319,14 @@ fn test_valsem201() {
 
     let gce_proposal = || {
         queued(Proposal::group_context_extensions(
-            GroupContextExtensionProposal::new(alice_group.context().extensions().clone()),
+            GroupContextExtensionProposal::new(
+                alice_group
+                    .context()
+                    .extensions()
+                    .clone()
+                    .try_into()
+                    .unwrap(),
+            ),
         ))
     };
 

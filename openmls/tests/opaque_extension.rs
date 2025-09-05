@@ -108,6 +108,7 @@ fn opaque_extension() {
             ])
             .unwrap(),
         )
+        .unwrap()
         .load_psks(provider.storage())
         .expect("error loading psks")
         .build(
@@ -170,6 +171,7 @@ fn opaque_extension() {
             ])
             .unwrap(),
         )
+        .unwrap()
         .load_psks(provider.storage())
         .expect("error loading psks")
         .build(
@@ -221,7 +223,7 @@ fn opaque_extension() {
 fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
-    extensions: Extensions,
+    extensions: Extensions<Extension>,
     provider: &impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackageBundle {

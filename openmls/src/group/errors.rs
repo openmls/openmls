@@ -14,6 +14,7 @@ use crate::{
     group::commit_builder::external_commits::ExternalCommitBuilderError,
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
+    prelude::GroupContextExtensionProposalError,
     schedule::errors::PskError,
     treesync::errors::*,
 };
@@ -429,6 +430,10 @@ pub enum ValidationError {
     /// See [`ExternalCommitValidationError`] for more details.
     #[error(transparent)]
     ExternalCommitValidation(#[from] ExternalCommitValidationError),
+    // TODO TIM
+    /// See [`InvalidExtensionError`]
+    #[error("Invalid extension")]
+    InvalidExtension,
 }
 
 /// Proposal validation error
@@ -632,4 +637,7 @@ pub enum GroupContextExtensionsProposalValidationError {
         "An extension in the group context extensions is not listed in the required capabilties' extension types."
     )]
     ExtensionNotInRequiredCapabilities,
+    /// See [`GroupContextExtensionProposal`] for more details.
+    #[error(transparent)]
+    ExtensionProposal(GroupContextExtensionProposalError),
 }
