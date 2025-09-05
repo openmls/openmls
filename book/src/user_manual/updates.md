@@ -20,7 +20,6 @@ Members can use the `.self_update_with_new_signer()` function to also update the
 
 When constructing the `NewSignerBundle`, the `Signer` must match the public key and credential in the `CredentialWithKey`. When using `self_update_with_new_signer`, `LeafNodeParameters` may not contain a `CredentialWithKey`.
 
-
 ## Proposal
 
 Members can also update their leaf node as a proposal (without the corresponding Commit message) by using the `.propose_self_update()` function. Just like with the `.self_update()` function, optional parameters can be set through `LeafNodeParameters`:
