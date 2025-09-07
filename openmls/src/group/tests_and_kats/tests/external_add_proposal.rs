@@ -1,4 +1,3 @@
-use itertools::Group;
 use openmls_test::openmls_test;
 
 use crate::{framing::*, group::*, messages::external_proposals::*};

@@ -15,7 +15,7 @@ use crate::{
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
-    prelude::{Extension, ExtensionError, GroupContextExtension},
+    prelude::{Extension, GroupContextExtension},
     storage::{OpenMlsProvider, StorageProvider},
 };
 use openmls_traits::signatures::Signer;

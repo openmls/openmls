@@ -26,7 +26,6 @@ use std::{
     io::{Read, Write},
 };
 
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 // Private
@@ -237,6 +236,21 @@ pub enum Extension {
     Unknown(u16, UnknownExtension),
 }
 
+/// # GroupContextExtension
+///
+/// A group context extension is one of the [`GroupContextExtension`] enum values.
+/// The enum provides a set of common functionality for extensions that are valid in a group
+/// context.
+///
+/// See the individual extensions for more details on each extension.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     ExtensionType extension_type;
+///     opaque extension_data<V>;
+/// } Extension;
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GroupContextExtension {
     /// A [`RequiredCapabilitiesExtension`]
@@ -249,13 +263,15 @@ pub enum GroupContextExtension {
     Unknown(u16, UnknownExtension),
 }
 
-pub trait UnboundExtension:
+/// TypedExtension is implemented by all types that can be used as a Extension.
+pub trait TypedExtension:
     Debug + Clone + PartialEq + Eq + Serialize + Size + TlsDeserializeTrait + TlsSerializeTrait
 {
+    /// Get the type of the extension.
     fn extension_type(&self) -> ExtensionType;
 }
 
-impl UnboundExtension for GroupContextExtension {
+impl TypedExtension for GroupContextExtension {
     fn extension_type(&self) -> ExtensionType {
         match self {
             GroupContextExtension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
@@ -265,7 +281,7 @@ impl UnboundExtension for GroupContextExtension {
     }
 }
 
-impl UnboundExtension for Extension {
+impl TypedExtension for Extension {
     fn extension_type(&self) -> ExtensionType {
         match self {
             Extension::ApplicationId(_) => ExtensionType::ApplicationId,
@@ -289,24 +305,24 @@ pub struct UnknownExtension(pub Vec<u8>);
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize)]
 pub struct Extensions<T>
 where
-    T: UnboundExtension,
+    T: TypedExtension,
 {
     unique: Vec<T>,
 }
 
-impl<T: UnboundExtension> Default for Extensions<T> {
+impl<T: TypedExtension> Default for Extensions<T> {
     fn default() -> Self {
         Self { unique: vec![] }
     }
 }
 
-impl<T: UnboundExtension> TlsSerializeTrait for Extensions<T> {
+impl<T: TypedExtension> TlsSerializeTrait for Extensions<T> {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
         self.unique.tls_serialize(writer)
     }
 }
 
-impl<T: UnboundExtension> TlsDeserializeTrait for Extensions<T> {
+impl<T: TypedExtension> TlsDeserializeTrait for Extensions<T> {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
@@ -317,7 +333,7 @@ impl<T: UnboundExtension> TlsDeserializeTrait for Extensions<T> {
     }
 }
 
-impl<T: UnboundExtension> DeserializeBytes for Extensions<T> {
+impl<T: TypedExtension> DeserializeBytes for Extensions<T> {
     fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
     where
         Self: Sized,
@@ -329,7 +345,7 @@ impl<T: UnboundExtension> DeserializeBytes for Extensions<T> {
     }
 }
 
-impl<T: UnboundExtension> Extensions<T> {
+impl<T: TypedExtension> Extensions<T> {
     /// Create an empty extension list.
     pub fn empty() -> Self {
         Self { unique: vec![] }
@@ -403,7 +419,7 @@ impl<T: UnboundExtension> Extensions<T> {
     }
 }
 
-impl<T: UnboundExtension> TryFrom<Vec<T>> for Extensions<T> {
+impl<T: TypedExtension> TryFrom<Vec<T>> for Extensions<T> {
     type Error = InvalidExtensionError;
 
     fn try_from(candidate: Vec<T>) -> Result<Self, Self::Error> {
@@ -424,7 +440,7 @@ impl<T: UnboundExtension> TryFrom<Vec<T>> for Extensions<T> {
     }
 }
 
-impl<T: UnboundExtension> Extensions<T> {
+impl<T: TypedExtension> Extensions<T> {
     fn find_by_type(&self, extension_type: ExtensionType) -> Option<&T> {
         self.unique
             .iter()
@@ -684,7 +700,7 @@ impl TryFrom<Extensions<Extension>> for Extensions<GroupContextExtension> {
 
 impl From<Extensions<GroupContextExtension>> for Extensions<Extension> {
     fn from(value: Extensions<GroupContextExtension>) -> Self {
-        Extensions::from_vec(value.iter().map(|e| e.clone().into()).collect_vec()).unwrap()
+        Extensions::from_vec(value.iter().map(|e| e.clone().into()).collect()).unwrap()
     }
 }
 

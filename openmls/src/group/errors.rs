@@ -14,7 +14,7 @@ use crate::{
     group::commit_builder::external_commits::ExternalCommitBuilderError,
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
-    prelude::GroupContextExtensionProposalError,
+    prelude::ExtensionType,
     schedule::errors::PskError,
     treesync::errors::*,
 };
@@ -637,7 +637,11 @@ pub enum GroupContextExtensionsProposalValidationError {
         "An extension in the group context extensions is not listed in the required capabilties' extension types."
     )]
     ExtensionNotInRequiredCapabilities,
-    /// See [`GroupContextExtensionProposal`] for more details.
-    #[error(transparent)]
-    ExtensionProposal(GroupContextExtensionProposalError),
+
+    /// An extension with a type that is not valid in the group context
+    #[error("Expected valid `Extension` for `GroupContextExtension`, got `{wrong:?}`")]
+    InvalidExtensionTypeError {
+        /// found invalid type
+        wrong: ExtensionType,
+    },
 }

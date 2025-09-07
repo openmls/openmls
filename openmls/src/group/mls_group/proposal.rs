@@ -14,7 +14,7 @@ use crate::{
     group::{errors::CreateAddProposalError, GroupId, ValidationError},
     key_packages::KeyPackage,
     messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
-    prelude::{Extension, GroupContextExtension, LibraryError},
+    prelude::{Extension, LibraryError},
     schedule::PreSharedKeyId,
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{LeafNode, LeafNodeParameters},

@@ -15,8 +15,8 @@ use crate::{
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
-        GroupContextExtensionsProposalValidationError, ProposalQueue, ProposalQueueError,
-        QueuedProposal, RatchetTreeExtension, StagedCommit, WireFormatPolicy,
+        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
+        WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{

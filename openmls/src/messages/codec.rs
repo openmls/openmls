@@ -8,8 +8,8 @@ use crate::prelude::GroupContextExtensionProposalIn;
 
 use super::{
     proposals::{
-        AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal,
-        Proposal, ProposalType, ReInitProposal, RemoveProposal,
+        AppAckProposal, ExternalInitProposal, PreSharedKeyProposal, Proposal, ProposalType,
+        ReInitProposal, RemoveProposal,
     },
     proposals_in::{AddProposalIn, ProposalIn, UpdateProposalIn},
     CustomProposal,

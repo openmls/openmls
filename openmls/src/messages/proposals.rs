@@ -22,7 +22,7 @@ use crate::{
     },
     group::GroupId,
     key_packages::*,
-    prelude::{Extension, ExtensionType, GroupContextExtension, LeafNode},
+    prelude::{Extension, GroupContextExtension, LeafNode},
     schedule::psk::*,
     versions::ProtocolVersion,
 };
@@ -583,12 +583,6 @@ impl GroupContextExtensionProposal {
     pub fn extensions(&self) -> &Extensions<GroupContextExtension> {
         &self.extensions
     }
-}
-
-#[derive(Debug, Error, PartialEq, Clone)]
-pub enum GroupContextExtensionProposalError {
-    #[error("Expected valid `Extension` for `GroupContextExtension`, got `{wrong:?}`")]
-    InvalidExtensionTypeError { wrong: ExtensionType },
 }
 
 // Crate-only types

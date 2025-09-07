@@ -30,7 +30,7 @@ use crate::{
         proposals::*,
         ConfirmationTag, GroupSecrets, Welcome,
     },
-    prelude::{ExtensionError, GroupContextExtension},
+    prelude::GroupContextExtension,
     schedule::{
         message_secrets::MessageSecrets,
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
