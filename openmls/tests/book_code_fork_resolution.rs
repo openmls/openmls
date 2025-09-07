@@ -1,6 +1,6 @@
 #![cfg(feature = "fork-resolution")]
 
-use openmls::prelude::*;
+use openmls::prelude::{Extension, *};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
 use openmls_traits::{signatures::Signer, types::SignatureScheme};
@@ -485,7 +485,7 @@ fn generate_credential(
 fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
-    extensions: Extensions,
+    extensions: Extensions<Extension>,
     provider: &impl openmls::storage::OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackageBundle {
