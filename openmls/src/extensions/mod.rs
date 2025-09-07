@@ -694,7 +694,7 @@ impl TryFrom<Extensions<Extension>> for Extensions<GroupContextExtension> {
     fn try_from(value: Extensions<Extension>) -> Result<Self, Self::Error> {
         let group_extensions: Result<Vec<GroupContextExtension>, Self::Error> =
             value.iter().map(|e| e.clone().try_into()).collect();
-        group_extensions.and_then(|e| Extensions::from_vec(e))
+        group_extensions.and_then(Extensions::from_vec)
     }
 }
 

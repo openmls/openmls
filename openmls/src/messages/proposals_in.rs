@@ -333,7 +333,7 @@ impl From<GroupContextExtensionProposalIn> for Box<GroupContextExtensionProposal
     fn from(value: GroupContextExtensionProposalIn) -> Self {
         use crate::prelude::GroupContextExtension;
         let gce: Extensions<GroupContextExtension> = value.extensions_tbv.try_into().unwrap();
-        Box::new(GroupContextExtensionProposal::new(gce.into()))
+        Box::new(GroupContextExtensionProposal::new(gce))
     }
 }
 
@@ -347,7 +347,7 @@ impl From<GroupContextExtensionProposal> for GroupContextExtensionProposalIn {
 
 impl From<GroupContextExtensionProposal> for Box<GroupContextExtensionProposalIn> {
     fn from(value: GroupContextExtensionProposal) -> Self {
-        let extensions = value.extensions().clone().try_into().unwrap();
+        let extensions = value.extensions().clone().into();
         Box::new(GroupContextExtensionProposalIn {
             extensions_tbv: extensions,
         })
