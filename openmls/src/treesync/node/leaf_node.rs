@@ -18,7 +18,7 @@ use crate::{
     },
     credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
-    extensions::{ExtensionType, Extensions},
+    extensions::{errors::InvalidExtensionError, ExtensionType, Extensions},
     group::GroupId,
     key_packages::{KeyPackage, Lifetime},
     prelude::KeyPackageBundle,
@@ -126,9 +126,17 @@ impl LeafNodeParametersBuilder {
     }
 
     /// Set the extensions.
-    pub fn with_extensions(mut self, extensions: Extensions) -> Self {
+    ///
+    /// Returns an error if one or more of the extensions is invalid in leaf nodes.
+    pub fn with_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, InvalidExtensionError> {
+        // https://validation.openmls.tech/#valn1601
+        extensions.validate_extension_types_for_leaf_node()?;
+
         self.extensions = Some(extensions);
-        self
+        Ok(self)
     }
 
     /// Build the [`LeafNodeParameters`].
@@ -477,6 +485,13 @@ impl LeafNode {
     /// - the type of the credential is covered by the capabilities
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
         // Check that no extension is invalid when used in leaf nodes.
+        // https://validation.openmls.tech/#valn1601
+        // NOTE: This check is conducted manually for now, instead of using the method
+        // Extensions::validate_extension_types_for_leaf_node(),
+        // in order to collect the invalid extension types for the log message below.
+        // However, it could be better to instead return the list of invalid extension types
+        // as part of Extensions::validate_extension_types_for_leaf_node(),
+        // as part of the error message.
         let invalid_extension_types = self
             .extensions()
             .iter()

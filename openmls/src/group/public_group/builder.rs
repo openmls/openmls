@@ -5,7 +5,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
-    group::{ExtensionType, GroupContext, GroupId},
+    group::{GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
     schedule::CommitSecret,
@@ -57,14 +57,10 @@ impl TempBuilderPG1 {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
-        // None of the default extensions are leaf node extensions, so only
-        // unknown extensions can be leaf node extensions.
-        let is_valid_in_leaf_node = extensions
-            .iter()
-            .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_)));
-        if !is_valid_in_leaf_node {
-            return Err(InvalidExtensionError::IllegalInLeafNodes);
-        }
+        // Ensure that these extensions are not invalid for leaf nodes.
+        // https://validation.openmls.tech/#valn1601
+        extensions.validate_extension_types_for_leaf_node()?;
+
         self.leaf_node_extensions = extensions;
         Ok(self)
     }
