@@ -155,7 +155,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     /// Thin wrapper around [`MlsGroup::propose_group_context_extensions`].
     fn propose_group_context_extensions(
         &mut self,
-        extensions: Extensions<Extension>,
+        extensions: Extensions,
     ) -> (MlsMessageOut, ProposalRef) {
         self.group
             .propose_group_context_extensions(&self.party.provider, extensions, &self.party.signer)
@@ -165,7 +165,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     /// Thin wrapper around [`MlsGroup::update_group_context_extensions`].
     fn update_group_context_extensions(
         &mut self,
-        extensions: Extensions<Extension>,
+        extensions: Extensions,
     ) -> (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>) {
         self.group
             .update_group_context_extensions(&self.party.provider, extensions, &self.party.signer)

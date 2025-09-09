@@ -22,7 +22,7 @@ use crate::{
     },
     group::GroupId,
     key_packages::*,
-    prelude::{Extension, GroupContextExtension, LeafNode},
+    prelude::{Extension, LeafNode},
     schedule::psk::*,
     versions::ProtocolVersion,
 };
@@ -483,7 +483,7 @@ pub struct ReInitProposal {
     pub(crate) group_id: GroupId,
     pub(crate) version: ProtocolVersion,
     pub(crate) ciphersuite: Ciphersuite,
-    pub(crate) extensions: Extensions<Extension>,
+    pub(crate) extensions: Extensions,
 }
 
 /// ExternalInit Proposal.
@@ -557,30 +557,33 @@ pub struct AppAckProposal {
 ///   Extension extensions<V>;
 /// } GroupContextExtensions;
 /// ```
-#[derive(
-    Debug,
-    PartialEq,
-    Eq,
-    Clone,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSerialize,
-    TlsSize,
-)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct GroupContextExtensionProposal {
-    extensions: Extensions<GroupContextExtension>,
+    extensions: Extensions,
+}
+
+impl Size for GroupContextExtensionProposal {
+    fn tls_serialized_len(&self) -> usize {
+        let extensions: Extensions = self.extensions.clone().into();
+        extensions.tls_serialized_len()
+    }
+}
+
+impl TlsSerializeTrait for GroupContextExtensionProposal {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        let extensions: Extensions = self.extensions.clone().into();
+        extensions.tls_serialize(writer)
+    }
 }
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
-    pub(crate) fn new(extensions: Extensions<GroupContextExtension>) -> Self {
+    pub(crate) fn new(extensions: Extensions) -> Self {
         Self { extensions }
     }
 
     /// Get the extensions of the proposal
-    pub fn extensions(&self) -> &Extensions<GroupContextExtension> {
+    pub fn extensions(&self) -> &Extensions {
         &self.extensions
     }
 }

@@ -4,7 +4,6 @@ use crate::{
     extensions::{
         ApplicationIdExtension, Extension, RatchetTreeExtension, RequiredCapabilitiesExtension,
     },
-    prelude::GroupContextExtension,
     treesync::{node::NodeIn, Node, ParentNode},
 };
 
@@ -77,13 +76,6 @@ impl FrankenExtension {
 
 impl From<Extension> for FrankenExtension {
     fn from(value: Extension) -> Self {
-        let bytes = value.tls_serialize_detached().unwrap();
-        FrankenExtension::tls_deserialize(&mut bytes.as_slice()).unwrap()
-    }
-}
-
-impl From<GroupContextExtension> for FrankenExtension {
-    fn from(value: GroupContextExtension) -> Self {
         let bytes = value.tls_serialize_detached().unwrap();
         FrankenExtension::tls_deserialize(&mut bytes.as_slice()).unwrap()
     }

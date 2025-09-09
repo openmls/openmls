@@ -75,7 +75,7 @@ impl<'a> RebootBuilder<'a> {
     /// argument. If that is not desired, provide the identity function (`|b| b`).
     pub fn finish<Provider: OpenMlsProvider>(
         self,
-        extensions: Extensions<Extension>,
+        extensions: Extensions,
         new_members: Vec<KeyPackage>,
         refine_commit_builder: impl FnMut(CommitBuilder<Initial>) -> CommitBuilder<Initial>,
         provider: &Provider,

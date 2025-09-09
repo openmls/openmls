@@ -17,7 +17,6 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, public_message::InterimTranscriptHashInput},
     group::GroupContext,
     messages::{proposals::AddProposal, ConfirmationTag, EncryptedGroupSecrets},
-    prelude::GroupContextExtension,
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
     treesync::{
         diff::{StagedTreeSyncDiff, TreeSyncDiff},
@@ -202,7 +201,7 @@ impl<'a> PublicGroupDiff<'a> {
     pub(crate) fn update_group_context(
         &mut self,
         crypto: &impl OpenMlsCrypto,
-        extensions: Option<Extensions<GroupContextExtension>>,
+        extensions: Option<Extensions>,
     ) -> Result<(), LibraryError> {
         // Calculate tree hash
         let new_tree_hash = self

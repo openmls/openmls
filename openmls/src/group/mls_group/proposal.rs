@@ -14,7 +14,7 @@ use crate::{
     group::{errors::CreateAddProposalError, GroupId, ValidationError},
     key_packages::KeyPackage,
     messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
-    prelude::{Extension, LibraryError},
+    prelude::{Extension, ExtensionsForObject, LibraryError},
     schedule::PreSharedKeyId,
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{LeafNode, LeafNodeParameters},
@@ -44,14 +44,14 @@ pub enum Propose {
         group_id: GroupId,
         version: ProtocolVersion,
         ciphersuite: Ciphersuite,
-        extensions: Extensions<Extension>,
+        extensions: Extensions,
     },
 
     /// An external init proposal gets the raw bytes from the KEM output.
     ExternalInit(Vec<u8>),
 
     /// Propose adding new group context extensions.
-    GroupContextExtensions(Extensions<Extension>),
+    GroupContextExtensions(Extensions),
 
     /// A custom proposal with semantics to be implemented by the application.
     Custom(CustomProposal),
@@ -354,12 +354,12 @@ impl MlsGroup {
     pub fn propose_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
-        extensions: Extensions<Extension>,
+        extensions: Extensions,
         signer: &impl Signer,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
-        let group_context_extensions = extensions.try_into()?;
+        let group_context_extensions = extensions.try_into().unwrap();
         let proposal = self.create_group_context_ext_proposal::<Provider>(
             self.framing_parameters(),
             group_context_extensions,
@@ -396,7 +396,7 @@ impl MlsGroup {
     pub fn update_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
-        extensions: Extensions<Extension>,
+        extensions: Extensions,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),

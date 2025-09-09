@@ -8,7 +8,7 @@ use crate::{
     group::{ExtensionType, GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
-    prelude::{Extension, GroupContextExtension},
+    prelude::{Extension, ExtensionsForObject},
     schedule::CommitSecret,
     storage::OpenMlsProvider,
     treesync::{
@@ -25,8 +25,8 @@ pub(crate) struct TempBuilderPG1 {
     credential_with_key: CredentialWithKey,
     lifetime: Option<Lifetime>,
     capabilities: Option<Capabilities>,
-    leaf_node_extensions: Extensions<Extension>,
-    group_context_extensions: Extensions<GroupContextExtension>,
+    leaf_node_extensions: Extensions,
+    group_context_extensions: Extensions,
 }
 
 impl TempBuilderPG1 {
@@ -42,16 +42,16 @@ impl TempBuilderPG1 {
 
     pub(crate) fn with_group_context_extensions(
         mut self,
-        extensions: Extensions<Extension>,
+        extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
-        let group_context_extensions: Extensions<GroupContextExtension> = extensions.try_into()?;
-        self.group_context_extensions = group_context_extensions;
+        let group_context_extensions: ExtensionsForObject<GroupContext> = extensions.try_into()?;
+        self.group_context_extensions = group_context_extensions.into();
         Ok(self)
     }
 
     pub(crate) fn with_leaf_node_extensions(
         mut self,
-        extensions: Extensions<Extension>,
+        extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
         // None of the default extensions are leaf node extensions, so only
         // unknown extensions can be leaf node extensions.

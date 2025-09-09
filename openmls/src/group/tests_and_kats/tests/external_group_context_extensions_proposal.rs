@@ -144,7 +144,7 @@ fn external_group_context_ext_proposal_should_succeed() {
         .context()
         .extensions()
         .iter()
-        .any(|e| matches!(e, GroupContextExtension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
+        .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
 
     let old_extensions = alice_group.extensions().to_owned();
     assert!(!old_extensions.contains(ExtensionType::ApplicationId));
@@ -228,7 +228,7 @@ fn external_group_context_ext_proposal_should_succeed_unknown_extension() {
         .context()
         .extensions()
         .iter()
-        .any(|e| matches!(e, GroupContextExtension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
+        .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
 
     let old_extensions = alice_group.extensions().to_owned();
     assert!(!old_extensions.contains(ExtensionType::Unknown(0xf001)));

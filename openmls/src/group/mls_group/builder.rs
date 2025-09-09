@@ -7,12 +7,12 @@ use crate::{
     error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
     group::{
-        past_secrets::MessageSecretsStore, public_group::errors::PublicGroupBuildError, GroupId,
-        MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
-        PublicGroup, WireFormatPolicy,
+        past_secrets::MessageSecretsStore, public_group::errors::PublicGroupBuildError,
+        GroupContext, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder,
+        MlsGroupState, NewGroupError, PublicGroup, WireFormatPolicy,
     },
     key_packages::Lifetime,
-    prelude::Extension,
+    prelude::{Extension, ExtensionsForObject},
     schedule::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         InitSecret, JoinerSecret, KeySchedule, PreSharedKeyId,
@@ -253,7 +253,7 @@ impl MlsGroupBuilder {
     /// Sets the initial group context extensions
     pub fn with_group_context_extensions(
         mut self,
-        extensions: Extensions<Extension>,
+        extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
@@ -264,7 +264,7 @@ impl MlsGroupBuilder {
     /// Sets the initial leaf node extensions
     pub fn with_leaf_node_extensions(
         mut self,
-        extensions: Extensions<Extension>,
+        extensions: Extensions,
     ) -> Result<Self, LeafNodeValidationError> {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder

@@ -1280,7 +1280,7 @@ fn builder_pattern() {
         test_external_senders
     );
     assert_eq!(ciphersuite, test_ciphersuite);
-    let extensions: Extensions<Extension> = group_context.extensions().clone().into();
+    let extensions: Extensions = group_context.extensions().clone().into();
     assert_eq!(extensions, test_gc_extensions);
     let lifetime = alice_group
         .own_leaf()
@@ -1349,9 +1349,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     let group_context_extensions = alice_group.context().extensions();
     let mut extracted_data = None;
     for extension in group_context_extensions.iter() {
-        if let GroupContextExtension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) =
-            extension
-        {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
             extracted_data = Some(data.clone());
         }
     }
@@ -1404,9 +1402,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     let group_context_extensions = bob_group.context().extensions();
     let mut extracted_data_2 = None;
     for extension in group_context_extensions.iter() {
-        if let GroupContextExtension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) =
-            extension
-        {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
             extracted_data_2 = Some(data.clone());
         }
     }
@@ -1491,9 +1487,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     let group_context_extensions = alice_group.context().extensions();
     let mut extracted_data_updated = None;
     for extension in group_context_extensions.iter() {
-        if let GroupContextExtension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) =
-            extension
-        {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
             extracted_data_updated = Some(data.clone());
         }
     }
@@ -1510,9 +1504,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     let group_context_extensions_2 = bob_group_loaded.export_group_context().extensions();
     let mut extracted_data_2 = None;
     for extension in group_context_extensions_2.iter() {
-        if let GroupContextExtension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) =
-            extension
-        {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
             extracted_data_2 = Some(data.clone());
         }
     }
@@ -1785,9 +1777,7 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
     let group_context_extensions = alice_group.context().extensions();
     let mut extracted_data = None;
     for extension in group_context_extensions.iter() {
-        if let GroupContextExtension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) =
-            extension
-        {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
             extracted_data = Some(data.clone());
         }
     }
@@ -1825,9 +1815,7 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
     let group_context_extensions = alice_group.context().extensions();
     let mut extracted_data = None;
     for extension in group_context_extensions.iter() {
-        if let GroupContextExtension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) =
-            extension
-        {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
             extracted_data = Some(data.clone());
         }
     }
@@ -1864,9 +1852,7 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
     let group_context_extensions = alice_group.context().extensions();
     let mut extracted_data_updated = None;
     for extension in group_context_extensions.iter() {
-        if let GroupContextExtension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) =
-            extension
-        {
+        if let Extension::Unknown(UNKNOWN_EXTENSION_TYPE, UnknownExtension(data)) = extension {
             extracted_data_updated = Some(data.clone());
         }
     }
@@ -1912,7 +1898,7 @@ fn unknown_extensions() {
         .expect("error creating group using builder");
 
     // Check that everything was added successfully
-    let group_context_extensions: Extensions<Extension> = alice_group
+    let group_context_extensions: Extensions = alice_group
         .export_group_context()
         .extensions()
         .clone()

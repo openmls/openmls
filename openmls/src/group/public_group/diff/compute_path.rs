@@ -10,7 +10,6 @@ use crate::{
     error::LibraryError,
     extensions::Extensions,
     group::errors::CreateCommitError,
-    prelude::GroupContextExtension,
     schedule::CommitSecret,
     treesync::{
         node::{
@@ -52,7 +51,7 @@ impl PublicGroupDiff<'_> {
         commit_type: &CommitType,
         leaf_node_params: &LeafNodeParameters,
         signer: &impl Signer,
-        gc_extensions: Option<Extensions<GroupContextExtension>>,
+        gc_extensions: Option<Extensions>,
     ) -> Result<PathComputationResult, CreateCommitError> {
         let ciphersuite = self.group_context().ciphersuite();
 

@@ -619,7 +619,7 @@ fn test(ciphersuite: Ciphersuite, provider: &Provider) {
 
             assert_eq!(
                 gce_proposal.extensions(),
-                &Extensions::single(GroupContextExtension::RequiredCapabilities(
+                &Extensions::single(Extension::RequiredCapabilities(
                     RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[])
                 ))
             );

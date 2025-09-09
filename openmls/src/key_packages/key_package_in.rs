@@ -92,7 +92,7 @@ struct KeyPackageTbsIn {
     ciphersuite: Ciphersuite,
     init_key: InitKey,
     leaf_node: LeafNodeIn,
-    extensions: Extensions<Extension>,
+    extensions: Extensions,
 }
 
 /// The key package struct.

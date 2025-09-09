@@ -115,7 +115,7 @@ fn external_add_proposal_should_suceeed() {
         .context()
         .extensions()
         .iter()
-        .any(|e| matches!(e, GroupContextExtension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
+        .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
 
     // A new client, Charlie, wants to be in the group
     let charlie_credential = generate_credential_with_key(

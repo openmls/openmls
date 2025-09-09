@@ -432,7 +432,7 @@ pub enum ValidationError {
     ExternalCommitValidation(#[from] ExternalCommitValidationError),
     /// See [`InvalidExtensionError`]
     #[error("Invalid extension")]
-    InvalidExtension,
+    InvalidExtension(#[from] InvalidExtensionError),
 }
 
 /// Proposal validation error

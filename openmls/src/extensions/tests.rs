@@ -179,14 +179,14 @@ fn required_capabilities() {
 #[openmls_test::openmls_test]
 fn with_group_context_extensions() {
     // create an extension that we can check for later
-    let test_extension = GroupContextExtension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
+    let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
     let extensions = Extensions::single(test_extension.clone());
 
     let alice_credential_with_key_and_signer =
         generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .with_group_context_extensions(extensions.into())
+        .with_group_context_extensions(extensions)
         .expect("failed to apply extensions at group config builder")
         .ciphersuite(ciphersuite)
         .build();
@@ -227,7 +227,12 @@ fn wrong_extension_with_group_context_extensions() {
         .with_group_context_extensions(extensions.clone())
         .expect_err("builder accepted non-group-context extension");
 
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    assert_eq!(
+        err,
+        InvalidExtensionError::IllegalInGroupContext {
+            illegal_extension: ExtensionType::ApplicationId
+        }
+    );
     let err = PublicGroup::builder(
         GroupId::from_slice(&[0xbe, 0xef]),
         ciphersuite,
@@ -238,7 +243,12 @@ fn wrong_extension_with_group_context_extensions() {
     .with_group_context_extensions(extensions)
     .expect_err("builder accepted non-group-context extension");
 
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    assert_eq!(
+        err,
+        InvalidExtensionError::IllegalInGroupContext {
+            illegal_extension: ExtensionType::ApplicationId
+        }
+    );
     // create an extension that we can check for later
     let test_extension =
         Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(vec![])));
@@ -247,7 +257,12 @@ fn wrong_extension_with_group_context_extensions() {
     let err = MlsGroup::builder()
         .with_group_context_extensions(extensions.clone())
         .expect_err("builder accepted non-group-context extension");
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    assert_eq!(
+        err,
+        InvalidExtensionError::IllegalInGroupContext {
+            illegal_extension: ExtensionType::ExternalPub
+        }
+    );
 
     let err = PublicGroup::builder(
         GroupId::from_slice(&[0xbe, 0xef]),
@@ -258,7 +273,12 @@ fn wrong_extension_with_group_context_extensions() {
     )
     .with_group_context_extensions(extensions)
     .expect_err("builder accepted non-group-context extension");
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    assert_eq!(
+        err,
+        InvalidExtensionError::IllegalInGroupContext {
+            illegal_extension: ExtensionType::ExternalPub
+        }
+    );
 
     // create an extension that we can check for later
     let test_extension = Extension::RatchetTree(RatchetTreeExtension::new(
@@ -269,7 +289,12 @@ fn wrong_extension_with_group_context_extensions() {
     let err = MlsGroup::builder()
         .with_group_context_extensions(extensions.clone())
         .expect_err("builder accepted non-group-context extension");
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    assert_eq!(
+        err,
+        InvalidExtensionError::IllegalInGroupContext {
+            illegal_extension: ExtensionType::RatchetTree
+        }
+    );
 
     let err = PublicGroup::builder(
         GroupId::from_slice(&[0xbe, 0xef]),
@@ -280,7 +305,12 @@ fn wrong_extension_with_group_context_extensions() {
     )
     .with_group_context_extensions(extensions)
     .expect_err("builder accepted non-group-context extension");
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    assert_eq!(
+        err,
+        InvalidExtensionError::IllegalInGroupContext {
+            illegal_extension: ExtensionType::RatchetTree
+        }
+    );
 }
 
 #[openmls_test::openmls_test]

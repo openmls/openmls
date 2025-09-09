@@ -9,7 +9,10 @@
 //! * `ParentHashError`
 //! * `RatchetTreeError`
 
-use crate::error::{ErrorString, LibraryError};
+use crate::{
+    error::{ErrorString, LibraryError},
+    prelude::ExtensionType,
+};
 
 use thiserror::Error;
 
@@ -92,11 +95,20 @@ pub enum InvalidExtensionError {
     /// The specified extension could not be found.
     #[error("The specified extension could not be found.")]
     NotFound,
+
+    /// The provided extension list contains an extension that is not allowed
+    #[error(
+        "The provided extension list contains an extension of type {illegal_extension:?} that is not allowed."
+    )]
+    NotValid { illegal_extension: ExtensionType },
+
+    /// The provided extension list contains an extension that is not allowed in leaf nodes
+
     /// The provided extension list contains an extension that is not allowed in group contexts
     #[error(
-        "The provided extension list contains an extension that is not allowed in group contexts."
+        "The provided extension list contains an extension of type {illegal_extension:?} that is not allowed in group contexts."
     )]
-    IllegalInGroupContext,
+    IllegalInGroupContext { illegal_extension: ExtensionType },
     /// The provided extension list contains an extension that is not allowed in leaf nodes
     #[error(
         "The provided extension list contains an extension that is not allowed in leaf nodes."

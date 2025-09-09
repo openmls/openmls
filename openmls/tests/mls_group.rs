@@ -12,7 +12,7 @@ use openmls_traits::signatures::Signer;
 
 fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    extensions: Extensions<Extension>,
+    extensions: Extensions,
     provider: &Provider,
     credential_with_key: CredentialWithKey,
     signer: &impl Signer,
@@ -1746,7 +1746,7 @@ fn group_context_extensions_proposal(
         .unwrap()
         .group_context()
         .clone();
-    let gc_extensions: Extensions<Extension> = group_context_staged.extensions().clone().into();
+    let gc_extensions: Extensions = group_context_staged.extensions().clone().into();
     assert_eq!(gc_extensions, new_extensions);
 
     alice_group

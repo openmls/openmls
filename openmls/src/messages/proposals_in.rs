@@ -323,16 +323,14 @@ impl From<UpdateProposal> for UpdateProposalIn {
 #[cfg(any(feature = "test-utils", test))]
 impl From<GroupContextExtensionProposalIn> for GroupContextExtensionProposal {
     fn from(value: GroupContextExtensionProposalIn) -> Self {
-        use crate::prelude::GroupContextExtension;
-        let gce: Extensions<GroupContextExtension> = value.extensions_tbv.try_into().unwrap();
+        let gce: Extensions = value.extensions_tbv.try_into().unwrap();
         Self::new(gce)
     }
 }
 
 impl From<GroupContextExtensionProposalIn> for Box<GroupContextExtensionProposal> {
     fn from(value: GroupContextExtensionProposalIn) -> Self {
-        use crate::prelude::GroupContextExtension;
-        let gce: Extensions<GroupContextExtension> = value.extensions_tbv.try_into().unwrap();
+        let gce: Extensions = value.extensions_tbv.try_into().unwrap();
         Box::new(GroupContextExtensionProposal::new(gce))
     }
 }
@@ -446,16 +444,12 @@ impl From<crate::messages::proposals::ProposalOrRef> for ProposalOrRefIn {
     TlsSize,
 )]
 pub struct GroupContextExtensionProposalIn {
-    extensions_tbv: Extensions<Extension>,
+    extensions_tbv: Extensions,
 }
 
 impl GroupContextExtensionProposalIn {
     pub(crate) fn validate(self) -> Result<GroupContextExtensionProposal, ValidationError> {
-        let group_context_extensions = self
-            .extensions_tbv
-            .clone()
-            .try_into()
-            .map_err(|_| ValidationError::InvalidExtension)?;
+        let group_context_extensions = self.extensions_tbv.into();
         Ok(GroupContextExtensionProposal::new(group_context_extensions))
     }
 }
