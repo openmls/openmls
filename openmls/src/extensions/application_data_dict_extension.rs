@@ -200,7 +200,7 @@ impl tls_codec::DeserializeBytes for AppDataDictionary {
     TlsSize,
 )]
 pub struct AppDataDictionaryExtension {
-    pub(crate) dictionary: AppDataDictionary,
+    dictionary: AppDataDictionary,
 }
 
 impl AppDataDictionaryExtension {
