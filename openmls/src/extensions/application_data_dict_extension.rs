@@ -1,6 +1,6 @@
 use super::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 /// The unique ComponentId.
 pub type ComponentId = u32;
@@ -28,7 +28,7 @@ enum BuildAppDataDictionaryError {
 )]
 pub struct ComponentData {
     component_id: ComponentId,
-    data: Vec<u8>,
+    data: VLBytes,
 }
 
 impl ComponentData {
@@ -43,7 +43,7 @@ impl ComponentData {
     }
 
     /// Consumes the struct and returns its component parts.
-    pub fn into_parts(self) -> (ComponentId, Vec<u8>) {
+    pub fn into_parts(self) -> (ComponentId, VLBytes) {
         (self.component_id, self.data)
     }
 }
@@ -89,9 +89,15 @@ impl AppDataDictionary {
 
     /// Insert an entry into the dictionary. If an entry for this [`ComponentId`] already exists,
     /// replace the old entry and return it.
-    pub fn insert(&mut self, component_id: ComponentId, data: Vec<u8>) -> Option<Vec<u8>> {
+    pub fn insert(&mut self, component_id: ComponentId, data: Vec<u8>) -> Option<VLBytes> {
         self.component_data
-            .insert(component_id, ComponentData { component_id, data })
+            .insert(
+                component_id,
+                ComponentData {
+                    component_id,
+                    data: data.into(),
+                },
+            )
             .map(|component_data| component_data.data)
     }
 
@@ -102,7 +108,7 @@ impl AppDataDictionary {
 
     /// Remove an entry from the dictionary by [`ComponentId`]. If this entry exists,
     /// return it.
-    pub fn remove(&mut self, component_id: &ComponentId) -> Option<Vec<u8>> {
+    pub fn remove(&mut self, component_id: &ComponentId) -> Option<VLBytes> {
         self.component_data
             .remove(component_id)
             .map(|component_data| component_data.data)
