@@ -74,8 +74,8 @@ impl RegisteredComponentsWithLogic {
         self.0.contains_key(&component_id)
     }
 
-    // Apply the application logic for a specified [`AppDataUpdateProposal`], if application logic
-    // is registered for this component.
+    /// Apply the application logic for a specified [`AppDataUpdateProposal`], if application logic
+    /// is registered for this component.
     pub(crate) fn apply_logic(
         &self,
         proposal: &AppDataUpdateProposal,
