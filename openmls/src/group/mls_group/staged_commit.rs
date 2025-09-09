@@ -584,19 +584,30 @@ impl StagedCommit {
         }
     }
 
-    /// Check whether a
     #[cfg(feature = "extensions-draft-08")]
+    /// Returns `true` if the required capabilities include the AppDataUpdate proposal type and the
+    /// AppDataDictionary extension type, and if the proposal queue includes any AppDataUpdate
+    /// proposals.
     pub(super) fn app_data_update(&self) -> bool {
         // retrieve the required capabilities extension
         if let Some(required_capabilities_extension) = self.group_context().required_capabilities()
         {
             // check whether app data update and app data dictionary are supported
-            required_capabilities_extension
+            let has_required_capabilities = required_capabilities_extension
                 .proposal_types()
                 .contains(&ProposalType::AppDataUpdate)
                 && required_capabilities_extension
                     .extension_types()
-                    .contains(&ExtensionType::AppDataDictionary)
+                    .contains(&ExtensionType::AppDataDictionary);
+
+            // check whether the proposal queue includes AppDataUpdate proposals
+            let includes_updates = self
+                .staged_proposal_queue
+                .app_data_update_proposals()
+                .count()
+                > 0;
+
+            has_required_capabilities && includes_updates
         } else {
             false
         }
