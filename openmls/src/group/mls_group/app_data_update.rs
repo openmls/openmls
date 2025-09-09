@@ -26,6 +26,7 @@ pub enum ApplyAppLogicError {
 }
 
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
+/// An error returned when validating an AppDataUpdate proposal.
 pub enum ValidateAppDataUpdateError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
@@ -46,9 +47,6 @@ pub enum ValidateAppDataUpdateError {
     /// A component with this [`ComponentId`] is not present in the
     /// [`AppDataDictionary`](crate::extensions::AppDataDictionary).
     ComponentNotInDictionary,
-    #[error("The GroupContext does not contain an AppDataDictionary extension.")]
-    /// The [`GroupContext`] does not contain an [`AppDataDictionaryExtension`].
-    NoAppDataDictionaryExtension,
 }
 
 // helper type for the application logic stored in the [`RegisteredComponentsWithLogic`]
@@ -165,16 +163,20 @@ impl StagedCommitWithPendingAppDataUpdates {
                         if !registered_logic.contains(proposal.component_id()) {
                             return Err(ValidateAppDataUpdateError::ComponentNotRegistered);
                         }
-                        // remove the entry if the dictionary exists
-                        if let Some(dictionary_ext) = extensions.app_data_dictionary_mut() {
-                            let dictionary = dictionary_ext.dictionary_mut();
-                            if !dictionary.contains(&proposal.component_id()) {
-                                return Err(ValidateAppDataUpdateError::ComponentNotInDictionary);
-                            }
-                            let _ = dictionary.remove(&proposal.component_id());
-                        } else {
-                            return Err(ValidateAppDataUpdateError::NoAppDataDictionaryExtension);
+                        // retrieve the AppDataDictionary, to mutate the Extension in place
+                        let dictionary = extensions
+                            .app_data_dictionary_mut()
+                            .ok_or_else(|| {
+                                LibraryError::custom("AppDataDictionary should have been created")
+                            })?
+                            .dictionary_mut();
+
+                        // return an error if the dictionary does not contain this component id
+                        if !dictionary.contains(&proposal.component_id()) {
+                            return Err(ValidateAppDataUpdateError::ComponentNotInDictionary);
                         }
+                        // remove the entry from the dictionary
+                        let _ = dictionary.remove(&proposal.component_id());
                     }
                 }
             }
