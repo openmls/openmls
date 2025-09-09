@@ -106,12 +106,23 @@ impl StagedCommitWithPendingAppDataUpdates {
         mut self,
         registered_logic: &RegisteredComponentsWithLogic,
     ) -> Result<Box<StagedCommit>, ValidateAppDataUpdateError> {
-        // Retrieve the updates in order
-        let updates = self
-            .0
+        // Assemble lists of AppDataUpdate proposals by ComponentId,
+        // using [`BTreeMap`] (for ordered iteration)
+        let mut update_proposals_lists =
+            BTreeMap::<ComponentId, Vec<&AppDataUpdateProposal>>::new();
+
+        self.0
             .staged_proposal_queue
             .app_data_update_proposals()
-            .map(|p| p.app_data_update_proposal);
+            .for_each(|p| {
+                let component_id = p.app_data_update_proposal.component_id();
+
+                if let Some(list) = update_proposals_lists.get_mut(&component_id) {
+                    list.push(p.app_data_update_proposal);
+                } else {
+                    update_proposals_lists.insert(component_id, vec![p.app_data_update_proposal]);
+                }
+            });
 
         // Retrieve mutable reference to
         // the GroupContext extensions in the StagedDiff
@@ -122,45 +133,48 @@ impl StagedCommitWithPendingAppDataUpdates {
             .group_context_mut()
             .extensions_mut();
 
-        // Iterate through the updates in order,
-        for update in updates {
-            match update.operation().operation_type() {
-                AppDataUpdateOperationType::Update => {
-                    let new_data = registered_logic.apply_logic(update)?;
-                    // In the extensions, initialize an empty AppDataDictionary
-                    // if there is not already one present
-                    if !extensions.contains(ExtensionType::AppDataDictionary) {
-                        extensions
-                            .add(Extension::AppDataDictionary(
-                                AppDataDictionaryExtension::default(),
-                            ))
-                            .map_err(|_| {
-                                LibraryError::custom("AppDataDictionary extension already exists")
-                            })?;
-                    }
-                    // inserts an empty dictionary entry if not already exists
-                    // retrieve the AppDataDictionary, to mutate the Extension in place
-                    let dictionary = extensions
-                        .app_data_dictionary_mut()
-                        .ok_or_else(|| {
-                            LibraryError::custom("AppDataDictionary should have been created")
-                        })?
-                        .dictionary_mut();
-                    let _ = dictionary.insert(update.component_id(), new_data);
-                }
-                AppDataUpdateOperationType::Remove => {
-                    if !registered_logic.contains(update.component_id()) {
-                        return Err(ValidateAppDataUpdateError::ComponentNotRegistered);
-                    }
-                    // remove the entry if the dictionary exists
-                    if let Some(dictionary_ext) = extensions.app_data_dictionary_mut() {
-                        let dictionary = dictionary_ext.dictionary_mut();
-                        if !dictionary.contains(&update.component_id()) {
-                            return Err(ValidateAppDataUpdateError::ComponentNotInDictionary);
+        for (_component_id, proposal_list) in update_proposals_lists {
+            for proposal in proposal_list {
+                match proposal.operation().operation_type() {
+                    AppDataUpdateOperationType::Update => {
+                        let new_data = registered_logic.apply_logic(proposal)?;
+                        // In the extensions, initialize an empty AppDataDictionary
+                        // if there is not already one present
+                        if !extensions.contains(ExtensionType::AppDataDictionary) {
+                            extensions
+                                .add(Extension::AppDataDictionary(
+                                    AppDataDictionaryExtension::default(),
+                                ))
+                                .map_err(|_| {
+                                    LibraryError::custom(
+                                        "AppDataDictionary extension already exists",
+                                    )
+                                })?;
                         }
-                        let _ = dictionary.remove(&update.component_id());
-                    } else {
-                        return Err(ValidateAppDataUpdateError::NoAppDataDictionaryExtension);
+                        // inserts an empty dictionary entry if not already exists
+                        // retrieve the AppDataDictionary, to mutate the Extension in place
+                        let dictionary = extensions
+                            .app_data_dictionary_mut()
+                            .ok_or_else(|| {
+                                LibraryError::custom("AppDataDictionary should have been created")
+                            })?
+                            .dictionary_mut();
+                        let _ = dictionary.insert(proposal.component_id(), new_data);
+                    }
+                    AppDataUpdateOperationType::Remove => {
+                        if !registered_logic.contains(proposal.component_id()) {
+                            return Err(ValidateAppDataUpdateError::ComponentNotRegistered);
+                        }
+                        // remove the entry if the dictionary exists
+                        if let Some(dictionary_ext) = extensions.app_data_dictionary_mut() {
+                            let dictionary = dictionary_ext.dictionary_mut();
+                            if !dictionary.contains(&proposal.component_id()) {
+                                return Err(ValidateAppDataUpdateError::ComponentNotInDictionary);
+                            }
+                            let _ = dictionary.remove(&proposal.component_id());
+                        } else {
+                            return Err(ValidateAppDataUpdateError::NoAppDataDictionaryExtension);
+                        }
                     }
                 }
             }
