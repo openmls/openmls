@@ -43,10 +43,10 @@ pub enum ValidateAppDataUpdateError {
     /// Cannot apply application logic to an [`AppDataUpdateProposal`] of
     /// [`AppDataUpdateOperationType::Remove`].
     ProposalTypeIsRemove,
-    #[error("A component with this ComponentId is not present in the AppDataDictionary.")]
-    /// A component with this [`ComponentId`] is not present in the
-    /// [`AppDataDictionary`](crate::extensions::AppDataDictionary).
-    ComponentNotInDictionary,
+    #[error("A component with this ComponentId is not present in an AppDataDictionaryExtension.")]
+    /// A component with this [`ComponentId`] is not present in an
+    /// [`AppDataDictionaryExtension`](crate::extensions::AppDataDictionaryExtension).
+    ComponentNotAvailable,
 }
 
 // helper type for the application logic stored in the [`RegisteredComponentsWithLogic`]
@@ -168,14 +168,12 @@ impl StagedCommitWithPendingAppDataUpdates {
                         // retrieve the AppDataDictionary, to mutate the Extension in place
                         let dictionary = extensions
                             .app_data_dictionary_mut()
-                            .ok_or_else(|| {
-                                LibraryError::custom("AppDataDictionary should have been created")
-                            })?
+                            .ok_or_else(|| ValidateAppDataUpdateError::ComponentNotAvailable)?
                             .dictionary_mut();
 
                         // return an error if the dictionary does not contain this component id
                         if !dictionary.contains(&proposal.component_id()) {
-                            return Err(ValidateAppDataUpdateError::ComponentNotInDictionary);
+                            return Err(ValidateAppDataUpdateError::ComponentNotAvailable);
                         }
                         // remove the entry from the dictionary
                         let _ = dictionary.remove(&proposal.component_id());

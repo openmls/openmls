@@ -228,7 +228,7 @@ fn test_incorrect_proposals() {
     .unwrap_err();
     assert_eq!(
         err,
-        Error::ValidateAppDataUpdateError(ValidateAppDataUpdateError::NoAppDataDictionaryExtension)
+        Error::ValidateAppDataUpdateError(ValidateAppDataUpdateError::ComponentNotAvailable)
     );
 
     // Adding both remove and update proposals
