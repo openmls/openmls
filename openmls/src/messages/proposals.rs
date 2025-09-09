@@ -777,7 +777,7 @@ mod app_data_update {
     use super::*;
     use crate::prelude::ComponentId;
 
-    /// [`AppDataUpdate`] operation types
+    /// [`AppDataUpdateProposal`] operation types
     #[repr(u8)]
     #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
     pub enum AppDataUpdateOperationType {
