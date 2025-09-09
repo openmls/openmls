@@ -539,12 +539,10 @@ impl ProposalQueue {
                     }
                 }
                 Proposal::GroupContextExtensions(_) => {
-                    // TODO: is this affected by AppDataUpdate?
                     valid_proposals.add(queued_proposal.proposal_reference());
                 }
                 #[cfg(feature = "extensions-draft-08")]
                 Proposal::AppDataUpdate(_) => {
-                    // TODO: check anything here?
                     valid_proposals.add(queued_proposal.proposal_reference())
                 }
                 Proposal::AppAck(_) => unimplemented!("See #291"),
