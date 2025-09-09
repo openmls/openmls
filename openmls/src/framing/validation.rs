@@ -369,6 +369,11 @@ pub enum ProcessedMessageContent {
     /// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).
     StagedCommitMessage(Box<StagedCommit>),
     #[cfg(feature = "extensions-draft-08")]
+    /// A StagedCommit message with pending AppDataUpdate proposals.
+    ///
+    /// Calling
+    /// [`StagedCommitWithPendingAppDataUpdates::apply_app_logic()`] consumes the struct and
+    /// applies the application logic to the underlying [`StagedCommit`].
     StagedCommitWithPendingAppDataUpdates(StagedCommitWithPendingAppDataUpdates),
 }
 

@@ -411,6 +411,7 @@ impl Extensions {
             .find(|ext| ext.extension_type() == extension_type)
     }
     #[cfg(feature = "extensions-draft-08")]
+    // Helper function for retrieving mutable references to Extensions by type
     fn find_by_type_mut(&mut self, extension_type: ExtensionType) -> Option<&mut Extension> {
         self.unique
             .iter_mut()
@@ -474,7 +475,7 @@ impl Extensions {
     }
 
     #[cfg(feature = "extensions-draft-08")]
-    /// Get a mutable reference to the [`AppDataDictionaryExtension`] if there is any.
+    // Get a mutable reference to the [`AppDataDictionaryExtension`] if there is any.
     pub(crate) fn app_data_dictionary_mut(&mut self) -> Option<&mut AppDataDictionaryExtension> {
         self.find_by_type_mut(ExtensionType::AppDataDictionary)
             .and_then(|e| match e {

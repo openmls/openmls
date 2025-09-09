@@ -10,9 +10,13 @@ use std::collections::BTreeMap;
 use thiserror::Error;
 
 #[derive(Debug)]
+/// A wrapper for a [`StagedCommit`] with pending [`AppDataUpdateProposal`]s.
+///
+/// These proposals can be applied by calling
+/// [`StagedCommitWithPendingAppDataUpdates::apply_app_logic()`], which consumes
+/// the struct and returns a [`StagedCommit`].
 pub struct StagedCommitWithPendingAppDataUpdates(pub(crate) Box<StagedCommit>);
 
-// TODO: are any other variants needed?
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
 /// An error returned by the app logic when applying an AppDataUpdate proposal.
 pub enum ApplyAppLogicError {
@@ -47,11 +51,15 @@ pub enum ValidateAppDataUpdateError {
     NoAppDataDictionaryExtension,
 }
 
+// helper type for the application logic stored in the [`RegisteredComponentsWithLogic`]
 type RegisteredComponentLogic = Box<dyn Fn(&[u8]) -> Result<Vec<u8>, ApplyAppLogicError>>;
 
+/// A struct representing the [`ComponentId`]s known to the application,
+/// with the application logic registered to each component.
 pub struct RegisteredComponentsWithLogic(BTreeMap<ComponentId, RegisteredComponentLogic>);
 
 impl RegisteredComponentsWithLogic {
+    /// Initialize a new, empty [`RegisteredComponentsWithLogic`].
     pub fn new() -> Self {
         Self(BTreeMap::new())
     }
@@ -63,11 +71,14 @@ impl RegisteredComponentsWithLogic {
     ) {
         let _ = self.0.insert(component_id, Box::new(app_logic));
     }
+    /// Returns `true` if there is an entry for the specified [`ComponentId`].
     pub fn contains(&self, component_id: ComponentId) -> bool {
         self.0.contains_key(&component_id)
     }
 
-    pub fn apply_logic(
+    // Apply the application logic for a specified [`AppDataUpdateProposal`], if application logic
+    // is registered for this component.
+    pub(crate) fn apply_logic(
         &self,
         proposal: &AppDataUpdateProposal,
     ) -> Result<Vec<u8>, ValidateAppDataUpdateError> {
@@ -90,10 +101,12 @@ impl RegisteredComponentsWithLogic {
 }
 
 impl StagedCommitWithPendingAppDataUpdates {
+    /// Apply the application logic registered in the [`RegisteredComponentsWithLogic`] to the [`StagedCommit`].
     pub fn apply_app_logic(
         mut self,
         registered_logic: &RegisteredComponentsWithLogic,
     ) -> Result<Box<StagedCommit>, ValidateAppDataUpdateError> {
+        // Retrieve the updates in order
         let updates = self
             .0
             .staged_proposal_queue
@@ -109,6 +122,7 @@ impl StagedCommitWithPendingAppDataUpdates {
             .group_context_mut()
             .extensions_mut();
 
+        // Iterate through the updates in order,
         for update in updates {
             match update.operation().operation_type() {
                 AppDataUpdateOperationType::Update => {
