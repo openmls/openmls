@@ -101,15 +101,18 @@ impl RegisteredComponentsWithLogic {
 impl StagedCommitWithPendingAppDataUpdates {
     /// Apply the application logic registered in the [`RegisteredComponentsWithLogic`] to the [`StagedCommit`].
     pub fn apply_app_logic(
-        mut self,
+        self,
         registered_logic: &RegisteredComponentsWithLogic,
     ) -> Result<Box<StagedCommit>, ValidateAppDataUpdateError> {
+        // Retrieve the staged commit
+        let mut staged_commit = self.0;
+
         // Assemble lists of AppDataUpdate proposals by ComponentId,
         // using [`BTreeMap`] (for ordered iteration by ComponentId key)
         let mut update_proposals_lists =
             BTreeMap::<ComponentId, Vec<&AppDataUpdateProposal>>::new();
 
-        self.0
+        staged_commit
             .staged_proposal_queue
             .app_data_update_proposals()
             .for_each(|p| {
@@ -124,8 +127,7 @@ impl StagedCommitWithPendingAppDataUpdates {
 
         // Retrieve mutable reference to
         // the GroupContext extensions in the StagedDiff
-        let extensions = self
-            .0
+        let extensions = staged_commit
             .state
             .staged_diff_mut()
             .group_context_mut()
@@ -183,6 +185,6 @@ impl StagedCommitWithPendingAppDataUpdates {
         }
 
         // return the staged commit
-        Ok(self.0)
+        Ok(staged_commit)
     }
 }
