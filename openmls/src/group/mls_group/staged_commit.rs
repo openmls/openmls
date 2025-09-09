@@ -593,6 +593,8 @@ impl StagedCommit {
         if let Some(required_capabilities_extension) = self.group_context().required_capabilities()
         {
             // check whether app data update and app data dictionary are supported
+            // NOTE: ExtensionType::AppDataDictionary needs to be supported here,
+            // in order to allow including this extension in the Extensions.
             let has_required_capabilities = required_capabilities_extension
                 .proposal_types()
                 .contains(&ProposalType::AppDataUpdate)
