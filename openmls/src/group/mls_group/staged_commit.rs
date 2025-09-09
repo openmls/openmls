@@ -616,6 +616,7 @@ impl StagedCommit {
 
 impl StagedCommitState {
     #[cfg(feature = "extensions-draft-08")]
+    /// Get a mutable reference to the [`StagedPublicGroupDiff`].
     pub(crate) fn staged_diff_mut(&mut self) -> &mut StagedPublicGroupDiff {
         match self {
             StagedCommitState::PublicState(ref mut ps) => &mut ps.staged_diff,

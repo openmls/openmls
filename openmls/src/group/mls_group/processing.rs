@@ -306,6 +306,8 @@ impl MlsGroup {
                             provider,
                         )?;
 
+                        // Wrap in StagedCommitWithPendingAppDataUpdates
+                        // if there are pending AppDataUpdates that need to be applied.
                         // TODO: improve syntax
                         match staged_commit {
                             #[cfg(feature = "extensions-draft-08")]

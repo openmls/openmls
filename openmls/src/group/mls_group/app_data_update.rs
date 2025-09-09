@@ -107,7 +107,7 @@ impl StagedCommitWithPendingAppDataUpdates {
         registered_logic: &RegisteredComponentsWithLogic,
     ) -> Result<Box<StagedCommit>, ValidateAppDataUpdateError> {
         // Assemble lists of AppDataUpdate proposals by ComponentId,
-        // using [`BTreeMap`] (for ordered iteration)
+        // using [`BTreeMap`] (for ordered iteration by ComponentId key)
         let mut update_proposals_lists =
             BTreeMap::<ComponentId, Vec<&AppDataUpdateProposal>>::new();
 

@@ -252,6 +252,7 @@ impl StagedPublicGroupDiff {
         &self.group_context
     }
     #[cfg(feature = "extensions-draft-08")]
+    /// Get a mutable reference to the staged [`GroupContext`].
     pub(crate) fn group_context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }

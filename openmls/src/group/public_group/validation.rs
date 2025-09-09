@@ -608,12 +608,19 @@ impl PublicGroup {
         Ok(())
     }
     #[cfg(feature = "extensions-draft-08")]
+    /// Returns an [`AppDataUpdateValidationError`] if:
+    ///   - An [`AppDataUpdateProposal`] appears before a [`GroupContextExtensionProposal`]
+    ///   - The [`GroupContextExtensionProposal`] updates the [`AppDataDictionary`] when the
+    ///     required capabilities include AppDataUpdate proposal type
+    ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes both Updates
+    ///   and Removes
+    ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes more than one
+    ///   Remove
     pub(crate) fn validate_app_data_update_proposals_and_group_context(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), AppDataUpdateValidationError> {
-        // check whether AppDataUpdate is enabled in the capabilities
-        // check the new capabilities if they are updated in the proposal queue
+        // retrieve the GroupContextExtensions proposal, if available
         let group_context_extension = proposal_queue
             .filtered_by_type(ProposalType::GroupContextExtensions)
             .filter_map(|queued_proposal| match queued_proposal.proposal() {
@@ -638,6 +645,8 @@ impl PublicGroup {
             let extensions = group_context_extension.extensions();
 
             match extensions.required_capabilities() {
+                // TODO: should it also be ensured here that the AppDataDictionary extension type is
+                // supported?
                 Some(caps) if caps.proposal_types().contains(&ProposalType::AppDataUpdate) => {
                     // if the app data dictionary is not updated, this is valid
                     if extensions.app_data_dictionary()
