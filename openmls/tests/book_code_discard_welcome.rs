@@ -167,7 +167,6 @@ fn not_join_group() {
     // Inspect ciphersuite...
     let _ciphersuite = group_context.ciphersuite();
     // Inspect extensions...
-    // TODO TIM ich bin mir noch nicht sicher was ich hiermit mache
     let extensions: Extensions<Extension> = group_context.extensions().clone().into();
 
     // Can check which extensions are enabled

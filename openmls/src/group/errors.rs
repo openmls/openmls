@@ -430,7 +430,6 @@ pub enum ValidationError {
     /// See [`ExternalCommitValidationError`] for more details.
     #[error(transparent)]
     ExternalCommitValidation(#[from] ExternalCommitValidationError),
-    // TODO TIM
     /// See [`InvalidExtensionError`]
     #[error("Invalid extension")]
     InvalidExtension,
