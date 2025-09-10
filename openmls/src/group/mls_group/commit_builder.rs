@@ -11,6 +11,7 @@ use tls_codec::Serialize as _;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{signable::Signable as _, Secret},
+    extensions::errors::InvalidExtensionError,
     framing::{FramingParameters, WireFormat},
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
@@ -53,13 +54,19 @@ struct ExternalCommitInfo {
     wire_format_policy: WireFormatPolicy,
 }
 
+#[derive(Debug, Default)]
+struct GroupInfoConfig {
+    create_group_info: bool,
+    use_ratchet_tree_extension: bool,
+    other_extensions: Vec<Extension>,
+}
+
 /// This stage is for populating the builder.
 #[derive(Debug)]
 pub struct Initial {
     own_proposals: Vec<Proposal>,
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
-    create_group_info: bool,
     external_commit_info: Option<ExternalCommitInfo>,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
@@ -73,7 +80,6 @@ impl Default for Initial {
             consume_proposal_store: true,
             force_self_update: false,
             leaf_node_parameters: LeafNodeParameters::default(),
-            create_group_info: false,
             own_proposals: vec![],
             external_commit_info: None,
         }
@@ -85,13 +91,15 @@ pub struct LoadedPsks {
     own_proposals: Vec<Proposal>,
     force_self_update: bool,
     leaf_node_parameters: LeafNodeParameters,
-    create_group_info: bool,
     external_commit_info: Option<ExternalCommitInfo>,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
     psks: Vec<(PreSharedKeyId, Secret)>,
+
+    /// The GroupInfo creation config
+    group_info_config: GroupInfoConfig,
 }
 
 /// This stage is after we validated the data, ready for staging and exporting the messages
@@ -270,22 +278,11 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
 impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// returns a new [`CommitBuilder`] for the given [`MlsGroup`].
     pub fn new(group: G) -> CommitBuilder<'a, Initial, G> {
-        let stage = Initial {
-            create_group_info: group.borrow().configuration().use_ratchet_tree_extension,
-            ..Default::default()
-        };
         CommitBuilder {
             group,
-            stage,
+            stage: Initial::default(),
             pd: PhantomData,
         }
-    }
-
-    /// Sets whether or not a [`GroupInfo`] should be created when the commit is staged. Defaults to
-    /// the value of the [`MlsGroup`]s [`MlsGroupJoinConfig`].
-    pub fn create_group_info(mut self, create_group_info: bool) -> Self {
-        self.stage.create_group_info = create_group_info;
-        self
     }
 
     /// Sets the leaf node parameters for the new leaf node in a self-update. Implies that a
@@ -323,6 +320,19 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
             .collect();
 
+        // Initialize GroupInfoConfig
+        let use_ratchet_tree_extension = self
+            .group
+            .borrow()
+            .configuration()
+            .use_ratchet_tree_extension;
+
+        let group_info_config = GroupInfoConfig {
+            use_ratchet_tree_extension,
+            create_group_info: use_ratchet_tree_extension,
+            other_extensions: vec![],
+        };
+
         Ok(self
             .map_stage(|stage| {
                 (
@@ -333,8 +343,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         force_self_update: stage.force_self_update,
                         leaf_node_parameters: stage.leaf_node_parameters,
                         consume_proposal_store: stage.consume_proposal_store,
-                        create_group_info: stage.create_group_info,
                         external_commit_info: stage.external_commit_info,
+                        group_info_config,
                     },
                 )
             })
@@ -343,6 +353,48 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
 }
 
 impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
+    /// Sets whether or not a [`GroupInfo`] should be created when the commit is staged. Defaults to
+    /// the value of the [`MlsGroup`]s [`MlsGroupJoinConfig`].
+    pub fn create_group_info(mut self, create_group_info: bool) -> Self {
+        self.stage.group_info_config.create_group_info = create_group_info;
+        self
+    }
+
+    /// Sets whether the [`GroupInfo`] should contain the ratchet tree extension. If set to `true`,
+    /// enables the [`GroupInfo`] to be created when the commit is staged.
+    pub fn use_ratchet_tree_extension(mut self, use_ratchet_tree_extension: bool) -> Self {
+        if use_ratchet_tree_extension {
+            self.stage.group_info_config.create_group_info = true;
+        }
+        self.stage.group_info_config.use_ratchet_tree_extension = use_ratchet_tree_extension;
+        self
+    }
+
+    /// Add the provided [`Extension`]s to the [`GroupInfo`].
+    ///
+    ///  Returns an error if a  [`RatchetTreeExtension`] or [`ExternalPubExtension`] is added
+    ///  directly here.
+    pub fn create_group_info_with_extensions(
+        mut self,
+        extensions: impl IntoIterator<Item = Extension>,
+    ) -> Result<Self, InvalidExtensionError> {
+        self.stage.group_info_config.create_group_info = true;
+        self.stage.group_info_config.other_extensions = extensions
+            .into_iter()
+            .map(|extension| {
+                if extension.as_ratchet_tree_extension().is_ok()
+                    || extension.as_external_pub_extension().is_ok()
+                {
+                    Err(InvalidExtensionError::CannotAddDirectlyToGroupInfo)
+                } else {
+                    Ok(extension)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(self)
+    }
+
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
@@ -383,6 +435,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete, G>, CreateCommitError> {
         let (mut cur_stage, builder) = self.take_stage();
+        // retrieve the config
+        let GroupInfoConfig {
+            create_group_info,
+            use_ratchet_tree_extension,
+            other_extensions,
+        } = cur_stage.group_info_config;
+
         let group = builder.group.borrow();
         let ciphersuite = group.ciphersuite();
         let own_leaf_index = group.own_leaf_index();
@@ -626,11 +685,12 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         // We need a GroupInfo if we need to build a Welcome, or if
         // `create_group_info` is set to `true`. If not overridden, `create_group_info`
         // is set to the `use_ratchet_tree` flag in the group configuration.
-        let needs_group_info = needs_welcome || cur_stage.create_group_info;
+        let needs_group_info = needs_welcome || create_group_info;
 
         let group_info = if !needs_group_info {
             None
         } else {
+            let mut extensions_list = vec![];
             // Build ExternalPub extension
             let external_pub = provisional_epoch_secrets
                 .external_secret()
@@ -640,15 +700,21 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             let external_pub_extension =
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
 
-            // Create the ratchet tree extension if necessary
-            let extensions: Extensions = if group.configuration().use_ratchet_tree_extension {
-                Extensions::from_vec(vec![
-                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_ratchet_tree())),
-                    external_pub_extension,
-                ])?
-            } else {
-                Extensions::single(external_pub_extension)
-            };
+            // Create and add ratchet tree extension if necessary
+            if use_ratchet_tree_extension {
+                let ratchet_tree_extension =
+                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_ratchet_tree()));
+                extensions_list.push(ratchet_tree_extension);
+            }
+
+            // Add ExternalPub extension
+            extensions_list.push(external_pub_extension);
+
+            // Append rest of extensions
+            extensions_list.extend(other_extensions);
+
+            // Build  extensions from vec
+            let extensions = Extensions::from_vec(extensions_list)?;
 
             // Create to-be-signed group info.
             let group_info_tbs = {
@@ -657,7 +723,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     extensions,
                     confirmation_tag,
                     own_leaf_index,
-                )
+                )?
             };
             // Sign to-be-signed group info.
             Some(group_info_tbs.sign(old_signer)?)
@@ -728,7 +794,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 commit: authenticated_content,
                 welcome_option,
                 staged_commit,
-                group_info: group_info.filter(|_| cur_stage.create_group_info),
+                group_info: group_info.filter(|_| create_group_info),
             },
             original_wire_format_policy: cur_stage
                 .external_commit_info
