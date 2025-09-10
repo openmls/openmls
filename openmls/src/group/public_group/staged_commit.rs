@@ -13,7 +13,7 @@ use crate::{
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub struct PublicStagedCommitState {
-    pub(super) staged_diff: StagedPublicGroupDiff,
+    pub(crate) staged_diff: StagedPublicGroupDiff,
     pub(super) update_path_leaf_node: Option<LeafNode>,
 }
 
@@ -150,6 +150,10 @@ impl PublicGroup {
         // ValSem208
         // ValSem209
         self.validate_group_context_extensions_proposal(&proposal_queue)?;
+
+        #[cfg(feature = "extensions-draft-08")]
+        self.validate_app_data_update_proposals_and_group_context(&proposal_queue)?;
+
         // ValSem401
         // ValSem402
         // ValSem403
@@ -295,7 +299,7 @@ impl PublicGroup {
         };
 
         // Update group context
-        diff.update_group_context(crypto, apply_proposals_values.extensions.clone())?;
+        diff.update_group_context(crypto, apply_proposals_values.extensions)?;
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
         diff.update_confirmed_transcript_hash(crypto, mls_content)?;

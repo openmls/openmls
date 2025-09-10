@@ -21,6 +21,12 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::{
+    extensions::ComponentId,
+    messages::proposals::{AppDataUpdateOperation, AppDataUpdateProposal},
+};
+
 /// Helper for building a proposal based on the raw values.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Propose {
@@ -52,6 +58,21 @@ pub enum Propose {
 
     /// Propose adding new group context extensions.
     GroupContextExtensions(Extensions),
+
+    #[cfg(feature = "extensions-draft-08")]
+    /// Propose an update to a component in the [`AppDataDictionary`]
+    UpdateAppDataComponent {
+        /// The component_id to update in the dictionary
+        component_id: ComponentId,
+        /// The data representing the update
+        update: Vec<u8>,
+    },
+    #[cfg(feature = "extensions-draft-08")]
+    /// Propose removal of a component in the [`AppDataDictionary`]
+    RemoveAppDataComponent {
+        /// The component_id to remove in the dictionary
+        component_id: ComponentId,
+    },
 
     /// A custom proposal with semantics to be implemented by the application.
     Custom(CustomProposal),
@@ -212,6 +233,26 @@ impl MlsGroup {
             Propose::GroupContextExtensions(_) => Err(ProposalError::LibraryError(
                 LibraryError::custom("Unsupported proposal type GroupContextExtensions"),
             )),
+            // extensions-draft-08
+            #[cfg(feature = "extensions-draft-08")]
+            Propose::UpdateAppDataComponent {
+                component_id,
+                update,
+            } => self.propose_app_data_update(
+                provider,
+                signer,
+                component_id,
+                AppDataUpdateOperation::Update(update.into()),
+            ),
+            #[cfg(feature = "extensions-draft-08")]
+            Propose::RemoveAppDataComponent { component_id } => self.propose_app_data_update(
+                provider,
+                signer,
+                component_id,
+                AppDataUpdateOperation::Remove,
+            ),
+
+            // custom
             Propose::Custom(custom_proposal) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
                     self.propose_custom_proposal_by_value(provider, signer, custom_proposal)
@@ -418,6 +459,46 @@ impl MlsGroup {
         Ok((commit, welcome, group_info))
     }
 
+    /// Updates the AppDataDictionary
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn propose_app_data_update<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        component_id: ComponentId,
+        operation: AppDataUpdateOperation,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        self.is_operational()?;
+
+        // TODO: validate the component_id here?
+        let proposal = self.create_app_data_update_proposal(
+            self.framing_parameters(),
+            component_id,
+            operation,
+            signer,
+        )?;
+
+        let queued_proposal = QueuedProposal::from_authenticated_content(
+            self.ciphersuite(),
+            provider.crypto(),
+            proposal.clone(),
+            ProposalOrRefType::Proposal,
+        )?;
+        let proposal_ref = queued_proposal.proposal_reference();
+
+        log::trace!("Storing proposal in queue {:?}", queued_proposal);
+        provider
+            .storage()
+            .queue_proposal(self.group_id(), &proposal_ref, &queued_proposal)
+            .map_err(ProposalError::StorageError)?;
+        self.proposal_store_mut().add(queued_proposal);
+
+        let mls_message = self.content_to_mls_message(proposal, provider)?;
+
+        self.reset_aad();
+        Ok((mls_message, proposal_ref))
+    }
+
     /// Removes a specific proposal from the store.
     pub fn remove_pending_proposal<Storage: StorageProvider>(
         &mut self,
@@ -543,6 +624,24 @@ impl MlsGroup {
     ) -> Result<AuthenticatedContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::psk(presharedkey_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            self.own_leaf_index(),
+            proposal,
+            self.context(),
+            signer,
+        )
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn create_app_data_update_proposal(
+        &self,
+        framing_parameters: FramingParameters,
+        component_id: ComponentId,
+        operation: AppDataUpdateOperation,
+        signer: &impl Signer,
+    ) -> Result<AuthenticatedContent, LibraryError> {
+        let proposal = Proposal::AppDataUpdate(AppDataUpdateProposal::new(component_id, operation));
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),

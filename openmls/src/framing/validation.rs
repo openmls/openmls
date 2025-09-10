@@ -35,6 +35,9 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::group::mls_group::app_data_update::StagedCommitWithPendingAppDataUpdates;
+
 use super::{
     mls_auth_content::AuthenticatedContent,
     mls_auth_content_in::{AuthenticatedContentIn, VerifiableAuthenticatedContentIn},
@@ -365,6 +368,13 @@ pub enum ProcessedMessageContent {
     /// the commit should be merged into the group's state using
     /// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).
     StagedCommitMessage(Box<StagedCommit>),
+    #[cfg(feature = "extensions-draft-08")]
+    /// A StagedCommit message with pending AppDataUpdate proposals.
+    ///
+    /// Calling
+    /// [`StagedCommitWithPendingAppDataUpdates::apply_app_logic()`] consumes the struct and
+    /// applies the application logic to the underlying [`StagedCommit`].
+    StagedCommitWithPendingAppDataUpdates(StagedCommitWithPendingAppDataUpdates),
 }
 
 /// Application message received through a [ProcessedMessage].
