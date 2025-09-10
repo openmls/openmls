@@ -355,7 +355,7 @@ fn test_valsem005() {
 
     let original_message = plaintext.clone();
 
-    plaintext.set_content(FramedContentBody::Application(vec![1, 2, 3].into()));
+    plaintext.set_content(FramedContentBody::application(&[1, 2, 3]));
 
     // The membership tag is checked before verifying content encryption, so we need to re-calculate it and set it
     plaintext

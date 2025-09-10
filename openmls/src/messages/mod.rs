@@ -239,10 +239,9 @@ impl CommitIn {
                     // We need to determine if it is a a resync or a join.
                     // Find the first remove proposal and extract the leaf index.
                     let former_sender_index = proposals.iter().find_map(|p| {
-                        let ProposalOrRef::Proposal(Proposal::Remove(r)) = p else {
-                            return None;
-                        };
-                        Some(r.removed())
+                        p.as_proposal()
+                            .and_then(|p| p.as_remove())
+                            .map(|r| r.removed())
                     });
 
                     // Collect the sender indices of SelfRemoves that are part of
@@ -250,11 +249,10 @@ impl CommitIn {
                     let self_removed_indices =
                         self_removes_in_store.into_iter().filter_map(|self_remove| {
                             proposals.iter().find_map(|committed_p| {
-                                let ProposalOrRef::Reference(committed_p_ref) = committed_p else {
-                                    return None;
-                                };
-                                (self_remove.proposal_ref == *committed_p_ref)
-                                    .then_some(self_remove.sender)
+                                committed_p.as_reference().and_then(|committed_p_ref| {
+                                    (&self_remove.proposal_ref == committed_p_ref)
+                                        .then_some(self_remove.sender)
+                                })
                             })
                         });
 

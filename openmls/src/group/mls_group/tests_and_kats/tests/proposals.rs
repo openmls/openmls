@@ -68,9 +68,9 @@ fn proposal_queue_functions(
         key_package: bob_key_package.clone(),
     };
 
-    let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
-    let proposal_add_alice2 = Proposal::Add(add_proposal_alice2);
-    let proposal_add_bob = Proposal::Add(add_proposal_bob);
+    let proposal_add_alice1 = Proposal::add(add_proposal_alice1);
+    let proposal_add_alice2 = Proposal::add(add_proposal_alice2);
+    let proposal_add_bob = Proposal::add(add_proposal_bob);
 
     // Test proposal types
     assert!(proposal_add_alice1.is_type(ProposalType::Add));
@@ -205,8 +205,8 @@ fn proposal_queue_order() {
         key_package: bob_key_package.clone(),
     };
 
-    let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
-    let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
+    let proposal_add_alice1 = Proposal::add(add_proposal_alice1);
+    let proposal_add_bob1 = Proposal::add(add_proposal_bob1);
 
     // Frame proposals in PublicMessage
     let mls_plaintext_add_alice1 = AuthenticatedContent::member_proposal(
@@ -252,8 +252,8 @@ fn proposal_queue_order() {
     );
 
     let proposal_or_refs = vec![
-        ProposalOrRef::Proposal(proposal_add_bob1.clone()),
-        ProposalOrRef::Reference(proposal_reference_add_alice1),
+        ProposalOrRef::proposal(proposal_add_bob1.clone()),
+        ProposalOrRef::reference(proposal_reference_add_alice1),
     ];
 
     let sender = Sender::build_member(LeafNodeIndex::new(0));

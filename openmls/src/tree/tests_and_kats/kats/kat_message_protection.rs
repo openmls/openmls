@@ -372,7 +372,7 @@ pub fn run_test_vector(
                 .0;
             match processed_message.content().to_owned() {
                 FramedContentBody::Commit(c) => {
-                    assert_eq!(commit, CommitIn::from(c))
+                    assert_eq!(commit, CommitIn::from(*c))
                 }
                 _ => panic!("Wrong processed message content"),
             }

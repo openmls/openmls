@@ -165,6 +165,12 @@ impl QueuedProposal {
     pub(crate) fn proposal_reference(&self) -> ProposalRef {
         self.proposal_reference.clone()
     }
+
+    /// Returns the `ProposalRef`.
+    pub(crate) fn proposal_reference_ref(&self) -> &ProposalRef {
+        &self.proposal_reference
+    }
+
     /// Returns the `ProposalOrRefType`.
     pub fn proposal_or_ref_type(&self) -> ProposalOrRefType {
         self.proposal_or_ref_type
@@ -263,15 +269,25 @@ impl ProposalQueue {
             let queued_proposal = match proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
-                    if let Proposal::Remove(ref remove_proposal) = proposal {
-                        if let Sender::Member(leaf_index) = sender {
-                            if remove_proposal.removed() == *leaf_index {
-                                return Err(FromCommittedProposalsError::SelfRemoval);
-                            }
-                        }
-                    }
+                    if proposal
+                        .as_remove()
+                        .and_then(|remove_proposal| {
+                            sender.as_member().filter(|leaf_index| {
+                                // The proposal must not remove the committer.
+                                remove_proposal.removed() == *leaf_index
+                            })
+                        })
+                        .is_some()
+                    {
+                        return Err(FromCommittedProposalsError::SelfRemoval);
+                    };
 
-                    QueuedProposal::from_proposal_and_sender(ciphersuite, crypto, proposal, sender)?
+                    QueuedProposal::from_proposal_and_sender(
+                        ciphersuite,
+                        crypto,
+                        *proposal,
+                        sender,
+                    )?
                 }
                 ProposalOrRef::Reference(ref proposal_reference) => {
                     match proposals_by_reference_queue.get(proposal_reference) {
@@ -558,10 +574,10 @@ impl ProposalQueue {
                 // Differentiate the type of proposal
                 match queued_proposal.proposal_or_ref_type {
                     ProposalOrRefType::Proposal => {
-                        ProposalOrRef::Proposal(queued_proposal.proposal.clone())
+                        ProposalOrRef::proposal(queued_proposal.proposal.clone())
                     }
                     ProposalOrRefType::Reference => {
-                        ProposalOrRef::Reference(queued_proposal.proposal_reference.clone())
+                        ProposalOrRef::reference(queued_proposal.proposal_reference.clone())
                     }
                 }
             })

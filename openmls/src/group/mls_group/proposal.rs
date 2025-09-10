@@ -453,7 +453,7 @@ impl MlsGroup {
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
-        let proposal = Proposal::Add(add_proposal);
+        let proposal = Proposal::add(add_proposal);
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
@@ -477,7 +477,7 @@ impl MlsGroup {
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, LibraryError> {
         let update_proposal = UpdateProposal { leaf_node };
-        let proposal = Proposal::Update(update_proposal);
+        let proposal = Proposal::update(update_proposal);
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
@@ -501,7 +501,7 @@ impl MlsGroup {
             return Err(ValidationError::UnknownMember);
         }
         let remove_proposal = RemoveProposal { removed };
-        let proposal = Proposal::Remove(remove_proposal);
+        let proposal = Proposal::remove(remove_proposal);
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
@@ -542,7 +542,7 @@ impl MlsGroup {
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
-        let proposal = Proposal::PreSharedKey(presharedkey_proposal);
+        let proposal = Proposal::psk(presharedkey_proposal);
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
@@ -558,7 +558,7 @@ impl MlsGroup {
         custom_proposal: CustomProposal,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, LibraryError> {
-        let proposal = Proposal::Custom(custom_proposal);
+        let proposal = Proposal::custom(custom_proposal);
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),

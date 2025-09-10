@@ -83,7 +83,6 @@ impl From<AuthenticatedContentIn> for FramedContentIn {
 }
 
 /// ```c
-/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     // ... continued from [FramedContent] ...
 ///
@@ -116,7 +115,7 @@ pub(crate) enum FramedContentBodyIn {
     #[tls_codec(discriminant = 2)]
     Proposal(ProposalIn),
     #[tls_codec(discriminant = 3)]
-    Commit(CommitIn),
+    Commit(Box<CommitIn>),
 }
 
 impl FramedContentBodyIn {
@@ -140,7 +139,9 @@ impl FramedContentBodyIn {
             ContentType::Proposal => {
                 FramedContentBodyIn::Proposal(ProposalIn::tls_deserialize(bytes)?)
             }
-            ContentType::Commit => FramedContentBodyIn::Commit(CommitIn::tls_deserialize(bytes)?),
+            ContentType::Commit => {
+                FramedContentBodyIn::Commit(Box::new(CommitIn::tls_deserialize(bytes)?))
+            }
         })
     }
 
@@ -160,12 +161,12 @@ impl FramedContentBodyIn {
             FramedContentBodyIn::Commit(commit_in) => {
                 let sender_context = sender_context
                     .ok_or(LibraryError::custom("Forgot the commit sender context"))?;
-                FramedContentBody::Commit(commit_in.validate(
+                FramedContentBody::Commit(Box::new(commit_in.validate(
                     ciphersuite,
                     crypto,
                     sender_context,
                     protocol_version,
-                )?)
+                )?))
             }
         })
     }
@@ -234,7 +235,9 @@ impl From<FramedContentBodyIn> for FramedContentBody {
                 FramedContentBody::Application(application)
             }
             FramedContentBodyIn::Proposal(proposal) => FramedContentBody::Proposal(proposal.into()),
-            FramedContentBodyIn::Commit(commit) => FramedContentBody::Commit(commit.into()),
+            FramedContentBodyIn::Commit(commit) => {
+                FramedContentBody::Commit(Box::new((*commit).into()))
+            }
         }
     }
 }
@@ -261,7 +264,9 @@ impl From<FramedContentBody> for FramedContentBodyIn {
                 FramedContentBodyIn::Application(application)
             }
             FramedContentBody::Proposal(proposal) => FramedContentBodyIn::Proposal(proposal.into()),
-            FramedContentBody::Commit(commit) => FramedContentBodyIn::Commit(commit.into()),
+            FramedContentBody::Commit(commit) => {
+                FramedContentBodyIn::Commit(Box::new((*commit).into()))
+            }
         }
     }
 }
