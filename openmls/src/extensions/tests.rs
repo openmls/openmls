@@ -230,7 +230,8 @@ fn wrong_extension_with_group_context_extensions() {
     assert_eq!(
         err,
         InvalidExtensionError::NotValid {
-            illegal_extension: ExtensionType::ApplicationId
+            illegal_extension: ExtensionType::ApplicationId,
+            ty: std::any::type_name::<GroupContext>()
         }
     );
     let err = PublicGroup::builder(
@@ -246,7 +247,8 @@ fn wrong_extension_with_group_context_extensions() {
     assert_eq!(
         err,
         InvalidExtensionError::NotValid {
-            illegal_extension: ExtensionType::ApplicationId
+            illegal_extension: ExtensionType::ApplicationId,
+            ty: std::any::type_name::<GroupContext>()
         }
     );
     // create an extension that we can check for later
@@ -260,7 +262,8 @@ fn wrong_extension_with_group_context_extensions() {
     assert_eq!(
         err,
         InvalidExtensionError::NotValid {
-            illegal_extension: ExtensionType::ExternalPub
+            illegal_extension: ExtensionType::ExternalPub,
+            ty: std::any::type_name::<GroupContext>()
         }
     );
 
@@ -276,7 +279,8 @@ fn wrong_extension_with_group_context_extensions() {
     assert_eq!(
         err,
         InvalidExtensionError::NotValid {
-            illegal_extension: ExtensionType::ExternalPub
+            illegal_extension: ExtensionType::ExternalPub,
+            ty: std::any::type_name::<GroupContext>()
         }
     );
 
@@ -292,7 +296,8 @@ fn wrong_extension_with_group_context_extensions() {
     assert_eq!(
         err,
         InvalidExtensionError::NotValid {
-            illegal_extension: ExtensionType::RatchetTree
+            illegal_extension: ExtensionType::RatchetTree,
+            ty: std::any::type_name::<GroupContext>()
         }
     );
 
@@ -308,7 +313,8 @@ fn wrong_extension_with_group_context_extensions() {
     assert_eq!(
         err,
         InvalidExtensionError::NotValid {
-            illegal_extension: ExtensionType::RatchetTree
+            illegal_extension: ExtensionType::RatchetTree,
+            ty: std::any::type_name::<GroupContext>()
         }
     );
 }

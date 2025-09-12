@@ -239,28 +239,6 @@ pub enum Extension {
     Unknown(u16, UnknownExtension),
 }
 
-/// TypedExtension is implemented by all types that can be used as a Extension.
-pub trait TypedExtension: Debug + Clone + PartialEq + Eq + Serialize
-// Debug + Clone + PartialEq + Eq + Serialize + Size + TlsDeserializeTrait + TlsSerializeTrait
-{
-    /// Get the type of the extension.
-    fn extension_type(&self) -> ExtensionType;
-}
-
-impl TypedExtension for Extension {
-    fn extension_type(&self) -> ExtensionType {
-        match self {
-            Extension::ApplicationId(_) => ExtensionType::ApplicationId,
-            Extension::RatchetTree(_) => ExtensionType::RatchetTree,
-            Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
-            Extension::ExternalPub(_) => ExtensionType::ExternalPub,
-            Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
-            Extension::LastResort(_) => ExtensionType::LastResort,
-            Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
-        }
-    }
-}
-
 /// A unknown/unparsed extension represented by raw bytes.
 #[derive(
     PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
@@ -436,6 +414,7 @@ impl<T: ExtensionValidator> TryFrom<Vec<Extension>> for ExtensionsForObject<T> {
             if !T::valid_extension(&extension) {
                 return Err(InvalidExtensionError::NotValid {
                     illegal_extension: extension.extension_type(),
+                    ty: std::any::type_name::<T>(),
                 });
             }
             if unique
