@@ -1,6 +1,6 @@
 #![cfg(feature = "fork-resolution")]
 
-use openmls::prelude::{Extension, *};
+use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
 use openmls_traits::{signatures::Signer, types::SignatureScheme};

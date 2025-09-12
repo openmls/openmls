@@ -13,7 +13,7 @@ use crate::{
         CommitBuilderStageError, CreateCommitError, Extensions, GroupId, Member, MlsGroup,
         NewGroupError,
     },
-    prelude::{Extension, KeyPackage},
+    prelude::KeyPackage,
     storage::OpenMlsProvider,
 };
 
