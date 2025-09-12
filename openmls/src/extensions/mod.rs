@@ -24,6 +24,7 @@
 use std::{
     fmt::Debug,
     io::{Read, Write},
+    marker::PhantomData,
 };
 
 use serde::{Deserialize, Serialize};
@@ -52,8 +53,10 @@ pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, DeserializeBytes, Error, Serialize as TlsSerializeTrait,
-    Size, TlsSize,
+    Size, TlsDeserialize, TlsSerialize, TlsSize,
 };
+
+use crate::group::GroupContext;
 
 #[cfg(test)]
 mod tests;
@@ -237,13 +240,39 @@ pub enum Extension {
 }
 
 /// A unknown/unparsed extension represented by raw bytes.
-#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
+)]
 pub struct UnknownExtension(pub Vec<u8>);
 
-/// A list of extensions with unique extension types.
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize)]
-pub struct Extensions {
+/// A Extension for Object of type T
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExtensionsForObject<T> {
     unique: Vec<Extension>,
+    #[serde(skip)]
+    _object: core::marker::PhantomData<T>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, TlsSize, TlsSerialize, TlsDeserialize)]
+/// Any object
+pub struct AnyObject;
+
+/// Type alias for AnyObject extensions
+pub type Extensions = ExtensionsForObject<AnyObject>;
+
+impl<T> Default for ExtensionsForObject<T> {
+    fn default() -> Self {
+        Self {
+            unique: vec![],
+            _object: PhantomData,
+        }
+    }
+}
+
+impl Size for Extensions {
+    fn tls_serialized_len(&self) -> usize {
+        Vec::tls_serialized_len(&self.unique)
+    }
 }
 
 impl TlsSerializeTrait for Extensions {
@@ -275,16 +304,20 @@ impl DeserializeBytes for Extensions {
     }
 }
 
-impl Extensions {
+impl<T: ExtensionValidator> ExtensionsForObject<T> {
     /// Create an empty extension list.
     pub fn empty() -> Self {
-        Self { unique: vec![] }
+        Self {
+            unique: vec![],
+            _object: PhantomData,
+        }
     }
 
     /// Create an extension list with a single extension.
     pub fn single(extension: Extension) -> Self {
         Self {
             unique: vec![extension],
+            _object: PhantomData,
         }
     }
 
@@ -349,13 +382,41 @@ impl Extensions {
     }
 }
 
-impl TryFrom<Vec<Extension>> for Extensions {
+/// Can be implemented by a type to validate extensions.
+pub trait ExtensionValidator {
+    /// Check if the extension is valid.
+    fn valid_extension(ext: &Extension) -> bool;
+}
+
+impl ExtensionValidator for AnyObject {
+    fn valid_extension(_ext: &Extension) -> bool {
+        true
+    }
+}
+
+impl ExtensionValidator for GroupContext {
+    fn valid_extension(ext: &Extension) -> bool {
+        matches!(
+            ext.extension_type(),
+            ExtensionType::RequiredCapabilities
+                | ExtensionType::ExternalSenders
+                | ExtensionType::Unknown(_)
+        )
+    }
+}
+
+impl<T: ExtensionValidator> TryFrom<Vec<Extension>> for ExtensionsForObject<T> {
     type Error = InvalidExtensionError;
 
     fn try_from(candidate: Vec<Extension>) -> Result<Self, Self::Error> {
         let mut unique: Vec<Extension> = Vec::new();
-
         for extension in candidate.into_iter() {
+            if !T::valid_extension(&extension) {
+                return Err(InvalidExtensionError::NotValid {
+                    illegal_extension: extension.extension_type(),
+                    ty: std::any::type_name::<T>(),
+                });
+            }
             if unique
                 .iter()
                 .any(|ext| ext.extension_type() == extension.extension_type())
@@ -366,17 +427,22 @@ impl TryFrom<Vec<Extension>> for Extensions {
             }
         }
 
-        Ok(Self { unique })
+        Ok(Self {
+            unique,
+            _object: PhantomData,
+        })
     }
 }
 
-impl Extensions {
+impl<T> ExtensionsForObject<T> {
     fn find_by_type(&self, extension_type: ExtensionType) -> Option<&Extension> {
         self.unique
             .iter()
             .find(|ext| ext.extension_type() == extension_type)
     }
+}
 
+impl Extensions {
     /// Get a reference to the [`ApplicationIdExtension`] if there is any.
     pub fn application_id(&self) -> Option<&ApplicationIdExtension> {
         self.find_by_type(ExtensionType::ApplicationId)
@@ -513,6 +579,23 @@ impl Extension {
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
             Extension::LastResort(_) => ExtensionType::LastResort,
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
+        }
+    }
+}
+
+impl TryFrom<Extensions> for ExtensionsForObject<GroupContext> {
+    type Error = InvalidExtensionError;
+
+    fn try_from(value: Extensions) -> Result<Self, Self::Error> {
+        value.unique.try_into()
+    }
+}
+
+impl From<ExtensionsForObject<GroupContext>> for Extensions {
+    fn from(value: ExtensionsForObject<GroupContext>) -> Self {
+        Self {
+            unique: value.unique.clone(),
+            _object: PhantomData,
         }
     }
 }

@@ -108,6 +108,7 @@ fn opaque_extension() {
             ])
             .unwrap(),
         )
+        .unwrap()
         .load_psks(provider.storage())
         .expect("error loading psks")
         .build(
@@ -170,6 +171,7 @@ fn opaque_extension() {
             ])
             .unwrap(),
         )
+        .unwrap()
         .load_psks(provider.storage())
         .expect("error loading psks")
         .build(

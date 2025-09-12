@@ -557,20 +557,23 @@ pub struct AppAckProposal {
 ///   Extension extensions<V>;
 /// } GroupContextExtensions;
 /// ```
-#[derive(
-    Debug,
-    PartialEq,
-    Eq,
-    Clone,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSerialize,
-    TlsSize,
-)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct GroupContextExtensionProposal {
     extensions: Extensions,
+}
+
+impl Size for GroupContextExtensionProposal {
+    fn tls_serialized_len(&self) -> usize {
+        let extensions: Extensions = self.extensions.clone();
+        extensions.tls_serialized_len()
+    }
+}
+
+impl TlsSerializeTrait for GroupContextExtensionProposal {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        let extensions: Extensions = self.extensions.clone();
+        extensions.tls_serialize(writer)
+    }
 }
 
 impl GroupContextExtensionProposal {

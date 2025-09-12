@@ -30,6 +30,7 @@ use crate::{
         proposals::*,
         ConfirmationTag, GroupSecrets, Welcome,
     },
+    prelude::ExtensionsForObject,
     schedule::{
         message_secrets::MessageSecrets,
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
@@ -570,7 +571,7 @@ impl MlsGroup {
     pub(crate) fn create_group_context_ext_proposal<Provider: OpenMlsProvider>(
         &self,
         framing_parameters: FramingParameters,
-        extensions: Extensions,
+        extensions: ExtensionsForObject<GroupContext>,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError<Provider::StorageError>>
     {
@@ -591,7 +592,7 @@ impl MlsGroup {
             self.public_group()
                 .check_extension_support(required_capabilities.extension_types())?;
         }
-        let proposal = GroupContextExtensionProposal::new(extensions);
+        let proposal = GroupContextExtensionProposal::new(extensions.into());
         let proposal = Proposal::GroupContextExtensions(Box::new(proposal));
         AuthenticatedContent::member_proposal(
             framing_parameters,
