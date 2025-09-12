@@ -194,7 +194,7 @@ impl TreeSize {
     }
 
     /// Creates a new `TreeSize` from a specific leaf count
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(any(feature = "test-utils", feature = "extensions-draft-08", test))]
     pub(crate) fn from_leaf_count(leaf_count: u32) -> Self {
         TreeSize::new(leaf_count * 2)
     }

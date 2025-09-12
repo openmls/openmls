@@ -206,7 +206,11 @@ impl DecryptedMessage {
 #[derive(Debug, Clone)]
 pub(crate) enum SenderContext {
     Member((GroupId, LeafNodeIndex)),
-    ExternalCommit((GroupId, LeafNodeIndex)),
+    ExternalCommit {
+        group_id: GroupId,
+        leftmost_blank_index: LeafNodeIndex,
+        self_removes_in_store: Vec<SelfRemoveInStore>,
+    },
 }
 
 /// Partially checked and potentially decrypted message (if it was originally encrypted).
@@ -327,6 +331,24 @@ impl ProcessedMessage {
     /// Returns the credential of the message.
     pub fn credential(&self) -> &Credential {
         &self.credential
+    }
+
+    /// Safely export a value if the content of the processed message is a
+    /// [`StagedCommit`].
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn safe_export_secret<Crypto: OpenMlsCrypto>(
+        &mut self,
+        crypto: &Crypto,
+        component_id: u16,
+    ) -> Result<Vec<u8>, ProcessedMessageSafeExportSecretError> {
+        if let ProcessedMessageContent::StagedCommitMessage(ref mut staged_commit) =
+            &mut self.content
+        {
+            let secret = staged_commit.safe_export_secret(crypto, component_id)?;
+            Ok(secret)
+        } else {
+            Err(ProcessedMessageSafeExportSecretError::NotACommit)
+        }
     }
 }
 

@@ -77,18 +77,25 @@ impl PublicGroup {
 
             // ValSem244: External Commit, There MUST NOT be any referenced proposals.
             // https://validation.openmls.tech/#valn0406
-            if commit
-                .proposals
-                .iter()
-                .any(|proposal| matches!(proposal, ProposalOrRef::Reference(_)))
-            {
+            // Only SelfRemove proposals are allowed
+            if commit.proposals.iter().any(|proposal| {
+                let ProposalOrRef::Reference(proposal_ref) = proposal else {
+                    return false;
+                };
+                // Proposal references are only allowed if they refer to a
+                // SelfRemove proposal in our store
+                !self.proposal_store.proposals().any(|p| {
+                    p.proposal_reference_ref() == proposal_ref.as_ref()
+                        && p.proposal().is_type(ProposalType::SelfRemove)
+                })
+            }) {
                 return Err(ExternalCommitValidationError::ReferencedProposal.into());
             }
 
             let number_of_remove_proposals = commit
                 .proposals
                 .iter()
-                .filter(|prop| matches!(prop, ProposalOrRef::Proposal(Proposal::Remove(_))))
+                .filter(|prop| prop.as_proposal().filter(|p| p.is_remove()).is_some())
                 .count();
 
             // https://validation.openmls.tech/#valn0402
@@ -177,7 +184,7 @@ impl PublicGroup {
         let sender_index = match sender {
             Sender::Member(leaf_index) => *leaf_index,
             Sender::NewMemberCommit => {
-                self.leftmost_free_index(iter::empty(), proposal_queue.queued_proposals())?
+                self.leftmost_free_index(proposal_queue.queued_proposals())?
             }
             _ => {
                 return Err(StageCommitError::SenderTypeExternal);

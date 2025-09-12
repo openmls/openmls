@@ -20,8 +20,9 @@ hex = { version = "0.4", features = ["serde"], optional = true }
 base64 = { version = "0.22", optional = true }
 
 [features]
-test-utils = ["hex", "openmls_traits/test-utils"] # Enable test utilites
+test-utils = ["hex", "openmls_traits/test-utils"]            # Enable test utilites
 persistence = ["base64"]
+extensions-draft-08 = ["openmls_traits/extensions-draft-08"]
 
 [dev-dependencies]
 openmls_memory_storage = { path = ".", features = ["test-utils"] }

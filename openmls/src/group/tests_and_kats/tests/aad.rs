@@ -83,7 +83,7 @@ fn test_add_member_with_aad(
             .add_members(
                 provider,
                 &alice_credential_with_key_and_signer.signer,
-                &[bob_key_package.key_package().clone()],
+                core::slice::from_ref(bob_key_package.key_package()),
             )
             .expect("An unexpected error occurred.");
         alice_group
@@ -138,7 +138,7 @@ fn test_add_member_with_aad(
             .add_members(
                 provider,
                 &alice_credential_with_key_and_signer.signer,
-                &[charlie_key_package.key_package().clone()],
+                core::slice::from_ref(charlie_key_package.key_package()),
             )
             .expect("An unexpected error occurred.");
         alice_group

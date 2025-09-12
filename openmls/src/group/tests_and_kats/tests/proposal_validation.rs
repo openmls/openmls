@@ -1,6 +1,8 @@
 //! This module tests the validation of proposals as defined in
 //! https://book.openmls.tech/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
+use std::slice::from_ref;
+
 use crate::{
     storage::OpenMlsProvider,
     test_utils::frankenstein::*,
@@ -153,7 +155,7 @@ fn validation_test_setup(
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[bob_key_package.key_package().clone()],
+            from_ref(bob_key_package.key_package()),
         )
         .unwrap();
 
@@ -343,7 +345,7 @@ fn test_valsem101a() {
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[charlie_key_package.key_package().clone()],
+            from_ref(charlie_key_package.key_package()),
         )
         .expect("Error creating self-update")
         .tls_serialize_detached()
@@ -373,14 +375,14 @@ fn test_valsem101a() {
         )
         .unwrap();
 
-    let second_add_proposal = Proposal::Add(AddProposal {
+    let second_add_proposal = Proposal::add(AddProposal {
         key_package: dave_key_package.key_package().clone(),
     });
 
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(second_add_proposal)],
+        vec![ProposalOrRef::proposal(second_add_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -510,7 +512,7 @@ fn test_valsem102() {
         .add_members(
             provider,
             &alice_credential_with_key_and_signer.signer,
-            &[charlie_key_package.key_package().clone()],
+            from_ref(charlie_key_package.key_package()),
         )
         .expect("Error creating self-update")
         .tls_serialize_detached()
@@ -540,14 +542,14 @@ fn test_valsem102() {
     franken_key_package.resign(&dave_credential_with_key_and_signer.signer);
     let dave_key_package = KeyPackage::from(franken_key_package);
 
-    let second_add_proposal = Proposal::Add(AddProposal {
+    let second_add_proposal = Proposal::add(AddProposal {
         key_package: dave_key_package,
     });
 
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(second_add_proposal)],
+        vec![ProposalOrRef::proposal(second_add_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -687,7 +689,7 @@ fn test_valsem101b() {
                     .add_members(
                         provider,
                         &alice_credential_with_key.signer,
-                        &[bob_key_package.key_package().clone()],
+                        from_ref(bob_key_package.key_package()),
                     )
                     .unwrap();
                 alice_group.merge_pending_commit(provider).unwrap();
@@ -705,7 +707,7 @@ fn test_valsem101b() {
                     .propose_remove_member(provider, &alice_credential_with_key.signer, bob_index)
                     .unwrap();
                 alice_group
-                    .add_members(provider, &alice_credential_with_key.signer, &[target_key_package.key_package().clone()])
+                    .add_members(provider, &alice_credential_with_key.signer, from_ref(target_key_package.key_package()))
                     .expect(
                     "failed to add a user with the same identity as someone in the group (with a remove proposal)!",
                 );
@@ -949,7 +951,7 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
     let dave_key_package = KeyPackage::from(franken_key_package);
 
     // Use the resulting KP to create an Add proposal.
-    let add_proposal = Proposal::Add(AddProposal {
+    let add_proposal = Proposal::add(AddProposal {
         key_package: dave_key_package,
     });
 
@@ -958,7 +960,7 @@ fn test_valsem103_valsem104(ciphersuite: Ciphersuite, provider: &impl OpenMlsPro
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(add_proposal)],
+        vec![ProposalOrRef::proposal(add_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -1166,7 +1168,7 @@ fn test_valsem105() {
                     let result = alice_group.add_members(
                         provider,
                         &alice_credential_with_key_and_signer.signer,
-                        &[test_kp_2.clone()],
+                        from_ref(&test_kp_2),
                     );
 
                     match key_package_version {
@@ -1210,14 +1212,14 @@ fn test_valsem105() {
         let original_plaintext = plaintext.clone();
 
         // Create a proposal from the test KPB.
-        let add_proposal = Proposal::Add(AddProposal {
+        let add_proposal = Proposal::add(AddProposal {
             key_package: test_kp,
         });
 
         for proposal_inclusion in [ProposalInclusion::ByValue, ProposalInclusion::ByReference] {
             let proposal_or_ref = match proposal_inclusion {
-                ProposalInclusion::ByValue => ProposalOrRef::Proposal(add_proposal.clone()),
-                ProposalInclusion::ByReference => ProposalOrRef::Reference(
+                ProposalInclusion::ByValue => ProposalOrRef::proposal(add_proposal.clone()),
+                ProposalInclusion::ByReference => ProposalOrRef::reference(
                     ProposalRef::from_raw_proposal(ciphersuite, provider.crypto(), &add_proposal)
                         .unwrap(),
                 ),
@@ -1403,7 +1405,7 @@ fn test_valsem107() {
 
         // The commit should contain only one proposal.
         assert_eq!(commit_content.proposals.len(), 1);
-        commit_content
+        *commit_content
     }
 
     // Before we can test creation of (invalid) proposals, we set up a new group
@@ -1485,7 +1487,7 @@ fn test_valsem107() {
                 _ => panic!(),
             };
 
-            ProposalOrRef::Reference(
+            ProposalOrRef::reference(
                 ProposalRef::from_authenticated_content_by_ref(
                     provider.crypto(),
                     ciphersuite,
@@ -1509,7 +1511,7 @@ fn test_valsem107() {
         let commit_content = unwrap_specific_commit(commit_inline_remove);
 
         // And it should be the proposal to remove bob.
-        let expected = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal {
+        let expected = ProposalOrRef::proposal(Proposal::remove(RemoveProposal {
             removed: bob_leaf_index,
         }));
 
@@ -1626,7 +1628,7 @@ fn test_valsem108() {
     let original_plaintext = plaintext.clone();
 
     // Use a random leaf index that doesn't exist to create a remove proposal.
-    let remove_proposal = Proposal::Remove(RemoveProposal {
+    let remove_proposal = Proposal::remove(RemoveProposal {
         removed: LeafNodeIndex::new(987),
     });
 
@@ -1635,7 +1637,7 @@ fn test_valsem108() {
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(remove_proposal)],
+        vec![ProposalOrRef::proposal(remove_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -1822,7 +1824,7 @@ fn test_valsem110() {
 
     let original_plaintext = plaintext.clone();
 
-    let update_proposal = Proposal::Update(UpdateProposal {
+    let update_proposal = Proposal::update(UpdateProposal {
         leaf_node: franken_leaf_node.into(),
     });
 
@@ -1830,7 +1832,7 @@ fn test_valsem110() {
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(update_proposal)],
+        vec![ProposalOrRef::proposal(update_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -1890,7 +1892,7 @@ fn test_valsem111() {
         alice_credential_with_key_and_signer.clone(),
     );
 
-    let update_proposal = Proposal::Update(UpdateProposal {
+    let update_proposal = Proposal::update(UpdateProposal {
         leaf_node: update_kp.key_package().leaf_node().clone(),
     });
 
@@ -1941,7 +1943,7 @@ fn test_valsem111() {
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Proposal(update_proposal.clone())],
+        vec![ProposalOrRef::proposal(update_proposal.clone())],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -2009,7 +2011,7 @@ fn test_valsem111() {
     let verifiable_plaintext = insert_proposal_and_resign(
         provider,
         ciphersuite,
-        vec![ProposalOrRef::Reference(
+        vec![ProposalOrRef::reference(
             ProposalRef::from_raw_proposal(ciphersuite, provider.crypto(), &update_proposal)
                 .expect("error creating hash reference"),
         )],
@@ -2186,7 +2188,7 @@ fn valsem113() {
             .add_members(
                 provider,
                 &alice_credential_with_keys.signer,
-                &[bob_key_package.key_package().clone()],
+                from_ref(bob_key_package.key_package()),
             )
             .unwrap();
 

@@ -7,7 +7,7 @@ use crate::{
     group::*,
     messages::{
         external_proposals::*,
-        proposals::{AddProposal, Proposal, ProposalType},
+        proposals::{Proposal, ProposalType},
     },
     test_utils::frankenstein::*,
     treesync::LeafNodeParameters,
@@ -78,7 +78,7 @@ fn validation_test_setup(
         .add_members(
             provider,
             &alice_signer_with_keys.signer,
-            &[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("error adding Bob to group");
 
@@ -165,10 +165,11 @@ fn external_join_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
         match msg.into_content() {
             ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
                 assert!(matches!(proposal.sender(), Sender::NewMemberProposal));
-                assert!(matches!(
-                    proposal.proposal(),
-                    Proposal::Add(AddProposal { key_package }) if key_package == charlie_kp.key_package()
-                ));
+                let add_proposal = match proposal.proposal() {
+                    Proposal::Add(kp) => kp,
+                    _ => unreachable!("This shouldn't be reached"),
+                };
+                assert!(add_proposal.key_package() == charlie_kp.key_package());
                 alice_group
                     .store_pending_proposal(provider.storage(), *proposal)
                     .unwrap()

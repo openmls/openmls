@@ -3,20 +3,15 @@
 //! This module contains [`MlsGroup`] and its submodules.
 //!
 
-use create_commit::CreateCommitParams;
 use past_secrets::MessageSecretsStore;
 use proposal_store::ProposalQueue;
 use serde::{Deserialize, Serialize};
-use staged_commit::{MemberStagedCommitState, StagedCommitState};
 use tls_codec::Serialize as _;
 
 #[cfg(test)]
 use crate::treesync::node::leaf_node::TreePosition;
 
-use super::{
-    diff::compute_path::PathComputationResult,
-    proposal_store::{ProposalStore, QueuedProposal},
-};
+use super::proposal_store::{ProposalStore, QueuedProposal};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::ProposalRef, signable::Signable},
@@ -24,16 +19,16 @@ use crate::{
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{
-        CreateCommitError, CreateGroupContextExtProposalError, Extension, ExtensionType,
-        Extensions, ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
-        MlsGroupStateError, OutgoingWireFormatPolicy, ProposalQueueError, PublicGroup,
-        RatchetTreeExtension, RequiredCapabilitiesExtension, StagedCommit,
+        CreateGroupContextExtProposalError, Extension, ExtensionType, Extensions,
+        ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
+        MlsGroupStateError, OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension,
+        RequiredCapabilitiesExtension, StagedCommit,
     },
     key_packages::KeyPackageBundle,
     messages::{
         group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
         proposals::*,
-        Commit, ConfirmationTag, GroupSecrets, Welcome,
+        ConfirmationTag, GroupSecrets, Welcome,
     },
     schedule::{
         message_secrets::MessageSecrets,
@@ -49,9 +44,11 @@ use crate::{
 };
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
+
 // Private
 mod application;
-mod creation;
 mod exporting;
 mod updates;
 
@@ -61,7 +58,7 @@ use config::*;
 pub(crate) mod builder;
 pub(crate) mod commit_builder;
 pub(crate) mod config;
-pub(crate) mod create_commit;
+pub(crate) mod creation;
 pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod past_secrets;
@@ -150,7 +147,7 @@ impl From<PendingCommitState> for StagedCommit {
 ///   allows access to all of its functionality, (except merging pending commits,
 ///   see the [`MlsGroupState::PendingCommit`] for more information) and it's the
 ///   state the group starts in (except when created via
-///   [`MlsGroup::join_by_external_commit()`], see the functions documentation for
+///   [`MlsGroup::external_commit_builder()`], see the functions documentation for
 ///   more information). From this `Operational`, the group state can either
 ///   transition to [`MlsGroupState::Inactive`], when it processes a commit that
 ///   removes this client from the group, or to [`MlsGroupState::PendingCommit`],
@@ -180,12 +177,12 @@ impl From<PendingCommitState> for StagedCommit {
 ///
 ///   * A group can enter the [`PendingCommitState::External`] sub-state only as
 ///     the initial state when the group is created via
-///     [`MlsGroup::join_by_external_commit()`]. In contrast to the
+///     [`MlsGroup::external_commit_builder()`]. In contrast to the
 ///     [`PendingCommitState::Member`] `PendingCommit` state, the only possible
 ///     functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
 ///     function, which merges the pending external commit and transitions the
 ///     state to [`MlsGroupState::PendingCommit`]. For more information on the
-///     external commit process, see [`MlsGroup::join_by_external_commit()`] or
+///     external commit process, see [`MlsGroup::external_commit_builder()`] or
 ///     Section 11.2.1 of the MLS specification.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
@@ -253,6 +250,11 @@ pub struct MlsGroup {
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
     group_state: MlsGroupState,
+    /// The state of the Application Exporter. See the MLS Extensions Draft 08
+    /// for more information. This is `None` if an old OpenMLS group state was
+    /// loaded and has not yet merged a commit.
+    #[cfg(feature = "extensions-draft-08")]
+    application_export_tree: Option<ApplicationExportTree>,
 }
 
 impl MlsGroup {
@@ -359,7 +361,7 @@ impl MlsGroup {
     ///
     /// Note that this has no effect if the group was created through an external commit and
     /// the resulting external commit has not been merged yet. For more
-    /// information, see [`MlsGroup::join_by_external_commit()`].
+    /// information, see [`MlsGroup::external_commit_builder()`].
     ///
     /// Use with caution! This function should only be used if it is clear that
     /// the pending commit will not be used in the group. In particular, if a
@@ -432,6 +434,8 @@ impl MlsGroup {
         let mls_group_config = storage.mls_group_join_config(group_id)?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
         let group_state = storage.group_state(group_id)?;
+        #[cfg(feature = "extensions-draft-08")]
+        let application_export_tree = storage.application_export_tree(group_id)?;
 
         let build = || -> Option<Self> {
             Some(Self {
@@ -444,6 +448,8 @@ impl MlsGroup {
                 own_leaf_nodes,
                 aad: vec![],
                 group_state: group_state?,
+                #[cfg(feature = "extensions-draft-08")]
+                application_export_tree,
             })
         };
 
@@ -466,6 +472,9 @@ impl MlsGroup {
         storage.delete_own_leaf_nodes(self.group_id())?;
         storage.delete_group_state(self.group_id())?;
         storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
+
+        #[cfg(feature = "extensions-draft-08")]
+        storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
 
         self.proposal_store_mut().empty();
         storage.delete_encryption_epoch_key_pairs(
@@ -583,7 +592,7 @@ impl MlsGroup {
                 .check_extension_support(required_capabilities.extension_types())?;
         }
         let proposal = GroupContextExtensionProposal::new(extensions);
-        let proposal = Proposal::GroupContextExtensions(proposal);
+        let proposal = Proposal::GroupContextExtensions(Box::new(proposal));
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
@@ -619,7 +628,7 @@ impl MlsGroup {
     }
 
     /// Group framing parameters
-    pub(crate) fn framing_parameters(&self) -> FramingParameters {
+    pub(crate) fn framing_parameters(&self) -> FramingParameters<'_> {
         FramingParameters::new(
             &self.aad,
             self.mls_group_config.wire_format_policy().outgoing(),
@@ -819,6 +828,24 @@ impl MlsGroup {
     pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
         self.public_group.set_group_context(group_context)
     }
+
+    #[cfg(test)]
+    pub(crate) fn ensure_persistence(
+        &self,
+        storage: &impl StorageProvider,
+    ) -> Result<(), LibraryError> {
+        let loaded = MlsGroup::load(storage, self.group_id())
+            .map_err(|_| LibraryError::custom("Failed to load group from storage"))?;
+        let other = loaded.ok_or_else(|| LibraryError::custom("Group not found in storage"))?;
+
+        if self != &other {
+            return Err(LibraryError::custom(
+                "Loaded group does not match current group",
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 /// A [`StagedWelcome`] can be inspected and then turned into a [`MlsGroup`].
@@ -838,6 +865,11 @@ pub struct StagedWelcome {
     /// able to decrypt application messages from previous epochs, the size of
     /// the store must be increased through [`max_past_epochs()`].
     message_secrets_store: MessageSecretsStore,
+
+    /// A secret that is not stored as part of the [`MlsGroup`] after the group is created.
+    /// It can be used by the application to derive forward secure secrets.
+    #[cfg(feature = "extensions-draft-08")]
+    application_export_secret: ApplicationExportSecret,
 
     /// Resumption psk store. This is where the resumption psks are kept in a rollover list.
     resumption_psk_store: ResumptionPskStore,

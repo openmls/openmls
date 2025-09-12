@@ -96,10 +96,11 @@ impl PublicGroup {
                 self.group_id().clone(),
                 *leaf_index,
             ))),
-            Sender::NewMemberCommit => Some(SenderContext::ExternalCommit((
-                self.group_id().clone(),
-                self.treesync().free_leaf_index(),
-            ))),
+            Sender::NewMemberCommit => Some(SenderContext::ExternalCommit {
+                group_id: self.group_id().clone(),
+                leftmost_blank_index: self.treesync().free_leaf_index(),
+                self_removes_in_store: self.proposal_store.self_removes(),
+            }),
             Sender::External(_) | Sender::NewMemberProposal => None,
         };
 

@@ -101,6 +101,27 @@ impl Secret {
         })
     }
 
+    pub(crate) fn hmac<'a>(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        message: impl Into<&'a Secret>,
+    ) -> Result<Self, CryptoError> {
+        log::trace!("HMAC with");
+        log_crypto!(trace, "  salt: {:x?}", self.value);
+
+        let message_tbh = message.into();
+        log_crypto!(trace, "  message:  {:x?}", message_tbh.value);
+
+        Ok(Self {
+            value: crypto.hmac(
+                ciphersuite.hash_algorithm(),
+                self.value.as_slice(),
+                message_tbh.as_slice(),
+            )?,
+        })
+    }
+
     /// HKDF expand where `self` is `prk`.
     pub(crate) fn hkdf_expand(
         &self,

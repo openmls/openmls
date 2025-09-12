@@ -24,9 +24,9 @@ impl MlsGroup {
     /// partition that the initiating client is in. This should include the [`LeafNodeIndex`] of
     /// the initiating client.
     pub fn recover_fork_by_readding(
-        &mut self,
+        &'_ mut self,
         own_partition: &[LeafNodeIndex],
-    ) -> Result<CommitBuilder<ReAddExpectKeyPackages>, ReAddError> {
+    ) -> Result<CommitBuilder<'_, ReAddExpectKeyPackages>, ReAddError> {
         // Load member info. This is None if at least one of the indexes is not a valid member
         let own_partition: Option<Vec<_>> = own_partition
             .iter()

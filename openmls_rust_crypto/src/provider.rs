@@ -26,6 +26,8 @@ use rand::{RngCore, SeedableRng};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use tls_codec::SecretVLBytes;
 
+use crate::hmac;
+
 #[derive(Debug)]
 pub struct RustCrypto {
     rng: RwLock<rand_chacha::ChaCha20Rng>,
@@ -110,6 +112,15 @@ impl OpenMlsCrypto for RustCrypto {
             HashType::Sha2_384 => Ok(Hkdf::<Sha384>::extract(Some(salt), ikm).0.as_slice().into()),
             HashType::Sha2_512 => Ok(Hkdf::<Sha512>::extract(Some(salt), ikm).0.as_slice().into()),
         }
+    }
+
+    fn hmac(
+        &self,
+        hash_type: HashType,
+        key: &[u8],
+        message: &[u8],
+    ) -> Result<SecretVLBytes, CryptoError> {
+        hmac::hmac(hash_type, key, message)
     }
 
     fn hkdf_expand(

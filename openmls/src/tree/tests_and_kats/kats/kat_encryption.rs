@@ -221,7 +221,7 @@ fn build_handshake_messages(
         AuthenticatedContent::member_proposal(
             framing_parameters,
             sender_index,
-            Proposal::Remove(RemoveProposal {
+            Proposal::remove(RemoveProposal {
                 removed: LeafNodeIndex::new(7),
             }), // XXX: use random removed
             group.export_group_context(),

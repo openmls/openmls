@@ -37,7 +37,8 @@ use super::{
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     LeafNode, TreeSync, TreeSyncParentHashError,
 };
-use crate::group::{create_commit::CommitType, GroupId};
+use crate::group::diff::compute_path::CommitType;
+use crate::group::GroupId;
 use crate::{
     binary_tree::{
         array_representation::{
@@ -485,7 +486,7 @@ impl TreeSyncDiff<'_> {
         &self,
         node_index: TreeNodeIndex,
         excluded_indices: &HashSet<&LeafNodeIndex>,
-    ) -> Vec<(TreeNodeIndex, NodeReference)> {
+    ) -> Vec<(TreeNodeIndex, NodeReference<'_>)> {
         match node_index {
             TreeNodeIndex::Leaf(leaf_index) => {
                 // If the node is a leaf, check if it is in the exclusion list.
@@ -552,7 +553,7 @@ impl TreeSyncDiff<'_> {
     pub(crate) fn copath_resolutions(
         &self,
         leaf_index: LeafNodeIndex,
-    ) -> Vec<Vec<(TreeNodeIndex, NodeReference)>> {
+    ) -> Vec<Vec<(TreeNodeIndex, NodeReference<'_>)>> {
         // If we're the only node in the tree, there's no copath.
         if self.diff.leaf_count() == MIN_TREE_SIZE {
             return vec![];
@@ -573,7 +574,7 @@ impl TreeSyncDiff<'_> {
         &self,
         leaf_index: LeafNodeIndex,
         exclusion_list: &HashSet<&LeafNodeIndex>,
-    ) -> Vec<Vec<(TreeNodeIndex, NodeReference)>> {
+    ) -> Vec<Vec<(TreeNodeIndex, NodeReference<'_>)>> {
         // If we're the only node in the tree, there's no copath.
         if self.diff.leaf_count() == 1 {
             return vec![];
@@ -842,7 +843,7 @@ impl TreeSyncDiff<'_> {
 
         // Get the first leaf.
         if let Some(leaf) = leaves.next() {
-            nodes.push(leaf.node().clone().map(Node::LeafNode));
+            nodes.push(leaf.node().clone().map(Node::leaf_node));
         } else {
             // The tree was empty.
             return RatchetTree::trimmed(vec![]);
@@ -867,8 +868,8 @@ impl TreeSyncDiff<'_> {
 
         // Interleave the leaves and parents.
         for (leaf, parent) in leaves.zip(parents) {
-            nodes.push(parent.node().clone().map(Node::ParentNode));
-            nodes.push(leaf.node().clone().map(Node::LeafNode));
+            nodes.push(parent.node().clone().map(Node::parent_node));
+            nodes.push(leaf.node().clone().map(Node::leaf_node));
         }
 
         RatchetTree::trimmed(nodes)

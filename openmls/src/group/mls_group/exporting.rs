@@ -1,6 +1,8 @@
 use errors::{ExportGroupInfoError, ExportSecretError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::group::{PendingSafeExportSecretError, SafeExportSecretError};
 use crate::{
     ciphersuite::HpkePublicKey,
     schedule::{EpochAuthenticator, ResumptionPskSecret},
@@ -39,6 +41,57 @@ impl MlsGroup {
                 MlsGroupStateError::UseAfterEviction,
             ))
         }
+    }
+
+    /// Export a secret from the forward secure exporter for the component with
+    /// the given component ID.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn safe_export_secret<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        &mut self,
+        crypto: &Crypto,
+        storage: &Storage,
+        component_id: u16,
+    ) -> Result<Vec<u8>, SafeExportSecretError<Storage::Error>> {
+        if !self.is_active() {
+            return Err(SafeExportSecretError::GroupState(
+                MlsGroupStateError::UseAfterEviction,
+            ));
+        }
+        let group_id = self.public_group.group_id();
+        let ciphersuite = self.ciphersuite();
+        let Some(application_export_tree) = self.application_export_tree.as_mut() else {
+            return Err(SafeExportSecretError::Unsupported);
+        };
+        let component_secret =
+            application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
+        storage
+            .write_application_export_tree(group_id, application_export_tree)
+            .map_err(SafeExportSecretError::Storage)?;
+
+        Ok(component_secret.as_slice().to_vec())
+    }
+
+    /// Export a secret from the forward secure exporter of the pending commit
+    /// state for the component with the given component ID.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn safe_export_secret_from_pending<Provider: StorageProvider>(
+        &mut self,
+        crypto: &impl OpenMlsCrypto,
+        storage: &Provider,
+        component_id: u16,
+    ) -> Result<Vec<u8>, PendingSafeExportSecretError<Provider::Error>> {
+        let group_id = self.group_id().clone();
+        let MlsGroupState::PendingCommit(ref mut group_state) = self.group_state else {
+            return Err(PendingSafeExportSecretError::NoPendingCommit);
+        };
+        let PendingCommitState::Member(ref mut staged_commit) = **group_state else {
+            return Err(PendingSafeExportSecretError::NotGroupMember);
+        };
+        let secret = staged_commit.safe_export_secret(crypto, component_id)?;
+        storage
+            .write_group_state(&group_id, &self.group_state)
+            .map_err(PendingSafeExportSecretError::Storage)?;
+        Ok(secret.as_slice().to_vec())
     }
 
     /// Returns the epoch authenticator of the current epoch.

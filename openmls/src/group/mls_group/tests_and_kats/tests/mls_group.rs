@@ -1,3 +1,5 @@
+use std::slice::from_ref;
+
 use mls_group::{
     tests_and_kats::utils::{flip_last_byte, setup_alice_bob, setup_alice_bob_group, setup_client},
     EncryptionKeyPair, GroupEpochSecrets, MessageSecretsStore,
@@ -105,7 +107,7 @@ fn remover() {
 
     // === Alice adds Bob ===
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .add_members(provider, &alice_signer, from_ref(bob_kpb.key_package()))
         .expect("Could not add member to group.");
 
     alice_group
@@ -127,7 +129,7 @@ fn remover() {
 
     // === Bob adds Charlie ===
     let (queued_messages, welcome, _group_info) = bob_group
-        .add_members(provider, &bob_signer, &[charlie_kpb.key_package().clone()])
+        .add_members(provider, &bob_signer, from_ref(charlie_kpb.key_package()))
         .unwrap();
 
     let alice_processed_message = alice_group
@@ -266,6 +268,127 @@ fn export_secret() {
     )
 }
 
+#[cfg(feature = "extensions-draft-08")]
+#[openmls_test]
+fn safe_export_secret() {
+    use crate::schedule::application_export_tree::ApplicationExportTreeError;
+
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+
+    // Create config
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    // Join config
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    // Initialize the group state
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let [alice_group_state, bob_group_state] = group_state.members_mut(&["alice", "bob"]);
+
+    // Alice updates her leaf node
+    let alice_commit = alice_group_state
+        .group
+        .self_update(
+            &alice_group_state.party.core_state.provider,
+            &alice_group_state.party.signer,
+            LeafNodeParameters::default(),
+        )
+        .expect("Could not create self update");
+    // Safely export from the pending commit
+    let alice_application_secret = alice_group_state
+        .group
+        .safe_export_secret_from_pending(
+            alice_group_state.party.core_state.provider.crypto(),
+            alice_group_state.party.core_state.provider.storage(),
+            0x8000,
+        )
+        .expect("Could not export secret");
+
+    alice_group_state
+        .group
+        .merge_pending_commit(&alice_group_state.party.core_state.provider)
+        .unwrap();
+    let component_id = 0x8000;
+
+    // Bob processes the update
+    let processed_message = bob_group_state
+        .group
+        .process_message(
+            &bob_group_state.party.core_state.provider,
+            MlsMessageIn::from(alice_commit.into_commit())
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap();
+
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a StagedCommitMessage");
+    };
+
+    bob_group_state
+        .group
+        .merge_staged_commit(&bob_group_state.party.core_state.provider, *staged_commit)
+        .unwrap();
+
+    let bob_application_secret = bob_group_state
+        .group
+        .safe_export_secret(
+            bob_group_state.party.core_state.provider.crypto(),
+            bob_group_state.party.core_state.provider.storage(),
+            component_id,
+        )
+        .unwrap();
+
+    assert_eq!(alice_application_secret, bob_application_secret);
+
+    // Trying with a different component ID (should yield a different secret)
+    let differing_component_id = 0x8001;
+    let alice_differing_application_secret = alice_group_state
+        .group
+        .safe_export_secret(
+            alice_group_state.party.core_state.provider.crypto(),
+            alice_group_state.party.core_state.provider.storage(),
+            differing_component_id,
+        )
+        .unwrap();
+    assert_ne!(alice_application_secret, alice_differing_application_secret);
+
+    // Trying with the same component ID for the second time (should fail)
+    let error = alice_group_state
+        .group
+        .safe_export_secret(
+            alice_group_state.party.core_state.provider.crypto(),
+            alice_group_state.party.core_state.provider.storage(),
+            component_id,
+        )
+        .expect_err("Expected an error when exporting the same component ID twice");
+    assert!(matches!(
+        error,
+        SafeExportSecretError::ApplicationExportTree(ApplicationExportTreeError::PuncturedInput)
+    ));
+}
+
 #[openmls_test]
 fn staged_join() {
     let group_id = GroupId::from_slice(b"Test Group");
@@ -289,7 +412,7 @@ fn staged_join() {
     .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, &[bob_kpb.key_package().clone()])
+        .add_members(provider, &alice_signer, from_ref(bob_kpb.key_package()))
         .expect("Could not add member to group.");
 
     alice_group
@@ -882,7 +1005,7 @@ fn test_pending_commit_logic(
     // If there is a pending commit, other commit- or proposal-creating actions
     // should fail.
     let error = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(provider, &alice_signer, from_ref(bob_key_package))
         .expect_err("no error committing while a commit is pending");
     assert!(matches!(
         error,
@@ -1035,7 +1158,7 @@ fn key_package_deletion() {
 
     // === Alice adds Bob ===
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(provider, &alice_signer, from_ref(bob_key_package))
         .unwrap();
 
     alice_group.merge_pending_commit(provider).unwrap();
@@ -1376,7 +1499,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
         .add_members(
             &alice_provider,
             &alice_signer,
-            &[bob_key_package.key_package().clone()],
+            from_ref(bob_key_package.key_package()),
         )
         .unwrap();
     alice_group.merge_pending_commit(&alice_provider).unwrap();
@@ -1550,7 +1673,7 @@ fn update_proposal_bob() {
         .add_members(
             &alice_provider,
             &alice_signer,
-            &[bob_key_package.key_package().clone()],
+            from_ref(bob_key_package.key_package()),
         )
         .unwrap();
     alice_group.merge_pending_commit(&alice_provider).unwrap();
@@ -1656,7 +1779,7 @@ fn update_proposal_alice() {
         .add_members(
             &alice_provider,
             &alice_signer,
-            &[bob_key_package.key_package().clone()],
+            from_ref(bob_key_package.key_package()),
         )
         .unwrap();
     alice_group.merge_pending_commit(&alice_provider).unwrap();
@@ -1928,7 +2051,7 @@ fn unknown_extensions() {
         .add_members(
             provider,
             &alice_signer,
-            &[bob_key_package.key_package().clone()],
+            from_ref(bob_key_package.key_package()),
         )
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
@@ -1992,7 +2115,7 @@ fn join_multiple_groups_last_resort_extension(
         .add_members(
             provider,
             &alice_signer,
-            &[charlie_keypkg.key_package().clone()],
+            from_ref(charlie_keypkg.key_package()),
         )
         .expect("error adding charlie to alice's group");
     alice_group
@@ -2020,7 +2143,7 @@ fn join_multiple_groups_last_resort_extension(
         .add_members(
             provider,
             &bob_signer,
-            &[charlie_keypkg.key_package().clone()],
+            from_ref(charlie_keypkg.key_package()),
         )
         .expect("error adding charlie to bob's group");
     bob_group
@@ -2366,7 +2489,7 @@ fn psks() {
         .add_members(
             provider,
             &alice_signature_keys,
-            &[bob_key_package_bundle.key_package().clone()],
+            from_ref(bob_key_package_bundle.key_package()),
         )
         .expect("Could not create commit");
 
@@ -2417,7 +2540,7 @@ fn staged_commit_creation(
         .add_members(
             provider,
             &alice_signature_keys,
-            &[bob_key_package_bundle.key_package().clone()],
+            from_ref(bob_key_package_bundle.key_package()),
         )
         .expect("Could not create commit");
 
@@ -2518,7 +2641,7 @@ fn proposal_application_after_self_was_removed(
         .add_members(
             provider,
             &alice_signature_keys,
-            &[bob_kpb.key_package().clone()],
+            from_ref(bob_kpb.key_package()),
         )
         .expect("Could not create commit");
 
@@ -2580,7 +2703,7 @@ fn proposal_application_after_self_was_removed(
         .add_members(
             provider,
             &alice_signature_keys,
-            &[charlie_kpb.key_package().clone()],
+            from_ref(charlie_kpb.key_package()),
         )
         .expect("Could not create commit");
 
@@ -2687,7 +2810,7 @@ fn proposal_application_after_self_was_removed_ref(
         .add_members(
             provider,
             &alice_signature_keys,
-            &[bob_kpb.key_package().clone()],
+            from_ref(bob_kpb.key_package()),
         )
         .expect("Could not create commit");
 

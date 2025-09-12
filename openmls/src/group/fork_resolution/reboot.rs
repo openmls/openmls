@@ -20,7 +20,7 @@ use crate::{
 impl MlsGroup {
     /// The first step towards creating a new group based on the parameters and membership list of
     /// the current one.
-    pub fn reboot(&self, group_id: GroupId) -> RebootBuilder {
+    pub fn reboot(&'_ self, group_id: GroupId) -> RebootBuilder<'_> {
         let group_builder = MlsGroup::builder()
             .with_wire_format_policy(self.configuration().wire_format_policy)
             .padding_size(self.configuration().padding_size)

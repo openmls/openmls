@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+- [#1801](https://github.com/openmls/openmls/pull/1801): Added `MlsGroup::external_commit_builder`.
+- [#1814](https://github.com/openmls/openmls/pull/1814): Allow disabling leaf node lifetime validation in the ratchet tree when joining a group.
+  - `StagedWelcome::build_from_welcome`: Alternative to `new_from_welcome` in a builder style that allows disabling lifetime validation of the incoming ratchet tree.
+  - `Lifetime::init`: Set explicit lifetimes for a key package.
+- [#1801](https://github.com/openmls/openmls/pull/1801): Added `MlsGroup::external_commit_builder`.
+- [#1725](https://github.com/openmls/openmls/pull/1725): Added "Safe exporter" as defined in the MLS extension draft behind the `extensions-draft-08` feature flag. Previously serialized groups will derive the exporter upon creating/processing and merging the next commit.
+- [#1840](https://github.com/openmls/openmls/pull/1840): Add `has_pending_proposals` getter method to `MlsGroup`.
+
+### Fixed
+
+### Deprecated
+- [#1801](https://github.com/openmls/openmls/pull/1801): Deprecated `MlsGroup::join_by_external_commit` in favor of `MlsGroup::external_commit_builder`.
+
 ## 0.7.0 (2025-07-17)
 
 ### Added

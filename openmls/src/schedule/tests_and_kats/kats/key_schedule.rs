@@ -135,7 +135,7 @@ fn generate(
     key_schedule
         .add_context(crypto.crypto(), &serialized_group_context)
         .expect("An unexpected error occurred.");
-    let epoch_secrets = key_schedule
+    let EpochSecretsResult { epoch_secrets, .. } = key_schedule
         .epoch_secrets(crypto.crypto(), ciphersuite)
         .expect("An unexpected error occurred.");
 
@@ -366,7 +366,7 @@ pub fn run_test_vector(
             .add_context(provider.crypto(), &group_context_serialized)
             .expect("An unexpected error occurred.");
 
-        let epoch_secrets = key_schedule
+        let EpochSecretsResult { epoch_secrets, .. } = key_schedule
             .epoch_secrets(provider.crypto(), ciphersuite)
             .expect("An unexpected error occurred.");
 

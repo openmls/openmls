@@ -49,7 +49,7 @@ impl JoinProposal {
         signer: &impl Signer,
     ) -> Result<MlsMessageOut, ProposeAddMemberError<Storage::Error>> {
         AuthenticatedContent::new_join_proposal(
-            Proposal::Add(AddProposal { key_package }),
+            Proposal::add(AddProposal { key_package }),
             group_id,
             epoch,
             signer,
@@ -81,7 +81,7 @@ impl ExternalProposal {
         let proposal = GroupContextExtensionProposal::new(extensions);
 
         AuthenticatedContent::new_external_proposal(
-            Proposal::GroupContextExtensions(proposal),
+            Proposal::GroupContextExtensions(Box::new(proposal)),
             group_id,
             epoch,
             signer,
@@ -109,7 +109,7 @@ impl ExternalProposal {
         sender_index: SenderExtensionIndex,
     ) -> Result<MlsMessageOut, ProposeRemoveMemberError<Provider::StorageError>> {
         AuthenticatedContent::new_external_proposal(
-            Proposal::Remove(RemoveProposal { removed }),
+            Proposal::remove(RemoveProposal { removed }),
             group_id,
             epoch,
             signer,
@@ -138,7 +138,7 @@ impl ExternalProposal {
         sender_index: SenderExtensionIndex,
     ) -> Result<MlsMessageOut, ProposeAddMemberError<Provider::StorageError>> {
         AuthenticatedContent::new_external_proposal(
-            Proposal::Add(AddProposal { key_package }),
+            Proposal::add(AddProposal { key_package }),
             group_id,
             epoch,
             signer,
