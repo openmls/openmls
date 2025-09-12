@@ -239,23 +239,6 @@ pub enum Extension {
     Unknown(u16, UnknownExtension),
 }
 
-/// # GroupContextExtension
-///
-/// A group context extension is one of the [`GroupContextExtension`] enum values.
-/// The enum provides a set of common functionality for extensions that are valid in a group
-/// context.
-///
-/// See the individual extensions for more details on each extension.
-///
-/// ```c
-/// struct {
-///     ExtensionType extension_type;
-///     opaque extension_data<V>;
-/// } Extension;
-/// ```
-// #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-// pub enum GroupContextExtension {}
-//
 /// TypedExtension is implemented by all types that can be used as a Extension.
 pub trait TypedExtension: Debug + Clone + PartialEq + Eq + Serialize
 // Debug + Clone + PartialEq + Eq + Serialize + Size + TlsDeserializeTrait + TlsSerializeTrait
@@ -284,6 +267,7 @@ impl TypedExtension for Extension {
 )]
 pub struct UnknownExtension(pub Vec<u8>);
 
+/// A Extension for Object of type T
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExtensionsForObject<T> {
     unique: Vec<Extension>,
@@ -292,20 +276,11 @@ pub struct ExtensionsForObject<T> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, TlsSize, TlsSerialize, TlsDeserialize)]
-/// Any extensions
+/// Any object
 pub struct AnyObject;
 
 /// Type alias for AnyObject extensions
 pub type Extensions = ExtensionsForObject<AnyObject>;
-
-// // A list of extensions with unique extension types.
-// #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-// pub struct ExtensionsForObject<T>
-// where
-//     T: TypedExtension,
-// {
-//     unique: Vec<T>,
-// }
 
 impl<T> Default for ExtensionsForObject<T> {
     fn default() -> Self {
@@ -429,7 +404,9 @@ impl<T: ExtensionValidator> ExtensionsForObject<T> {
     }
 }
 
+/// Can be implemented by a type to validate extensions.
 pub trait ExtensionValidator {
+    /// Check if the extension is valid.
     fn valid_extension(ext: &Extension) -> bool;
 }
 

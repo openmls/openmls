@@ -100,15 +100,22 @@ pub enum InvalidExtensionError {
     #[error(
         "The provided extension list contains an extension of type {illegal_extension:?} that is not allowed."
     )]
-    NotValid { illegal_extension: ExtensionType },
+    NotValid {
+        /// the extension type of the invalid extension
+        illegal_extension: ExtensionType,
+    },
 
     /// The provided extension list contains an extension that is not allowed in leaf nodes
 
+    /// TODO we can probably drop this
     /// The provided extension list contains an extension that is not allowed in group contexts
     #[error(
         "The provided extension list contains an extension of type {illegal_extension:?} that is not allowed in group contexts."
     )]
-    IllegalInGroupContext { illegal_extension: ExtensionType },
+    IllegalInGroupContext {
+        /// the extension type of the invalid extension
+        illegal_extension: ExtensionType,
+    },
     /// The provided extension list contains an extension that is not allowed in leaf nodes
     #[error(
         "The provided extension list contains an extension that is not allowed in leaf nodes."
