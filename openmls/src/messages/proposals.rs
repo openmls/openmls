@@ -22,7 +22,7 @@ use crate::{
     },
     group::GroupId,
     key_packages::*,
-    prelude::{Extension, LeafNode},
+    prelude::LeafNode,
     schedule::psk::*,
     versions::ProtocolVersion,
 };
@@ -564,14 +564,14 @@ pub struct GroupContextExtensionProposal {
 
 impl Size for GroupContextExtensionProposal {
     fn tls_serialized_len(&self) -> usize {
-        let extensions: Extensions = self.extensions.clone().into();
+        let extensions: Extensions = self.extensions.clone();
         extensions.tls_serialized_len()
     }
 }
 
 impl TlsSerializeTrait for GroupContextExtensionProposal {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
-        let extensions: Extensions = self.extensions.clone().into();
+        let extensions: Extensions = self.extensions.clone();
         extensions.tls_serialize(writer)
     }
 }

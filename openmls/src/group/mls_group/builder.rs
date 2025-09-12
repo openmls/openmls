@@ -7,12 +7,11 @@ use crate::{
     error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
     group::{
-        past_secrets::MessageSecretsStore, public_group::errors::PublicGroupBuildError,
-        GroupContext, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder,
-        MlsGroupState, NewGroupError, PublicGroup, WireFormatPolicy,
+        past_secrets::MessageSecretsStore, public_group::errors::PublicGroupBuildError, GroupId,
+        MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
+        PublicGroup, WireFormatPolicy,
     },
     key_packages::Lifetime,
-    prelude::{Extension, ExtensionsForObject},
     schedule::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         InitSecret, JoinerSecret, KeySchedule, PreSharedKeyId,
@@ -73,10 +72,7 @@ impl MlsGroupBuilder {
         let (public_group_builder, commit_secret, leaf_keypair) =
             PublicGroup::builder(group_id, ciphersuite, credential_with_key)
                 .with_group_context_extensions(
-                    mls_group_create_config
-                        .group_context_extensions
-                        .clone()
-                        .into(),
+                    mls_group_create_config.group_context_extensions.clone(),
                 )?
                 .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())?
                 .with_lifetime(*mls_group_create_config.lifetime())

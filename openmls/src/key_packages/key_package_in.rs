@@ -5,7 +5,6 @@ use crate::{
     ciphersuite::{signable::*, *},
     credentials::*,
     extensions::Extensions,
-    prelude::Extension,
     treesync::node::leaf_node::{LeafNodeIn, VerifiableLeafNode},
     versions::ProtocolVersion,
 };

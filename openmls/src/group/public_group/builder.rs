@@ -8,7 +8,7 @@ use crate::{
     group::{ExtensionType, GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
-    prelude::{Extension, ExtensionsForObject},
+    prelude::ExtensionsForObject,
     schedule::CommitSecret,
     storage::OpenMlsProvider,
     treesync::{

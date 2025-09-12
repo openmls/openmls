@@ -167,7 +167,7 @@ fn not_join_group() {
     // Inspect ciphersuite...
     let _ciphersuite = group_context.ciphersuite();
     // Inspect extensions...
-    let extensions: Extensions = group_context.extensions().clone().into();
+    let extensions: Extensions = group_context.extensions().clone();
 
     // Can check which extensions are enabled
     let _has_ratchet_extension = extensions.ratchet_tree().is_some();

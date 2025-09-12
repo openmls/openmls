@@ -15,7 +15,6 @@ use crate::{
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
-    prelude::Extension,
     storage::{OpenMlsProvider, StorageProvider},
 };
 use openmls_traits::signatures::Signer;
@@ -79,8 +78,7 @@ impl ExternalProposal {
         signer: &impl Signer,
         sender_index: SenderExtensionIndex,
     ) -> Result<MlsMessageOut, CreateGroupContextExtProposalError<Provider::StorageError>> {
-        let group_extensions: Extensions = extensions.try_into().unwrap();
-        let proposal = GroupContextExtensionProposal::new(group_extensions);
+        let proposal = GroupContextExtensionProposal::new(extensions);
 
         AuthenticatedContent::new_external_proposal(
             Proposal::GroupContextExtensions(Box::new(proposal)),

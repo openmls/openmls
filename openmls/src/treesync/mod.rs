@@ -40,9 +40,9 @@ use self::{
     },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
+use crate::binary_tree::array_representation::ParentNodeIndex;
 #[cfg(any(feature = "test-utils", test))]
 use crate::{binary_tree::array_representation::level, test_utils::bytes_to_hex};
-use crate::{binary_tree::array_representation::ParentNodeIndex, prelude::Extension};
 use crate::{
     binary_tree::{
         array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},

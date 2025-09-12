@@ -1746,7 +1746,7 @@ fn group_context_extensions_proposal(
         .unwrap()
         .group_context()
         .clone();
-    let gc_extensions: Extensions = group_context_staged.extensions().clone().into();
+    let gc_extensions: Extensions = group_context_staged.extensions().clone();
     assert_eq!(gc_extensions, new_extensions);
 
     alice_group

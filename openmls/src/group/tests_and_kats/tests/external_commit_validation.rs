@@ -25,7 +25,6 @@ use crate::{
         AddProposal, ExternalInitProposal, GroupContextExtensionProposal, Proposal, ProposalOrRef,
         ProposalType, ReInitProposal,
     },
-    prelude::Extension,
 };
 
 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
@@ -262,20 +261,13 @@ fn test_valsem242() {
                 group_id: alice_group.group_id().clone(),
                 version: Default::default(),
                 ciphersuite,
-                extensions: alice_group.context().extensions().clone().into(),
+                extensions: alice_group.context().extensions().clone(),
             }))
         };
 
         let gce_proposal = {
             ProposalOrRef::proposal(Proposal::group_context_extensions(
-                GroupContextExtensionProposal::new(
-                    alice_group
-                        .context()
-                        .extensions()
-                        .clone()
-                        .try_into()
-                        .unwrap(),
-                ),
+                GroupContextExtensionProposal::new(alice_group.context().extensions().clone()),
             ))
         };
 

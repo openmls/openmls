@@ -17,7 +17,6 @@ use crate::{
     extensions::Extensions,
     group::{GroupContext, GroupEpoch, GroupId},
     messages::ConfirmationTag,
-    prelude::Extension,
 };
 
 const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";

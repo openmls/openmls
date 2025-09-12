@@ -78,7 +78,7 @@ impl GroupContext {
             epoch: epoch.into(),
             tree_hash: tree_hash.into(),
             confirmed_transcript_hash: confirmed_transcript_hash.into(),
-            extensions: extensions.into(),
+            extensions,
         }
     }
 
@@ -158,7 +158,7 @@ impl GroupContext {
     }
 
     pub(crate) fn set_extensions(&mut self, extensions: Extensions) {
-        self.extensions = extensions.into();
+        self.extensions = extensions;
     }
 
     /// Return the extensions.

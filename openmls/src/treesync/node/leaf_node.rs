@@ -21,7 +21,7 @@ use crate::{
     extensions::{ExtensionType, Extensions},
     group::GroupId,
     key_packages::{KeyPackage, Lifetime},
-    prelude::{Extension, KeyPackageBundle},
+    prelude::KeyPackageBundle,
     storage::OpenMlsProvider,
 };
 
