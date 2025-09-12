@@ -262,6 +262,7 @@ pub mod traits {
     pub trait KeyPackage&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     pub trait MlsGroupJoinConfig&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     pub trait LeafNode&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait ApplicationExportTree&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
 
     // traits for types that implement both
     pub trait ProposalRef&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; + Key&lt;VERSION&gt; {}
