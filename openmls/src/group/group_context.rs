@@ -166,6 +166,12 @@ impl GroupContext {
         &self.extensions
     }
 
+    #[cfg(feature = "extensions-draft-08")]
+    // Return a mutable reference to the extensions.
+    pub(crate) fn extensions_mut(&mut self) -> &mut Extensions {
+        &mut self.extensions
+    }
+
     /// Get the required capabilities extension.
     pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
         self.extensions.required_capabilities()

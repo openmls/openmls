@@ -81,6 +81,8 @@ pub enum ProposalType {
     GroupContextExtensions,
     AppAck,
     SelfRemove,
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate,
     Custom(u16),
 }
 
@@ -97,6 +99,8 @@ impl ProposalType {
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions => true,
             ProposalType::SelfRemove | ProposalType::AppAck | ProposalType::Custom(_) => false,
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalType::AppDataUpdate => false,
         }
     }
 }
@@ -163,6 +167,8 @@ impl From<u16> for ProposalType {
             5 => ProposalType::Reinit,
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
+            #[cfg(feature = "extensions-draft-08")]
+            8 => ProposalType::AppDataUpdate,
             0x000a => ProposalType::SelfRemove,
             0x000b => ProposalType::AppAck,
             other => ProposalType::Custom(other),
@@ -180,6 +186,8 @@ impl From<ProposalType> for u16 {
             ProposalType::Reinit => 5,
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalType::AppDataUpdate => 8,
             ProposalType::SelfRemove => 0x000a,
             ProposalType::AppAck => 0x000b,
             ProposalType::Custom(id) => id,
@@ -218,6 +226,8 @@ pub enum Proposal {
     ExternalInit(Box<ExternalInitProposal>),
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
     // # Extensions
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate(AppDataUpdateProposal),
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
     AppAck(Box<AppAckProposal>),
@@ -278,6 +288,8 @@ impl Proposal {
             Proposal::ReInit(_) => ProposalType::Reinit,
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppDataUpdate(_) => ProposalType::AppDataUpdate,
             Proposal::AppAck(_) => ProposalType::AppAck,
             Proposal::SelfRemove => ProposalType::SelfRemove,
             Proposal::Custom(custom) => ProposalType::Custom(custom.proposal_type.to_owned()),
@@ -303,6 +315,9 @@ impl Proposal {
             (Proposal::Remove(_), Proposal::Remove(_)) => true,
             // SelfRemoves have the highest priority.
             (_, Proposal::SelfRemove) => true,
+            #[cfg(feature = "extensions-draft-08")]
+            (Proposal::AppDataUpdate(_), proposal) if proposal.proposal_type().is_default() => true,
+            // TODO: AppDataUpdate has lower priority than AppEphemeral
             // All other combinations are invalid
             _ => {
                 debug_assert!(false);
@@ -754,6 +769,113 @@ pub(crate) struct MessageRange {
     first_generation: u32,
     last_generation: u32,
 }
+
+// TODO: move AppDataUpdate proposal to separate file?
+#[cfg(feature = "extensions-draft-08")]
+mod app_data_update {
+
+    use super::*;
+    use crate::prelude::ComponentId;
+
+    /// [`AppDataUpdateProposal`] operation types
+    #[repr(u8)]
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
+    pub enum AppDataUpdateOperationType {
+        /// Update operation
+        Update = 1,
+        /// Remove operation
+        Remove = 2,
+    }
+
+    #[repr(u8)]
+    #[derive(
+        Debug,
+        PartialEq,
+        Clone,
+        Serialize,
+        Deserialize,
+        TlsDeserialize,
+        TlsDeserializeBytes,
+        TlsSerialize,
+        TlsSize,
+    )]
+    /// The operation that is part of an [`AppDataUpdateProposal`].
+    pub enum AppDataUpdateOperation {
+        /// Update operation, containing update data
+        // TODO: is this the correct use of tls_codec(discriminant = ..)?
+        #[tls_codec(discriminant = 1)]
+        Update(VLBytes) = 1,
+        /// Remove operation
+        Remove = 2,
+    }
+
+    impl AppDataUpdateOperation {
+        /// Returns the operation type.
+        pub fn operation_type(&self) -> AppDataUpdateOperationType {
+            match self {
+                AppDataUpdateOperation::Update(_) => AppDataUpdateOperationType::Update,
+                AppDataUpdateOperation::Remove => AppDataUpdateOperationType::Remove,
+            }
+        }
+    }
+
+    /// AppDataUpdate Proposal.
+    ///
+    /// ```c
+    /// struct {
+    ///     ComponentID component_id;
+    ///     AppDataUpdateOperation op;
+    ///
+    ///     select (AppDataUpdate.op) {
+    ///     case update: opaque update<V>;
+    ///     case remove: struct{};
+    ///     };
+    /// } AppDataUpdate;
+    /// ```
+    #[derive(
+        Debug,
+        PartialEq,
+        Clone,
+        Serialize,
+        Deserialize,
+        TlsSize,
+        TlsSerialize,
+        TlsDeserialize,
+        TlsDeserializeBytes,
+    )]
+    pub struct AppDataUpdateProposal {
+        component_id: ComponentId,
+        operation: AppDataUpdateOperation,
+    }
+
+    impl AppDataUpdateProposal {
+        /// Create a new AppDataUpdateProposal containing an Update operation.
+        pub fn update(component_id: ComponentId, data: impl Into<VLBytes>) -> Self {
+            Self::new(component_id, AppDataUpdateOperation::Update(data.into()))
+        }
+        /// Create a new AppDataUpdateProposal containing a Remove operation.
+        pub fn remove(component_id: ComponentId) -> Self {
+            Self::new(component_id, AppDataUpdateOperation::Remove)
+        }
+        pub(crate) fn new(component_id: ComponentId, operation: AppDataUpdateOperation) -> Self {
+            Self {
+                component_id,
+                operation,
+            }
+        }
+
+        /// Return the [`ComponentId`] for this proposal.
+        pub fn component_id(&self) -> ComponentId {
+            self.component_id
+        }
+        /// Return the [`AppDataUpdateOperation`] for this proposal.
+        pub fn operation(&self) -> &AppDataUpdateOperation {
+            &self.operation
+        }
+    }
+}
+#[cfg(feature = "extensions-draft-08")]
+pub use app_data_update::*;
 
 /// A custom proposal with semantics to be implemented by the application.
 #[derive(
