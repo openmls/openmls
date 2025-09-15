@@ -5,7 +5,7 @@
 
 use serde::{de::DeserializeOwned, Serialize};
 /// The storage version used by OpenMLS
-pub const CURRENT_VERSION: u16 = 2;
+pub const CURRENT_VERSION: u16 = 1;
 
 /// For testing there is a test version defined here.
 ///

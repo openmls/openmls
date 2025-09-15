@@ -30,8 +30,6 @@ use crate::{
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
-pub mod v1_storage;
-
 impl MlsGroup {
     fn derive_epoch_secrets(
         &self,

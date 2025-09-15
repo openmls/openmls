@@ -24,19 +24,19 @@ impl Codec for JsonCodec {
 // Test types
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 struct TestGroupId(Vec<u8>);
-impl traits::GroupId<2> for TestGroupId {}
-impl Key<2> for TestGroupId {}
+impl traits::GroupId<1> for TestGroupId {}
+impl Key<1> for TestGroupId {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Copy)]
 struct ProposalRef(usize);
-impl traits::ProposalRef<2> for ProposalRef {}
-impl Key<2> for ProposalRef {}
-impl Entity<2> for ProposalRef {}
+impl traits::ProposalRef<1> for ProposalRef {}
+impl Key<1> for ProposalRef {}
+impl Entity<1> for ProposalRef {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 struct Proposal(Vec<u8>);
-impl traits::QueuedProposal<2> for Proposal {}
-impl Entity<2> for Proposal {}
+impl traits::QueuedProposal<1> for Proposal {}
+impl Entity<1> for Proposal {}
 
 /// Write and read some proposals
 #[test]
