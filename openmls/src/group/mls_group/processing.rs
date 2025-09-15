@@ -16,7 +16,7 @@ use crate::{
 use super::{errors::ProcessMessageError, *};
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::group::mls_group::app_data_update::StagedCommitWithPendingAppDataUpdates;
+use crate::group::mls_group::app_data_update::PendingAppDataUpdates;
 
 impl MlsGroup {
     /// Parses incoming messages from the DS. Checks for syntactic errors and
@@ -306,14 +306,14 @@ impl MlsGroup {
                             provider,
                         )?;
 
-                        // Wrap in StagedCommitWithPendingAppDataUpdates
+                        // Wrap in PendingAppDataUpdates
                         // if there are pending AppDataUpdates that need to be applied.
                         // TODO: improve syntax
                         match staged_commit {
                             #[cfg(feature = "extensions-draft-08")]
                             _ if staged_commit.app_data_update() => {
-                                ProcessedMessageContent::StagedCommitWithPendingAppDataUpdates(
-                                    StagedCommitWithPendingAppDataUpdates(Box::new(staged_commit)),
+                                ProcessedMessageContent::PendingAppDataUpdates(
+                                    PendingAppDataUpdates(Box::new(staged_commit)),
                                 )
                             }
                             _ => ProcessedMessageContent::StagedCommitMessage(Box::new(

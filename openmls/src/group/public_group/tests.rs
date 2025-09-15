@@ -86,7 +86,7 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
             panic!("Unexpected message type.")
         }
         #[cfg(feature = "extensions-draft-08")]
-        ProcessedMessageContent::StagedCommitWithPendingAppDataUpdates(_) => {
+        ProcessedMessageContent::PendingAppDataUpdates(_) => {
             panic!("Unexpected message type.")
         }
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
@@ -197,7 +197,7 @@ fn public_group<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &
         | ProcessedMessageContent::ExternalJoinProposalMessage(_)
         | ProcessedMessageContent::StagedCommitMessage(_) => panic!("Unexpected message type."),
         #[cfg(feature = "extensions-draft-08")]
-        ProcessedMessageContent::StagedCommitWithPendingAppDataUpdates(_) => {
+        ProcessedMessageContent::PendingAppDataUpdates(_) => {
             panic!("Unexpected message type.")
         }
         ProcessedMessageContent::ProposalMessage(p) => {
@@ -321,7 +321,7 @@ fn extract_staged_commit(ppm: ProcessedMessage) -> StagedCommit {
             panic!("Unexpected message type.")
         }
         #[cfg(feature = "extensions-draft-08")]
-        ProcessedMessageContent::StagedCommitWithPendingAppDataUpdates(_) => {
+        ProcessedMessageContent::PendingAppDataUpdates(_) => {
             panic!("Unexpected message type.")
         }
         ProcessedMessageContent::StagedCommitMessage(staged_content) => *staged_content,

@@ -184,7 +184,7 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
                     group_state.merge_staged_commit(&self.provider, *staged_commit)?;
                 }
                 #[cfg(feature = "extensions-draft-08")]
-                ProcessedMessageContent::StagedCommitWithPendingAppDataUpdates(_) => {
+                ProcessedMessageContent::PendingAppDataUpdates(_) => {
                     unimplemented!()
                 }
             }

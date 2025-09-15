@@ -36,7 +36,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::group::mls_group::app_data_update::StagedCommitWithPendingAppDataUpdates;
+use crate::group::mls_group::app_data_update::PendingAppDataUpdates;
 
 use super::{
     mls_auth_content::AuthenticatedContent,
@@ -372,9 +372,9 @@ pub enum ProcessedMessageContent {
     /// A StagedCommit message with pending AppDataUpdate proposals.
     ///
     /// Calling
-    /// [`StagedCommitWithPendingAppDataUpdates::apply_app_logic()`] consumes the struct and
+    /// [`PendingAppDataUpdates::apply_app_logic()`] consumes the struct and
     /// applies the application logic to the underlying [`StagedCommit`].
-    StagedCommitWithPendingAppDataUpdates(StagedCommitWithPendingAppDataUpdates),
+    PendingAppDataUpdates(PendingAppDataUpdates),
 }
 
 /// Application message received through a [ProcessedMessage].

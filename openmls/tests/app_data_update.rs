@@ -72,7 +72,7 @@ fn setup<'a, Provider: OpenMlsProvider>(
 #[openmls_test]
 fn test_app_data_update() {
     // set up application-level component logic
-    let mut registered_components = RegisteredComponentsWithLogic::new();
+    let mut registered_components = AppDataUpdateLogic::new();
     registered_components.register(16, |data| {
         // process the data (by adding the prefix "new_data:")
         let mut new_data = b"new_data:".to_vec();
@@ -122,7 +122,7 @@ fn test_app_data_update() {
         .unwrap();
 
     let commit = match processed_message.into_content() {
-        ProcessedMessageContent::StagedCommitWithPendingAppDataUpdates(commit) => commit,
+        ProcessedMessageContent::PendingAppDataUpdates(commit) => commit,
         _ => panic!("Should be a processed commit with app data updates"),
     };
     let staged_commit = commit.apply_app_logic(&registered_components).unwrap();
@@ -153,7 +153,7 @@ fn test_case<Provider: OpenMlsProvider>(
     group_state: &mut GroupState<Provider>,
     proposals: impl IntoIterator<Item = Proposal>,
     group_context_extensions: Option<Extensions>,
-    registered_components: &RegisteredComponentsWithLogic,
+    registered_components: &AppDataUpdateLogic,
 ) -> Result<(), Error> {
     let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -185,7 +185,7 @@ fn test_case<Provider: OpenMlsProvider>(
         )
         .unwrap();
     let commit = match processed_message.into_content() {
-        ProcessedMessageContent::StagedCommitWithPendingAppDataUpdates(commit) => commit,
+        ProcessedMessageContent::PendingAppDataUpdates(commit) => commit,
         _ => panic!("Should be a processed commit with app data updates"),
     };
     commit.apply_app_logic(&registered_components)?;
@@ -204,7 +204,7 @@ fn test_incorrect_proposals() {
     let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
 
     // Removing a ComponentId that is not registered
-    let registered_components = RegisteredComponentsWithLogic::new();
+    let registered_components = AppDataUpdateLogic::new();
     let err = test_case(
         &mut group_state,
         Some(Proposal::AppDataUpdate(AppDataUpdateProposal::remove(16))),
@@ -218,7 +218,7 @@ fn test_incorrect_proposals() {
     );
 
     // Removing a ComponentId when there is no AppDataDictionaryExtension
-    let mut registered_components = RegisteredComponentsWithLogic::new();
+    let mut registered_components = AppDataUpdateLogic::new();
     registered_components.register(16, |_| Ok(vec![]));
     let err = test_case(
         &mut group_state,

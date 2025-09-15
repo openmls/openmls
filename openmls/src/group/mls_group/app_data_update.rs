@@ -13,9 +13,9 @@ use thiserror::Error;
 /// A wrapper for a [`StagedCommit`] with pending [`AppDataUpdateProposal`]s.
 ///
 /// These proposals can be applied by calling
-/// [`StagedCommitWithPendingAppDataUpdates::apply_app_logic()`], which consumes
+/// [`PendingAppDataUpdates::apply_app_logic()`], which consumes
 /// the struct and returns a [`StagedCommit`].
-pub struct StagedCommitWithPendingAppDataUpdates(pub(crate) Box<StagedCommit>);
+pub struct PendingAppDataUpdates(pub(crate) Box<StagedCommit>);
 
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
 /// An error returned by the app logic when applying an AppDataUpdate proposal.
@@ -49,15 +49,15 @@ pub enum ValidateAppDataUpdateError {
     ComponentNotAvailable,
 }
 
-// helper type for the application logic stored in the [`RegisteredComponentsWithLogic`]
+// helper type for the application logic stored in the [`AppDataUpdateLogic`]
 type RegisteredComponentLogic = Box<dyn Fn(&[u8]) -> Result<Vec<u8>, ApplyAppLogicError>>;
 
 /// A struct representing the [`ComponentId`]s known to the application,
 /// with the application logic registered to each component.
-pub struct RegisteredComponentsWithLogic(BTreeMap<ComponentId, RegisteredComponentLogic>);
+pub struct AppDataUpdateLogic(BTreeMap<ComponentId, RegisteredComponentLogic>);
 
-impl RegisteredComponentsWithLogic {
-    /// Initialize a new, empty [`RegisteredComponentsWithLogic`].
+impl AppDataUpdateLogic {
+    /// Initialize a new, empty [`AppDataUpdateLogic`].
     pub fn new() -> Self {
         Self(BTreeMap::new())
     }
@@ -98,11 +98,11 @@ impl RegisteredComponentsWithLogic {
     }
 }
 
-impl StagedCommitWithPendingAppDataUpdates {
-    /// Apply the application logic registered in the [`RegisteredComponentsWithLogic`] to the [`StagedCommit`].
+impl PendingAppDataUpdates {
+    /// Apply the application logic registered in the [`AppDataUpdateLogic`] to the [`StagedCommit`].
     pub fn apply_app_logic(
         self,
-        registered_logic: &RegisteredComponentsWithLogic,
+        registered_logic: &AppDataUpdateLogic,
     ) -> Result<Box<StagedCommit>, ValidateAppDataUpdateError> {
         // Retrieve the staged commit
         let mut staged_commit = self.0;
