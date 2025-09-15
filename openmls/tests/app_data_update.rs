@@ -71,6 +71,13 @@ fn setup<'a, Provider: OpenMlsProvider>(
 /// Test a simple AppDataUpdate
 #[openmls_test]
 fn test_app_data_update() {
+    // set up component logic
+    let mut registered_components = RegisteredComponentsWithLogic::new();
+    registered_components.register(16, |data| {
+        let mut new_data = b"new_data:".to_vec();
+        new_data.extend(data.to_vec());
+        Ok(new_data)
+    });
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
@@ -111,14 +118,6 @@ fn test_app_data_update() {
             message_in.try_into_protocol_message().unwrap(),
         )
         .unwrap();
-
-    // set up component logic
-    let mut registered_components = RegisteredComponentsWithLogic::new();
-    registered_components.register(16, |data| {
-        let mut new_data = b"new_data:".to_vec();
-        new_data.extend(data.to_vec());
-        Ok(new_data)
-    });
 
     let commit = match processed_message.into_content() {
         ProcessedMessageContent::StagedCommitWithPendingAppDataUpdates(commit) => commit,
