@@ -16,7 +16,6 @@ pub(crate) mod parent_node;
 /// Container enum for leaf and parent nodes.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     NodeType node_type;
 ///     select (Node.node_type) {
@@ -26,16 +25,24 @@ pub(crate) mod parent_node;
 /// } Node;
 /// ```
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
-// TODO: #1670 to remove this `allow`
-#[allow(clippy::large_enum_variant)]
 #[repr(u8)]
 pub enum Node {
     /// A leaf node.
     #[tls_codec(discriminant = 1)]
-    LeafNode(LeafNode),
+    LeafNode(Box<LeafNode>),
     /// A parent node.
     #[tls_codec(discriminant = 2)]
-    ParentNode(ParentNode),
+    ParentNode(Box<ParentNode>),
+}
+
+impl Node {
+    pub(crate) fn leaf_node(leaf: LeafNode) -> Self {
+        Self::LeafNode(Box::new(leaf))
+    }
+
+    pub(crate) fn parent_node(parent: ParentNode) -> Self {
+        Self::ParentNode(Box::new(parent))
+    }
 }
 
 #[derive(
@@ -50,22 +57,20 @@ pub enum Node {
     TlsDeserializeBytes,
     TlsSerialize,
 )]
-// TODO: #1670 to remove this `allow`
-#[allow(clippy::large_enum_variant)]
 #[repr(u8)]
 pub enum NodeIn {
     /// A leaf node.
     #[tls_codec(discriminant = 1)]
-    LeafNode(LeafNodeIn),
+    LeafNode(Box<LeafNodeIn>),
     /// A parent node.
     #[tls_codec(discriminant = 2)]
-    ParentNode(ParentNode),
+    ParentNode(Box<ParentNode>),
 }
 
 impl From<Node> for NodeIn {
     fn from(node: Node) -> Self {
         match node {
-            Node::LeafNode(leaf_node) => NodeIn::LeafNode(leaf_node.into()),
+            Node::LeafNode(leaf_node) => NodeIn::LeafNode(Box::new((*leaf_node).into())),
             Node::ParentNode(parent_node) => NodeIn::ParentNode(parent_node),
         }
     }
@@ -77,7 +82,7 @@ impl From<Node> for NodeIn {
 impl From<NodeIn> for Node {
     fn from(node: NodeIn) -> Self {
         match node {
-            NodeIn::LeafNode(leaf_node) => Node::LeafNode(leaf_node.into()),
+            NodeIn::LeafNode(leaf_node) => Node::LeafNode(Box::new((*leaf_node).into())),
             NodeIn::ParentNode(parent_node) => Node::ParentNode(parent_node),
         }
     }
@@ -87,15 +92,4 @@ impl From<NodeIn> for Node {
 pub(crate) enum NodeReference<'a> {
     Leaf(&'a LeafNode),
     Parent(&'a ParentNode),
-}
-
-#[cfg(test)]
-impl Node {
-    #[allow(unused)]
-    pub(crate) fn into_leaf(self) -> LeafNode {
-        match self {
-            Node::LeafNode(l) => l,
-            Node::ParentNode(_) => panic!("Tried to convert parent node into leaf node."),
-        }
-    }
 }

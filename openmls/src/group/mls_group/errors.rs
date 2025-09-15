@@ -332,6 +332,7 @@ pub enum SafeExportSecretError<StorageError> {
 #[cfg(feature = "extensions-draft-08")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ProcessedMessageSafeExportSecretError {
+    /// See [`StagedSafeExportSecretError`] for more details.
     #[error(transparent)]
     SafeExportSecretError(#[from] StagedSafeExportSecretError),
     /// Processed message is not a commit.
@@ -343,6 +344,7 @@ pub enum ProcessedMessageSafeExportSecretError {
 #[cfg(feature = "extensions-draft-08")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum PendingSafeExportSecretError<StorageError> {
+    /// See [`StagedSafeExportSecretError`] for more details.
     #[error(transparent)]
     SafeExportSecretError(#[from] StagedSafeExportSecretError),
     /// No pending commit.

@@ -1,3 +1,5 @@
+use std::slice::from_ref;
+
 use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::{Deserialize, Serialize};
 
@@ -242,7 +244,7 @@ fn test_commit_encoding(provider: &impl crate::storage::OpenMlsProvider) {
             .add_members(
                 provider,
                 &alice_credential_with_key_and_signer.signer,
-                &[charlie_key_package.clone()],
+                from_ref(&charlie_key_package),
             )
             .expect("Could not create commit.");
 
@@ -290,7 +292,7 @@ fn test_welcome_message_encoding(provider: &impl crate::storage::OpenMlsProvider
             .add_members(
                 provider,
                 &credential_with_key_and_signer.signer,
-                &[charlie_key_package.clone()],
+                from_ref(&charlie_key_package),
             )
             .expect("Could not create commit.");
         group_state.merge_pending_commit(provider).unwrap();

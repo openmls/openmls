@@ -165,6 +165,12 @@ impl QueuedProposal {
     pub(crate) fn proposal_reference(&self) -> ProposalRef {
         self.proposal_reference.clone()
     }
+
+    /// Returns the `ProposalRef`.
+    pub(crate) fn proposal_reference_ref(&self) -> &ProposalRef {
+        &self.proposal_reference
+    }
+
     /// Returns the `ProposalOrRefType`.
     pub fn proposal_or_ref_type(&self) -> ProposalOrRefType {
         self.proposal_or_ref_type
@@ -263,15 +269,25 @@ impl ProposalQueue {
             let queued_proposal = match proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
-                    if let Proposal::Remove(ref remove_proposal) = proposal {
-                        if let Sender::Member(leaf_index) = sender {
-                            if remove_proposal.removed() == *leaf_index {
-                                return Err(FromCommittedProposalsError::SelfRemoval);
-                            }
-                        }
-                    }
+                    if proposal
+                        .as_remove()
+                        .and_then(|remove_proposal| {
+                            sender.as_member().filter(|leaf_index| {
+                                // The proposal must not remove the committer.
+                                remove_proposal.removed() == *leaf_index
+                            })
+                        })
+                        .is_some()
+                    {
+                        return Err(FromCommittedProposalsError::SelfRemoval);
+                    };
 
-                    QueuedProposal::from_proposal_and_sender(ciphersuite, crypto, proposal, sender)?
+                    QueuedProposal::from_proposal_and_sender(
+                        ciphersuite,
+                        crypto,
+                        *proposal,
+                        sender,
+                    )?
                 }
                 ProposalOrRef::Reference(ref proposal_reference) => {
                     match proposals_by_reference_queue.get(proposal_reference) {
@@ -342,7 +358,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all Add proposals in the queue
     /// in the order of the the Commit message
-    pub(crate) fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
+    pub(crate) fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal<'_>> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::Add(add_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
@@ -358,7 +374,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all Remove proposals in the queue
     /// in the order of the the Commit message
-    pub(crate) fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
+    pub(crate) fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal<'_>> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
@@ -374,7 +390,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all Update in the queue
     /// in the order of the the Commit message
-    pub(crate) fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
+    pub(crate) fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal<'_>> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::Update(update_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
@@ -390,7 +406,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all PresharedKey proposals in the queue
     /// in the order of the the Commit message
-    pub(crate) fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
+    pub(crate) fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal<'_>> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::PreSharedKey(psk_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
@@ -558,10 +574,10 @@ impl ProposalQueue {
                 // Differentiate the type of proposal
                 match queued_proposal.proposal_or_ref_type {
                     ProposalOrRefType::Proposal => {
-                        ProposalOrRef::Proposal(queued_proposal.proposal.clone())
+                        ProposalOrRef::proposal(queued_proposal.proposal.clone())
                     }
                     ProposalOrRefType::Reference => {
-                        ProposalOrRef::Reference(queued_proposal.proposal_reference.clone())
+                        ProposalOrRef::reference(queued_proposal.proposal_reference.clone())
                     }
                 }
             })

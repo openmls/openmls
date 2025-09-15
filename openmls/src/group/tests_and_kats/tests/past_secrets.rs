@@ -62,7 +62,7 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             .add_members(
                 alice_provider,
                 &alice_credential_with_keys.signer,
-                &[bob_key_package.key_package().clone()],
+                core::slice::from_ref(bob_key_package.key_package()),
             )
             .expect("An unexpected error occurred.");
 

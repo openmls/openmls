@@ -206,7 +206,11 @@ pub fn run_test_vector(
         );
         let bob_key_package = bob_key_package_bundle.key_package();
         let (_commit, _welcome, _) = group
-            .add_members(provider, &signature_keys, &[bob_key_package.clone()])
+            .add_members(
+                provider,
+                &signature_keys,
+                core::slice::from_ref(bob_key_package),
+            )
             .unwrap();
         group.merge_pending_commit(provider).unwrap();
 
@@ -368,7 +372,7 @@ pub fn run_test_vector(
                 .0;
             match processed_message.content().to_owned() {
                 FramedContentBody::Commit(c) => {
-                    assert_eq!(commit, CommitIn::from(c))
+                    assert_eq!(commit, CommitIn::from(*c))
                 }
                 _ => panic!("Wrong processed message content"),
             }

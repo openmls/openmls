@@ -68,9 +68,9 @@ fn proposal_queue_functions(
         key_package: bob_key_package.clone(),
     };
 
-    let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
-    let proposal_add_alice2 = Proposal::Add(add_proposal_alice2);
-    let proposal_add_bob = Proposal::Add(add_proposal_bob);
+    let proposal_add_alice1 = Proposal::add(add_proposal_alice1);
+    let proposal_add_alice2 = Proposal::add(add_proposal_alice2);
+    let proposal_add_bob = Proposal::add(add_proposal_bob);
 
     // Test proposal types
     assert!(proposal_add_alice1.is_type(ProposalType::Add));
@@ -205,8 +205,8 @@ fn proposal_queue_order() {
         key_package: bob_key_package.clone(),
     };
 
-    let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
-    let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
+    let proposal_add_alice1 = Proposal::add(add_proposal_alice1);
+    let proposal_add_bob1 = Proposal::add(add_proposal_bob1);
 
     // Frame proposals in PublicMessage
     let mls_plaintext_add_alice1 = AuthenticatedContent::member_proposal(
@@ -252,8 +252,8 @@ fn proposal_queue_order() {
     );
 
     let proposal_or_refs = vec![
-        ProposalOrRef::Proposal(proposal_add_bob1.clone()),
-        ProposalOrRef::Reference(proposal_reference_add_alice1),
+        ProposalOrRef::proposal(proposal_add_bob1.clone()),
+        ProposalOrRef::reference(proposal_reference_add_alice1),
     ];
 
     let sender = Sender::build_member(LeafNodeIndex::new(0));
@@ -352,7 +352,11 @@ fn group_context_extensions(
         .expect("Error creating MlsGroup.");
 
     let (_commit, welcome, _group_info_option) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package),
+        )
         .expect("Error adding members.");
 
     alice_group.merge_pending_commit(provider).unwrap();
@@ -404,7 +408,11 @@ fn group_context_extension_proposal_fails(
 
     // Adding Bob
     let (_commit, welcome, _group_info_option) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package),
+        )
         .expect("Error adding members.");
 
     alice_group.merge_pending_commit(provider).unwrap();
@@ -541,7 +549,11 @@ fn self_remove_proposals(
 
     // Alice adds Bob
     let (_commit, welcome, _group_info_option) = group_alice
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package),
+        )
         .expect("Could not create proposal.");
 
     group_alice
@@ -623,7 +635,11 @@ fn remove_and_update_processing(
         .expect("Error creating MlsGroup.");
 
     let (_commit, welcome, _group_info_option) = alice_group
-        .add_members(provider, &alice_signer, &[bob_key_package.clone()])
+        .add_members(
+            provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package),
+        )
         .expect("Error adding members.");
 
     alice_group.merge_pending_commit(provider).unwrap();

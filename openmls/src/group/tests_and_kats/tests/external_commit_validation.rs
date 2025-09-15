@@ -119,7 +119,7 @@ fn test_valsem241() {
 
         // Insert a second external init proposal into the commit.
         let second_ext_init_prop =
-            ProposalOrRef::Proposal(Proposal::ExternalInit(ExternalInitProposal::from(vec![
+            ProposalOrRef::proposal(Proposal::external_init(ExternalInitProposal::from(vec![
                 1, 2, 3,
             ])));
 
@@ -186,7 +186,7 @@ fn test_valsem242() {
         .add_members(
             provider,
             &alice_credential.signer,
-            &[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .unwrap();
     alice_group.merge_pending_commit(provider).unwrap();
@@ -251,13 +251,13 @@ fn test_valsem242() {
                 charlie_credential,
             );
 
-            ProposalOrRef::Proposal(Proposal::Add(AddProposal {
+            ProposalOrRef::proposal(Proposal::add(AddProposal {
                 key_package: charlie_key_package.key_package().clone(),
             }))
         };
 
         let reinit_proposal = {
-            ProposalOrRef::Proposal(Proposal::ReInit(ReInitProposal {
+            ProposalOrRef::proposal(Proposal::re_init(ReInitProposal {
                 group_id: alice_group.group_id().clone(),
                 version: Default::default(),
                 ciphersuite,
@@ -266,7 +266,7 @@ fn test_valsem242() {
         };
 
         let gce_proposal = {
-            ProposalOrRef::Proposal(Proposal::GroupContextExtensions(
+            ProposalOrRef::proposal(Proposal::group_context_extensions(
                 GroupContextExtensionProposal::new(alice_group.context().extensions().clone()),
             ))
         };
@@ -350,7 +350,7 @@ fn test_valsem244() {
             bob_credential.clone(),
         );
 
-        let add_proposal = Proposal::Add(AddProposal {
+        let add_proposal = Proposal::add(AddProposal {
             key_package: bob_key_package.key_package().clone(),
         });
 
@@ -358,7 +358,7 @@ fn test_valsem244() {
             ProposalRef::from_raw_proposal(ciphersuite, provider.crypto(), &add_proposal).unwrap();
 
         // Add an Add proposal to the external commit.
-        let add_proposal_ref = ProposalOrRef::Reference(proposal_ref);
+        let add_proposal_ref = ProposalOrRef::reference(proposal_ref);
 
         commit_bad.proposals.push(add_proposal_ref);
 

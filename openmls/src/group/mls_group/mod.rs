@@ -250,7 +250,7 @@ pub struct MlsGroup {
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
     group_state: MlsGroupState,
-    /// The state of the Application Exporter. See the MLS Extensions Draft 07
+    /// The state of the Application Exporter. See the MLS Extensions Draft 08
     /// for more information. This is `None` if an old OpenMLS group state was
     /// loaded and has not yet merged a commit.
     #[cfg(feature = "extensions-draft-08")]
@@ -592,7 +592,7 @@ impl MlsGroup {
                 .check_extension_support(required_capabilities.extension_types())?;
         }
         let proposal = GroupContextExtensionProposal::new(extensions);
-        let proposal = Proposal::GroupContextExtensions(proposal);
+        let proposal = Proposal::GroupContextExtensions(Box::new(proposal));
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
@@ -628,7 +628,7 @@ impl MlsGroup {
     }
 
     /// Group framing parameters
-    pub(crate) fn framing_parameters(&self) -> FramingParameters {
+    pub(crate) fn framing_parameters(&self) -> FramingParameters<'_> {
         FramingParameters::new(
             &self.aad,
             self.mls_group_config.wire_format_policy().outgoing(),
@@ -827,6 +827,24 @@ impl MlsGroup {
     #[cfg(test)]
     pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
         self.public_group.set_group_context(group_context)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn ensure_persistence(
+        &self,
+        storage: &impl StorageProvider,
+    ) -> Result<(), LibraryError> {
+        let loaded = MlsGroup::load(storage, self.group_id())
+            .map_err(|_| LibraryError::custom("Failed to load group from storage"))?;
+        let other = loaded.ok_or_else(|| LibraryError::custom("Group not found in storage"))?;
+
+        if self != &other {
+            return Err(LibraryError::custom(
+                "Loaded group does not match current group",
+            ));
+        }
+
+        Ok(())
     }
 }
 

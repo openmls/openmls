@@ -53,6 +53,8 @@ fn external_commit_builder() {
         .build(provider, &alice_signer, alice_credential_with_key)
         .unwrap();
 
+    alice_group.ensure_persistence(provider.storage()).unwrap();
+
     // Bob joins the group externally.
 
     let verifiable_group_info = alice_group
@@ -94,6 +96,8 @@ fn external_commit_builder() {
         .unwrap()
         .finalize(provider)
         .unwrap();
+
+    bob_group.ensure_persistence(provider.storage()).unwrap();
 
     // Check that the padding was set correctly.
     assert_eq!(bob_group.configuration().padding_size(), PADDING_SIZE);

@@ -76,6 +76,17 @@ impl OpenMlsCrypto for CryptoProvider {
         Ok(out.into())
     }
 
+    fn hmac(
+        &self,
+        hash_type: HashType,
+        key: &[u8],
+        message: &[u8],
+    ) -> Result<SecretVLBytes, CryptoError> {
+        let alg = hash_alg(hash_type);
+        let out = libcrux_hmac::hmac(alg, key, message, None);
+        Ok(out.into())
+    }
+
     fn hkdf_expand(
         &self,
         hash_type: HashType,
@@ -387,6 +398,15 @@ fn hkdf_alg(hash_type: HashType) -> libcrux_hkdf::Algorithm {
         HashType::Sha2_512 => libcrux_hkdf::Algorithm::Sha512,
     }
 }
+
+fn hash_alg(hash_type: HashType) -> libcrux_hmac::Algorithm {
+    match hash_type {
+        HashType::Sha2_256 => libcrux_hmac::Algorithm::Sha256,
+        HashType::Sha2_384 => libcrux_hmac::Algorithm::Sha384,
+        HashType::Sha2_512 => libcrux_hmac::Algorithm::Sha512,
+    }
+}
+
 struct GuardedRng<'a, Rng: RngCore>(MutexGuard<'a, Rng>);
 
 impl<Rng: RngCore> RngCore for GuardedRng<'_, Rng> {

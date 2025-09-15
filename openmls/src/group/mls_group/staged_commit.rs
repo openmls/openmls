@@ -498,22 +498,22 @@ impl StagedCommit {
     }
 
     /// Returns the Add proposals that are covered by the Commit message as in iterator over [QueuedAddProposal].
-    pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
+    pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal<'_>> {
         self.staged_proposal_queue.add_proposals()
     }
 
     /// Returns the Remove proposals that are covered by the Commit message as in iterator over [QueuedRemoveProposal].
-    pub fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
+    pub fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal<'_>> {
         self.staged_proposal_queue.remove_proposals()
     }
 
     /// Returns the Update proposals that are covered by the Commit message as in iterator over [QueuedUpdateProposal].
-    pub fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
+    pub fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal<'_>> {
         self.staged_proposal_queue.update_proposals()
     }
 
     /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].
-    pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
+    pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal<'_>> {
         self.staged_proposal_queue.psk_proposals()
     }
 
@@ -641,6 +641,7 @@ pub(crate) struct MemberStagedCommitState {
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
     update_path_leaf_node: Option<LeafNode>,
     #[cfg(feature = "extensions-draft-08")]
+    #[serde(default)]
     // This is `None` only if the group was stored using an older version of
     // OpenMLS that did not support the application exporter.
     application_export_tree: Option<ApplicationExportTree>,

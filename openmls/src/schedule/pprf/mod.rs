@@ -1,3 +1,10 @@
+//! # Puncturable Pseudorandom Function (PPRF) Implementation
+//!
+//! This module implements a PPRF using the same binary tree structure as the
+//! secret tree. In contrast to the secret tree, this implementation is generic
+//! over the size of the tree. Additionally, it is designed to be efficient even
+//! for larger sizes.
+
 use std::collections::HashMap;
 
 use openmls_traits::{
@@ -8,7 +15,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 use zeroize::ZeroizeOnDrop;
 
-use crate::{binary_tree::array_representation::TreeSize, ciphersuite::Secret};
+use crate::{
+    binary_tree::array_representation::TreeSize, ciphersuite::Secret,
+    tree::secret_tree::derive_child_secrets,
+};
 
 use input::AsIndexBytes;
 use prefix::Prefix;
@@ -28,6 +38,7 @@ pub enum PprfError {
     ChildDerivationError(#[from] CryptoError),
 }
 
+/// A Node in the PPRF tree that contains the node's secret.
 #[derive(Debug, Serialize, Deserialize, Clone, ZeroizeOnDrop)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 #[serde(transparent)]
@@ -46,34 +57,25 @@ impl From<PprfNode> for Secret {
 }
 
 impl PprfNode {
-    fn derive_child(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
-        context: &[u8],
-    ) -> Result<Self, CryptoError> {
-        let secret = Secret::from_slice(&self.0);
-        let secret = secret.kdf_expand_label(
-            crypto,
-            ciphersuite,
-            "tree",
-            context,
-            ciphersuite.hash_length(),
-        )?;
-        Ok(secret.into())
-    }
-
+    /// Derives the left and right child nodes from the current node.
     fn derive_children(
         &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<(Self, Self), CryptoError> {
-        let left_child = self.derive_child(crypto, ciphersuite, b"left")?;
-        let right_child = self.derive_child(crypto, ciphersuite, b"right")?;
-        Ok((left_child, right_child))
+        let own_secret = Secret::from_slice(&self.0);
+        let (left_secret, right_secret) = derive_child_secrets(&own_secret, crypto, ciphersuite)?;
+        Ok((left_secret.into(), right_secret.into()))
     }
 }
 
+/// The PPRF containing the tree of nodes, where each node contains a secret. It
+/// can be evaluated at a given input only once. The struct will grow in size
+/// with each evaluation.
+///
+/// The struct is generic over the prefix, which determines how individual nodes
+/// are indexed. As prefixes are stored alongside each node, small prefixes help
+/// keep the overall tree small.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 pub(crate) struct Pprf<P: Prefix> {
@@ -85,6 +87,7 @@ pub(crate) struct Pprf<P: Prefix> {
     width: usize,
 }
 
+/// Get the bit in the given byte slice at the given index.
 fn get_bit(index: &[u8], bit_index: usize) -> bool {
     let byte = index[bit_index / 8];
     let bit = 7 - (bit_index % 8); // big-endian
@@ -92,6 +95,7 @@ fn get_bit(index: &[u8], bit_index: usize) -> bool {
 }
 
 impl<P: Prefix> Pprf<P> {
+    /// Create a new PPRF with the given secret and size.
     pub(super) fn new_with_size(secret: Secret, size: TreeSize) -> Self {
         let width = size.leaf_count() as usize;
         Pprf {
@@ -111,6 +115,7 @@ impl<P: Prefix> Pprf<P> {
         }
     }
 
+    /// Evaluates the PPRF at the given input.
     pub(super) fn evaluate<Input: AsIndexBytes>(
         &mut self,
         crypto: &impl OpenMlsCrypto,
@@ -131,9 +136,7 @@ impl<P: Prefix> Pprf<P> {
 
         // Step 1: Find the deepest existing node in the cache
         loop {
-            let key = prefix.clone();
-
-            if let Some(node) = self.nodes.remove(&key) {
+            if let Some(node) = self.nodes.remove(&prefix) {
                 if depth == P::MAX_DEPTH {
                     return Ok(node.into());
                 } // already at leaf
@@ -161,7 +164,8 @@ impl<P: Prefix> Pprf<P> {
 
             let mut copath_prefix = prefix.clone();
             copath_prefix.push_bit(!bit);
-            self.nodes.insert(copath_prefix.clone(), copath_node);
+            let node_at_copath_prefix = self.nodes.insert(copath_prefix.clone(), copath_node);
+            debug_assert!(node_at_copath_prefix.is_none());
 
             current_node = next_node;
             prefix.push_bit(bit);

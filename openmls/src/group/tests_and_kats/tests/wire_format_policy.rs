@@ -63,7 +63,7 @@ fn receive_message(
         .add_members(
             provider,
             alice_signer,
-            &[bob_key_package.key_package().clone()],
+            core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("Could not add member.");
 

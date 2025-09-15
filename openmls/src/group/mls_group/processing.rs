@@ -95,6 +95,11 @@ impl MlsGroup {
         Ok(())
     }
 
+    /// Returns true if there are pending proposals queued in the proposal store.
+    pub fn has_pending_proposals(&self) -> bool {
+        !self.proposal_store().is_empty()
+    }
+
     /// Creates a Commit message that covers the pending proposals that are
     /// currently stored in the group's [ProposalStore]. The Commit message is
     /// created even if there are no valid pending proposals.

@@ -180,7 +180,7 @@ impl GroupInfo {
         &self.payload.extensions
     }
 
-    /// Returns the [`GroupInfo`] extensions.
+    /// Returns the [`GroupInfo`] signature.
     pub fn signature(&self) -> &Signature {
         &self.signature
     }
