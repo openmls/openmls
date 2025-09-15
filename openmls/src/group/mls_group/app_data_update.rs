@@ -99,6 +99,10 @@ impl AppDataUpdateLogic {
 }
 
 impl PendingAppDataUpdates {
+    /// Retrieve a reference to the underlying [`StagedCommit`].
+    pub fn staged_commit(&self) -> &StagedCommit {
+        &self.0
+    }
     /// Apply the application logic registered in the [`AppDataUpdateLogic`] to the [`StagedCommit`].
     pub fn apply_app_logic(
         self,
