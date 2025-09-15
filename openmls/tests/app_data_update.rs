@@ -71,7 +71,12 @@ fn setup<'a, Provider: OpenMlsProvider>(
 /// Test a simple AppDataUpdate
 #[openmls_test]
 fn test_app_data_update() {
-    // set up application-level component logic
+    struct AppState {
+        registered_components: AppDataUpdateLogic,
+    }
+
+    // Set up application-level component logic.
+    // This logic is re-used across MLS messages.
     let mut registered_components = AppDataUpdateLogic::new();
     registered_components.register(16, |data| {
         // process the data (by adding the prefix "new_data:")
@@ -79,6 +84,11 @@ fn test_app_data_update() {
         new_data.extend(data.to_vec());
         Ok(new_data)
     });
+
+    // Application state
+    let app_state = AppState {
+        registered_components,
+    };
 
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
@@ -125,7 +135,9 @@ fn test_app_data_update() {
         ProcessedMessageContent::PendingAppDataUpdates(commit) => commit,
         _ => panic!("Should be a processed commit with app data updates"),
     };
-    let staged_commit = commit.apply_app_logic(&registered_components).unwrap();
+    let staged_commit = commit
+        .apply_app_logic(&app_state.registered_components)
+        .unwrap();
     let dictionary_ext = staged_commit
         .group_context()
         .extensions()
