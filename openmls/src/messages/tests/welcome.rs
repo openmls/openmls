@@ -215,6 +215,7 @@ fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl crate::storage
             }),
             LeafNodeIndex::new(1),
         )
+        .unwrap()
     };
 
     // We need a signer
