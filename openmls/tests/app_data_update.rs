@@ -71,13 +71,15 @@ fn setup<'a, Provider: OpenMlsProvider>(
 /// Test a simple AppDataUpdate
 #[openmls_test]
 fn test_app_data_update() {
-    // set up component logic
+    // set up application-level component logic
     let mut registered_components = RegisteredComponentsWithLogic::new();
     registered_components.register(16, |data| {
+        // process the data (by adding the prefix "new_data:")
         let mut new_data = b"new_data:".to_vec();
         new_data.extend(data.to_vec());
         Ok(new_data)
     });
+
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
