@@ -269,36 +269,36 @@ impl<T> Default for ExtensionsForObject<T> {
     }
 }
 
-impl Size for Extensions {
+impl<T> Size for ExtensionsForObject<T> {
     fn tls_serialized_len(&self) -> usize {
         Vec::tls_serialized_len(&self.unique)
     }
 }
 
-impl TlsSerializeTrait for Extensions {
+impl<T> TlsSerializeTrait for ExtensionsForObject<T> {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
         self.unique.tls_serialize(writer)
     }
 }
 
-impl TlsDeserializeTrait for Extensions {
+impl<T: ExtensionValidator> TlsDeserializeTrait for ExtensionsForObject<T> {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
         let candidate: Vec<Extension> = Vec::tls_deserialize(bytes)?;
-        Extensions::try_from(candidate)
+        ExtensionsForObject::<T>::try_from(candidate)
             .map_err(|_| Error::DecodingError("Found duplicate extensions".into()))
     }
 }
 
-impl DeserializeBytes for Extensions {
+impl<T: ExtensionValidator> DeserializeBytes for ExtensionsForObject<T> {
     fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
     where
         Self: Sized,
     {
         let mut bytes_ref = bytes;
-        let extensions = Extensions::tls_deserialize(&mut bytes_ref)?;
+        let extensions = ExtensionsForObject::<T>::tls_deserialize(&mut bytes_ref)?;
         let remainder = &bytes[extensions.tls_serialized_len()..];
         Ok((extensions, remainder))
     }
@@ -327,6 +327,21 @@ impl<T: ExtensionValidator> ExtensionsForObject<T> {
     /// extension types.
     pub fn from_vec(extensions: Vec<Extension>) -> Result<Self, InvalidExtensionError> {
         extensions.try_into()
+    }
+
+    /// Validate if the extensions are valid for this context
+    pub fn validate<'a>(
+        extensions: impl Iterator<Item = &'a Extension>,
+    ) -> Option<InvalidExtensionError> {
+        for ext in extensions {
+            if !T::valid_extension(ext) {
+                return Some(InvalidExtensionError::NotValid {
+                    illegal_extension: ext.extension_type(),
+                    ty: std::any::type_name::<T>(),
+                });
+            }
+        }
+        None
     }
 
     /// Returns an iterator over the extension list.
@@ -440,9 +455,7 @@ impl<T> ExtensionsForObject<T> {
             .iter()
             .find(|ext| ext.extension_type() == extension_type)
     }
-}
 
-impl Extensions {
     /// Get a reference to the [`ApplicationIdExtension`] if there is any.
     pub fn application_id(&self) -> Option<&ApplicationIdExtension> {
         self.find_by_type(ExtensionType::ApplicationId)
@@ -591,8 +604,15 @@ impl TryFrom<Extensions> for ExtensionsForObject<GroupContext> {
     }
 }
 
+// TODO get rid of this
 impl From<ExtensionsForObject<GroupContext>> for Extensions {
     fn from(value: ExtensionsForObject<GroupContext>) -> Self {
+        (&value).into()
+    }
+}
+
+impl From<&ExtensionsForObject<GroupContext>> for Extensions {
+    fn from(value: &ExtensionsForObject<GroupContext>) -> Self {
         Self {
             unique: value.unique.clone(),
             _object: PhantomData,

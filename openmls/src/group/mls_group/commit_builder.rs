@@ -248,7 +248,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         extensions: Extensions,
     ) -> Result<Self, CreateCommitError> {
         let group_extensions = extensions;
-        let proposal = GroupContextExtensionProposal::new(group_extensions);
+        let proposal = GroupContextExtensionProposal::new(group_extensions.try_into()?);
         self.stage
             .own_proposals
             .push(Proposal::group_context_extensions(proposal));

@@ -577,7 +577,7 @@ impl MlsGroup {
             self.public_group()
                 .check_extension_support(required_capabilities.extension_types())?;
         }
-        let proposal = GroupContextExtensionProposal::new(extensions.into());
+        let proposal = GroupContextExtensionProposal::new(extensions);
         let proposal = Proposal::GroupContextExtensions(Box::new(proposal));
         AuthenticatedContent::member_proposal(
             framing_parameters,

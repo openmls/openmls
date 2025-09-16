@@ -327,8 +327,10 @@ impl MlsGroupCreateConfigBuilder {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
-        let gce: ExtensionsForObject<GroupContext> = extensions.try_into()?;
-        self.config.group_context_extensions = gce.into();
+        if let Some(err) = ExtensionsForObject::<GroupContext>::validate(extensions.iter()) {
+            return Err(err);
+        }
+        self.config.group_context_extensions = extensions;
         Ok(self)
     }
 

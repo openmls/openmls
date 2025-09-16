@@ -591,6 +591,9 @@ pub enum CreateGroupContextExtProposalError<StorageError> {
     /// Error writing updated group to storage.
     #[error("Error writing updated group data to storage.")]
     StorageError(StorageError),
+    /// Error validating the extensions
+    #[error(transparent)]
+    InvalidExtensionError(#[from] InvalidExtensionError),
 }
 
 /// Error merging a commit.
