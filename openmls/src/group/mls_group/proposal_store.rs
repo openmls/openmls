@@ -438,7 +438,6 @@ impl ProposalQueue {
     /// - Check for invalid indexes and drop proposal
     /// - Check for presence of SelfRemoves and delete Removes and Updates
     /// - Check for presence of Removes and delete Updates
-    /// - Check for valid GroupContextExtensions
     /// - Only keep the last Update
     ///
     /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for

@@ -359,7 +359,7 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
-        let group_context_extensions = extensions.try_into().unwrap();
+        let group_context_extensions = extensions.try_into()?;
         let proposal = self.create_group_context_ext_proposal::<Provider>(
             self.framing_parameters(),
             group_context_extensions,

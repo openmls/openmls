@@ -44,8 +44,10 @@ impl TempBuilderPG1 {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
-        let group_context_extensions: ExtensionsForObject<GroupContext> = extensions.try_into()?;
-        self.group_context_extensions = group_context_extensions.into();
+        if let Some(err) = ExtensionsForObject::<GroupContext>::validate(extensions.iter()) {
+            return Err(err);
+        }
+        self.group_context_extensions = extensions;
         Ok(self)
     }
 
