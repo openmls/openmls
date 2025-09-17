@@ -1,7 +1,6 @@
 use std::slice::from_ref;
 
 use openmls::{
-    prelude::Extension,
     prelude::{test_utils::new_credential, *},
     storage::OpenMlsProvider,
     treesync::LeafNodeParameters,

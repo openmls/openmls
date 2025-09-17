@@ -1280,8 +1280,7 @@ fn builder_pattern() {
         test_external_senders
     );
     assert_eq!(ciphersuite, test_ciphersuite);
-    let extensions = group_context.extensions().clone();
-    assert_eq!(extensions, test_gc_extensions);
+    assert_eq!(group_context.extensions(), &test_gc_extensions);
     let lifetime = alice_group
         .own_leaf()
         .expect("error getting own leaf")
