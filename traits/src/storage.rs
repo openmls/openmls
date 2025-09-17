@@ -161,6 +161,17 @@ pub trait StorageProvider<const VERSION: u16> {
         group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::Error>;
 
+    /// Write the ApplicationExportTree for the group with the given id.
+    #[cfg(feature = "extensions-draft-08")]
+    fn write_application_export_tree<
+        GroupId: traits::GroupId<VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        application_export_tree: &ApplicationExportTree,
+    ) -> Result<(), Self::Error>;
+
     //
     //    ---   setters/writers/enqueuers for crypto objects  ---
     //
@@ -413,6 +424,16 @@ pub trait StorageProvider<const VERSION: u16> {
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error>;
 
+    #[cfg(feature = "extensions-draft-08")]
+    /// Get the application export tree for the group with the given id.
+    fn application_export_tree<
+        GroupId: traits::GroupId<VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<ApplicationExportTree>, Self::Error>;
+
     //
     //     ---    deleters for group state    ---
     //
@@ -551,6 +572,16 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         psk_id: &PskKey,
     ) -> Result<(), Self::Error>;
+
+    /// Delete the application export tree for the group with the given id.
+    #[cfg(feature = "extensions-draft-08")]
+    fn delete_application_export_tree<
+        GroupId: traits::GroupId<VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
 }
 
 // base traits for keys and values
@@ -605,6 +636,7 @@ pub mod traits {
     pub trait KeyPackage<const VERSION: u16>: Entity<VERSION> {}
     pub trait MlsGroupJoinConfig<const VERSION: u16>: Entity<VERSION> {}
     pub trait LeafNode<const VERSION: u16>: Entity<VERSION> {}
+    pub trait ApplicationExportTree<const VERSION: u16>: Entity<VERSION> {}
 
     // traits for types that implement both
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}

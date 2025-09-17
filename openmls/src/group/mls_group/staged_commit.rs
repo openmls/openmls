@@ -1,7 +1,9 @@
 use core::fmt::Debug;
 use std::mem;
 
-use openmls_traits::storage::StorageProvider;
+#[cfg(feature = "extensions-draft-08")]
+use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::storage::StorageProvider as _;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as _;
 
@@ -15,6 +17,10 @@ use super::{
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
 use crate::prelude::Extension;
+
+#[cfg(feature = "extensions-draft-08")]
+use crate::schedule::application_export_tree::ApplicationExportTree;
+
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
@@ -22,7 +28,7 @@ use crate::{
         diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff},
         staged_commit::PublicStagedCommitState,
     },
-    schedule::{CommitSecret, EpochAuthenticator, EpochSecrets, InitSecret, PreSharedKeyId},
+    schedule::{CommitSecret, EpochAuthenticator, EpochSecretsResult, InitSecret, PreSharedKeyId},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
@@ -34,7 +40,7 @@ impl MlsGroup {
         epoch_secrets: &GroupEpochSecrets,
         commit_secret: CommitSecret,
         serialized_provisional_group_context: &[u8],
-    ) -> Result<EpochSecrets, StageCommitError> {
+    ) -> Result<EpochSecretsResult, StageCommitError> {
         // Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
         let joiner_secret = if let Some(ref external_init_proposal) =
@@ -109,8 +115,11 @@ impl MlsGroup {
     ///  - Verifies the confirmation tag
     ///
     /// Returns a [StagedCommit] that can be inspected and later merged into the
-    /// group state with [MlsGroup::merge_commit()] This function does the
-    /// following checks:
+    /// group state with [MlsGroup::merge_commit()]. If the member was not
+    /// removed from the group, the function also returns an
+    /// [ApplicationExportSecret].
+    ///
+    /// This function does the following checks:
     ///  - ValSem101
     ///  - ValSem102
     ///  - ValSem104
@@ -188,10 +197,11 @@ impl MlsGroup {
                         staged_diff,
                         commit.path.as_ref().map(|path| path.leaf_node().clone()),
                     );
-                    return Ok(StagedCommit::new(
+                    let staged_commit = StagedCommit::new(
                         proposal_queue,
                         StagedCommitState::PublicState(Box::new(staged_state)),
-                    ));
+                    );
+                    return Ok(staged_commit);
                 }
 
                 let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
@@ -268,19 +278,22 @@ impl MlsGroup {
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
-        let (provisional_group_secrets, provisional_message_secrets) = self
-            .derive_epoch_secrets(
-                provider,
-                apply_proposals_values,
-                self.group_epoch_secrets(),
-                commit_secret,
-                &serialized_provisional_group_context,
-            )?
-            .split_secrets(
-                serialized_provisional_group_context,
-                diff.tree_size(),
-                self.own_leaf_index(),
-            );
+        let EpochSecretsResult {
+            epoch_secrets,
+            #[cfg(feature = "extensions-draft-08")]
+            application_exporter,
+        } = self.derive_epoch_secrets(
+            provider,
+            apply_proposals_values,
+            self.group_epoch_secrets(),
+            commit_secret,
+            &serialized_provisional_group_context,
+        )?;
+        let (provisional_group_secrets, provisional_message_secrets) = epoch_secrets.split_secrets(
+            serialized_provisional_group_context,
+            diff.tree_size(),
+            self.own_leaf_index(),
+        );
 
         // Verify confirmation tag
         // ValSem205
@@ -310,6 +323,8 @@ impl MlsGroup {
         diff.update_interim_transcript_hash(ciphersuite, provider.crypto(), own_confirmation_tag)?;
 
         let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
+        #[cfg(feature = "extensions-draft-08")]
+        let application_export_tree = ApplicationExportTree::new(application_exporter);
         let staged_commit_state =
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
                 provisional_group_secrets,
@@ -318,9 +333,12 @@ impl MlsGroup {
                 new_keypairs,
                 new_leaf_keypair_option,
                 update_path_leaf_node,
+                #[cfg(feature = "extensions-draft-08")]
+                application_export_tree,
             )));
+        let staged_commit = StagedCommit::new(proposal_queue, staged_commit_state);
 
-        Ok(StagedCommit::new(proposal_queue, staged_commit_state))
+        Ok(staged_commit)
     }
 
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
@@ -363,6 +381,28 @@ impl MlsGroup {
                 );
                 self.message_secrets_store
                     .add(past_epoch, message_secrets, leaves);
+
+                // Replace the previous exporter tree with the new one.
+                #[cfg(feature = "extensions-draft-08")]
+                {
+                    // The application exporter is only None if the group was
+                    // stored using an older version of OpenMLS that did not
+                    // support the application exporter.
+                    if let Some(application_export_tree) = state.application_export_tree {
+                        // Overwrite the existing exporter tree in the storage.
+
+                        use openmls_traits::storage::StorageProvider as _;
+                        provider
+                            .storage()
+                            .write_application_export_tree(
+                                self.group_id(),
+                                &application_export_tree,
+                            )
+                            .map_err(MergeCommitError::StorageError)?;
+
+                        self.application_export_tree = Some(application_export_tree);
+                    }
+                }
 
                 self.public_group.merge_diff(state.staged_diff);
 
@@ -570,6 +610,24 @@ impl StagedCommit {
             None
         }
     }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn safe_export_secret(
+        &mut self,
+        crypto: &impl OpenMlsCrypto,
+        component_id: u16,
+    ) -> Result<Vec<u8>, StagedSafeExportSecretError> {
+        let ciphersuite = self.group_context().ciphersuite();
+        let StagedCommitState::GroupMember(ref mut staged_commit) = self.state else {
+            return Err(StagedSafeExportSecretError::NotGroupMember);
+        };
+        let Some(application_export_tree) = staged_commit.application_export_tree.as_mut() else {
+            return Err(StagedSafeExportSecretError::Unsupported);
+        };
+        let secret =
+            application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
+        Ok(secret.as_slice().to_vec())
+    }
 }
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
@@ -582,6 +640,11 @@ pub(crate) struct MemberStagedCommitState {
     new_keypairs: Vec<EncryptionKeyPair>,
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
     update_path_leaf_node: Option<LeafNode>,
+    #[cfg(feature = "extensions-draft-08")]
+    #[serde(default)]
+    // This is `None` only if the group was stored using an older version of
+    // OpenMLS that did not support the application exporter.
+    application_export_tree: Option<ApplicationExportTree>,
 }
 
 impl MemberStagedCommitState {
@@ -592,6 +655,7 @@ impl MemberStagedCommitState {
         new_keypairs: Vec<EncryptionKeyPair>,
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
         update_path_leaf_node: Option<LeafNode>,
+        #[cfg(feature = "extensions-draft-08")] application_export_tree: ApplicationExportTree,
     ) -> Self {
         Self {
             group_epoch_secrets,
@@ -600,6 +664,8 @@ impl MemberStagedCommitState {
             new_keypairs,
             new_leaf_keypair_option,
             update_path_leaf_node,
+            #[cfg(feature = "extensions-draft-08")]
+            application_export_tree: Some(application_export_tree),
         }
     }
 

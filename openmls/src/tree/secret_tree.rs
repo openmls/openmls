@@ -70,6 +70,28 @@ impl From<&PublicMessage> for SecretType {
     }
 }
 
+pub(crate) fn derive_child_secrets(
+    parent_secret: &Secret,
+    crypto: &impl OpenMlsCrypto,
+    ciphersuite: Ciphersuite,
+) -> Result<(Secret, Secret), CryptoError> {
+    let left_child = parent_secret.kdf_expand_label(
+        crypto,
+        ciphersuite,
+        "tree",
+        b"left",
+        ciphersuite.hash_length(),
+    )?;
+    let right_child = parent_secret.kdf_expand_label(
+        crypto,
+        ciphersuite,
+        "tree",
+        b"right",
+        ciphersuite.hash_length(),
+    )?;
+    Ok((left_child, right_child))
+}
+
 /// Derives secrets for inner nodes of a SecretTree. This function corresponds
 /// to the `DeriveTreeSecret` defined in Section 10.1 of the MLS specification.
 #[inline]
@@ -396,7 +418,6 @@ impl SecretTree {
             index_in_tree.u32(),
             ciphersuite
         );
-        let hash_len = ciphersuite.hash_length();
         let node_secret = match &self.get_node(index_in_tree.into())? {
             Some(node) => &node.secret,
             // This function only gets called top to bottom, so this should not happen
@@ -407,10 +428,7 @@ impl SecretTree {
         log_crypto!(trace, "Node secret: {:x?}", node_secret.as_slice());
         let left_index = left(index_in_tree);
         let right_index = right(index_in_tree);
-        let left_secret =
-            node_secret.kdf_expand_label(crypto, ciphersuite, "tree", b"left", hash_len)?;
-        let right_secret =
-            node_secret.kdf_expand_label(crypto, ciphersuite, "tree", b"right", hash_len)?;
+        let (left_secret, right_secret) = derive_child_secrets(node_secret, crypto, ciphersuite)?;
         log_crypto!(
             trace,
             "Left node ({}) secret: {:x?}",
