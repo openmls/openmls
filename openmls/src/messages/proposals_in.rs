@@ -8,6 +8,7 @@ use crate::{
     framing::SenderContext,
     group::errors::ValidationError,
     key_packages::*,
+    prelude::Extensions,
     treesync::node::leaf_node::{LeafNodeIn, TreePosition, VerifiableLeafNode},
     versions::ProtocolVersion,
 };
@@ -54,7 +55,7 @@ pub enum ProposalIn {
     PreSharedKey(Box<PreSharedKeyProposal>),
     ReInit(Box<ReInitProposal>),
     ExternalInit(Box<ExternalInitProposal>),
-    GroupContextExtensions(Box<GroupContextExtensionProposal>),
+    GroupContextExtensions(Box<GroupContextExtensionProposalIn>),
     // # Extensions
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
@@ -116,7 +117,7 @@ impl ProposalIn {
             ProposalIn::ReInit(reinit) => Proposal::ReInit(reinit),
             ProposalIn::ExternalInit(external_init) => Proposal::ExternalInit(external_init),
             ProposalIn::GroupContextExtensions(group_context_extension) => {
-                Proposal::GroupContextExtensions(group_context_extension)
+                Proposal::group_context_extensions(group_context_extension.validate()?)
             }
             ProposalIn::AppAck(app_ack) => Proposal::AppAck(app_ack),
             ProposalIn::SelfRemove => Proposal::SelfRemove,
@@ -317,6 +318,39 @@ impl From<UpdateProposal> for UpdateProposalIn {
     }
 }
 
+// The following `From` implementation breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
+#[cfg(any(feature = "test-utils", test))]
+impl From<GroupContextExtensionProposalIn> for GroupContextExtensionProposal {
+    fn from(value: GroupContextExtensionProposalIn) -> Self {
+        Self::new(value.extensions_tbv.try_into().unwrap())
+    }
+}
+
+impl From<GroupContextExtensionProposalIn> for Box<GroupContextExtensionProposal> {
+    fn from(value: GroupContextExtensionProposalIn) -> Self {
+        Box::new(GroupContextExtensionProposal::new(
+            value.extensions_tbv.try_into().unwrap(),
+        ))
+    }
+}
+
+impl From<GroupContextExtensionProposal> for GroupContextExtensionProposalIn {
+    fn from(value: crate::messages::proposals::GroupContextExtensionProposal) -> Self {
+        Self {
+            extensions_tbv: value.extensions().into(),
+        }
+    }
+}
+
+impl From<GroupContextExtensionProposal> for Box<GroupContextExtensionProposalIn> {
+    fn from(value: GroupContextExtensionProposal) -> Self {
+        Box::new(GroupContextExtensionProposalIn {
+            extensions_tbv: value.extensions().into(),
+        })
+    }
+}
+
 #[cfg(any(feature = "test-utils", test))]
 impl From<UpdateProposalIn> for Box<UpdateProposal> {
     fn from(value: UpdateProposalIn) -> Self {
@@ -345,7 +379,7 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
             ProposalIn::ReInit(reinit) => Self::ReInit(reinit),
             ProposalIn::ExternalInit(external_init) => Self::ExternalInit(external_init),
             ProposalIn::GroupContextExtensions(group_context_extension) => {
-                Self::GroupContextExtensions(group_context_extension)
+                Self::GroupContextExtensions((*group_context_extension).into())
             }
             ProposalIn::AppAck(app_ack) => Self::AppAck(app_ack),
             ProposalIn::SelfRemove => Self::SelfRemove,
@@ -364,7 +398,7 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
             Proposal::ReInit(reinit) => Self::ReInit(reinit),
             Proposal::ExternalInit(external_init) => Self::ExternalInit(external_init),
             Proposal::GroupContextExtensions(group_context_extension) => {
-                Self::GroupContextExtensions(group_context_extension)
+                Self::GroupContextExtensions((*group_context_extension).into())
             }
             Proposal::AppAck(app_ack) => Self::AppAck(app_ack),
             Proposal::SelfRemove => Self::SelfRemove,
@@ -393,5 +427,30 @@ impl From<crate::messages::proposals::ProposalOrRef> for ProposalOrRefIn {
                 Self::Reference(reference)
             }
         }
+    }
+}
+
+/// GroupContext Extension Proposal.
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
+)]
+pub struct GroupContextExtensionProposalIn {
+    extensions_tbv: Extensions,
+}
+
+impl GroupContextExtensionProposalIn {
+    pub(crate) fn validate(self) -> Result<GroupContextExtensionProposal, ValidationError> {
+        let group_context_extensions = self.extensions_tbv;
+        Ok(GroupContextExtensionProposal::new(
+            group_context_extensions.try_into()?,
+        ))
     }
 }
