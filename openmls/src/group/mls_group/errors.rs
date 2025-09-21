@@ -107,9 +107,6 @@ pub enum PublicProcessMessageError {
     /// See [`ValidationError`] for more details.
     #[error(transparent)]
     ValidationError(#[from] ValidationError),
-    /// See [`MlsGroupStateError`] for more details.
-    #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError),
     /// See [`StageCommitError`] for more details.
     #[error(transparent)]
     InvalidCommit(#[from] StageCommitError),
