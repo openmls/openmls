@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1840](https://github.com/openmls/openmls/pull/1840): Add `has_pending_proposals` getter method to `MlsGroup`.
 
 ### Fixed
+- [#1846](https://github.com/openmls/openmls/pull/1846): Fix persistence during message processing by properly persisting the secret tree after processing private messages and improve forward secrecy within epochs.
+
+### Changed
+- [#1846](https://github.com/openmls/openmls/pull/1846): Processing messages in `MlsGroup` and `PublicGroup` now returns two different error types: `ProcessMessageError` and `PublicProcessMessageError`. `ProcessMessageError` now includes a storage error variant and `PublicProcessMessageError` no longer includes the `GroupStateError` variant.
 
 ### Deprecated
 - [#1801](https://github.com/openmls/openmls/pull/1801): Deprecated `MlsGroup::join_by_external_commit` in favor of `MlsGroup::external_commit_builder`.
