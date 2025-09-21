@@ -33,7 +33,6 @@ use crate::{
         Commit, Welcome,
     },
     prelude::{Capabilities, MlsMessageBodyIn},
-    schedule::PreSharedKeyId,
     test_utils::frankenstein::FrankenKeyPackage,
     treesync::errors::ApplyUpdatePathError,
     versions::ProtocolVersion,
@@ -2269,7 +2268,8 @@ fn valsem113() {
 }
 
 // --- PreSharedKey Proposals ---
-
+// TODO(#1354): This is currently not tested because we can't easily create invalid commits.
+/*
 #[openmls_test::openmls_test]
 fn test_valsem401_valsem402() {
     let ProposalValidationTestSetup {
@@ -2282,139 +2282,139 @@ fn test_valsem401_valsem402() {
     let alice_provider = Provider::default();
     let bob_provider = Provider::default();
 
-    // TODO(#1354): This is currently not tested because we can't easily create invalid commits.
-    let bad_psks: [(Vec<PreSharedKeyId>, ProcessMessageError); 0] = [
-        // // ValSem401
-        // (
-        //     vec![PreSharedKeyId::external(
-        //         b"irrelevant".to_vec(),
-        //         zero(ciphersuite.hash_length() + 1),
-        //     )],
-        //     ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-        //         ProposalValidationError::Psk(PskError::NonceLengthMismatch {
-        //             expected: ciphersuite.hash_length(),
-        //             got: ciphersuite.hash_length() + 1,
-        //         }),
-        //     )),
-        // ),
-        // // ValSem401
-        // (
-        //     vec![PreSharedKeyId::external(
-        //         b"irrelevant".to_vec(),
-        //         zero(ciphersuite.hash_length() - 1),
-        //     )],
-        //     ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-        //         ProposalValidationError::Psk(PskError::NonceLengthMismatch {
-        //             expected: ciphersuite.hash_length(),
-        //             got: ciphersuite.hash_length() - 1,
-        //         }),
-        //     )),
-        // ),
-        // // ValSem402
-        // (
-        //     vec![PreSharedKeyId::resumption(
-        //         ResumptionPskUsage::Reinit,
-        //         alice_group.group_id().clone(),
-        //         alice_group.epoch(),
-        //         zero(ciphersuite.hash_length()),
-        //     )],
-        //     ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-        //         ProposalValidationError::Psk(PskError::UsageMismatch {
-        //             allowed: vec![ResumptionPskUsage::Application],
-        //             got: ResumptionPskUsage::Reinit,
-        //         }),
-        //     )),
-        // ),
-        // // ValSem402
-        // (
-        //     vec![PreSharedKeyId::resumption(
-        //         ResumptionPskUsage::Branch,
-        //         alice_group.group_id().clone(),
-        //         alice_group.epoch(),
-        //         zero(ciphersuite.hash_length()),
-        //     )],
-        //     ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-        //         ProposalValidationError::Psk(PskError::UsageMismatch {
-        //             allowed: vec![ResumptionPskUsage::Application],
-        //             got: ResumptionPskUsage::Branch,
-        //         }),
-        //     )),
-        // ),
-        // TODO(#1335): We could remove this test after #1335 is closed because it would cover it.
-        // ValSem403
-        // (
-        //     vec![
-        //         PreSharedKeyId::external(b"irrelevant".to_vec(), zero(ciphersuite.hash_length())),
-        //         PreSharedKeyId::external(b"irrelevant".to_vec(), zero(ciphersuite.hash_length())),
-        //     ],
-        //     ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-        //         ProposalValidationError::Psk(PskError::Duplicate {
-        //             first: PreSharedKeyId::external(
-        //                 b"irrelevant".to_vec(),
-        //                 zero(ciphersuite.hash_length()),
-        //             ),
-        //         }),
-        //     )),
-        // ),
-    ];
+     let bad_psks = &[
+     // ValSem401
+     (
+         vec![PreSharedKeyId::external(
+             b"irrelevant".to_vec(),
+             zero(ciphersuite.hash_length() + 1),
+         )],
+         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+             ProposalValidationError::Psk(PskError::NonceLengthMismatch {
+                 expected: ciphersuite.hash_length(),
+                 got: ciphersuite.hash_length() + 1,
+             }),
+         )),
+     ),
+     // ValSem401
+     (
+         vec![PreSharedKeyId::external(
+             b"irrelevant".to_vec(),
+             zero(ciphersuite.hash_length() - 1),
+         )],
+         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+             ProposalValidationError::Psk(PskError::NonceLengthMismatch {
+                 expected: ciphersuite.hash_length(),
+                 got: ciphersuite.hash_length() - 1,
+             }),
+         )),
+     ),
+     // ValSem402
+     (
+         vec![PreSharedKeyId::resumption(
+             ResumptionPskUsage::Reinit,
+             alice_group.group_id().clone(),
+             alice_group.epoch(),
+             zero(ciphersuite.hash_length()),
+         )],
+         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+             ProposalValidationError::Psk(PskError::UsageMismatch {
+                 allowed: vec![ResumptionPskUsage::Application],
+                 got: ResumptionPskUsage::Reinit,
+             }),
+         )),
+     ),
+     // ValSem402
+     (
+         vec![PreSharedKeyId::resumption(
+             ResumptionPskUsage::Branch,
+             alice_group.group_id().clone(),
+             alice_group.epoch(),
+             zero(ciphersuite.hash_length()),
+         )],
+         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+             ProposalValidationError::Psk(PskError::UsageMismatch {
+                 allowed: vec![ResumptionPskUsage::Application],
+                 got: ResumptionPskUsage::Branch,
+             }),
+         )),
+     ),
+     // TODO(#1335): We could remove this test after #1335 is closed because it would cover it.
+     // ValSem403
+     (
+         vec![
+             PreSharedKeyId::external(b"irrelevant".to_vec(), zero(ciphersuite.hash_length())),
+             PreSharedKeyId::external(b"irrelevant".to_vec(), zero(ciphersuite.hash_length())),
+         ],
+         ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+             ProposalValidationError::Psk(PskError::Duplicate {
+                 first: PreSharedKeyId::external(
+                     b"irrelevant".to_vec(),
+                     zero(ciphersuite.hash_length()),
+                 ),
+             }),
+         )),
+     ),
+     ];
 
     for (psk_ids, expected_error) in bad_psks.into_iter() {
-        let mut proposals = Vec::new();
+         let mut proposals = Vec::new();
 
         for psk_id in psk_ids {
-            psk_id.store(&alice_provider, b"irrelevant").unwrap();
-            psk_id.store(&bob_provider, b"irrelevant").unwrap();
+             psk_id.store(&alice_provider, b"irrelevant").unwrap();
+             psk_id.store(&bob_provider, b"irrelevant").unwrap();
 
             let (psk_proposal, _) = alice_group
-                .propose_external_psk(
-                    &alice_provider,
-                    &alice_credential_with_key_and_signer.signer,
-                    psk_id,
-                )
-                .unwrap();
+                 .propose_external_psk(
+                     &alice_provider,
+                     &alice_credential_with_key_and_signer.signer,
+                     psk_id,
+                 )
+                 .unwrap();
 
             proposals.push(psk_proposal);
-        }
+         }
 
         let (commit, _, _) = alice_group
-            .commit_to_pending_proposals(
-                &alice_provider,
-                &alice_credential_with_key_and_signer.signer,
-            )
-            .unwrap();
+             .commit_to_pending_proposals(
+                 &alice_provider,
+                 &alice_credential_with_key_and_signer.signer,
+             )
+             .unwrap();
 
         alice_group
-            .clear_pending_proposals(provider.storage())
-            .unwrap();
-        alice_group
-            .clear_pending_commit(provider.storage())
-            .unwrap();
+             .clear_pending_proposals(provider.storage())
+             .unwrap();
+         alice_group
+             .clear_pending_commit(provider.storage())
+             .unwrap();
 
         for psk_proposal in proposals.into_iter() {
-            let processed_message = bob_group
-                .process_message(&bob_provider, psk_proposal.into_protocol_message().unwrap())
-                .unwrap();
+             let processed_message = bob_group
+                 .process_message(&bob_provider, psk_proposal.into_protocol_message().unwrap())
+                 .unwrap();
 
             match processed_message.into_content() {
-                ProcessedMessageContent::ProposalMessage(queued_proposal) => {
-                    bob_group
-                        .store_pending_proposal(provider.storage(), *queued_proposal)
-                        .unwrap();
-                }
-                _ => unreachable!(),
-            }
-        }
+                 ProcessedMessageContent::ProposalMessage(queued_proposal) => {
+                     bob_group
+                         .store_pending_proposal(provider.storage(), *queued_proposal)
+                         .unwrap();
+                 }
+                 _ => unreachable!(),
+             }
+         }
 
         assert_eq!(
-            expected_error,
-            bob_group
-                .process_message(&bob_provider, commit.into_protocol_message().unwrap())
-                .unwrap_err(),
-        );
+             expected_error,
+             bob_group
+                 .process_message(&bob_provider, commit.into_protocol_message().unwrap())
+                 .unwrap_err(),
+         );
 
         bob_group
-            .clear_pending_proposals(provider.storage())
-            .unwrap();
-        bob_group.clear_pending_commit(provider.storage()).unwrap();
-    }
+             .clear_pending_proposals(provider.storage())
+             .unwrap();
+         bob_group.clear_pending_commit(provider.storage()).unwrap();
+     }
 }
+*/

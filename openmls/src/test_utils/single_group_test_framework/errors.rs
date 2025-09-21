@@ -18,7 +18,7 @@ pub enum TestError<StorageError> {
     CreateCommit(#[from] CreateCommitError),
     CommitBuilderStage(#[from] CommitBuilderStageError<StorageError>),
     NewGroup(#[from] NewGroupError<StorageError>),
-    ProcessMessage(#[from] ProcessMessageError),
+    ProcessMessage(#[from] ProcessMessageError<StorageError>),
     Welcome(#[from] WelcomeError<StorageError>),
     ProtocolMessage(#[from] ProtocolMessageError),
     MergeCommit(#[from] MergeCommitError<StorageError>),
