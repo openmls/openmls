@@ -81,14 +81,19 @@ fn test_mls_group_persistence<Provider: OpenMlsProvider>() {
 // issues a RemoveProposal and another members issues the next Commit.
 #[openmls_test]
 fn remover() {
+    // Create separate providers for each participant to avoid storage conflicts
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let charlie_provider = Provider::default();
+
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, provider);
+        setup_client("Alice", ciphersuite, &alice_provider);
     let (_bob_credential, bob_kpb, bob_signer, _bob_pk) =
-        setup_client("Bob", ciphersuite, provider);
+        setup_client("Bob", ciphersuite, &bob_provider);
     let (_charlie_credential, charlie_kpb, charlie_signer, _charlie_pk) =
-        setup_client("Charly", ciphersuite, provider);
+        setup_client("Charly", ciphersuite, &charlie_provider);
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -97,7 +102,7 @@ fn remover() {
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        provider,
+        &alice_provider,
         &alice_signer,
         &mls_group_create_config,
         group_id,
@@ -105,36 +110,61 @@ fn remover() {
     )
     .expect("An unexpected error occurred.");
 
+    // Test persistence after Alice creates group
+    alice_group
+        .ensure_persistence(alice_provider.storage())
+        .unwrap();
+
     // === Alice adds Bob ===
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, from_ref(bob_kpb.key_package()))
+        .add_members(&alice_provider, &alice_signer, from_ref(bob_kpb.key_package()))
         .expect("Could not add member to group.");
 
+    // Test persistence after Alice adds Bob
     alice_group
-        .merge_pending_commit(provider)
+        .ensure_persistence(alice_provider.storage())
+        .unwrap();
+
+    alice_group
+        .merge_pending_commit(&alice_provider)
         .expect("error merging pending commit");
+
+    // Test persistence after Alice merges commit
+    alice_group
+        .ensure_persistence(alice_provider.storage())
+        .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome.into_welcome().expect("expected a welcome");
 
     let mut bob_group = StagedWelcome::new_from_welcome(
-        provider,
+        &bob_provider,
         mls_group_create_config.join_config(),
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating staged join from Welcome")
-    .into_group(provider)
+    .into_group(&bob_provider)
     .expect("Error creating group from staged join");
+
+    // Test persistence after Bob joins group
+    bob_group
+        .ensure_persistence(bob_provider.storage())
+        .unwrap();
 
     // === Bob adds Charlie ===
     let (queued_messages, welcome, _group_info) = bob_group
-        .add_members(provider, &bob_signer, from_ref(charlie_kpb.key_package()))
+        .add_members(&bob_provider, &bob_signer, from_ref(charlie_kpb.key_package()))
+        .unwrap();
+
+    // Test persistence after Bob adds Charlie
+    bob_group
+        .ensure_persistence(bob_provider.storage())
         .unwrap();
 
     let alice_processed_message = alice_group
         .process_message(
-            provider,
+            &alice_provider,
             queued_messages
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -144,38 +174,58 @@ fn remover() {
         alice_processed_message.into_content()
     {
         alice_group
-            .merge_staged_commit(provider, *staged_commit)
+            .merge_staged_commit(&alice_provider, *staged_commit)
             .expect("Error merging commit.");
+
+        // Test persistence after Alice merges Bob's staged commit
+        alice_group
+            .ensure_persistence(alice_provider.storage())
+            .unwrap();
     } else {
         unreachable!("Expected a StagedCommit.");
     }
 
     bob_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(&bob_provider)
         .expect("error merging pending commit");
+
+    // Test persistence after Bob merges pending commit
+    bob_group
+        .ensure_persistence(bob_provider.storage())
+        .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome.into_welcome().expect("expected a welcome");
 
     let mut charlie_group = StagedWelcome::new_from_welcome(
-        provider,
+        &charlie_provider,
         mls_group_create_config.join_config(),
         welcome,
         Some(bob_group.export_ratchet_tree().into()),
     )
     .expect("Error creating group from Welcome")
-    .into_group(provider)
+    .into_group(&charlie_provider)
     .expect("Error creating group from Welcome");
+
+    // Test persistence after Charlie joins group
+    charlie_group
+        .ensure_persistence(charlie_provider.storage())
+        .unwrap();
 
     // === Alice removes Bob & Charlie commits ===
 
     let (queued_messages, _) = alice_group
-        .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
+        .propose_remove_member(&alice_provider, &alice_signer, LeafNodeIndex::new(1))
         .expect("Could not propose removal");
+
+    // Test persistence after Alice proposes removal
+    alice_group
+        .ensure_persistence(alice_provider.storage())
+        .unwrap();
 
     let charlie_processed_message = charlie_group
         .process_message(
-            provider,
+            &charlie_provider,
             queued_messages
                 .into_protocol_message()
                 .expect("Unexpected message type"),
@@ -191,7 +241,12 @@ fn remover() {
             assert_eq!(remove_proposal.removed(), LeafNodeIndex::new(1));
             // Store proposal
             charlie_group
-                .store_pending_proposal(provider.storage(), *staged_proposal.clone())
+                .store_pending_proposal(charlie_provider.storage(), *staged_proposal.clone())
+                .unwrap();
+
+            // Test persistence after Charlie stores pending proposal
+            charlie_group
+                .ensure_persistence(charlie_provider.storage())
                 .unwrap();
         } else {
             unreachable!("Expected a Proposal.");
@@ -208,8 +263,13 @@ fn remover() {
 
     // Charlie commits
     let (_queued_messages, _welcome, _group_info) = charlie_group
-        .commit_to_pending_proposals(provider, &charlie_signer)
+        .commit_to_pending_proposals(&charlie_provider, &charlie_signer)
         .expect("Could not commit proposal");
+
+    // Test persistence after Charlie commits pending proposals
+    charlie_group
+        .ensure_persistence(charlie_provider.storage())
+        .unwrap();
 
     // Check that we receive the correct proposal
     if let Some(staged_commit) = charlie_group.pending_commit() {
@@ -2455,39 +2515,55 @@ fn update_path() {
 // Test several scenarios when PSKs are used in a group
 #[openmls_test::openmls_test]
 fn psks() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     // Basic group setup.
     let (
         alice_credential_with_key,
         alice_signature_keys,
         bob_key_package_bundle,
         bob_signature_keys,
-    ) = setup_alice_bob(ciphersuite, provider);
+    ) = setup_alice_bob(ciphersuite, alice_provider, bob_provider);
 
     // === Alice creates a group with a PSK ===
     let psk_id = vec![1u8, 2, 3];
 
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret =
+        Secret::random(ciphersuite, alice_provider.rand()).expect("Not enough randomness.");
     let external_psk = ExternalPsk::new(psk_id);
-    let preshared_key_id =
-        PreSharedKeyId::new(ciphersuite, provider.rand(), Psk::External(external_psk))
-            .expect("An unexpected error occured.");
-    preshared_key_id.store(provider, secret.as_slice()).unwrap();
+    let preshared_key_id = PreSharedKeyId::new(
+        ciphersuite,
+        alice_provider.rand(),
+        Psk::External(external_psk),
+    )
+    .expect("An unexpected error occured.");
+    preshared_key_id
+        .store(alice_provider, secret.as_slice())
+        .unwrap();
+    preshared_key_id
+        .store(bob_provider, secret.as_slice())
+        .unwrap();
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .build(provider, &alice_signature_keys, alice_credential_with_key)
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential_with_key,
+        )
         .expect("Error creating group.");
 
     // === Alice creates a PSK proposal ===
     log::info!(" >>> Creating psk proposal ...");
     let (_psk_proposal, _proposal_ref) = alice_group
-        .propose_external_psk(provider, &alice_signature_keys, preshared_key_id)
+        .propose_external_psk(alice_provider, &alice_signature_keys, preshared_key_id)
         .expect("Could not create PSK proposal");
 
     // === Alice adds Bob (and commits to PSK proposal) ===
     let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
-            provider,
+            alice_provider,
             &alice_signature_keys,
             from_ref(bob_key_package_bundle.key_package()),
         )
@@ -2496,24 +2572,28 @@ fn psks() {
     log::info!(" >>> Merging commit ...");
 
     alice_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(alice_provider)
         .expect("Could not merge commit");
 
     let ratchet_tree = alice_group.export_ratchet_tree();
 
     let mut bob_group = StagedWelcome::new_from_welcome(
-        provider,
+        bob_provider,
         &MlsGroupJoinConfig::default(),
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
     .expect("Could not stage welcome")
-    .into_group(provider)
+    .into_group(bob_provider)
     .expect("Could not create group from welcome");
 
     // === Bob updates and commits ===
     let (_commit, _welcome_option, _group_info_option) = bob_group
-        .self_update(provider, &bob_signature_keys, LeafNodeParameters::default())
+        .self_update(
+            bob_provider,
+            &bob_signature_keys,
+            LeafNodeParameters::default(),
+        )
         .expect("An unexpected error occurred.")
         .into_contents();
 }
@@ -2524,40 +2604,46 @@ fn staged_commit_creation(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
 ) {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
     // Basic group setup.
     let (alice_credential_with_key, alice_signature_keys, bob_key_package_bundle, _) =
-        setup_alice_bob(ciphersuite, provider);
+        setup_alice_bob(ciphersuite, alice_provider, bob_provider);
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .build(provider, &alice_signature_keys, alice_credential_with_key)
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential_with_key,
+        )
         .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
-            provider,
+            alice_provider,
             &alice_signature_keys,
             from_ref(bob_key_package_bundle.key_package()),
         )
         .expect("Could not create commit");
 
     alice_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(alice_provider)
         .expect("Could not merge commit");
 
     let ratchet_tree = alice_group.export_ratchet_tree();
 
     let bob_group = StagedWelcome::new_from_welcome(
-        provider,
+        bob_provider,
         &MlsGroupJoinConfig::default(),
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
     .expect("Could not stage welcome")
-    .into_group(provider)
+    .into_group(bob_provider)
     .expect("Could not create group from welcome");
 
     // Let's make sure we end up in the same group state.
