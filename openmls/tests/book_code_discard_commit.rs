@@ -427,6 +427,7 @@ fn discard_commit_group_context_extensions() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true) // NOTE: important
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY) // Important because the secret tree might diverge otherwise
         .capabilities(Capabilities::new(
             None,
             None,

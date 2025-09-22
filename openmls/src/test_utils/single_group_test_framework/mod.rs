@@ -422,6 +422,7 @@ impl MlsGroupCreateConfig {
         MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY) // Important because the secret tree might diverge otherwise
             .build()
     }
 }

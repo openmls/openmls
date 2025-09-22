@@ -29,7 +29,7 @@ impl MlsGroup {
         &mut self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Make sure we are still a member of the group
         if !self.is_active() {
             return Err(ProcessMessageError::GroupStateError(
@@ -53,6 +53,10 @@ impl MlsGroup {
         // Parse the message
         let sender_ratchet_configuration = *self.configuration().sender_ratchet_configuration();
 
+        // Check if this message will modify the secret tree when decrypting a
+        // private message
+        let will_modify_secret_tree = matches!(message, ProtocolMessage::PrivateMessage(_));
+
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
@@ -74,12 +78,20 @@ impl MlsGroup {
                 (vec![], vec![])
             };
 
-        self.process_unverified_message(
+        let processed_message = self.process_unverified_message(
             provider,
             unverified_message,
             old_epoch_keypairs,
             leaf_node_keypairs,
-        )
+        )?;
+
+        // Persist the group state if the secret tree was modified to ensure forward secrecy
+        if will_modify_secret_tree {
+            self.store(provider.storage())
+                .map_err(ProcessMessageError::StorageError)?;
+        }
+
+        Ok(processed_message)
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
@@ -261,7 +273,7 @@ impl MlsGroup {
         unverified_message: UnverifiedMessage,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
