@@ -13,8 +13,8 @@
 <a href=#13 id=13 data-nosnippet>13</a>        ProcessedMessageContent, ProtocolMessage, Sender, SenderContext, UnverifiedMessage,
 <a href=#14 id=14 data-nosnippet>14</a>    },
 <a href=#15 id=15 data-nosnippet>15</a>    group::{
-<a href=#16 id=16 data-nosnippet>16</a>        errors::ValidationError, mls_group::errors::ProcessMessageError,
-<a href=#17 id=17 data-nosnippet>17</a>        past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
+<a href=#16 id=16 data-nosnippet>16</a>        errors::ValidationError, past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
+<a href=#17 id=17 data-nosnippet>17</a>        PublicProcessMessageError,
 <a href=#18 id=18 data-nosnippet>18</a>    },
 <a href=#19 id=19 data-nosnippet>19</a>    messages::proposals::Proposal,
 <a href=#20 id=20 data-nosnippet>20</a>};
@@ -150,7 +150,7 @@
 <a href=#150 id=150 data-nosnippet>150</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#151 id=151 data-nosnippet>151</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
 <a href=#152 id=152 data-nosnippet>152</a>        message: <span class="kw">impl </span>Into&lt;ProtocolMessage&gt;,
-<a href=#153 id=153 data-nosnippet>153</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
+<a href=#153 id=153 data-nosnippet>153</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, PublicProcessMessageError&gt; {
 <a href=#154 id=154 data-nosnippet>154</a>        <span class="kw">let </span>protocol_message = message.into();
 <a href=#155 id=155 data-nosnippet>155</a>        <span class="comment">// Checks the following semantic validation:
 <a href=#156 id=156 data-nosnippet>156</a>        //  - ValSem002
@@ -159,7 +159,7 @@
 <a href=#159 id=159 data-nosnippet>159</a>
 <a href=#160 id=160 data-nosnippet>160</a>        <span class="kw">let </span>decrypted_message = <span class="kw">match </span>protocol_message {
 <a href=#161 id=161 data-nosnippet>161</a>            ProtocolMessage::PrivateMessage(<span class="kw">_</span>) =&gt; {
-<a href=#162 id=162 data-nosnippet>162</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(ProcessMessageError::IncompatibleWireFormat)
+<a href=#162 id=162 data-nosnippet>162</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(PublicProcessMessageError::IncompatibleWireFormat)
 <a href=#163 id=163 data-nosnippet>163</a>            }
 <a href=#164 id=164 data-nosnippet>164</a>            ProtocolMessage::PublicMessage(public_message) =&gt; {
 <a href=#165 id=165 data-nosnippet>165</a>                DecryptedMessage::from_inbound_public_message(
@@ -176,7 +176,7 @@
 <a href=#176 id=176 data-nosnippet>176</a>
 <a href=#177 id=177 data-nosnippet>177</a>        <span class="kw">let </span>unverified_message = <span class="self">self
 <a href=#178 id=178 data-nosnippet>178</a>            </span>.parse_message(decrypted_message, <span class="prelude-val">None</span>)
-<a href=#179 id=179 data-nosnippet>179</a>            .map_err(ProcessMessageError::from)<span class="question-mark">?</span>;
+<a href=#179 id=179 data-nosnippet>179</a>            .map_err(PublicProcessMessageError::from)<span class="question-mark">?</span>;
 <a href=#180 id=180 data-nosnippet>180</a>        <span class="self">self</span>.process_unverified_message(crypto, unverified_message)
 <a href=#181 id=181 data-nosnippet>181</a>    }
 <a href=#182 id=182 data-nosnippet>182</a>}
@@ -212,7 +212,7 @@
 <a href=#212 id=212 data-nosnippet>212</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#213 id=213 data-nosnippet>213</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
 <a href=#214 id=214 data-nosnippet>214</a>        unverified_message: UnverifiedMessage,
-<a href=#215 id=215 data-nosnippet>215</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
+<a href=#215 id=215 data-nosnippet>215</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, PublicProcessMessageError&gt; {
 <a href=#216 id=216 data-nosnippet>216</a>        <span class="comment">// Checks the following semantic validation:
 <a href=#217 id=217 data-nosnippet>217</a>        //  - ValSem010
 <a href=#218 id=218 data-nosnippet>218</a>        //  - ValSem246 (as part of ValSem010)
@@ -264,7 +264,7 @@
 <a href=#264 id=264 data-nosnippet>264</a>                <span class="comment">// https://validation.openmls.tech/#valn1501
 <a href=#265 id=265 data-nosnippet>265</a>                </span><span class="kw">match </span>content.content() {
 <a href=#266 id=266 data-nosnippet>266</a>                    FramedContentBody::Application(<span class="kw">_</span>) =&gt; {
-<a href=#267 id=267 data-nosnippet>267</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnauthorizedExternalApplicationMessage)
+<a href=#267 id=267 data-nosnippet>267</a>                        <span class="prelude-val">Err</span>(PublicProcessMessageError::UnauthorizedExternalApplicationMessage)
 <a href=#268 id=268 data-nosnippet>268</a>                    }
 <a href=#269 id=269 data-nosnippet>269</a>                    <span class="comment">// TODO: https://validation.openmls.tech/#valn1502
 <a href=#270 id=270 data-nosnippet>270</a>                    </span>FramedContentBody::Proposal(Proposal::GroupContextExtensions(<span class="kw">_</span>)) =&gt; {
@@ -321,10 +321,10 @@
 <a href=#321 id=321 data-nosnippet>321</a>                    }
 <a href=#322 id=322 data-nosnippet>322</a>                    <span class="comment">// TODO #151/#106
 <a href=#323 id=323 data-nosnippet>323</a>                    </span>FramedContentBody::Proposal(<span class="kw">_</span>) =&gt; {
-<a href=#324 id=324 data-nosnippet>324</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnsupportedProposalType)
+<a href=#324 id=324 data-nosnippet>324</a>                        <span class="prelude-val">Err</span>(PublicProcessMessageError::UnsupportedProposalType)
 <a href=#325 id=325 data-nosnippet>325</a>                    }
 <a href=#326 id=326 data-nosnippet>326</a>                    FramedContentBody::Commit(<span class="kw">_</span>) =&gt; {
-<a href=#327 id=327 data-nosnippet>327</a>                        <span class="prelude-val">Err</span>(ProcessMessageError::UnauthorizedExternalCommitMessage)
+<a href=#327 id=327 data-nosnippet>327</a>                        <span class="prelude-val">Err</span>(PublicProcessMessageError::UnauthorizedExternalCommitMessage)
 <a href=#328 id=328 data-nosnippet>328</a>                    }
 <a href=#329 id=329 data-nosnippet>329</a>                }
 <a href=#330 id=330 data-nosnippet>330</a>            }

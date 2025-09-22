@@ -3,7 +3,7 @@
     &amp;self,
     crypto: &amp;impl <a class="trait" href="trait.OpenMlsCrypto.html" title="trait openmls::prelude::OpenMlsCrypto">OpenMlsCrypto</a>,
     message: impl <a class="trait" href="https://doc.rust-lang.org/1.90.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="../framing/enum.ProtocolMessage.html" title="enum openmls::framing::ProtocolMessage">ProtocolMessage</a>&gt;,
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.90.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../framing/struct.ProcessedMessage.html" title="struct openmls::framing::ProcessedMessage">ProcessedMessage</a>, <a class="enum" href="../group/enum.ProcessMessageError.html" title="enum openmls::group::ProcessMessageError">ProcessMessageError</a>&gt;</h4></section></summary><div class="docblock"><p>This function is used to parse messages from the DS. It checks for
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.90.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../framing/struct.ProcessedMessage.html" title="struct openmls::framing::ProcessedMessage">ProcessedMessage</a>, <a class="enum" href="../group/enum.PublicProcessMessageError.html" title="enum openmls::group::PublicProcessMessageError">PublicProcessMessageError</a>&gt;</h4></section></summary><div class="docblock"><p>This function is used to parse messages from the DS. It checks for
 syntactic errors and does semantic validation as well. It returns a
 <a href="../framing/struct.ProcessedMessage.html" title="struct openmls::framing::ProcessedMessage">ProcessedMessage</a> enum. Checks the following semantic validation:</p>
 <ul>
