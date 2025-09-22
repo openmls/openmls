@@ -1401,8 +1401,7 @@ fn builder_pattern() {
         test_external_senders
     );
     assert_eq!(ciphersuite, test_ciphersuite);
-    let extensions = group_context.extensions();
-    assert_eq!(extensions, &test_gc_extensions);
+    assert_eq!(group_context.extensions(), &test_gc_extensions);
     let lifetime = alice_group
         .own_leaf()
         .expect("error getting own leaf")
@@ -2019,8 +2018,8 @@ fn unknown_extensions() {
         .expect("error creating group using builder");
 
     // Check that everything was added successfully
-    let group_context = alice_group.export_group_context();
-    assert_eq!(group_context.extensions(), &test_gc_extensions);
+    let group_context_extensions = alice_group.export_group_context().extensions();
+    assert_eq!(group_context_extensions, &test_gc_extensions);
     let leaf_node = alice_group.own_leaf().expect("error getting own leaf");
     assert_eq!(
         leaf_node.extensions(),
