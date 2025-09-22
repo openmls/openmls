@@ -77,7 +77,6 @@ pub struct SecretTree {
     leaves: Vec<Vec<Leaf>>,
 }
 
-#[cfg(test)]
 pub fn run_test_vector<Provider: openmls::storage::OpenMlsProvider>(
     test: SecretTree,
     provider: &Provider,
