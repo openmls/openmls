@@ -117,7 +117,11 @@ fn remover() {
 
     // === Alice adds Bob ===
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(&alice_provider, &alice_signer, from_ref(bob_kpb.key_package()))
+        .add_members(
+            &alice_provider,
+            &alice_signer,
+            from_ref(bob_kpb.key_package()),
+        )
         .expect("Could not add member to group.");
 
     // Test persistence after Alice adds Bob
@@ -154,7 +158,11 @@ fn remover() {
 
     // === Bob adds Charlie ===
     let (queued_messages, welcome, _group_info) = bob_group
-        .add_members(&bob_provider, &bob_signer, from_ref(charlie_kpb.key_package()))
+        .add_members(
+            &bob_provider,
+            &bob_signer,
+            from_ref(charlie_kpb.key_package()),
+        )
         .unwrap();
 
     // Test persistence after Bob adds Charlie

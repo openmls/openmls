@@ -122,11 +122,14 @@ fn basic_group_setup() {
     let (mut alice_group, alice_signer, _, _, _, _) =
         setup_alice_bob_group(ciphersuite, &alice_provider, &bob_provider);
 
-    let _result =
-        match alice_group.self_update(&alice_provider, &alice_signer, LeafNodeParameters::default()) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {e:?}"),
-        };
+    let _result = match alice_group.self_update(
+        &alice_provider,
+        &alice_signer,
+        LeafNodeParameters::default(),
+    ) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {e:?}"),
+    };
 }
 
 /// This test checks that we can't create a group that is invalid.
@@ -825,7 +828,12 @@ fn create_group_info_flag() {
         .commit_builder()
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(alice_provider.rand(), alice_provider.crypto(), &alice_signer, |_| true)
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            |_| true,
+        )
         .unwrap()
         .stage_commit(&alice_provider)
         .unwrap();
@@ -838,7 +846,12 @@ fn create_group_info_flag() {
         .create_group_info(true)
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(alice_provider.rand(), alice_provider.crypto(), &alice_signer, |_| true)
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            |_| true,
+        )
         .unwrap()
         .stage_commit(&alice_provider)
         .unwrap();
