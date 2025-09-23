@@ -7,6 +7,9 @@ use crate::ciphersuite::*;
 // Spot test to make sure hpke seal/open work.
 #[openmls_test::openmls_test]
 fn test_hpke_seal_open() {
+    let provider = Provider::default();
+    let provider = &provider;
+
     let plaintext = &[1, 2, 3];
     let kp = provider
         .crypto()

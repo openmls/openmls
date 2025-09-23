@@ -33,6 +33,8 @@ fn create_alice_group(
 
 #[openmls_test]
 fn test_external_commit() {
+    let provider = Provider::default();
+    let provider = &provider;
     // Alice creates a new group ...
     let (alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false);
 
@@ -114,6 +116,8 @@ fn test_external_commit() {
 
 #[openmls_test]
 fn test_group_info() {
+    let provider = Provider::default();
+    let provider = &provider;
     // Alice creates a new group ...
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, true);
 
@@ -208,10 +212,8 @@ fn test_group_info() {
 }
 
 #[openmls_test]
-fn test_not_present_group_info(
-    ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
-) {
+fn test_not_present_group_info() {
+    let provider = &Provider::default();
     // Alice creates a new group ...
     let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false);
 

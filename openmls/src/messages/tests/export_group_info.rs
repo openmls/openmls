@@ -10,6 +10,8 @@ use crate::{
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.
 #[openmls_test::openmls_test]
 fn export_group_info() {
+    let provider = Provider::default();
+    let provider = &provider;
     // Alice creates a group
     let (group_alice, _, signer, pk) = setup_alice_group(ciphersuite, provider);
 

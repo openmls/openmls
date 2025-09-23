@@ -38,6 +38,9 @@ fn application_id() {
 // in-band
 #[openmls_test::openmls_test]
 fn ratchet_tree_extension() {
+    let provider = Provider::default();
+    let provider = &provider;
+
     // Basic group setup.
 
     // Create credentials and keys
@@ -178,6 +181,9 @@ fn required_capabilities() {
 
 #[openmls_test::openmls_test]
 fn with_group_context_extensions() {
+    let provider = Provider::default();
+    let provider = &provider;
+
     // create an extension that we can check for later
     let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
     let extensions = Extensions::single(test_extension.clone());
@@ -211,6 +217,9 @@ fn with_group_context_extensions() {
 
 #[openmls_test::openmls_test]
 fn wrong_extension_with_group_context_extensions() {
+    let provider = Provider::default();
+    let provider = &provider;
+
     // Extension types that are known to not be allowed here:
     // - application id
     // - external pub
@@ -285,6 +294,9 @@ fn wrong_extension_with_group_context_extensions() {
 
 #[openmls_test::openmls_test]
 fn last_resort_extension() {
+    let provider = Provider::default();
+    let provider = &provider;
+
     let last_resort = Extension::LastResort(LastResortExtension::default());
 
     // Build a KeyPackage with a last resort extension

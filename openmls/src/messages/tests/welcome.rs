@@ -1,7 +1,6 @@
 use std::slice::from_ref;
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::prelude::{openmls_types::*, *};
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -30,10 +29,9 @@ use crate::{
 /// group info, it is not possible to generate a matching encrypted group context with different
 /// parameters.
 #[openmls_test::openmls_test]
-fn test_welcome_context_mismatch(
-    ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
-) {
+fn test_welcome_context_mismatch() {
+    let provider = &Provider::default();
+
     // We need a ciphersuite that is different from the current one to create
     // the mismatch
     let mismatched_ciphersuite = match ciphersuite {
@@ -191,11 +189,9 @@ fn test_welcome_context_mismatch(
 }
 
 #[openmls_test::openmls_test]
-fn test_welcome_msg() {
-    test_welcome_message(ciphersuite, provider);
-}
+fn test_welcome_message() {
+    let provider = &Provider::default();
 
-fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl crate::storage::OpenMlsProvider) {
     // We use this dummy group info in all test cases.
     let group_info_tbs = {
         let group_context = GroupContext::new(
@@ -304,6 +300,8 @@ fn test_welcome_message(ciphersuite: Ciphersuite, provider: &impl crate::storage
 /// tree.
 #[openmls_test::openmls_test]
 fn test_welcome_processing() {
+    let provider = Provider::default();
+    let provider = &provider;
     let group_id = GroupId::random(provider.rand());
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)

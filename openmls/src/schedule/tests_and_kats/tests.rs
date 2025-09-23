@@ -9,6 +9,9 @@ use crate::{
 
 #[openmls_test::openmls_test]
 fn test_psks() {
+    let provider = Provider::default();
+    let provider = &provider;
+
     // Create a new PSK secret from multiple PSKs.
     let prng = provider.rand();
 

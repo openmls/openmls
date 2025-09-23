@@ -98,31 +98,27 @@ fn receive_message(
 
 // Test positive cases with all valid (pure & mixed) policies
 #[openmls_test::openmls_test]
-fn test_wire_policy_positive(
-    ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
-) {
+fn test_wire_policy_positive() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
+        let alice_provider = &Provider::default();
         let (mut alice_group, alice_credential_with_key_and_signer) =
-            create_group(ciphersuite, provider, *wire_format_policy);
+            create_group(ciphersuite, alice_provider, *wire_format_policy);
         let message = receive_message(
             ciphersuite,
-            provider,
+            alice_provider,
             &mut alice_group,
             &alice_credential_with_key_and_signer.signer,
         );
         alice_group
-            .process_message(provider, message.try_into_protocol_message().unwrap())
+            .process_message(alice_provider, message.try_into_protocol_message().unwrap())
             .expect("An unexpected error occurred.");
     }
 }
 
 // Test negative cases with only icompatible policies
 #[openmls_test::openmls_test]
-fn test_wire_policy_negative(
-    ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
-) {
+fn test_wire_policy_negative() {
+    let alice_provider = &Provider::default();
     // All combinations that are not part of WIRE_FORMAT_POLICIES
     let incompatible_policies = vec![
         WireFormatPolicy::new(
@@ -136,15 +132,15 @@ fn test_wire_policy_negative(
     ];
     for wire_format_policy in incompatible_policies.into_iter() {
         let (mut alice_group, alice_credential_with_key_and_signer) =
-            create_group(ciphersuite, provider, wire_format_policy);
+            create_group(ciphersuite, alice_provider, wire_format_policy);
         let message = receive_message(
             ciphersuite,
-            provider,
+            alice_provider,
             &mut alice_group,
             &alice_credential_with_key_and_signer.signer,
         );
         let err = alice_group
-            .process_message(provider, message.try_into_protocol_message().unwrap())
+            .process_message(alice_provider, message.try_into_protocol_message().unwrap())
             .expect_err("An unexpected error occurred.");
         assert!(matches!(err, ProcessMessageError::IncompatibleWireFormat));
     }

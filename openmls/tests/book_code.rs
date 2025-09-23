@@ -74,6 +74,8 @@ fn generate_key_package(
 ///  - Test saving the group state
 #[openmls_test]
 fn book_operations() {
+    let provider = Provider::default();
+    let provider = &provider;
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
@@ -1476,6 +1478,8 @@ fn book_operations() {
 
 #[openmls_test]
 fn test_empty_input_errors() {
+    let provider = Provider::default();
+    let provider = &provider;
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
@@ -1512,16 +1516,22 @@ fn test_empty_input_errors() {
 }
 
 #[openmls_test]
-fn custom_proposal_usage(
-    ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
-) {
-    // Generate credentials with keys
-    let (alice_credential_with_key, alice_signer) =
-        generate_credential(b"alice".into(), ciphersuite.signature_algorithm(), provider);
+fn custom_proposal_usage() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
 
-    let (bob_credential_with_key, bob_signer) =
-        generate_credential(b"bob".into(), ciphersuite.signature_algorithm(), provider);
+    // Generate credentials with keys
+    let (alice_credential_with_key, alice_signer) = generate_credential(
+        b"alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let (bob_credential_with_key, bob_signer) = generate_credential(
+        b"bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
 
     // ANCHOR: custom_proposal_type
     // Define a custom proposal type
@@ -1539,37 +1549,42 @@ fn custom_proposal_usage(
     // Generate KeyPackage that signals support for the custom proposal type
     let bob_key_package = KeyPackageBuilder::new()
         .leaf_node_capabilities(capabilities.clone())
-        .build(ciphersuite, provider, &bob_signer, bob_credential_with_key)
+        .build(
+            ciphersuite,
+            bob_provider,
+            &bob_signer,
+            bob_credential_with_key,
+        )
         .unwrap();
 
     // Create a group that supports the custom proposal type
     let mut alice_group = MlsGroup::builder()
         .with_capabilities(capabilities.clone())
         .ciphersuite(ciphersuite)
-        .build(provider, &alice_signer, alice_credential_with_key)
+        .build(alice_provider, &alice_signer, alice_credential_with_key)
         .unwrap();
     // ANCHOR_END: custom_proposal_type
 
     // Add Bob
     let (_mls_message, welcome, _group_info) = alice_group
         .add_members(
-            provider,
+            alice_provider,
             &alice_signer,
             core::slice::from_ref(bob_key_package.key_package()),
         )
         .unwrap();
 
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
 
     let staged_welcome = StagedWelcome::new_from_welcome(
-        provider,
+        bob_provider,
         &MlsGroupJoinConfig::default(),
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
     .unwrap();
 
-    let mut bob_group = staged_welcome.into_group(provider).unwrap();
+    let mut bob_group = staged_welcome.into_group(bob_provider).unwrap();
 
     // ANCHOR: custom_proposal_usage
     // Create a custom proposal based on an example payload and the custom
@@ -1579,13 +1594,17 @@ fn custom_proposal_usage(
         CustomProposal::new(custom_proposal_type, custom_proposal_payload.clone());
 
     let (custom_proposal_message, _proposal_ref) = alice_group
-        .propose_custom_proposal_by_reference(provider, &alice_signer, custom_proposal.clone())
+        .propose_custom_proposal_by_reference(
+            alice_provider,
+            &alice_signer,
+            custom_proposal.clone(),
+        )
         .unwrap();
 
     // Have bob process the custom proposal.
     let processed_message = bob_group
         .process_message(
-            provider,
+            bob_provider,
             custom_proposal_message.into_protocol_message().unwrap(),
         )
         .unwrap();
@@ -1596,16 +1615,16 @@ fn custom_proposal_usage(
     };
 
     bob_group
-        .store_pending_proposal(provider.storage(), *proposal)
+        .store_pending_proposal(bob_provider.storage(), *proposal)
         .unwrap();
 
     // Commit to the proposal
     let (commit, _, _) = alice_group
-        .commit_to_pending_proposals(provider, &alice_signer)
+        .commit_to_pending_proposals(alice_provider, &alice_signer)
         .unwrap();
 
     let processed_message = bob_group
-        .process_message(provider, commit.into_protocol_message().unwrap())
+        .process_message(bob_provider, commit.into_protocol_message().unwrap())
         .unwrap();
 
     let staged_commit = match processed_message.into_content() {
@@ -1627,6 +1646,8 @@ fn custom_proposal_usage(
 
 #[openmls_test]
 fn commit_builder() {
+    let provider = Provider::default();
+    let provider = &provider;
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
@@ -1714,6 +1735,8 @@ fn commit_builder() {
 
 #[openmls_test]
 fn new_signer() {
+    let provider = Provider::default();
+    let provider = &provider;
     // Generate credentials with keys
     let (alice_old_credential, alice_old_signature_keys) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
@@ -1756,6 +1779,8 @@ fn new_signer() {
 
 #[openmls_test]
 fn external_commit_builder() {
+    let provider = Provider::default();
+    let provider = &provider;
     let (alice_credential_with_key, alice_signer) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
 

@@ -163,6 +163,9 @@ mod unit_tests {
     /// state.
     #[openmls_test::openmls_test]
     fn test_xor() {
+        let provider = Provider::default();
+        let provider = &provider;
+
         let reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(provider.rand()).expect("An unexpected error occurred.");
         let original_nonce = AeadNonce::random(provider.rand());

@@ -58,32 +58,36 @@ fn new_test_group(
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
+    alice_provider: &impl crate::storage::OpenMlsProvider,
+    bob_provider: &impl crate::storage::OpenMlsProvider,
 ) -> ProposalValidationTestSetup {
     // === Alice creates a group ===
     let (mut alice_group, alice_signer_with_keys) =
-        new_test_group("Alice", wire_format_policy, ciphersuite, provider);
+        new_test_group("Alice", wire_format_policy, ciphersuite, alice_provider);
 
-    let bob_credential_with_key =
-        generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
+    let bob_credential_with_key = generate_credential_with_key(
+        "Bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
 
     let bob_key_package = generate_key_package(
         ciphersuite,
         Extensions::empty(),
-        provider,
+        bob_provider,
         bob_credential_with_key.clone(),
     );
 
     let (_message, welcome, _group_info) = alice_group
         .add_members(
-            provider,
+            alice_provider,
             &alice_signer_with_keys.signer,
             core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("error adding Bob to group");
 
     alice_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(alice_provider)
         .expect("error merging pending commit");
 
     // Define the MlsGroup configuration
@@ -97,13 +101,13 @@ fn validation_test_setup(
         .expect("expected message to be a welcome");
 
     let bob_group = StagedWelcome::new_from_welcome(
-        provider,
+        bob_provider,
         &mls_group_config,
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating group from welcome")
-    .into_group(provider)
+    .into_group(bob_provider)
     .expect("error creating group from welcome");
 
     ProposalValidationTestSetup {
@@ -113,12 +117,15 @@ fn validation_test_setup(
 }
 
 #[openmls_test]
-fn external_join_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
+fn external_join_add_proposal_should_succeed() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     for policy in WIRE_FORMAT_POLICIES {
         let ProposalValidationTestSetup {
             alice_group,
             bob_group,
-        } = validation_test_setup(policy, ciphersuite, provider);
+        } = validation_test_setup(policy, ciphersuite, alice_provider, bob_provider);
         let (mut alice_group, alice_signer) = alice_group;
         let (mut bob_group, _bob_signer) = bob_group;
 
@@ -126,16 +133,17 @@ fn external_join_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
         assert_eq!(bob_group.members().count(), 2);
 
         // A new client, Charlie, will now ask joining with an external Add proposal
+        let charlie_provider = &Provider::default();
         let charlie_credential = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
-            provider,
+            charlie_provider,
         );
 
         let charlie_kp = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            charlie_provider,
             charlie_credential.clone(),
         );
 
@@ -159,7 +167,10 @@ fn external_join_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
         );
 
         let msg = alice_group
-            .process_message(provider, proposal.clone().into_protocol_message().unwrap())
+            .process_message(
+                alice_provider,
+                proposal.clone().into_protocol_message().unwrap(),
+            )
             .unwrap();
 
         match msg.into_content() {
@@ -171,38 +182,38 @@ fn external_join_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
                 };
                 assert!(add_proposal.key_package() == charlie_kp.key_package());
                 alice_group
-                    .store_pending_proposal(provider.storage(), *proposal)
+                    .store_pending_proposal(alice_provider.storage(), *proposal)
                     .unwrap()
             }
             _ => unreachable!(),
         }
 
         let msg = bob_group
-            .process_message(provider, proposal.into_protocol_message().unwrap())
+            .process_message(bob_provider, proposal.into_protocol_message().unwrap())
             .unwrap();
 
         match msg.into_content() {
             ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => bob_group
-                .store_pending_proposal(provider.storage(), *proposal)
+                .store_pending_proposal(bob_provider.storage(), *proposal)
                 .unwrap(),
             _ => unreachable!(),
         }
 
         // and Alice will commit it
         let (commit, welcome, _group_info) = alice_group
-            .commit_to_pending_proposals(provider, &alice_signer)
+            .commit_to_pending_proposals(alice_provider, &alice_signer)
             .unwrap();
-        alice_group.merge_pending_commit(provider).unwrap();
+        alice_group.merge_pending_commit(alice_provider).unwrap();
         assert_eq!(alice_group.members().count(), 3);
 
         // Bob will also process the commit
         let msg = bob_group
-            .process_message(provider, commit.into_protocol_message().unwrap())
+            .process_message(bob_provider, commit.into_protocol_message().unwrap())
             .unwrap();
         match msg.into_content() {
-            ProcessedMessageContent::StagedCommitMessage(commit) => {
-                bob_group.merge_staged_commit(provider, *commit).unwrap()
-            }
+            ProcessedMessageContent::StagedCommitMessage(commit) => bob_group
+                .merge_staged_commit(bob_provider, *commit)
+                .unwrap(),
             _ => unreachable!(),
         }
         assert_eq!(bob_group.members().count(), 3);
@@ -217,43 +228,50 @@ fn external_join_add_proposal_should_succeed<Provider: OpenMlsProvider>() {
             .wire_format_policy(policy)
             .build();
         let charlie_group = StagedWelcome::new_from_welcome(
-            provider,
+            charlie_provider,
             &mls_group_config,
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .unwrap()
-        .into_group(provider)
+        .into_group(charlie_provider)
         .unwrap();
         assert_eq!(charlie_group.members().count(), 3);
     }
 }
 
 #[openmls_test]
-fn external_join_add_proposal_should_be_signed_by_key_package_it_references<
-    Provider: OpenMlsProvider,
->() {
-    let ProposalValidationTestSetup { alice_group, .. } =
-        validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+fn external_join_add_proposal_should_be_signed_by_key_package_it_references() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+    let attacker_provider = &Provider::default();
+
+    let ProposalValidationTestSetup { alice_group, .. } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
     let (mut alice_group, _alice_signer) = alice_group;
 
     let attacker_credential = generate_credential_with_key(
         "Attacker".into(),
         ciphersuite.signature_algorithm(),
-        provider,
+        attacker_provider,
     );
 
     // A new client, Charlie, will now ask joining with an external Add proposal
     let charlie_credential = generate_credential_with_key(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
-        provider,
+        charlie_provider,
     );
 
     let charlie_kp = generate_key_package(
         ciphersuite,
         Extensions::empty(),
-        provider,
+        charlie_provider,
         attacker_credential,
     );
 
@@ -269,7 +287,10 @@ fn external_join_add_proposal_should_be_signed_by_key_package_it_references<
     // fails because the message was not signed by the same credential as the one in the Add proposal
     assert!(matches!(
         alice_group
-            .process_message(provider, invalid_proposal.into_protocol_message().unwrap())
+            .process_message(
+                alice_provider,
+                invalid_proposal.into_protocol_message().unwrap()
+            )
             .unwrap_err(),
         ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
     ));
@@ -280,11 +301,14 @@ fn external_join_add_proposal_should_be_signed_by_key_package_it_references<
 /// [valn1504](https://validation.openmls.tech/#valn1504)
 #[openmls_test]
 fn test_valn1504() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     for policy in WIRE_FORMAT_POLICIES {
         let ProposalValidationTestSetup {
             alice_group,
             bob_group,
-        } = validation_test_setup(policy, ciphersuite, provider);
+        } = validation_test_setup(policy, ciphersuite, alice_provider, bob_provider);
         let (mut alice_group, _alice_signer) = alice_group;
         let (bob_group, _bob_signer) = bob_group;
 
@@ -292,16 +316,17 @@ fn test_valn1504() {
         assert_eq!(bob_group.members().count(), 2);
 
         // A new client, Charlie, will now ask joining with an external Add proposal
+        let charlie_provider = &Provider::default();
         let charlie_credential = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
-            provider,
+            charlie_provider,
         );
 
         let charlie_kp = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            charlie_provider,
             charlie_credential.clone(),
         );
 
@@ -328,7 +353,10 @@ fn test_valn1504() {
         let proposal: MlsMessageOut = franken_message.into();
 
         let err = alice_group
-            .process_message(provider, proposal.clone().into_protocol_message().unwrap())
+            .process_message(
+                alice_provider,
+                proposal.clone().into_protocol_message().unwrap(),
+            )
             .expect_err("Should return an error");
         assert_eq!(
             err,
@@ -339,22 +367,34 @@ fn test_valn1504() {
 
 // TODO #1093: move this test to a dedicated external proposal ValSem test module once all external proposals implemented
 #[openmls_test]
-fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: OpenMlsProvider>() {
+fn new_member_proposal_sender_should_be_reserved_for_join_proposals() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let any_provider = &Provider::default();
+
     let ProposalValidationTestSetup {
         alice_group,
         bob_group,
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
     let (mut alice_group, alice_signer) = alice_group;
     let (mut bob_group, _bob_signer) = bob_group;
 
     // Add proposal can have a 'new_member_proposal' sender
-    let any_credential =
-        generate_credential_with_key("Any".into(), ciphersuite.signature_algorithm(), provider);
+    let any_credential = generate_credential_with_key(
+        "Any".into(),
+        ciphersuite.signature_algorithm(),
+        any_provider,
+    );
 
     let any_kp = generate_key_package(
         ciphersuite,
         Extensions::empty(),
-        provider,
+        any_provider,
         any_credential.clone(),
     );
 
@@ -379,48 +419,52 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals<Provider: Op
 
         // Finally check that the message can be processed without errors
         assert!(bob_group
-            .process_message(provider, join_proposal.into_protocol_message().unwrap())
+            .process_message(bob_provider, join_proposal.into_protocol_message().unwrap())
             .is_ok());
     } else {
         panic!()
     };
     alice_group
-        .clear_pending_proposals(provider.storage())
+        .clear_pending_proposals(alice_provider.storage())
         .unwrap();
 
     // Remove proposal cannot have a 'new_member_proposal' sender
     let remove_proposal = alice_group
-        .propose_remove_member(provider, &alice_signer, LeafNodeIndex::new(1))
+        .propose_remove_member(alice_provider, &alice_signer, LeafNodeIndex::new(1))
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
     if let MlsMessageBodyIn::PublicMessage(mut plaintext) = remove_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
-            bob_group.process_message(provider, plaintext).unwrap_err(),
+            bob_group
+                .process_message(bob_provider, plaintext)
+                .unwrap_err(),
             ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
         ));
     } else {
         panic!()
     };
     alice_group
-        .clear_pending_proposals(provider.storage())
+        .clear_pending_proposals(alice_provider.storage())
         .unwrap();
 
     // Update proposal cannot have a 'new_member_proposal' sender
     let update_proposal = alice_group
-        .propose_self_update(provider, &alice_signer, LeafNodeParameters::default())
+        .propose_self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
     if let MlsMessageBodyIn::PublicMessage(mut plaintext) = update_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
-            bob_group.process_message(provider, plaintext).unwrap_err(),
+            bob_group
+                .process_message(bob_provider, plaintext)
+                .unwrap_err(),
             ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
         ));
     } else {
         panic!()
     };
     alice_group
-        .clear_pending_proposals(provider.storage())
+        .clear_pending_proposals(alice_provider.storage())
         .unwrap();
 }

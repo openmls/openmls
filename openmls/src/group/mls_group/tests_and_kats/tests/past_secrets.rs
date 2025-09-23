@@ -7,6 +7,7 @@ use crate::{
 
 #[openmls_test::openmls_test]
 fn test_secret_tree_store() {
+    let provider = Provider::default();
     // Create a store that keeps up to 3 epochs
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
         3,
@@ -46,6 +47,7 @@ fn test_secret_tree_store() {
 
 #[openmls_test::openmls_test]
 fn test_empty_secret_tree_store() {
+    let provider = Provider::default();
     // Create a store that keeps no epochs
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
         0,

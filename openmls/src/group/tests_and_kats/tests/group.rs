@@ -8,10 +8,7 @@ use prelude::KeyPackageBundle;
 use treesync::{node::leaf_node::Capabilities, LeafNodeParameters};
 
 #[openmls_test::openmls_test]
-fn create_commit_optional_path(
-    ciphersuite: Ciphersuite,
-    _provider: &impl crate::storage::OpenMlsProvider,
-) {
+fn create_commit_optional_path() {
     let alice_provider = Provider::default();
     let bob_provider = Provider::default();
 

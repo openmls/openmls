@@ -39,9 +39,9 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 let _ = pretty_env_logger::try_init();
 
                 let ciphersuite = Ciphersuite::try_from(#val).unwrap();
-                let provider = OpenMlsRustCrypto::default();
-                let provider: &Provider = &provider;
-                let storage: &MemoryStorage = provider.storage();
+                /* let _provider = OpenMlsRustCrypto::default();
+                let _provider: &Provider = &_provider;
+                let _storage: &MemoryStorage = _provider.storage(); */
                 #(#body)*
             }
         };
@@ -123,8 +123,8 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     let _ = pretty_env_logger::try_init();
 
                     let ciphersuite = Ciphersuite::try_from(#val).unwrap();
-                    let provider = OpenMlsSqliteTestProvider::default();
-                    let provider = &provider;
+                    /* let provider = OpenMlsSqliteTestProvider::default();
+                    let provider = &provider; */
                     #(#body)*
                 }
             };
@@ -160,16 +160,16 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     let _ = pretty_env_logger::try_init();
 
                     let ciphersuite = Ciphersuite::try_from(#val).unwrap();
-                    let provider = OpenMlsLibcrux::default();
+                    /* let provider = OpenMlsLibcrux::default(); */
 
                     // When cross-compiling the supported ciphersuites may be wrong.
                     // They are set at compile-time.
-                    if provider.crypto().supports(ciphersuite).is_err() {
+                    if OpenMlsLibcrux::default().crypto().supports(ciphersuite).is_err() {
                         eprintln!("Skipping unsupported ciphersuite {ciphersuite:?}.");
                         return;
                     }
 
-                    let provider = &provider;
+                    /* let provider = &provider; */
                     #(#body)*
                 }
             };

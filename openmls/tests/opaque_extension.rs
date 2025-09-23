@@ -11,6 +11,8 @@ const CUSTOM_EXTENSION_TYPE: ExtensionType = ExtensionType::Unknown(CUSTOM_EXTEN
 /// group.
 #[openmls_test]
 fn opaque_extension() {
+    let provider = Provider::default();
+    let provider = &provider;
     // ## First we need to set up the clients.
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) =

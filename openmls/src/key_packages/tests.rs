@@ -31,6 +31,8 @@ pub(crate) fn key_package(
 
 #[openmls_test::openmls_test]
 fn generate_key_package() {
+    let provider = Provider::default();
+    let provider = &provider;
     let (key_package, _credential, _signature_keys) = key_package(ciphersuite, provider);
 
     let kpi = KeyPackageIn::from(key_package.key_package().clone());
@@ -41,6 +43,8 @@ fn generate_key_package() {
 
 #[openmls_test::openmls_test]
 fn serialization() {
+    let provider = Provider::default();
+    let provider = &provider;
     let (key_package, _, _) = key_package(ciphersuite, provider);
 
     let encoded = key_package
@@ -57,6 +61,8 @@ fn serialization() {
 
 #[openmls_test::openmls_test]
 fn application_id_extension() {
+    let provider = Provider::default();
+    let provider = &provider;
     let credential = BasicCredential::new(b"Sasha".to_vec());
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
@@ -99,6 +105,8 @@ fn application_id_extension() {
 /// - The init key is not equal to the encryption key
 #[openmls_test::openmls_test]
 fn key_package_validation() {
+    let provider = Provider::default();
+    let provider = &provider;
     let (key_package_orig, _, _) = key_package(ciphersuite, provider);
 
     // === Protocol version ===
@@ -138,6 +146,8 @@ fn key_package_validation() {
 /// the last resort flag is set during the build process.
 #[openmls_test::openmls_test]
 fn last_resort_key_package() {
+    let provider = Provider::default();
+    let provider = &provider;
     let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
