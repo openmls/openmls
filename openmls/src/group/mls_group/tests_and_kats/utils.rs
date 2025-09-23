@@ -32,6 +32,12 @@ pub(crate) fn setup_alice_group(
             alice_credential_with_key.clone(),
         )
         .expect("Error creating group.");
+
+    // Test persistence after Alice creates group
+    group
+        .ensure_persistence(provider.storage())
+        .expect("Alice group persistence check failed after creation");
+
     (group, alice_credential_with_key, alice_signature_keys, pk)
 }
 
@@ -47,7 +53,8 @@ pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
 
 pub(crate) fn setup_alice_bob(
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
+    alice_provider: &impl crate::storage::OpenMlsProvider,
+    bob_provider: &impl crate::storage::OpenMlsProvider,
 ) -> (
     CredentialWithKey,
     SignatureKeyPair,
@@ -56,13 +63,17 @@ pub(crate) fn setup_alice_bob(
 ) {
     // Create credentials and keys
     let (alice_credential_with_key, alice_signer) =
-        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
     let (bob_credential_with_key, bob_signer) =
-        test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
 
     // Generate Bob's KeyPackage
-    let bob_key_package_bundle =
-        KeyPackageBundle::generate(provider, &bob_signer, ciphersuite, bob_credential_with_key);
+    let bob_key_package_bundle = KeyPackageBundle::generate(
+        bob_provider,
+        &bob_signer,
+        ciphersuite,
+        bob_credential_with_key,
+    );
 
     (
         alice_credential_with_key,
@@ -138,6 +149,11 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         )
         .expect("Error creating group.");
 
+    // Test persistence after Alice creates group
+    group_alice
+        .ensure_persistence(alice_provider.storage())
+        .expect("Alice group persistence check failed after creation");
+
     // Alice adds Bob
     let (_commit, welcome, _group_info_option) = group_alice
         .add_members(
@@ -147,9 +163,19 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         )
         .expect("Could not create proposal.");
 
+    // Test persistence after Alice adds Bob
+    group_alice
+        .ensure_persistence(alice_provider.storage())
+        .expect("Alice group persistence check failed after adding Bob");
+
     group_alice
         .merge_pending_commit(alice_provider)
         .expect("error merging pending commit");
+
+    // Test persistence after Alice merges commit
+    group_alice
+        .ensure_persistence(alice_provider.storage())
+        .expect("Alice group persistence check failed after merging commit");
 
     let group_bob = StagedWelcome::new_from_welcome(
         bob_provider,
@@ -161,6 +187,11 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
     )
     .and_then(|staged_join| staged_join.into_group(bob_provider))
     .expect("error creating group from welcome");
+
+    // Test persistence after Bob joins group
+    group_bob
+        .ensure_persistence(bob_provider.storage())
+        .expect("Bob group persistence check failed after joining");
 
     (
         group_alice,

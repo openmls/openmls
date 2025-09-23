@@ -1,8 +1,10 @@
-use crate::credentials::test_utils::new_credential;
-use crate::framing::errors::{MessageDecryptionError, SecretTreeError};
-use crate::group::{ProcessMessageError, ValidationError};
-use crate::prelude::*;
-use crate::test_utils::OpenMlsRustCrypto;
+use crate::{
+    credentials::test_utils::new_credential,
+    framing::errors::{MessageDecryptionError, SecretTreeError},
+    group::{ProcessMessageError, ValidationError},
+    prelude::*,
+    test_utils::OpenMlsRustCrypto,
+};
 
 /// Test that ensures that the secret tree state is persisted correctly and that
 /// replays are not possible.
