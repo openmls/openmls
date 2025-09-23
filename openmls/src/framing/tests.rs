@@ -441,7 +441,11 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
 
     // Alice removes Bob
     let (commit, _welcome_option, _group_info_option) = alice_group
-        .remove_members(alice_provider, &alice_signature_keys, &[LeafNodeIndex::new(1)])
+        .remove_members(
+            alice_provider,
+            &alice_signature_keys,
+            &[LeafNodeIndex::new(1)],
+        )
         .expect("Could not remove members.");
 
     alice_group
