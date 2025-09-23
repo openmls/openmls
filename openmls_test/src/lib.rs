@@ -39,9 +39,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 let _ = pretty_env_logger::try_init();
 
                 let ciphersuite = Ciphersuite::try_from(#val).unwrap();
-                /* let _provider = OpenMlsRustCrypto::default();
-                let _provider: &Provider = &_provider;
-                let _storage: &MemoryStorage = _provider.storage(); */
+
                 #(#body)*
             }
         };
@@ -123,8 +121,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     let _ = pretty_env_logger::try_init();
 
                     let ciphersuite = Ciphersuite::try_from(#val).unwrap();
-                    /* let provider = OpenMlsSqliteTestProvider::default();
-                    let provider = &provider; */
+
                     #(#body)*
                 }
             };
@@ -160,7 +157,6 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     let _ = pretty_env_logger::try_init();
 
                     let ciphersuite = Ciphersuite::try_from(#val).unwrap();
-                    /* let provider = OpenMlsLibcrux::default(); */
 
                     // When cross-compiling the supported ciphersuites may be wrong.
                     // They are set at compile-time.
@@ -169,7 +165,6 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         return;
                     }
 
-                    /* let provider = &provider; */
                     #(#body)*
                 }
             };
