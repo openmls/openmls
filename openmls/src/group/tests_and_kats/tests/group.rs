@@ -684,7 +684,7 @@ fn decrypt_after_leaf_index_reuse() {
     );
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder()
+    let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .max_past_epochs(5)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
@@ -723,7 +723,7 @@ fn decrypt_after_leaf_index_reuse() {
     let dora_key_package = dora_key_package_bundle.key_package();
 
     // Alice adds Bob
-    let (_commit, welcome, _group_info_option) = group_alice
+    let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
             &alice_provider,
             &alice_signature_keys,
@@ -731,20 +731,20 @@ fn decrypt_after_leaf_index_reuse() {
         )
         .expect("Could not create proposal.");
 
-    group_alice
+    alice_group
         .merge_pending_commit(&alice_provider)
         .expect("error merging pending commit");
 
     let welcome = welcome.into_welcome().unwrap();
 
-    let mut group_bob = StagedWelcome::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         &bob_provider,
         &MlsGroupJoinConfig::builder()
             .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
             .max_past_epochs(5)
             .build(),
         welcome.clone(),
-        Some(group_alice.export_ratchet_tree().into()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .and_then(|staged_join| staged_join.into_group(&bob_provider))
     .expect("error creating bob's group from welcome");
@@ -756,7 +756,7 @@ fn decrypt_after_leaf_index_reuse() {
             .max_past_epochs(5)
             .build(),
         welcome,
-        Some(group_alice.export_ratchet_tree().into()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .and_then(|staged_join| staged_join.into_group(&charlie_provider))
     .expect("error creating charlie's group from welcome");
@@ -770,7 +770,7 @@ fn decrypt_after_leaf_index_reuse() {
         .unwrap();
 
     // replace charlie with dora
-    let commit_bundle = group_alice
+    let commit_bundle = alice_group
         .commit_builder()
         .propose_removals(Some(group_charlie.own_leaf_index()))
         .propose_adds(Some(dora_key_package.clone()))
@@ -786,9 +786,9 @@ fn decrypt_after_leaf_index_reuse() {
         .stage_commit(&alice_provider)
         .unwrap();
 
-    group_alice.merge_pending_commit(&alice_provider).unwrap();
+    alice_group.merge_pending_commit(&alice_provider).unwrap();
 
-    let bob_incoming_commit = group_bob
+    let bob_incoming_commit = bob_group
         .process_message(
             &bob_provider,
             commit_bundle
@@ -800,7 +800,7 @@ fn decrypt_after_leaf_index_reuse() {
         .unwrap();
 
     match bob_incoming_commit.into_content() {
-        ProcessedMessageContent::StagedCommitMessage(staged_commit) => group_bob
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => bob_group
             .merge_staged_commit(&bob_provider, *staged_commit)
             .unwrap(),
         _ => unreachable!(),
@@ -808,7 +808,7 @@ fn decrypt_after_leaf_index_reuse() {
 
     let charlie_protocol_message = charlie_msg.into_protocol_message().unwrap();
 
-    let _bob_incoming_appmsg = group_bob
+    let _bob_incoming_appmsg = bob_group
         .process_message(&bob_provider, charlie_protocol_message)
         .unwrap();
 }

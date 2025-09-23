@@ -544,14 +544,14 @@ fn self_remove_proposals() {
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder()
+    let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(alice_provider, &alice_signer, alice_credential.clone())
         .expect("Error creating group.");
 
     // Alice adds Bob
-    let (_commit, welcome, _group_info_option) = group_alice
+    let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
             alice_provider,
             &alice_signer,
@@ -559,34 +559,34 @@ fn self_remove_proposals() {
         )
         .expect("Could not create proposal.");
 
-    group_alice
+    alice_group
         .merge_pending_commit(alice_provider)
         .expect("error merging pending commit");
 
-    let mut group_bob = StagedWelcome::new_from_welcome(
+    let mut bob_group = StagedWelcome::new_from_welcome(
         bob_provider,
         &MlsGroupJoinConfig::builder()
             .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
             .build(),
         welcome.into_welcome().unwrap(),
-        Some(group_alice.export_ratchet_tree().into()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .and_then(|staged_join| staged_join.into_group(bob_provider))
     .expect("error creating group from welcome");
 
     // Now Bob wants to remove himself via a SelfRemove proposal
-    let self_remove = group_bob
+    let self_remove = bob_group
         .leave_group_via_self_remove(bob_provider, &bob_signer)
         .unwrap();
 
     // Alice process Bob's proposal
-    let processed_message = group_alice
+    let processed_message = alice_group
         .process_message(alice_provider, self_remove.into_protocol_message().unwrap())
         .expect("Error processing self remove proposal.");
 
     match processed_message.into_content() {
         ProcessedMessageContent::ProposalMessage(queued_proposal) => {
-            group_alice
+            alice_group
                 .store_pending_proposal(alice_provider.storage(), *queued_proposal)
                 .unwrap();
         }
@@ -594,20 +594,20 @@ fn self_remove_proposals() {
     };
 
     // Alice commits Bob's proposal
-    let (commit, _, _) = group_alice
+    let (commit, _, _) = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_signer)
         .unwrap();
 
-    group_alice.merge_pending_commit(alice_provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
 
     // Bob processes Alice's commit
-    let processed_message = group_bob
+    let processed_message = bob_group
         .process_message(bob_provider, commit.into_protocol_message().unwrap())
         .expect("Error processing commit.");
 
     match processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(commit) => {
-            group_bob
+            bob_group
                 .merge_staged_commit(bob_provider, *commit)
                 .unwrap();
         }
@@ -615,8 +615,8 @@ fn self_remove_proposals() {
     };
 
     // Bob should have been removed from the group
-    assert!(!group_bob.is_active());
-    assert_eq!(group_alice.members().count(), 1);
+    assert!(!bob_group.is_active());
+    assert_eq!(alice_group.members().count(), 1);
 }
 
 // Test if update proposals are properly discarded if a remove proposal is
@@ -748,14 +748,14 @@ fn self_remove_proposals_always_public() {
         test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder()
+    let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
         .build(alice_provider, &alice_signer, alice_credential.clone())
         .expect("Error creating group.");
 
     // Now Bob wants to remove himself via a SelfRemove proposal
-    let self_remove = group_alice
+    let self_remove = alice_group
         .leave_group_via_self_remove(alice_provider, &alice_signer)
         .expect_err("SelfRemove proposal was created with wrong wire format policy.");
 

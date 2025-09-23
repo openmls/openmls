@@ -2543,28 +2543,28 @@ fn update_path() {
     // === Alice creates a group with her and Bob ===
     // TODO: don't let alice and bob share the provider
     let (
-        mut group_alice,
+        mut alice_group,
         _alice_signature_keys,
-        mut group_bob,
+        mut bob_group,
         bob_signature_keys,
         _alice_credential_with_key,
         _bob_credential_with_key,
     ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
     // === Bob updates and commits ===
-    let mut bob_new_leaf_node = group_bob.own_leaf_node().unwrap().clone();
+    let mut bob_new_leaf_node = bob_group.own_leaf_node().unwrap().clone();
     bob_new_leaf_node
         .update(
             ciphersuite,
             bob_provider,
             &bob_signature_keys,
-            group_bob.group_id().clone(),
-            group_bob.own_leaf_index(),
+            bob_group.group_id().clone(),
+            bob_group.own_leaf_index(),
             LeafNodeParameters::default(),
         )
         .unwrap();
 
-    let (update_bob, _welcome_option, _group_info_option) = group_bob
+    let (update_bob, _welcome_option, _group_info_option) = bob_group
         .self_update(
             bob_provider,
             &bob_signature_keys,
@@ -2599,8 +2599,8 @@ fn update_path() {
     }
 
     // Rebuild the PublicMessage with the new content
-    let group_context = group_bob.export_group_context().clone();
-    let membership_key = group_bob.message_secrets().membership_key().as_slice();
+    let group_context = bob_group.export_group_context().clone();
+    let membership_key = bob_group.message_secrets().membership_key().as_slice();
 
     let broken_message = FrankenPublicMessage::auth(
         bob_provider,
@@ -2614,7 +2614,7 @@ fn update_path() {
 
     let protocol_message = ProtocolMessage::from(PublicMessage::from(broken_message));
 
-    let result = group_alice.process_message(alice_provider, protocol_message);
+    let result = alice_group.process_message(alice_provider, protocol_message);
     assert_eq!(
         result.expect_err("Successful processing of a broken commit."),
         ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
