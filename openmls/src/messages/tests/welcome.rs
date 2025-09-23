@@ -305,22 +305,23 @@ fn test_welcome_message() {
 /// tree.
 #[openmls_test::openmls_test]
 fn test_welcome_processing() {
-    let provider = &Provider::default();
-    let group_id = GroupId::random(provider.rand());
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let group_id = GroupId::random(alice_provider.rand());
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .build();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
-        setup_client("Alice", ciphersuite, provider);
+        setup_client("Alice", ciphersuite, alice_provider);
     let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
-        setup_client("Bob", ciphersuite, provider);
+        setup_client("Bob", ciphersuite, bob_provider);
 
     let bob_kp = bob_kpb.key_package();
 
     // === Alice creates a group  and adds Bob ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        provider,
+        alice_provider,
         &alice_signer,
         &mls_group_create_config,
         group_id,
@@ -329,18 +330,18 @@ fn test_welcome_processing() {
     .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, from_ref(bob_kp))
+        .add_members(alice_provider, &alice_signer, from_ref(bob_kp))
         .expect("Could not add member to group.");
 
     alice_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(alice_provider)
         .expect("error merging pending commit");
 
     let welcome = welcome.into_welcome().expect("Unexpected message type.");
 
     // Process the welcome
     let processed_welcome = ProcessedWelcome::new_from_welcome(
-        provider,
+        bob_provider,
         mls_group_create_config.join_config(),
         welcome,
     )
@@ -351,7 +352,7 @@ fn test_welcome_processing() {
     let group_id = unverified_group_info.group_id();
     assert_eq!(group_id, alice_group.group_id());
     let alice_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_signer, false)
+        .export_group_info(alice_provider.crypto(), &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -363,10 +364,10 @@ fn test_welcome_processing() {
 
     // Stage the welcome
     let staged_welcome = processed_welcome
-        .into_staged_welcome(provider, Some(alice_group.export_ratchet_tree().into()))
+        .into_staged_welcome(bob_provider, Some(alice_group.export_ratchet_tree().into()))
         .unwrap();
     let _group = staged_welcome
-        .into_group(provider)
+        .into_group(bob_provider)
         .expect("Error creating group from a valid staged join.");
 }
 
