@@ -74,8 +74,7 @@ fn generate_key_package(
 ///  - Test saving the group state
 #[openmls_test]
 fn book_operations() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
@@ -1478,8 +1477,7 @@ fn book_operations() {
 
 #[openmls_test]
 fn test_empty_input_errors() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
@@ -1646,8 +1644,7 @@ fn custom_proposal_usage() {
 
 #[openmls_test]
 fn commit_builder() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
     // Generate credentials with keys
     let (alice_credential, alice_signature_keys) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
@@ -1735,8 +1732,7 @@ fn commit_builder() {
 
 #[openmls_test]
 fn new_signer() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
     // Generate credentials with keys
     let (alice_old_credential, alice_old_signature_keys) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
@@ -1779,8 +1775,7 @@ fn new_signer() {
 
 #[openmls_test]
 fn external_commit_builder() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
     let (alice_credential_with_key, alice_signer) =
         generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
 

@@ -6,9 +6,9 @@ use crate::group::{
 
 #[openmls_test::openmls_test]
 fn test_external_init_broken_signature() {
-    let alice_provider = Provider::default();
-    let bob_provider = Provider::default();
-    let charlie_provider = Provider::default();
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
 
     let (
         alice_group,
@@ -17,11 +17,11 @@ fn test_external_init_broken_signature() {
         _bob_signer,
         _alice_credetial_with_key,
         _bob_credential_with_key,
-    ) = setup_alice_bob_group(ciphersuite, &alice_provider, &bob_provider);
+    ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
     // Now set up charly and try to init externally.
     let (charlie_credential, _charlie_kpb, _charlie_signer, _charlie_pk) =
-        setup_client("Charlie", ciphersuite, &charlie_provider);
+        setup_client("Charlie", ciphersuite, charlie_provider);
 
     let verifiable_group_info = {
         let mut verifiable_group_info = alice_group
@@ -35,7 +35,7 @@ fn test_external_init_broken_signature() {
 
     let result = MlsGroup::external_commit_builder()
         .build_group(
-            &charlie_provider,
+            charlie_provider,
             verifiable_group_info,
             charlie_credential.clone(),
         )

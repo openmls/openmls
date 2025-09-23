@@ -11,8 +11,7 @@ use crate::{
 /// other PSK-related structs
 #[openmls_test::openmls_test]
 fn test_pre_shared_key_proposal_codec() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
     // External
     let psk = PreSharedKeyId {
         psk: Psk::External(ExternalPsk::new(vec![1, 2, 3])),
@@ -81,8 +80,7 @@ fn test_pre_shared_key_proposal_codec() {
 /// other PSK-related structs
 #[openmls_test::openmls_test]
 fn test_reinit_proposal_codec() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
     let orig = ReInitProposal {
         group_id: GroupId::random(provider.rand()),
         version: ProtocolVersion::default(),

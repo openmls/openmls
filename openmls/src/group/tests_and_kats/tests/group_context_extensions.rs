@@ -37,7 +37,7 @@ struct PartyState<Provider> {
 impl<Provider: crate::storage::OpenMlsProvider + Default> PartyState<Provider> {
     /// Generate the PartyState for a new identity.
     fn generate(name: &'static str, ciphersuite: Ciphersuite) -> Self {
-        let provider = Provider::default();
+        let provider = &Provider::default();
         let (credential_with_key, key_package_bundle, signer, sig_pk) =
             setup_client(name, ciphersuite, &provider);
 

@@ -2407,8 +2407,8 @@ fn test_valsem401_valsem402() {
         ..
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
 
-    let alice_provider = Provider::default();
-    let bob_provider = Provider::default();
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
 
      let bad_psks = &[
      // ValSem401

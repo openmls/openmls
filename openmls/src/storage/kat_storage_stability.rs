@@ -60,7 +60,7 @@ impl<Provider: OpenMlsProvider + Default> DeterministicRandProvider<Provider> {
     }
 
     fn block(&self, mut dst: &mut [u8]) -> usize {
-        let provider = Provider::default();
+        let provider = &Provider::default();
         let ctr = self.ctr.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
         let block = provider

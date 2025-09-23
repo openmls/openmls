@@ -300,8 +300,7 @@ fn test_welcome_message() {
 /// tree.
 #[openmls_test::openmls_test]
 fn test_welcome_processing() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
     let group_id = GroupId::random(provider.rand());
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)

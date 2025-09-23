@@ -38,8 +38,7 @@ fn application_id() {
 // in-band
 #[openmls_test::openmls_test]
 fn ratchet_tree_extension() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
 
     // Basic group setup.
 
@@ -181,8 +180,7 @@ fn required_capabilities() {
 
 #[openmls_test::openmls_test]
 fn with_group_context_extensions() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
 
     // create an extension that we can check for later
     let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
@@ -217,8 +215,7 @@ fn with_group_context_extensions() {
 
 #[openmls_test::openmls_test]
 fn wrong_extension_with_group_context_extensions() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
 
     // Extension types that are known to not be allowed here:
     // - application id
@@ -294,8 +291,7 @@ fn wrong_extension_with_group_context_extensions() {
 
 #[openmls_test::openmls_test]
 fn last_resort_extension() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
 
     let last_resort = Extension::LastResort(LastResortExtension::default());
 

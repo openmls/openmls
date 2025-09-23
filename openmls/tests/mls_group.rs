@@ -1324,8 +1324,7 @@ fn mls_group_operations() {
 
 #[openmls_test]
 fn addition_order() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
 
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::random(provider.rand());
@@ -1435,8 +1434,7 @@ fn addition_order() {
 ///  - Alice adds K members.
 #[openmls_test]
 fn more_remove_than_add_proposals_in_commit() {
-    let provider = Provider::default();
-    let provider = &provider;
+    let provider = &Provider::default();
 
     // choose group size, remove proposal count and add proposal count, s.t. M > K, and M and K each
     // pass a tree shrink/grow threshold, i.e., a power of 2.
