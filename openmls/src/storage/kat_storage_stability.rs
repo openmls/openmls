@@ -335,7 +335,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
 }
 
 #[openmls_test]
-fn generate_kats(ciphersuite: Ciphersuite, provider: &Provider) {
+fn generate_kats() {
     helper_generate_kat::<Provider>(ciphersuite);
 }
 
@@ -433,7 +433,7 @@ fn helper_write_kats(kat_data: Vec<(Ciphersuite, GroupId, Vec<Vec<u8>>)>) {
 }
 
 #[openmls_test]
-fn test(ciphersuite: Ciphersuite, provider: &Provider) {
+fn test() {
     // setup
     let base64_engine = base64::engine::GeneralPurpose::new(
         &base64::alphabet::URL_SAFE,

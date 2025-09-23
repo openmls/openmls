@@ -1083,7 +1083,7 @@ fn test_commit_with_update_path_leaf_node() {
 }
 
 #[openmls_test]
-fn test_pending_commit_logic(ciphersuite: Ciphersuite) {
+fn test_pending_commit_logic() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     let group_id = GroupId::from_slice(b"Test Group");
