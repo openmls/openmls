@@ -1324,32 +1324,37 @@ fn mls_group_operations() {
 
 #[openmls_test]
 fn addition_order() {
-    let provider = &Provider::default();
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
 
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
-        let group_id = GroupId::random(provider.rand());
+        let group_id = GroupId::random(alice_provider.rand());
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
-            new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
 
         let (bob_credential, bob_signer) =
-            new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
 
-        let (charlie_credential, charlie_signer) =
-            new_credential(provider, b"Charlie", ciphersuite.signature_algorithm());
+        let (charlie_credential, charlie_signer) = new_credential(
+            charlie_provider,
+            b"Charlie",
+            ciphersuite.signature_algorithm(),
+        );
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            bob_provider,
             bob_credential.clone(),
             &bob_signer,
         );
         let charlie_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            charlie_provider,
             charlie_credential.clone(),
             &charlie_signer,
         );
@@ -1363,7 +1368,7 @@ fn addition_order() {
 
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new_with_group_id(
-            provider,
+            alice_provider,
             &alice_signer,
             &mls_group_config,
             group_id.clone(),
@@ -1373,7 +1378,7 @@ fn addition_order() {
 
         // === Alice adds Bob ===
         let _welcome = match alice_group.add_members(
-            provider,
+            alice_provider,
             &alice_signer,
             &[bob_key_package, charlie_key_package],
         ) {
@@ -1409,7 +1414,7 @@ fn addition_order() {
         }
 
         alice_group
-            .merge_pending_commit(provider)
+            .merge_pending_commit(alice_provider)
             .expect("error merging pending commit");
 
         // Check that the members got added in the same order as the KeyPackages

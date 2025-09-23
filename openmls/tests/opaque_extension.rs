@@ -11,19 +11,27 @@ const CUSTOM_EXTENSION_TYPE: ExtensionType = ExtensionType::Unknown(CUSTOM_EXTEN
 /// group.
 #[openmls_test]
 fn opaque_extension() {
-    let provider = &Provider::default();
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
     // ## First we need to set up the clients.
     // Generate credentials with keys
-    let (alice_credential, alice_signature_keys) =
-        generate_credential("Alice".into(), ciphersuite.signature_algorithm(), provider);
+    let (alice_credential, alice_signature_keys) = generate_credential(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
 
-    let (bob_credential, bob_signature_keys) =
-        generate_credential("Bob".into(), ciphersuite.signature_algorithm(), provider);
+    let (bob_credential, bob_signature_keys) = generate_credential(
+        "Bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
 
     let (charlie_credential, charlie_signature_keys) = generate_credential(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
-        provider,
+        charlie_provider,
     );
 
     // Generate key packages for Bob and Charlie so they can be added later.
@@ -32,7 +40,7 @@ fn opaque_extension() {
         ciphersuite,
         bob_credential.clone(),
         Extensions::default(),
-        provider,
+        bob_provider,
         &bob_signature_keys,
     );
 
@@ -40,7 +48,7 @@ fn opaque_extension() {
         ciphersuite,
         charlie_credential.clone(),
         Extensions::default(),
-        provider,
+        charlie_provider,
         &charlie_signature_keys,
     );
 
@@ -82,7 +90,7 @@ fn opaque_extension() {
         .build();
 
     let mut alice_group = MlsGroup::new(
-        provider,
+        alice_provider,
         &alice_signature_keys,
         &mls_group_create_config,
         alice_credential.clone(),
@@ -109,19 +117,19 @@ fn opaque_extension() {
             ])
             .unwrap(),
         )
-        .load_psks(provider.storage())
+        .load_psks(alice_provider.storage())
         .expect("error loading psks")
         .build(
-            provider.rand(),
-            provider.crypto(),
+            alice_provider.rand(),
+            alice_provider.crypto(),
             &alice_signature_keys,
             |_| true,
         )
         .expect("error building commit")
-        .stage_commit(provider)
+        .stage_commit(alice_provider)
         .expect("error staging commit");
 
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
 
     // ## Let bob build the group
     // Get the info needed to build the group - would be part of welcome and group info in the real
@@ -131,7 +139,7 @@ fn opaque_extension() {
 
     // This is how we can access the custom group context extension while joining
     let mut bob_group = StagedWelcome::new_from_welcome(
-        provider,
+        bob_provider,
         join_config,
         add_bob_bundle.welcome().unwrap().to_owned(),
         Some(tree.into()),
@@ -149,7 +157,7 @@ fn opaque_extension() {
         assert!(users.len() == 2);
     })
     .unwrap()
-    .into_group(provider)
+    .into_group(bob_provider)
     .unwrap();
 
     // ## Let Alice add Charlie, so we can see how Bob processes that message
@@ -171,23 +179,23 @@ fn opaque_extension() {
             ])
             .unwrap(),
         )
-        .load_psks(provider.storage())
+        .load_psks(alice_provider.storage())
         .expect("error loading psks")
         .build(
-            provider.rand(),
-            provider.crypto(),
+            alice_provider.rand(),
+            alice_provider.crypto(),
             &alice_signature_keys,
             |_| true,
         )
         .expect("error building commit")
-        .stage_commit(provider)
+        .stage_commit(alice_provider)
         .expect("error staging commit");
 
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
 
     let processed_message = bob_group
         .process_message(
-            provider,
+            bob_provider,
             add_charlie_bundle
                 .commit()
                 .to_owned()
@@ -210,7 +218,7 @@ fn opaque_extension() {
             assert!(users.contains(&"charlie"));
             assert!(users.len() == 3);
 
-            bob_group.merge_pending_commit(provider).unwrap();
+            bob_group.merge_pending_commit(bob_provider).unwrap();
         }
         _ => unreachable!("we know this is a commit"),
     }

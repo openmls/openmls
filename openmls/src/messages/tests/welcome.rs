@@ -30,7 +30,8 @@ use crate::{
 /// parameters.
 #[openmls_test::openmls_test]
 fn test_welcome_context_mismatch() {
-    let provider = &Provider::default();
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
 
     // We need a ciphersuite that is different from the current one to create
     // the mismatch
@@ -41,22 +42,22 @@ fn test_welcome_context_mismatch() {
         _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
     };
 
-    let group_id = GroupId::random(provider.rand());
+    let group_id = GroupId::random(alice_provider.rand());
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .build();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
-        setup_client("Alice", ciphersuite, provider);
+        setup_client("Alice", ciphersuite, &alice_provider);
     let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
-        setup_client("Bob", ciphersuite, provider);
+        setup_client("Bob", ciphersuite, &bob_provider);
 
     let bob_kp = bob_kpb.key_package();
     let bob_private_key = bob_kpb.init_private_key();
 
     // === Alice creates a group  and adds Bob ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        provider,
+        &alice_provider,
         &alice_signer,
         &mls_group_create_config,
         group_id,
@@ -65,11 +66,11 @@ fn test_welcome_context_mismatch() {
     .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(provider, &alice_signer, from_ref(bob_kp))
+        .add_members(&alice_provider, &alice_signer, from_ref(bob_kp))
         .expect("Could not add member to group.");
 
     alice_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(&alice_provider)
         .expect("error merging pending commit");
 
     let mut welcome = welcome.into_welcome().expect("Unexpected message type.");
@@ -86,7 +87,7 @@ fn test_welcome_context_mismatch() {
         welcome.encrypted_group_info(),
         egs.encrypted_group_secrets(),
         ciphersuite,
-        provider.crypto(),
+        bob_provider.crypto(),
     )
     .expect("Could not decrypt group secrets.");
     let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())
@@ -97,26 +98,30 @@ fn test_welcome_context_mismatch() {
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.storage(), &resumption_psk_store, &[]).unwrap();
+        let psks = load_psks(bob_provider.storage(), &resumption_psk_store, &[]).unwrap();
 
-        PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
+        PskSecret::new(bob_provider.crypto(), ciphersuite, psks).unwrap()
     };
 
     // Create key schedule
-    let key_schedule =
-        KeySchedule::init(ciphersuite, provider.crypto(), &joiner_secret, psk_secret)
-            .expect("Could not create KeySchedule.");
+    let key_schedule = KeySchedule::init(
+        ciphersuite,
+        bob_provider.crypto(),
+        &joiner_secret,
+        psk_secret,
+    )
+    .expect("Could not create KeySchedule.");
 
     // Derive welcome key & nonce from the key schedule
     let (welcome_key, welcome_nonce) = key_schedule
-        .welcome(provider.crypto(), ciphersuite)
+        .welcome(bob_provider.crypto(), ciphersuite)
         .expect("Using the key schedule in the wrong state")
-        .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
+        .derive_welcome_key_nonce(bob_provider.crypto(), ciphersuite)
         .expect("Could not derive welcome key and nonce.");
 
     let group_info_bytes = welcome_key
         .aead_open(
-            provider.crypto(),
+            bob_provider.crypto(),
             welcome.encrypted_group_info(),
             &[],
             &welcome_nonce,
@@ -137,7 +142,7 @@ fn test_welcome_context_mismatch() {
 
     let encrypted_verifiable_group_info = welcome_key
         .aead_seal(
-            provider.crypto(),
+            alice_provider.crypto(),
             &verifiable_group_info_bytes,
             &[],
             &welcome_nonce,
@@ -154,7 +159,7 @@ fn test_welcome_context_mismatch() {
 
     // Bob tries to join the group
     let err = StagedWelcome::new_from_welcome(
-        provider,
+        &bob_provider,
         mls_group_create_config.join_config(),
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
@@ -170,21 +175,21 @@ fn test_welcome_context_mismatch() {
 
     // We need to store the key package and its encryption key again because it
     // has been consumed already.
-    provider
+    bob_provider
         .storage()
-        .write_key_package(&bob_kp.hash_ref(provider.crypto()).unwrap(), &bob_kpb)
+        .write_key_package(&bob_kp.hash_ref(bob_provider.crypto()).unwrap(), &bob_kpb)
         .unwrap();
 
-    encryption_keypair.write(provider.storage()).unwrap();
+    encryption_keypair.write(bob_provider.storage()).unwrap();
 
     let _group = StagedWelcome::new_from_welcome(
-        provider,
+        &bob_provider,
         mls_group_create_config.join_config(),
         original_welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error creating staged join from a valid Welcome.")
-    .into_group(provider)
+    .into_group(&bob_provider)
     .expect("Error creating group from a valid staged join.");
 }
 
