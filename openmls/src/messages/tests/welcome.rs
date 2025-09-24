@@ -17,6 +17,7 @@ use crate::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
         ConfirmationTag, EncryptedGroupSecrets, GroupSecrets, GroupSecretsError, Welcome,
     },
+    prelude::ExtensionType,
     schedule::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         KeySchedule,
@@ -356,10 +357,11 @@ fn test_welcome_processing() {
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
-    assert_eq!(
-        unverified_group_info.extensions(),
-        alice_group_info.extensions()
-    );
+    // ExternalPub is not part of the group info in the welcome. We remove it
+    // here so we can check equivalence.
+    let mut group_info_extensions = alice_group_info.extensions().clone();
+    group_info_extensions.remove(ExtensionType::ExternalPub);
+    assert_eq!(unverified_group_info.extensions(), &group_info_extensions);
     // Use the group id or extensions to get the ratchet tree.
 
     // Stage the welcome

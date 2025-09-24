@@ -634,77 +634,92 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         // is set to the `use_ratchet_tree` flag in the group configuration.
         let needs_group_info = needs_welcome || cur_stage.create_group_info;
 
-        let group_info = if !needs_group_info {
-            None
+        let (welcome_option, group_info) = if !needs_group_info {
+            (None, None)
         } else {
-            // Build ExternalPub extension
-            let external_pub = provisional_epoch_secrets
-                .external_secret()
-                .derive_external_keypair(crypto, ciphersuite)
-                .map_err(LibraryError::unexpected_crypto_error)?
-                .public;
-            let external_pub_extension =
-                Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
-
             // Create the ratchet tree extension if necessary
-            let extensions: Extensions = if group.configuration().use_ratchet_tree_extension {
-                Extensions::from_vec(vec![
-                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_ratchet_tree())),
-                    external_pub_extension,
-                ])?
-            } else {
-                Extensions::single(external_pub_extension)
+            let mut extensions = Extensions::empty();
+            if group.configuration().use_ratchet_tree_extension {
+                extensions.add(Extension::RatchetTree(RatchetTreeExtension::new(
+                    diff.export_ratchet_tree(),
+                )))?;
             };
 
-            // Create to-be-signed group info.
-            let group_info_tbs = {
-                GroupInfoTBS::new(
-                    diff.group_context().clone(),
-                    extensions,
-                    confirmation_tag,
-                    own_leaf_index,
-                )
-            };
-            // Sign to-be-signed group info.
-            Some(group_info_tbs.sign(old_signer)?)
-        };
+            let welcome_option = needs_welcome
+                .then(|| -> Result<_, CreateCommitError> {
+                    let group_info_tbs = {
+                        GroupInfoTBS::new(
+                            diff.group_context().clone(),
+                            extensions.clone(),
+                            confirmation_tag.clone(),
+                            own_leaf_index,
+                        )
+                    };
+                    // Sign to-be-signed group info.
+                    let group_info = group_info_tbs.sign(old_signer)?;
 
-        let welcome_option = if !needs_welcome {
-            None
-        } else {
-            // Encrypt GroupInfo object
-            let (welcome_key, welcome_nonce) = welcome_secret
-                .derive_welcome_key_nonce(crypto, ciphersuite)
-                .map_err(LibraryError::unexpected_crypto_error)?;
-            let encrypted_group_info = welcome_key
-                .aead_seal(
-                    crypto,
-                    group_info
-                        .as_ref()
-                        .ok_or_else(|| LibraryError::custom("GroupInfo was not computed"))?
-                        .tls_serialize_detached()
-                        .map_err(LibraryError::missing_bound_check)?
-                        .as_slice(),
-                    &[],
-                    &welcome_nonce,
-                )
-                .map_err(LibraryError::unexpected_crypto_error)?;
+                    // Encrypt GroupInfo object
+                    let (welcome_key, welcome_nonce) = welcome_secret
+                        .derive_welcome_key_nonce(crypto, ciphersuite)
+                        .map_err(LibraryError::unexpected_crypto_error)?;
+                    let encrypted_group_info = welcome_key
+                        .aead_seal(
+                            crypto,
+                            group_info
+                                .tls_serialize_detached()
+                                .map_err(LibraryError::missing_bound_check)?
+                                .as_slice(),
+                            &[],
+                            &welcome_nonce,
+                        )
+                        .map_err(LibraryError::unexpected_crypto_error)?;
 
-            // Create group secrets for later use, so we can afterwards consume the
-            // `joiner_secret`.
-            let encrypted_secrets = diff.encrypt_group_secrets(
-                &joiner_secret,
-                apply_proposals_values.invitation_list,
-                path_computation_result.plain_path.as_deref(),
-                &apply_proposals_values.presharedkeys,
-                &encrypted_group_info,
-                crypto,
-                own_leaf_index,
-            )?;
+                    // Create group secrets for later use, so we can afterwards consume the
+                    // `joiner_secret`.
+                    let encrypted_secrets = diff.encrypt_group_secrets(
+                        &joiner_secret,
+                        apply_proposals_values.invitation_list,
+                        path_computation_result.plain_path.as_deref(),
+                        &apply_proposals_values.presharedkeys,
+                        &encrypted_group_info,
+                        crypto,
+                        own_leaf_index,
+                    )?;
 
-            // Create welcome message
-            let welcome = Welcome::new(ciphersuite, encrypted_secrets, encrypted_group_info);
-            Some(welcome)
+                    // Create welcome message
+                    let welcome =
+                        Welcome::new(ciphersuite, encrypted_secrets, encrypted_group_info);
+                    Ok(welcome)
+                })
+                .transpose()?;
+
+            // Create the GroupInfo for export if needed. In contrast to the Welcome, this
+            // group info contains the external public key extension.
+            let exported_group_info = cur_stage
+                .create_group_info
+                .then(|| -> Result<_, CreateCommitError> {
+                    let external_pub = provisional_epoch_secrets
+                        .external_secret()
+                        .derive_external_keypair(crypto, ciphersuite)
+                        .map_err(LibraryError::unexpected_crypto_error)?
+                        .public;
+                    let external_pub_extension =
+                        Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
+                    extensions.add(external_pub_extension)?;
+                    let group_info_tbs = {
+                        GroupInfoTBS::new(
+                            diff.group_context().clone(),
+                            extensions,
+                            confirmation_tag.clone(),
+                            own_leaf_index,
+                        )
+                    };
+                    // Sign to-be-signed group info.
+                    Ok(group_info_tbs.sign(old_signer)?)
+                })
+                .transpose()?;
+
+            (welcome_option, exported_group_info)
         };
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
