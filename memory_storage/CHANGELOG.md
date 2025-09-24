@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.4.1-pre.1 (2025-09-24)
+
 ### Changed
 - [#1700](https://github.com/openmls/openmls/pull/1700): Have `encryption_epoch_key_pairs` return an empty vector instead of an error if no value is found
 

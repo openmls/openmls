@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## 0.4.1 (2025-09-24)
+## 0.4.1-pre.1 (2025-09-24)
+
 - [#1825](https://github.com/openmls/openmls/pull/1825): Add the `hmac` method for hashing to the `OpenMlsCrypto` trait.
 
 ## 0.4.0
