@@ -373,6 +373,51 @@ fn test_welcome_processing() {
         .expect("Error creating group from a valid staged join.");
 }
 
+#[openmls_test::openmls_test]
+fn no_external_pub_in_welcome() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .build();
+
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
+        setup_client("Alice", ciphersuite, alice_provider);
+    let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
+        setup_client("Bob", ciphersuite, bob_provider);
+
+    let bob_kp = bob_kpb.key_package();
+
+    // === Alice creates a group  and adds Bob ===
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &alice_signer,
+        &mls_group_create_config,
+        alice_credential_with_key,
+    )
+    .expect("An unexpected error occurred.");
+
+    let (_queued_message, welcome, _group_info) = alice_group
+        .add_members(alice_provider, &alice_signer, from_ref(bob_kp))
+        .expect("Could not add member to group.");
+
+    let welcome = welcome.into_welcome().expect("Unexpected message type.");
+
+    // Process the welcome
+    let processed_welcome = ProcessedWelcome::new_from_welcome(
+        bob_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+    )
+    .unwrap();
+
+    // Check values in processed welcome
+    let unverified_group_info = processed_welcome.unverified_group_info();
+    assert!(!unverified_group_info
+        .extensions()
+        .contains(ExtensionType::ExternalPub));
+}
+
 #[test]
 fn invalid_welcomes() {
     // An almost good welcome message.
