@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.7.1-pre.1 (2025-09-24)
+
 ### Added
 - [#1801](https://github.com/openmls/openmls/pull/1801): Added `MlsGroup::external_commit_builder`.
 - [#1814](https://github.com/openmls/openmls/pull/1814): Allow disabling leaf node lifetime validation in the ratchet tree when joining a group.
