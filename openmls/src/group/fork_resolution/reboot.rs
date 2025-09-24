@@ -210,7 +210,7 @@ mod test {
         );
 
         // Now, reboot the group
-        let (mut new_group_alice, message_bundle) = alice_group
+        let (mut new_alice_group, message_bundle) = alice_group
             .reboot(GroupId::from_slice(b"new group id"))
             .finish(
                 Extensions::empty(),
@@ -226,7 +226,7 @@ mod test {
             .unwrap();
 
         let (_commit, welcome, _group_info) = message_bundle.into_messages();
-        new_group_alice
+        new_alice_group
             .merge_pending_commit(alice_provider)
             .unwrap();
 
@@ -234,9 +234,9 @@ mod test {
         let welcome = welcome.unwrap();
         let welcome: MlsMessageIn = welcome.into();
         let welcome = welcome.into_welcome().unwrap();
-        let ratchet_tree = new_group_alice.export_ratchet_tree();
+        let ratchet_tree = new_alice_group.export_ratchet_tree();
 
-        let new_group_bob = StagedWelcome::new_from_welcome(
+        let new_bob_group = StagedWelcome::new_from_welcome(
             bob_provider,
             alice_group.configuration(),
             welcome.clone(),
@@ -256,11 +256,11 @@ mod test {
         .into_group(bob_provider)
         .unwrap();
 
-        let alice_comparison = new_group_alice
+        let alice_comparison = new_alice_group
             .export_secret(alice_provider.crypto(), "comparison", b"", 32)
             .unwrap();
 
-        let bob_comparison = new_group_bob
+        let bob_comparison = new_bob_group
             .export_secret(bob_provider.crypto(), "comparison", b"", 32)
             .unwrap();
 

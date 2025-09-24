@@ -10,6 +10,8 @@ use std::collections::HashMap;
 // This tests the boundaries of the generations from a SecretTree
 #[openmls_test::openmls_test]
 fn test_boundaries() {
+    let provider = &Provider::default();
+
     let configuration = &SenderRatchetConfiguration::default();
     let encryption_secret = EncryptionSecret::random(ciphersuite, provider.rand());
     let mut secret_tree = SecretTree::new(
@@ -155,6 +157,8 @@ fn test_boundaries() {
 // values are unique.
 #[openmls_test::openmls_test]
 fn increment_generation() {
+    let provider = &Provider::default();
+
     const SIZE: usize = 100;
     const MAX_GENERATIONS: usize = 10;
 
@@ -222,6 +226,8 @@ fn increment_generation() {
 
 #[openmls_test::openmls_test]
 fn secret_tree() {
+    let provider = &Provider::default();
+
     let leaf_index = 0u32;
     let generation = 0;
     let n_leaves = 10u32;

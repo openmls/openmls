@@ -184,7 +184,7 @@ fn discard_commit_update_with_new_signer() {
         .expect("failed to update own leaf node");
 
     assert_ne!(
-        provider.storage().group_state(&group_id).unwrap(),
+        alice_provider.storage().group_state(&group_id).unwrap(),
         Some(MlsGroupState::Operational)
     );
 
@@ -205,7 +205,7 @@ fn discard_commit_update_with_new_signer() {
         own_leaf_node_before.encryption_key(),
     );
 
-    let own_leaf_nodes_after: Vec<LeafNode> = provider
+    let own_leaf_nodes_after: Vec<LeafNode> = alice_provider
         .storage()
         .own_leaf_nodes(&group_id)
         .expect("could not get leaf nodes");

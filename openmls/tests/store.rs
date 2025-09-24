@@ -5,6 +5,8 @@ use openmls_test::openmls_test;
 
 #[openmls_test]
 fn test_store_key_package() {
+    let provider = &Provider::default();
+
     // ANCHOR: store_store
     // First we generate a credential and key package for our user.
     let credential = BasicCredential::new(b"User ID".to_vec());
