@@ -87,7 +87,9 @@ impl MlsGroup {
 
         // Persist the group state if the secret tree was modified to ensure forward secrecy
         if will_modify_secret_tree {
-            self.store(provider.storage())
+            provider
+                .storage()
+                .write_message_secrets(self.group_id(), &self.message_secrets_store)
                 .map_err(ProcessMessageError::StorageError)?;
         }
 
