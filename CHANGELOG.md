@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## 0.7.1-pre.1 (2025-09-24)
+## 0.7.1-rc.1 (2025-09-24)
 
 ### Added
 - [#1801](https://github.com/openmls/openmls/pull/1801): Added `MlsGroup::external_commit_builder`.
@@ -87,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#1641](https://github.com/openmls/openmls/pull/1641): Fixed missing storage of queued proposals & clearing of the queued proposals.
 
-## 0.6.0-pre.1 (2024-07-22)
+## 0.6.0-rc.1 (2024-07-22)
 
 ### Added
 

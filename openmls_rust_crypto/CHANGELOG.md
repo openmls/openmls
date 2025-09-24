@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## 0.4.1-pre.1 (2025-09-24)
+## 0.4.1-rc.1 (2025-09-24)
 
 ### Changed
 - [#909](https://github.com/openmls/openmls/pull/909): Use thiserror crate for errors
