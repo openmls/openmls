@@ -139,7 +139,7 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder()
+    let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
@@ -150,12 +150,12 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         .expect("Error creating group.");
 
     // Test persistence after Alice creates group
-    group_alice
+    alice_group
         .ensure_persistence(alice_provider.storage())
         .expect("Alice group persistence check failed after creation");
 
     // Alice adds Bob
-    let (_commit, welcome, _group_info_option) = group_alice
+    let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
             alice_provider,
             &alice_signature_keys,
@@ -164,39 +164,39 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         .expect("Could not create proposal.");
 
     // Test persistence after Alice adds Bob
-    group_alice
+    alice_group
         .ensure_persistence(alice_provider.storage())
         .expect("Alice group persistence check failed after adding Bob");
 
-    group_alice
+    alice_group
         .merge_pending_commit(alice_provider)
         .expect("error merging pending commit");
 
     // Test persistence after Alice merges commit
-    group_alice
+    alice_group
         .ensure_persistence(alice_provider.storage())
         .expect("Alice group persistence check failed after merging commit");
 
-    let group_bob = StagedWelcome::new_from_welcome(
+    let bob_group = StagedWelcome::new_from_welcome(
         bob_provider,
         &MlsGroupJoinConfig::builder()
             .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
             .build(),
         welcome.into_welcome().unwrap(),
-        Some(group_alice.export_ratchet_tree().into()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
     .and_then(|staged_join| staged_join.into_group(bob_provider))
     .expect("error creating group from welcome");
 
     // Test persistence after Bob joins group
-    group_bob
+    bob_group
         .ensure_persistence(bob_provider.storage())
         .expect("Bob group persistence check failed after joining");
 
     (
-        group_alice,
+        alice_group,
         alice_signature_keys,
-        group_bob,
+        bob_group,
         bob_signature_keys,
         alice_credential,
         bob_credential,

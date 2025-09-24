@@ -749,10 +749,8 @@ mod test {
     }
 
     #[openmls_test::openmls_test]
-    fn test_ratchet_tree_trailing_blank_nodes(
-        ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
-    ) {
+    fn test_ratchet_tree_trailing_blank_nodes() {
+        let provider = &Provider::default();
         let (key_package, _, _) = crate::key_packages::tests::key_package(ciphersuite, provider);
         let node_in = NodeIn::from(Node::leaf_node(LeafNode::from(key_package)));
         let tests = [

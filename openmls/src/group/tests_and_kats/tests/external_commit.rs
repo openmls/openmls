@@ -13,17 +13,27 @@ use crate::{
 // External Commit in a group of 1 & 2 members and resync
 #[openmls_test::openmls_test]
 fn test_external_commit() {
-    // Generate credentials with keys
-    let alice_credential =
-        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
 
-    let bob_credential =
-        generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
+    // Generate credentials with keys
+    let alice_credential = generate_credential_with_key(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let bob_credential = generate_credential_with_key(
+        "Bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
 
     let charlie_credential = generate_credential_with_key(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
-        provider,
+        charlie_provider,
     );
 
     // Define the MlsGroup configuration
@@ -34,7 +44,7 @@ fn test_external_commit() {
 
     // Alice creates a group
     let mut alice_group = MlsGroup::new(
-        provider,
+        alice_provider,
         &alice_credential.signer,
         &mls_group_create_config,
         alice_credential.credential_with_key.clone(),
@@ -46,7 +56,7 @@ fn test_external_commit() {
     // Bob wants to commit externally.
 
     let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_credential.signer, false)
+        .export_group_info(alice_provider.crypto(), &alice_credential.signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -56,21 +66,21 @@ fn test_external_commit() {
         .with_config(alice_group.configuration().clone())
         .with_ratchet_tree(tree_option.into())
         .build_group(
-            provider,
+            bob_provider,
             verifiable_group_info,
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
-        .load_psks(provider.storage())
+        .load_psks(bob_provider.storage())
         .unwrap()
         .build(
-            provider.rand(),
-            provider.crypto(),
+            bob_provider.rand(),
+            bob_provider.crypto(),
             &bob_credential.signer,
             |_| true,
         )
         .unwrap()
-        .finalize(provider)
+        .finalize(bob_provider)
         .unwrap();
 
     let public_message_commit = {
@@ -93,13 +103,13 @@ fn test_external_commit() {
     // Alice processes Bob's Commit
 
     let processed_message = alice_group
-        .process_message(provider, public_message_commit)
+        .process_message(alice_provider, public_message_commit)
         .unwrap();
 
     match processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             alice_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(alice_provider, *staged_commit)
                 .unwrap();
         }
         _ => panic!("Expected Commit message"),
@@ -108,8 +118,8 @@ fn test_external_commit() {
     // Compare Alice's and Bob's private & public state
 
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
-        bob_group.export_secret(provider.crypto(), "label", b"context", 32)
+        alice_group.export_secret(alice_provider.crypto(), "label", b"context", 32),
+        bob_group.export_secret(bob_provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),
@@ -121,7 +131,7 @@ fn test_external_commit() {
     // Charlie wants to commit externally.
 
     let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_credential.signer, false)
+        .export_group_info(alice_provider.crypto(), &alice_credential.signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -131,21 +141,21 @@ fn test_external_commit() {
         .with_config(alice_group.configuration().clone())
         .with_ratchet_tree(tree_option.into())
         .build_group(
-            provider,
+            charlie_provider,
             verifiable_group_info,
             charlie_credential.credential_with_key.clone(),
         )
         .unwrap()
-        .load_psks(provider.storage())
+        .load_psks(charlie_provider.storage())
         .unwrap()
         .build(
-            provider.rand(),
-            provider.crypto(),
+            charlie_provider.rand(),
+            charlie_provider.crypto(),
             &charlie_credential.signer,
             |_| true,
         )
         .unwrap()
-        .finalize(provider)
+        .finalize(charlie_provider)
         .unwrap();
 
     // Alice & Bob process Charlie's Commit
@@ -155,24 +165,26 @@ fn test_external_commit() {
         .unwrap();
 
     let alice_processed_message = alice_group
-        .process_message(provider, charlie_commit.clone())
+        .process_message(alice_provider, charlie_commit.clone())
         .unwrap();
 
     match alice_processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             alice_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(alice_provider, *staged_commit)
                 .unwrap();
         }
         _ => panic!("Expected Commit message"),
     }
 
-    let bob_processed_message = bob_group.process_message(provider, charlie_commit).unwrap();
+    let bob_processed_message = bob_group
+        .process_message(bob_provider, charlie_commit)
+        .unwrap();
 
     match bob_processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             bob_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(bob_provider, *staged_commit)
                 .unwrap();
         }
         _ => panic!("Expected Commit message"),
@@ -181,12 +193,12 @@ fn test_external_commit() {
     // Compare Alice's, Bob's and Charlie's private & public state
 
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
-        bob_group.export_secret(provider.crypto(), "label", b"context", 32)
+        alice_group.export_secret(alice_provider.crypto(), "label", b"context", 32),
+        bob_group.export_secret(bob_provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
-        charlie_group.export_secret(provider.crypto(), "label", b"context", 32)
+        alice_group.export_secret(alice_provider.crypto(), "label", b"context", 32),
+        charlie_group.export_secret(charlie_provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),
@@ -202,7 +214,7 @@ fn test_external_commit() {
     // Alice wants to resync
 
     let verifiable_group_info = bob_group
-        .export_group_info(provider.crypto(), &bob_credential.signer, false)
+        .export_group_info(bob_provider.crypto(), &bob_credential.signer, false)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -212,21 +224,21 @@ fn test_external_commit() {
         .with_config(bob_group.configuration().clone())
         .with_ratchet_tree(tree_option.into())
         .build_group(
-            provider,
+            alice_provider,
             verifiable_group_info,
             alice_credential.credential_with_key.clone(),
         )
         .unwrap()
-        .load_psks(provider.storage())
+        .load_psks(alice_provider.storage())
         .unwrap()
         .build(
-            provider.rand(),
-            provider.crypto(),
+            alice_provider.rand(),
+            alice_provider.crypto(),
             &alice_credential.signer,
             |_| true,
         )
         .unwrap()
-        .finalize(provider)
+        .finalize(alice_provider)
         .unwrap();
 
     // Bob & Charlie process Alice's Commit
@@ -236,7 +248,7 @@ fn test_external_commit() {
         .unwrap();
 
     let bob_processed_message = bob_group
-        .process_message(provider, alice_commit.clone())
+        .process_message(bob_provider, alice_commit.clone())
         .unwrap();
 
     match bob_processed_message.into_content() {
@@ -247,20 +259,20 @@ fn test_external_commit() {
             let remove_proposal = &remove_proposals[0];
             assert_eq!(remove_proposal.remove_proposal().removed().u32(), 0);
             bob_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(bob_provider, *staged_commit)
                 .unwrap();
         }
         _ => panic!("Expected Commit message"),
     }
 
     let charlie_processed_message = charlie_group
-        .process_message(provider, alice_commit)
+        .process_message(charlie_provider, alice_commit)
         .unwrap();
 
     match charlie_processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             charlie_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(charlie_provider, *staged_commit)
                 .unwrap();
         }
         _ => panic!("Expected Commit message"),
@@ -269,12 +281,12 @@ fn test_external_commit() {
     // Compare Alice's, Bob's and Charlie's private & public state
 
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
-        bob_group.export_secret(provider.crypto(), "label", b"context", 32)
+        alice_group.export_secret(alice_provider.crypto(), "label", b"context", 32),
+        bob_group.export_secret(bob_provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
-        alice_group.export_secret(provider.crypto(), "label", b"context", 32),
-        charlie_group.export_secret(provider.crypto(), "label", b"context", 32)
+        alice_group.export_secret(alice_provider.crypto(), "label", b"context", 32),
+        charlie_group.export_secret(charlie_provider.crypto(), "label", b"context", 32)
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),

@@ -131,35 +131,41 @@ fn test_remove_operation_variants() {
     }
 
     for test_case in [TestCase::Remove, TestCase::Leave] {
-        let group_id = GroupId::random(provider.rand());
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+        let charlie_provider = &Provider::default();
+        let group_id = GroupId::random(alice_provider.rand());
 
         // Generate credentials with keys
         let alice_credential_with_key_and_signer = generate_credential_with_key(
             "Alice".into(),
             ciphersuite.signature_algorithm(),
-            provider,
+            alice_provider,
         );
 
-        let bob_credential_with_key_and_signer =
-            generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
+        let bob_credential_with_key_and_signer = generate_credential_with_key(
+            "Bob".into(),
+            ciphersuite.signature_algorithm(),
+            bob_provider,
+        );
 
         let charlie_credential_with_key_and_signer = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
-            provider,
+            charlie_provider,
         );
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            bob_provider,
             bob_credential_with_key_and_signer.clone(),
         );
         let charlie_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            charlie_provider,
             charlie_credential_with_key_and_signer,
         );
 
@@ -170,7 +176,7 @@ fn test_remove_operation_variants() {
 
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new_with_group_id(
-            provider,
+            alice_provider,
             &alice_credential_with_key_and_signer.signer,
             &mls_group_create_config,
             group_id,
@@ -184,7 +190,7 @@ fn test_remove_operation_variants() {
 
         let (_message, welcome, _group_info) = alice_group
             .add_members(
-                provider,
+                alice_provider,
                 &alice_credential_with_key_and_signer.signer,
                 &[
                     bob_key_package.key_package().clone(),
@@ -193,7 +199,7 @@ fn test_remove_operation_variants() {
             )
             .expect("An unexpected error occurred.");
         alice_group
-            .merge_pending_commit(provider)
+            .merge_pending_commit(alice_provider)
             .expect("error merging pending commit");
 
         let welcome: MlsMessageIn = welcome.into();
@@ -202,23 +208,23 @@ fn test_remove_operation_variants() {
             .expect("expected message to be a welcome");
 
         let mut bob_group = StagedWelcome::new_from_welcome(
-            provider,
+            bob_provider,
             mls_group_create_config.join_config(),
             welcome.clone(),
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
-        .into_group(provider)
+        .into_group(bob_provider)
         .expect("Error creating group from staged join");
 
         let mut charlie_group = StagedWelcome::new_from_welcome(
-            provider,
+            charlie_provider,
             mls_group_create_config.join_config(),
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
         .expect("Error creating staged join from Welcome")
-        .into_group(provider)
+        .into_group(charlie_provider)
         .expect("Error creating group from staged join");
 
         // === Remove operation ===
@@ -231,7 +237,7 @@ fn test_remove_operation_variants() {
             // Alice removes Bob
             TestCase::Remove => alice_group
                 .remove_members(
-                    provider,
+                    alice_provider,
                     &alice_credential_with_key_and_signer.signer,
                     &[bob_index],
                 )
@@ -240,11 +246,14 @@ fn test_remove_operation_variants() {
             TestCase::Leave => {
                 // Bob leaves the group
                 let message = bob_group
-                    .leave_group(provider, &bob_credential_with_key_and_signer.signer)
+                    .leave_group(bob_provider, &bob_credential_with_key_and_signer.signer)
                     .expect("Could not leave group.");
 
                 // Alice & Charlie store the pending proposal
-                for group in [&mut alice_group, &mut charlie_group] {
+                for (group, provider) in [
+                    (&mut alice_group, alice_provider),
+                    (&mut charlie_group, charlie_provider),
+                ] {
                     let processed_message = group
                         .process_message(provider, message.clone().into_protocol_message().unwrap())
                         .expect("Could not process message.");
@@ -262,7 +271,7 @@ fn test_remove_operation_variants() {
                 // Alice commits to Bob's proposal
                 alice_group
                     .commit_to_pending_proposals(
-                        provider,
+                        alice_provider,
                         &alice_credential_with_key_and_signer.signer,
                     )
                     .expect("An unexpected error occurred.")
@@ -307,7 +316,10 @@ fn test_remove_operation_variants() {
         // === Remove operation from Bob's perspective ===
 
         let bob_processed_message = bob_group
-            .process_message(provider, message.clone().into_protocol_message().unwrap())
+            .process_message(
+                bob_provider,
+                message.clone().into_protocol_message().unwrap(),
+            )
             .expect("Could not process message.");
 
         match bob_processed_message.into_content() {
@@ -360,7 +372,7 @@ fn test_remove_operation_variants() {
         let protocol_message = message.into_protocol_message().unwrap();
 
         let charlie_processed_message = charlie_group
-            .process_message(provider, protocol_message)
+            .process_message(charlie_provider, protocol_message)
             .expect("Could not process message.");
 
         match charlie_processed_message.into_content() {
