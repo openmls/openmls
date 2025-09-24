@@ -85,7 +85,7 @@ impl MlsGroup {
             leaf_node_keypairs,
         )?;
 
-        // Persist the group state if the secret tree was modified to ensure forward secrecy
+        // Persist the secret tree if it was modified to ensure forward secrecy
         if will_modify_secret_tree {
             provider
                 .storage()
