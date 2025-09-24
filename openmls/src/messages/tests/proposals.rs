@@ -13,6 +13,7 @@ use crate::{
 /// decoded values are the same as the original
 #[openmls_test::openmls_test]
 fn proposals_codec() {
+    let provider = &Provider::default();
     // Proposal
 
     let remove_proposal = RemoveProposal {

@@ -5,14 +5,17 @@ use openmls_traits::{prelude::*, signatures::Signer, types::Ciphersuite};
 use proposal_store::QueuedProposal;
 use tls_codec::{Deserialize, Serialize};
 
-use crate::group::tests_and_kats::utils::{
-    generate_credential_with_key, generate_key_package, resign_message, CredentialWithKeyAndSigner,
-};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
     framing::*,
-    group::*,
+    group::{
+        tests_and_kats::utils::{
+            generate_credential_with_key, generate_key_package, resign_message,
+            CredentialWithKeyAndSigner,
+        },
+        *,
+    },
     messages::proposals::*,
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     treesync::{
@@ -32,31 +35,43 @@ struct CommitValidationTestSetup {
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
+    alice_provider: &impl crate::storage::OpenMlsProvider,
+    bob_provider: &impl crate::storage::OpenMlsProvider,
+    charlie_provider: &impl crate::storage::OpenMlsProvider,
 ) -> CommitValidationTestSetup {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credentials with keys
-    let alice_credential =
-        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
+    let alice_credential = generate_credential_with_key(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
 
-    let bob_credential =
-        generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
+    let bob_credential = generate_credential_with_key(
+        "Bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
 
     let charlie_credential = generate_credential_with_key(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
-        provider,
+        charlie_provider,
     );
 
     // Generate KeyPackages
-    let bob_key_package =
-        generate_key_package(ciphersuite, Extensions::empty(), provider, bob_credential);
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        bob_provider,
+        bob_credential,
+    );
 
     let charlie_key_package = generate_key_package(
         ciphersuite,
         Extensions::empty(),
-        provider,
+        charlie_provider,
         charlie_credential,
     );
 
@@ -69,7 +84,7 @@ fn validation_test_setup(
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
-        provider,
+        alice_provider,
         &alice_credential.signer,
         &mls_group_create_config,
         group_id,
@@ -79,7 +94,7 @@ fn validation_test_setup(
 
     let (_message, welcome, _group_info) = alice_group
         .add_members(
-            provider,
+            alice_provider,
             &alice_credential.signer,
             &[
                 bob_key_package.key_package().clone(),
@@ -89,7 +104,7 @@ fn validation_test_setup(
         .expect("error adding Bob to group");
 
     alice_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(alice_provider)
         .expect("error merging pending commit");
 
     let welcome: MlsMessageIn = welcome.into();
@@ -98,23 +113,23 @@ fn validation_test_setup(
         .expect("expected message to be a welcome");
 
     let bob_group = StagedWelcome::new_from_welcome(
-        provider,
+        bob_provider,
         mls_group_create_config.join_config(),
         welcome.clone(),
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating staged join from welcome")
-    .into_group(provider)
+    .into_group(bob_provider)
     .expect("error creating group from staged join");
 
     let charlie_group = StagedWelcome::new_from_welcome(
-        provider,
+        charlie_provider,
         mls_group_create_config.join_config(),
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("error creating staged join from welcome")
-    .into_group(provider)
+    .into_group(charlie_provider)
     .expect("error creating group from staged join");
 
     CommitValidationTestSetup {
@@ -128,20 +143,30 @@ fn validation_test_setup(
 // ValSem200: Commit must not cover inline self Remove proposal
 #[openmls_test::openmls_test]
 fn test_valsem200() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         alice_credential,
         mut bob_group,
         ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        charlie_provider,
+    );
 
     // Since Alice won't commit to her own removal directly, we have to create
     // proposal and commit independently and then insert the proposal into the
     // commit manually.
     let serialized_proposal_message = alice_group
         .propose_remove_member(
-            provider,
+            alice_provider,
             &alice_credential.signer,
             alice_group.own_leaf_index(),
         )
@@ -165,13 +190,13 @@ fn test_valsem200() {
     // We have to clear the pending proposals so Alice doesn't try to commit to
     // her own remove.
     alice_group
-        .clear_pending_proposals(provider.storage())
+        .clear_pending_proposals(alice_provider.storage())
         .unwrap();
 
     // Now let's stick it in the commit.
     let serialized_message = alice_group
         .self_update(
-            provider,
+            alice_provider,
             &alice_credential.signer,
             LeafNodeParameters::default(),
         )
@@ -226,7 +251,7 @@ fn test_valsem200() {
 
     signed_plaintext
         .set_membership_tag(
-            provider.crypto(),
+            alice_provider.crypto(),
             ciphersuite,
             membership_key,
             alice_group.message_secrets().serialized_context(),
@@ -237,7 +262,7 @@ fn test_valsem200() {
     let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = bob_group
-        .process_message(provider, message_in)
+        .process_message(bob_provider, message_in)
         .expect_err("Could process unverified message despite self remove.");
 
     assert!(matches!(
@@ -247,13 +272,17 @@ fn test_valsem200() {
 
     // Positive case
     bob_group
-        .process_message(provider, ProtocolMessage::from(original_plaintext))
+        .process_message(bob_provider, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
 // ValSem201: Path must be present, if at least one proposal requires a path
 #[openmls_test::openmls_test]
 fn test_valsem201() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
     let wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
     // Test with PublicMessage
     let CommitValidationTestSetup {
@@ -262,26 +291,37 @@ fn test_valsem201() {
         mut bob_group,
         charlie_group,
         ..
-    } = validation_test_setup(wire_format_policy, ciphersuite, provider);
+    } = validation_test_setup(
+        wire_format_policy,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        charlie_provider,
+    );
 
     let queued = |proposal: Proposal| {
         QueuedProposal::from_proposal_and_sender(
             ciphersuite,
-            provider.crypto(),
+            alice_provider.crypto(),
             proposal,
             &Sender::Member(alice_group.own_leaf_index()),
         )
         .unwrap()
     };
 
+    let dave_provider = &Provider::default();
     let add_proposal = || {
         let dave_credential = generate_credential_with_key(
             "Dave".into(),
             ciphersuite.signature_algorithm(),
-            provider,
+            dave_provider,
         );
-        let dave_key_package =
-            generate_key_package(ciphersuite, Extensions::empty(), provider, dave_credential);
+        let dave_key_package = generate_key_package(
+            ciphersuite,
+            Extensions::empty(),
+            dave_provider,
+            dave_credential,
+        );
 
         queued(Proposal::add(AddProposal {
             key_package: dave_key_package.key_package().clone(),
@@ -289,18 +329,19 @@ fn test_valsem201() {
     };
 
     let psk_proposal = || {
-        let secret = Secret::random(ciphersuite, provider.rand()).unwrap();
-        let rand = provider
+        let secret = Secret::random(ciphersuite, alice_provider.rand()).unwrap();
+        let rand = alice_provider
             .rand()
             .random_vec(ciphersuite.hash_length())
             .unwrap();
         let psk_id = PreSharedKeyId::new(
             ciphersuite,
-            provider.rand(),
+            alice_provider.rand(),
             Psk::External(ExternalPsk::new(rand)),
         )
         .unwrap();
-        psk_id.store(provider, secret.as_slice()).unwrap();
+        psk_id.store(alice_provider, secret.as_slice()).unwrap();
+        psk_id.store(bob_provider, secret.as_slice()).unwrap();
         queued(Proposal::psk(PreSharedKeyProposal::new(psk_id)))
     };
 
@@ -349,18 +390,18 @@ fn test_valsem201() {
         // create a commit containing the proposals
         proposal.into_iter().for_each(|p| {
             alice_group
-                .store_pending_proposal(provider.storage(), p)
-                .unwrap()
+                .store_pending_proposal(alice_provider.storage(), p.clone())
+                .unwrap();
         });
 
         let commit = alice_group
             .commit_builder()
             .force_self_update(false)
-            .load_psks(provider.storage())
+            .load_psks(alice_provider.storage())
             .unwrap()
             .build(
-                provider.rand(),
-                provider.crypto(),
+                alice_provider.rand(),
+                alice_provider.crypto(),
                 &alice_credential.signer,
                 |_| true,
             )
@@ -379,7 +420,7 @@ fn test_valsem201() {
         let membership_key = alice_group.message_secrets().membership_key();
         commit
             .set_membership_tag(
-                provider.crypto(),
+                alice_provider.crypto(),
                 ciphersuite,
                 membership_key,
                 alice_group.message_secrets().serialized_context(),
@@ -388,13 +429,13 @@ fn test_valsem201() {
         // verify that a path is indeed required when the commit is received
         if is_path_required {
             let commit_wo_path = erase_path(
-                provider,
+                alice_provider,
                 ciphersuite,
                 commit.clone(),
                 &alice_group,
                 &alice_credential.signer,
             );
-            let processed_msg = bob_group.process_message(provider, commit_wo_path);
+            let processed_msg = bob_group.process_message(bob_provider, commit_wo_path);
             assert!(matches!(
                 processed_msg.unwrap_err(),
                 ProcessMessageError::InvalidCommit(StageCommitError::RequiredPathNotFound)
@@ -402,17 +443,19 @@ fn test_valsem201() {
         }
 
         // Positive case
-        let process_message_result = bob_group.process_message(provider, commit);
+        let process_message_result = bob_group.process_message(bob_provider, commit);
         assert!(process_message_result.is_ok(), "{process_message_result:?}");
 
         // cleanup & restore for next iteration
         alice_group
-            .clear_pending_proposals(provider.storage())
+            .clear_pending_proposals(alice_provider.storage())
             .unwrap();
         alice_group
-            .clear_pending_commit(provider.storage())
+            .clear_pending_commit(alice_provider.storage())
             .unwrap();
-        bob_group.clear_pending_commit(provider.storage()).unwrap();
+        bob_group
+            .clear_pending_commit(bob_provider.storage())
+            .unwrap();
     }
 }
 
@@ -450,13 +493,23 @@ fn erase_path(
 // ValSem202: Path must be the right length
 #[openmls_test::openmls_test]
 fn test_valsem202() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         alice_credential,
         mut bob_group,
         ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        charlie_provider,
+    );
 
     // Have Alice generate a self-updating commit, remove a node from the path,
     // re-sign and have Bob process it.
@@ -464,7 +517,7 @@ fn test_valsem202() {
     // Create the self-update
     let serialized_update = alice_group
         .self_update(
-            provider,
+            alice_provider,
             &alice_credential.signer,
             LeafNodeParameters::default(),
         )
@@ -496,7 +549,7 @@ fn test_valsem202() {
         &alice_group,
         plaintext,
         &original_plaintext,
-        provider,
+        alice_provider,
         &alice_credential.signer,
         ciphersuite,
     );
@@ -504,7 +557,7 @@ fn test_valsem202() {
     let update_message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
-        .process_message(provider, update_message_in)
+        .process_message(bob_provider, update_message_in)
         .expect_err("Could process unverified message despite path length mismatch.");
 
     assert!(matches!(
@@ -521,7 +574,7 @@ fn test_valsem202() {
     // Positive case
     bob_group
         .process_message(
-            provider,
+            bob_provider,
             original_update_plaintext
                 .try_into_protocol_message()
                 .unwrap(),
@@ -532,13 +585,25 @@ fn test_valsem202() {
 // ValSem203: Path secrets must decrypt correctly
 #[openmls_test::openmls_test]
 fn test_valsem203() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         alice_credential,
         mut bob_group,
         ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        charlie_provider,
+    );
+
+    // Set up test framework
 
     // Have Alice generate a self-updating commit, scramble some ciphertexts and
     // have Bob process the resulting commit.
@@ -546,7 +611,7 @@ fn test_valsem203() {
     // Create the self-update
     let serialized_update = alice_group
         .self_update(
-            provider,
+            alice_provider,
             &alice_credential.signer,
             LeafNodeParameters::default(),
         )
@@ -580,7 +645,7 @@ fn test_valsem203() {
         &alice_group,
         plaintext,
         &original_plaintext,
-        provider,
+        alice_provider,
         &alice_credential.signer,
         ciphersuite,
     );
@@ -588,7 +653,7 @@ fn test_valsem203() {
     let update_message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
-        .process_message(provider, update_message_in)
+        .process_message(bob_provider, update_message_in)
         .expect_err("Could process unverified message despite scrambled ciphertexts.");
 
     assert!(matches!(
@@ -605,7 +670,7 @@ fn test_valsem203() {
     // Positive case
     bob_group
         .process_message(
-            provider,
+            bob_provider,
             original_update_plaintext
                 .try_into_protocol_message()
                 .unwrap(),
@@ -616,13 +681,23 @@ fn test_valsem203() {
 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
 #[openmls_test::openmls_test]
 fn test_valsem204() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         alice_credential,
         mut bob_group,
         mut charlie_group,
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        charlie_provider,
+    );
 
     // Have Alice generate a self-updating commit, flip the last byte of one of
     // the public keys in the path and have Bob process the commit.
@@ -630,7 +705,7 @@ fn test_valsem204() {
     // Create the self-update
     let serialized_update = alice_group
         .self_update(
-            provider,
+            alice_provider,
             &alice_credential.signer,
             LeafNodeParameters::default(),
         )
@@ -657,11 +732,11 @@ fn test_valsem204() {
     // Let Charlie process the commit, so we can pull the post-merge tree hash
     // from them.
     let message = charlie_group
-        .process_message(provider, original_plaintext.clone())
+        .process_message(charlie_provider, original_plaintext.clone())
         .unwrap();
     match message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => charlie_group
-            .merge_staged_commit(provider, *staged_commit)
+            .merge_staged_commit(charlie_provider, *staged_commit)
             .unwrap(),
         _ => panic!("Unexpected message type."),
     }
@@ -682,14 +757,16 @@ fn test_valsem204() {
             .map(|upn| {
                 PlainUpdatePathNode::new(
                     upn.encryption_key().clone(),
-                    Secret::random(ciphersuite, provider.rand()).unwrap().into(),
+                    Secret::random(ciphersuite, alice_provider.rand())
+                        .unwrap()
+                        .into(),
                 )
             })
             .collect();
         let new_nodes = alice_group
             .public_group()
             .encrypt_path(
-                provider,
+                alice_provider,
                 ciphersuite,
                 &new_plain_path,
                 &encryption_context.tls_serialize_detached().unwrap(),
@@ -707,7 +784,7 @@ fn test_valsem204() {
         &alice_group,
         plaintext,
         &original_plaintext,
-        provider,
+        alice_provider,
         &alice_credential.signer,
         ciphersuite,
     );
@@ -715,7 +792,7 @@ fn test_valsem204() {
     let update_message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
-        .process_message(provider, update_message_in)
+        .process_message(bob_provider, update_message_in)
         .expect_err("Could process unverified message despite modified public key in path.");
 
     assert!(matches!(
@@ -732,7 +809,7 @@ fn test_valsem204() {
     // Positive case
     bob_group
         .process_message(
-            provider,
+            bob_provider,
             original_update_plaintext
                 .try_into_protocol_message()
                 .unwrap(),
@@ -743,13 +820,23 @@ fn test_valsem204() {
 // ValSem205: Confirmation tag must be successfully verified
 #[openmls_test::openmls_test]
 fn test_valsem205() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         alice_credential,
         mut bob_group,
         ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        charlie_provider,
+    );
 
     // Have Alice generate a self-updating commit, flip the last bit of the
     // confirmation tag and have Bob process the commit.
@@ -757,7 +844,7 @@ fn test_valsem205() {
     // Create the self-update
     let serialized_update = alice_group
         .self_update(
-            provider,
+            alice_provider,
             &alice_credential.signer,
             LeafNodeParameters::default(),
         )
@@ -788,7 +875,7 @@ fn test_valsem205() {
 
     plaintext
         .set_membership_tag(
-            provider.crypto(),
+            alice_provider.crypto(),
             ciphersuite,
             membership_key,
             alice_group.message_secrets().serialized_context(),
@@ -798,7 +885,7 @@ fn test_valsem205() {
     let update_message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
-        .process_message(provider, update_message_in)
+        .process_message(bob_provider, update_message_in)
         .expect_err("Could process unverified message despite confirmation tag mismatch.");
 
     assert!(matches!(
@@ -808,23 +895,30 @@ fn test_valsem205() {
 
     // Positive case
     bob_group
-        .process_message(provider, ProtocolMessage::from(original_plaintext))
+        .process_message(bob_provider, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
 // this ensures that a member can process commits not containing all the stored proposals
 #[openmls_test::openmls_test]
-fn test_partial_proposal_commit(
-    ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
-) {
+fn test_partial_proposal_commit() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
     // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         alice_credential,
         mut bob_group,
         ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        charlie_provider,
+    );
 
     let charlie_index = alice_group
         .members()
@@ -834,15 +928,18 @@ fn test_partial_proposal_commit(
 
     // Create first proposal in Alice's group
     let proposal_1 = alice_group
-        .propose_remove_member(provider, &alice_credential.signer, charlie_index)
+        .propose_remove_member(alice_provider, &alice_credential.signer, charlie_index)
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
     let proposal_1 = bob_group
-        .process_message(provider, proposal_1.try_into_protocol_message().unwrap())
+        .process_message(
+            bob_provider,
+            proposal_1.try_into_protocol_message().unwrap(),
+        )
         .unwrap();
     match proposal_1.into_content() {
         ProcessedMessageContent::ProposalMessage(p) => bob_group
-            .store_pending_proposal(provider.storage(), *p)
+            .store_pending_proposal(bob_provider.storage(), *p)
             .unwrap(),
         _ => unreachable!(),
     }
@@ -850,18 +947,21 @@ fn test_partial_proposal_commit(
     // Create second proposal in Alice's group
     let proposal_2 = alice_group
         .propose_self_update(
-            provider,
+            alice_provider,
             &alice_credential.signer,
             LeafNodeParameters::default(),
         )
         .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
     let proposal_2 = bob_group
-        .process_message(provider, proposal_2.try_into_protocol_message().unwrap())
+        .process_message(
+            bob_provider,
+            proposal_2.try_into_protocol_message().unwrap(),
+        )
         .unwrap();
     match proposal_2.into_content() {
         ProcessedMessageContent::ProposalMessage(p) => bob_group
-            .store_pending_proposal(provider.storage(), *p)
+            .store_pending_proposal(bob_provider.storage(), *p)
             .unwrap(),
         _ => unreachable!(),
     }
@@ -876,18 +976,18 @@ fn test_partial_proposal_commit(
     alice_group.proposal_store_mut().empty();
     alice_group.proposal_store_mut().add(remaining_proposal);
     let (commit, _, _) = alice_group
-        .commit_to_pending_proposals(provider, &alice_credential.signer)
+        .commit_to_pending_proposals(alice_provider, &alice_credential.signer)
         .unwrap();
     // Alice herself should be able to merge the commit
     alice_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(alice_provider)
         .expect("Commits with partial proposals are not supported");
 
     // Bob should be able to process the commit
     bob_group
-        .process_message(provider, commit.into_protocol_message().unwrap())
+        .process_message(bob_provider, commit.into_protocol_message().unwrap())
         .expect("Commits with partial proposals are not supported");
     bob_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(bob_provider)
         .expect("Commits with partial proposals are not supported");
 }

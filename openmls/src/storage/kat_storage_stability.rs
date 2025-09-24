@@ -60,7 +60,7 @@ impl<Provider: OpenMlsProvider + Default> DeterministicRandProvider<Provider> {
     }
 
     fn block(&self, mut dst: &mut [u8]) -> usize {
-        let provider = Provider::default();
+        let provider = &Provider::default();
         let ctr = self.ctr.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
         let block = provider
@@ -335,7 +335,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
 }
 
 #[openmls_test]
-fn generate_kats(ciphersuite: Ciphersuite, provider: &Provider) {
+fn generate_kats() {
     helper_generate_kat::<Provider>(ciphersuite);
 }
 
@@ -433,7 +433,7 @@ fn helper_write_kats(kat_data: Vec<(Ciphersuite, GroupId, Vec<Vec<u8>>)>) {
 }
 
 #[openmls_test]
-fn test(ciphersuite: Ciphersuite, provider: &Provider) {
+fn test() {
     // setup
     let base64_engine = base64::engine::GeneralPurpose::new(
         &base64::alphabet::URL_SAFE,

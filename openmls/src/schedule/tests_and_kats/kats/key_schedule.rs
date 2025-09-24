@@ -261,6 +261,8 @@ fn write_test_vectors() {
 
 #[openmls_test::openmls_test]
 fn read_test_vectors_key_schedule() {
+    let provider = &Provider::default();
+
     let _ = pretty_env_logger::try_init();
 
     let tests: Vec<KeyScheduleTestVector> =
