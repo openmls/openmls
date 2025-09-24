@@ -163,18 +163,20 @@
 <a href=#163 id=163 data-nosnippet>163</a>    /// state.
 <a href=#164 id=164 data-nosnippet>164</a>    </span><span class="attr">#[openmls_test::openmls_test]
 <a href=#165 id=165 data-nosnippet>165</a>    </span><span class="kw">fn </span>test_xor() {
-<a href=#166 id=166 data-nosnippet>166</a>        <span class="kw">let </span>reuse_guard: ReuseGuard =
-<a href=#167 id=167 data-nosnippet>167</a>            ReuseGuard::try_from_random(provider.rand()).expect(<span class="string">"An unexpected error occurred."</span>);
-<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">let </span>original_nonce = AeadNonce::random(provider.rand());
-<a href=#169 id=169 data-nosnippet>169</a>        <span class="kw">let </span>xored_once = original_nonce.clone().xor_with_reuse_guard(<span class="kw-2">&amp;</span>reuse_guard);
-<a href=#170 id=170 data-nosnippet>170</a>        <span class="macro">assert_ne!</span>(
-<a href=#171 id=171 data-nosnippet>171</a>            original_nonce, xored_once,
-<a href=#172 id=172 data-nosnippet>172</a>            <span class="string">"xoring with reuse_guard did not change the nonce"
-<a href=#173 id=173 data-nosnippet>173</a>        </span>);
-<a href=#174 id=174 data-nosnippet>174</a>        <span class="kw">let </span>xored_twice = xored_once.xor_with_reuse_guard(<span class="kw-2">&amp;</span>reuse_guard);
-<a href=#175 id=175 data-nosnippet>175</a>        <span class="macro">assert_eq!</span>(
-<a href=#176 id=176 data-nosnippet>176</a>            original_nonce, xored_twice,
-<a href=#177 id=177 data-nosnippet>177</a>            <span class="string">"xoring twice changed the original value"
-<a href=#178 id=178 data-nosnippet>178</a>        </span>);
-<a href=#179 id=179 data-nosnippet>179</a>    }
-<a href=#180 id=180 data-nosnippet>180</a>}</code></pre></div></section></main></body></html>
+<a href=#166 id=166 data-nosnippet>166</a>        <span class="kw">let </span>provider = <span class="kw-2">&amp;</span>Provider::default();
+<a href=#167 id=167 data-nosnippet>167</a>
+<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">let </span>reuse_guard: ReuseGuard =
+<a href=#169 id=169 data-nosnippet>169</a>            ReuseGuard::try_from_random(provider.rand()).expect(<span class="string">"An unexpected error occurred."</span>);
+<a href=#170 id=170 data-nosnippet>170</a>        <span class="kw">let </span>original_nonce = AeadNonce::random(provider.rand());
+<a href=#171 id=171 data-nosnippet>171</a>        <span class="kw">let </span>xored_once = original_nonce.clone().xor_with_reuse_guard(<span class="kw-2">&amp;</span>reuse_guard);
+<a href=#172 id=172 data-nosnippet>172</a>        <span class="macro">assert_ne!</span>(
+<a href=#173 id=173 data-nosnippet>173</a>            original_nonce, xored_once,
+<a href=#174 id=174 data-nosnippet>174</a>            <span class="string">"xoring with reuse_guard did not change the nonce"
+<a href=#175 id=175 data-nosnippet>175</a>        </span>);
+<a href=#176 id=176 data-nosnippet>176</a>        <span class="kw">let </span>xored_twice = xored_once.xor_with_reuse_guard(<span class="kw-2">&amp;</span>reuse_guard);
+<a href=#177 id=177 data-nosnippet>177</a>        <span class="macro">assert_eq!</span>(
+<a href=#178 id=178 data-nosnippet>178</a>            original_nonce, xored_twice,
+<a href=#179 id=179 data-nosnippet>179</a>            <span class="string">"xoring twice changed the original value"
+<a href=#180 id=180 data-nosnippet>180</a>        </span>);
+<a href=#181 id=181 data-nosnippet>181</a>    }
+<a href=#182 id=182 data-nosnippet>182</a>}</code></pre></div></section></main></body></html>

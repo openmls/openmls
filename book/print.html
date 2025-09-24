@@ -364,7 +364,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
         .unwrap()</code></pre>
 <p>After that, the group can be created either using a config:</p>
 <pre><code class="language-rust no_run noplayground">    let mut alice_group = MlsGroup::new(
-        provider,
+        alice_provider,
         &amp;alice_signature_keys,
         &amp;mls_group_create_config,
         alice_credential.clone(),
@@ -379,7 +379,11 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
             ))
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
-            .build(provider, &amp;alice_signature_keys, alice_credential.clone())
+            .build(
+                alice_provider,
+                &amp;alice_signature_keys,
+                alice_credential.clone(),
+            )
             .expect("An unexpected error occurred.");</code></pre>
 <p>Note: Every group is assigned a random group ID during creation. The group ID cannot be changed and remains immutable throughout the group's lifetime. Choosing it randomly makes sure that the group ID doesn't collide with any other group ID in the same system.</p>
 <p>If someone else already gave you a group ID, e.g., a provider server, you can also create a group using a specific group ID:</p>
@@ -387,7 +391,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
         let group_id = GroupId::from_slice(b"123e4567e89b");
 
         let mut alice_group = MlsGroup::new_with_group_id(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             &amp;mls_group_create_config,
             group_id,
@@ -411,7 +415,11 @@ Should the user want to add further extensions, they can use the <code>with_grou
             .with_group_context_extensions(extensions) // NB: the builder method returns a Result
             .expect("failed to apply group context extensions")
             .use_ratchet_tree_extension(true)
-            .build(provider, &amp;alice_signature_keys, alice_credential.clone())
+            .build(
+                alice_provider,
+                &amp;alice_signature_keys,
+                alice_credential.clone(),
+            )
             .expect("An unexpected error occurred.");</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="join-a-group-from-a-welcome-message"><a class="header" href="#join-a-group-from-a-welcome-message">Join a group from a Welcome message</a></h1>
 <p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated from
@@ -420,10 +428,11 @@ the <code>MlsMessageIn</code> message containing the <code>Welcome</code> and an
 two-step process: a <code>StagedWelcome</code> is constructed from the <code>Welcome</code>
 and can then be turned into an <code>MlsGroup</code>.  If the group configuration does not
 use the ratchet tree extension, the ratchet tree needs to be provided.</p>
-<pre><code class="language-rust no_run noplayground">    let staged_join = StagedWelcome::new_from_welcome(provider, &amp;mls_group_config, welcome, None)
-        .expect("Error constructing staged join");
+<pre><code class="language-rust no_run noplayground">    let staged_join =
+        StagedWelcome::new_from_welcome(bob_provider, &amp;mls_group_config, welcome, None)
+            .expect("Error constructing staged join");
     let mut bob_group = staged_join
-        .into_group(provider)
+        .into_group(bob_provider)
         .expect("Error joining group from StagedWelcome");</code></pre>
 <p>The reason for this two-phase process is to allow the recipient of a <code>Welcome</code>
 to inspect the message, e.g. to determine the identity of the sender.</p>
@@ -526,14 +535,14 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
 <p>The <code>GroupInfo</code> can be obtained either from a call to <code>export_group_info</code>from the <code>MlsGroup</code>:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome, group_info) = alice_group
         .add_members(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("Could not add members.");</code></pre>
 <p>Or from a call to a function that results in a staged commit:</p>
 <pre><code class="language-rust no_run noplayground">    let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &amp;alice_signature_keys, true)
+        .export_group_info(alice_provider.crypto(), &amp;alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");</code></pre>
@@ -543,17 +552,22 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
         .with_config(join_group_config.clone())
         .with_aad(AAD.to_vec())
         .build_group(
-            provider,
+            bob_provider,
             verifiable_group_info,
             bob_credential_with_key.clone(),
         )
         .expect("error building group")
         .leaf_node_parameters(leaf_node_parameters)
-        .load_psks(provider.storage())
+        .load_psks(bob_provider.storage())
         .expect("error loading psks")
-        .build(provider.rand(), provider.crypto(), &amp;bob_signer, |_| true)
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &amp;bob_signer,
+            |_| true,
+        )
         .expect("error building external commit")
-        .finalize(provider)
+        .finalize(bob_provider)
         .expect("error finalizing external commit");</code></pre>
 <p>The resulting external commit message needs to be fanned out to the Delivery Service and accepted by the other members before merging this external commit.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="adding-members-to-a-group"><a class="header" href="#adding-members-to-a-group">Adding members to a group</a></h1>
@@ -561,7 +575,7 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
 <p>Members can be added to the group atomically with the <code>.add_members()</code> function. The application needs to fetch the corresponding key packages from every new member from the Delivery Service first.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome, group_info) = alice_group
         .add_members(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             core::slice::from_ref(bob_key_package.key_package()),
         )
@@ -571,16 +585,16 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
 <pre><code class="language-rust no_run noplayground">    let message_bundle = alice_group
         .commit_builder()
         .propose_adds(Some(bob_key_package.key_package().clone()))
-        .load_psks(provider.storage())
+        .load_psks(alice_provider.storage())
         .expect("error loading psks")
         .build(
-            provider.rand(),
-            provider.crypto(),
+            alice_provider.rand(),
+            alice_provider.crypto(),
             &amp;alice_signature_keys,
             |_proposal| true,
         )
         .expect("error validating data and building commit")
-        .stage_commit(provider)
+        .stage_commit(alice_provider)
         .expect("error staging commit");
 
     let (mls_message_out, welcome, group_info) = message_bundle.into_contents();</code></pre>
@@ -597,7 +611,7 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
 <p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_add_member(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             bob_key_package.key_package(),
         )
@@ -618,7 +632,7 @@ proposals are crafted by outsiders, they are always plaintext messages.</p>
 Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
         .process_message(
-            provider,
+            alice_provider,
             proposal
                 .into_protocol_message()
                 .expect("Unexpected message type."),
@@ -627,14 +641,14 @@ Note that in this scenario it is up to the application to define a proper author
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) =&gt; {
             alice_group
-                .store_pending_proposal(provider.storage(), *proposal)
+                .store_pending_proposal(alice_provider.storage(), *proposal)
                 .unwrap();
             let (_commit, welcome, _group_info) = alice_group
-                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .commit_to_pending_proposals(alice_provider, &amp;alice_signature_keys)
                 .expect("Could not commit");
             assert_eq!(alice_group.members().count(), 1);
             alice_group
-                .merge_pending_commit(provider)
+                .merge_pending_commit(alice_provider)
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 2);
 
@@ -644,13 +658,13 @@ Note that in this scenario it is up to the application to define a proper author
                 .expect("expected the message to be a welcome message");
 
             let bob_group = StagedWelcome::new_from_welcome(
-                provider,
+                bob_provider,
                 mls_group_create_config.join_config(),
                 welcome,
                 None,
             )
             .expect("Bob could not stage the the group join")
-            .into_group(provider)
+            .into_group(bob_provider)
             .expect("Bob could not join the group");
             assert_eq!(bob_group.members().count(), 2);
         }
@@ -669,7 +683,7 @@ Since those proposals are crafted by outsiders, they are always public messages.
 <p>It is then up to one of the group members to process the proposal and commit it.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
         .process_message(
-            provider,
+            alice_provider,
             proposal
                 .into_protocol_message()
                 .expect("Unexpected message type."),
@@ -678,14 +692,14 @@ Since those proposals are crafted by outsiders, they are always public messages.
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ProposalMessage(proposal) =&gt; {
             alice_group
-                .store_pending_proposal(provider.storage(), *proposal)
+                .store_pending_proposal(alice_provider.storage(), *proposal)
                 .unwrap();
             assert_eq!(alice_group.members().count(), 2);
             alice_group
-                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .commit_to_pending_proposals(alice_provider, &amp;alice_signature_keys)
                 .expect("Could not commit");
             alice_group
-                .merge_pending_commit(provider)
+                .merge_pending_commit(alice_provider)
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 1);
         }
@@ -695,7 +709,11 @@ Since those proposals are crafted by outsiders, they are always public messages.
 <h2 id="immediate-operation-1"><a class="header" href="#immediate-operation-1">Immediate operation</a></h2>
 <p>Members can be removed from the group atomically with the <code>.remove_members()</code> function, which takes the <code>KeyPackageRef</code> of group member as input. References to the <code>KeyPackage</code>s of group members can be obtained using the <code>.members()</code> function, from which one can in turn compute the <code>KeyPackageRef</code> using their <code>.hash_ref()</code> function.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = charlie_group
-        .remove_members(provider, &amp;charlie_signature_keys, &amp;[bob_member.index])
+        .remove_members(
+            charlie_provider,
+            &amp;charlie_signature_keys,
+            &amp;[bob_member.index],
+        )
         .expect("Could not remove Bob from group.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 Even though members were removed in this operation, the Commit message could potentially also cover Add Proposals previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
@@ -703,7 +721,7 @@ Even though members were removed in this operation, the Commit message could pot
 <p>Members can also be removed as a proposal (without the corresponding Commit message) by using the <code>.propose_remove_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_remove_member(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             charlie_group.own_leaf_index(),
         )
@@ -736,7 +754,7 @@ Even though members were removed in this operation, the Commit message could pot
 
         // Merge staged Commit
         bob_group
-            .merge_staged_commit(provider, *staged_commit)
+            .merge_staged_commit(bob_provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -767,7 +785,7 @@ Since those proposals are crafted by outsiders, they are always public messages.
 <p>It is then up to one of the group members to process the proposal and commit it.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
         .process_message(
-            provider,
+            alice_provider,
             proposal
                 .into_protocol_message()
                 .expect("Unexpected message type."),
@@ -776,14 +794,14 @@ Since those proposals are crafted by outsiders, they are always public messages.
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ProposalMessage(proposal) =&gt; {
             alice_group
-                .store_pending_proposal(provider.storage(), *proposal)
+                .store_pending_proposal(alice_provider.storage(), *proposal)
                 .unwrap();
             assert_eq!(alice_group.members().count(), 2);
             alice_group
-                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .commit_to_pending_proposals(alice_provider, &amp;alice_signature_keys)
                 .expect("Could not commit");
             alice_group
-                .merge_pending_commit(provider)
+                .merge_pending_commit(alice_provider)
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 1);
         }
@@ -794,7 +812,11 @@ Since those proposals are crafted by outsiders, they are always public messages.
 <p>Members can update their own leaf node atomically with the <code>.self_update()</code> function.
 By default, only the HPKE encryption key is updated. The application can however also provide more parameters like a new credential, capabilities and extensions using the <code>LeafNodeParameters</code> struct.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = bob_group
-        .self_update(provider, &amp;bob_signature_keys, LeafNodeParameters::default())
+        .self_update(
+            bob_provider,
+            &amp;bob_signature_keys,
+            LeafNodeParameters::default(),
+        )
         .expect("Could not update own key package.")
         .into_contents();</code></pre>
 <p>The function returns a <code>CommitMessageBundle</code>, which consists of the Commit message that needs to be fanned out to existing group members.
@@ -808,7 +830,7 @@ Even though the member updates its own leaf node only in this operation, the Com
 
     let message_bundle = alice_group
         .self_update_with_new_signer(
-            provider,
+            alice_provider,
             &amp;alice_old_signature_keys,
             new_signer_bundle,
             LeafNodeParameters::default(),
@@ -821,7 +843,7 @@ Even though the member updates its own leaf node only in this operation, the Com
 <p>Members can also update their leaf node as a proposal (without the corresponding Commit message) by using the <code>.propose_self_update()</code> function. Just like with the <code>.self_update()</code> function, optional parameters can be set through <code>LeafNodeParameters</code>:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_self_update(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             LeafNodeParameters::default(),
         )
@@ -837,14 +859,14 @@ Even though the member updates its own leaf node only in this operation, the Com
 <h2 id="inspecting-the-aad"><a class="header" href="#inspecting-the-aad">Inspecting the AAD</a></h2>
 <p>Members can inspect the AAD of an incoming message once the message has been processed. The AAD can be accessed with the <code>.aad()</code> function of a <code>ProcessedMessage</code>.</p>
 <pre><code class="language-rust no_run noplayground">    let processed_message = bob_group
-        .process_message(provider, protocol_message)
+        .process_message(bob_provider, protocol_message)
         .expect("Could not process message.");
 
     assert_eq!(processed_message.aad(), b"Additional Authenticated Data");</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="leaving-a-group"><a class="header" href="#leaving-a-group">Leaving a group</a></h1>
 <p>Members can indicate to other group members that they wish to leave the group using the <code>leave_group()</code> function, which creates a remove proposal targeting the member's own leaf. The member can't create a Commit message that covers this proposal, as that would violate the Post-compromise Security guarantees of MLS because the member would know the epoch secrets of the next epoch.</p>
 <pre><code class="language-rust no_run noplayground">    let queued_message = bob_group
-        .leave_group(provider, &amp;bob_signature_keys)
+        .leave_group(bob_provider, &amp;bob_signature_keys)
         .expect("Could not leave group");</code></pre>
 <p>After successfully sending the proposal to the DS for fanout, there is still the possibility that the remove proposal is not covered in the following commit. The member leaving the group thus has two options:</p>
 <ul>
@@ -871,14 +893,19 @@ Even though the member updates its own leaf node only in this operation, the Com
     // Generate KeyPackage that signals support for the custom proposal type
     let bob_key_package = KeyPackageBuilder::new()
         .leaf_node_capabilities(capabilities.clone())
-        .build(ciphersuite, provider, &amp;bob_signer, bob_credential_with_key)
+        .build(
+            ciphersuite,
+            bob_provider,
+            &amp;bob_signer,
+            bob_credential_with_key,
+        )
         .unwrap();
 
     // Create a group that supports the custom proposal type
     let mut alice_group = MlsGroup::builder()
         .with_capabilities(capabilities.clone())
         .ciphersuite(ciphersuite)
-        .build(provider, &amp;alice_signer, alice_credential_with_key)
+        .build(alice_provider, &amp;alice_signer, alice_credential_with_key)
         .unwrap();</code></pre>
 <pre><code class="language-rust no_run noplayground">    // Create a custom proposal based on an example payload and the custom
     // proposal type defined above
@@ -887,13 +914,17 @@ Even though the member updates its own leaf node only in this operation, the Com
         CustomProposal::new(custom_proposal_type, custom_proposal_payload.clone());
 
     let (custom_proposal_message, _proposal_ref) = alice_group
-        .propose_custom_proposal_by_reference(provider, &amp;alice_signer, custom_proposal.clone())
+        .propose_custom_proposal_by_reference(
+            alice_provider,
+            &amp;alice_signer,
+            custom_proposal.clone(),
+        )
         .unwrap();
 
     // Have bob process the custom proposal.
     let processed_message = bob_group
         .process_message(
-            provider,
+            bob_provider,
             custom_proposal_message.into_protocol_message().unwrap(),
         )
         .unwrap();
@@ -904,16 +935,16 @@ Even though the member updates its own leaf node only in this operation, the Com
     };
 
     bob_group
-        .store_pending_proposal(provider.storage(), *proposal)
+        .store_pending_proposal(bob_provider.storage(), *proposal)
         .unwrap();
 
     // Commit to the proposal
     let (commit, _, _) = alice_group
-        .commit_to_pending_proposals(provider, &amp;alice_signer)
+        .commit_to_pending_proposals(alice_provider, &amp;alice_signer)
         .unwrap();
 
     let processed_message = bob_group
-        .process_message(provider, commit.into_protocol_message().unwrap())
+        .process_message(bob_provider, commit.into_protocol_message().unwrap())
         .unwrap();
 
     let staged_commit = match processed_message.into_content() {
@@ -934,7 +965,7 @@ Even though the member updates its own leaf node only in this operation, the Com
 <p>Application messages are created from byte slices with the <code>.create_message()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let message_alice = b"Hi, I'm Alice!";
     let mls_message_out = alice_group
-        .create_message(provider, &amp;alice_signature_keys, message_alice)
+        .create_message(alice_provider, &amp;alice_signature_keys, message_alice)
         .expect("Error creating application message.");</code></pre>
 <p>Note that the theoretical maximum length of application messages is 2^32 bytes. However, messages should be much shorter in practice unless the Delivery Service can cope with long messages.</p>
 <p>The function returns an <code>MlsMessageOut</code> that needs to be sent to the Delivery Service for fanout to other group members. To guarantee the best possible Forward Secrecy, the key material used to encrypt messages is immediately discarded after encryption. This means that the message author cannot decrypt application messages. If access to the message's content is required after creating the message, a copy of the plaintext message should be kept by the application.</p>
@@ -942,7 +973,7 @@ Even though the member updates its own leaf node only in this operation, the Com
 <p>During an epoch, members can create proposals that are not immediately committed. These proposals are called "pending proposals". They will automatically be covered by any operation that creates a Commit message (like <code>.add_members(),</code> <code>.remove_members()</code>, etc.).</p>
 <p>Some operations (like creating application messages) are not allowed as long as pending proposals exist for the current epoch. In that case, the application must first commit to the pending proposals by creating a Commit message that covers these proposals. This can be done with the <code>commit_to_pending_proposals()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = alice_group
-        .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+        .commit_to_pending_proposals(alice_provider, &amp;alice_signature_keys)
         .expect("Could not commit to pending proposals.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 If the Commit message also covers Add Proposals previously received in the epoch, a <code>Welcome</code> message is required to invite the new members. Therefore the function can also optionally return a <code>Welcome</code> message that must be sent to the newly added members.</p>
@@ -978,7 +1009,7 @@ returns a <code>ProcessedMessage</code> object if all checks are successful.</p>
         .try_into_protocol_message()
         .expect("Expected a PublicMessage or a PrivateMessage");
     let processed_message = bob_group
-        .process_message(provider, protocol_message)
+        .process_message(bob_provider, protocol_message)
         .expect("Could not process message.");</code></pre>
 <h2 id="interpreting-the-processed-message"><a class="header" href="#interpreting-the-processed-message">Interpreting the processed message</a></h2>
 <p>In the last step, the message is ready for inspection. The <code>ProcessedMessage</code>
@@ -1016,7 +1047,7 @@ sender, and authenticated data. It also exposes the message's content. There are
         ));
         // Store proposal
         charlie_group
-            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .store_pending_proposal(charlie_provider.storage(), *staged_proposal)
             .unwrap();
     }</code></pre>
 <h4 id="rolling-back-proposals"><a class="header" href="#rolling-back-proposals">Rolling back proposals</a></h4>
@@ -1024,13 +1055,13 @@ sender, and authenticated data. It also exposes the message's content. There are
 a proposal from the proposal store. This can be useful for example to roll back in case of errors.</p>
 <pre><code class="language-rust no_run noplayground">    let (_mls_message_out, proposal_ref) = alice_group
         .propose_add_member(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             bob_key_package.key_package(),
         )
         .expect("Could not create proposal to add Bob");
     alice_group
-        .remove_pending_proposal(provider.storage(), &amp;proposal_ref)
+        .remove_pending_proposal(alice_provider.storage(), &amp;proposal_ref)
         .expect("The proposal was not found");</code></pre>
 <h3 id="commit-messages"><a class="header" href="#commit-messages">Commit messages</a></h3>
 <p>Commit messages are returned as <code>StagedCommit</code> objects. The proposals they cover can be inspected through different functions, depending on the proposal type. After the application has inspected the <code>StagedCommit</code> and approved all the proposals it covers, the <code>StagedCommit</code> can be merged in the current group state by calling the <code>.merge_staged_commit()</code> function. For more details, see the <code>StagedCommit</code> documentation.</p>
@@ -1054,7 +1085,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
         ));
         // Merge staged commit
         alice_group
-            .merge_staged_commit(provider, *staged_commit)
+            .merge_staged_commit(alice_provider, *staged_commit)
             .expect("Error merging staged commit.");
     }</code></pre>
 <h3 id="interpreting-remove-operations"><a class="header" href="#interpreting-remove-operations">Interpreting remove operations</a></h3>
@@ -1092,7 +1123,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
 
         // Merge staged Commit
         bob_group
-            .merge_staged_commit(provider, *staged_commit)
+            .merge_staged_commit(bob_provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -2028,7 +2059,7 @@ chapter</p>
         ));
         // Merge staged commit
         alice_group
-            .merge_staged_commit(provider, *staged_commit)
+            .merge_staged_commit(alice_provider, *staged_commit)
             .expect("Error merging staged commit.");
     }</code></pre>
 <h3 id="external-commits"><a class="header" href="#external-commits">External Commits</a></h3>

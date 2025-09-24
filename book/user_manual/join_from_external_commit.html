@@ -182,14 +182,14 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
 <p>The <code>GroupInfo</code> can be obtained either from a call to <code>export_group_info</code>from the <code>MlsGroup</code>:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome, group_info) = alice_group
         .add_members(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             core::slice::from_ref(bob_key_package.key_package()),
         )
         .expect("Could not add members.");</code></pre>
 <p>Or from a call to a function that results in a staged commit:</p>
 <pre><code class="language-rust no_run noplayground">    let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &amp;alice_signature_keys, true)
+        .export_group_info(alice_provider.crypto(), &amp;alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_verifiable_group_info()
         .expect("Could not get group info");</code></pre>
@@ -199,17 +199,22 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
         .with_config(join_group_config.clone())
         .with_aad(AAD.to_vec())
         .build_group(
-            provider,
+            bob_provider,
             verifiable_group_info,
             bob_credential_with_key.clone(),
         )
         .expect("error building group")
         .leaf_node_parameters(leaf_node_parameters)
-        .load_psks(provider.storage())
+        .load_psks(bob_provider.storage())
         .expect("error loading psks")
-        .build(provider.rand(), provider.crypto(), &amp;bob_signer, |_| true)
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &amp;bob_signer,
+            |_| true,
+        )
         .expect("error building external commit")
-        .finalize(provider)
+        .finalize(bob_provider)
         .expect("error finalizing external commit");</code></pre>
 <p>The resulting external commit message needs to be fanned out to the Delivery Service and accepted by the other members before merging this external commit.</p>
 

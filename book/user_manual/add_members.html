@@ -180,7 +180,7 @@
 <p>Members can be added to the group atomically with the <code>.add_members()</code> function. The application needs to fetch the corresponding key packages from every new member from the Delivery Service first.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome, group_info) = alice_group
         .add_members(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             core::slice::from_ref(bob_key_package.key_package()),
         )
@@ -190,16 +190,16 @@
 <pre><code class="language-rust no_run noplayground">    let message_bundle = alice_group
         .commit_builder()
         .propose_adds(Some(bob_key_package.key_package().clone()))
-        .load_psks(provider.storage())
+        .load_psks(alice_provider.storage())
         .expect("error loading psks")
         .build(
-            provider.rand(),
-            provider.crypto(),
+            alice_provider.rand(),
+            alice_provider.crypto(),
             &amp;alice_signature_keys,
             |_proposal| true,
         )
         .expect("error validating data and building commit")
-        .stage_commit(provider)
+        .stage_commit(alice_provider)
         .expect("error staging commit");
 
     let (mls_message_out, welcome, group_info) = message_bundle.into_contents();</code></pre>
@@ -216,7 +216,7 @@
 <p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_add_member(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             bob_key_package.key_package(),
         )
@@ -237,7 +237,7 @@ proposals are crafted by outsiders, they are always plaintext messages.</p>
 Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
         .process_message(
-            provider,
+            alice_provider,
             proposal
                 .into_protocol_message()
                 .expect("Unexpected message type."),
@@ -246,14 +246,14 @@ Note that in this scenario it is up to the application to define a proper author
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) =&gt; {
             alice_group
-                .store_pending_proposal(provider.storage(), *proposal)
+                .store_pending_proposal(alice_provider.storage(), *proposal)
                 .unwrap();
             let (_commit, welcome, _group_info) = alice_group
-                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .commit_to_pending_proposals(alice_provider, &amp;alice_signature_keys)
                 .expect("Could not commit");
             assert_eq!(alice_group.members().count(), 1);
             alice_group
-                .merge_pending_commit(provider)
+                .merge_pending_commit(alice_provider)
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 2);
 
@@ -263,13 +263,13 @@ Note that in this scenario it is up to the application to define a proper author
                 .expect("expected the message to be a welcome message");
 
             let bob_group = StagedWelcome::new_from_welcome(
-                provider,
+                bob_provider,
                 mls_group_create_config.join_config(),
                 welcome,
                 None,
             )
             .expect("Bob could not stage the the group join")
-            .into_group(provider)
+            .into_group(bob_provider)
             .expect("Bob could not join the group");
             assert_eq!(bob_group.members().count(), 2);
         }
@@ -288,7 +288,7 @@ Since those proposals are crafted by outsiders, they are always public messages.
 <p>It is then up to one of the group members to process the proposal and commit it.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
         .process_message(
-            provider,
+            alice_provider,
             proposal
                 .into_protocol_message()
                 .expect("Unexpected message type."),
@@ -297,14 +297,14 @@ Since those proposals are crafted by outsiders, they are always public messages.
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ProposalMessage(proposal) =&gt; {
             alice_group
-                .store_pending_proposal(provider.storage(), *proposal)
+                .store_pending_proposal(alice_provider.storage(), *proposal)
                 .unwrap();
             assert_eq!(alice_group.members().count(), 2);
             alice_group
-                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .commit_to_pending_proposals(alice_provider, &amp;alice_signature_keys)
                 .expect("Could not commit");
             alice_group
-                .merge_pending_commit(provider)
+                .merge_pending_commit(alice_provider)
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 1);
         }

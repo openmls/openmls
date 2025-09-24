@@ -207,7 +207,7 @@ returns a <code>ProcessedMessage</code> object if all checks are successful.</p>
         .try_into_protocol_message()
         .expect("Expected a PublicMessage or a PrivateMessage");
     let processed_message = bob_group
-        .process_message(provider, protocol_message)
+        .process_message(bob_provider, protocol_message)
         .expect("Could not process message.");</code></pre>
 <h2 id="interpreting-the-processed-message"><a class="header" href="#interpreting-the-processed-message">Interpreting the processed message</a></h2>
 <p>In the last step, the message is ready for inspection. The <code>ProcessedMessage</code>
@@ -245,7 +245,7 @@ sender, and authenticated data. It also exposes the message's content. There are
         ));
         // Store proposal
         charlie_group
-            .store_pending_proposal(provider.storage(), *staged_proposal)
+            .store_pending_proposal(charlie_provider.storage(), *staged_proposal)
             .unwrap();
     }</code></pre>
 <h4 id="rolling-back-proposals"><a class="header" href="#rolling-back-proposals">Rolling back proposals</a></h4>
@@ -253,13 +253,13 @@ sender, and authenticated data. It also exposes the message's content. There are
 a proposal from the proposal store. This can be useful for example to roll back in case of errors.</p>
 <pre><code class="language-rust no_run noplayground">    let (_mls_message_out, proposal_ref) = alice_group
         .propose_add_member(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             bob_key_package.key_package(),
         )
         .expect("Could not create proposal to add Bob");
     alice_group
-        .remove_pending_proposal(provider.storage(), &amp;proposal_ref)
+        .remove_pending_proposal(alice_provider.storage(), &amp;proposal_ref)
         .expect("The proposal was not found");</code></pre>
 <h3 id="commit-messages"><a class="header" href="#commit-messages">Commit messages</a></h3>
 <p>Commit messages are returned as <code>StagedCommit</code> objects. The proposals they cover can be inspected through different functions, depending on the proposal type. After the application has inspected the <code>StagedCommit</code> and approved all the proposals it covers, the <code>StagedCommit</code> can be merged in the current group state by calling the <code>.merge_staged_commit()</code> function. For more details, see the <code>StagedCommit</code> documentation.</p>
@@ -283,7 +283,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
         ));
         // Merge staged commit
         alice_group
-            .merge_staged_commit(provider, *staged_commit)
+            .merge_staged_commit(alice_provider, *staged_commit)
             .expect("Error merging staged commit.");
     }</code></pre>
 <h3 id="interpreting-remove-operations"><a class="header" href="#interpreting-remove-operations">Interpreting remove operations</a></h3>
@@ -321,7 +321,7 @@ a proposal from the proposal store. This can be useful for example to roll back 
 
         // Merge staged Commit
         bob_group
-            .merge_staged_commit(provider, *staged_commit)
+            .merge_staged_commit(bob_provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");

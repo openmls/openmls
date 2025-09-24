@@ -180,7 +180,11 @@
 <p>Members can update their own leaf node atomically with the <code>.self_update()</code> function.
 By default, only the HPKE encryption key is updated. The application can however also provide more parameters like a new credential, capabilities and extensions using the <code>LeafNodeParameters</code> struct.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = bob_group
-        .self_update(provider, &amp;bob_signature_keys, LeafNodeParameters::default())
+        .self_update(
+            bob_provider,
+            &amp;bob_signature_keys,
+            LeafNodeParameters::default(),
+        )
         .expect("Could not update own key package.")
         .into_contents();</code></pre>
 <p>The function returns a <code>CommitMessageBundle</code>, which consists of the Commit message that needs to be fanned out to existing group members.
@@ -194,7 +198,7 @@ Even though the member updates its own leaf node only in this operation, the Com
 
     let message_bundle = alice_group
         .self_update_with_new_signer(
-            provider,
+            alice_provider,
             &amp;alice_old_signature_keys,
             new_signer_bundle,
             LeafNodeParameters::default(),
@@ -207,7 +211,7 @@ Even though the member updates its own leaf node only in this operation, the Com
 <p>Members can also update their leaf node as a proposal (without the corresponding Commit message) by using the <code>.propose_self_update()</code> function. Just like with the <code>.self_update()</code> function, optional parameters can be set through <code>LeafNodeParameters</code>:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_self_update(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             LeafNodeParameters::default(),
         )

@@ -185,7 +185,7 @@
 <h2 id="inspecting-the-aad"><a class="header" href="#inspecting-the-aad">Inspecting the AAD</a></h2>
 <p>Members can inspect the AAD of an incoming message once the message has been processed. The AAD can be accessed with the <code>.aad()</code> function of a <code>ProcessedMessage</code>.</p>
 <pre><code class="language-rust no_run noplayground">    let processed_message = bob_group
-        .process_message(provider, protocol_message)
+        .process_message(bob_provider, protocol_message)
         .expect("Could not process message.");
 
     assert_eq!(processed_message.aad(), b"Additional Authenticated Data");</code></pre>

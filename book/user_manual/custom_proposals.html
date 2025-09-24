@@ -194,14 +194,19 @@
     // Generate KeyPackage that signals support for the custom proposal type
     let bob_key_package = KeyPackageBuilder::new()
         .leaf_node_capabilities(capabilities.clone())
-        .build(ciphersuite, provider, &amp;bob_signer, bob_credential_with_key)
+        .build(
+            ciphersuite,
+            bob_provider,
+            &amp;bob_signer,
+            bob_credential_with_key,
+        )
         .unwrap();
 
     // Create a group that supports the custom proposal type
     let mut alice_group = MlsGroup::builder()
         .with_capabilities(capabilities.clone())
         .ciphersuite(ciphersuite)
-        .build(provider, &amp;alice_signer, alice_credential_with_key)
+        .build(alice_provider, &amp;alice_signer, alice_credential_with_key)
         .unwrap();</code></pre>
 <pre><code class="language-rust no_run noplayground">    // Create a custom proposal based on an example payload and the custom
     // proposal type defined above
@@ -210,13 +215,17 @@
         CustomProposal::new(custom_proposal_type, custom_proposal_payload.clone());
 
     let (custom_proposal_message, _proposal_ref) = alice_group
-        .propose_custom_proposal_by_reference(provider, &amp;alice_signer, custom_proposal.clone())
+        .propose_custom_proposal_by_reference(
+            alice_provider,
+            &amp;alice_signer,
+            custom_proposal.clone(),
+        )
         .unwrap();
 
     // Have bob process the custom proposal.
     let processed_message = bob_group
         .process_message(
-            provider,
+            bob_provider,
             custom_proposal_message.into_protocol_message().unwrap(),
         )
         .unwrap();
@@ -227,16 +236,16 @@
     };
 
     bob_group
-        .store_pending_proposal(provider.storage(), *proposal)
+        .store_pending_proposal(bob_provider.storage(), *proposal)
         .unwrap();
 
     // Commit to the proposal
     let (commit, _, _) = alice_group
-        .commit_to_pending_proposals(provider, &amp;alice_signer)
+        .commit_to_pending_proposals(alice_provider, &amp;alice_signer)
         .unwrap();
 
     let processed_message = bob_group
-        .process_message(provider, commit.into_protocol_message().unwrap())
+        .process_message(bob_provider, commit.into_protocol_message().unwrap())
         .unwrap();
 
     let staged_commit = match processed_message.into_content() {

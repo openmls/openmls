@@ -179,7 +179,7 @@
 <p>Application messages are created from byte slices with the <code>.create_message()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let message_alice = b"Hi, I'm Alice!";
     let mls_message_out = alice_group
-        .create_message(provider, &amp;alice_signature_keys, message_alice)
+        .create_message(alice_provider, &amp;alice_signature_keys, message_alice)
         .expect("Error creating application message.");</code></pre>
 <p>Note that the theoretical maximum length of application messages is 2^32 bytes. However, messages should be much shorter in practice unless the Delivery Service can cope with long messages.</p>
 <p>The function returns an <code>MlsMessageOut</code> that needs to be sent to the Delivery Service for fanout to other group members. To guarantee the best possible Forward Secrecy, the key material used to encrypt messages is immediately discarded after encryption. This means that the message author cannot decrypt application messages. If access to the message's content is required after creating the message, a copy of the plaintext message should be kept by the application.</p>

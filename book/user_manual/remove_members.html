@@ -179,7 +179,11 @@
 <h2 id="immediate-operation"><a class="header" href="#immediate-operation">Immediate operation</a></h2>
 <p>Members can be removed from the group atomically with the <code>.remove_members()</code> function, which takes the <code>KeyPackageRef</code> of group member as input. References to the <code>KeyPackage</code>s of group members can be obtained using the <code>.members()</code> function, from which one can in turn compute the <code>KeyPackageRef</code> using their <code>.hash_ref()</code> function.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = charlie_group
-        .remove_members(provider, &amp;charlie_signature_keys, &amp;[bob_member.index])
+        .remove_members(
+            charlie_provider,
+            &amp;charlie_signature_keys,
+            &amp;[bob_member.index],
+        )
         .expect("Could not remove Bob from group.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 Even though members were removed in this operation, the Commit message could potentially also cover Add Proposals previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
@@ -187,7 +191,7 @@ Even though members were removed in this operation, the Commit message could pot
 <p>Members can also be removed as a proposal (without the corresponding Commit message) by using the <code>.propose_remove_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_remove_member(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             charlie_group.own_leaf_index(),
         )
@@ -220,7 +224,7 @@ Even though members were removed in this operation, the Commit message could pot
 
         // Merge staged Commit
         bob_group
-            .merge_staged_commit(provider, *staged_commit)
+            .merge_staged_commit(bob_provider, *staged_commit)
             .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -251,7 +255,7 @@ Since those proposals are crafted by outsiders, they are always public messages.
 <p>It is then up to one of the group members to process the proposal and commit it.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
         .process_message(
-            provider,
+            alice_provider,
             proposal
                 .into_protocol_message()
                 .expect("Unexpected message type."),
@@ -260,14 +264,14 @@ Since those proposals are crafted by outsiders, they are always public messages.
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ProposalMessage(proposal) =&gt; {
             alice_group
-                .store_pending_proposal(provider.storage(), *proposal)
+                .store_pending_proposal(alice_provider.storage(), *proposal)
                 .unwrap();
             assert_eq!(alice_group.members().count(), 2);
             alice_group
-                .commit_to_pending_proposals(provider, &amp;alice_signature_keys)
+                .commit_to_pending_proposals(alice_provider, &amp;alice_signature_keys)
                 .expect("Could not commit");
             alice_group
-                .merge_pending_commit(provider)
+                .merge_pending_commit(alice_provider)
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 1);
         }

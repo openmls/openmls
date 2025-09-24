@@ -186,7 +186,7 @@
         .unwrap()</code></pre>
 <p>After that, the group can be created either using a config:</p>
 <pre><code class="language-rust no_run noplayground">    let mut alice_group = MlsGroup::new(
-        provider,
+        alice_provider,
         &amp;alice_signature_keys,
         &amp;mls_group_create_config,
         alice_credential.clone(),
@@ -201,7 +201,11 @@
             ))
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
-            .build(provider, &amp;alice_signature_keys, alice_credential.clone())
+            .build(
+                alice_provider,
+                &amp;alice_signature_keys,
+                alice_credential.clone(),
+            )
             .expect("An unexpected error occurred.");</code></pre>
 <p>Note: Every group is assigned a random group ID during creation. The group ID cannot be changed and remains immutable throughout the group's lifetime. Choosing it randomly makes sure that the group ID doesn't collide with any other group ID in the same system.</p>
 <p>If someone else already gave you a group ID, e.g., a provider server, you can also create a group using a specific group ID:</p>
@@ -209,7 +213,7 @@
         let group_id = GroupId::from_slice(b"123e4567e89b");
 
         let mut alice_group = MlsGroup::new_with_group_id(
-            provider,
+            alice_provider,
             &amp;alice_signature_keys,
             &amp;mls_group_create_config,
             group_id,
@@ -233,7 +237,11 @@ Should the user want to add further extensions, they can use the <code>with_grou
             .with_group_context_extensions(extensions) // NB: the builder method returns a Result
             .expect("failed to apply group context extensions")
             .use_ratchet_tree_extension(true)
-            .build(provider, &amp;alice_signature_keys, alice_credential.clone())
+            .build(
+                alice_provider,
+                &amp;alice_signature_keys,
+                alice_credential.clone(),
+            )
             .expect("An unexpected error occurred.");</code></pre>
 
                     </main>
