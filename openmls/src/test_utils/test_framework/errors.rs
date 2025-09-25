@@ -57,7 +57,7 @@ pub enum ClientError<StorageError> {
     TlsCodecError(tls_codec::Error),
     /// See [`ProcessMessageError`] for more details.
     #[error("See ProcessMessageError for more details.")]
-    ProcessMessageError(ProcessMessageError),
+    ProcessMessageError(ProcessMessageError<StorageError>),
     /// See [`AddMembersError`] for more details.
     #[error(transparent)]
     AddMembersError(#[from] AddMembersError<StorageError>),

@@ -184,7 +184,7 @@ fn discard_commit_update_with_new_signer() {
         .expect("failed to update own leaf node");
 
     assert_ne!(
-        provider.storage().group_state(&group_id).unwrap(),
+        alice_provider.storage().group_state(&group_id).unwrap(),
         Some(MlsGroupState::Operational)
     );
 
@@ -205,7 +205,7 @@ fn discard_commit_update_with_new_signer() {
         own_leaf_node_before.encryption_key(),
     );
 
-    let own_leaf_nodes_after: Vec<LeafNode> = provider
+    let own_leaf_nodes_after: Vec<LeafNode> = alice_provider
         .storage()
         .own_leaf_nodes(&group_id)
         .expect("could not get leaf nodes");
@@ -427,6 +427,7 @@ fn discard_commit_group_context_extensions() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true) // NOTE: important
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY) // Important because the secret tree might diverge otherwise
         .capabilities(Capabilities::new(
             None,
             None,
