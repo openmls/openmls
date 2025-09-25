@@ -134,6 +134,8 @@ pub struct FrankenLifetime {
 
 #[openmls_test]
 fn test_franken_key_package() {
+    let provider = &Provider::default();
+
     let config = ciphersuite;
 
     let (credential, signer) = {

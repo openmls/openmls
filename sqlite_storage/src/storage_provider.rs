@@ -3,9 +3,8 @@ use std::{
     marker::PhantomData,
 };
 
-use openmls_traits::storage::{traits, Entity, Key, StorageProvider};
+use openmls_traits::storage::{traits, Key, StorageProvider};
 use rusqlite::Connection;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     codec::Codec,
@@ -739,8 +738,3 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 }
-
-#[derive(Serialize, Deserialize)]
-struct Aad(Vec<u8>);
-
-impl Entity<STORAGE_PROVIDER_VERSION> for Aad {}

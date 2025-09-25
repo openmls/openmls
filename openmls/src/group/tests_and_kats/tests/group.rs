@@ -8,19 +8,19 @@ use prelude::KeyPackageBundle;
 use treesync::{node::leaf_node::Capabilities, LeafNodeParameters};
 
 #[openmls_test::openmls_test]
-fn create_commit_optional_path(
-    ciphersuite: Ciphersuite,
-    provider: &impl crate::storage::OpenMlsProvider,
-) {
+fn create_commit_optional_path() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     // Define identities
     let (alice_credential_with_key, alice_signer, bob_kpb, _bob_signer) =
-        setup_alice_bob(ciphersuite, provider);
+        setup_alice_bob(ciphersuite, alice_provider, bob_provider);
 
     // Alice creates a group
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .build(provider, &alice_signer, alice_credential_with_key)
+        .build(alice_provider, &alice_signer, alice_credential_with_key)
         .unwrap();
 
     // Alice proposes to add Bob with forced self-update
@@ -28,7 +28,7 @@ fn create_commit_optional_path(
     // on the Commit
     let (commit_message, _welcome, _) = alice_group
         .add_members(
-            provider,
+            alice_provider,
             &alice_signer,
             core::slice::from_ref(bob_kpb.key_package()),
         )
@@ -45,13 +45,13 @@ fn create_commit_optional_path(
     assert!(commit.has_path());
 
     alice_group
-        .clear_pending_commit(provider.storage())
+        .clear_pending_commit(alice_provider.storage())
         .unwrap();
 
     // Alice adds Bob without forced self-update
     let (commit_message, welcome, _) = alice_group
         .add_members_without_update(
-            provider,
+            alice_provider,
             &alice_signer,
             core::slice::from_ref(bob_kpb.key_package()),
         )
@@ -68,18 +68,18 @@ fn create_commit_optional_path(
     assert!(!commit.has_path());
 
     // Alice applies the Commit without the forced self-update
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
     let ratchet_tree = alice_group.export_ratchet_tree();
 
     // Bob creates group from Welcome
     let bob_group = StagedWelcome::new_from_welcome(
-        provider,
+        bob_provider,
         &MlsGroupJoinConfig::default(),
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
     .unwrap()
-    .into_group(provider)
+    .into_group(bob_provider)
     .unwrap();
 
     assert_eq!(
@@ -89,7 +89,7 @@ fn create_commit_optional_path(
 
     // Alice updates
     let (commit_message, _, _) = alice_group
-        .self_update(provider, &alice_signer, LeafNodeParameters::default())
+        .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
         .unwrap()
         .into_contents();
 
@@ -104,19 +104,20 @@ fn create_commit_optional_path(
     assert!(commit.has_path());
 
     // Apply UpdateProposal
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
 }
 
 #[openmls_test::openmls_test]
 fn basic_group_setup() {
-    let alice_provider = Provider::default();
-    let bob_provider = Provider::default();
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
 
     let (mut alice_group, alice_signer, _, _, _, _) =
-        setup_alice_bob_group(ciphersuite, &alice_provider, &bob_provider);
+        setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
     let _result =
-        match alice_group.self_update(provider, &alice_signer, LeafNodeParameters::default()) {
+        match alice_group.self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {e:?}"),
         };
@@ -176,10 +177,13 @@ fn wrong_group_create_config() {
 ///  - Charlie removes Bob
 #[openmls_test::openmls_test]
 fn group_operations() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
     // Create group with alice and bob
     let (mut alice_group, alice_signer, mut bob_group, bob_signer, _, _) =
-        // TODO: don't let alice and bob share the provider
-        setup_alice_bob_group(ciphersuite, provider, provider);
+        setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
     // Make sure that both groups have the same public tree
     assert_eq!(
@@ -195,14 +199,24 @@ fn group_operations() {
     // === Alice sends a message to Bob ===
     let message_alice = [1, 2, 3];
     let mls_cipertext_alice = alice_group
-        .create_message(provider, &alice_signer, &message_alice)
+        .create_message(alice_provider, &alice_signer, &message_alice)
         .expect("An unexpected error occurred.");
+
+    // Test persistence after Alice creates message
+    alice_group
+        .ensure_persistence(alice_provider.storage())
+        .unwrap();
 
     let processed_message = bob_group
         .process_message(
-            provider,
+            bob_provider,
             mls_cipertext_alice.into_protocol_message().unwrap(),
         )
+        .unwrap();
+
+    // Test persistence after Bob processes Alice's message
+    bob_group
+        .ensure_persistence(bob_provider.storage())
         .unwrap();
 
     match processed_message.content() {
@@ -214,7 +228,7 @@ fn group_operations() {
 
     // === Bob updates and commits ===
     let (commit_message, welcome_option, _) = bob_group
-        .self_update(provider, &bob_signer, LeafNodeParameters::default())
+        .self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
         .expect("Error updating group")
         .into_contents();
 
@@ -231,17 +245,30 @@ fn group_operations() {
     assert!(welcome_option.is_none());
 
     bob_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(bob_provider)
         .expect("error merging commit");
 
+    // Test persistence after Bob merges pending commit
+    bob_group
+        .ensure_persistence(bob_provider.storage())
+        .unwrap();
+
     let processed_message = alice_group
-        .process_message(provider, commit_message.into_protocol_message().unwrap())
+        .process_message(
+            alice_provider,
+            commit_message.into_protocol_message().unwrap(),
+        )
         .unwrap();
     match processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             alice_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(alice_provider, *staged_commit)
                 .expect("error merging commit");
+
+            // Test persistence after Alice merges staged commit
+            alice_group
+                .ensure_persistence(alice_provider.storage())
+                .unwrap();
         }
         _ => panic!("Wrong content type"),
     }
@@ -254,7 +281,7 @@ fn group_operations() {
 
     // === Alice updates and commits ===
     let (commit_message, _, _) = alice_group
-        .self_update(provider, &alice_signer, LeafNodeParameters::default())
+        .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
         .expect("Error updating group")
         .into_contents();
 
@@ -270,18 +297,31 @@ fn group_operations() {
     assert!(commit.has_path());
 
     alice_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(alice_provider)
         .expect("error merging commit");
 
+    // Test persistence after Alice merges pending commit
+    alice_group
+        .ensure_persistence(alice_provider.storage())
+        .unwrap();
+
     let processed_message = bob_group
-        .process_message(provider, commit_message.into_protocol_message().unwrap())
+        .process_message(
+            bob_provider,
+            commit_message.into_protocol_message().unwrap(),
+        )
         .unwrap();
 
     match processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             bob_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(bob_provider, *staged_commit)
                 .expect("error merging commit");
+
+            // Test persistence after Bob merges staged commit
+            bob_group
+                .ensure_persistence(bob_provider.storage())
+                .unwrap();
         }
         _ => panic!("Wrong content type"),
     }
@@ -294,12 +334,12 @@ fn group_operations() {
 
     // === Bob updates and Alice commits ===
     let (bob_update_proposal, _) = bob_group
-        .propose_self_update(provider, &bob_signer, LeafNodeParameters::default())
+        .propose_self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
         .expect("Error proposing update");
 
     match alice_group
         .process_message(
-            provider,
+            alice_provider,
             bob_update_proposal.into_protocol_message().unwrap(),
         )
         .unwrap()
@@ -307,14 +347,14 @@ fn group_operations() {
     {
         ProcessedMessageContent::ProposalMessage(proposal) => {
             alice_group
-                .store_pending_proposal(provider.storage(), *proposal)
+                .store_pending_proposal(alice_provider.storage(), *proposal)
                 .unwrap();
         }
         _ => panic!("Wrong content type"),
     }
 
     let (commit_message, _, _) = alice_group
-        .commit_to_pending_proposals(provider, &alice_signer)
+        .commit_to_pending_proposals(alice_provider, &alice_signer)
         .unwrap();
 
     let commit = match &commit_message.body {
@@ -328,13 +368,16 @@ fn group_operations() {
     // Check that there is a path
     assert!(commit.has_path());
 
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
 
-    match bob_group.process_message(provider, commit_message.into_protocol_message().unwrap()) {
+    match bob_group.process_message(
+        bob_provider,
+        commit_message.into_protocol_message().unwrap(),
+    ) {
         Ok(processed_message) => match processed_message.into_content() {
             ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 bob_group
-                    .merge_staged_commit(provider, *staged_commit)
+                    .merge_staged_commit(bob_provider, *staged_commit)
                     .expect("error merging commit");
             }
             _ => panic!("Wrong content type"),
@@ -350,24 +393,37 @@ fn group_operations() {
 
     // === Bob adds Charlie ===
     let (_charlie_credential_with_key, charlie_kpb, charlie_signer, _charlie_sig_pk) =
-        setup_client("Charlie", ciphersuite, provider);
+        setup_client("Charlie", ciphersuite, charlie_provider);
 
     let (commit_message, welcome, _) = bob_group
         .add_members(
-            provider,
+            bob_provider,
             &bob_signer,
             core::slice::from_ref(charlie_kpb.key_package()),
         )
         .expect("Could not create add commit.");
 
-    bob_group.merge_pending_commit(provider).unwrap();
+    bob_group.merge_pending_commit(bob_provider).unwrap();
 
-    match alice_group.process_message(provider, commit_message.into_protocol_message().unwrap()) {
+    // Test persistence after Bob merges pending commit
+    bob_group
+        .ensure_persistence(bob_provider.storage())
+        .unwrap();
+
+    match alice_group.process_message(
+        alice_provider,
+        commit_message.into_protocol_message().unwrap(),
+    ) {
         Ok(processed_message) => match processed_message.into_content() {
             ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 alice_group
-                    .merge_staged_commit(provider, *staged_commit)
+                    .merge_staged_commit(alice_provider, *staged_commit)
                     .expect("error merging commit");
+
+                // Test persistence after Alice merges staged commit
+                alice_group
+                    .ensure_persistence(alice_provider.storage())
+                    .unwrap();
             }
             _ => panic!("Wrong content type"),
         },
@@ -380,14 +436,19 @@ fn group_operations() {
 
     let ratchet_tree = alice_group.export_ratchet_tree();
     let mut charlie_group = StagedWelcome::new_from_welcome(
-        provider,
+        charlie_provider,
         &config,
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
     .unwrap()
-    .into_group(provider)
+    .into_group(charlie_provider)
     .unwrap();
+
+    // Test persistence after Charlie joins group
+    charlie_group
+        .ensure_persistence(charlie_provider.storage())
+        .unwrap();
 
     // Make sure that all groups have the same public tree
     assert_eq!(
@@ -402,17 +463,27 @@ fn group_operations() {
     // === Charlie sends a message to the group ===
     let message_charlie = [1, 2, 3];
     let mls_ciphertext_charlie = charlie_group
-        .create_message(provider, &charlie_signer, &message_charlie)
+        .create_message(charlie_provider, &charlie_signer, &message_charlie)
         .expect("An unexpected error occurred.");
+
+    // Test persistence after Charlie creates message
+    charlie_group
+        .ensure_persistence(charlie_provider.storage())
+        .unwrap();
 
     let processed_message = alice_group
         .process_message(
-            provider,
+            alice_provider,
             mls_ciphertext_charlie
                 .clone()
                 .into_protocol_message()
                 .unwrap(),
         )
+        .unwrap();
+
+    // Test persistence after Alice processes Charlie's message
+    alice_group
+        .ensure_persistence(alice_provider.storage())
         .unwrap();
 
     assert!(matches!(
@@ -421,7 +492,7 @@ fn group_operations() {
 
     let processed_message = bob_group
         .process_message(
-            provider,
+            bob_provider,
             mls_ciphertext_charlie.into_protocol_message().unwrap(),
         )
         .unwrap();
@@ -432,7 +503,11 @@ fn group_operations() {
 
     // === Charlie updates and commits ===
     let (commit_message, _, _) = charlie_group
-        .self_update(provider, &charlie_signer, LeafNodeParameters::default())
+        .self_update(
+            charlie_provider,
+            &charlie_signer,
+            LeafNodeParameters::default(),
+        )
         .expect("Error updating group")
         .into_contents();
 
@@ -447,12 +522,12 @@ fn group_operations() {
     assert!(commit.has_path());
 
     charlie_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(charlie_provider)
         .expect("error merging commit");
 
     match alice_group
         .process_message(
-            provider,
+            alice_provider,
             commit_message.clone().into_protocol_message().unwrap(),
         )
         .unwrap()
@@ -460,20 +535,23 @@ fn group_operations() {
     {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             alice_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(alice_provider, *staged_commit)
                 .expect("error merging commit");
         }
         _ => panic!("Wrong content type"),
     };
 
     match bob_group
-        .process_message(provider, commit_message.into_protocol_message().unwrap())
+        .process_message(
+            bob_provider,
+            commit_message.into_protocol_message().unwrap(),
+        )
         .unwrap()
         .into_content()
     {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             bob_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(bob_provider, *staged_commit)
                 .expect("error merging commit");
         }
         _ => panic!("Wrong content type"),
@@ -491,7 +569,11 @@ fn group_operations() {
 
     // === Charlie removes Bob ===
     let (commit_message, _, _) = charlie_group
-        .remove_members(provider, &charlie_signer, &[bob_group.own_leaf_index()])
+        .remove_members(
+            charlie_provider,
+            &charlie_signer,
+            &[bob_group.own_leaf_index()],
+        )
         .expect("Could not create remove commit.");
 
     let commit = match &commit_message.body {
@@ -505,12 +587,12 @@ fn group_operations() {
     assert!(commit.has_path());
 
     charlie_group
-        .merge_pending_commit(provider)
+        .merge_pending_commit(charlie_provider)
         .expect("error merging commit");
 
     match alice_group
         .process_message(
-            provider,
+            alice_provider,
             commit_message.clone().into_protocol_message().unwrap(),
         )
         .unwrap()
@@ -518,20 +600,23 @@ fn group_operations() {
     {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             alice_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(alice_provider, *staged_commit)
                 .expect("error merging commit");
         }
         _ => panic!("Wrong content type"),
     };
 
     match bob_group
-        .process_message(provider, commit_message.into_protocol_message().unwrap())
+        .process_message(
+            bob_provider,
+            commit_message.into_protocol_message().unwrap(),
+        )
         .unwrap()
         .into_content()
     {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             bob_group
-                .merge_staged_commit(provider, *staged_commit)
+                .merge_staged_commit(bob_provider, *staged_commit)
                 .expect("error merging commit");
         }
         _ => panic!("Wrong content type"),
@@ -555,46 +640,46 @@ fn group_operations() {
     let exporter_length: usize = u16::MAX.into();
     let exporter_length = exporter_length + 1;
     let alice_exporter =
-        alice_group.export_secret(provider.crypto(), "export test", &[], exporter_length);
+        alice_group.export_secret(alice_provider.crypto(), "export test", &[], exporter_length);
     assert!(alice_exporter.is_err())
 }
 
 #[openmls_test::openmls_test]
 fn decrypt_after_leaf_index_reuse() {
-    let alice_provider = Provider::default();
-    let bob_provider = Provider::default();
-    let charlie_provider = Provider::default();
-    let dora_provider = Provider::default();
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+    let dora_provider = &Provider::default();
     // Create credentials and keys
     let (alice_credential, alice_signature_keys) = crate::credentials::test_utils::new_credential(
-        &alice_provider,
+        alice_provider,
         b"Alice",
         ciphersuite.signature_algorithm(),
     );
     let (bob_credential, bob_signature_keys) = crate::credentials::test_utils::new_credential(
-        &bob_provider,
+        bob_provider,
         b"Bob",
         ciphersuite.signature_algorithm(),
     );
     let (charlie_credential, charlie_signature_keys) =
         crate::credentials::test_utils::new_credential(
-            &charlie_provider,
+            charlie_provider,
             b"charlie",
             ciphersuite.signature_algorithm(),
         );
     let (dora_credential, dora_signature_keys) = crate::credentials::test_utils::new_credential(
-        &dora_provider,
+        dora_provider,
         b"dora",
         ciphersuite.signature_algorithm(),
     );
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder()
+    let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .max_past_epochs(5)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
-            &alice_provider,
+            alice_provider,
             &alice_signature_keys,
             alice_credential.clone(),
         )
@@ -602,7 +687,7 @@ fn decrypt_after_leaf_index_reuse() {
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::generate(
-        &bob_provider,
+        bob_provider,
         &bob_signature_keys,
         ciphersuite,
         bob_credential.clone(),
@@ -611,7 +696,7 @@ fn decrypt_after_leaf_index_reuse() {
 
     // Generate KeyPackages
     let charlie_key_package_bundle = KeyPackageBundle::generate(
-        &charlie_provider,
+        charlie_provider,
         &charlie_signature_keys,
         ciphersuite,
         charlie_credential.clone(),
@@ -620,7 +705,7 @@ fn decrypt_after_leaf_index_reuse() {
 
     // Generate KeyPackages
     let dora_key_package_bundle = KeyPackageBundle::generate(
-        &dora_provider,
+        dora_provider,
         &dora_signature_keys,
         ciphersuite,
         dora_credential.clone(),
@@ -628,54 +713,54 @@ fn decrypt_after_leaf_index_reuse() {
     let dora_key_package = dora_key_package_bundle.key_package();
 
     // Alice adds Bob
-    let (_commit, welcome, _group_info_option) = group_alice
+    let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
-            &alice_provider,
+            alice_provider,
             &alice_signature_keys,
             &[bob_key_package.clone(), charlie_key_package.clone()],
         )
         .expect("Could not create proposal.");
 
-    group_alice
-        .merge_pending_commit(&alice_provider)
+    alice_group
+        .merge_pending_commit(alice_provider)
         .expect("error merging pending commit");
 
     let welcome = welcome.into_welcome().unwrap();
 
-    let mut group_bob = StagedWelcome::new_from_welcome(
-        &bob_provider,
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
         &MlsGroupJoinConfig::builder()
             .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
             .max_past_epochs(5)
             .build(),
         welcome.clone(),
-        Some(group_alice.export_ratchet_tree().into()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
-    .and_then(|staged_join| staged_join.into_group(&bob_provider))
+    .and_then(|staged_join| staged_join.into_group(bob_provider))
     .expect("error creating bob's group from welcome");
 
     let mut group_charlie = StagedWelcome::new_from_welcome(
-        &charlie_provider,
+        charlie_provider,
         &MlsGroupJoinConfig::builder()
             .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
             .max_past_epochs(5)
             .build(),
         welcome,
-        Some(group_alice.export_ratchet_tree().into()),
+        Some(alice_group.export_ratchet_tree().into()),
     )
-    .and_then(|staged_join| staged_join.into_group(&charlie_provider))
+    .and_then(|staged_join| staged_join.into_group(charlie_provider))
     .expect("error creating charlie's group from welcome");
 
     let charlie_msg = group_charlie
         .create_message(
-            &charlie_provider,
+            charlie_provider,
             &charlie_signature_keys,
             b"this is a test message",
         )
         .unwrap();
 
     // replace charlie with dora
-    let commit_bundle = group_alice
+    let commit_bundle = alice_group
         .commit_builder()
         .propose_removals(Some(group_charlie.own_leaf_index()))
         .propose_adds(Some(dora_key_package.clone()))
@@ -688,14 +773,14 @@ fn decrypt_after_leaf_index_reuse() {
             |_| true,
         )
         .unwrap()
-        .stage_commit(&alice_provider)
+        .stage_commit(alice_provider)
         .unwrap();
 
-    group_alice.merge_pending_commit(&alice_provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
 
-    let bob_incoming_commit = group_bob
+    let bob_incoming_commit = bob_group
         .process_message(
-            &bob_provider,
+            bob_provider,
             commit_bundle
                 .commit()
                 .clone()
@@ -705,32 +790,39 @@ fn decrypt_after_leaf_index_reuse() {
         .unwrap();
 
     match bob_incoming_commit.into_content() {
-        ProcessedMessageContent::StagedCommitMessage(staged_commit) => group_bob
-            .merge_staged_commit(&bob_provider, *staged_commit)
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => bob_group
+            .merge_staged_commit(bob_provider, *staged_commit)
             .unwrap(),
         _ => unreachable!(),
     };
 
     let charlie_protocol_message = charlie_msg.into_protocol_message().unwrap();
 
-    let _bob_incoming_appmsg = group_bob
-        .process_message(&bob_provider, charlie_protocol_message)
+    let _bob_incoming_appmsg = bob_group
+        .process_message(bob_provider, charlie_protocol_message)
         .unwrap();
 }
 
 #[openmls_test::openmls_test]
 fn create_group_info_flag() {
+    let alice_provider = &Provider::default();
+
     // The `use_ratchet_tree_extension` flag is set to `false` by default.
     let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
-        setup_alice_group(ciphersuite, provider);
+        setup_alice_group(ciphersuite, alice_provider);
 
     let commit_bundle = alice_group
         .commit_builder()
-        .load_psks(provider.storage())
+        .load_psks(alice_provider.storage())
         .unwrap()
-        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            |_| true,
+        )
         .unwrap()
-        .stage_commit(provider)
+        .stage_commit(alice_provider)
         .unwrap();
 
     assert!(commit_bundle.group_info().is_none());
@@ -739,17 +831,22 @@ fn create_group_info_flag() {
     let commit_bundle = alice_group
         .commit_builder()
         .create_group_info(true)
-        .load_psks(provider.storage())
+        .load_psks(alice_provider.storage())
         .unwrap()
-        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            |_| true,
+        )
         .unwrap()
-        .stage_commit(provider)
+        .stage_commit(alice_provider)
         .unwrap();
 
     let group_info = commit_bundle.into_group_info_msg().unwrap();
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
     let exported_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_signer, false)
+        .export_group_info(alice_provider.crypto(), &alice_signer, false)
         .unwrap();
     assert_eq!(group_info, exported_group_info);
 }

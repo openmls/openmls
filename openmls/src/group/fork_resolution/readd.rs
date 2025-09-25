@@ -213,7 +213,7 @@ mod test {
         let welcome = welcome.into_welcome().unwrap();
         let ratchet_tree = alice_group.export_ratchet_tree();
 
-        let new_group_bob = StagedWelcome::new_from_welcome(
+        let new_bob_group = StagedWelcome::new_from_welcome(
             bob_provider,
             alice_group.configuration(),
             welcome.clone(),
@@ -237,7 +237,7 @@ mod test {
             .export_secret(alice_provider.crypto(), "comparison", b"", 32)
             .unwrap();
 
-        let bob_comparison = new_group_bob
+        let bob_comparison = new_bob_group
             .export_secret(bob_provider.crypto(), "comparison", b"", 32)
             .unwrap();
 

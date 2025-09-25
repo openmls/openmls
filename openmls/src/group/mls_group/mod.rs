@@ -829,16 +829,83 @@ impl MlsGroup {
         self.public_group.set_group_context(group_context)
     }
 
-    #[cfg(test)]
-    pub(crate) fn ensure_persistence(
-        &self,
-        storage: &impl StorageProvider,
-    ) -> Result<(), LibraryError> {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn ensure_persistence(&self, storage: &impl StorageProvider) -> Result<(), LibraryError> {
         let loaded = MlsGroup::load(storage, self.group_id())
             .map_err(|_| LibraryError::custom("Failed to load group from storage"))?;
         let other = loaded.ok_or_else(|| LibraryError::custom("Group not found in storage"))?;
 
         if self != &other {
+            let mut diagnostics = Vec::new();
+
+            if self.mls_group_config != other.mls_group_config {
+                diagnostics.push(format!(
+                    "mls_group_config:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.mls_group_config, other.mls_group_config
+                ));
+            }
+            if self.public_group != other.public_group {
+                diagnostics.push(format!(
+                    "public_group:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.public_group, other.public_group
+                ));
+            }
+            if self.group_epoch_secrets != other.group_epoch_secrets {
+                diagnostics.push(format!(
+                    "group_epoch_secrets:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.group_epoch_secrets, other.group_epoch_secrets
+                ));
+            }
+            if self.own_leaf_index != other.own_leaf_index {
+                diagnostics.push(format!(
+                    "own_leaf_index:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.own_leaf_index, other.own_leaf_index
+                ));
+            }
+            if self.message_secrets_store != other.message_secrets_store {
+                diagnostics.push(format!(
+                    "message_secrets_store:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.message_secrets_store, other.message_secrets_store
+                ));
+            }
+            if self.resumption_psk_store != other.resumption_psk_store {
+                diagnostics.push(format!(
+                    "resumption_psk_store:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.resumption_psk_store, other.resumption_psk_store
+                ));
+            }
+            if self.own_leaf_nodes != other.own_leaf_nodes {
+                diagnostics.push(format!(
+                    "own_leaf_nodes:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.own_leaf_nodes, other.own_leaf_nodes
+                ));
+            }
+            if self.aad != other.aad {
+                diagnostics.push(format!(
+                    "aad:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.aad, other.aad
+                ));
+            }
+            if self.group_state != other.group_state {
+                diagnostics.push(format!(
+                    "group_state:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.group_state, other.group_state
+                ));
+            }
+            #[cfg(feature = "extensions-draft-08")]
+            if self.application_export_tree != other.application_export_tree {
+                diagnostics.push(format!(
+                    "application_export_tree:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.application_export_tree, other.application_export_tree
+                ));
+            }
+
+            log::error!(
+                "Loaded group does not match current group! Differing fields ({}):\n\n{}",
+                diagnostics.len(),
+                diagnostics.join("\n\n")
+            );
+
             return Err(LibraryError::custom(
                 "Loaded group does not match current group",
             ));

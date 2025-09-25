@@ -123,5 +123,6 @@ impl PartialEq for MessageSecrets {
         self.sender_data_secret == other.sender_data_secret
             && self.membership_key == other.membership_key
             && self.confirmation_key == other.confirmation_key
+            && self.secret_tree == other.secret_tree
     }
 }

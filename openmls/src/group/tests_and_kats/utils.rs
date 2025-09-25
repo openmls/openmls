@@ -227,7 +227,8 @@ fn test_random() {
 }
 
 #[openmls_test::openmls_test]
-fn test_setup(provider: &impl crate::storage::OpenMlsProvider) {
+fn test_setup() {
+    let provider = &Provider::default();
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
         ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519],

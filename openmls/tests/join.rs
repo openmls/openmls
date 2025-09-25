@@ -124,6 +124,6 @@ fn join_tree_with_outdated_leafnodes() {
     .skip_lifetime_validation()
     .build()
     .expect("Failed to create group due to an invalid lifetime in a leaf node in the tree.")
-    .into_group(provider)
+    .into_group(&charlie_party.provider)
     .unwrap();
 }

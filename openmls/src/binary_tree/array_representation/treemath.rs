@@ -54,7 +54,7 @@ impl LeafNodeIndex {
 
     /// Warning: Only use when the node index represents a leaf node
     fn from_tree_index(node_index: u32) -> Self {
-        debug_assert!(node_index % 2 == 0);
+        debug_assert!(node_index.is_multiple_of(2));
         LeafNodeIndex(node_index / 2)
     }
 }
@@ -129,7 +129,7 @@ pub enum TreeNodeIndex {
 impl TreeNodeIndex {
     /// Create a new `TreeNodeIndex` from a `u32`.
     fn new(index: u32) -> Self {
-        if index % 2 == 0 {
+        if index.is_multiple_of(2) {
             TreeNodeIndex::Leaf(LeafNodeIndex::from_tree_index(index))
         } else {
             TreeNodeIndex::Parent(ParentNodeIndex::from_tree_index(index))
