@@ -2,7 +2,7 @@
 
 Credential validation is a process that allows a member to verify the validity
 of the credentials of other members in the group. The process is described in
-detail in the [MLS protocol specification](https://www.rfc-editor.org/rfc/rfc9420.html#name-credential-validation).
+detail in the [MLS protocol specification](https://datatracker.ietf.org/doc/html/rfc9420#name-credential-validation).
 
 In practice, the application should check the validity of the credentials of
 other members in two instances:

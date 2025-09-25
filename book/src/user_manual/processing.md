@@ -30,7 +30,7 @@ extract the messages from an `MlsMessageIn`:
 `MlsGroup.process_message()` accepts either a `ProtocolMessage`, a
 `PrivateMessageIn`, or a `PublicMessageIn` and processes the message.
 `ProtocolMessage.group_id()` exposes the group ID that can help the application
-find the right group. 
+find the right group.
 
 If the message was encrypted (i.e. if it was a `PrivateMessageIn`), it will be
 decrypted automatically. The processing performs all syntactic and semantic
