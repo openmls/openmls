@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - [#1846](https://github.com/openmls/openmls/pull/1846): Processing messages in `MlsGroup` and `PublicGroup` now returns two different error types: `ProcessMessageError` and `PublicProcessMessageError`. `ProcessMessageError` now includes a storage error variant and `PublicProcessMessageError` no longer includes the `GroupStateError` variant.
+- [#1851](https://github.com/openmls/openmls/pull/1851): The GroupInfos in Welcome messages no longer contain an ExternalPub extension. This extension is generally useless for new group members, as its only purpose is to facilitate external joins.
 
 ### Deprecated
 - [#1801](https://github.com/openmls/openmls/pull/1801): Deprecated `MlsGroup::join_by_external_commit` in favor of `MlsGroup::external_commit_builder`.
