@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["OpenMLS Authors"]
 edition = "2021"
 description = "Types to interact with the OpenMLS DS."
+publish = false
 
 [dependencies]
 openmls = { workspace = true, features = ["test-utils"] }
