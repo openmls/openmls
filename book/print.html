@@ -2220,7 +2220,7 @@ The entries in the CHANGELOG file should follow the <a href="https://keepachange
 <h2 id="pre-release-strategy"><a class="header" href="#pre-release-strategy">Pre-release strategy</a></h2>
 <p>Before releasing a minor or major version of the OpenMLS crate, a pre-release version
 must be published to crates.io.
-Pre-release versions are defined by appending a hyphen, and a series of dot-separated identifiers, i.e., <code>-pre.x</code> where <code>x</code> gets counted up starting at 1.
+Pre-release versions are defined by appending a hyphen, and a series of dot-separated identifiers, i.e., <code>-rc.x</code> where <code>x</code> gets counted up starting at 1.
 Pre-releases must be tagged but don't require release notes or other documentation.
 It is also sufficient to tag only the most high-level crate being published.</p>
 <hr />
@@ -2270,9 +2270,9 @@ If this is a minor or major release, has a pre-release version been published at
 </ul>
 </li>
 <li><input disabled="" type="checkbox"/>
-Describe the release in the CHANGELOG.</li>
+Describe the release in the CHANGELOG.md file of each crate.</li>
 <li><input disabled="" type="checkbox"/>
-Create and publish a git tag for each crate, e.g. <code>openmls/v0.4.0-pre.1</code>.</li>
+Create and publish a git tag for each crate, e.g. <code>openmls/v0.4.0-rc.1</code>.</li>
 <li><input disabled="" type="checkbox"/>
 Create and publish release notes on Github.</li>
 <li><input disabled="" type="checkbox"/>
