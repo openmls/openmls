@@ -21,7 +21,7 @@ resolver = "2"
 [workspace.dependencies]
 tls_codec = { version = "0.4.2", features = ["derive", "serde", "mls"] }
 
-openmls = { version = "0.7.0", path = "openmls" }
+openmls = { version = "0.7.1-rc.1", path = "openmls" }
 
 openmls_traits = { version = "0.4.1-rc.1", path = "traits" }
 openmls_test = { version = "0.2.1-rc.1", path = "openmls_test" }
