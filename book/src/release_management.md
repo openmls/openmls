@@ -70,7 +70,7 @@ The crates must be published in the order below.
 - [ ] If this is a minor or major release, has a pre-release version been published at least a week before the release?
   - If not, first do so and push the release one week.
 - [ ] Describe the release in the CHANGELOG.md file of each crate.
-- [ ] Create and publish a git tag for each crate, e.g. `openmls/v0.4.0-rc.1`.
+- [ ] Create and publish a git tag for each crate, e.g. `openmls/v0.4.0-rc.99`.
 - [ ] Create and publish release notes on Github.
 - [ ] Publish the crates to crates.io
 
