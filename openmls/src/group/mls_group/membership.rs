@@ -11,8 +11,12 @@ use super::{
     *,
 };
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex, key_packages::KeyPackage,
-    messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex,
+    group::{ReAddMembersError, WelcomeCommitMessages},
+    key_packages::KeyPackage,
+    messages::group_info::GroupInfo,
+    storage::OpenMlsProvider,
+    treesync::LeafNode,
 };
 
 impl MlsGroup {
@@ -44,6 +48,94 @@ impl MlsGroup {
         AddMembersError<Provider::StorageError>,
     > {
         self.add_members_internal(provider, signer, key_packages, true)
+    }
+
+    /// Re-add members.
+    ///
+    /// If there are issues with a set of members and they are suspected to be
+    /// forked, this functions allows to remove and re-add them.
+    /// This is a convenience function that first removes, and then re-adds the
+    /// list of provided users.
+    ///
+    /// Note that this functions _does not_ enforce that the removed `members`
+    /// and new members in the `key_packages` correspond.
+    ///
+    /// For the best performance it is important to sort the key packages in the
+    /// order they appear in the tree (left to right). If `sort` is set to
+    /// `true`, this function sorts the indices internally, based on the
+    /// credential. Note that this only works if the credential doesn't change
+    /// and the credential allows uniquely identifying a leaf node.
+    pub fn readd_members<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        members: &[LeafNodeIndex],
+        key_packages: &[KeyPackage],
+        sort: bool,
+    ) -> Result<WelcomeCommitMessages, ReAddMembersError<Provider::StorageError>> {
+        self.is_operational()?;
+
+        if members.is_empty() {
+            return Err(EmptyInputError::RemoveMembers.into());
+        }
+
+        if key_packages.is_empty() {
+            return Err(EmptyInputError::AddMembers.into());
+        }
+
+        let key_packages = if sort {
+            // Sort the key packages to get the order from left to right.
+            // This reduces churn by putting everyone back into their place.
+            // This is not the most efficient, but we don't expect these lists
+            // to be too long.
+            let member_credentials_opt = members
+                .iter()
+                .map(|&leaf_index| self.member(leaf_index).map(|c| (leaf_index, c)));
+            let member_credentials = member_credentials_opt.clone().flatten();
+
+            if member_credentials_opt.len() != member_credentials.clone().count() {
+                // We couldn't find an index. The remove is not valid.
+                return Err(ReAddMembersError::InvalidInput);
+            }
+
+            // Get leaf indices for all key packages.
+            let kp_indices = key_packages.iter().cloned().map(|kp| {
+                self.member_leaf_index(kp.leaf_node().credential())
+                    .map(|i| (i, kp))
+            });
+            let mut indices_flat: Vec<_> = kp_indices.clone().flatten().collect();
+
+            if kp_indices.len() != indices_flat.len() {
+                // We couldn't find a credential. The re-add is not valid.
+                return Err(ReAddMembersError::InvalidInput);
+            }
+
+            // Sort the key packages by index.
+            indices_flat.sort_by(|(ai, _), (bi, _)| ai.cmp(bi));
+            indices_flat
+                .into_iter()
+                .map(|(_, kp)| kp)
+                .collect::<Vec<_>>()
+        } else {
+            key_packages.to_vec()
+        };
+
+        let bundle = self
+            .commit_builder()
+            .propose_removals(members.iter().cloned())
+            .propose_adds(key_packages.into_iter())
+            .load_psks(provider.storage())?
+            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .stage_commit(provider)?;
+
+        provider
+            .storage()
+            .write_group_state(self.group_id(), &self.group_state)
+            .map_err(ReAddMembersError::StorageError)?;
+
+        self.reset_aad();
+
+        Ok(bundle.try_into()?)
     }
 
     /// Adds members to the group.
@@ -263,6 +355,14 @@ impl MlsGroup {
     /// Returns a list of [`Member`]s in the group.
     pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
         self.public_group().members()
+    }
+
+    /// Returns the [`LeafNodeIndex`] of a member corresponding to the given
+    /// credential. Returns `None` if the member can not be found in this group.
+    pub fn member_leaf_index(&self, credential: &Credential) -> Option<LeafNodeIndex> {
+        self.members()
+            .find(|m| &m.credential == credential)
+            .map(|m| m.index)
     }
 
     /// Returns the [`Credential`] of a member corresponding to the given
