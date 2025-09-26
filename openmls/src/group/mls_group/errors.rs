@@ -187,6 +187,42 @@ pub enum AddMembersError<StorageError> {
     StorageError(StorageError),
 }
 
+/// Add members error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ReAddMembersError<StorageError> {
+    /// Unable to map the key packages to the given leaf indices.
+    #[error("Unable to map the key packages to the given leaf indices.")]
+    InvalidInput,
+
+    /// See [`EmptyInputError`] for more details.
+    #[error(transparent)]
+    EmptyInput(#[from] EmptyInputError),
+
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+
+    /// The member that should be removed can not be found.
+    #[error("The member that should be removed can not be found.")]
+    UnknownMember,
+
+    /// Error writing to storage
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
+
+    /// See [`CommitBuilderStageError`] for more details.
+    #[error(transparent)]
+    CommitBuilderStageError(#[from] CommitBuilderStageError<StorageError>),
+
+    /// See [`CreateCommitError`] for more details.
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError),
+}
+
 /// Propose add members error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ProposeAddMemberError<StorageError> {
