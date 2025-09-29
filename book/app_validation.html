@@ -185,7 +185,7 @@
 <blockquote>
 <p>The application using MLS is responsible for specifying which identifiers
 it finds acceptable for each member in a group. In other words, following
-the model that [<a href="https://www.rfc-editor.org/rfc/rfc6125.html">RFC6125</a>] describes for TLS, the application maintains a list
+the model that <a href="https://www.rfc-editor.org/rfc/rfc6125.html">RFC6125</a> describes for TLS, the application maintains a list
 of "reference identifiers" for the members of a group, and the credentials
 provide "presented identifiers". A member of a group is authenticated by first
 validating that the member's credential legitimately represents some presented
@@ -201,7 +201,7 @@ in the new credential is valid as a successor to the set of presented identifier
 in the old credential, according to the application's policy.</p>
 <p>-- <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-5.3.1-5">RFC9420, Section 5.3.1</a></p>
 </blockquote>
-<h3 id="application-id-is-not-authenticed-by-as"><a class="header" href="#application-id-is-not-authenticed-by-as">Application ID is Not Authenticed by AS</a></h3>
+<h3 id="application-id-is-not-authenticated-by-as"><a class="header" href="#application-id-is-not-authenticated-by-as">Application ID is Not Authenticated by AS</a></h3>
 <blockquote>
 <p>However, applications MUST NOT rely on the data in an application_id extension
 as if it were authenticated by the Authentication Service, and SHOULD gracefully
@@ -215,7 +215,7 @@ handle cases where the identifier presented is not unique.</p>
 LeafNode, and reject any LeafNode where the total lifetime is longer than this
 duration. In order to avoid disagreements about whether a LeafNode has a valid
 lifetime, the clients in a group SHOULD maintain time synchronization (e.g.,
-using the Network Time Protocol [<a href="https://www.rfc-editor.org/rfc/rfc5905.html">RFC5905</a>]).</p>
+using the Network Time Protocol <a href="https://www.rfc-editor.org/rfc/rfc5905.html">RFC5905</a>).</p>
 <p>-- <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-7.2-10">RFC9420, Section 7.2</a></p>
 </blockquote>
 <h2 id="privatemessage-validation"><a class="header" href="#privatemessage-validation">PrivateMessage Validation</a></h2>
@@ -224,7 +224,7 @@ using the Network Time Protocol [<a href="https://www.rfc-editor.org/rfc/rfc5905
 <p>It is up to the application to decide what authenticated_data to provide and
 how much padding to add to a given message (if any). The overall size of the
 AAD and ciphertext MUST fit within the limits established for the group's AEAD
-algorithm in [<a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-aead-limits-08">CFRG-AEAD-LIMITS</a>].</p>
+algorithm in <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-aead-limits-08">CFRG-AEAD-LIMITS</a>.</p>
 <p>-- <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-6.3.1-11">RFC9420, Section 6.3.1</a></p>
 </blockquote>
 <p>Therefore, the application must also validate whether the AAD adheres to the

@@ -233,7 +233,7 @@ details.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="user-manual"><a class="header" href="#user-manual">User manual</a></h1>
 <p>The user manual describes how to use the different parts of the OpenMLS API.</p>
 <h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
-<p>Most operations in OpenMLS require a <code>provider</code> object that provides all required cryptographic algorithms via the <a href="https://docs.rs/openmls/latest/openmls/prelude/trait.OpenMlsCryptoProvider.html"><code>OpenMlsCryptoProvider</code></a> trait.
+<p>Most operations in OpenMLS require a <code>provider</code> object that provides all required cryptographic algorithms via the [<code>OpenMlsProvider</code>] trait.
 Currently, there are two implementations available:</p>
 <ul>
 <li>one through the <a href="https://crates.io/crates/openmls_rust_crypto">openmls_rust_crypto</a> crate.</li>
@@ -261,7 +261,7 @@ Thus, to create a fresh <code>Credential</code>, the following inputs are requir
 </ul>
 <pre><code class="language-rust no_run noplayground">    let credential = BasicCredential::new(identity);</code></pre>
 <p>After creating the credential bundle, clients should create keys for it.
-OpenMLS provides a simple implementation of <a href="https://github.com/openmls/openmls/tree/main/basic_credential"><code>BasicCredential</code></a> for tests and to demonstrate how to use credentials.</p>
+OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_credential">simple implementation of <code>BasicCredential</code></a> for tests and to demonstrate how to use credentials.</p>
 <pre><code class="language-rust no_run noplayground">    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.storage()).unwrap();</code></pre>
 <p>All functions and structs related to credentials can be found in the <a href="https://docs.rs/openmls/latest/openmls/credentials/index.html"><code>credentials</code></a> module.</p>
@@ -290,7 +290,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
         .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()</code></pre>
 <p>This will also store the private key for the key package in the key store.</p>
-<p>All functions and structs related to key packages can be found in the <a href="https://docs.rs/crate/openmls/latest/key_packages/index.html"><code>key_packages</code></a> module.</p>
+<p>All functions and structs related to key packages can be found in the <a href="https://docs.rs/openmls/latest/openmls/key_packages/index.html"><code>key_packages</code></a> module.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="group-configuration"><a class="header" href="#group-configuration">Group configuration</a></h1>
 <p>Two very similar structs can help configure groups upon their creation: <code>MlsGroupJoinConfig</code> and <code>MlsGroupCreateConfig</code>.</p>
 <p><code>MlsGroupJoinConfig</code> contains the following runtime-relevant configuration options for an <code>MlsGroup</code> and can be set on a per-client basis when a group is joined.</p>
@@ -352,7 +352,7 @@ OpenMLS provides a simple implementation of <a href="https://github.com/openmls/
         .use_ratchet_tree_extension(true)
         .build();</code></pre>
 <h2 id="unknown-extensions"><a class="header" href="#unknown-extensions">Unknown extensions</a></h2>
-<p>Some extensions carry data, but don't alter the behaviour of the protocol (e.g.  the application_id extension). OpenMLS allows the use of arbitrary such extensions in the group context, key packages and leaf nodes. Such extensions can be instantiated and retrieved through the use of the <code>UnknownExtension</code> struct and the <code>ExtensionType::Unknown</code> extension type. Such "unknown" extensions are handled transparently by OpenMLS, but can be used by the application, e.g. to have a group agree on pieces of data.</p>
+<p>Some extensions carry data, but don't alter the behaviour of the protocol (e.g. the application_id extension). OpenMLS allows the use of arbitrary such extensions in the group context, key packages and leaf nodes. Such extensions can be instantiated and retrieved through the use of the <code>UnknownExtension</code> struct and the <code>ExtensionType::Unknown</code> extension type. Such "unknown" extensions are handled transparently by OpenMLS, but can be used by the application, e.g. to have a group agree on pieces of data.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="creating-groups"><a class="header" href="#creating-groups">Creating groups</a></h1>
 <p>There are two ways to create a group: Either by building an <code>MlsGroup</code> directly, or by using an <code>MlsGroupCreateConfig</code>. The former is slightly simpler, while the latter allows the creating of multiple groups using the same configuration. See <a href="user_manual/./group_config.html">Group configuration</a> for more details on group parameters.</p>
 <p>In addition to the group configuration, the client should define all supported and required extensions for the group. The negotiation mechanism for extension in MLS consists in setting an initial list of extensions at group creation time and choosing key packages of subsequent new members accordingly.</p>
@@ -424,9 +424,9 @@ Should the user want to add further extensions, they can use the <code>with_grou
 <div style="break-before: page; page-break-before: always;"></div><h1 id="join-a-group-from-a-welcome-message"><a class="header" href="#join-a-group-from-a-welcome-message">Join a group from a Welcome message</a></h1>
 <p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated from
 the <code>MlsMessageIn</code> message containing the <code>Welcome</code> and an <code>MlsGroupJoinConfig</code>
-(see <a href="user_manual/./group_config.html">Group configuration</a> for more details).  This is a
+(see <a href="user_manual/./group_config.html">Group configuration</a> for more details). This is a
 two-step process: a <code>StagedWelcome</code> is constructed from the <code>Welcome</code>
-and can then be turned into an <code>MlsGroup</code>.  If the group configuration does not
+and can then be turned into an <code>MlsGroup</code>. If the group configuration does not
 use the ratchet tree extension, the ratchet tree needs to be provided.</p>
 <pre><code class="language-rust no_run noplayground">    let staged_join =
         StagedWelcome::new_from_welcome(bob_provider, &amp;mls_group_config, welcome, None)
@@ -437,7 +437,7 @@ use the ratchet tree extension, the ratchet tree needs to be provided.</p>
 <p>The reason for this two-phase process is to allow the recipient of a <code>Welcome</code>
 to inspect the message, e.g. to determine the identity of the sender.</p>
 <p>Pay attention not to forward a Welcome message to a client before its associated
-commit has been accepted by the Delivery Service.  Otherwise, you would end up
+commit has been accepted by the Delivery Service. Otherwise, you would end up
 with an invalid MLS group instance.</p>
 <h1 id="examining-a-welcome-message"><a class="header" href="#examining-a-welcome-message">Examining a welcome message</a></h1>
 <p>When a client is invited to join a group, the application can allow the client to decide whether or not to join the group. In order to determine whether to join the group, the application can inspect information provided in the welcome message, such as who invited them, who else is in the group, what extensions are available, and more. If the application decides not to join the group, the welcome must be discarded to ensure that the local state is cleaned up.</p>
@@ -852,7 +852,7 @@ Even though the member updates its own leaf node only in this operation, the Com
 <div style="break-before: page; page-break-before: always;"></div><h1 id="using-additional-authenticated-data-aad"><a class="header" href="#using-additional-authenticated-data-aad">Using Additional Authenticated Data (AAD)</a></h1>
 <p>The Additional Authenticated Data (AAD) is a byte sequence that can be included in both private and public messages. By design, it is always authenticated (signed) but never encrypted. Its purpose is to contain data that can be inspected but not changed while a message is in transit.</p>
 <h2 id="setting-the-aad"><a class="header" href="#setting-the-aad">Setting the AAD</a></h2>
-<p>Members can set the AAD by calling the  <code>.set_aad()</code> function. The AAD will remain set until the next API call that successfully generates an <code>MlsMessageOut</code>. Until then, the AAD can be inspected with the <code>.aad()</code> function.</p>
+<p>Members can set the AAD by calling the <code>.set_aad()</code> function. The AAD will remain set until the next API call that successfully generates an <code>MlsMessageOut</code>. Until then, the AAD can be inspected with the <code>.aad()</code> function.</p>
 <pre><code class="language-rust no_run noplayground">    alice_group.set_aad(b"Additional Authenticated Data".to_vec());
 
     assert_eq!(alice_group.aad(), b"Additional Authenticated Data");</code></pre>
@@ -1169,7 +1169,7 @@ must have been written to the provider previously.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="credential-validation"><a class="header" href="#credential-validation">Credential validation</a></h1>
 <p>Credential validation is a process that allows a member to verify the validity
 of the credentials of other members in the group. The process is described in
-detail in the <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-credential-validation">MLS protocol specification</a>.</p>
+detail in the <a href="https://datatracker.ietf.org/doc/html/rfc9420#name-credential-validation">MLS protocol specification</a>.</p>
 <p>In practice, the application should check the validity of the credentials of
 other members in two instances:</p>
 <ul>
@@ -1990,7 +1990,7 @@ Further syntax checks are applied for the latter case once the message is decryp
 <blockquote>
 <p>The application using MLS is responsible for specifying which identifiers
 it finds acceptable for each member in a group. In other words, following
-the model that [<a href="https://www.rfc-editor.org/rfc/rfc6125.html">RFC6125</a>] describes for TLS, the application maintains a list
+the model that <a href="https://www.rfc-editor.org/rfc/rfc6125.html">RFC6125</a> describes for TLS, the application maintains a list
 of "reference identifiers" for the members of a group, and the credentials
 provide "presented identifiers". A member of a group is authenticated by first
 validating that the member's credential legitimately represents some presented
@@ -2006,7 +2006,7 @@ in the new credential is valid as a successor to the set of presented identifier
 in the old credential, according to the application's policy.</p>
 <p>-- <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-5.3.1-5">RFC9420, Section 5.3.1</a></p>
 </blockquote>
-<h3 id="application-id-is-not-authenticed-by-as"><a class="header" href="#application-id-is-not-authenticed-by-as">Application ID is Not Authenticed by AS</a></h3>
+<h3 id="application-id-is-not-authenticated-by-as"><a class="header" href="#application-id-is-not-authenticated-by-as">Application ID is Not Authenticated by AS</a></h3>
 <blockquote>
 <p>However, applications MUST NOT rely on the data in an application_id extension
 as if it were authenticated by the Authentication Service, and SHOULD gracefully
@@ -2020,7 +2020,7 @@ handle cases where the identifier presented is not unique.</p>
 LeafNode, and reject any LeafNode where the total lifetime is longer than this
 duration. In order to avoid disagreements about whether a LeafNode has a valid
 lifetime, the clients in a group SHOULD maintain time synchronization (e.g.,
-using the Network Time Protocol [<a href="https://www.rfc-editor.org/rfc/rfc5905.html">RFC5905</a>]).</p>
+using the Network Time Protocol <a href="https://www.rfc-editor.org/rfc/rfc5905.html">RFC5905</a>).</p>
 <p>-- <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-7.2-10">RFC9420, Section 7.2</a></p>
 </blockquote>
 <h2 id="privatemessage-validation"><a class="header" href="#privatemessage-validation">PrivateMessage Validation</a></h2>
@@ -2029,7 +2029,7 @@ using the Network Time Protocol [<a href="https://www.rfc-editor.org/rfc/rfc5905
 <p>It is up to the application to decide what authenticated_data to provide and
 how much padding to add to a given message (if any). The overall size of the
 AAD and ciphertext MUST fit within the limits established for the group's AEAD
-algorithm in [<a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-aead-limits-08">CFRG-AEAD-LIMITS</a>].</p>
+algorithm in <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-aead-limits-08">CFRG-AEAD-LIMITS</a>.</p>
 <p>-- <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-6.3.1-11">RFC9420, Section 6.3.1</a></p>
 </blockquote>
 <p>Therefore, the application must also validate whether the AAD adheres to the
@@ -2228,7 +2228,7 @@ It is also sufficient to tag only the most high-level crate being published.</p>
 <p>The crates must be published in the order below.</p>
 <ul>
 <li><a href="https://github.com/openmls/openmls/blob/main/traits/Cargo.toml">Traits</a></li>
-<li><a href="https://github.com/openmls/openmls/blob/main/memory_keystore/Cargo.toml">Memory Keystore</a></li>
+<li><a href="https://github.com/openmls/openmls/blob/main/memory_storage/Cargo.toml">Memory storage</a></li>
 <li><a href="https://github.com/openmls/openmls/blob/main/openmls_rust_crypto/Cargo.toml">Rust Crypto provider</a></li>
 <li><a href="https://github.com/openmls/openmls/blob/main/openmls/Cargo.toml">OpenMLS</a></li>
 </ul>

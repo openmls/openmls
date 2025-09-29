@@ -178,9 +178,9 @@
                         <h1 id="join-a-group-from-a-welcome-message"><a class="header" href="#join-a-group-from-a-welcome-message">Join a group from a Welcome message</a></h1>
 <p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated from
 the <code>MlsMessageIn</code> message containing the <code>Welcome</code> and an <code>MlsGroupJoinConfig</code>
-(see <a href="./group_config.html">Group configuration</a> for more details).  This is a
+(see <a href="./group_config.html">Group configuration</a> for more details). This is a
 two-step process: a <code>StagedWelcome</code> is constructed from the <code>Welcome</code>
-and can then be turned into an <code>MlsGroup</code>.  If the group configuration does not
+and can then be turned into an <code>MlsGroup</code>. If the group configuration does not
 use the ratchet tree extension, the ratchet tree needs to be provided.</p>
 <pre><code class="language-rust no_run noplayground">    let staged_join =
         StagedWelcome::new_from_welcome(bob_provider, &amp;mls_group_config, welcome, None)
@@ -191,7 +191,7 @@ use the ratchet tree extension, the ratchet tree needs to be provided.</p>
 <p>The reason for this two-phase process is to allow the recipient of a <code>Welcome</code>
 to inspect the message, e.g. to determine the identity of the sender.</p>
 <p>Pay attention not to forward a Welcome message to a client before its associated
-commit has been accepted by the Delivery Service.  Otherwise, you would end up
+commit has been accepted by the Delivery Service. Otherwise, you would end up
 with an invalid MLS group instance.</p>
 <h1 id="examining-a-welcome-message"><a class="header" href="#examining-a-welcome-message">Examining a welcome message</a></h1>
 <p>When a client is invited to join a group, the application can allow the client to decide whether or not to join the group. In order to determine whether to join the group, the application can inspect information provided in the welcome message, such as who invited them, who else is in the group, what extensions are available, and more. If the application decides not to join the group, the welcome must be discarded to ensure that the local state is cleaned up.</p>

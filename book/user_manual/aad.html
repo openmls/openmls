@@ -178,7 +178,7 @@
                         <h1 id="using-additional-authenticated-data-aad"><a class="header" href="#using-additional-authenticated-data-aad">Using Additional Authenticated Data (AAD)</a></h1>
 <p>The Additional Authenticated Data (AAD) is a byte sequence that can be included in both private and public messages. By design, it is always authenticated (signed) but never encrypted. Its purpose is to contain data that can be inspected but not changed while a message is in transit.</p>
 <h2 id="setting-the-aad"><a class="header" href="#setting-the-aad">Setting the AAD</a></h2>
-<p>Members can set the AAD by calling the  <code>.set_aad()</code> function. The AAD will remain set until the next API call that successfully generates an <code>MlsMessageOut</code>. Until then, the AAD can be inspected with the <code>.aad()</code> function.</p>
+<p>Members can set the AAD by calling the <code>.set_aad()</code> function. The AAD will remain set until the next API call that successfully generates an <code>MlsMessageOut</code>. Until then, the AAD can be inspected with the <code>.aad()</code> function.</p>
 <pre><code class="language-rust no_run noplayground">    alice_group.set_aad(b"Additional Authenticated Data".to_vec());
 
     assert_eq!(alice_group.aad(), b"Additional Authenticated Data");</code></pre>
