@@ -21,4 +21,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - initial release
 
-*Please disregard any previous versions.*
+_Please disregard any previous versions._

@@ -47,14 +47,17 @@ Issue priorities are reflected with labels.
 
 ### Patches
 
-Sometimes, you have to work on another crate (e.g. [hpke-rs](https://crates.io/crates/hpke-rs)) alongside openmls. The 
-recommended way to proceed while developing locally is to patch openmls by adding the following to the root [Cargo.toml](./Cargo.toml): 
+Sometimes, you have to work on another crate (e.g. [hpke-rs](https://crates.io/crates/hpke-rs)) alongside openmls. The
+recommended way to proceed while developing locally is to patch openmls by adding the following to the root [Cargo.toml](./Cargo.toml):
+
 ```toml
 [patch.crates-io.hpke-rs]
 path = "../hpke-rs" # local path to the project
 ```
+
 Once you are done with your changes and feel it's ready to be submitted, you will have to make your patch point to a
 remote branch in order for the CI to succeed:
+
 ```toml
 [patch.crates-io.hpke-rs]
 git = "https://github.com/my-fork/hpke-rs"
