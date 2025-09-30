@@ -1,5 +1,5 @@
 use openmls_sqlx_storage::Codec;
-use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
+use openmls_traits::storage::{CURRENT_VERSION, Entity, Key, traits};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
