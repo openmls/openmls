@@ -9,6 +9,7 @@ use serde::Serialize;
 use sqlx::SqliteConnection;
 
 pub use crate::codec::Codec;
+use crate::storage_provider::block_async_in_place;
 
 pub(crate) mod codec;
 pub(crate) mod encryption_key_pairs;
@@ -34,9 +35,9 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
         }
     }
 
-    pub async fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
+    pub fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
         let mut conn = self.connection.borrow_mut();
-        sqlx::migrate!("./migrations").run(&mut **conn).await
+        block_async_in_place(sqlx::migrate!("./migrations").run(&mut **conn))
     }
 
     fn wrap_storable_group_id_ref<'b, GroupId: Key<CURRENT_VERSION>>(

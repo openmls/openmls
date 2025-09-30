@@ -1285,7 +1285,7 @@ impl<PskId: Key<CURRENT_VERSION>> StorablePskIdRef<'_, PskId> {
 /// Note that even though this function is called in a synchronous context, at some point down the
 /// stack it must be called in a multi-threaded asynchronous context. In particular, tests must be
 /// asynchronous and of flavor `multi_thread`.
-fn block_async_in_place<F>(task: F) -> F::Output
+pub(super) fn block_async_in_place<F>(task: F) -> F::Output
 where
     F: Future,
 {
