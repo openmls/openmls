@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM psk WHERE psk_id = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "640f0634b164a77d34275ff00f27a7e80d085d2c03bf77adb0f41d608d3f3323"
+}

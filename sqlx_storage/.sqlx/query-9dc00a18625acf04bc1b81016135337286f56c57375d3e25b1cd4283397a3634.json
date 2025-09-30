@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO own_leaf_node (group_id, leaf_node) VALUES (?1, ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "9dc00a18625acf04bc1b81016135337286f56c57375d3e25b1cd4283397a3634"
+}

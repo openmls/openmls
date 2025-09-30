@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO encryption_key (public_key, key_pair) VALUES (?1, ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "c54830a2f26df432c1679a2cd0f4eaee9a09ac3e84c7c0b0ec87ba0ba543d525"
+}

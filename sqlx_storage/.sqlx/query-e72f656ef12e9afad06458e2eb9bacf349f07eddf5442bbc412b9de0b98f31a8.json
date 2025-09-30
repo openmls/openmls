@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM group_data WHERE group_id = ? AND data_type = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "e72f656ef12e9afad06458e2eb9bacf349f07eddf5442bbc412b9de0b98f31a8"
+}

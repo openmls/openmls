@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM proposal WHERE group_id = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "65c29b27ed67c01e216c814cdeb469ca0342a0353839e1b370f9358a3fd70001"
+}

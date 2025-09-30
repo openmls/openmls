@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM signature_key WHERE public_key = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "879f0f94ddec316385fedbb625f39fa6a0ba8baa7feaa6d0471d50f00d37a0cb"
+}

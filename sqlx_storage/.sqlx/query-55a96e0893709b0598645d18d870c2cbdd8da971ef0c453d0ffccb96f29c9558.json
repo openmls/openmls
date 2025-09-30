@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO key_package (key_package_ref, key_package) VALUES (?1, ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "55a96e0893709b0598645d18d870c2cbdd8da971ef0c453d0ffccb96f29c9558"
+}

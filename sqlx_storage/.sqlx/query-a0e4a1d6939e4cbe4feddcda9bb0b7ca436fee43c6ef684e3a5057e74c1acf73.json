@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM own_leaf_node WHERE group_id = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "a0e4a1d6939e4cbe4feddcda9bb0b7ca436fee43c6ef684e3a5057e74c1acf73"
+}

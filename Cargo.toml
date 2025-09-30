@@ -9,6 +9,7 @@ members = [
     "interop_client",
     "memory_storage",
     "sqlite_storage",
+    "sqlx_storage",
     "delivery-service/ds",
     "delivery-service/ds-lib",
     "basic_credential",

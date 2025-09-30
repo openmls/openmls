@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO proposal (group_id, proposal_ref, proposal) VALUES (?1, ?2, ?3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "a56ed700e48e402a0466ef6a07c27e9274e84e2442694d8dfc4b9f6ff4ea363b"
+}

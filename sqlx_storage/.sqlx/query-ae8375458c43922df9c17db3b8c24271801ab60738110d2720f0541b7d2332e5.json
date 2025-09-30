@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM encryption_key WHERE public_key = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "ae8375458c43922df9c17db3b8c24271801ab60738110d2720f0541b7d2332e5"
+}

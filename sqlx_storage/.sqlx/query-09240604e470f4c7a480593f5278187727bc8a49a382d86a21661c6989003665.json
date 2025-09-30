@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO epoch_key_pairs (group_id, epoch_id, leaf_index, key_pairs)\n            VALUES (?1, ?2, ?3, ?4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "09240604e470f4c7a480593f5278187727bc8a49a382d86a21661c6989003665"
+}
