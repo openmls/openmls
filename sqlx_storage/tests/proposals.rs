@@ -16,7 +16,7 @@ async fn proposals() {
         .unwrap();
     let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
 
-    storage.run_migrations().await.unwrap();
+    storage.run_migrations().unwrap();
 
     for (i, proposal) in proposals.iter().enumerate() {
         storage
@@ -87,7 +87,7 @@ async fn group_data_roundtrip() {
         .await
         .unwrap();
     let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
-    storage.run_migrations().await.unwrap();
+    storage.run_migrations().unwrap();
 
     storage
         .write_mls_join_config(&group_id, &join_config)
@@ -215,7 +215,7 @@ async fn key_material_roundtrip() {
         .await
         .unwrap();
     let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
-    storage.run_migrations().await.unwrap();
+    storage.run_migrations().unwrap();
 
     storage
         .write_signature_key_pair(&signature_public_key, &signature_key_pair)

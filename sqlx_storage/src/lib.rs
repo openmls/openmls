@@ -2,20 +2,21 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use std::{cell::RefCell, marker::PhantomData};
+use std::{cell::RefCell, marker::PhantomData, path::Path};
 
 use openmls_traits::storage::{CURRENT_VERSION, Entity, Key};
 use serde::Serialize;
-use sqlx::SqliteConnection;
+use sqlx::{SqliteConnection, migrate::Migrator};
 
 pub use crate::codec::Codec;
-use crate::storage_provider::block_async_in_place;
+use crate::{migrator::MigratorWrapper, storage_provider::block_async_in_place};
 
 pub(crate) mod codec;
 pub(crate) mod encryption_key_pairs;
 pub(crate) mod epoch_key_pairs;
 pub(crate) mod group_data;
 pub(crate) mod key_packages;
+mod migrator;
 pub(crate) mod own_leaf_nodes;
 pub(crate) mod proposals;
 pub(crate) mod psks;
@@ -36,8 +37,10 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
     }
 
     pub fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
+        let migrator = block_async_in_place(Migrator::new(Path::new("./migrations")))?;
         let mut conn = self.connection.borrow_mut();
-        block_async_in_place(sqlx::migrate!("./migrations").run(&mut **conn))
+        block_async_in_place(migrator.run_direct(&mut MigratorWrapper(&mut *conn)))?;
+        Ok(())
     }
 
     fn wrap_storable_group_id_ref<'b, GroupId: Key<CURRENT_VERSION>>(
