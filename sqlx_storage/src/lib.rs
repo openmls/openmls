@@ -55,15 +55,20 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
 #[derive(Debug, Serialize)]
 struct KeyRefWrapper<'a, T: Key<CURRENT_VERSION>, C: Codec>(&'a T, PhantomData<C>);
 
-struct EntityWrapper<T: Entity<CURRENT_VERSION>, C: Codec>(T, PhantomData<C>);
+impl<'a, T: Key<CURRENT_VERSION>, C: Codec> KeyRefWrapper<'a, T, C> {
+    fn new(value: &'a T) -> Self {
+        Self(value, PhantomData)
+    }
+}
 
 struct EntityRefWrapper<'a, T: Entity<CURRENT_VERSION>, C: Codec>(&'a T, PhantomData<C>);
 
+impl<'a, T: Entity<CURRENT_VERSION>, C: Codec> EntityRefWrapper<'a, T, C> {
+    fn new(value: &'a T) -> Self {
+        Self(value, PhantomData)
+    }
+}
+
 struct EntitySliceWrapper<'a, T: Entity<CURRENT_VERSION>, C: Codec>(&'a [T], PhantomData<C>);
 
-struct EntityVecWrapper<T: Entity<CURRENT_VERSION>, C: Codec>(pub Vec<T>, PhantomData<C>);
-
-struct StorableGroupIdRef<'a, GroupId: Key<CURRENT_VERSION>, C: Codec>(
-    pub &'a GroupId,
-    PhantomData<C>,
-);
+struct StorableGroupIdRef<'a, GroupId: Key<CURRENT_VERSION>, C: Codec>(&'a GroupId, PhantomData<C>);

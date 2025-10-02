@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT key_pairs FROM openmls_epoch_key_pairs\n            WHERE group_id = ?1 AND epoch_id = ?2 AND leaf_index = ?3",
+  "describe": {
+    "columns": [
+      {
+        "name": "key_pairs",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "17c75100de34480480df9e0f058bcec821049fc67a2eb623060b4956d6a91906"
+}

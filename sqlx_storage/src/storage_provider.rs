@@ -2,8 +2,6 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use tokio_stream::StreamExt;
-
 use std::{future::Future, marker::PhantomData};
 
 use openmls_traits::storage::{
@@ -13,17 +11,14 @@ use openmls_traits::storage::{
     },
 };
 use sqlx::{
-    Database, Decode, Encode, Row, Sqlite, SqliteExecutor, Type, encode::IsNull,
-    error::BoxDynError, query, sqlite::SqliteTypeInfo,
-};
-
-use crate::{
-    SqliteStorageProvider, codec::Codec, encryption_key_pairs::StorableEncryptionKeyPairRef,
+    Database, Encode, Sqlite, SqliteExecutor, Type, encode::IsNull, error::BoxDynError, query,
+    query_scalar, sqlite::SqliteTypeInfo,
 };
 
 use super::{
-    EntityRefWrapper, EntitySliceWrapper, EntityVecWrapper, EntityWrapper, KeyRefWrapper,
-    StorableGroupIdRef,
+    EntityRefWrapper, EntitySliceWrapper, KeyRefWrapper, SqliteStorageProvider, StorableGroupIdRef,
+    codec::Codec,
+    encryption_key_pairs::StorableEncryptionKeyPairRef,
     encryption_key_pairs::{StorableEncryptionKeyPair, StorableEncryptionPublicKeyRef},
     epoch_key_pairs::{StorableEpochKeyPairs, StorableEpochKeyPairsRef},
     group_data::{GroupDataType, StorableGroupData, StorableGroupDataRef},
@@ -915,38 +910,23 @@ impl<PskBundle: Entity<CURRENT_VERSION>> StorablePskBundleRef<'_, PskBundle> {
     }
 }
 
-impl<T: Entity<CURRENT_VERSION>, C: Codec> Type<Sqlite> for EntityWrapper<T, C> {
-    fn type_info() -> <Sqlite as Database>::TypeInfo {
-        <Vec<u8> as Type<Sqlite>>::type_info()
-    }
-}
-
-impl<T: Entity<CURRENT_VERSION>, C: Codec> Decode<'_, Sqlite> for EntityWrapper<T, C> {
-    fn decode(value: <Sqlite as Database>::ValueRef<'_>) -> Result<Self, BoxDynError> {
-        let bytes: &[u8] = Decode::<Sqlite>::decode(value)?;
-        let entity = C::from_slice(bytes)?;
-        Ok(Self(entity, PhantomData))
-    }
-}
-
 impl<GroupData: Entity<CURRENT_VERSION>> StorableGroupData<GroupData> {
     async fn load<GroupId: Key<CURRENT_VERSION>, C: Codec>(
         executor: impl SqliteExecutor<'_>,
         group_id: &GroupId,
         data_type: GroupDataType,
     ) -> sqlx::Result<Option<GroupData>> {
-        sqlx::query(
+        let key_ref = KeyRefWrapper::<_, C>::new(group_id);
+        let group_data = query_scalar!(
             "SELECT group_data FROM openmls_group_data WHERE group_id = ? AND data_type = ?",
+            key_ref,
+            data_type
         )
-        .bind(KeyRefWrapper::<_, C>(group_id, PhantomData))
-        .bind(data_type)
         .fetch_optional(executor)
         .await?
-        .map(|row| {
-            let EntityWrapper(group_data, PhantomData::<C>) = row.try_get(0)?;
-            Ok(group_data)
-        })
-        .transpose()
+        .map(C::from_bytes)
+        .transpose()?;
+        Ok(group_data)
     }
 }
 
@@ -958,9 +938,9 @@ impl<Proposal: Entity<CURRENT_VERSION>, ProposalRef: Entity<CURRENT_VERSION>>
         executor: impl SqliteExecutor<'_>,
         group_id: &GroupId,
     ) -> sqlx::Result<()> {
-        let group_id = KeyRefWrapper::<_, C>(group_id, PhantomData);
-        let proposal_ref = EntityRefWrapper::<_, C>(self.0, PhantomData);
-        let proposal = EntityRefWrapper::<_, C>(self.1, PhantomData);
+        let group_id = KeyRefWrapper::<_, C>::new(group_id);
+        let proposal_ref = EntityRefWrapper::<_, C>::new(self.0);
+        let proposal = EntityRefWrapper::<_, C>::new(self.1);
         query!(
             "INSERT INTO openmls_proposal (group_id, proposal_ref, proposal) VALUES (?1, ?2, ?3)",
             group_id,
@@ -978,15 +958,18 @@ impl<LeafNode: Entity<CURRENT_VERSION>> StorableLeafNode<LeafNode> {
         executor: impl SqliteExecutor<'_>,
         group_id: &GroupId,
     ) -> sqlx::Result<Vec<LeafNode>> {
-        sqlx::query("SELECT leaf_node FROM openmls_own_leaf_node WHERE group_id = ?")
-            .bind(KeyRefWrapper::<_, C>(group_id, PhantomData))
-            .fetch(executor)
-            .map(|row| {
-                let EntityWrapper(leaf_node, PhantomData::<C>) = row?.try_get(0)?;
-                Ok(leaf_node)
-            })
-            .collect()
-            .await
+        let key_ref = KeyRefWrapper::<_, C>::new(group_id);
+        let leaf_nodes = query!(
+            "SELECT leaf_node FROM openmls_own_leaf_node WHERE group_id = ?",
+            key_ref
+        )
+        .fetch_all(executor)
+        .await?
+        .into_iter()
+        .map(|r| C::from_bytes(r.leaf_node))
+        .collect::<Result<_, _>>()?;
+
+        Ok(leaf_nodes)
     }
 }
 
@@ -997,32 +980,36 @@ impl<Proposal: Entity<CURRENT_VERSION>, ProposalRef: Entity<CURRENT_VERSION>>
         executor: impl SqliteExecutor<'_>,
         group_id: &GroupId,
     ) -> sqlx::Result<Vec<(ProposalRef, Proposal)>> {
-        sqlx::query("SELECT proposal_ref, proposal FROM openmls_proposal WHERE group_id = ?1")
-            .bind(KeyRefWrapper::<_, C>(group_id, PhantomData))
-            .fetch(executor)
-            .map(|row| {
-                let row = row?;
-                let EntityWrapper(proposal_ref, PhantomData::<C>) = row.try_get(0)?;
-                let EntityWrapper(proposal, PhantomData::<C>) = row.try_get(1)?;
-                Ok((proposal_ref, proposal))
-            })
-            .collect()
-            .await
+        let key_ref = KeyRefWrapper::<_, C>::new(group_id);
+        query!(
+            "SELECT proposal_ref, proposal FROM openmls_proposal WHERE group_id = ?1",
+            key_ref
+        )
+        .fetch_all(executor)
+        .await?
+        .into_iter()
+        .map(|row| {
+            let proposal_ref = C::from_bytes(row.proposal_ref)?;
+            let proposal = C::from_bytes(row.proposal)?;
+            Ok((proposal_ref, proposal))
+        })
+        .collect()
     }
 
     async fn load_refs<GroupId: Key<CURRENT_VERSION>, C: Codec>(
         executor: impl SqliteExecutor<'_>,
         group_id: &GroupId,
     ) -> sqlx::Result<Vec<ProposalRef>> {
-        sqlx::query("SELECT proposal_ref FROM openmls_proposal WHERE group_id = ?1")
-            .bind(KeyRefWrapper::<_, C>(group_id, PhantomData))
-            .fetch(executor)
-            .map(|row| {
-                let EntityWrapper(proposal_ref, PhantomData::<C>) = row?.try_get(0)?;
-                Ok(proposal_ref)
-            })
-            .collect()
-            .await
+        let key_ref = KeyRefWrapper::<_, C>::new(group_id);
+        query!(
+            "SELECT proposal_ref FROM openmls_proposal WHERE group_id = ?1",
+            key_ref
+        )
+        .fetch_all(executor)
+        .await?
+        .into_iter()
+        .map(|row| C::from_bytes(row.proposal_ref))
+        .collect()
     }
 }
 
@@ -1031,15 +1018,15 @@ impl<SignatureKeyPairs: Entity<CURRENT_VERSION>> StorableSignatureKeyPairs<Signa
         executor: impl SqliteExecutor<'_>,
         public_key: &SignaturePublicKey,
     ) -> sqlx::Result<Option<SignatureKeyPairs>> {
-        sqlx::query("SELECT signature_key FROM openmls_signature_key WHERE public_key = ?1")
-            .bind(KeyRefWrapper::<_, C>(public_key, PhantomData))
-            .fetch_optional(executor)
-            .await?
-            .map(|row| {
-                let EntityWrapper(signature_key, PhantomData::<C>) = row.try_get(0)?;
-                Ok(signature_key)
-            })
-            .transpose()
+        let key_ref = KeyRefWrapper::<_, C>::new(public_key);
+        query_scalar!(
+            "SELECT signature_key FROM openmls_signature_key WHERE public_key = ?1",
+            key_ref
+        )
+        .fetch_optional(executor)
+        .await?
+        .map(C::from_bytes)
+        .transpose()
     }
 }
 
@@ -1048,15 +1035,15 @@ impl<EncryptionKeyPair: Entity<CURRENT_VERSION>> StorableEncryptionKeyPair<Encry
         executor: impl SqliteExecutor<'_>,
         public_key: &EncryptionKey,
     ) -> sqlx::Result<Option<EncryptionKeyPair>> {
-        sqlx::query("SELECT key_pair FROM openmls_encryption_key WHERE public_key = ?1")
-            .bind(KeyRefWrapper::<_, C>(public_key, PhantomData))
-            .fetch_optional(executor)
-            .await?
-            .map(|row| {
-                let EntityWrapper(encryption_key_pair, PhantomData::<C>) = row.try_get(0)?;
-                Ok(encryption_key_pair)
-            })
-            .transpose()
+        let public_key = KeyRefWrapper::<_, C>::new(public_key);
+        query_scalar!(
+            "SELECT key_pair FROM openmls_encryption_key WHERE public_key = ?1",
+            public_key
+        )
+        .fetch_optional(executor)
+        .await?
+        .map(C::from_bytes)
+        .transpose()
     }
 }
 
@@ -1088,37 +1075,20 @@ impl<EpochKeyPairs: Entity<CURRENT_VERSION>> StorableEpochKeyPairs<EpochKeyPairs
         epoch_id: &EpochKey,
         leaf_index: u32,
     ) -> sqlx::Result<Vec<EpochKeyPairs>> {
-        let group_id = KeyRefWrapper::<_, C>(group_id, PhantomData);
-        let epoch_id = KeyRefWrapper::<_, C>(epoch_id, PhantomData);
-        sqlx::query(
+        let group_id = KeyRefWrapper::<_, C>::new(group_id);
+        let epoch_id = KeyRefWrapper::<_, C>::new(epoch_id);
+        query!(
             "SELECT key_pairs FROM openmls_epoch_key_pairs
             WHERE group_id = ?1 AND epoch_id = ?2 AND leaf_index = ?3",
+            group_id,
+            epoch_id,
+            leaf_index
         )
-        .bind(group_id)
-        .bind(epoch_id)
-        .bind(leaf_index)
         .fetch_optional(executor)
         .await?
-        .map(|row| {
-            let EntityVecWrapper(key_pairs, PhantomData::<C>) = row.try_get(0)?;
-            Ok(key_pairs)
-        })
+        .map(|row| C::from_bytes(row.key_pairs))
         .transpose()
-        .map(|res| res.unwrap_or_default())
-    }
-}
-
-impl<T: Entity<CURRENT_VERSION>, C: Codec> Type<Sqlite> for EntityVecWrapper<T, C> {
-    fn type_info() -> <Sqlite as Database>::TypeInfo {
-        <Vec<u8> as Type<Sqlite>>::type_info()
-    }
-}
-
-impl<T: Entity<CURRENT_VERSION>, C: Codec> Decode<'_, Sqlite> for EntityVecWrapper<T, C> {
-    fn decode(value: <Sqlite as Database>::ValueRef<'_>) -> Result<Self, BoxDynError> {
-        let bytes: &[u8] = Decode::<Sqlite>::decode(value)?;
-        let entities = C::from_slice(bytes)?;
-        Ok(Self(entities, PhantomData))
+        .map(|opt| opt.unwrap_or_default())
     }
 }
 
@@ -1127,15 +1097,15 @@ impl<KeyPackage: Entity<CURRENT_VERSION>> StorableKeyPackage<KeyPackage> {
         executor: impl SqliteExecutor<'_>,
         key_package_ref: &KeyPackageRef,
     ) -> sqlx::Result<Option<KeyPackage>> {
-        sqlx::query("SELECT key_package FROM openmls_key_package WHERE key_package_ref = ?1")
-            .bind(KeyRefWrapper::<_, C>(key_package_ref, PhantomData))
-            .fetch_optional(executor)
-            .await?
-            .map(|row| {
-                let EntityWrapper(key_package, PhantomData::<C>) = row.try_get(0)?;
-                Ok(key_package)
-            })
-            .transpose()
+        let key_package_ref = KeyRefWrapper::<_, C>::new(key_package_ref);
+        query!(
+            "SELECT key_package FROM openmls_key_package WHERE key_package_ref = ?1",
+            key_package_ref
+        )
+        .fetch_optional(executor)
+        .await?
+        .map(|record| C::from_bytes(record.key_package))
+        .transpose()
     }
 }
 
@@ -1144,15 +1114,15 @@ impl<PskBundle: Entity<CURRENT_VERSION>> StorablePskBundle<PskBundle> {
         executor: impl SqliteExecutor<'_>,
         psk_id: &PskId,
     ) -> sqlx::Result<Option<PskBundle>> {
-        sqlx::query("SELECT psk_bundle FROM openmls_psk WHERE psk_id = ?1")
-            .bind(KeyRefWrapper::<_, C>(psk_id, PhantomData))
-            .fetch_optional(executor)
-            .await?
-            .map(|row| {
-                let EntityWrapper(psk, PhantomData::<C>) = row.try_get(0)?;
-                Ok(psk)
-            })
-            .transpose()
+        let psk_id = KeyRefWrapper::<_, C>::new(psk_id);
+        query!(
+            "SELECT psk_bundle FROM openmls_psk WHERE psk_id = ?1",
+            psk_id
+        )
+        .fetch_optional(executor)
+        .await?
+        .map(|record| C::from_bytes(record.psk_bundle))
+        .transpose()
     }
 }
 
