@@ -785,7 +785,7 @@ impl<GroupData: Entity<CURRENT_VERSION>> StorableGroupDataRef<'_, GroupData> {
         let group_id = KeyRefWrapper::<_, C>(group_id, PhantomData);
         let group_data = EntityRefWrapper::<_, C>(self.0, PhantomData);
         query!(
-            "INSERT OR REPLACE INTO group_data (group_id, data_type, group_data) VALUES (?, ?, ?)",
+            "INSERT OR REPLACE INTO openmls_group_data (group_id, data_type, group_data) VALUES (?, ?, ?)",
             group_id,
             data_type,
             group_data,
@@ -807,7 +807,7 @@ impl<SignatureKeyPairs: Entity<CURRENT_VERSION>>
         let public_key = KeyRefWrapper::<_, C>(public_key, PhantomData);
         let signature_key = EntityRefWrapper::<_, C>(self.0, PhantomData);
         query!(
-            "INSERT INTO signature_key (public_key, signature_key) VALUES (?1, ?2)",
+            "INSERT INTO openmls_signature_key (public_key, signature_key) VALUES (?1, ?2)",
             public_key,
             signature_key
         )
@@ -826,7 +826,7 @@ impl<LeafNode: Entity<CURRENT_VERSION>> StorableLeafNodeRef<'_, LeafNode> {
         let group_id = KeyRefWrapper::<_, C>(group_id, PhantomData);
         let entity = EntityRefWrapper::<_, C>(self.0, PhantomData);
         query!(
-            "INSERT INTO own_leaf_node (group_id, leaf_node) VALUES (?1, ?2)",
+            "INSERT INTO openmls_own_leaf_node (group_id, leaf_node) VALUES (?1, ?2)",
             group_id,
             entity,
         )
@@ -861,7 +861,7 @@ impl<KeyPackage: Entity<CURRENT_VERSION>> StorableKeyPackageRef<'_, KeyPackage> 
         let key_package_ref = KeyRefWrapper::<_, C>(key_package_ref, PhantomData);
         let key_package = EntityRefWrapper::<_, C>(self.0, PhantomData);
         query!(
-            "INSERT INTO key_package (key_package_ref, key_package) VALUES (?1, ?2)",
+            "INSERT INTO openmls_key_package (key_package_ref, key_package) VALUES (?1, ?2)",
             key_package_ref,
             key_package,
         )
@@ -883,7 +883,7 @@ impl<EpochKeyPairs: Entity<CURRENT_VERSION>> StorableEpochKeyPairsRef<'_, EpochK
         let epoch_id = KeyRefWrapper::<_, C>(epoch_id, PhantomData);
         let entity = EntitySliceWrapper::<_, C>(self.0, PhantomData);
         query!(
-            "INSERT INTO epoch_key_pairs (group_id, epoch_id, leaf_index, key_pairs)
+            "INSERT INTO openmls_epoch_key_pairs (group_id, epoch_id, leaf_index, key_pairs)
             VALUES (?1, ?2, ?3, ?4)",
             group_id,
             epoch_id,
@@ -905,7 +905,7 @@ impl<PskBundle: Entity<CURRENT_VERSION>> StorablePskBundleRef<'_, PskBundle> {
         let psk_id = KeyRefWrapper::<_, C>(psk_id, PhantomData);
         let psk_bundle = EntityRefWrapper::<_, C>(self.0, PhantomData);
         query!(
-            "INSERT INTO psk (psk_id, psk_bundle) VALUES (?1, ?2)",
+            "INSERT INTO openmls_psk (psk_id, psk_bundle) VALUES (?1, ?2)",
             psk_id,
             psk_bundle,
         )
@@ -935,16 +935,18 @@ impl<GroupData: Entity<CURRENT_VERSION>> StorableGroupData<GroupData> {
         group_id: &GroupId,
         data_type: GroupDataType,
     ) -> sqlx::Result<Option<GroupData>> {
-        sqlx::query("SELECT group_data FROM group_data WHERE group_id = ? AND data_type = ?")
-            .bind(KeyRefWrapper::<_, C>(group_id, PhantomData))
-            .bind(data_type)
-            .fetch_optional(executor)
-            .await?
-            .map(|row| {
-                let EntityWrapper(group_data, PhantomData::<C>) = row.try_get(0)?;
-                Ok(group_data)
-            })
-            .transpose()
+        sqlx::query(
+            "SELECT group_data FROM openmls_group_data WHERE group_id = ? AND data_type = ?",
+        )
+        .bind(KeyRefWrapper::<_, C>(group_id, PhantomData))
+        .bind(data_type)
+        .fetch_optional(executor)
+        .await?
+        .map(|row| {
+            let EntityWrapper(group_data, PhantomData::<C>) = row.try_get(0)?;
+            Ok(group_data)
+        })
+        .transpose()
     }
 }
 
@@ -960,7 +962,7 @@ impl<Proposal: Entity<CURRENT_VERSION>, ProposalRef: Entity<CURRENT_VERSION>>
         let proposal_ref = EntityRefWrapper::<_, C>(self.0, PhantomData);
         let proposal = EntityRefWrapper::<_, C>(self.1, PhantomData);
         query!(
-            "INSERT INTO proposal (group_id, proposal_ref, proposal) VALUES (?1, ?2, ?3)",
+            "INSERT INTO openmls_proposal (group_id, proposal_ref, proposal) VALUES (?1, ?2, ?3)",
             group_id,
             proposal_ref,
             proposal
@@ -976,7 +978,7 @@ impl<LeafNode: Entity<CURRENT_VERSION>> StorableLeafNode<LeafNode> {
         executor: impl SqliteExecutor<'_>,
         group_id: &GroupId,
     ) -> sqlx::Result<Vec<LeafNode>> {
-        sqlx::query("SELECT leaf_node FROM own_leaf_node WHERE group_id = ?")
+        sqlx::query("SELECT leaf_node FROM openmls_leaf_node WHERE group_id = ?")
             .bind(KeyRefWrapper::<_, C>(group_id, PhantomData))
             .fetch(executor)
             .map(|row| {
@@ -995,7 +997,7 @@ impl<Proposal: Entity<CURRENT_VERSION>, ProposalRef: Entity<CURRENT_VERSION>>
         executor: impl SqliteExecutor<'_>,
         group_id: &GroupId,
     ) -> sqlx::Result<Vec<(ProposalRef, Proposal)>> {
-        sqlx::query("SELECT proposal_ref, proposal FROM proposal WHERE group_id = ?1")
+        sqlx::query("SELECT proposal_ref, proposal FROM openmls_proposal WHERE group_id = ?1")
             .bind(KeyRefWrapper::<_, C>(group_id, PhantomData))
             .fetch(executor)
             .map(|row| {
@@ -1012,7 +1014,7 @@ impl<Proposal: Entity<CURRENT_VERSION>, ProposalRef: Entity<CURRENT_VERSION>>
         executor: impl SqliteExecutor<'_>,
         group_id: &GroupId,
     ) -> sqlx::Result<Vec<ProposalRef>> {
-        sqlx::query("SELECT proposal_ref FROM proposal WHERE group_id = ?1")
+        sqlx::query("SELECT proposal_ref FROM openmlsproposal WHERE group_id = ?1")
             .bind(KeyRefWrapper::<_, C>(group_id, PhantomData))
             .fetch(executor)
             .map(|row| {
@@ -1029,7 +1031,7 @@ impl<SignatureKeyPairs: Entity<CURRENT_VERSION>> StorableSignatureKeyPairs<Signa
         executor: impl SqliteExecutor<'_>,
         public_key: &SignaturePublicKey,
     ) -> sqlx::Result<Option<SignatureKeyPairs>> {
-        sqlx::query("SELECT signature_key FROM signature_key WHERE public_key = ?1")
+        sqlx::query("SELECT signature_key FROM openmls_signature_key WHERE public_key = ?1")
             .bind(KeyRefWrapper::<_, C>(public_key, PhantomData))
             .fetch_optional(executor)
             .await?
@@ -1046,7 +1048,7 @@ impl<EncryptionKeyPair: Entity<CURRENT_VERSION>> StorableEncryptionKeyPair<Encry
         executor: impl SqliteExecutor<'_>,
         public_key: &EncryptionKey,
     ) -> sqlx::Result<Option<EncryptionKeyPair>> {
-        sqlx::query("SELECT key_pair FROM encryption_key WHERE public_key = ?1")
+        sqlx::query("SELECT key_pair FROM openmls_encryption_key WHERE public_key = ?1")
             .bind(KeyRefWrapper::<_, C>(public_key, PhantomData))
             .fetch_optional(executor)
             .await?
@@ -1069,7 +1071,7 @@ impl<EncryptionKeyPair: Entity<CURRENT_VERSION>>
         let public_key = KeyRefWrapper::<_, C>(public_key, PhantomData);
         let key_pair = EntityRefWrapper::<_, C>(self.0, PhantomData);
         query!(
-            "INSERT INTO encryption_key (public_key, key_pair) VALUES (?1, ?2)",
+            "INSERT INTO openmls_encryption_key (public_key, key_pair) VALUES (?1, ?2)",
             public_key,
             key_pair
         )
@@ -1089,7 +1091,7 @@ impl<EpochKeyPairs: Entity<CURRENT_VERSION>> StorableEpochKeyPairs<EpochKeyPairs
         let group_id = KeyRefWrapper::<_, C>(group_id, PhantomData);
         let epoch_id = KeyRefWrapper::<_, C>(epoch_id, PhantomData);
         sqlx::query(
-            "SELECT key_pairs FROM epoch_key_pairs
+            "SELECT key_pairs FROM openmls_epoch_key_pairs
             WHERE group_id = ?1 AND epoch_id = ?2 AND leaf_index = ?3",
         )
         .bind(group_id)
@@ -1125,7 +1127,7 @@ impl<KeyPackage: Entity<CURRENT_VERSION>> StorableKeyPackage<KeyPackage> {
         executor: impl SqliteExecutor<'_>,
         key_package_ref: &KeyPackageRef,
     ) -> sqlx::Result<Option<KeyPackage>> {
-        sqlx::query("SELECT key_package FROM key_package WHERE key_package_ref = ?1")
+        sqlx::query("SELECT key_package FROM openmls_key_package WHERE key_package_ref = ?1")
             .bind(KeyRefWrapper::<_, C>(key_package_ref, PhantomData))
             .fetch_optional(executor)
             .await?
@@ -1142,7 +1144,7 @@ impl<PskBundle: Entity<CURRENT_VERSION>> StorablePskBundle<PskBundle> {
         executor: impl SqliteExecutor<'_>,
         psk_id: &PskId,
     ) -> sqlx::Result<Option<PskBundle>> {
-        sqlx::query("SELECT psk_bundle FROM psk WHERE psk_id = ?1")
+        sqlx::query("SELECT psk_bundle FROM openmls_psk WHERE psk_id = ?1")
             .bind(KeyRefWrapper::<_, C>(psk_id, PhantomData))
             .fetch_optional(executor)
             .await?
@@ -1157,7 +1159,7 @@ impl<PskBundle: Entity<CURRENT_VERSION>> StorablePskBundle<PskBundle> {
 impl<GroupId: Key<CURRENT_VERSION>, C: Codec> StorableGroupIdRef<'_, GroupId, C> {
     async fn delete_all_proposals(&self, executor: impl SqliteExecutor<'_>) -> sqlx::Result<()> {
         let group_id = KeyRefWrapper::<_, C>(self.0, PhantomData);
-        query!("DELETE FROM proposal WHERE group_id = ?1", group_id)
+        query!("DELETE FROM openmls_proposal WHERE group_id = ?1", group_id)
             .execute(executor)
             .await?;
         Ok(())
@@ -1171,7 +1173,7 @@ impl<GroupId: Key<CURRENT_VERSION>, C: Codec> StorableGroupIdRef<'_, GroupId, C>
         let group_id = KeyRefWrapper::<_, C>(self.0, PhantomData);
         let proposal_ref = KeyRefWrapper::<_, C>(proposal_ref, PhantomData);
         query!(
-            "DELETE FROM proposal WHERE group_id = ?1 AND proposal_ref = ?2",
+            "DELETE FROM openmls_proposal WHERE group_id = ?1 AND proposal_ref = ?2",
             group_id,
             proposal_ref,
         )
@@ -1182,9 +1184,12 @@ impl<GroupId: Key<CURRENT_VERSION>, C: Codec> StorableGroupIdRef<'_, GroupId, C>
 
     async fn delete_leaf_nodes(&self, executor: impl SqliteExecutor<'_>) -> sqlx::Result<()> {
         let group_id = KeyRefWrapper::<_, C>(self.0, PhantomData);
-        query!("DELETE FROM own_leaf_node WHERE group_id = ?1", group_id)
-            .execute(executor)
-            .await?;
+        query!(
+            "DELETE FROM openmls_own_leaf_node WHERE group_id = ?1",
+            group_id
+        )
+        .execute(executor)
+        .await?;
         Ok(())
     }
 
@@ -1195,7 +1200,7 @@ impl<GroupId: Key<CURRENT_VERSION>, C: Codec> StorableGroupIdRef<'_, GroupId, C>
     ) -> sqlx::Result<()> {
         let group_id = KeyRefWrapper::<_, C>(self.0, PhantomData);
         query!(
-            "DELETE FROM group_data WHERE group_id = ? AND data_type = ?",
+            "DELETE FROM openmls_group_data WHERE group_id = ? AND data_type = ?",
             group_id,
             data_type
         )
@@ -1213,7 +1218,7 @@ impl<GroupId: Key<CURRENT_VERSION>, C: Codec> StorableGroupIdRef<'_, GroupId, C>
         let group_id = KeyRefWrapper::<_, C>(self.0, PhantomData);
         let epoch_key = KeyRefWrapper::<_, C>(epoch_key, PhantomData);
         query!(
-            "DELETE FROM epoch_key_pairs WHERE group_id = ? AND epoch_id = ? AND leaf_index = ?",
+            "DELETE FROM openmls_epoch_key_pairs WHERE group_id = ? AND epoch_id = ? AND leaf_index = ?",
             group_id,
             epoch_key,
             leaf_index,
@@ -1230,7 +1235,7 @@ impl<SignaturePublicKey: Key<CURRENT_VERSION>>
     async fn delete<C: Codec>(&self, executor: impl SqliteExecutor<'_>) -> sqlx::Result<()> {
         let public_key = KeyRefWrapper::<_, C>(self.0, PhantomData);
         query!(
-            "DELETE FROM signature_key WHERE public_key = ?1",
+            "DELETE FROM openmls_signature_key WHERE public_key = ?1",
             public_key
         )
         .execute(executor)
@@ -1245,7 +1250,7 @@ impl<EncryptionPublicKey: Key<CURRENT_VERSION>>
     async fn delete<C: Codec>(&self, executor: impl SqliteExecutor<'_>) -> sqlx::Result<()> {
         let public_key = KeyRefWrapper::<_, C>(self.0, PhantomData);
         query!(
-            "DELETE FROM encryption_key WHERE public_key = ?1",
+            "DELETE FROM openmls_encryption_key WHERE public_key = ?1",
             public_key
         )
         .execute(executor)
@@ -1261,7 +1266,7 @@ impl<KeyPackageRef: Key<CURRENT_VERSION>> StorableHashRef<'_, KeyPackageRef> {
     ) -> sqlx::Result<()> {
         let hash_ref = KeyRefWrapper::<_, C>(self.0, PhantomData);
         query!(
-            "DELETE FROM key_package WHERE key_package_ref = ?1",
+            "DELETE FROM openmls_key_package WHERE key_package_ref = ?1",
             hash_ref,
         )
         .execute(executor)
@@ -1273,7 +1278,7 @@ impl<KeyPackageRef: Key<CURRENT_VERSION>> StorableHashRef<'_, KeyPackageRef> {
 impl<PskId: Key<CURRENT_VERSION>> StorablePskIdRef<'_, PskId> {
     async fn delete<C: Codec>(&self, executor: impl SqliteExecutor<'_>) -> sqlx::Result<()> {
         let psks_id = KeyRefWrapper::<_, C>(self.0, PhantomData);
-        query!("DELETE FROM psk WHERE psk_id = ?1", psks_id)
+        query!("DELETE FROM openmls_psk WHERE psk_id = ?1", psks_id)
             .execute(executor)
             .await?;
         Ok(())

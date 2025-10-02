@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO openmls_encryption_key (public_key, key_pair) VALUES (?1, ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "8c374dc5cf43c914f3021ae50c00d829007d26aa5e9d1760287fe7c6835fdbaa"
+}

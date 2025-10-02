@@ -1,4 +1,4 @@
-CREATE TABLE group_data (
+CREATE TABLE openmls_group_data (
     group_id BLOB NOT NULL,
     data_type TEXT NOT NULL CHECK (
         data_type IN (
@@ -19,29 +19,29 @@ CREATE TABLE group_data (
     PRIMARY KEY (group_id, data_type)
 );
 
-CREATE TABLE proposal (
+CREATE TABLE openmls_proposal (
     group_id BLOB NOT NULL,
     proposal_ref BLOB NOT NULL,
     proposal BLOB NOT NULL,
     PRIMARY KEY (group_id, proposal_ref)
 );
 
-CREATE TABLE own_leaf_node (
+CREATE TABLE openmls_own_leaf_node (
     group_id BLOB PRIMARY KEY,
     leaf_node BLOB NOT NULL
 );
 
-CREATE TABLE signature_key (
+CREATE TABLE openmls_signature_key (
     public_key BLOB PRIMARY KEY,
     signature_key BLOB NOT NULL
 );
 
-CREATE TABLE encryption_key (
+CREATE TABLE openmls_encryption_key (
     public_key BLOB PRIMARY KEY,
     key_pair BLOB NOT NULL
 );
 
-CREATE TABLE epoch_key_pairs (
+CREATE TABLE openmls_epoch_key_pairs (
     group_id BLOB NOT NULL,
     epoch_id BLOB NOT NULL,
     leaf_index INTEGER NOT NULL,
@@ -49,9 +49,9 @@ CREATE TABLE epoch_key_pairs (
     PRIMARY KEY (group_id, epoch_id, leaf_index)
 );
 
-CREATE TABLE key_package (
+CREATE TABLE openmls_key_package (
     key_package_ref BLOB PRIMARY KEY,
     key_package BLOB NOT NULL
 );
 
-CREATE TABLE psk (psk_id BLOB PRIMARY KEY, psk_bundle BLOB NOT NULL);
+CREATE TABLE openmls_psk (psk_id BLOB PRIMARY KEY, psk_bundle BLOB NOT NULL);
