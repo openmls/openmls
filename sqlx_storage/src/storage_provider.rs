@@ -978,7 +978,7 @@ impl<LeafNode: Entity<CURRENT_VERSION>> StorableLeafNode<LeafNode> {
         executor: impl SqliteExecutor<'_>,
         group_id: &GroupId,
     ) -> sqlx::Result<Vec<LeafNode>> {
-        sqlx::query("SELECT leaf_node FROM openmls_leaf_node WHERE group_id = ?")
+        sqlx::query("SELECT leaf_node FROM openmls_own_leaf_node WHERE group_id = ?")
             .bind(KeyRefWrapper::<_, C>(group_id, PhantomData))
             .fetch(executor)
             .map(|row| {
@@ -1014,7 +1014,7 @@ impl<Proposal: Entity<CURRENT_VERSION>, ProposalRef: Entity<CURRENT_VERSION>>
         executor: impl SqliteExecutor<'_>,
         group_id: &GroupId,
     ) -> sqlx::Result<Vec<ProposalRef>> {
-        sqlx::query("SELECT proposal_ref FROM openmlsproposal WHERE group_id = ?1")
+        sqlx::query("SELECT proposal_ref FROM openmls_proposal WHERE group_id = ?1")
             .bind(KeyRefWrapper::<_, C>(group_id, PhantomData))
             .fetch(executor)
             .map(|row| {
