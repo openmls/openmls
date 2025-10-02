@@ -1,7 +1,3 @@
-// SPDX-FileCopyrightText: 2023 Phoenix R&D GmbH <hello@phnx.im>
-//
-// SPDX-License-Identifier: AGPL-3.0-or-later
-
 use openmls_traits::storage::{CURRENT_VERSION, Entity};
 use sqlx::{
     Database, Decode, Encode, Sqlite, encode::IsNull, error::BoxDynError, sqlite::SqliteTypeInfo,
