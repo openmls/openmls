@@ -2,11 +2,11 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use std::{cell::RefCell, marker::PhantomData, path::Path};
+use std::{cell::RefCell, marker::PhantomData};
 
 use openmls_traits::storage::{CURRENT_VERSION, Entity, Key};
 use serde::Serialize;
-use sqlx::{SqliteConnection, migrate::Migrator};
+use sqlx::SqliteConnection;
 
 pub use crate::codec::Codec;
 use crate::{migrator::MigratorWrapper, storage_provider::block_async_in_place};
@@ -37,9 +37,10 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
     }
 
     pub fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
-        let migrator = block_async_in_place(Migrator::new(Path::new("./migrations")))?;
         let mut conn = self.connection.borrow_mut();
-        block_async_in_place(migrator.run_direct(&mut MigratorWrapper(&mut *conn)))?;
+        block_async_in_place(
+            sqlx::migrate!("./migrations").run_direct(&mut MigratorWrapper(&mut *conn)),
+        )?;
         Ok(())
     }
 
