@@ -13,7 +13,7 @@ use sqlx::{
 
 use super::{
     EntityRefWrapper, EntitySliceWrapper, KeyRefWrapper, SqliteStorageProvider, StorableGroupIdRef,
-    codec::Codec,
+    codec::{Codec, CodecInternal},
     encryption_key_pairs::StorableEncryptionKeyPairRef,
     encryption_key_pairs::{StorableEncryptionKeyPair, StorableEncryptionPublicKeyRef},
     epoch_key_pairs::{StorableEpochKeyPairs, StorableEpochKeyPairsRef},
