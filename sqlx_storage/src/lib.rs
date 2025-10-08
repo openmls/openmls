@@ -1,3 +1,7 @@
+#![forbid(unsafe_code)]
+#![deny(missing_docs)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(rustdoc::private_intra_doc_links)]
 //! # SQLx Storage Provider
 //!
 //! This crate implements a storage provider for OpenMLS using SQLx. The only
