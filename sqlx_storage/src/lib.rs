@@ -1,3 +1,16 @@
+//! # SQLx Storage Provider
+//!
+//! This crate implements a storage provider for OpenMLS using SQLx. The only
+//! supported database is currently SQLite.
+//!
+//! The main struct is [`SqliteStorageProvider`], which implements the
+//! [`StorageProvider`](openmls_traits::storage::StorageProvider) trait from the
+//! `openmls_traits` crate.
+//!
+//! The crate manages its own database migrations in its own migrations table
+//! with the name `_openmls_sqlx_migrations`. All tables created by this crate
+//! are prefixed with `openmls_` to avoid name clashes.
+
 use std::{cell::RefCell, marker::PhantomData};
 
 use openmls_traits::storage::{CURRENT_VERSION, Entity, Key};
@@ -19,12 +32,21 @@ pub(crate) mod psks;
 pub(crate) mod signature_key_pairs;
 pub(crate) mod storage_provider;
 
+/// [`SqliteStorageProvider`] implements the
+/// [`StorageProvider`](openmls_traits::storage::StorageProvider) trait and can
+/// thus be used as a storage provider for OpenMLS.
+///
+/// It is generic over any codec `C` that implements the [`Codec`] trait.
+/// The codec is used to serialize and deserialize the data stored in the
+/// underlying database.
 pub struct SqliteStorageProvider<'a, C> {
     connection: RefCell<&'a mut SqliteConnection>,
     codec: PhantomData<C>,
 }
 
 impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
+    /// Create a new [`SqliteStorageProvider`] based on the given
+    /// [`SqliteConnection`].
     pub fn new(connection: &'a mut SqliteConnection) -> Self {
         Self {
             connection: RefCell::new(connection),
@@ -32,6 +54,8 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
         }
     }
 
+    /// Run the migrations for the storage provider. Uses sqlx's built-in
+    /// migration support.
     pub fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
         let mut conn = self.connection.borrow_mut();
         block_async_in_place(
