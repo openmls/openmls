@@ -1,10 +1,8 @@
-#![cfg(feature = "fork-resolution")]
-
 use openmls::{prelude::*, test_utils::single_group_test_framework::*};
 use openmls_test::openmls_test;
 
 #[openmls_test]
-fn readd() {
+fn swap() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
     let charlie_party = CorePartyState::<Provider>::new("charlie");
@@ -104,7 +102,7 @@ fn readd() {
         .unwrap();
 
     let commit_messages = bob_group
-        .readd_members(
+        .swap_members(
             &bob_party.provider,
             &bob_pre_group.signer,
             &[

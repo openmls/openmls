@@ -11,12 +11,13 @@ use super::{
     *,
 };
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex, key_packages::KeyPackage,
-    messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex,
+    group::{SwapMembersError, WelcomeCommitMessages},
+    key_packages::KeyPackage,
+    messages::group_info::GroupInfo,
+    storage::OpenMlsProvider,
+    treesync::LeafNode,
 };
-
-#[cfg(feature = "fork-resolution")]
-use crate::group::{ReAddMembersError, WelcomeCommitMessages};
 
 impl MlsGroup {
     /// Adds members to the group.
@@ -49,23 +50,25 @@ impl MlsGroup {
         self.add_members_internal(provider, signer, key_packages, true)
     }
 
-    /// Re-add members.
+    /// Swap members.
     ///
-    /// If there are issues with a set of members and they are suspected to be
-    /// forked, this functions allows to remove and re-add them.
-    /// This is a convenience function that first removes, and then re-adds the
-    /// list of provided users.
+    /// This function swaps out the `members` of the group with new clients,
+    /// identified by the provided `key_packages`.
+    ///
+    /// One scenarion where this is useful is if there are issues with a set of
+    /// members and they are suspected to be forked, this functions allows to
+    /// remove and re-add them. This is a convenience function that first
+    /// removes, and then re-adds the list of provided users.
     ///
     /// Note that this function _does not_ enforce that the removed `members`
     /// and new members in the `key_packages` correspond.
-    #[cfg(feature = "fork-resolution")]
-    pub fn readd_members<Provider: OpenMlsProvider>(
+    pub fn swap_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         members: &[LeafNodeIndex],
         key_packages: &[KeyPackage],
-    ) -> Result<WelcomeCommitMessages, ReAddMembersError<Provider::StorageError>> {
+    ) -> Result<WelcomeCommitMessages, SwapMembersError<Provider::StorageError>> {
         self.is_operational()?;
 
         if members.is_empty() {
@@ -77,13 +80,13 @@ impl MlsGroup {
         }
 
         if members.len() != key_packages.len() {
-            return Err(ReAddMembersError::InvalidInput);
+            return Err(SwapMembersError::InvalidInput);
         }
 
         let bundle = self
             .commit_builder()
             .propose_removals(members.iter().cloned())
-            .propose_adds(key_packages.into_iter().cloned())
+            .propose_adds(key_packages.iter().cloned())
             .load_psks(provider.storage())?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)?;

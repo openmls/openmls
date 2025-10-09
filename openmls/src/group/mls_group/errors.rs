@@ -189,7 +189,7 @@ pub enum AddMembersError<StorageError> {
 
 /// Add members error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ReAddMembersError<StorageError> {
+pub enum SwapMembersError<StorageError> {
     /// Unable to map the key packages to the given leaf indices.
     #[error("Unable to map the key packages to the given leaf indices.")]
     InvalidInput,
