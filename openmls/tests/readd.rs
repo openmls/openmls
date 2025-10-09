@@ -1,8 +1,9 @@
+#![cfg(feature = "fork-resolution")]
+
 use openmls::{prelude::*, test_utils::single_group_test_framework::*};
 use openmls_test::openmls_test;
 
 #[openmls_test]
-#[cfg(feature = "fork-resolution")]
 fn readd() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
