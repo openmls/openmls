@@ -11,13 +11,12 @@ use super::{
     *,
 };
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex,
-    group::{ReAddMembersError, WelcomeCommitMessages},
-    key_packages::KeyPackage,
-    messages::group_info::GroupInfo,
-    storage::OpenMlsProvider,
-    treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex, key_packages::KeyPackage,
+    messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNode,
 };
+
+#[cfg(feature = "fork-resolution")]
+use crate::group::{ReAddMembersError, WelcomeCommitMessages};
 
 impl MlsGroup {
     /// Adds members to the group.
