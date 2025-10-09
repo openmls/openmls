@@ -52,16 +52,14 @@ impl MlsGroup {
 
     /// Swap members.
     ///
-    /// This function swaps out the `members` of the group with new clients,
-    /// identified by the provided `key_packages`.
+    /// This function replaces a set of `members` of the group with new members.
+    /// The members-to-be-replaced are identified by their index, and the new
+    /// members are identified by the provided `key_packages`.
     ///
-    /// One scenarion where this is useful is if there are issues with a set of
-    /// members and they are suspected to be forked, this functions allows to
-    /// remove and re-add them. This is a convenience function that first
-    /// removes, and then re-adds the list of provided users.
-    ///
-    /// Note that this function _does not_ enforce that the removed `members`
-    /// and new members in the `key_packages` correspond.
+    /// This function can be used in scenarios where members are no
+    /// longer in sync with the rest of the group and need to be re-added.
+    /// Note however that this function _does not_ enforce that the 
+    /// removed `members` and new members in the `key_packages` correspond.
     pub fn swap_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,

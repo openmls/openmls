@@ -191,7 +191,7 @@ pub enum AddMembersError<StorageError> {
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum SwapMembersError<StorageError> {
     /// Unable to map the key packages to the given leaf indices.
-    #[error("Unable to map the key packages to the given leaf indices.")]
+    #[error("Number of added and removed members is not the same")]
     InvalidInput,
 
     /// See [`EmptyInputError`] for more details.
