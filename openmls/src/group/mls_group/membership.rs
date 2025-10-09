@@ -58,7 +58,7 @@ impl MlsGroup {
     ///
     /// This function can be used in scenarios where members are no
     /// longer in sync with the rest of the group and need to be re-added.
-    /// Note however that this function _does not_ enforce that the 
+    /// Note however that this function _does not_ enforce that the
     /// removed `members` and new members in the `key_packages` correspond.
     pub fn swap_members<Provider: OpenMlsProvider>(
         &mut self,
