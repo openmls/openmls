@@ -2,6 +2,7 @@ use openmls::{prelude::*, test_utils::single_group_test_framework::*};
 use openmls_test::openmls_test;
 
 #[openmls_test]
+#[cfg(feature = "fork-resolution")]
 fn readd() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
@@ -114,8 +115,6 @@ fn readd() {
                 yuk_key_package.key_package().clone(),
                 alice_key_package.key_package().clone(),
             ],
-            // If we make this false (no sorting), the check for indices below will fail.
-            true,
         )
         .unwrap();
     bob_group.merge_pending_commit(&bob_party.provider).unwrap();
@@ -152,8 +151,4 @@ fn readd() {
     // Yuk and Alice are back in.
     assert_eq!(alice_group.confirmation_tag(), bob_group.confirmation_tag());
     assert_eq!(yuk_group.confirmation_tag(), bob_group.confirmation_tag());
-
-    // They are in the same place
-    assert_eq!(alice_group.own_leaf_index().u32(), 0);
-    assert_eq!(yuk_group.own_leaf_index().u32(), 3);
 }

@@ -84,7 +84,7 @@ impl MlsGroup {
         let bundle = self
             .commit_builder()
             .propose_removals(members.iter().cloned())
-            .propose_adds(key_packages.into_iter())
+            .propose_adds(key_packages.into_iter().cloned())
             .load_psks(provider.storage())?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)?;
