@@ -1,5 +1,4 @@
 use openmls_traits::storage::{CURRENT_VERSION, Entity, Key};
-use std::marker::PhantomData;
 
 pub(crate) struct StorableEncryptionKeyPair<EncryptionKeyPair: Entity<CURRENT_VERSION>>(
     pub EncryptionKeyPair,
