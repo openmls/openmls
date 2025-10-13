@@ -824,6 +824,36 @@ pub struct CommitMessageBundle {
     group_info: Option<GroupInfo>,
 }
 
+/// The result of a commit with an add proposal. This includes
+/// - The Commit as an [`MlsMessageOut`]
+/// - The [`Welcome`] as an [`MlsMessageOut`]
+/// - Optionally a [`GroupInfo`] as an [`MlsMessageOut`]
+pub struct WelcomeCommitMessages {
+    /// The Commit as an [`MlsMessageOut`].
+    pub commit: MlsMessageOut,
+
+    /// The [`Welcome`] as an [`MlsMessageOut`].
+    pub welcome: MlsMessageOut,
+
+    /// Optionally a [`GroupInfo`] as an [`MlsMessageOut`].
+    pub group_info: Option<MlsMessageOut>,
+}
+
+impl TryFrom<CommitMessageBundle> for WelcomeCommitMessages {
+    type Error = LibraryError;
+
+    fn try_from(value: CommitMessageBundle) -> Result<Self, Self::Error> {
+        let (commit, welcome_opt, group_info) = value.into_messages();
+        Ok(Self {
+            commit,
+            welcome: welcome_opt.ok_or(LibraryError::custom(
+                "WelcomeCommitMessages must only be used with commits that produce a welcome.",
+            ))?,
+            group_info,
+        })
+    }
+}
+
 #[cfg(test)]
 impl CommitMessageBundle {
     pub fn new(
