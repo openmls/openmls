@@ -14,16 +14,13 @@ use sqlx::{
 use super::{
     EntityRefWrapper, EntitySliceWrapper, KeyRefWrapper, SqliteStorageProvider, StorableGroupIdRef,
     codec::{Codec, CodecInternal},
-    encryption_key_pairs::StorableEncryptionKeyPairRef,
-    encryption_key_pairs::{StorableEncryptionKeyPair, StorableEncryptionPublicKeyRef},
-    epoch_key_pairs::{StorableEpochKeyPairs, StorableEpochKeyPairsRef},
     group_data::{GroupDataType, StorableGroupData, StorableGroupDataRef},
-    key_packages::{StorableHashRef, StorableKeyPackage, StorableKeyPackageRef},
-    own_leaf_nodes::{StorableLeafNode, StorableLeafNodeRef},
-    proposals::{StorableProposal, StorableProposalRef},
-    psks::{StorablePskBundle, StorablePskBundleRef, StorablePskIdRef},
-    signature_key_pairs::{
-        StorableSignatureKeyPairs, StorableSignatureKeyPairsRef, StorableSignaturePublicKeyRef,
+    wrappers::{
+        StorableEncryptionKeyPair, StorableEncryptionKeyPairRef, StorableEncryptionPublicKeyRef,
+        StorableEpochKeyPairsRef, StorableHashRef, StorableKeyPackage, StorableKeyPackageRef,
+        StorableLeafNode, StorableLeafNodeRef, StorableProposal, StorableProposalRef,
+        StorablePskBundle, StorablePskBundleRef, StorablePskIdRef, StorableSignatureKeyPairs,
+        StorableSignatureKeyPairsRef, StorableSignaturePublicKeyRef,
     },
 };
 
@@ -512,8 +509,7 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         leaf_index: u32,
     ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
         let mut connection = self.connection.borrow_mut();
-        let task =
-            StorableEpochKeyPairs::load::<_, _, C>(&mut **connection, group_id, epoch, leaf_index);
+        let task = load_epoch_key_pairs::<_, _, _, C>(&mut **connection, group_id, epoch, leaf_index);
         block_async_in_place(task)
     }
 
@@ -1064,28 +1060,31 @@ impl<EncryptionKeyPair: Entity<CURRENT_VERSION>>
     }
 }
 
-impl<EpochKeyPairs: Entity<CURRENT_VERSION>> StorableEpochKeyPairs<EpochKeyPairs> {
-    async fn load<GroupId: Key<CURRENT_VERSION>, EpochKey: Key<CURRENT_VERSION>, C: Codec>(
-        executor: impl SqliteExecutor<'_>,
-        group_id: &GroupId,
-        epoch_id: &EpochKey,
-        leaf_index: u32,
-    ) -> sqlx::Result<Vec<EpochKeyPairs>> {
-        let group_id = KeyRefWrapper::<_, C>::new(group_id);
-        let epoch_id = KeyRefWrapper::<_, C>::new(epoch_id);
-        query!(
-            "SELECT key_pairs FROM openmls_epoch_key_pairs
+async fn load_epoch_key_pairs<
+    EpochKeyPairs: Entity<CURRENT_VERSION>,
+    GroupId: Key<CURRENT_VERSION>,
+    EpochKey: Key<CURRENT_VERSION>,
+    C: Codec,
+>(
+    executor: impl SqliteExecutor<'_>,
+    group_id: &GroupId,
+    epoch_id: &EpochKey,
+    leaf_index: u32,
+) -> sqlx::Result<Vec<EpochKeyPairs>> {
+    let group_id = KeyRefWrapper::<_, C>::new(group_id);
+    let epoch_id = KeyRefWrapper::<_, C>::new(epoch_id);
+    query!(
+        "SELECT key_pairs FROM openmls_epoch_key_pairs
             WHERE group_id = ?1 AND epoch_id = ?2 AND leaf_index = ?3",
-            group_id,
-            epoch_id,
-            leaf_index
-        )
-        .fetch_optional(executor)
-        .await?
-        .map(|row| C::from_bytes(row.key_pairs))
-        .transpose()
-        .map(|opt| opt.unwrap_or_default())
-    }
+        group_id,
+        epoch_id,
+        leaf_index
+    )
+    .fetch_optional(executor)
+    .await?
+    .map(|row| C::from_bytes(row.key_pairs))
+    .transpose()
+    .map(|opt| opt.unwrap_or_default())
 }
 
 impl<KeyPackage: Entity<CURRENT_VERSION>> StorableKeyPackage<KeyPackage> {

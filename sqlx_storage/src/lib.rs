@@ -24,17 +24,11 @@ use sqlx::SqliteConnection;
 pub use crate::codec::Codec;
 use crate::{migrator::MigratorWrapper, storage_provider::block_async_in_place};
 
-pub(crate) mod codec;
-pub(crate) mod encryption_key_pairs;
-pub(crate) mod epoch_key_pairs;
-pub(crate) mod group_data;
-pub(crate) mod key_packages;
+mod codec;
+mod group_data;
 mod migrator;
-pub(crate) mod own_leaf_nodes;
-pub(crate) mod proposals;
-pub(crate) mod psks;
-pub(crate) mod signature_key_pairs;
-pub(crate) mod storage_provider;
+mod storage_provider;
+mod wrappers;
 
 /// [`SqliteStorageProvider`] implements the
 /// [`StorageProvider`](openmls_traits::storage::StorageProvider) trait and can
