@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS _openmls_sqlx_migrations (
         migration: &'m Migration,
     ) -> BoxFuture<'m, Result<Duration, MigrateError>> {
         Box::pin(async move {
-            // Use a single transaction for the actual migration script and the essential bookeeping so we never
+            // Use a single transaction for the actual migration script and the essential bookkeeping so we never
             // execute migrations twice. See https://github.com/launchbadge/sqlx/issues/1966.
             let mut tx = self.0.begin().await?;
             let start = Instant::now();
