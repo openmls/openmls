@@ -11,8 +11,12 @@ use super::{
     *,
 };
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex, key_packages::KeyPackage,
-    messages::group_info::GroupInfo, storage::OpenMlsProvider, treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex,
+    group::{SwapMembersError, WelcomeCommitMessages},
+    key_packages::KeyPackage,
+    messages::group_info::GroupInfo,
+    storage::OpenMlsProvider,
+    treesync::LeafNode,
 };
 
 impl MlsGroup {
@@ -44,6 +48,50 @@ impl MlsGroup {
         AddMembersError<Provider::StorageError>,
     > {
         self.add_members_internal(provider, signer, key_packages, true)
+    }
+
+    /// Swap members.
+    ///
+    /// This function replaces a set of `members` of the group with new members.
+    /// The members-to-be-replaced are identified by their index, and the new
+    /// members are identified by the provided `key_packages`.
+    ///
+    /// This function can be used in scenarios where members are no
+    /// longer in sync with the rest of the group and need to be re-added.
+    /// Note however that this function _does not_ enforce that the
+    /// removed `members` and new members in the `key_packages` correspond.
+    pub fn swap_members<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        members: &[LeafNodeIndex],
+        key_packages: &[KeyPackage],
+    ) -> Result<WelcomeCommitMessages, SwapMembersError<Provider::StorageError>> {
+        self.is_operational()?;
+
+        if members.is_empty() {
+            return Err(EmptyInputError::RemoveMembers.into());
+        }
+
+        if key_packages.is_empty() {
+            return Err(EmptyInputError::AddMembers.into());
+        }
+
+        if members.len() != key_packages.len() {
+            return Err(SwapMembersError::InvalidInput);
+        }
+
+        let bundle = self
+            .commit_builder()
+            .propose_removals(members.iter().cloned())
+            .propose_adds(key_packages.iter().cloned())
+            .load_psks(provider.storage())?
+            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .stage_commit(provider)?;
+
+        self.reset_aad();
+
+        Ok(bundle.try_into()?)
     }
 
     /// Adds members to the group.
@@ -263,6 +311,14 @@ impl MlsGroup {
     /// Returns a list of [`Member`]s in the group.
     pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
         self.public_group().members()
+    }
+
+    /// Returns the [`LeafNodeIndex`] of a member corresponding to the given
+    /// credential. Returns `None` if the member can not be found in this group.
+    pub fn member_leaf_index(&self, credential: &Credential) -> Option<LeafNodeIndex> {
+        self.members()
+            .find(|m| &m.credential == credential)
+            .map(|m| m.index)
     }
 
     /// Returns the [`Credential`] of a member corresponding to the given
