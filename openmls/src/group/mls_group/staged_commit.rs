@@ -446,8 +446,10 @@ pub(crate) enum StagedCommitState {
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub struct StagedCommit {
-    pub(super) staged_proposal_queue: ProposalQueue,
-    pub(super) state: StagedCommitState,
+    /// The staged proposal queue.
+    pub staged_proposal_queue: ProposalQueue,
+    /// The staged commit state.
+    pub state: StagedCommitState,
 }
 
 impl StagedCommit {

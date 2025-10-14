@@ -226,10 +226,6 @@ impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
             ProcessedMessageContent::StagedCommitMessage(m) => self
                 .group
                 .merge_staged_commit(&self.party.core_state.provider, *m)?,
-            #[cfg(feature = "extensions-draft-08")]
-            ProcessedMessageContent::PendingAppDataUpdates(_) => {
-                todo!()
-            }
         };
 
         Ok(())

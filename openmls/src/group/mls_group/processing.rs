@@ -13,10 +13,10 @@ use crate::{
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
-use super::{errors::ProcessMessageError, *};
-
 #[cfg(feature = "extensions-draft-08")]
-use crate::group::mls_group::app_data_update::PendingAppDataUpdates;
+use crate::extensions::{AppDataDictionary, AppDataDictionaryExtension};
+
+use super::{errors::ProcessMessageError, *};
 
 impl MlsGroup {
     /// Parses incoming messages from the DS. Checks for syntactic errors and
@@ -306,20 +306,32 @@ impl MlsGroup {
                             provider,
                         )?;
 
-                        // Wrap in PendingAppDataUpdates
-                        // if there are pending AppDataUpdates that need to be applied.
-                        // TODO: improve syntax
-                        match staged_commit {
-                            #[cfg(feature = "extensions-draft-08")]
-                            _ if staged_commit.app_data_update() => {
-                                ProcessedMessageContent::PendingAppDataUpdates(
-                                    PendingAppDataUpdates(Box::new(staged_commit)),
-                                )
+                        #[cfg(feature = "extensions-draft-08")]
+                        let staged_commit = {
+                            let mut staged_commit = staged_commit;
+                            if staged_commit.app_data_update() {
+                                // insert a new AppDataDictionary extension if it does not exist
+                                let extensions = staged_commit
+                                    .state
+                                    .staged_diff_mut()
+                                    .group_context_mut()
+                                    .extensions_mut();
+
+                                // TODO: move this elsewhere?
+                                if !extensions.contains(ExtensionType::AppDataDictionary) {
+                                    extensions
+                                        .add(Extension::AppDataDictionary(
+                                            AppDataDictionaryExtension::default(),
+                                        ))
+                                        .map_err(|_| {
+                                            LibraryError::custom("Could not add extension")
+                                        })?;
+                                }
                             }
-                            _ => ProcessedMessageContent::StagedCommitMessage(Box::new(
-                                staged_commit,
-                            )),
-                        }
+                            staged_commit
+                        };
+
+                        ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                 };
 
