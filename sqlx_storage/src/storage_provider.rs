@@ -509,7 +509,8 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         leaf_index: u32,
     ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
         let mut connection = self.connection.borrow_mut();
-        let task = load_epoch_key_pairs::<_, _, _, C>(&mut **connection, group_id, epoch, leaf_index);
+        let task =
+            load_epoch_key_pairs::<_, _, _, C>(&mut **connection, group_id, epoch, leaf_index);
         block_async_in_place(task)
     }
 

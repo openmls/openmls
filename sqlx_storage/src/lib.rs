@@ -57,7 +57,7 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
     pub fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
         let mut conn = self.connection.borrow_mut();
         block_async_in_place(
-            sqlx::migrate!("./migrations").run_direct(&mut MigratorWrapper(&mut *conn)),
+            sqlx::migrate!("./migrations").run_direct(&mut MigratorWrapper(*conn)),
         )?;
         Ok(())
     }
