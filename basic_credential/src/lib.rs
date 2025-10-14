@@ -83,6 +83,7 @@ impl SignatureKeyPair {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
                 let k = SigningKey::random(&mut OsRng);
                 let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
+                #[allow(deprecated)]
                 (k.to_bytes().as_slice().into(), pk)
             }
             SignatureScheme::ED25519 => {
