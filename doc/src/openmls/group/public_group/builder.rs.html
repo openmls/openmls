@@ -5,7 +5,7 @@
 <a href=#5 id=5 data-nosnippet>5</a>    credentials::CredentialWithKey,
 <a href=#6 id=6 data-nosnippet>6</a>    error::LibraryError,
 <a href=#7 id=7 data-nosnippet>7</a>    extensions::{errors::InvalidExtensionError, Extensions},
-<a href=#8 id=8 data-nosnippet>8</a>    group::{ExtensionType, GroupContext, GroupId},
+<a href=#8 id=8 data-nosnippet>8</a>    group::{GroupContext, GroupId},
 <a href=#9 id=9 data-nosnippet>9</a>    key_packages::Lifetime,
 <a href=#10 id=10 data-nosnippet>10</a>    messages::ConfirmationTag,
 <a href=#11 id=11 data-nosnippet>11</a>    schedule::CommitSecret,
@@ -57,122 +57,118 @@
 <a href=#57 id=57 data-nosnippet>57</a>        <span class="kw-2">mut </span><span class="self">self</span>,
 <a href=#58 id=58 data-nosnippet>58</a>        extensions: Extensions,
 <a href=#59 id=59 data-nosnippet>59</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, InvalidExtensionError&gt; {
-<a href=#60 id=60 data-nosnippet>60</a>        <span class="comment">// None of the default extensions are leaf node extensions, so only
-<a href=#61 id=61 data-nosnippet>61</a>        // unknown extensions can be leaf node extensions.
-<a href=#62 id=62 data-nosnippet>62</a>        </span><span class="kw">let </span>is_valid_in_leaf_node = extensions
-<a href=#63 id=63 data-nosnippet>63</a>            .iter()
-<a href=#64 id=64 data-nosnippet>64</a>            .all(|e| <span class="macro">matches!</span>(e.extension_type(), ExtensionType::Unknown(<span class="kw">_</span>)));
-<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">if </span>!is_valid_in_leaf_node {
-<a href=#66 id=66 data-nosnippet>66</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(InvalidExtensionError::IllegalInLeafNodes);
-<a href=#67 id=67 data-nosnippet>67</a>        }
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="self">self</span>.leaf_node_extensions = extensions;
-<a href=#69 id=69 data-nosnippet>69</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
-<a href=#70 id=70 data-nosnippet>70</a>    }
-<a href=#71 id=71 data-nosnippet>71</a>
-<a href=#72 id=72 data-nosnippet>72</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_secrets(
-<a href=#73 id=73 data-nosnippet>73</a>        <span class="self">self</span>,
-<a href=#74 id=74 data-nosnippet>74</a>        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
-<a href=#75 id=75 data-nosnippet>75</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-<a href=#76 id=76 data-nosnippet>76</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError&gt; {
-<a href=#77 id=77 data-nosnippet>77</a>        <span class="comment">// If there are no capabilities, we want to provide a default version
-<a href=#78 id=78 data-nosnippet>78</a>        // plus anything in the required capabilities.
-<a href=#79 id=79 data-nosnippet>79</a>        </span><span class="kw">let </span>(required_extensions, required_proposals, required_credentials) =
-<a href=#80 id=80 data-nosnippet>80</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
-<a href=#81 id=81 data-nosnippet>81</a>                <span class="self">self</span>.group_context_extensions.required_capabilities()
-<a href=#82 id=82 data-nosnippet>82</a>            {
-<a href=#83 id=83 data-nosnippet>83</a>                (
-<a href=#84 id=84 data-nosnippet>84</a>                    <span class="prelude-val">Some</span>(required_capabilities.extension_types()),
-<a href=#85 id=85 data-nosnippet>85</a>                    <span class="prelude-val">Some</span>(required_capabilities.proposal_types()),
-<a href=#86 id=86 data-nosnippet>86</a>                    <span class="prelude-val">Some</span>(required_capabilities.credential_types()),
-<a href=#87 id=87 data-nosnippet>87</a>                )
-<a href=#88 id=88 data-nosnippet>88</a>            } <span class="kw">else </span>{
-<a href=#89 id=89 data-nosnippet>89</a>                (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
-<a href=#90 id=90 data-nosnippet>90</a>            };
-<a href=#91 id=91 data-nosnippet>91</a>        <span class="kw">let </span>capabilities = <span class="self">self</span>.capabilities.unwrap_or(Capabilities::new(
-<a href=#92 id=92 data-nosnippet>92</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[ProtocolVersion::default()]),
-<a href=#93 id=93 data-nosnippet>93</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="self">self</span>.ciphersuite]),
-<a href=#94 id=94 data-nosnippet>94</a>            required_extensions,
-<a href=#95 id=95 data-nosnippet>95</a>            required_proposals,
-<a href=#96 id=96 data-nosnippet>96</a>            required_credentials,
-<a href=#97 id=97 data-nosnippet>97</a>        ));
-<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">let </span>(treesync, commit_secret, leaf_keypair) = TreeSync::new(
-<a href=#99 id=99 data-nosnippet>99</a>            provider,
-<a href=#100 id=100 data-nosnippet>100</a>            signer,
-<a href=#101 id=101 data-nosnippet>101</a>            <span class="self">self</span>.ciphersuite,
-<a href=#102 id=102 data-nosnippet>102</a>            <span class="self">self</span>.credential_with_key,
-<a href=#103 id=103 data-nosnippet>103</a>            <span class="self">self</span>.lifetime.unwrap_or_default(),
-<a href=#104 id=104 data-nosnippet>104</a>            capabilities,
-<a href=#105 id=105 data-nosnippet>105</a>            <span class="self">self</span>.leaf_node_extensions,
-<a href=#106 id=106 data-nosnippet>106</a>        )<span class="question-mark">?</span>;
-<a href=#107 id=107 data-nosnippet>107</a>
-<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span>group_context = GroupContext::create_initial_group_context(
-<a href=#109 id=109 data-nosnippet>109</a>            <span class="self">self</span>.ciphersuite,
-<a href=#110 id=110 data-nosnippet>110</a>            <span class="self">self</span>.group_id,
-<a href=#111 id=111 data-nosnippet>111</a>            treesync.tree_hash().to_vec(),
-<a href=#112 id=112 data-nosnippet>112</a>            <span class="self">self</span>.group_context_extensions,
-<a href=#113 id=113 data-nosnippet>113</a>        );
-<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>next_builder = TempBuilderPG2 {
-<a href=#115 id=115 data-nosnippet>115</a>            treesync,
-<a href=#116 id=116 data-nosnippet>116</a>            group_context,
-<a href=#117 id=117 data-nosnippet>117</a>        };
-<a href=#118 id=118 data-nosnippet>118</a>        <span class="prelude-val">Ok</span>((next_builder, commit_secret, leaf_keypair))
-<a href=#119 id=119 data-nosnippet>119</a>    }
-<a href=#120 id=120 data-nosnippet>120</a>}
-<a href=#121 id=121 data-nosnippet>121</a>
-<a href=#122 id=122 data-nosnippet>122</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TempBuilderPG2 {
-<a href=#123 id=123 data-nosnippet>123</a>    treesync: TreeSync,
-<a href=#124 id=124 data-nosnippet>124</a>    group_context: GroupContext,
-<a href=#125 id=125 data-nosnippet>125</a>}
-<a href=#126 id=126 data-nosnippet>126</a>
-<a href=#127 id=127 data-nosnippet>127</a><span class="kw">impl </span>TempBuilderPG2 {
-<a href=#128 id=128 data-nosnippet>128</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_confirmation_tag(
-<a href=#129 id=129 data-nosnippet>129</a>        <span class="self">self</span>,
-<a href=#130 id=130 data-nosnippet>130</a>        confirmation_tag: ConfirmationTag,
-<a href=#131 id=131 data-nosnippet>131</a>    ) -&gt; PublicGroupBuilder {
-<a href=#132 id=132 data-nosnippet>132</a>        PublicGroupBuilder {
-<a href=#133 id=133 data-nosnippet>133</a>            treesync: <span class="self">self</span>.treesync,
-<a href=#134 id=134 data-nosnippet>134</a>            group_context: <span class="self">self</span>.group_context,
-<a href=#135 id=135 data-nosnippet>135</a>            confirmation_tag,
-<a href=#136 id=136 data-nosnippet>136</a>        }
+<a href=#60 id=60 data-nosnippet>60</a>        <span class="comment">// Ensure that these extensions are not invalid for leaf nodes.
+<a href=#61 id=61 data-nosnippet>61</a>        // https://validation.openmls.tech/#valn1601
+<a href=#62 id=62 data-nosnippet>62</a>        </span>extensions.validate_extension_types_for_leaf_node()<span class="question-mark">?</span>;
+<a href=#63 id=63 data-nosnippet>63</a>
+<a href=#64 id=64 data-nosnippet>64</a>        <span class="self">self</span>.leaf_node_extensions = extensions;
+<a href=#65 id=65 data-nosnippet>65</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+<a href=#66 id=66 data-nosnippet>66</a>    }
+<a href=#67 id=67 data-nosnippet>67</a>
+<a href=#68 id=68 data-nosnippet>68</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_secrets(
+<a href=#69 id=69 data-nosnippet>69</a>        <span class="self">self</span>,
+<a href=#70 id=70 data-nosnippet>70</a>        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+<a href=#71 id=71 data-nosnippet>71</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+<a href=#72 id=72 data-nosnippet>72</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError&gt; {
+<a href=#73 id=73 data-nosnippet>73</a>        <span class="comment">// If there are no capabilities, we want to provide a default version
+<a href=#74 id=74 data-nosnippet>74</a>        // plus anything in the required capabilities.
+<a href=#75 id=75 data-nosnippet>75</a>        </span><span class="kw">let </span>(required_extensions, required_proposals, required_credentials) =
+<a href=#76 id=76 data-nosnippet>76</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
+<a href=#77 id=77 data-nosnippet>77</a>                <span class="self">self</span>.group_context_extensions.required_capabilities()
+<a href=#78 id=78 data-nosnippet>78</a>            {
+<a href=#79 id=79 data-nosnippet>79</a>                (
+<a href=#80 id=80 data-nosnippet>80</a>                    <span class="prelude-val">Some</span>(required_capabilities.extension_types()),
+<a href=#81 id=81 data-nosnippet>81</a>                    <span class="prelude-val">Some</span>(required_capabilities.proposal_types()),
+<a href=#82 id=82 data-nosnippet>82</a>                    <span class="prelude-val">Some</span>(required_capabilities.credential_types()),
+<a href=#83 id=83 data-nosnippet>83</a>                )
+<a href=#84 id=84 data-nosnippet>84</a>            } <span class="kw">else </span>{
+<a href=#85 id=85 data-nosnippet>85</a>                (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+<a href=#86 id=86 data-nosnippet>86</a>            };
+<a href=#87 id=87 data-nosnippet>87</a>        <span class="kw">let </span>capabilities = <span class="self">self</span>.capabilities.unwrap_or(Capabilities::new(
+<a href=#88 id=88 data-nosnippet>88</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[ProtocolVersion::default()]),
+<a href=#89 id=89 data-nosnippet>89</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="self">self</span>.ciphersuite]),
+<a href=#90 id=90 data-nosnippet>90</a>            required_extensions,
+<a href=#91 id=91 data-nosnippet>91</a>            required_proposals,
+<a href=#92 id=92 data-nosnippet>92</a>            required_credentials,
+<a href=#93 id=93 data-nosnippet>93</a>        ));
+<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw">let </span>(treesync, commit_secret, leaf_keypair) = TreeSync::new(
+<a href=#95 id=95 data-nosnippet>95</a>            provider,
+<a href=#96 id=96 data-nosnippet>96</a>            signer,
+<a href=#97 id=97 data-nosnippet>97</a>            <span class="self">self</span>.ciphersuite,
+<a href=#98 id=98 data-nosnippet>98</a>            <span class="self">self</span>.credential_with_key,
+<a href=#99 id=99 data-nosnippet>99</a>            <span class="self">self</span>.lifetime.unwrap_or_default(),
+<a href=#100 id=100 data-nosnippet>100</a>            capabilities,
+<a href=#101 id=101 data-nosnippet>101</a>            <span class="self">self</span>.leaf_node_extensions,
+<a href=#102 id=102 data-nosnippet>102</a>        )<span class="question-mark">?</span>;
+<a href=#103 id=103 data-nosnippet>103</a>
+<a href=#104 id=104 data-nosnippet>104</a>        <span class="kw">let </span>group_context = GroupContext::create_initial_group_context(
+<a href=#105 id=105 data-nosnippet>105</a>            <span class="self">self</span>.ciphersuite,
+<a href=#106 id=106 data-nosnippet>106</a>            <span class="self">self</span>.group_id,
+<a href=#107 id=107 data-nosnippet>107</a>            treesync.tree_hash().to_vec(),
+<a href=#108 id=108 data-nosnippet>108</a>            <span class="self">self</span>.group_context_extensions,
+<a href=#109 id=109 data-nosnippet>109</a>        );
+<a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span>next_builder = TempBuilderPG2 {
+<a href=#111 id=111 data-nosnippet>111</a>            treesync,
+<a href=#112 id=112 data-nosnippet>112</a>            group_context,
+<a href=#113 id=113 data-nosnippet>113</a>        };
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="prelude-val">Ok</span>((next_builder, commit_secret, leaf_keypair))
+<a href=#115 id=115 data-nosnippet>115</a>    }
+<a href=#116 id=116 data-nosnippet>116</a>}
+<a href=#117 id=117 data-nosnippet>117</a>
+<a href=#118 id=118 data-nosnippet>118</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TempBuilderPG2 {
+<a href=#119 id=119 data-nosnippet>119</a>    treesync: TreeSync,
+<a href=#120 id=120 data-nosnippet>120</a>    group_context: GroupContext,
+<a href=#121 id=121 data-nosnippet>121</a>}
+<a href=#122 id=122 data-nosnippet>122</a>
+<a href=#123 id=123 data-nosnippet>123</a><span class="kw">impl </span>TempBuilderPG2 {
+<a href=#124 id=124 data-nosnippet>124</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_confirmation_tag(
+<a href=#125 id=125 data-nosnippet>125</a>        <span class="self">self</span>,
+<a href=#126 id=126 data-nosnippet>126</a>        confirmation_tag: ConfirmationTag,
+<a href=#127 id=127 data-nosnippet>127</a>    ) -&gt; PublicGroupBuilder {
+<a href=#128 id=128 data-nosnippet>128</a>        PublicGroupBuilder {
+<a href=#129 id=129 data-nosnippet>129</a>            treesync: <span class="self">self</span>.treesync,
+<a href=#130 id=130 data-nosnippet>130</a>            group_context: <span class="self">self</span>.group_context,
+<a href=#131 id=131 data-nosnippet>131</a>            confirmation_tag,
+<a href=#132 id=132 data-nosnippet>132</a>        }
+<a href=#133 id=133 data-nosnippet>133</a>    }
+<a href=#134 id=134 data-nosnippet>134</a>
+<a href=#135 id=135 data-nosnippet>135</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
+<a href=#136 id=136 data-nosnippet>136</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.group_context
 <a href=#137 id=137 data-nosnippet>137</a>    }
-<a href=#138 id=138 data-nosnippet>138</a>
-<a href=#139 id=139 data-nosnippet>139</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
-<a href=#140 id=140 data-nosnippet>140</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.group_context
-<a href=#141 id=141 data-nosnippet>141</a>    }
-<a href=#142 id=142 data-nosnippet>142</a>}
-<a href=#143 id=143 data-nosnippet>143</a>
-<a href=#144 id=144 data-nosnippet>144</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PublicGroupBuilder {
-<a href=#145 id=145 data-nosnippet>145</a>    treesync: TreeSync,
-<a href=#146 id=146 data-nosnippet>146</a>    group_context: GroupContext,
-<a href=#147 id=147 data-nosnippet>147</a>    confirmation_tag: ConfirmationTag,
-<a href=#148 id=148 data-nosnippet>148</a>}
-<a href=#149 id=149 data-nosnippet>149</a>
-<a href=#150 id=150 data-nosnippet>150</a><span class="kw">impl </span>PublicGroupBuilder {
-<a href=#151 id=151 data-nosnippet>151</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build(<span class="self">self</span>, crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto) -&gt; <span class="prelude-ty">Result</span>&lt;PublicGroup, LibraryError&gt; {
-<a href=#152 id=152 data-nosnippet>152</a>        PublicGroup::new(
-<a href=#153 id=153 data-nosnippet>153</a>            crypto,
-<a href=#154 id=154 data-nosnippet>154</a>            <span class="self">self</span>.treesync,
-<a href=#155 id=155 data-nosnippet>155</a>            <span class="self">self</span>.group_context,
-<a href=#156 id=156 data-nosnippet>156</a>            <span class="self">self</span>.confirmation_tag,
-<a href=#157 id=157 data-nosnippet>157</a>        )
-<a href=#158 id=158 data-nosnippet>158</a>    }
-<a href=#159 id=159 data-nosnippet>159</a>}
-<a href=#160 id=160 data-nosnippet>160</a>
-<a href=#161 id=161 data-nosnippet>161</a><span class="kw">impl </span>PublicGroup {
-<a href=#162 id=162 data-nosnippet>162</a>    <span class="doccomment">/// Create a new [`PublicGroupBuilder`].
-<a href=#163 id=163 data-nosnippet>163</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>builder(
-<a href=#164 id=164 data-nosnippet>164</a>        group_id: GroupId,
-<a href=#165 id=165 data-nosnippet>165</a>        ciphersuite: Ciphersuite,
-<a href=#166 id=166 data-nosnippet>166</a>        credential_with_key: CredentialWithKey,
-<a href=#167 id=167 data-nosnippet>167</a>    ) -&gt; TempBuilderPG1 {
-<a href=#168 id=168 data-nosnippet>168</a>        TempBuilderPG1 {
-<a href=#169 id=169 data-nosnippet>169</a>            group_id,
-<a href=#170 id=170 data-nosnippet>170</a>            ciphersuite,
-<a href=#171 id=171 data-nosnippet>171</a>            credential_with_key,
-<a href=#172 id=172 data-nosnippet>172</a>            lifetime: <span class="prelude-val">None</span>,
-<a href=#173 id=173 data-nosnippet>173</a>            capabilities: <span class="prelude-val">None</span>,
-<a href=#174 id=174 data-nosnippet>174</a>            leaf_node_extensions: Extensions::empty(),
-<a href=#175 id=175 data-nosnippet>175</a>            group_context_extensions: Extensions::empty(),
-<a href=#176 id=176 data-nosnippet>176</a>        }
-<a href=#177 id=177 data-nosnippet>177</a>    }
-<a href=#178 id=178 data-nosnippet>178</a>}</code></pre></div></section></main></body></html>
+<a href=#138 id=138 data-nosnippet>138</a>}
+<a href=#139 id=139 data-nosnippet>139</a>
+<a href=#140 id=140 data-nosnippet>140</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PublicGroupBuilder {
+<a href=#141 id=141 data-nosnippet>141</a>    treesync: TreeSync,
+<a href=#142 id=142 data-nosnippet>142</a>    group_context: GroupContext,
+<a href=#143 id=143 data-nosnippet>143</a>    confirmation_tag: ConfirmationTag,
+<a href=#144 id=144 data-nosnippet>144</a>}
+<a href=#145 id=145 data-nosnippet>145</a>
+<a href=#146 id=146 data-nosnippet>146</a><span class="kw">impl </span>PublicGroupBuilder {
+<a href=#147 id=147 data-nosnippet>147</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build(<span class="self">self</span>, crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto) -&gt; <span class="prelude-ty">Result</span>&lt;PublicGroup, LibraryError&gt; {
+<a href=#148 id=148 data-nosnippet>148</a>        PublicGroup::new(
+<a href=#149 id=149 data-nosnippet>149</a>            crypto,
+<a href=#150 id=150 data-nosnippet>150</a>            <span class="self">self</span>.treesync,
+<a href=#151 id=151 data-nosnippet>151</a>            <span class="self">self</span>.group_context,
+<a href=#152 id=152 data-nosnippet>152</a>            <span class="self">self</span>.confirmation_tag,
+<a href=#153 id=153 data-nosnippet>153</a>        )
+<a href=#154 id=154 data-nosnippet>154</a>    }
+<a href=#155 id=155 data-nosnippet>155</a>}
+<a href=#156 id=156 data-nosnippet>156</a>
+<a href=#157 id=157 data-nosnippet>157</a><span class="kw">impl </span>PublicGroup {
+<a href=#158 id=158 data-nosnippet>158</a>    <span class="doccomment">/// Create a new [`PublicGroupBuilder`].
+<a href=#159 id=159 data-nosnippet>159</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>builder(
+<a href=#160 id=160 data-nosnippet>160</a>        group_id: GroupId,
+<a href=#161 id=161 data-nosnippet>161</a>        ciphersuite: Ciphersuite,
+<a href=#162 id=162 data-nosnippet>162</a>        credential_with_key: CredentialWithKey,
+<a href=#163 id=163 data-nosnippet>163</a>    ) -&gt; TempBuilderPG1 {
+<a href=#164 id=164 data-nosnippet>164</a>        TempBuilderPG1 {
+<a href=#165 id=165 data-nosnippet>165</a>            group_id,
+<a href=#166 id=166 data-nosnippet>166</a>            ciphersuite,
+<a href=#167 id=167 data-nosnippet>167</a>            credential_with_key,
+<a href=#168 id=168 data-nosnippet>168</a>            lifetime: <span class="prelude-val">None</span>,
+<a href=#169 id=169 data-nosnippet>169</a>            capabilities: <span class="prelude-val">None</span>,
+<a href=#170 id=170 data-nosnippet>170</a>            leaf_node_extensions: Extensions::empty(),
+<a href=#171 id=171 data-nosnippet>171</a>            group_context_extensions: Extensions::empty(),
+<a href=#172 id=172 data-nosnippet>172</a>        }
+<a href=#173 id=173 data-nosnippet>173</a>    }
+<a href=#174 id=174 data-nosnippet>174</a>}</code></pre></div></section></main></body></html>
