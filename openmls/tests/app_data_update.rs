@@ -71,25 +71,6 @@ fn setup<'a, Provider: OpenMlsProvider>(
 /// Test a simple AppDataUpdate
 #[openmls_test]
 fn test_app_data_update() {
-    struct AppState {
-        registered_components: AppDataUpdateLogic,
-    }
-
-    // Set up application-level component logic.
-    // This logic is re-used across MLS messages.
-    let mut registered_components = AppDataUpdateLogic::new();
-    registered_components.register(16, |data| {
-        // process the data (by adding the prefix "new_data:")
-        let mut new_data = b"new_data:".to_vec();
-        new_data.extend(data.to_vec());
-        Ok(new_data)
-    });
-
-    // Application state
-    let app_state = AppState {
-        registered_components,
-    };
-
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
@@ -131,13 +112,35 @@ fn test_app_data_update() {
         )
         .unwrap();
 
-    let commit = match processed_message.into_content() {
-        ProcessedMessageContent::PendingAppDataUpdates(commit) => commit,
+    let mut staged_commit = match processed_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(commit) => commit,
         _ => panic!("Should be a processed commit with app data updates"),
     };
-    let staged_commit = commit
-        .apply_app_logic(&app_state.registered_components)
-        .unwrap();
+
+    // the component ids known to the application
+    let component_ids = [1, 2, 3, 16];
+
+    // retrieve the AppDataDictionary
+    let dictionary = staged_commit.state.app_data_dictionary().unwrap();
+
+    // for each of the component ids:
+    for component_id in component_ids {
+        // iterate over the proposals and handle each one
+        for queued_proposal in staged_commit
+            .staged_proposal_queue
+            .app_data_update_proposals_for_id(component_id)
+        {
+            if let AppDataUpdateOperation::Update(data) =
+                queued_proposal.app_data_update_proposal().operation()
+            {
+                dictionary.insert(component_id, Vec::from(data.as_ref()));
+            } else {
+                dictionary.remove(&component_id);
+            }
+        }
+    }
+
+    // check that the dictionary in the staged commit was updated correctly
     let dictionary_ext = staged_commit
         .group_context()
         .extensions()
@@ -145,150 +148,316 @@ fn test_app_data_update() {
         .unwrap();
     assert_eq!(
         dictionary_ext.dictionary().get(&16),
-        Some(b"new_data:value".as_slice())
+        Some(b"value".as_slice())
     );
 
     bob.group
         .merge_staged_commit(&bob_party.provider, *staged_commit)
         .unwrap();
 }
-
-#[derive(thiserror::Error, Clone, Debug, PartialEq)]
-enum Error {
-    #[error("error validating the AppDataUpdate")]
-    ValidateAppDataUpdateError(#[from] ValidateAppDataUpdateError),
-    #[error("error creating a commit")]
-    CreateCommitError(#[from] CreateCommitError),
-}
-
-fn test_case<Provider: OpenMlsProvider>(
-    group_state: &mut GroupState<Provider>,
-    proposals: impl IntoIterator<Item = Proposal>,
-    group_context_extensions: Option<Extensions>,
-    registered_components: &AppDataUpdateLogic,
-) -> Result<(), Error> {
-    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
-
-    // Alice sends a commit containing AppDataUpdate proposals
-    let mut commit_builder = alice.group.commit_builder().consume_proposal_store(false);
-
-    if let Some(extensions) = group_context_extensions {
-        commit_builder = commit_builder.propose_group_context_extensions(extensions);
-    }
-    let commit_message_bundle = commit_builder
-        .add_proposals(proposals)
-        .load_psks(alice.party.core_state.provider.storage())
-        .unwrap()
-        .build(
-            alice.party.core_state.provider.rand(),
-            alice.party.core_state.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )?
-        .stage_commit(&alice.party.core_state.provider)
-        .unwrap();
-
-    let message_in: MlsMessageIn = commit_message_bundle.into_commit().into();
-    let processed_message = bob
-        .group
-        .process_message(
-            &bob.party.core_state.provider,
-            message_in.try_into_protocol_message().unwrap(),
-        )
-        .unwrap();
-    let commit = match processed_message.into_content() {
-        ProcessedMessageContent::PendingAppDataUpdates(commit) => commit,
-        _ => panic!("Should be a processed commit with app data updates"),
-    };
-    commit.apply_app_logic(&registered_components)?;
-    Ok(())
-}
-
-// TODO: split up into multiple tests
-/// Test incorrect proposals
+/// Commit creation:
+/// Test the invalid case where there are both Update and Remove AppDataUpdate proposals
+/// for a single ComponentId.
 #[openmls_test]
-fn test_incorrect_proposals() {
+fn test_incompatible_app_data_update_proposal_types() {
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    // Set up group state
     let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
 
-    // Removing a ComponentId that is not registered
-    let registered_components = AppDataUpdateLogic::new();
-    let err = test_case(
-        &mut group_state,
-        Some(Proposal::AppDataUpdate(AppDataUpdateProposal::remove(16))),
-        None,
-        &registered_components,
-    )
-    .unwrap_err();
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    // Alice sends a commit containing an AppDataUpdate proposal
+    alice
+        .group
+        .propose_app_data_update(
+            &alice_party.provider,
+            &alice.party.signer,
+            16,
+            AppDataUpdateOperation::Update(b"ignored".into()),
+        )
+        .unwrap();
+    alice
+        .group
+        .propose_app_data_update(
+            &alice_party.provider,
+            &alice.party.signer,
+            16,
+            AppDataUpdateOperation::Remove,
+        )
+        .unwrap();
+    let err = alice
+        .group
+        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+        .unwrap_err();
+
     assert_eq!(
         err,
-        Error::ValidateAppDataUpdateError(ValidateAppDataUpdateError::ComponentNotRegistered)
+        CommitToPendingProposalsError::CreateCommitError(
+            CreateCommitError::AppDataUpdateValidationError(
+                AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
+            )
+        )
     );
+}
 
-    // Removing a ComponentId when there is no AppDataDictionaryExtension
-    let mut registered_components = AppDataUpdateLogic::new();
-    registered_components.register(16, |_| Ok(vec![]));
-    let err = test_case(
-        &mut group_state,
-        Some(Proposal::AppDataUpdate(AppDataUpdateProposal::remove(16))),
-        None,
-        &registered_components,
-    )
-    .unwrap_err();
-    assert_eq!(
-        err,
-        Error::ValidateAppDataUpdateError(ValidateAppDataUpdateError::ComponentNotAvailable)
-    );
+/// Commit creation:
+/// Test the invalid case where a GroupContextExtensionProposal comes after the AppDataUpdate
+/// proposals.
+#[openmls_test]
+fn test_group_context_update_wrong_order() {
+    // Set up parties
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
 
-    // Adding both remove and update proposals
-    let err = test_case(
-        &mut group_state,
-        vec![
-            Proposal::AppDataUpdate(AppDataUpdateProposal::remove(16)),
-            Proposal::AppDataUpdate(AppDataUpdateProposal::update(16, vec![1, 2, 3])),
-        ],
-        None,
-        &registered_components,
-    )
-    .unwrap_err();
-    assert_eq!(
-        err,
-        Error::CreateCommitError(CreateCommitError::AppDataUpdateValidationError(
-            AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
-        ))
-    );
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
 
-    // Adding a ComponentId that is registered, but also updating the dictionary
-    // directly in the GroupContextExtensions
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    // Alice sends a commit containing an AppDataUpdate proposal
+    alice
+        .group
+        .propose_app_data_update(
+            &alice_party.provider,
+            &alice.party.signer,
+            16,
+            AppDataUpdateOperation::Update(b"ignored".into()),
+        )
+        .unwrap();
+
     let required_capabilities_extension =
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
             &[ExtensionType::AppDataDictionary],
             &[ProposalType::AppDataUpdate],
             &[],
         ));
-    let err = test_case(
-        &mut group_state,
-        Some(Proposal::AppDataUpdate(AppDataUpdateProposal::remove(16))),
-        Some(
-            Extensions::from_vec(vec![
-                required_capabilities_extension,
-                Extension::AppDataDictionary(AppDataDictionaryExtension::default()),
-            ])
-            .unwrap(),
-        ),
-        &registered_components,
-    )
-    .unwrap_err();
+
+    alice
+        .group
+        .propose_group_context_extensions(
+            &alice_party.provider,
+            Extensions::from_vec(vec![required_capabilities_extension]).unwrap(),
+            &alice.party.signer,
+        )
+        .unwrap();
+
+    let err = alice
+        .group
+        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+        .unwrap_err();
+
     assert_eq!(
         err,
-        Error::CreateCommitError(CreateCommitError::AppDataUpdateValidationError(
-            AppDataUpdateValidationError::CannotUpdateDictionaryDirectly
-        ))
+        CommitToPendingProposalsError::CreateCommitError(
+            CreateCommitError::AppDataUpdateValidationError(
+                AppDataUpdateValidationError::IncorrectOrder
+            )
+        )
     );
-
-    // TODO: add more test cases
 }
+/// Commit creation:
+/// Test the invalid case where a GroupContextExtensionProposal updates the AppDataDictionary.
+#[openmls_test]
+fn test_group_context_update_dictionary() {
+    // Set up parties
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let required_capabilities_extension =
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+            &[ExtensionType::AppDataDictionary],
+            &[ProposalType::AppDataUpdate],
+            &[],
+        ));
+
+    let dictionary_extension = Extension::AppDataDictionary(AppDataDictionaryExtension::default());
+
+    alice
+        .group
+        .propose_group_context_extensions(
+            &alice_party.provider,
+            Extensions::from_vec(vec![required_capabilities_extension, dictionary_extension])
+                .unwrap(),
+            &alice.party.signer,
+        )
+        .unwrap();
+
+    // Alice sends a commit containing an AppDataUpdate proposal
+    alice
+        .group
+        .propose_app_data_update(
+            &alice_party.provider,
+            &alice.party.signer,
+            16,
+            AppDataUpdateOperation::Update(b"ignored".into()),
+        )
+        .unwrap();
+
+    let err = alice
+        .group
+        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        CommitToPendingProposalsError::CreateCommitError(
+            CreateCommitError::AppDataUpdateValidationError(
+                AppDataUpdateValidationError::CannotUpdateDictionaryDirectly
+            )
+        )
+    );
+}
+
+/// Commit creation:
+/// Test the case where a GroupContextExtensionProposal updates the AppDataDictionary after
+/// removing AppDataUpdate from the required capabilities.
+#[openmls_test]
+fn test_group_context_update_dictionary_after_deactivating() {
+    // Set up parties
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let required_capabilities_extension =
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(&[], &[], &[]));
+
+    let dictionary_extension = Extension::AppDataDictionary(AppDataDictionaryExtension::default());
+
+    alice
+        .group
+        .propose_group_context_extensions(
+            &alice_party.provider,
+            Extensions::from_vec(vec![required_capabilities_extension, dictionary_extension])
+                .unwrap(),
+            &alice.party.signer,
+        )
+        .unwrap();
+
+    let err = alice
+        .group
+        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        CommitToPendingProposalsError::CreateCommitError(
+            CreateCommitError::GroupContextExtensionsProposalValidationError(
+                GroupContextExtensionsProposalValidationError::ExtensionNotInRequiredCapabilities
+            )
+        )
+    );
+}
+
+/// Commit creation:
+/// Test the case where an AppDataUpdateProposal updates the AppDataDictionary after
+/// removing AppDataUpdate from the required capabilities.
+#[openmls_test]
+fn test_app_data_update_after_removing_required_capabilities() {
+    // Set up parties
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let required_capabilities_extension =
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(&[], &[], &[]));
+
+    alice
+        .group
+        .propose_group_context_extensions(
+            &alice_party.provider,
+            Extensions::from_vec(vec![required_capabilities_extension]).unwrap(),
+            &alice.party.signer,
+        )
+        .unwrap();
+
+    // Alice sends a commit containing an AppDataUpdate proposal
+    alice
+        .group
+        .propose_app_data_update(
+            &alice_party.provider,
+            &alice.party.signer,
+            16,
+            AppDataUpdateOperation::Update(b"ignored".into()),
+        )
+        .unwrap();
+
+    let err = alice
+        .group
+        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        CommitToPendingProposalsError::CreateCommitError(
+            CreateCommitError::AppDataUpdateValidationError(
+                AppDataUpdateValidationError::CannotUpdateDictionaryDirectly
+            )
+        )
+    );
+}
+
+// NOTE: this test is disabled, due to the two Remove proposals
+// being automatically deduplicated in ProposalQueue::filter_proposals().
+/*
+/// Commit creation:
+/// Test the invalid case where there are multiple Remove AppDataUpdate proposals
+/// for a single ComponentId.
+#[openmls_test]
+
+fn test_multiple_app_data_update_remove_proposals() {
+    // Set up parties
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    // Alice sends a commit containing an AppDataUpdate proposal
+    alice
+        .group
+        .propose_app_data_update(
+            &alice_party.provider,
+            &alice.party.signer,
+            16,
+            AppDataUpdateOperation::Remove,
+        )
+        .unwrap();
+    alice
+        .group
+        .propose_app_data_update(
+            &alice_party.provider,
+            &alice.party.signer,
+            16,
+            AppDataUpdateOperation::Remove,
+        )
+        .unwrap();
+
+    assert_eq!(alice.group.pending_proposals().count(), 2);
+
+    let err = alice
+        .group
+        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        CommitToPendingProposalsError::CreateCommitError(
+            CreateCommitError::AppDataUpdateValidationError(
+                AppDataUpdateValidationError::MoreThanOneRemovePerComponentId,
+            )
+        )
+    );
+}
+*/
