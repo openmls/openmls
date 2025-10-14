@@ -501,6 +501,8 @@ impl ProposalQueue {
 
         // Parse proposals and build adds and member list
         for queued_proposal in iter {
+            // NOTE: identical proposals (which have the same hash reference)
+            // are automatically deduplicated by this step.
             proposal_pool.insert(
                 queued_proposal.proposal_reference(),
                 queued_proposal.clone(),
