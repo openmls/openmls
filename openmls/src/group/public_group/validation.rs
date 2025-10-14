@@ -608,6 +608,8 @@ impl PublicGroup {
         // Check that the data in the leaf node is self-consistent
         // Check that the capabilities contain the leaf node's credential
         // type (https://validation.openmls.tech/#valn0113)
+        // Check that all extension types are valid in leaf node
+        // (https://validation.openmls.tech/#valn1601)
         leaf_node.validate_locally()?;
 
         // Check if the ciphersuite and the version of the group are

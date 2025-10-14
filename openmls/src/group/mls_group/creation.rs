@@ -6,7 +6,7 @@ use crate::{
     credentials::CredentialWithKey,
     group::{
         commit_builder::external_commits::ExternalCommitBuilder,
-        errors::{ExternalCommitError, WelcomeError},
+        errors::{CreateCommitError, ExternalCommitError, WelcomeError},
     },
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
@@ -108,6 +108,7 @@ impl MlsGroup {
         let leaf_node_parameters = LeafNodeParameters::builder()
             .with_capabilities(capabilities.unwrap_or_default())
             .with_extensions(extensions.unwrap_or_default())
+            .map_err(CreateCommitError::from)?
             .build();
 
         let mut external_commit_builder = ExternalCommitBuilder::new()
