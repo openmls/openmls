@@ -12,6 +12,7 @@ macro_rules! hmac_digest {
     ($hash_t:ty, $key:ident, $message:ident) => {{
         let mut hmac = <$hash_t>::new_from_slice($key).map_err(|_e| CryptoError::InvalidLength)?;
         hmac.update($message);
+        #[allow(deprecated)]
         hmac.finalize().into_bytes().as_slice().to_vec()
     }};
 }
