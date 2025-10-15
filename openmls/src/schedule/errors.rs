@@ -39,6 +39,7 @@ pub enum PskError {
         /// Got PSK type.
         got: ResumptionPskUsage,
     },
+    /// Usage conflict.
     #[error("Usage conflict. First found `{first:?}`, now additionally found `{second:?}`.")]
     UsageConflict {
         /// First found PSK type.
@@ -46,6 +47,7 @@ pub enum PskError {
         /// Second found PSK type.
         second: ResumptionPskUsage,
     },
+    /// Usage duplicate.
     #[error("Usage duplicate. Found two resumption PSKs with usage `{usage:?}`.")]
     UsageDuplicate {
         /// Resumption usage found in duplicate.
