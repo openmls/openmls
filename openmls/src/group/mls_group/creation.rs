@@ -175,6 +175,10 @@ impl ProcessedWelcome {
             ciphersuite,
             provider.crypto(),
         )?;
+
+        // Validate PSKs
+        PreSharedKeyId::validate_in_welcome(&group_secrets.psks, ciphersuite)?;
+
         let psk_secret = {
             let psks = load_psks(
                 provider.storage(),

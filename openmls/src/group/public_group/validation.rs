@@ -477,6 +477,7 @@ impl PublicGroup {
 
             // ValSem401
             // ValSem402
+            // https://validation.openmls.tech/#valn0803
             let psk_id = psk_id.validate_in_proposal(self.ciphersuite())?;
 
             // ValSem403 (2/2)
