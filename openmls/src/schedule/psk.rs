@@ -332,7 +332,7 @@ impl PreSharedKeyId {
         psk_ids: &[PreSharedKeyId],
         ciphersuite: Ciphersuite,
     ) -> Result<(), PskError> {
-        let mut contains_resumption_psk = false;
+        let mut contains_branch_psk = false;
         let mut contains_reinit_psk = false;
         for id in psk_ids {
             // https://validation.openmls.tech/#valn1401
@@ -345,22 +345,32 @@ impl PreSharedKeyId {
                         });
                     }
                     ResumptionPskUsage::Reinit => {
-                        if contains_reinit_psk || contains_resumption_psk {
-                            return Err(PskError::UsageMismatch {
-                                allowed: vec![ResumptionPskUsage::Reinit],
-                                got: resumption_psk.usage,
+                        if contains_reinit_psk {
+                            return Err(PskError::UsageDuplicate {
+                                usage: ResumptionPskUsage::Reinit,
+                            });
+                        }
+                        if contains_branch_psk {
+                            return Err(PskError::UsageConflict {
+                                first: ResumptionPskUsage::Reinit,
+                                second: ResumptionPskUsage::Branch,
                             });
                         }
                         contains_reinit_psk = true;
                     }
                     ResumptionPskUsage::Branch => {
-                        if contains_reinit_psk || contains_resumption_psk {
-                            return Err(PskError::UsageMismatch {
-                                allowed: vec![ResumptionPskUsage::Branch],
-                                got: resumption_psk.usage,
+                        if contains_branch_psk {
+                            return Err(PskError::UsageDuplicate {
+                                usage: ResumptionPskUsage::Branch,
                             });
                         }
-                        contains_resumption_psk = true;
+                        if contains_reinit_psk {
+                            return Err(PskError::UsageConflict {
+                                first: ResumptionPskUsage::Branch,
+                                second: ResumptionPskUsage::Reinit,
+                            });
+                        }
+                        contains_branch_psk = true;
                     }
                 },
                 Psk::External(_) => {}

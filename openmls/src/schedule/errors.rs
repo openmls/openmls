@@ -39,6 +39,18 @@ pub enum PskError {
         /// Got PSK type.
         got: ResumptionPskUsage,
     },
+    #[error("Usage conflict. First found `{first:?}`, now additionally found `{second:?}`.")]
+    UsageConflict {
+        /// First found PSK type.
+        first: ResumptionPskUsage,
+        /// Second found PSK type.
+        second: ResumptionPskUsage,
+    },
+    #[error("Usage duplicate. Found two resumption PSKs with usage `{usage:?}`.")]
+    UsageDuplicate {
+        /// Resumption usage found in duplicate.
+        usage: ResumptionPskUsage,
+    },
     /// Nonce length mismatch.
     #[error("Nonce length mismatch. Expected either of `{expected:?}`, got `{got:?}`.")]
     NonceLengthMismatch {
