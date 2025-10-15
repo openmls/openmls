@@ -791,6 +791,7 @@ mod app_data_update {
     #[derive(
         Debug,
         PartialEq,
+        Eq,
         Clone,
         Serialize,
         Deserialize,
@@ -835,6 +836,7 @@ mod app_data_update {
     #[derive(
         Debug,
         PartialEq,
+        Eq, //TODO: is this correct?
         Clone,
         Serialize,
         Deserialize,
