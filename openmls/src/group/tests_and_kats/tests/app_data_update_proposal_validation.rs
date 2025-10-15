@@ -407,15 +407,12 @@ fn test_app_data_update_after_removing_required_capabilities() {
     );
 }
 
-// NOTE: this test is disabled, due to the two Remove proposals
-// being automatically deduplicated in ProposalQueue::filter_proposals().
-/*
 /// Commit creation:
 /// Test the invalid case where there are multiple Remove AppDataUpdate proposals
 /// for a single ComponentId.
 #[openmls_test]
 
-fn test_multiple_app_data_update_remove_proposals() {
+fn test_app_data_update_multi_remove_validate_outgoing() {
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
@@ -446,25 +443,31 @@ fn test_multiple_app_data_update_remove_proposals() {
 
     assert_eq!(alice.group.pending_proposals().count(), 2);
 
-    let err = alice
+    let (commit, _, _) = alice
         .group
         .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
-        .unwrap_err();
+        .unwrap();
 
-    assert_eq!(
-        err,
-        CommitToPendingProposalsError::CreateCommitError(
-            CreateCommitError::AppDataUpdateValidationError(
-                AppDataUpdateValidationError::MoreThanOneRemovePerComponentId,
-            )
-        )
-    );
+    // check number of proposals in commit
+    let franken_commit = FrankenMlsMessage::from(commit);
+
+    let body = match franken_commit.body {
+        FrankenMlsMessageBody::PublicMessage(ref message) => message,
+        _ => unimplemented!(),
+    };
+
+    let commit = match body.content.body {
+        FrankenFramedContentBody::Commit(ref commit) => commit,
+        _ => unimplemented!(),
+    };
+
+    // check that duplicate proposals have been filtered out
+    assert_eq!(commit.proposals.len(), 1);
 }
-*/
 
 // TODO: documentation
 #[openmls_test]
-fn test_app_data_update_multi_remove_validate() {
+fn test_app_data_update_multi_remove_validate_incoming() {
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
