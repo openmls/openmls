@@ -504,24 +504,12 @@ fn test_app_data_update_multi_remove_validate() {
     commit.proposals.push(commit.proposals[0].clone());
 
     let message_in: MlsMessageIn = franken_commit.into();
-    let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
 
     let protocol_message = message_in.try_into_protocol_message().unwrap();
 
-    validation_skip_handle.with_disabled(move || {
-        let err = bob
-            .group
-            .process_message(&bob.party.core_state.provider, protocol_message.clone())
-            .unwrap_err();
-        assert_eq!(
-            err,
-            todo!() /*
-                    ProcessMessageError:ValidationError(
-                        ValidationError::AppDataUpdateValidationError(
-                            AppDataUpdateValidationError::MoreThanOneRemovePerComponentId,
-                        )
-                    )
-                    */
-        );
-    });
+    // NOTE: processing currently fails here with a ValidationError::InvalidMembershipTag.
+    let err = bob
+        .group
+        .process_message(&bob.party.core_state.provider, protocol_message.clone())
+        .unwrap();
 }
