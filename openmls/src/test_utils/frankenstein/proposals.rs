@@ -1,5 +1,8 @@
 use tls_codec::*;
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals::AppDataUpdateProposal;
+
 use super::{extensions::FrankenExtension, FrankenKeyPackage, FrankenLeafNode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -11,6 +14,8 @@ pub enum FrankenProposalType {
     Reinit,
     ExternalInit,
     GroupContextExtensions,
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate,
     AppAck,
     Custom(u16),
 }
@@ -25,7 +30,10 @@ impl From<u16> for FrankenProposalType {
             5 => FrankenProposalType::Reinit,
             6 => FrankenProposalType::ExternalInit,
             7 => FrankenProposalType::GroupContextExtensions,
-            8 => FrankenProposalType::AppAck,
+            #[cfg(feature = "extensions-draft-08")]
+            8 => FrankenProposalType::AppDataUpdate,
+            0x000b => FrankenProposalType::AppAck,
+
             other => FrankenProposalType::Custom(other),
         }
     }
@@ -41,7 +49,9 @@ impl From<FrankenProposalType> for u16 {
             FrankenProposalType::Reinit => 5,
             FrankenProposalType::ExternalInit => 6,
             FrankenProposalType::GroupContextExtensions => 7,
-            FrankenProposalType::AppAck => 8,
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposalType::AppDataUpdate => 8,
+            FrankenProposalType::AppAck => 0x000b,
             FrankenProposalType::Custom(id) => id,
         }
     }
@@ -59,6 +69,8 @@ impl FrankenProposal {
             FrankenProposal::GroupContextExtensions(_) => {
                 FrankenProposalType::GroupContextExtensions
             }
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposal::AppDataUpdate(_) => FrankenProposalType::AppDataUpdate,
             FrankenProposal::AppAck(_) => FrankenProposalType::AppAck,
             FrankenProposal::Custom(FrankenCustomProposal {
                 proposal_type,
@@ -79,8 +91,14 @@ pub enum FrankenProposal {
     ExternalInit(FrankenExternalInitProposal),
     GroupContextExtensions(Vec<FrankenExtension>),
     AppAck(FrankenAppAckProposal),
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate(FrankenAppDataUpdateProposal),
     Custom(FrankenCustomProposal),
 }
+
+// TODO: is this sufficient?
+#[cfg(feature = "extensions-draft-08")]
+pub type FrankenAppDataUpdateProposal = AppDataUpdateProposal;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
