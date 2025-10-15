@@ -327,6 +327,60 @@ impl PreSharedKeyId {
 
         Ok(self)
     }
+
+    pub(crate) fn validate_in_welcome(
+        psk_ids: &[PreSharedKeyId],
+        ciphersuite: Ciphersuite,
+    ) -> Result<(), PskError> {
+        let mut contains_resumption_psk = false;
+        let mut contains_reinit_psk = false;
+        for id in psk_ids {
+            // https://validation.openmls.tech/#valn1401
+            match id.psk() {
+                Psk::Resumption(resumption_psk) => match resumption_psk.usage {
+                    ResumptionPskUsage::Application => {
+                        return Err(PskError::UsageMismatch {
+                            allowed: vec![ResumptionPskUsage::Reinit, ResumptionPskUsage::Branch],
+                            got: resumption_psk.usage,
+                        });
+                    }
+                    ResumptionPskUsage::Reinit => {
+                        if contains_reinit_psk || contains_resumption_psk {
+                            return Err(PskError::UsageMismatch {
+                                allowed: vec![ResumptionPskUsage::Reinit],
+                                got: resumption_psk.usage,
+                            });
+                        }
+                        contains_reinit_psk = true;
+                    }
+                    ResumptionPskUsage::Branch => {
+                        if contains_reinit_psk || contains_resumption_psk {
+                            return Err(PskError::UsageMismatch {
+                                allowed: vec![ResumptionPskUsage::Branch],
+                                got: resumption_psk.usage,
+                            });
+                        }
+                        contains_resumption_psk = true;
+                    }
+                },
+                Psk::External(_) => {}
+            };
+
+            // https://validation.openmls.tech/#valn0803
+            {
+                let expected_nonce_length = ciphersuite.hash_length();
+                let got_nonce_length = id.psk_nonce().len();
+
+                if expected_nonce_length != got_nonce_length {
+                    return Err(PskError::NonceLengthMismatch {
+                        expected: expected_nonce_length,
+                        got: got_nonce_length,
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
