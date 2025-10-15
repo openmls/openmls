@@ -119,6 +119,7 @@ impl ExtensionType {
     /// Returns whether an extension type is valid when used in leaf nodes.
     /// Returns None if validity can not be determined.
     /// This is the case for unknown extensions.
+    //  https://validation.openmls.tech/#valn1601
     pub(crate) fn is_valid_in_leaf_node(self) -> Option<bool> {
         match self {
             ExtensionType::LastResort
@@ -346,6 +347,20 @@ impl Extensions {
         self.unique
             .iter()
             .any(|ext| ext.extension_type() == extension_type)
+    }
+
+    // validate that all extensions can be added to a leaf node.
+    // https://validation.openmls.tech/#valn1601
+    pub(crate) fn validate_extension_types_for_leaf_node(
+        &self,
+    ) -> Result<(), InvalidExtensionError> {
+        for extension_type in self.unique.iter().map(Extension::extension_type) {
+            // also allow unknown extensions, which return `None` here
+            if extension_type.is_valid_in_leaf_node() == Some(false) {
+                return Err(InvalidExtensionError::IllegalInLeafNodes);
+            }
+        }
+        Ok(())
     }
 }
 
