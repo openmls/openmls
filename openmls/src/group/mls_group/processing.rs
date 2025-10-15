@@ -14,7 +14,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::{AppDataDictionary, AppDataDictionaryExtension};
+use crate::extensions::AppDataDictionaryExtension;
 
 use super::{errors::ProcessMessageError, *};
 
