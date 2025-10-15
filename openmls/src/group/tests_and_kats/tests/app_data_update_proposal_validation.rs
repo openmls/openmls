@@ -410,6 +410,9 @@ fn test_app_data_update_after_removing_required_capabilities() {
 /// Commit creation:
 /// Test the invalid case where there are multiple Remove AppDataUpdate proposals
 /// for a single ComponentId.
+///
+/// NOTE: A valid commit is produced by `MlsGroup::commit_to_pending_proposals()`,
+/// since the duplicate Remove AppDataUpdate proposals are filtered out automatically.
 #[openmls_test]
 
 fn test_app_data_update_multi_remove_validate_outgoing() {
