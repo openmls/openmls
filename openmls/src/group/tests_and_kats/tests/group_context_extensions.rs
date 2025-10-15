@@ -436,6 +436,7 @@ fn self_update_happy_case_simple() {
 ///   in the LeafNode's capabilities field.
 ///
 /// So far, we only test whether the check is done for extension types.
+/// https://validation.openmls.tech/#valn0103
 #[openmls_test]
 fn fail_insufficient_extensiontype_capabilities_add_valn0103() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
@@ -553,6 +554,7 @@ fn fail_insufficient_extensiontype_capabilities_add_valn0103() {
 //     containing an update proposal can not be the owner of the
 //     leaf node
 // - bob processes the invalid commit, which should give an InsufficientCapabilities error
+// https://validation.openmls.tech/#valn0103
 #[openmls_test]
 fn fail_insufficient_extensiontype_capabilities_update_valn0103() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
@@ -721,6 +723,7 @@ fn fail_insufficient_extensiontype_capabilities_update_valn0103() {
 //
 // I suppose we need to talk about which test framework is the one we need.
 // See https://github.com/openmls/openmls/issues/1618.
+// https://validation.openmls.tech/#valn0201
 #[openmls_test]
 fn fail_key_package_version_valn0201() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
@@ -824,6 +827,7 @@ fn fail_key_package_version_valn0201() {
 }
 
 // This tests that a commit containing more than one GCE Proposals does not pass validation.
+// https://validation.openmls.tech/#valn0308
 #[openmls_test]
 fn fail_2_gce_proposals_1_commit_valn0308() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
@@ -930,6 +934,7 @@ fn fail_2_gce_proposals_1_commit_valn0308() {
 // - we craft a commit to the proposal, signed by bob
 // - alice processes the commit expecting an error, and the error should be that the GCE is
 //   invalid
+// https://validation.openmls.tech/#valn1001
 #[openmls_test]
 fn fail_unsupported_gces_add_valn1001() {
     let TestState { mut alice, mut bob }: TestState<Provider> = setup(ciphersuite);
