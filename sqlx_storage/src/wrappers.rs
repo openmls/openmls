@@ -39,8 +39,6 @@ pub(super) struct StorableProposalRef<
     ProposalRef: Entity<CURRENT_VERSION>,
 >(pub &'a ProposalRef, pub &'a Proposal);
 
-pub(crate) struct StorablePskBundle<PskBundle: Entity<CURRENT_VERSION>>(PskBundle);
-
 pub(super) struct StorablePskBundleRef<'a, PskBundle: Entity<CURRENT_VERSION>>(pub &'a PskBundle);
 
 pub(super) struct StorablePskIdRef<'a, PskId: Key<CURRENT_VERSION>>(pub &'a PskId);

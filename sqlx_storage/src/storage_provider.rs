@@ -19,7 +19,7 @@ use super::{
         StorableEncryptionKeyPair, StorableEncryptionKeyPairRef, StorableEncryptionPublicKeyRef,
         StorableEpochKeyPairsRef, StorableHashRef, StorableKeyPackage, StorableKeyPackageRef,
         StorableLeafNode, StorableLeafNodeRef, StorableProposal, StorableProposalRef,
-        StorablePskBundle, StorablePskBundleRef, StorablePskIdRef, StorableSignatureKeyPairs,
+        StorablePskBundleRef, StorablePskIdRef, StorableSignatureKeyPairs,
         StorableSignatureKeyPairsRef, StorableSignaturePublicKeyRef,
     },
 };
@@ -531,7 +531,7 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error> {
         let mut connection = self.connection.borrow_mut();
-        let task = StorablePskBundle::load::<_, C>(&mut **connection, psk_id);
+        let task = load_psk_bundle::<_, _, C>(&mut **connection, psk_id);
         block_async_in_place(task)
     }
 
@@ -1105,21 +1105,23 @@ impl<KeyPackage: Entity<CURRENT_VERSION>> StorableKeyPackage<KeyPackage> {
     }
 }
 
-impl<PskBundle: Entity<CURRENT_VERSION>> StorablePskBundle<PskBundle> {
-    async fn load<PskId: Key<CURRENT_VERSION>, C: Codec>(
-        executor: impl SqliteExecutor<'_>,
-        psk_id: &PskId,
-    ) -> sqlx::Result<Option<PskBundle>> {
-        let psk_id = KeyRefWrapper::<_, C>::new(psk_id);
-        query!(
-            "SELECT psk_bundle FROM openmls_psk WHERE psk_id = ?1",
-            psk_id
-        )
-        .fetch_optional(executor)
-        .await?
-        .map(|record| C::from_bytes(record.psk_bundle))
-        .transpose()
-    }
+async fn load_psk_bundle<
+    PskBundle: Entity<CURRENT_VERSION>,
+    PskId: Key<CURRENT_VERSION>,
+    C: Codec,
+>(
+    executor: impl SqliteExecutor<'_>,
+    psk_id: &PskId,
+) -> sqlx::Result<Option<PskBundle>> {
+    let psk_id = KeyRefWrapper::<_, C>::new(psk_id);
+    query!(
+        "SELECT psk_bundle FROM openmls_psk WHERE psk_id = ?1",
+        psk_id
+    )
+    .fetch_optional(executor)
+    .await?
+    .map(|record| C::from_bytes(record.psk_bundle))
+    .transpose()
 }
 
 impl<GroupId: Key<CURRENT_VERSION>, C: Codec> StorableGroupIdRef<'_, GroupId, C> {
