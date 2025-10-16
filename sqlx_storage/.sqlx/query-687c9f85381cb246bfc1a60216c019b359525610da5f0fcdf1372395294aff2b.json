@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT leaf_node FROM openmls_own_leaf_node WHERE group_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "leaf_node",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "687c9f85381cb246bfc1a60216c019b359525610da5f0fcdf1372395294aff2b"
+}

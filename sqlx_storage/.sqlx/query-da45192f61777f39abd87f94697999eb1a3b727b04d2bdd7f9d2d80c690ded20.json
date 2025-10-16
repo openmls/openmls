@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM openmls_proposal WHERE group_id = ?1 AND proposal_ref = ?2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "da45192f61777f39abd87f94697999eb1a3b727b04d2bdd7f9d2d80c690ded20"
+}

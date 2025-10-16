@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO openmls_key_package (key_package_ref, key_package) VALUES (?1, ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "88dbb3fc1aa832541e518929008959b5387ea0924e4014142247685f027b47e0"
+}
