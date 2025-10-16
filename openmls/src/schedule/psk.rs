@@ -302,6 +302,8 @@ impl PreSharedKeyId {
         // ValSem402
         match self.psk() {
             Psk::Resumption(resumption_psk) => {
+                // https://validation.openmls.tech/#valn0801
+                // https://validation.openmls.tech/#valn0802
                 if resumption_psk.usage != ResumptionPskUsage::Application {
                     return Err(PskError::UsageMismatch {
                         allowed: vec![ResumptionPskUsage::Application],
@@ -313,6 +315,7 @@ impl PreSharedKeyId {
         };
 
         // ValSem401
+        // https://validation.openmls.tech/#valn0803
         {
             let expected_nonce_length = ciphersuite.hash_length();
             let got_nonce_length = self.psk_nonce().len();
@@ -376,7 +379,6 @@ impl PreSharedKeyId {
                 Psk::External(_) => {}
             };
 
-            // https://validation.openmls.tech/#valn0803
             {
                 let expected_nonce_length = ciphersuite.hash_length();
                 let got_nonce_length = id.psk_nonce().len();
