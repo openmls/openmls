@@ -11,7 +11,6 @@ pub enum FrankenProposalType {
     Reinit,
     ExternalInit,
     GroupContextExtensions,
-    AppAck,
     Custom(u16),
 }
 
@@ -25,7 +24,6 @@ impl From<u16> for FrankenProposalType {
             5 => FrankenProposalType::Reinit,
             6 => FrankenProposalType::ExternalInit,
             7 => FrankenProposalType::GroupContextExtensions,
-            8 => FrankenProposalType::AppAck,
             other => FrankenProposalType::Custom(other),
         }
     }
@@ -41,7 +39,6 @@ impl From<FrankenProposalType> for u16 {
             FrankenProposalType::Reinit => 5,
             FrankenProposalType::ExternalInit => 6,
             FrankenProposalType::GroupContextExtensions => 7,
-            FrankenProposalType::AppAck => 8,
             FrankenProposalType::Custom(id) => id,
         }
     }
@@ -59,7 +56,6 @@ impl FrankenProposal {
             FrankenProposal::GroupContextExtensions(_) => {
                 FrankenProposalType::GroupContextExtensions
             }
-            FrankenProposal::AppAck(_) => FrankenProposalType::AppAck,
             FrankenProposal::Custom(FrankenCustomProposal {
                 proposal_type,
                 payload: _,
@@ -78,7 +74,6 @@ pub enum FrankenProposal {
     ReInit(FrankenReInitProposal),
     ExternalInit(FrankenExternalInitProposal),
     GroupContextExtensions(Vec<FrankenExtension>),
-    AppAck(FrankenAppAckProposal),
     Custom(FrankenCustomProposal),
 }
 
@@ -170,13 +165,6 @@ pub struct FrankenReInitProposal {
 )]
 pub struct FrankenExternalInitProposal {
     pub kem_output: VLBytes,
-}
-
-#[derive(
-    Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
-)]
-pub struct FrankenAppAckProposal {
-    pub received_ranges: Vec<FrankenMessageRange>,
 }
 
 #[derive(

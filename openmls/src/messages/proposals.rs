@@ -79,7 +79,6 @@ pub enum ProposalType {
     Reinit,
     ExternalInit,
     GroupContextExtensions,
-    AppAck,
     SelfRemove,
     Custom(u16),
 }
@@ -96,7 +95,7 @@ impl ProposalType {
             | ProposalType::Reinit
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions => true,
-            ProposalType::SelfRemove | ProposalType::AppAck | ProposalType::Custom(_) => false,
+            ProposalType::SelfRemove | ProposalType::Custom(_) => false,
         }
     }
 }
@@ -164,7 +163,6 @@ impl From<u16> for ProposalType {
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
             0x000a => ProposalType::SelfRemove,
-            0x000b => ProposalType::AppAck,
             other => ProposalType::Custom(other),
         }
     }
@@ -181,7 +179,6 @@ impl From<ProposalType> for u16 {
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
             ProposalType::SelfRemove => 0x000a,
-            ProposalType::AppAck => 0x000b,
             ProposalType::Custom(id) => id,
         }
     }
@@ -218,9 +215,6 @@ pub enum Proposal {
     ExternalInit(Box<ExternalInitProposal>),
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
     // # Extensions
-    // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
-    //             was moved to `draft-ietf-mls-extensions-00`.
-    AppAck(Box<AppAckProposal>),
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
     Custom(Box<CustomProposal>),
@@ -278,7 +272,6 @@ impl Proposal {
             Proposal::ReInit(_) => ProposalType::Reinit,
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
-            Proposal::AppAck(_) => ProposalType::AppAck,
             Proposal::SelfRemove => ProposalType::SelfRemove,
             Proposal::Custom(custom) => ProposalType::Custom(custom.proposal_type.to_owned()),
         }
@@ -528,7 +521,7 @@ impl From<Vec<u8>> for ExternalInitProposal {
     }
 }
 
-/// AppAck Proposal.
+/// AppAck object.
 ///
 /// This is not yet supported.
 #[derive(
@@ -542,7 +535,7 @@ impl From<Vec<u8>> for ExternalInitProposal {
     TlsSerialize,
     TlsSize,
 )]
-pub struct AppAckProposal {
+pub struct AppAck {
     received_ranges: Vec<MessageRange>,
 }
 
