@@ -239,3 +239,62 @@ fn diff_leaf_access() {
     let leaf_outside_of_diff = diff.leaf(LeafNodeIndex::new(3));
     assert_eq!(leaf_outside_of_diff, &0)
 }
+
+#[test]
+fn test_from_components() {
+    let leaf_nodes = vec![1u32, 2, 3, 4];
+    let parent_nodes = vec![10u32, 20, 30];
+
+    let tree = MlsBinaryTree::from_components(leaf_nodes, parent_nodes)
+        .expect("Error creating tree from components");
+
+    assert_eq!(tree.leaf_count(), 4);
+    assert_eq!(tree.parent_count(), 3);
+    assert_eq!(tree.tree_size(), TreeSize::new(7));
+
+    assert_eq!(tree.leaf_by_index(LeafNodeIndex::new(0)), &1);
+    assert_eq!(tree.leaf_by_index(LeafNodeIndex::new(1)), &2);
+    assert_eq!(tree.leaf_by_index(LeafNodeIndex::new(2)), &3);
+    assert_eq!(tree.leaf_by_index(LeafNodeIndex::new(3)), &4);
+
+    assert_eq!(tree.parent_by_index(ParentNodeIndex::new(0)), &10);
+    assert_eq!(tree.parent_by_index(ParentNodeIndex::new(1)), &20);
+    assert_eq!(tree.parent_by_index(ParentNodeIndex::new(2)), &30);
+
+    let invalid_leaf_nodes = vec![1u32, 2];
+    let invalid_parent_nodes = vec![10u32, 20];
+
+    assert_eq!(
+        MlsBinaryTree::from_components(invalid_leaf_nodes, invalid_parent_nodes)
+            .expect_err("Should fail with invalid node count"),
+        MlsBinaryTreeError::InvalidNumberOfNodes
+    );
+
+    let leaf_vec = vec![5u32, 6];
+    let parent_vec = vec![15u32];
+
+    let tree1 = MlsBinaryTree::from_components(leaf_vec.clone(), parent_vec.clone())
+        .expect("Error creating tree from components");
+
+    let tree2 = MlsBinaryTree::new(vec![
+        TreeNode::leaf(5),
+        TreeNode::parent(15),
+        TreeNode::leaf(6),
+    ])
+    .expect("Error creating tree from TreeNode");
+
+    assert_eq!(tree1.leaf_count(), tree2.leaf_count());
+    assert_eq!(tree1.parent_count(), tree2.parent_count());
+    assert_eq!(
+        tree1.leaf_by_index(LeafNodeIndex::new(0)),
+        tree2.leaf_by_index(LeafNodeIndex::new(0))
+    );
+    assert_eq!(
+        tree1.leaf_by_index(LeafNodeIndex::new(1)),
+        tree2.leaf_by_index(LeafNodeIndex::new(1))
+    );
+    assert_eq!(
+        tree1.parent_by_index(ParentNodeIndex::new(0)),
+        tree2.parent_by_index(ParentNodeIndex::new(0))
+    );
+}

@@ -45,7 +45,7 @@ use crate::binary_tree::array_representation::ParentNodeIndex;
 use crate::{binary_tree::array_representation::level, test_utils::bytes_to_hex};
 use crate::{
     binary_tree::{
-        array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
+        array_representation::{is_node_in_tree, LeafNodeIndex, TreeSize},
         MlsBinaryTree, MlsBinaryTreeError,
     },
     ciphersuite::{signable::Verifiable, Secret},
@@ -449,25 +449,43 @@ impl TreeSync {
         ratchet_tree: RatchetTree,
     ) -> Result<Self, TreeSyncFromNodesError> {
         // TODO #800: Unmerged leaves should be checked
-        let mut ts_nodes: Vec<TreeNode<TreeSyncLeafNode, TreeSyncParentNode>> =
-            Vec::with_capacity(ratchet_tree.0.len());
+        let total_nodes = ratchet_tree.0.len();
+        let mut leaf_nodes = Vec::with_capacity(total_nodes.div_ceil(2));
+        let mut parent_nodes = Vec::with_capacity(total_nodes / 2);
 
         // Set the leaf indices in all the leaves and convert the node types.
         for (node_index, node_option) in ratchet_tree.0.into_iter().enumerate() {
-            let ts_node_option: TreeNode<TreeSyncLeafNode, TreeSyncParentNode> = match node_option {
-                Some(node) => TreeSyncNode::from(node).into(),
-                None => {
-                    if node_index % 2 == 0 {
-                        TreeNode::Leaf(Box::new(TreeSyncLeafNode::blank()))
-                    } else {
-                        TreeNode::Parent(Box::new(TreeSyncParentNode::blank()))
-                    }
-                }
-            };
-            ts_nodes.push(ts_node_option);
+            if node_index % 2 == 0 {
+                let leaf = match node_option {
+                    Some(node) => match TreeSyncNode::from(node) {
+                        TreeSyncNode::Leaf(l) => *l,
+                        TreeSyncNode::Parent(_) => {
+                            return Err(TreeSyncFromNodesError::from(
+                                PublicTreeError::MalformedTree,
+                            ))
+                        }
+                    },
+                    None => TreeSyncLeafNode::blank(),
+                };
+                leaf_nodes.push(leaf);
+            } else {
+                let parent = match node_option {
+                    Some(node) => match TreeSyncNode::from(node) {
+                        TreeSyncNode::Parent(p) => *p,
+                        TreeSyncNode::Leaf(_) => {
+                            return Err(TreeSyncFromNodesError::from(
+                                PublicTreeError::MalformedTree,
+                            ))
+                        }
+                    },
+                    None => TreeSyncParentNode::blank(),
+                };
+                parent_nodes.push(parent);
+            }
         }
 
-        let tree = MlsBinaryTree::new(ts_nodes).map_err(|_| PublicTreeError::MalformedTree)?;
+        let tree = MlsBinaryTree::from_components(leaf_nodes, parent_nodes)
+            .map_err(|_| PublicTreeError::MalformedTree)?;
         let mut tree_sync = Self {
             tree,
             tree_hash: vec![],
