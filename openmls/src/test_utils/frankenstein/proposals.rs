@@ -1,5 +1,8 @@
 use tls_codec::*;
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals::AppDataUpdateProposal;
+
 use super::{extensions::FrankenExtension, FrankenKeyPackage, FrankenLeafNode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -13,6 +16,8 @@ pub enum FrankenProposalType {
     GroupContextExtensions,
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral,
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate,
     Custom(u16),
 }
 
@@ -26,6 +31,8 @@ impl From<u16> for FrankenProposalType {
             5 => FrankenProposalType::Reinit,
             6 => FrankenProposalType::ExternalInit,
             7 => FrankenProposalType::GroupContextExtensions,
+            #[cfg(feature = "extensions-draft-08")]
+            8 => FrankenProposalType::AppDataUpdate,
             #[cfg(feature = "extensions-draft-08")]
             0x0009 => FrankenProposalType::AppEphemeral,
             other => FrankenProposalType::Custom(other),
@@ -43,6 +50,8 @@ impl From<FrankenProposalType> for u16 {
             FrankenProposalType::Reinit => 5,
             FrankenProposalType::ExternalInit => 6,
             FrankenProposalType::GroupContextExtensions => 7,
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposalType::AppDataUpdate => 8,
             #[cfg(feature = "extensions-draft-08")]
             FrankenProposalType::AppEphemeral => 0x0009,
             FrankenProposalType::Custom(id) => id,
@@ -64,6 +73,8 @@ impl FrankenProposal {
             }
             #[cfg(feature = "extensions-draft-08")]
             FrankenProposal::AppEphemeral(_) => FrankenProposalType::AppEphemeral,
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposal::AppDataUpdate(_) => FrankenProposalType::AppDataUpdate,
             FrankenProposal::Custom(FrankenCustomProposal {
                 proposal_type,
                 payload: _,
@@ -84,8 +95,14 @@ pub enum FrankenProposal {
     GroupContextExtensions(Vec<FrankenExtension>),
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral(FrankenAppEphemeralProposal),
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate(FrankenAppDataUpdateProposal),
     Custom(FrankenCustomProposal),
 }
+
+// TODO: is this sufficient?
+#[cfg(feature = "extensions-draft-08")]
+pub type FrankenAppDataUpdateProposal = AppDataUpdateProposal;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,

@@ -25,7 +25,7 @@ use super::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use super::proposals::AppEphemeralProposal;
+use super::proposals::{AppDataUpdateProposal, AppEphemeralProposal};
 
 /// Proposal.
 ///
@@ -57,6 +57,10 @@ pub enum ProposalIn {
     ReInit(Box<ReInitProposal>),
     ExternalInit(Box<ExternalInitProposal>),
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
+    // # Extensions
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate(Box<AppDataUpdateProposal>),
+
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
     #[cfg(feature = "extensions-draft-08")]
@@ -75,6 +79,8 @@ impl ProposalIn {
             ProposalIn::ReInit(_) => ProposalType::Reinit,
             ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppDataUpdate(_) => ProposalType::AppDataUpdate,
             ProposalIn::SelfRemove => ProposalType::SelfRemove,
             #[cfg(feature = "extensions-draft-08")]
             ProposalIn::AppEphemeral(_) => ProposalType::AppEphemeral,
@@ -119,6 +125,8 @@ impl ProposalIn {
             ProposalIn::GroupContextExtensions(group_context_extension) => {
                 Proposal::GroupContextExtensions(group_context_extension)
             }
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppDataUpdate(app_data_update) => Proposal::AppDataUpdate(app_data_update),
             ProposalIn::SelfRemove => Proposal::SelfRemove,
             #[cfg(feature = "extensions-draft-08")]
             ProposalIn::AppEphemeral(app_ephemeral) => Proposal::AppEphemeral(app_ephemeral),
@@ -249,7 +257,7 @@ impl UpdateProposalIn {
 )]
 #[repr(u8)]
 #[allow(missing_docs)]
-pub(crate) enum ProposalOrRefIn {
+pub enum ProposalOrRefIn {
     #[tls_codec(discriminant = 1)]
     Proposal(Box<ProposalIn>),
     Reference(Box<ProposalRef>),
@@ -257,7 +265,7 @@ pub(crate) enum ProposalOrRefIn {
 
 impl ProposalOrRefIn {
     /// Returns a [`ProposalOrRef`] after successful validation.
-    pub(crate) fn validate(
+    pub fn validate(
         self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
@@ -349,6 +357,8 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
             ProposalIn::GroupContextExtensions(group_context_extension) => {
                 Self::GroupContextExtensions(group_context_extension)
             }
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppDataUpdate(app_data_update) => Self::AppDataUpdate(app_data_update),
             ProposalIn::SelfRemove => Self::SelfRemove,
             #[cfg(feature = "extensions-draft-08")]
             ProposalIn::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),
@@ -369,6 +379,8 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
             Proposal::GroupContextExtensions(group_context_extension) => {
                 Self::GroupContextExtensions(group_context_extension)
             }
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppDataUpdate(app_data_update) => Self::AppDataUpdate(app_data_update),
             Proposal::SelfRemove => Self::SelfRemove,
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),

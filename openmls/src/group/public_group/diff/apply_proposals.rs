@@ -11,6 +11,12 @@ use crate::{
 
 use super::*;
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::{
+    extensions::{AppDataDictionaryExtension, Extension},
+    prelude::processing::AppDataUpdates,
+};
+
 /// This struct contain the return values of the `apply_proposals()` function
 #[derive(Debug)]
 pub(crate) struct ApplyProposalsValues {
@@ -37,6 +43,17 @@ impl ApplyProposalsValues {
         new_leaves_indexes
     }
 }
+
+/**
+*
+* feature-gated arguments are kinda bad
+*
+* - we also don't want to make the API annoying for normal use
+* - maybe it'ss actually fine for non-pub functions?
+*
+*
+*
+**/
 
 /// Applies a list of proposals from a Commit to the tree.
 /// `proposal_queue` is the queue of proposals received or sent in the
@@ -159,8 +176,10 @@ impl PublicGroupDiff<'_> {
             })
             .collect();
 
-        // apply group context extension proposal
-        let extensions = proposal_queue
+        // new extensions from group context extension proposal
+        // can be followed by AppDataUpdate proposals that modify
+        // the AppDataDictionary in the extensions
+        let updated_group_context_extensions = proposal_queue
             .filtered_by_type(ProposalType::GroupContextExtensions)
             .find_map(|queued_proposal| match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) => {
@@ -186,7 +205,111 @@ impl PublicGroupDiff<'_> {
             invitation_list,
             presharedkeys,
             external_init_proposal_option,
-            extensions,
+            extensions: updated_group_context_extensions,
         })
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn apply_proposals_with_app_data_updates(
+        &mut self,
+        proposal_queue: &ProposalQueue,
+        own_leaf_index: impl Into<Option<LeafNodeIndex>>,
+        app_data_dict_updates: Option<AppDataUpdates>,
+    ) -> Result<ApplyProposalsValues, LibraryError> {
+        let ApplyProposalsValues {
+            path_required,
+            self_removed,
+            invitation_list,
+            presharedkeys,
+            external_init_proposal_option,
+            extensions,
+        } = self.apply_proposals(proposal_queue, own_leaf_index)?;
+
+        // apply AppDataUpdate proposals to the already-updated GroupContext extensions,
+        // if available, or return the new GroupContext extensions if modified.
+        #[cfg(feature = "extensions-draft-08")]
+        let updated_group_context_extensions = self.apply_app_data_update_proposals(
+            extensions,
+            proposal_queue,
+            app_data_dict_updates,
+        )?;
+
+        Ok(ApplyProposalsValues {
+            path_required,
+            self_removed,
+            invitation_list,
+            presharedkeys,
+            external_init_proposal_option,
+            extensions: updated_group_context_extensions,
+        })
+    }
+
+    /// Return the updated GroupContext extensions after applying AppDataUpdates.
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn apply_app_data_update_proposals(
+        &self,
+        // group_context_extensions if updated by a GroupContextExtensions proposal
+        mut updated_group_context_extensions: Option<Extensions>,
+        proposal_queue: &ProposalQueue,
+        app_data_dict_updates: Option<AppDataUpdates>,
+    ) -> Result<Option<Extensions>, LibraryError> {
+        // validation
+        // handle cases where there are no AppDataUpdate proposals in the queue
+        let has_app_data_update_proposals = proposal_queue
+            .queued_proposals()
+            .filter(|proposal| proposal.proposal().is_type(ProposalType::AppDataUpdate))
+            .next()
+            .is_some();
+        if !has_app_data_update_proposals {
+            // nothing to update
+            if app_data_dict_updates.is_none() {
+                return Ok(updated_group_context_extensions);
+            }
+            // updates were provided, but no proposals could have triggered the update
+            else if app_data_dict_updates.is_some() {
+                // TODO: return a proper error here
+                return Err(LibraryError::custom(
+                    "got updates but we don't have a proposal that could have triggered the update, that doesn't make sense. erroring out"
+                    ));
+            }
+        }
+
+        // there are AppDataUpdate proposals in the queue; retrieve the user-provided updates.
+        let Some(updates) = app_data_dict_updates else {
+            // If there are app data update proposals, there must be a list (but it may be empty)
+            // TODO: return a proper error here
+            return Err(LibraryError::custom("no changes list provided"));
+        };
+
+        // retrieve the AppDataDictionary to update
+        // (make a copy of the AppDataDictionary, or create a new dictionary).
+        // NOTE: the case where a GroupContextExtensions updates the RequiredCapabilities
+        // to no longer include AppDataUpdate should be already filtered out at this stage.
+        let mut dictionary = self
+            .group_context
+            .app_data_dict()
+            .cloned()
+            .unwrap_or_else(|| Default::default());
+
+        // apply updates
+        for (id, data) in updates.into_iter() {
+            if let Some(data) = data {
+                let _ = dictionary.insert(id, data);
+            } else {
+                let _ = dictionary.remove(&id);
+            }
+        }
+
+        // update the new dictionary in the updated extensions if updated by a
+        // GroupContextExtensions proposal, or make a copy of the existing extensions.
+        let extensions_to_update = updated_group_context_extensions
+            .get_or_insert_with(|| self.group_context.extensions().clone());
+
+        // update the dictionary extension
+        extensions_to_update.add_or_replace(Extension::AppDataDictionary(
+            AppDataDictionaryExtension::new(dictionary),
+        ));
+
+        Ok(updated_group_context_extensions)
     }
 }

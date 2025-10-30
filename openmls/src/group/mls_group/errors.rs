@@ -373,6 +373,9 @@ pub enum ExportGroupInfoError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// See [`InvalidExtensionError`] for more details.
+    #[error(transparent)]
+    InvalidExtensionError(#[from] InvalidExtensionError),
 }
 
 /// Export secret error

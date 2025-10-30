@@ -1,4 +1,4 @@
-use super::{super::errors::*, *};
+use super::{super::errors::*, diff::apply_proposals::ApplyProposalsValues, *};
 use crate::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
@@ -10,10 +10,13 @@ use crate::{
     },
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::prelude::processing::AppDataUpdates;
+
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub struct PublicStagedCommitState {
-    pub(super) staged_diff: StagedPublicGroupDiff,
+    pub(crate) staged_diff: StagedPublicGroupDiff,
     pub(super) update_path_leaf_node: Option<LeafNode>,
 }
 
@@ -150,6 +153,10 @@ impl PublicGroup {
         // ValSem208
         // ValSem209
         self.validate_group_context_extensions_proposal(&proposal_queue)?;
+
+        #[cfg(feature = "extensions-draft-08")]
+        self.validate_app_data_update_proposals_and_group_context(&proposal_queue)?;
+
         // ValSem401
         // ValSem402
         // ValSem403
@@ -266,6 +273,32 @@ impl PublicGroup {
         Ok(StagedCommit::new(proposal_queue, staged_commit_state))
     }
 
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn stage_commit_with_app_data_updates(
+        &self,
+        mls_content: &AuthenticatedContent,
+        crypto: &impl OpenMlsCrypto,
+        app_data_dict_updates: Option<AppDataUpdates>,
+    ) -> Result<StagedCommit, StageCommitError> {
+        let (commit, proposal_queue, sender_index) = self.validate_commit(mls_content, crypto)?;
+
+        let staged_diff = self.stage_diff_with_app_data_updates(
+            mls_content,
+            &proposal_queue,
+            sender_index,
+            crypto,
+            app_data_dict_updates,
+        )?;
+        let staged_state = PublicStagedCommitState {
+            staged_diff,
+            update_path_leaf_node: commit.path.as_ref().map(|p| p.leaf_node().clone()),
+        };
+
+        let staged_commit_state = StagedCommitState::PublicState(Box::new(staged_state));
+
+        Ok(StagedCommit::new(proposal_queue, staged_commit_state))
+    }
+
     fn stage_diff(
         &self,
         mls_content: &AuthenticatedContent,
@@ -273,10 +306,54 @@ impl PublicGroup {
         sender_index: LeafNodeIndex,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<StagedPublicGroupDiff, StageCommitError> {
-        let ciphersuite = self.ciphersuite();
         let mut diff = self.empty_diff();
 
         let apply_proposals_values = diff.apply_proposals(proposal_queue, None)?;
+
+        self.stage_diff_internal(
+            mls_content,
+            apply_proposals_values,
+            diff,
+            sender_index,
+            crypto,
+        )
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    fn stage_diff_with_app_data_updates(
+        &self,
+        mls_content: &AuthenticatedContent,
+        proposal_queue: &ProposalQueue,
+        sender_index: LeafNodeIndex,
+        crypto: &impl OpenMlsCrypto,
+        app_data_dict_updates: Option<AppDataUpdates>,
+    ) -> Result<StagedPublicGroupDiff, StageCommitError> {
+        let mut diff = self.empty_diff();
+
+        let apply_proposals_values = diff.apply_proposals_with_app_data_updates(
+            proposal_queue,
+            None,
+            app_data_dict_updates,
+        )?;
+
+        self.stage_diff_internal(
+            mls_content,
+            apply_proposals_values,
+            diff,
+            sender_index,
+            crypto,
+        )
+    }
+
+    fn stage_diff_internal(
+        &self,
+        mls_content: &AuthenticatedContent,
+        apply_proposals_values: ApplyProposalsValues,
+        mut diff: PublicGroupDiff,
+        sender_index: LeafNodeIndex,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<StagedPublicGroupDiff, StageCommitError> {
+        let ciphersuite = self.ciphersuite();
 
         let commit = match mls_content.content() {
             FramedContentBody::Commit(commit) => commit,
@@ -295,7 +372,7 @@ impl PublicGroup {
         };
 
         // Update group context
-        diff.update_group_context(crypto, apply_proposals_values.extensions.clone())?;
+        diff.update_group_context(crypto, apply_proposals_values.extensions)?;
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
         diff.update_confirmed_transcript_hash(crypto, mls_content)?;

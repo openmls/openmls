@@ -32,6 +32,11 @@ use crate::{
 
 use crate::treesync::errors::LifetimeError;
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::{
+    group::errors::AppDataUpdateValidationError, messages::proposals::AppDataUpdateOperationType,
+};
+
 impl PublicGroup {
     // === Messages ===
 
@@ -594,6 +599,140 @@ impl PublicGroup {
                         ),
                     ))
                 }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Returns an [`AppDataUpdateValidationError`] if:
+    ///   - An [`AppDataUpdateProposal`] appears before a [`GroupContextExtensionProposal`]
+    ///   - The [`GroupContextExtensionProposal`] updates the [`AppDataDictionary`] when the
+    ///     required capabilities include AppDataUpdate proposal type
+    ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes both Updates
+    ///   and Removes
+    ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes more than one
+    ///   Remove
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn validate_app_data_update_proposals_and_group_context(
+        &self,
+        proposal_queue: &ProposalQueue,
+    ) -> Result<(), AppDataUpdateValidationError> {
+        let no_app_data_updates = proposal_queue.app_data_update_proposals().next().is_none();
+        if no_app_data_updates {
+            return Ok(());
+        }
+
+        // retrieve the GroupContextExtensions proposal, if available
+        let group_context_extension_proposal = proposal_queue
+            .filtered_by_type(ProposalType::GroupContextExtensions)
+            .filter_map(|queued_proposal| match queued_proposal.proposal() {
+                Proposal::GroupContextExtensions(p) => Some(p),
+                _ => None,
+            })
+            .next();
+
+        // check ordering
+        // return an error if an AppDataUpdate appears before a GroupContextExtensions proposal
+        //
+        // From the draft:
+        //
+        // A commit can contain a GroupContextExtensions proposal which modifies
+        // GroupContext extensions other than app_data_dictionary, and can be
+        // followed by zero or more AppDataUpdate proposals.
+        //
+        // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-7
+        //
+        // Note that it is a bit unclear if this is really needed; we already require that default
+        // proposals are processed first.
+        if proposal_queue
+            .queued_proposals()
+            .map(|proposal| proposal.proposal().proposal_type())
+            .skip_while(|proposal_type| *proposal_type != ProposalType::AppDataUpdate)
+            .any(|proposal_type| proposal_type == ProposalType::GroupContextExtensions)
+        {
+            return Err(AppDataUpdateValidationError::IncorrectOrder);
+        }
+
+        if let Some(group_context_extension) = group_context_extension_proposal {
+            let required_capabilities_contain_app_data_update_proposal = group_context_extension
+                .extensions()
+                .required_capabilities()
+                .and_then(|required_capabilities| {
+                    Some(
+                        required_capabilities
+                            .proposal_types()
+                            .contains(&ProposalType::AppDataUpdate),
+                    )
+                })
+                .unwrap_or(false);
+
+            // From https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-6:
+            // When an MLS group contains the AppDataUpdate proposal type in the proposal_types list in
+            // the group's required_capabilities extension, a GroupContextExtensions proposal MUST NOT
+            // add, remove, or modify the app_data_dictionary GroupContext extension. In other words,
+            // when every member of the group supports the AppDataUpdate proposal, a
+            // GroupContextExtensions proposal could be sent to update some other extension(s), but the
+            // app_data_dictionary GroupContext extension, if it exists, is left as it was.I
+            if required_capabilities_contain_app_data_update_proposal
+                && group_context_extension.extensions().app_data_dictionary()
+                    != self.group_context().extensions().app_data_dictionary()
+            {
+                return Err(AppDataUpdateValidationError::CannotUpdateDictionaryDirectly);
+            }
+        }
+
+        // From the draft:
+        //
+        // A proposal list is invalid if it includes multiple AppDataUpdate proposals that remove state for the same component_id, or proposals that both update and remove state for the same component_id.
+        //
+        // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-4
+        // NOTE: We depend on the proposals being sorted by component id first and by
+        // type second - for a given ID, removes come first. The sorting is stable and
+        // won't mess with the ordering of updates within a component.
+        // This is ensured in ProposalQueue::app_data_update_proposals.
+        let mut latest = None;
+        for proposal in proposal_queue.app_data_update_proposals() {
+            let proposal = &proposal.app_data_update_proposal;
+            let component_id = proposal.component_id();
+            let operation_type = proposal.operation().operation_type();
+
+            if latest == Some(component_id) {
+                let app_data_update_validation_error = match operation_type {
+                    AppDataUpdateOperationType::Update => {
+                        AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
+                    }
+                    AppDataUpdateOperationType::Remove => {
+                        AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
+                    }
+                };
+
+                return Err(app_data_update_validation_error);
+            }
+
+            if proposal.operation().operation_type() == AppDataUpdateOperationType::Remove {
+                // From the draft:
+                //
+                // An AppDataUpdate proposal is invalid if [...] it specifies the removal of
+                // state for a component_id that has no state present.
+                //
+                // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-4
+                let Some(gce) = group_context_extension_proposal else {
+                    // extension gets implicitly created in the group context, so absence is not an
+                    // error condition
+                    return Ok(());
+                };
+                let Some(app_data_dict) = gce.extensions().app_data_dictionary() else {
+                    // extension gets implicitly created in the group context, so absence is not an
+                    // error condition
+                    return Ok(());
+                };
+
+                if app_data_dict.dictionary().get(&component_id).is_none() {
+                    return Err(AppDataUpdateValidationError::CannotRemoveNonexistentComponent);
+                }
+
+                latest = Some(component_id)
             }
         }
 

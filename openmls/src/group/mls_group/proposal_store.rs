@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::messages::proposals::AppEphemeralProposal;
+use crate::messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal};
 
 #[derive(Debug, Clone)]
 pub(crate) struct SelfRemoveInStore {
@@ -50,7 +50,10 @@ impl ProposalStore {
     pub(crate) fn add(&mut self, queued_proposal: QueuedProposal) {
         self.queued_proposals.push(queued_proposal);
     }
-    pub(crate) fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+    /// Returns an iterator over the stored [`Proposal`]s and [`ProposalRef`]s
+    ///
+    /// [`ProposalRef`]: crate::messages::proposals::ProposalRef
+    pub fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.queued_proposals.iter()
     }
     pub(crate) fn is_empty(&self) -> bool {
@@ -170,7 +173,7 @@ impl QueuedProposal {
     }
 
     /// Returns the `ProposalRef`.
-    pub(crate) fn proposal_reference_ref(&self) -> &ProposalRef {
+    pub fn proposal_reference_ref(&self) -> &ProposalRef {
         &self.proposal_reference
     }
 
@@ -441,6 +444,42 @@ impl ProposalQueue {
             }
         })
     }
+    #[cfg(feature = "extensions-draft-08")]
+    /// Returns an iterator over all AppDataUpdate proposals in the queue, sorted by Component ID
+    pub(crate) fn app_data_update_proposals(
+        &self,
+    ) -> impl Iterator<Item = QueuedAppDataUpdateProposal<'_>> {
+        let mut proposals: Vec<_> = self
+            .queued_proposals()
+            .filter_map(|queued_proposal| {
+                if let Proposal::AppDataUpdate(app_data_update_proposal) =
+                    queued_proposal.proposal()
+                {
+                    let sender = queued_proposal.sender();
+
+                    Some(QueuedAppDataUpdateProposal {
+                        app_data_update_proposal,
+                        sender,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        proposals.sort_by_key(|proposal| {
+            (
+                proposal.app_data_update_proposal.component_id(),
+                // This reverses the sort order and puts removes first
+                u8::MAX
+                    - (proposal
+                        .app_data_update_proposal
+                        .operation()
+                        .operation_type() as u8),
+            )
+        });
+        proposals.into_iter()
+    }
 
     /// Filters received proposals
     ///
@@ -502,6 +541,8 @@ impl ProposalQueue {
 
         // Parse proposals and build adds and member list
         for queued_proposal in iter {
+            // NOTE: identical proposals (which have the same hash reference)
+            // are automatically deduplicated by this step.
             proposal_pool.insert(
                 queued_proposal.proposal_reference(),
                 queued_proposal.clone(),
@@ -541,6 +582,10 @@ impl ProposalQueue {
                 }
                 Proposal::GroupContextExtensions(_) => {
                     valid_proposals.add(queued_proposal.proposal_reference());
+                }
+                #[cfg(feature = "extensions-draft-08")]
+                Proposal::AppDataUpdate(_) => {
+                    valid_proposals.add(queued_proposal.proposal_reference())
                 }
                 Proposal::SelfRemove => {
                     let Sender::Member(removed) = queued_proposal.sender() else {
@@ -729,12 +774,31 @@ pub struct QueuedAppEphemeralProposal<'a> {
     app_ephemeral_proposal: &'a AppEphemeralProposal,
     sender: &'a Sender,
 }
+#[cfg(feature = "extensions-draft-08")]
+/// A queued AppDataUpdate proposal
+#[derive(PartialEq, Debug)]
+pub struct QueuedAppDataUpdateProposal<'a> {
+    pub(crate) app_data_update_proposal: &'a AppDataUpdateProposal,
+    sender: &'a Sender,
+}
 
 #[cfg(feature = "extensions-draft-08")]
 impl QueuedAppEphemeralProposal<'_> {
     /// Returns a reference to the proposal
     pub fn app_ephemeral_proposal(&self) -> &AppEphemeralProposal {
         self.app_ephemeral_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+#[cfg(feature = "extensions-draft-08")]
+impl QueuedAppDataUpdateProposal<'_> {
+    /// Returns a reference to the proposal
+    pub fn app_data_update_proposal(&self) -> &AppDataUpdateProposal {
+        self.app_data_update_proposal
     }
 
     /// Returns a reference to the sender
