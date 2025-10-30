@@ -8,7 +8,7 @@ use super::{
         FrankenExternalPubExtension, FrankenExternalSendersExtension, FrankenRatchetTreeExtension,
         FrankenRequiredCapabilitiesExtension,
     },
-    FrankenAddProposal, FrankenAppAckProposal, FrankenCustomProposal, FrankenExternalInitProposal,
+    FrankenAddProposal, FrankenCustomProposal, FrankenExternalInitProposal,
     FrankenPreSharedKeyProposal, FrankenProposal, FrankenProposalType, FrankenReInitProposal,
     FrankenRemoveProposal, FrankenUpdateProposal,
 };
@@ -74,7 +74,6 @@ impl Size for FrankenProposal {
                 FrankenProposal::ReInit(p) => p.tls_serialized_len(),
                 FrankenProposal::ExternalInit(p) => p.tls_serialized_len(),
                 FrankenProposal::GroupContextExtensions(p) => p.tls_serialized_len(),
-                FrankenProposal::AppAck(p) => p.tls_serialized_len(),
                 FrankenProposal::Custom(p) => p.tls_serialized_len(),
             }
     }
@@ -91,7 +90,6 @@ impl Serialize for FrankenProposal {
             FrankenProposal::ReInit(p) => p.tls_serialize(writer),
             FrankenProposal::ExternalInit(p) => p.tls_serialize(writer),
             FrankenProposal::GroupContextExtensions(p) => p.tls_serialize(writer),
-            FrankenProposal::AppAck(p) => p.tls_serialize(writer),
             FrankenProposal::Custom(p) => p.payload.tls_serialize(writer),
         }
         .map(|l| written + l)
@@ -126,9 +124,6 @@ impl Deserialize for FrankenProposal {
             FrankenProposalType::GroupContextExtensions => FrankenProposal::GroupContextExtensions(
                 Vec::<FrankenExtension>::tls_deserialize(bytes)?,
             ),
-            FrankenProposalType::AppAck => {
-                FrankenProposal::AppAck(FrankenAppAckProposal::tls_deserialize(bytes)?)
-            }
             FrankenProposalType::Custom(_) => {
                 let payload = VLBytes::tls_deserialize(bytes)?;
                 let custom_proposal = FrankenCustomProposal {
