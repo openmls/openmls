@@ -6,8 +6,8 @@ use tls_codec::{Deserialize, DeserializeBytes, Serialize, Size};
 
 use super::{
     proposals::{
-        AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal,
-        Proposal, ProposalType, ReInitProposal, RemoveProposal,
+        ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal, Proposal,
+        ProposalType, ReInitProposal, RemoveProposal,
     },
     proposals_in::{AddProposalIn, ProposalIn, UpdateProposalIn},
     CustomProposal,
@@ -24,7 +24,6 @@ impl Size for Proposal {
                 Proposal::ReInit(p) => p.tls_serialized_len(),
                 Proposal::ExternalInit(p) => p.tls_serialized_len(),
                 Proposal::GroupContextExtensions(p) => p.tls_serialized_len(),
-                Proposal::AppAck(p) => p.tls_serialized_len(),
                 Proposal::SelfRemove => 0,
                 Proposal::Custom(p) => p.payload().tls_serialized_len(),
             }
@@ -42,7 +41,6 @@ impl Serialize for Proposal {
             Proposal::ReInit(p) => p.tls_serialize(writer),
             Proposal::ExternalInit(p) => p.tls_serialize(writer),
             Proposal::GroupContextExtensions(p) => p.tls_serialize(writer),
-            Proposal::AppAck(p) => p.tls_serialize(writer),
             Proposal::SelfRemove => Ok(0),
             Proposal::Custom(p) => p.payload().tls_serialize(writer),
         }
@@ -61,7 +59,6 @@ impl Size for &ProposalIn {
                 ProposalIn::ReInit(p) => p.tls_serialized_len(),
                 ProposalIn::ExternalInit(p) => p.tls_serialized_len(),
                 ProposalIn::GroupContextExtensions(p) => p.tls_serialized_len(),
-                ProposalIn::AppAck(p) => p.tls_serialized_len(),
                 ProposalIn::SelfRemove => 0,
                 ProposalIn::Custom(p) => p.payload().tls_serialized_len(),
             }
@@ -85,7 +82,6 @@ impl Serialize for &ProposalIn {
             ProposalIn::ReInit(p) => p.tls_serialize(writer),
             ProposalIn::ExternalInit(p) => p.tls_serialize(writer),
             ProposalIn::GroupContextExtensions(p) => p.tls_serialize(writer),
-            ProposalIn::AppAck(p) => p.tls_serialize(writer),
             ProposalIn::SelfRemove => Ok(0),
             ProposalIn::Custom(p) => p.payload().tls_serialize(writer),
         }
@@ -125,9 +121,6 @@ impl Deserialize for ProposalIn {
             ProposalType::GroupContextExtensions => ProposalIn::GroupContextExtensions(Box::new(
                 GroupContextExtensionProposal::tls_deserialize(bytes)?,
             )),
-            ProposalType::AppAck => {
-                ProposalIn::AppAck(Box::new(AppAckProposal::tls_deserialize(bytes)?))
-            }
             ProposalType::SelfRemove => ProposalIn::SelfRemove,
             ProposalType::Custom(_) => {
                 let payload = Vec::<u8>::tls_deserialize(bytes)?;

@@ -18,9 +18,8 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use super::{
     proposals::{
-        AddProposal, AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal,
-        PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType, ReInitProposal,
-        RemoveProposal, UpdateProposal,
+        AddProposal, ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal,
+        Proposal, ProposalOrRef, ProposalType, ReInitProposal, RemoveProposal, UpdateProposal,
     },
     CustomProposal,
 };
@@ -55,10 +54,6 @@ pub enum ProposalIn {
     ReInit(Box<ReInitProposal>),
     ExternalInit(Box<ExternalInitProposal>),
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
-    // # Extensions
-    // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
-    //             was moved to `draft-ietf-mls-extensions-00`.
-    AppAck(Box<AppAckProposal>),
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
     Custom(Box<CustomProposal>),
@@ -75,7 +70,6 @@ impl ProposalIn {
             ProposalIn::ReInit(_) => ProposalType::Reinit,
             ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
-            ProposalIn::AppAck(_) => ProposalType::AppAck,
             ProposalIn::SelfRemove => ProposalType::SelfRemove,
             ProposalIn::Custom(custom_proposal) => {
                 ProposalType::Custom(custom_proposal.proposal_type())
@@ -118,7 +112,6 @@ impl ProposalIn {
             ProposalIn::GroupContextExtensions(group_context_extension) => {
                 Proposal::GroupContextExtensions(group_context_extension)
             }
-            ProposalIn::AppAck(app_ack) => Proposal::AppAck(app_ack),
             ProposalIn::SelfRemove => Proposal::SelfRemove,
             ProposalIn::Custom(custom) => Proposal::Custom(custom),
         })
@@ -347,7 +340,6 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
             ProposalIn::GroupContextExtensions(group_context_extension) => {
                 Self::GroupContextExtensions(group_context_extension)
             }
-            ProposalIn::AppAck(app_ack) => Self::AppAck(app_ack),
             ProposalIn::SelfRemove => Self::SelfRemove,
             ProposalIn::Custom(other) => Self::Custom(other),
         }
@@ -366,7 +358,6 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
             Proposal::GroupContextExtensions(group_context_extension) => {
                 Self::GroupContextExtensions(group_context_extension)
             }
-            Proposal::AppAck(app_ack) => Self::AppAck(app_ack),
             Proposal::SelfRemove => Self::SelfRemove,
             Proposal::Custom(other) => Self::Custom(other),
         }

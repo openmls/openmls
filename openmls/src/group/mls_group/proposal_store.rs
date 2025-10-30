@@ -520,7 +520,6 @@ impl ProposalQueue {
                 Proposal::GroupContextExtensions(_) => {
                     valid_proposals.add(queued_proposal.proposal_reference());
                 }
-                Proposal::AppAck(_) => unimplemented!("See #291"),
                 Proposal::SelfRemove => {
                     let Sender::Member(removed) = queued_proposal.sender() else {
                         return Err(ProposalQueueError::SelfRemoveFromNonMember);
