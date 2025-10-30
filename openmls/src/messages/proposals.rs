@@ -520,6 +520,7 @@ impl From<Vec<u8>> for ExternalInitProposal {
     }
 }
 
+#[cfg(feature = "extensions-draft-08")]
 /// AppAck object.
 ///
 /// This is not yet supported.
