@@ -574,6 +574,7 @@ pub struct AppEphemeralProposal {
     /// Application data.
     data: VLBytes,
 }
+
 #[cfg(feature = "extensions-draft-08")]
 impl AppEphemeralProposal {
     /// Create a new [`AppEphemeralProposal`].
