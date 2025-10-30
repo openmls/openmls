@@ -526,6 +526,10 @@ impl ProposalQueue {
                     };
                     register_member_specific_proposal(*removed, queued_proposal);
                 }
+                #[cfg(feature = "extensions-draft-08")]
+                Proposal::AppEphemeral(_) => {
+                    valid_proposals.add(queued_proposal.proposal_reference());
+                }
                 Proposal::Custom(_) => {
                     // Other/unknown proposals are always considered valid and
                     // have to be checked by the application instead.
