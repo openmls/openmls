@@ -493,6 +493,16 @@ pub struct StagedCommit {
     state: StagedCommitState,
 }
 
+impl StagedCommitState {
+    /// Returns a mutable reference to the [`GroupContext`] of the staged commit state.
+    pub(crate) fn group_context_mut(&mut self) -> &mut GroupContext {
+        match self {
+            StagedCommitState::PublicState(ref mut ps) => ps.staged_diff.group_context_mut(),
+            StagedCommitState::GroupMember(ref mut gm) => gm.staged_diff.group_context_mut(),
+        }
+    }
+}
+
 impl StagedCommit {
     /// Create a new [`StagedCommit`] from the provisional group state created
     /// during the commit process.

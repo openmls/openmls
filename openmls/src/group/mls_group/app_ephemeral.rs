@@ -1,9 +1,13 @@
+use std::collections::BTreeSet;
+
 use crate::{
     component::ComponentId,
-    group::proposal_store::{ProposalQueue, QueuedAppEphemeralProposal},
+    extensions::AppDataDictionaryExtension,
+    group::{
+        mls_group::staged_commit::StagedCommitState,
+        proposal_store::{ProposalQueue, QueuedAppEphemeralProposal},
+    },
 };
-
-use std::collections::BTreeSet;
 
 impl ProposalQueue {
     /// Return an iterator over the [`QueuedAppEphemeralProposal`]s in the proposal queue,
@@ -26,5 +30,14 @@ impl ProposalQueue {
             .collect();
 
         ids.into_iter().collect()
+    }
+}
+
+impl StagedCommitState {
+    /// Return a mutable reference to the [`AppDataDictionaryExtension`], if it exists
+    pub fn app_data_dictionary_mut(&mut self) -> Option<&mut AppDataDictionaryExtension> {
+        self.group_context_mut()
+            .extensions_mut()
+            .app_data_dictionary_mut()
     }
 }
