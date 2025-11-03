@@ -568,8 +568,8 @@ pub struct AppAck {
     TlsSize,
 )]
 pub struct AppEphemeralProposal {
-    component_id: ComponentId,
-    data: VLBytes,
+    pub component_id: ComponentId,
+    pub data: VLBytes,
 }
 
 /// GroupContextExtensions Proposal.
