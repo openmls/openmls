@@ -3,10 +3,14 @@ use std::collections::BTreeSet;
 use crate::{
     component::ComponentId,
     extensions::AppDataDictionaryExtension,
+    extensions::{AppDataDictionaryExtension, ComponentId},
     group::{
         mls_group::staged_commit::StagedCommitState,
         proposal_store::{ProposalQueue, QueuedAppEphemeralProposal},
+        proposal_store::{ProposalQueue, QueuedAppEphemeralProposal},
+        staged_commit::StagedCommitState,
     },
+    prelude::ProposalType,
 };
 
 impl ProposalQueue {
