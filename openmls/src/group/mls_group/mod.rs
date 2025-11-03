@@ -64,6 +64,9 @@ pub(crate) mod proposal;
 pub(crate) mod proposal_store;
 pub(crate) mod staged_commit;
 
+#[cfg(feature = "extensions-draft-08")]
+pub(crate) mod app_ephemeral;
+
 // Tests
 #[cfg(test)]
 pub(crate) mod tests_and_kats;
