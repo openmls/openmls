@@ -472,7 +472,7 @@ impl MlsGroup {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
-pub(crate) enum StagedCommitState {
+pub enum StagedCommitState {
     PublicState(Box<PublicStagedCommitState>),
     GroupMember(Box<MemberStagedCommitState>),
 }
