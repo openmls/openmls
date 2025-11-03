@@ -164,7 +164,9 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             ])
             .credentials(vec![CredentialType::Basic])
-            .proposals(vec![ProposalType::AppEphemeral])
+            // TODO: determine whether AppEphemeral should be included here,
+            // to test the AppAck functionality.
+            //.proposals(vec![ProposalType::AppEphemeral])
             .build();
 
         LeafNode::generate_update(
