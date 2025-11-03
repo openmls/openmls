@@ -17,6 +17,9 @@ use crate::{
     utils::vector_converter,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals::AppEphemeralProposal;
+
 #[derive(Debug, Clone)]
 pub(crate) struct SelfRemoveInStore {
     pub(crate) sender: LeafNodeIndex,
@@ -220,7 +223,7 @@ impl OrderedProposalRefs {
 /// `ProposalQueue` also contains a vector of `ProposalRef`s.
 #[derive(Default, Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
-pub(crate) struct ProposalQueue {
+pub struct ProposalQueue {
     /// `proposal_references` holds references to the proposals in the queue and
     /// determines the order of the queue.
     proposal_references: Vec<ProposalRef>,
@@ -412,6 +415,24 @@ impl ProposalQueue {
                 let sender = queued_proposal.sender();
                 Some(QueuedPskProposal {
                     psk_proposal,
+                    sender,
+                })
+            } else {
+                None
+            }
+        })
+    }
+    #[cfg(feature = "extensions-draft-08")]
+    /// Returns an iterator over all AppEphemeral proposals in the queue
+    /// in the order of the the Commit message
+    pub(crate) fn app_ephemeral_proposals(
+        &self,
+    ) -> impl Iterator<Item = QueuedAppEphemeralProposal<'_>> {
+        self.queued_proposals().filter_map(|queued_proposal| {
+            if let Proposal::AppEphemeral(app_ephemeral_proposal) = queued_proposal.proposal() {
+                let sender = queued_proposal.sender();
+                Some(QueuedAppEphemeralProposal {
+                    app_ephemeral_proposal,
                     sender,
                 })
             } else {
@@ -692,6 +713,27 @@ impl QueuedPskProposal<'_> {
     /// Returns a reference to the proposal
     pub fn psk_proposal(&self) -> &PreSharedKeyProposal {
         self.psk_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+
+#[cfg(feature = "extensions-draft-08")]
+/// A queued Add proposal
+#[derive(PartialEq, Debug)]
+pub struct QueuedAppEphemeralProposal<'a> {
+    app_ephemeral_proposal: &'a AppEphemeralProposal,
+    sender: &'a Sender,
+}
+
+#[cfg(feature = "extensions-draft-08")]
+impl QueuedAppEphemeralProposal<'_> {
+    /// Returns a reference to the proposal
+    pub fn app_ephemeral_proposal(&self) -> &AppEphemeralProposal {
+        self.app_ephemeral_proposal
     }
 
     /// Returns a reference to the sender
