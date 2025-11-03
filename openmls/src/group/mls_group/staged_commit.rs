@@ -481,8 +481,18 @@ pub(crate) enum StagedCommitState {
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub struct StagedCommit {
-    staged_proposal_queue: ProposalQueue,
-    state: StagedCommitState,
+    pub staged_proposal_queue: ProposalQueue,
+    pub state: StagedCommitState,
+}
+
+impl StagedCommitState {
+    /// Returns a mutable reference to the [`GroupContext`] of the staged commit state.
+    pub(crate) fn group_context_mut(&mut self) -> &mut GroupContext {
+        match self {
+            StagedCommitState::PublicState(ref mut ps) => ps.staged_diff.group_context_mut(),
+            StagedCommitState::GroupMember(ref mut gm) => gm.staged_diff.group_context_mut(),
+        }
+    }
 }
 
 impl StagedCommit {
@@ -592,7 +602,6 @@ impl StagedCommit {
             StagedCommitState::GroupMember(ref gm) => gm.group_context(),
         }
     }
-
     /// Consume this [`StagedCommit`] and return the internal [`StagedCommitState`].
     pub(crate) fn into_state(self) -> StagedCommitState {
         self.state

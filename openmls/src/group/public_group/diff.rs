@@ -251,4 +251,8 @@ impl StagedPublicGroupDiff {
     pub(crate) fn group_context(&self) -> &GroupContext {
         &self.group_context
     }
+    /// Get a mutable reference to the staged [`GroupContext`].
+    pub(crate) fn group_context_mut(&mut self) -> &mut GroupContext {
+        &mut self.group_context
+    }
 }
