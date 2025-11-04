@@ -129,6 +129,15 @@ mod test {
 
         let alice_pending_commit = alice.group.pending_commit().expect("no pending commit");
 
+        // ensure that the number of AppEphemeral proposals for the component id 1 is correct
+        assert_eq!(
+            alice_pending_commit
+                .staged_proposal_queue
+                .app_ephemeral_proposals_for_component_id(1)
+                .count(),
+            1
+        );
+
         // handle proposals on Alice's side
         for queued_proposal in alice_pending_commit
             .staged_proposal_queue
@@ -163,6 +172,15 @@ mod test {
             ProcessedMessageContent::StagedCommitMessage(commit) => commit,
             _ => panic!("incorrect message type"),
         };
+
+        // ensure that the number of AppEphemeral proposals for the component id 1 is correct
+        assert_eq!(
+            bob_staged_commit
+                .staged_proposal_queue
+                .app_ephemeral_proposals_for_component_id(1)
+                .count(),
+            1
+        );
 
         // handle proposals on Bob's side
         for queued_proposal in bob_staged_commit
