@@ -68,9 +68,10 @@ use crate::extensions::ComponentId;
 ///
 /// # Extensions
 ///
-/// | Value  | Name        | Recommended | Path Required | Reference | Notes                        |
-/// |:=======|:============|:============|:==============|:==========|:=============================|
-/// | 0x000a | self_remove | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-07 |
+/// | Value  | Name          | Recommended | Path Required | Reference | Notes                        |
+/// |:=======|:==============|:============|:==============|:==========|:=============================|
+/// | 0x0009 | app_ephemeral | Y           | N             | RFC XXXX  | draft-ietf-mls-extensions-08 |
+/// | 0x000a | self_remove   | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-07 |
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
 #[allow(missing_docs)]
 pub enum ProposalType {
