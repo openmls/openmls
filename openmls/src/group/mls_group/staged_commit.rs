@@ -11,6 +11,9 @@ use super::proposal_store::{
     QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use super::proposal_store::QueuedAppEphemeralProposal;
+
 use super::{
     super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
@@ -518,6 +521,15 @@ impl StagedCommit {
     /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].
     pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal<'_>> {
         self.staged_proposal_queue.psk_proposals()
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    /// Returns the AppEphemeral proposals that are covered by the Commit message as an iterator
+    /// over [`QueuedAppEphemeralProposal`].
+    pub fn queued_app_ephemeral_proposals(
+        &self,
+    ) -> impl Iterator<Item = QueuedAppEphemeralProposal<'_>> {
+        self.staged_proposal_queue.app_ephemeral_proposals()
     }
 
     /// Returns an iterator over all [`QueuedProposal`]s.
