@@ -31,11 +31,7 @@ impl ProposalQueue {
 #[cfg(test)]
 mod test {
 
-    use super::*;
-    use crate::{
-        prelude::*, test_utils::single_group_test_framework::*,
-        test_utils::storage_state::GroupStorageState, *,
-    };
+    use crate::{prelude::*, test_utils::single_group_test_framework::*};
     use openmls_test::openmls_test;
 
     /// Test AppEphemeral proposal handling.
@@ -115,7 +111,7 @@ mod test {
             .staged_proposal_queue
             .app_ephemeral_proposals_for_component_id(1)
         {
-            let AppEphemeralProposal { data, .. } = queued_proposal.app_ephemeral_proposal();
+            let AppEphemeralProposal { data: _data, .. } = queued_proposal.app_ephemeral_proposal();
 
             // handle data here...
         }
@@ -157,7 +153,7 @@ mod test {
             .staged_proposal_queue
             .app_ephemeral_proposals_for_component_id(1)
         {
-            let AppEphemeralProposal { data, .. } = queued_proposal.app_ephemeral_proposal();
+            let AppEphemeralProposal { data: _data, .. } = queued_proposal.app_ephemeral_proposal();
 
             // handle data here...
         }
