@@ -647,7 +647,7 @@ impl StagedCommit {
 /// This struct is used internally by [`StagedCommit`] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
-pub(crate) struct MemberStagedCommitState {
+pub struct MemberStagedCommitState {
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,
     staged_diff: StagedPublicGroupDiff,

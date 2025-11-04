@@ -19,7 +19,7 @@ impl ProposalQueue {
     /// Return the list of all [`ComponentIds`] available across all
     /// [`QueuedAppEphemeralProposal`]s in the proposal queue.
     pub fn unique_component_ids_for_app_ephemeral(&self) -> impl Iterator<Item = ComponentId> {
-        let mut ids: BTreeSet<_> = self
+        let ids: BTreeSet<_> = self
             .app_ephemeral_proposals()
             .map(|p| p.app_ephemeral_proposal().component_id())
             .collect();
