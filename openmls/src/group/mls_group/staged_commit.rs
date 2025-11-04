@@ -470,10 +470,13 @@ impl MlsGroup {
     }
 }
 
+/// The staged commit state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub enum StagedCommitState {
+    /// The public group variant of the staged commit state.
     PublicState(Box<PublicStagedCommitState>),
+    /// The group member variant of the staged commit state.
     GroupMember(Box<MemberStagedCommitState>),
 }
 

@@ -422,6 +422,7 @@ impl ProposalQueue {
             }
         })
     }
+    // TODO: should this API be exposed publicly on the proposal queue, or on the `StagedCommit`?
     #[cfg(feature = "extensions-draft-08")]
     /// Returns an iterator over all AppEphemeral proposals in the queue
     /// in the order of the the Commit message
