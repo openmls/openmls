@@ -570,9 +570,9 @@ pub struct AppAck {
 )]
 pub struct AppEphemeralProposal {
     /// The unique [`ComponentId`] associated with the proposal.
-    component_id: ComponentId,
+    pub component_id: ComponentId,
     /// Application data.
-    data: VLBytes,
+    pub data: VLBytes,
 }
 
 #[cfg(feature = "extensions-draft-08")]
