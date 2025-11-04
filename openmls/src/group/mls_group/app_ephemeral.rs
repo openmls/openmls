@@ -16,7 +16,7 @@ impl ProposalQueue {
             .filter(move |p| p.app_ephemeral_proposal().component_id() == component_id)
     }
 
-    /// Return the list of all [`ComponentIds`] available across all
+    /// Return the list of all [`ComponentId`]s available across all
     /// [`QueuedAppEphemeralProposal`]s in the proposal queue.
     pub fn unique_component_ids_for_app_ephemeral(&self) -> impl Iterator<Item = ComponentId> {
         let ids: BTreeSet<_> = self
