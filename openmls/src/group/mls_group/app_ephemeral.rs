@@ -104,6 +104,12 @@ mod test {
             1
         );
 
+        // Inspect the component ids for all AppEphemeral proposals in the commit
+        let component_ids = alice_pending_commit
+            .staged_proposal_queue
+            .unique_component_ids_for_app_ephemeral();
+        assert_eq!(component_ids.collect::<Vec<_>>(), vec![1]);
+
         // handle proposals on Alice's side
         for queued_proposal in alice_pending_commit
             .staged_proposal_queue
@@ -139,6 +145,12 @@ mod test {
                 .count(),
             1
         );
+
+        // Inspect the component ids for all AppEphemeral proposals in the commit
+        let component_ids = bob_staged_commit
+            .staged_proposal_queue
+            .unique_component_ids_for_app_ephemeral();
+        assert_eq!(component_ids.collect::<Vec<_>>(), vec![1]);
 
         // handle proposals on Bob's side
         for queued_proposal in bob_staged_commit
