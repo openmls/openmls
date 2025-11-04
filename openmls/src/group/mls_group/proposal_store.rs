@@ -422,11 +422,10 @@ impl ProposalQueue {
             }
         })
     }
-    // TODO: should this API be exposed publicly on the proposal queue, or on the `StagedCommit`?
     #[cfg(feature = "extensions-draft-08")]
     /// Returns an iterator over all AppEphemeral proposals in the queue
     /// in the order of the the Commit message
-    pub fn app_ephemeral_proposals(&self) -> impl Iterator<Item = QueuedAppEphemeralProposal<'_>> {
+    pub(crate) fn app_ephemeral_proposals(&self) -> impl Iterator<Item = QueuedAppEphemeralProposal<'_>> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::AppEphemeral(app_ephemeral_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
