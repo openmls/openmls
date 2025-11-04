@@ -11,6 +11,10 @@ impl StagedCommitState {
             .extensions_mut()
             .app_data_dictionary_mut()
     }
+    /// Return a reference to the [`AppDataDictionaryExtension`], if it exists
+    pub fn app_data_dictionary(&self) -> Option<&AppDataDictionaryExtension> {
+        self.group_context().extensions().app_data_dictionary()
+    }
 }
 
 impl ProposalQueue {
