@@ -2,7 +2,8 @@ use super::proposal_store::{ProposalQueue, QueuedAppEphemeralProposal};
 use super::staged_commit::StagedCommitState;
 
 use crate::extensions::{AppDataDictionaryExtension, ComponentId};
-use crate::prelude::ProposalType;
+
+use std::collections::BTreeSet;
 
 impl StagedCommitState {
     /// Return a mutable reference to the [`AppDataDictionaryExtension`], if it exists
@@ -26,6 +27,16 @@ impl ProposalQueue {
     ) -> impl Iterator<Item = QueuedAppEphemeralProposal<'_>> {
         self.app_ephemeral_proposals()
             .filter(move |p| p.app_ephemeral_proposal().component_id == component_id)
+    }
+    /// Return the list of all [`ComponentIds`] available across all
+    /// [`QueuedAppEphemeralProposal`]s in the proposal queue.
+    pub fn unique_component_ids_for_app_ephemeral(&self) -> impl Iterator<Item = ComponentId> {
+        let mut ids: BTreeSet<_> = self
+            .app_ephemeral_proposals()
+            .map(|p| p.app_ephemeral_proposal().component_id)
+            .collect();
+
+        ids.into_iter()
     }
 }
 
