@@ -89,6 +89,13 @@ impl AppDataDictionary {
         AppDataDictionaryBuilder::new()
     }
 
+    /// Get an item by component id.
+    pub fn get(&self, component_id: ComponentId) -> Option<&ComponentData> {
+        self.entries()
+            .filter(|entry| entry.component_id == component_id)
+            .next()
+    }
+
     /// Returns an iterator over the [`ComponentData`] entries,
     /// ordered by [`ComponentId`].
     pub fn entries(&self) -> impl Iterator<Item = &ComponentData> {
