@@ -627,7 +627,7 @@ impl StagedCommit {
     }
 }
 
-/// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
+/// This struct is used internally by [`StagedCommit`] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub struct MemberStagedCommitState {
