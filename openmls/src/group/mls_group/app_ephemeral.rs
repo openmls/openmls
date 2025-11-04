@@ -2,16 +2,28 @@ use std::collections::BTreeSet;
 
 use crate::{
     component::ComponentId,
-    extensions::AppDataDictionaryExtension,
     extensions::{AppDataDictionaryExtension, ComponentId},
     group::{
+        extensions::{AppDataDictionaryExtension, ComponentId},
         mls_group::staged_commit::StagedCommitState,
-        proposal_store::{ProposalQueue, QueuedAppEphemeralProposal},
         proposal_store::{ProposalQueue, QueuedAppEphemeralProposal},
         staged_commit::StagedCommitState,
     },
-    prelude::ProposalType,
+    messages::proposals::ProposalType,
 };
+
+impl StagedCommitState {
+    /// Return a mutable reference to the [`AppDataDictionaryExtension`], if it exists
+    pub fn app_data_dictionary_mut(&mut self) -> Option<&mut AppDataDictionaryExtension> {
+        self.group_context_mut()
+            .extensions_mut()
+            .app_data_dictionary_mut()
+    }
+    /// Return a reference to the [`AppDataDictionaryExtension`], if it exists
+    pub fn app_data_dictionary(&self) -> Option<&AppDataDictionaryExtension> {
+        self.group_context().extensions().app_data_dictionary()
+    }
+}
 
 impl ProposalQueue {
     /// Return an iterator over the [`QueuedAppEphemeralProposal`]s in the proposal queue,
@@ -34,14 +46,5 @@ impl ProposalQueue {
             .collect();
 
         ids.into_iter().collect()
-    }
-}
-
-impl StagedCommitState {
-    /// Return a mutable reference to the [`AppDataDictionaryExtension`], if it exists
-    pub fn app_data_dictionary_mut(&mut self) -> Option<&mut AppDataDictionaryExtension> {
-        self.group_context_mut()
-            .extensions_mut()
-            .app_data_dictionary_mut()
     }
 }
