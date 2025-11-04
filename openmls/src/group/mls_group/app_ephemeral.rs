@@ -1,22 +1,8 @@
 use super::proposal_store::{ProposalQueue, QueuedAppEphemeralProposal};
-use super::staged_commit::StagedCommitState;
 
-use crate::extensions::{AppDataDictionaryExtension, ComponentId};
+use crate::extensions::ComponentId;
 
 use std::collections::BTreeSet;
-
-impl StagedCommitState {
-    /// Return a mutable reference to the [`AppDataDictionaryExtension`], if it exists
-    pub fn app_data_dictionary_mut(&mut self) -> Option<&mut AppDataDictionaryExtension> {
-        self.group_context_mut()
-            .extensions_mut()
-            .app_data_dictionary_mut()
-    }
-    /// Return a reference to the [`AppDataDictionaryExtension`], if it exists
-    pub fn app_data_dictionary(&self) -> Option<&AppDataDictionaryExtension> {
-        self.group_context().extensions().app_data_dictionary()
-    }
-}
 
 impl ProposalQueue {
     /// Return an iterator over the [`QueuedAppEphemeralProposal`]s in the proposal queue,
