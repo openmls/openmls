@@ -152,7 +152,7 @@ impl PublicGroup {
                 .collect();
         }
 
-        // Check that the types of all proposals are supported by all members
+        // Check that the types of all non-default proposals are supported by all members
         for proposal in proposal_queue.queued_proposals() {
             let proposal_type = proposal.proposal().proposal_type();
             if !proposal_type.is_default() && !capabilities_intersection.contains(&proposal_type) {
