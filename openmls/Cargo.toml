@@ -45,6 +45,8 @@ zeroize = "1.8.1"
 serde_bytes = "0.11.17"
 
 [features]
+default = ["extensions-draft-08"]
+crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
 test-utils = [
     "dep:serde_json",
     "dep:itertools",
