@@ -51,29 +51,29 @@ mod test {
 
         let group_id = GroupId::from_slice(b"Test Group");
 
-        // Define the AppDataDictionary
-        let dictionary = AppDataDictionary::builder()
-            .with_entry(1, b"component data")
-            .build();
+        // // Define the AppDataDictionary
+        // let dictionary = AppDataDictionary::builder()
+        //     .with_entry(1, b"component data")
+        //     .build();
 
-        let dictionary_extension = AppDataDictionaryExtension::new(dictionary);
+        // let dictionary_extension = AppDataDictionaryExtension::new(dictionary);
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
-            .with_group_context_extensions(Extensions::single(Extension::AppDataDictionary(
-                dictionary_extension,
-            )))
-            .unwrap()
+            // .with_group_context_extensions(Extensions::single(Extension::AppDataDictionary(
+            //     dictionary_extension,
+            // )))
+            // .unwrap()
             .build();
         let mls_group_join_config = mls_group_create_config.join_config().clone();
 
         let mut group_state =
             GroupState::new_from_party(group_id.clone(), alice_pre_group, mls_group_create_config)
                 .unwrap();
-        // Generate KeyPackages
-        let bob_key_package = bob_pre_group.key_package_bundle.key_package().clone();
+        // // Generate KeyPackages
+        // let bob_key_package = bob_pre_group.key_package_bundle.key_package().clone();
 
         group_state
             .add_member(AddMemberConfig {
@@ -112,17 +112,18 @@ mod test {
         // handle proposals on Alice's side
         for queued_proposal in alice_pending_commit
             .staged_proposal_queue
+            // XXX: would be nice to have a funciton that gets us all of them. Otherwise the application can't check if there's one it doesn't know about.
             .app_ephemeral_proposals_for_component_id(1)
         {
             let AppEphemeralProposal { data, .. } = queued_proposal.app_ephemeral_proposal();
-            // retrieve the component from the dictonary
-            let _component = alice_pending_commit
-                .state
-                .app_data_dictionary()
-                .unwrap()
-                .dictionary()
-                .get(1)
-                .unwrap();
+            // // retrieve the component from the dictonary
+            // let _component = alice_pending_commit
+            //     .state
+            //     .app_data_dictionary()
+            //     .unwrap()
+            //     .dictionary()
+            //     .get(1)
+            //     .unwrap();
 
             // apply component to data here...
         }
@@ -151,14 +152,14 @@ mod test {
         {
             let AppEphemeralProposal { data, .. } = queued_proposal.app_ephemeral_proposal();
 
-            // retrieve the component from the dictonary
-            let _component = bob_staged_commit
-                .state
-                .app_data_dictionary()
-                .unwrap()
-                .dictionary()
-                .get(1)
-                .unwrap();
+            // // retrieve the component from the dictonary
+            // let _component = bob_staged_commit
+            //     .state
+            //     .app_data_dictionary()
+            //     .unwrap()
+            //     .dictionary()
+            //     .get(1)
+            //     .unwrap();
 
             // apply component to data here...
         }

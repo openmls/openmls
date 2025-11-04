@@ -554,6 +554,23 @@ pub struct AppAck {
     received_ranges: Vec<MessageRange>,
 }
 
+/// The draft isn't clear here I think.
+/// It says "The content of an AppEphemeral proposal is the same as an app_data_dictionary extension."
+/// But then only defines the `AppEphemeral;`  struct as you do here.
+/// The text afterwards also seems outdated.
+/// We should go with this for now. But should also file an issue.
+///
+/// This could also be
+/// ```c
+/// struct {
+///     ComponentID component_id;
+///     opaque data<V>;
+/// } ComponentData;
+///
+/// struct {
+///     ComponentData component_data<V>;
+/// } AppDataDictionary;
+/// ```
 #[cfg(feature = "extensions-draft-08")]
 /// AppEphemeral proposal.
 #[derive(

@@ -43,6 +43,7 @@ fluvio-wasm-timer = { version = "0.2.5", optional = true }
 once_cell = { version = "1.19.0", optional = true }
 
 [features]
+default = ["extensions-draft-08"]
 crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
 test-utils = [
     "dep:serde_json",
