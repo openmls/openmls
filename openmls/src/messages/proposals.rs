@@ -568,7 +568,9 @@ pub struct AppAck {
     TlsSize,
 )]
 pub struct AppEphemeralProposal {
+    /// The unique [`ComponentId`] associated with the proposal.
     pub component_id: ComponentId,
+    /// Application data.
     pub data: VLBytes,
 }
 
