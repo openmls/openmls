@@ -40,6 +40,8 @@ mod test {
     #[openmls_test]
     fn test_app_ephemeral() {
         const COMPONENT_ID: ComponentId = 1;
+        const DATA: &[u8] = b"data";
+
         let group_id = GroupId::from_slice(b"Test Group");
 
         let alice_provider = &Provider::default();
@@ -117,7 +119,7 @@ mod test {
             .add_proposals(vec![Proposal::AppEphemeral(Box::new(
                 AppEphemeralProposal {
                     component_id: COMPONENT_ID,
-                    data: b"data".into(),
+                    data: DATA.into(),
                 },
             ))])
             .load_psks(alice_provider.storage())
@@ -179,7 +181,9 @@ mod test {
             .staged_proposal_queue
             .app_ephemeral_proposals_for_component_id(COMPONENT_ID)
         {
-            let AppEphemeralProposal { data: _data, .. } = queued_proposal.app_ephemeral_proposal();
+            let AppEphemeralProposal { data, .. } = queued_proposal.app_ephemeral_proposal();
+
+            assert_eq!(data.as_ref(), DATA);
 
             // handle data here...
         }
