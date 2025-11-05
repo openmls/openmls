@@ -35,49 +35,83 @@ mod test {
     use openmls_test::openmls_test;
 
     /// Test AppEphemeral proposal handling.
+    /// NOTE: The main single_group_test_framework functionality can't be used here,
+    /// since the capabilities need to be set to include ProposalType::AppEphemeral
     #[openmls_test]
     fn test_app_ephemeral() {
-        // Set up Alice group
-        let alice_party = CorePartyState::<Provider>::new("alice");
-        let bob_party = CorePartyState::<Provider>::new("bob");
-
-        let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-        let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
-
         let group_id = GroupId::from_slice(b"Test Group");
+
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+
+        // Include the AppEphemeral proposal type in the LeafNode capabilities
+        let capabilities =
+            Capabilities::new(None, None, None, Some(&[ProposalType::AppEphemeral]), None);
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
             // add to leaf node capabilities
-            .capabilities(Capabilities::new(
-                None,
-                None,
-                None,
-                Some(&[ProposalType::AppEphemeral]),
-                None,
-            ))
+            .capabilities(capabilities.clone())
             .build();
-        let mls_group_join_config = mls_group_create_config.join_config().clone();
 
-        let mut group_state =
-            GroupState::new_from_party(group_id.clone(), alice_pre_group, mls_group_create_config)
-                .unwrap();
+        // Generate credentials with keys
+        let (alice_credential, alice_signer) = generate_credential(
+            b"Alice".to_vec(),
+            ciphersuite.signature_algorithm(),
+            alice_provider,
+        );
 
-        group_state
-            .add_member(AddMemberConfig {
-                adder: "alice",
-                addees: vec![bob_pre_group],
-                join_config: mls_group_join_config,
-                tree: None,
-            })
+        let (bob_credential, bob_signer) = generate_credential(
+            b"Bob".to_vec(),
+            ciphersuite.signature_algorithm(),
+            bob_provider,
+        );
+
+        // Generate KeyPackage for Bob with the correct LeafNode capabilities
+        let bob_key_package = KeyPackage::builder()
+            .leaf_node_capabilities(capabilities)
+            .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
             .unwrap();
 
-        let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
+        // === Alice creates a group ===
+        let mut alice_group = MlsGroup::new_with_group_id(
+            alice_provider,
+            &alice_signer,
+            &mls_group_create_config,
+            group_id,
+            alice_credential.clone(),
+        )
+        .expect("An unexpected error occurred.");
 
-        let message_bundle = alice
-            .group
+        // === Alice adds Bob ===
+        let welcome = match alice_group.add_members(
+            alice_provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        ) {
+            Ok((_, welcome, _)) => welcome,
+            Err(e) => panic!("Could not add member to group: {e:?}"),
+        };
+        alice_group.merge_pending_commit(alice_provider).unwrap();
+
+        let welcome: MlsMessageIn = welcome.into();
+        let welcome = welcome
+            .into_welcome()
+            .expect("expected the message to be a welcome message");
+
+        let mut bob_group = StagedWelcome::new_from_welcome(
+            bob_provider,
+            mls_group_create_config.join_config(),
+            welcome,
+            Some(alice_group.export_ratchet_tree().into()),
+        )
+        .expect("Error creating StagedWelcome from Welcome")
+        .into_group(bob_provider)
+        .expect("Error creating group from StagedWelcome");
+
+        let message_bundle = alice_group
             .commit_builder()
             .add_proposals(vec![Proposal::AppEphemeral(Box::new(
                 AppEphemeralProposal {
@@ -85,19 +119,19 @@ mod test {
                     data: b"data".into(),
                 },
             ))])
-            .load_psks(alice_party.provider.storage())
+            .load_psks(alice_provider.storage())
             .expect("error loading psks")
             .build(
-                alice_party.provider.rand(),
-                alice_party.provider.crypto(),
-                &alice.party.signer,
+                alice_provider.rand(),
+                alice_provider.crypto(),
+                &alice_signer,
                 |_| true,
             )
             .expect("error validating data and building commit")
-            .stage_commit(&alice_party.provider)
+            .stage_commit(alice_provider)
             .expect("error staging commit");
 
-        let alice_pending_commit = alice.group.pending_commit().expect("no pending commit");
+        let alice_pending_commit = alice_group.pending_commit().expect("no pending commit");
 
         // ensure that the number of AppEphemeral proposals for the component id 1 is correct
         assert_eq!(
@@ -131,9 +165,8 @@ mod test {
             .try_into_protocol_message()
             .unwrap();
 
-        let processed_message = bob
-            .group
-            .process_message(&bob_party.provider, protocol_message)
+        let processed_message = bob_group
+            .process_message(bob_provider, protocol_message)
             .expect("could not process message");
 
         let bob_staged_commit = match processed_message.into_content() {
