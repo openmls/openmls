@@ -12,7 +12,7 @@ impl ProposalQueue {
         component_id: ComponentId,
     ) -> impl Iterator<Item = QueuedAppEphemeralProposal<'_>> {
         self.app_ephemeral_proposals()
-            .filter(move |p| p.app_ephemeral_proposal().component_id == component_id)
+            .filter(move |p| p.app_ephemeral_proposal().component_id() == component_id)
     }
 
     /// Return the list of all [`ComponentId`]s available across all
@@ -20,7 +20,7 @@ impl ProposalQueue {
     pub fn unique_component_ids_for_app_ephemeral(&self) -> impl Iterator<Item = ComponentId> {
         let ids: BTreeSet<_> = self
             .app_ephemeral_proposals()
-            .map(|p| p.app_ephemeral_proposal().component_id)
+            .map(|p| p.app_ephemeral_proposal().component_id())
             .collect();
 
         ids.into_iter()
@@ -117,10 +117,7 @@ mod test {
         let message_bundle = alice_group
             .commit_builder()
             .add_proposals(vec![Proposal::AppEphemeral(Box::new(
-                AppEphemeralProposal {
-                    component_id: COMPONENT_ID,
-                    data: DATA.into(),
-                },
+                AppEphemeralProposal::new(COMPONENT_ID, DATA.into()),
             ))])
             .load_psks(alice_provider.storage())
             .expect("error loading psks")
@@ -181,9 +178,9 @@ mod test {
             .staged_proposal_queue
             .app_ephemeral_proposals_for_component_id(COMPONENT_ID)
         {
-            let AppEphemeralProposal { data, .. } = queued_proposal.app_ephemeral_proposal();
+            let proposal = queued_proposal.app_ephemeral_proposal();
 
-            assert_eq!(data.as_ref(), DATA);
+            assert_eq!(proposal.data(), DATA);
 
             // handle data here...
         }
