@@ -911,7 +911,7 @@ fn test_app_ephemeral() {
     let component_ids = bob_staged_commit
         .staged_proposal_queue
         .unique_component_ids_for_app_ephemeral();
-    assert_eq!(component_ids.collect::<Vec<_>>(), vec![COMPONENT_ID]);
+    assert_eq!(component_ids, vec![COMPONENT_ID]);
 
     // handle proposals on Bob's side
     for queued_proposal in bob_staged_commit
