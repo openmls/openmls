@@ -50,6 +50,14 @@ mod test {
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
+            // add to leaf node capabilities
+            .capabilities(Capabilities::new(
+                None,
+                None,
+                None,
+                Some(&[ProposalType::AppEphemeral]),
+                None,
+            ))
             .build();
         let mls_group_join_config = mls_group_create_config.join_config().clone();
 
