@@ -422,9 +422,10 @@ impl ProposalQueue {
             }
         })
     }
+
     #[cfg(feature = "extensions-draft-08")]
     /// Returns an iterator over all AppEphemeral proposals in the queue
-    /// in the order of the the Commit message
+    /// in the order of the Commit message
     pub(crate) fn app_ephemeral_proposals(
         &self,
     ) -> impl Iterator<Item = QueuedAppEphemeralProposal<'_>> {
