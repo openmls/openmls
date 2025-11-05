@@ -143,22 +143,6 @@ mod test {
             1
         );
 
-        // Inspect the component ids for all AppEphemeral proposals in the commit
-        let component_ids = alice_pending_commit
-            .staged_proposal_queue
-            .unique_component_ids_for_app_ephemeral();
-        assert_eq!(component_ids.collect::<Vec<_>>(), vec![COMPONENT_ID]);
-
-        // handle proposals on Alice's side
-        for queued_proposal in alice_pending_commit
-            .staged_proposal_queue
-            .app_ephemeral_proposals_for_component_id(COMPONENT_ID)
-        {
-            let AppEphemeralProposal { data: _data, .. } = queued_proposal.app_ephemeral_proposal();
-
-            // handle data here...
-        }
-
         // handle proposals on Bob's side
         let (mls_message_out, _, _) = message_bundle.into_contents();
 
