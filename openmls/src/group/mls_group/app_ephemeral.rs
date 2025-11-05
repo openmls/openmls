@@ -17,7 +17,7 @@ impl ProposalQueue {
     }
 
     /// Return the list of all [`ComponentId`]s available across all
-    /// [`QueuedAppEphemeralProposal`]s in the proposal queue.
+    /// [`QueuedAppEphemeralProposal`]s in the proposal queue, ordered by [`ComponentId`].
     pub fn unique_component_ids_for_app_ephemeral(&self) -> Vec<ComponentId> {
         // sort and deduplicate
         let ids: BTreeSet<_> = self
