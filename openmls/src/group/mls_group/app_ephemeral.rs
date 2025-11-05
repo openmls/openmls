@@ -35,7 +35,7 @@ mod test {
     use openmls_test::openmls_test;
 
     /// Test AppEphemeral proposal handling.
-    /// NOTE: The main single_group_test_framework functionality can't be used here,
+    /// NOTE: The main single_group_test_framework functionality can't be used in this test,
     /// since the capabilities need to be set to include ProposalType::AppEphemeral
     #[openmls_test]
     fn test_app_ephemeral() {
