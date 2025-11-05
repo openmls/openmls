@@ -570,9 +570,28 @@ pub struct AppAck {
 )]
 pub struct AppEphemeralProposal {
     /// The unique [`ComponentId`] associated with the proposal.
-    pub component_id: ComponentId,
+    component_id: ComponentId,
     /// Application data.
-    pub data: VLBytes,
+    data: VLBytes,
+}
+#[cfg(feature = "extensions-draft-08")]
+impl AppEphemeralProposal {
+    /// Create a new [`AppEphemeralProposal`].
+    pub fn new(component_id: ComponentId, data: Vec<u8>) -> Self {
+        Self {
+            component_id,
+            data: data.into(),
+        }
+    }
+    /// Returns the `component_id` contained in the proposal.
+    pub fn component_id(&self) -> ComponentId {
+        self.component_id
+    }
+
+    /// Returns the `data` contained in the proposal.
+    pub fn data(&self) -> &[u8] {
+        self.data.as_slice()
+    }
 }
 
 #[cfg(feature = "extensions-draft-08")]
