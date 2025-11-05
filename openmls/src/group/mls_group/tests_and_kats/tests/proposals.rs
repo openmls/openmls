@@ -17,7 +17,7 @@ use crate::{
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageIn},
-    messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
+    messages::proposals::{AddProposal, CustomProposal, Proposal, ProposalOrRef, ProposalType},
     prelude::LeafNodeParameters,
     treesync::node::leaf_node::Capabilities,
     versions::ProtocolVersion,
@@ -763,4 +763,93 @@ fn self_remove_proposals_always_public() {
         self_remove,
         LeaveGroupError::CannotSelfRemoveWithPureCiphertext
     );
+}
+
+// ensure that members removed by a commit do not need to support non-default proposals
+// that are also included in the commit.
+#[openmls_test::openmls_test]
+fn test_valn0311() {
+    const CUSTOM_PROPOSAL: u16 = 1;
+
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    // Create credentials and keys
+    let (alice_credential, alice_signer) =
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+
+    // Add SelfRemove to capabilities
+    let capabilities = Capabilities::new(
+        None,
+        Some(&[ciphersuite]),
+        None,
+        Some(&[ProposalType::Custom(CUSTOM_PROPOSAL)]),
+        None,
+    );
+
+    // Generate KeyPackages
+    let bob_key_package_bundle = KeyPackage::builder()
+        // FIXME: Bob should not need to support this proposal type
+        //.leaf_node_capabilities(capabilities.clone())
+        .build(
+            ciphersuite,
+            bob_provider,
+            &bob_signer,
+            bob_credential.clone(),
+        )
+        .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // Alice creates a group
+    let mut alice_group = MlsGroup::builder()
+        .with_capabilities(capabilities)
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential.clone())
+        .expect("Error creating group.");
+
+    // Alice adds Bob
+    let (_commit, welcome, _group_info_option) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package),
+        )
+        .expect("Could not create proposal.");
+
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("error merging pending commit");
+
+    let bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &MlsGroupJoinConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .build(),
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .and_then(|staged_join| staged_join.into_group(bob_provider))
+    .expect("error creating group from welcome");
+
+    // alice removes Bob, and adds a Custom proposal
+    // ensure that building the proposal succeeds, even though Bob does not support Custom
+    // proposals
+    alice_group
+        .commit_builder()
+        .propose_removals(Some(bob_group.own_leaf_index()))
+        .add_proposals(Some(Proposal::Custom(Box::new(CustomProposal::new(
+            CUSTOM_PROPOSAL,
+            b"data".to_vec(),
+        )))))
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            |_| true,
+        )
+        .expect("building commit should have succeeded");
 }
