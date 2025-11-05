@@ -60,7 +60,7 @@ mod tests;
 
 #[cfg(feature = "extensions-draft-08")]
 /// A ComponentId that uniquely identifies a component within the scope of an application.
-pub type ComponentId = u32;
+pub type ComponentId = u16;
 
 /// MLS Extension Types
 ///
