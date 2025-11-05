@@ -37,6 +37,7 @@ mod test {
     /// since the capabilities need to be set to include ProposalType::AppEphemeral
     #[openmls_test]
     fn test_app_ephemeral() {
+        const COMPONENT_ID: ComponentId = 1;
         let group_id = GroupId::from_slice(b"Test Group");
 
         let alice_provider = &Provider::default();
@@ -113,7 +114,7 @@ mod test {
             .commit_builder()
             .add_proposals(vec![Proposal::AppEphemeral(Box::new(
                 AppEphemeralProposal {
-                    component_id: 1,
+                    component_id: COMPONENT_ID,
                     data: b"data".into(),
                 },
             ))])
@@ -131,11 +132,11 @@ mod test {
 
         let alice_pending_commit = alice_group.pending_commit().expect("no pending commit");
 
-        // ensure that the number of AppEphemeral proposals for the component id 1 is correct
+        // ensure that the number of AppEphemeral proposals for the component id COMPONENT_ID is correct
         assert_eq!(
             alice_pending_commit
                 .staged_proposal_queue
-                .app_ephemeral_proposals_for_component_id(1)
+                .app_ephemeral_proposals_for_component_id(COMPONENT_ID)
                 .count(),
             1
         );
@@ -144,12 +145,12 @@ mod test {
         let component_ids = alice_pending_commit
             .staged_proposal_queue
             .unique_component_ids_for_app_ephemeral();
-        assert_eq!(component_ids.collect::<Vec<_>>(), vec![1]);
+        assert_eq!(component_ids.collect::<Vec<_>>(), vec![COMPONENT_ID]);
 
         // handle proposals on Alice's side
         for queued_proposal in alice_pending_commit
             .staged_proposal_queue
-            .app_ephemeral_proposals_for_component_id(1)
+            .app_ephemeral_proposals_for_component_id(COMPONENT_ID)
         {
             let AppEphemeralProposal { data: _data, .. } = queued_proposal.app_ephemeral_proposal();
 
@@ -172,11 +173,11 @@ mod test {
             _ => panic!("incorrect message type"),
         };
 
-        // ensure that the number of AppEphemeral proposals for the component id 1 is correct
+        // ensure that the number of AppEphemeral proposals for the component id COMPONENT_ID is correct
         assert_eq!(
             bob_staged_commit
                 .staged_proposal_queue
-                .app_ephemeral_proposals_for_component_id(1)
+                .app_ephemeral_proposals_for_component_id(COMPONENT_ID)
                 .count(),
             1
         );
@@ -185,12 +186,12 @@ mod test {
         let component_ids = bob_staged_commit
             .staged_proposal_queue
             .unique_component_ids_for_app_ephemeral();
-        assert_eq!(component_ids.collect::<Vec<_>>(), vec![1]);
+        assert_eq!(component_ids.collect::<Vec<_>>(), vec![COMPONENT_ID]);
 
         // handle proposals on Bob's side
         for queued_proposal in bob_staged_commit
             .staged_proposal_queue
-            .app_ephemeral_proposals_for_component_id(1)
+            .app_ephemeral_proposals_for_component_id(COMPONENT_ID)
         {
             let AppEphemeralProposal { data: _data, .. } = queued_proposal.app_ephemeral_proposal();
 
