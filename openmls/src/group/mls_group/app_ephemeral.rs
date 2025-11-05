@@ -114,6 +114,7 @@ mod test {
         .into_group(bob_provider)
         .expect("Error creating group from StagedWelcome");
 
+        // === Alice creates a commit with an AppEphemeral proposal ===
         let message_bundle = alice_group
             .commit_builder()
             .add_proposals(vec![Proposal::AppEphemeral(Box::new(
