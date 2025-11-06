@@ -765,7 +765,7 @@ fn self_remove_proposals_always_public() {
     );
 }
 
-// ensure that members removed by a commit do not need to support non-default proposals
+// ensure that members added and removed by a commit do not need to support non-default proposals
 // that are also included in the commit.
 #[openmls_test::openmls_test]
 fn test_valn0311() {
@@ -773,14 +773,20 @@ fn test_valn0311() {
 
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
 
     // Create credentials and keys
     let (alice_credential, alice_signer) =
         test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
     let (bob_credential, bob_signer) =
         test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signer) = test_utils::new_credential(
+        charlie_provider,
+        b"Charlie",
+        ciphersuite.signature_algorithm(),
+    );
 
-    // Add SelfRemove to capabilities
+    // Add Custom proposal type to capabilities
     let capabilities = Capabilities::new(
         None,
         Some(&[ciphersuite]),
@@ -789,10 +795,8 @@ fn test_valn0311() {
         None,
     );
 
-    // Generate KeyPackages
+    // Bob does not support Custom proposals
     let bob_key_package_bundle = KeyPackage::builder()
-        // FIXME: Bob should not need to support this proposal type
-        //.leaf_node_capabilities(capabilities.clone())
         .build(
             ciphersuite,
             bob_provider,
@@ -801,6 +805,17 @@ fn test_valn0311() {
         )
         .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
+
+    // Charlie does not support Custom proposals
+    let charlie_key_package_bundle = KeyPackage::builder()
+        .build(
+            ciphersuite,
+            charlie_provider,
+            &charlie_signer,
+            charlie_credential.clone(),
+        )
+        .unwrap();
+    let charlie_key_package = charlie_key_package_bundle.key_package();
 
     // Alice creates a group
     let mut alice_group = MlsGroup::builder()
@@ -814,7 +829,7 @@ fn test_valn0311() {
         .add_members(
             alice_provider,
             &alice_signer,
-            core::slice::from_ref(bob_key_package),
+            std::slice::from_ref(bob_key_package),
         )
         .expect("Could not create proposal.");
 
@@ -833,11 +848,12 @@ fn test_valn0311() {
     .and_then(|staged_join| staged_join.into_group(bob_provider))
     .expect("error creating group from welcome");
 
-    // alice removes Bob, and adds a Custom proposal
-    // ensure that building the proposal succeeds, even though Bob does not support Custom
+    // alice adds Charlie, removes Bob, and adds a Custom proposal
+    // ensure that building the proposal succeeds, even though Bob and Charlie do not support Custom
     // proposals
     alice_group
         .commit_builder()
+        .propose_adds(Some(charlie_key_package.clone()))
         .propose_removals(Some(bob_group.own_leaf_index()))
         .add_proposals(Some(Proposal::Custom(Box::new(CustomProposal::new(
             CUSTOM_PROPOSAL,
