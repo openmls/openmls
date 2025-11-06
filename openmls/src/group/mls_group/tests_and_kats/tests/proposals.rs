@@ -777,7 +777,7 @@ fn self_remove_proposals_always_public() {
 /// NOTE: The main single_group_test_framework functionality can't be used in this test,
 /// since the capabilities need to be set to include ProposalType::AppEphemeral
 #[openmls_test::openmls_test]
-fn test_app_ephemeral() {
+fn app_ephemeral_proposals() {
     const COMPONENT_ID: ComponentId = 1;
     const DATA: &[u8] = b"data";
 
