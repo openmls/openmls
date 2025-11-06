@@ -540,7 +540,7 @@ fn self_remove_proposals() {
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackage::builder()
-        .leaf_node_capabilities(capabilities)
+        .leaf_node_capabilities(capabilities.clone())
         .build(
             ciphersuite,
             bob_provider,
@@ -553,6 +553,8 @@ fn self_remove_proposals() {
     // Alice creates a group
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        // support the non-default SelfRemove proposal type
+        .with_capabilities(capabilities)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(alice_provider, &alice_signer, alice_credential.clone())
         .expect("Error creating group.");
