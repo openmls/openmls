@@ -19,3 +19,6 @@ futures-core = "0.3.31"
 
 [dev-dependencies]
 serde_json = { version = "1.0" }
+
+[features]
+extensions-draft-08 = ["openmls_traits/extensions-draft-08"]

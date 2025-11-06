@@ -729,6 +729,57 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         let task = storable.delete::<C>(&mut **connection);
         block_async_in_place(task)
     }
+
+    #[cfg(feature = "extensions-draft-08")]
+    fn write_application_export_tree<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        application_export_tree: &ApplicationExportTree,
+    ) -> Result<(), Self::Error> {
+        let storable = StorableGroupDataRef(application_export_tree);
+        let mut connection = self.connection.borrow_mut();
+        let task = storable.store::<_, C>(
+            &mut **connection,
+            group_id,
+            GroupDataType::ApplicationExportTree,
+        );
+        block_async_in_place(task)
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    fn application_export_tree<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<ApplicationExportTree>, Self::Error> {
+        let mut connection = self.connection.borrow_mut();
+        let task = StorableGroupData::load::<_, C>(
+            &mut **connection,
+            group_id,
+            GroupDataType::ApplicationExportTree,
+        );
+        block_async_in_place(task)
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    fn delete_application_export_tree<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        let storable = self.wrap_storable_group_id_ref(group_id);
+        let mut connection = self.connection.borrow_mut();
+        let task =
+            storable.delete_group_data(&mut **connection, GroupDataType::ApplicationExportTree);
+        block_async_in_place(task)
+    }
 }
 
 impl<T: Key<CURRENT_VERSION>, C: Codec> Type<Sqlite> for KeyRefWrapper<'_, T, C> {
