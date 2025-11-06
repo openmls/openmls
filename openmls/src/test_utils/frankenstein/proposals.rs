@@ -11,6 +11,8 @@ pub enum FrankenProposalType {
     Reinit,
     ExternalInit,
     GroupContextExtensions,
+    #[cfg(feature = "extensions-draft-08")]
+    AppEphemeral,
     Custom(u16),
 }
 
@@ -24,6 +26,8 @@ impl From<u16> for FrankenProposalType {
             5 => FrankenProposalType::Reinit,
             6 => FrankenProposalType::ExternalInit,
             7 => FrankenProposalType::GroupContextExtensions,
+            #[cfg(feature = "extensions-draft-08")]
+            0x0009 => FrankenProposalType::AppEphemeral,
             other => FrankenProposalType::Custom(other),
         }
     }
@@ -39,6 +43,8 @@ impl From<FrankenProposalType> for u16 {
             FrankenProposalType::Reinit => 5,
             FrankenProposalType::ExternalInit => 6,
             FrankenProposalType::GroupContextExtensions => 7,
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposalType::AppEphemeral => 0x0009,
             FrankenProposalType::Custom(id) => id,
         }
     }
@@ -56,6 +62,8 @@ impl FrankenProposal {
             FrankenProposal::GroupContextExtensions(_) => {
                 FrankenProposalType::GroupContextExtensions
             }
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposal::AppEphemeral(_) => FrankenProposalType::AppEphemeral,
             FrankenProposal::Custom(FrankenCustomProposal {
                 proposal_type,
                 payload: _,
@@ -74,6 +82,8 @@ pub enum FrankenProposal {
     ReInit(FrankenReInitProposal),
     ExternalInit(FrankenExternalInitProposal),
     GroupContextExtensions(Vec<FrankenExtension>),
+    #[cfg(feature = "extensions-draft-08")]
+    AppEphemeral(FrankenAppEphemeralProposal),
     Custom(FrankenCustomProposal),
 }
 
@@ -174,6 +184,15 @@ pub struct FrankenMessageRange {
     pub sender: VLBytes,
     pub first_generation: u32,
     pub last_generation: u32,
+}
+
+#[cfg(feature = "extensions-draft-08")]
+#[derive(
+    Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
+)]
+pub struct FrankenAppEphemeralProposal {
+    pub component_id: u16,
+    pub data: VLBytes,
 }
 
 #[derive(
