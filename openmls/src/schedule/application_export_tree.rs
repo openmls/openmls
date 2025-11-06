@@ -10,7 +10,10 @@ use crate::{
 };
 
 pub(crate) type ApplicationExportTree = Pprf<Prefix16>;
-pub(crate) type ApplicationExportTreeError = PprfError;
+
+// TODO: does this doc comment capture the description of this error?
+/// Error constructing component secret from the exporter tree
+pub type ApplicationExportTreeError = PprfError;
 
 impl ApplicationExportTree {
     pub(crate) fn new(application_exporter: ApplicationExportSecret) -> Self {

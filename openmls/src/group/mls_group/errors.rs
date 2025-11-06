@@ -25,7 +25,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::schedule::application_export_tree::ApplicationExportTreeError;
+pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
 /// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
