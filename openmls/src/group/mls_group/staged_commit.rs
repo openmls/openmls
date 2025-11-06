@@ -476,7 +476,7 @@ impl MlsGroup {
 /// The staged commit state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
-pub enum StagedCommitState {
+pub(crate) enum StagedCommitState {
     /// The public group variant of the staged commit state.
     PublicState(Box<PublicStagedCommitState>),
     /// The group member variant of the staged commit state.
@@ -490,7 +490,7 @@ pub struct StagedCommit {
     /// A queue containing the proposals associated with the commit.
     pub staged_proposal_queue: ProposalQueue,
     /// The staged commit state.
-    pub state: StagedCommitState,
+    state: StagedCommitState,
 }
 
 impl StagedCommit {
