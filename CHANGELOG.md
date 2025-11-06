@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - [#1855](https://github.com/openmls/openmls/pull/1855): Added the `swap_members()` method to `MlsGroup` to replace members in a group, as well as the `WelcomeCommitMessages` and `SwapMembersError` structs.
-- [#1868](https://github.com/openmls/openmls/pull/1868): Implemented AppEphemeral functionality and replaced the existing AppAck proposal with the AppAck object, which can now be conveyed inside an AppEphemeral proposal.
+- [#1868](https://github.com/openmls/openmls/pull/1868): Implemented AppEphemeral functionality and replaced the existing AppAck proposal with the AppAck object, which can now be conveyed inside an AppEphemeral proposal.Additionally, the implementation of [valn0311](https://validation.openmls.tech/#valn0311), was updated to check support for all non-default proposals, instead of only checking support for Custom proposals.
 
 ## 0.7.1 (2025-09-24)
 
