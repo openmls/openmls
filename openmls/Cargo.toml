@@ -87,6 +87,8 @@ libcrux-provider-js = ["dep:getrandom", "getrandom/wasm_js"]
 # enable randomness source
 fork-resolution = []
 
+# NOTE: feature flag for the fs-exporter functionality,
+# pending a few small updates (incl. #1867).
 fs-exporter = ["extensions-draft-08"]
 
 [dev-dependencies]
