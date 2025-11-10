@@ -44,7 +44,7 @@ use crate::{
 };
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
 use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
 
 // Private
@@ -256,7 +256,7 @@ pub struct MlsGroup {
     /// The state of the Application Exporter. See the MLS Extensions Draft 08
     /// for more information. This is `None` if an old OpenMLS group state was
     /// loaded and has not yet merged a commit.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
     application_export_tree: Option<ApplicationExportTree>,
 }
 
@@ -437,7 +437,7 @@ impl MlsGroup {
         let mls_group_config = storage.mls_group_join_config(group_id)?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
         let group_state = storage.group_state(group_id)?;
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
         let application_export_tree = storage.application_export_tree(group_id)?;
 
         let build = || -> Option<Self> {
@@ -451,7 +451,7 @@ impl MlsGroup {
                 own_leaf_nodes,
                 aad: vec![],
                 group_state: group_state?,
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
                 application_export_tree,
             })
         };
@@ -476,7 +476,7 @@ impl MlsGroup {
         storage.delete_group_state(self.group_id())?;
         storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
         storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
 
         self.proposal_store_mut().empty();
@@ -899,7 +899,7 @@ impl MlsGroup {
                     self.group_state, other.group_state
                 ));
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
             if self.application_export_tree != other.application_export_tree {
                 diagnostics.push(format!(
                     "application_export_tree:\n  Current: {:?}\n  Loaded:  {:?}",
@@ -942,7 +942,7 @@ pub struct StagedWelcome {
 
     /// A secret that is not stored as part of the [`MlsGroup`] after the group is created.
     /// It can be used by the application to derive forward secure secrets.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
     application_export_secret: ApplicationExportSecret,
 
     /// Resumption psk store. This is where the resumption psks are kept in a rollover list.

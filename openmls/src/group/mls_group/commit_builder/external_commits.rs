@@ -290,7 +290,7 @@ impl ExternalCommitBuilder {
             resumption_psk_store: ResumptionPskStore::new(32),
             // This is set to `None` for now. It will be set once the external
             // commit is merged.
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
             application_export_tree: None,
         };
 

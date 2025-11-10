@@ -8,7 +8,7 @@ use openmls_traits::{
 };
 use tls_codec::Serialize as _;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -605,7 +605,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let EpochSecretsResult {
             epoch_secrets: provisional_epoch_secrets,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
             application_exporter,
         } = key_schedule
             .epoch_secrets(crypto, ciphersuite)
@@ -729,7 +729,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 own_leaf_index,
             );
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
         let application_export_tree = ApplicationExportTree::new(application_exporter);
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
@@ -740,7 +740,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             // proposal, so there is no extra keypair to store here.
             None,
             update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
             application_export_tree,
         );
         let staged_commit = StagedCommit::new(
