@@ -11,8 +11,8 @@ use crate::{
 
 pub(crate) type ApplicationExportTree = Pprf<Prefix16>;
 
-// TODO: does this doc comment capture the description of this error?
 /// Error constructing component secret from the exporter tree
+/// See [`PprfError`] for more details.
 pub type ApplicationExportTreeError = PprfError;
 
 impl ApplicationExportTree {
