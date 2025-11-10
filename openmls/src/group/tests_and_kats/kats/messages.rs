@@ -157,20 +157,15 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .unwrap();
 
     let alice_leaf_node = {
-        let capabilities = Capabilities::new(
-            None,
-            Some(&[
+        let capabilities = Capabilities::builder()
+            .ciphersuites(vec![
                 Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
                 Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            ]),
-            None,
-            // TODO: determine whether AppEphemeral should be included here,
-            // to test the AppAck functionality.
-            //Some(&[ProposalType::AppEphemeral]),
-            None,
-            Some(&[CredentialType::Basic]),
-        );
+            ])
+            .credentials(vec![CredentialType::Basic])
+            //.proposals(vec![ProposalType::AppEphemeral])
+            .build();
 
         LeafNode::generate_update(
             ciphersuite,

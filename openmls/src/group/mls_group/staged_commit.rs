@@ -1,7 +1,7 @@
 use core::fmt::Debug;
 use std::mem;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::storage::StorageProvider as _;
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ use super::{
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 
 use crate::{
@@ -281,7 +281,7 @@ impl MlsGroup {
 
         let EpochSecretsResult {
             epoch_secrets,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
             application_exporter,
         } = self.derive_epoch_secrets(
             provider,
@@ -324,7 +324,7 @@ impl MlsGroup {
         diff.update_interim_transcript_hash(ciphersuite, provider.crypto(), own_confirmation_tag)?;
 
         let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
         let application_export_tree = ApplicationExportTree::new(application_exporter);
         let staged_commit_state =
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
@@ -334,7 +334,7 @@ impl MlsGroup {
                 new_keypairs,
                 new_leaf_keypair_option,
                 update_path_leaf_node,
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
                 application_export_tree,
             )));
         let staged_commit = StagedCommit::new(proposal_queue, staged_commit_state);
@@ -384,7 +384,7 @@ impl MlsGroup {
                     .add(past_epoch, message_secrets, leaves);
 
                 // Replace the previous exporter tree with the new one.
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
                 {
                     // The application exporter is only None if the group was
                     // stored using an older version of OpenMLS that did not
@@ -625,7 +625,7 @@ impl StagedCommit {
         }
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
     pub(crate) fn safe_export_secret(
         &mut self,
         crypto: &impl OpenMlsCrypto,
@@ -654,7 +654,7 @@ pub(crate) struct MemberStagedCommitState {
     new_keypairs: Vec<EncryptionKeyPair>,
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
     update_path_leaf_node: Option<LeafNode>,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
     #[serde(default)]
     // This is `None` only if the group was stored using an older version of
     // OpenMLS that did not support the application exporter.
@@ -669,7 +669,8 @@ impl MemberStagedCommitState {
         new_keypairs: Vec<EncryptionKeyPair>,
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
         update_path_leaf_node: Option<LeafNode>,
-        #[cfg(feature = "extensions-draft-08")] application_export_tree: ApplicationExportTree,
+        #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+        application_export_tree: ApplicationExportTree,
     ) -> Self {
         Self {
             group_epoch_secrets,
@@ -678,7 +679,7 @@ impl MemberStagedCommitState {
             new_keypairs,
             new_leaf_keypair_option,
             update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
             application_export_tree: Some(application_export_tree),
         }
     }

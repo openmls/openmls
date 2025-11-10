@@ -335,7 +335,7 @@ impl ProcessedMessage {
 
     /// Safely export a value if the content of the processed message is a
     /// [`StagedCommit`].
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
     pub fn safe_export_secret<Crypto: OpenMlsCrypto>(
         &mut self,
         crypto: &Crypto,
