@@ -134,16 +134,29 @@ impl OpenMlsCrypto for CryptoProvider {
         if !matches!(alg, AeadType::ChaCha20Poly1305) {
             return Err(CryptoError::UnsupportedAeadAlgorithm);
         }
+        let alg = libcrux_aead::Aead::ChaCha20Poly1305;
 
-        use libcrux_chacha20poly1305::TAG_LEN;
+        use libcrux_aead::chacha20poly1305::TAG_LEN;
+        use libcrux_traits::aead::typed_refs::Aead as _;
 
-        // only fails on wrong length
-        let iv = <&[u8; 12]>::try_from(nonce).map_err(|_| CryptoError::InvalidLength)?;
-
-        let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
-
+        // set up buffers for ptxt, ctxt and tag
         let mut msg_ctxt: Vec<u8> = vec![0; data.len() + TAG_LEN];
-        libcrux_chacha20poly1305::encrypt(key, data, &mut msg_ctxt, aad, iv)
+        let (msg, tag) = msg_ctxt.split_at_mut(data.len());
+
+        // set up nonce
+        let nonce = alg
+            .new_nonce(nonce)
+            .map_err(|_| CryptoError::InvalidLength)?;
+
+        // set up key
+        let key = alg.new_key(key).map_err(|_| CryptoError::InvalidLength)?;
+
+        // set up tag
+        let tag = alg
+            .new_tag_mut(tag)
+            .map_err(|_| CryptoError::InvalidLength)?;
+
+        key.encrypt(msg, tag, nonce, aad, data)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
         Ok(msg_ctxt)
@@ -161,7 +174,10 @@ impl OpenMlsCrypto for CryptoProvider {
         if !matches!(alg, AeadType::ChaCha20Poly1305) {
             return Err(CryptoError::UnsupportedAeadAlgorithm);
         }
-        use libcrux_chacha20poly1305::TAG_LEN;
+        let alg = libcrux_aead::Aead::ChaCha20Poly1305;
+
+        use libcrux_aead::chacha20poly1305::TAG_LEN;
+        use libcrux_traits::aead::typed_refs::{Aead as _, DecryptError};
 
         if ct_tag.len() < TAG_LEN {
             return Err(CryptoError::InvalidLength);
@@ -169,20 +185,28 @@ impl OpenMlsCrypto for CryptoProvider {
 
         let boundary = ct_tag.len() - TAG_LEN;
 
+        // set up buffers for ptext, ctext, and tag
         let mut ptext = vec![0; boundary];
+        let (ctext, tag) = ct_tag.split_at(boundary);
 
-        let iv = <&[u8; 12]>::try_from(nonce).map_err(|_| CryptoError::InvalidLength)?;
+        // set up nonce
+        let nonce = alg
+            .new_nonce(nonce)
+            .map_err(|_| CryptoError::InvalidLength)?;
 
-        let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
+        // set up key
+        let key = alg.new_key(key).map_err(|_| CryptoError::InvalidLength)?;
 
-        libcrux_chacha20poly1305::decrypt(key, &mut ptext, ct_tag, aad, iv).map_err(
-            |e| match e {
-                libcrux_chacha20poly1305::AeadError::InvalidCiphertext => {
-                    CryptoError::AeadDecryptionError
-                }
+        // set up tag
+        let tag = alg.new_tag(tag).map_err(|_| CryptoError::InvalidLength)?;
+
+        key.decrypt(&mut ptext, nonce, aad, ctext, tag)
+            .map_err(|e| match e {
+                DecryptError::InvalidTag => CryptoError::AeadDecryptionError,
+                DecryptError::AadTooLong => CryptoError::InvalidLength,
+
                 _ => CryptoError::CryptoLibraryError,
-            },
-        )?;
+            })?;
 
         Ok(ptext)
     }
