@@ -79,7 +79,7 @@ fn test_hpke_seal_open() {
     );
 }
 
-// Basic test to make sure aead encrypt/decrypt work.
+// Basic test for aead encrypt/decrypt using the provider.
 #[openmls_test::openmls_test]
 fn test_aead_encrypt_decrypt() {
     let provider = &Provider::default();
