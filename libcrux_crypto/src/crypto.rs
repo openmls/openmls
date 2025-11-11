@@ -132,11 +132,10 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> Result<Vec<u8>, CryptoError> {
         let alg = aead_alg(alg);
 
-        use libcrux_aead::chacha20poly1305::TAG_LEN;
         use libcrux_traits::aead::typed_refs::Aead as _;
 
         // set up buffers for ptxt, ctxt and tag
-        let mut msg_ctxt: Vec<u8> = vec![0; data.len() + TAG_LEN];
+        let mut msg_ctxt: Vec<u8> = vec![0; data.len() + alg.tag_len()];
         let (msg, tag) = msg_ctxt.split_at_mut(data.len());
 
         // set up nonce
@@ -168,14 +167,13 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> Result<Vec<u8>, CryptoError> {
         let alg = aead_alg(alg);
 
-        use libcrux_aead::chacha20poly1305::TAG_LEN;
         use libcrux_traits::aead::typed_refs::{Aead as _, DecryptError};
 
-        if ct_tag.len() < TAG_LEN {
+        if ct_tag.len() < alg.tag_len() {
             return Err(CryptoError::InvalidLength);
         }
 
-        let boundary = ct_tag.len() - TAG_LEN;
+        let boundary = ct_tag.len() - alg.tag_len();
 
         // set up buffers for ptext, ctext, and tag
         let mut ptext = vec![0; boundary];
