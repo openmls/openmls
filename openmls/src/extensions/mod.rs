@@ -407,7 +407,7 @@ impl<T: ExtensionValidator> ExtensionsForObject<T> {
             if extension_type.is_valid_in_leaf_node() == Some(false) {
                 return Err(InvalidExtensionError::ExtensionTypeNotValidInObject {
                     illegal_extension: extension_type,
-                    ty: "LeafNode",
+                    ty: std::any::type_name::<LeafNode>(),
                 });
             }
         }
