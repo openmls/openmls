@@ -732,6 +732,10 @@ impl MlsGroup {
         storage.write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)?;
         storage.write_mls_join_config(self.group_id(), &self.mls_group_config)?;
         storage.write_group_state(self.group_id(), &self.group_state)?;
+        #[cfg(feature = "extensions-draft-08")]
+        if let Some(application_export_tree) = &self.application_export_tree {
+            storage.write_application_export_tree(self.group_id(), application_export_tree)?;
+        }
 
         Ok(())
     }
