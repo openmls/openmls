@@ -33,8 +33,7 @@ impl CryptoProvider {
 impl OpenMlsCrypto for CryptoProvider {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
         match ciphersuite.aead_algorithm() {
-            AeadType::ChaCha20Poly1305 => Ok(()),
-            _ => Err(CryptoError::UnsupportedCiphersuite),
+            AeadType::ChaCha20Poly1305 | AeadType::Aes128Gcm | AeadType::Aes256Gcm => Ok(()),
         }?;
 
         match ciphersuite.signature_algorithm() {
@@ -130,11 +129,7 @@ impl OpenMlsCrypto for CryptoProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        // The only supported AeadType (as of openmls_traits v0.3.0) is ChaCha20Poly1305
-        if !matches!(alg, AeadType::ChaCha20Poly1305) {
-            return Err(CryptoError::UnsupportedAeadAlgorithm);
-        }
-        let alg = libcrux_aead::Aead::ChaCha20Poly1305;
+        let alg = aead_alg(alg);
 
         use libcrux_aead::chacha20poly1305::TAG_LEN;
         use libcrux_traits::aead::typed_refs::Aead as _;
@@ -170,11 +165,7 @@ impl OpenMlsCrypto for CryptoProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        // The only supported AeadType (as of openmls_traits v0.4.0) is ChaCha20Poly1305
-        if !matches!(alg, AeadType::ChaCha20Poly1305) {
-            return Err(CryptoError::UnsupportedAeadAlgorithm);
-        }
-        let alg = libcrux_aead::Aead::ChaCha20Poly1305;
+        let alg = aead_alg(alg);
 
         use libcrux_aead::chacha20poly1305::TAG_LEN;
         use libcrux_traits::aead::typed_refs::{Aead as _, DecryptError};
@@ -433,6 +424,14 @@ fn hash_alg(hash_type: HashType) -> libcrux_hmac::Algorithm {
         HashType::Sha2_256 => libcrux_hmac::Algorithm::Sha256,
         HashType::Sha2_384 => libcrux_hmac::Algorithm::Sha384,
         HashType::Sha2_512 => libcrux_hmac::Algorithm::Sha512,
+    }
+}
+
+fn aead_alg(alg_type: AeadType) -> libcrux_aead::Aead {
+    match alg_type {
+        AeadType::ChaCha20Poly1305 => libcrux_aead::Aead::ChaCha20Poly1305,
+        AeadType::Aes128Gcm => libcrux_aead::Aead::AesGcm128,
+        AeadType::Aes256Gcm => libcrux_aead::Aead::AesGcm256,
     }
 }
 
