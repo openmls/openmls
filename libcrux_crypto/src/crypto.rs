@@ -68,12 +68,15 @@ impl OpenMlsCrypto for CryptoProvider {
         ikm: &[u8],
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hkdf_alg(hash_type);
-        let out = libcrux_hkdf::extract(alg, salt, ikm).map_err(|e| match e {
-            libcrux_hkdf::Error::ArgumentsTooLarge => CryptoError::InvalidLength,
-            _ => CryptoError::CryptoLibraryError,
-        })?;
 
-        Ok(out.into())
+        let mut prk = vec![0u8; alg.hash_len()];
+
+        libcrux_hkdf::extract(alg, &mut prk, salt, ikm)
+            .map_err(|e| match e {
+                libcrux_hkdf::ExtractError::ArgumentTooLong => CryptoError::InvalidLength,
+                _ => CryptoError::CryptoLibraryError,
+            })
+            .map(|_| prk.into())
     }
 
     fn hmac(
@@ -96,12 +99,17 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hkdf_alg(hash_type);
 
-        libcrux_hkdf::expand(alg, prk, info, okm_len)
+        let mut okm = vec![0u8; okm_len];
+
+        libcrux_hkdf::expand(alg, &mut okm, prk, info)
             .map_err(|e| match e {
-                libcrux_hkdf::Error::OkmTooLarge => CryptoError::HkdfOutputLengthInvalid,
-                libcrux_hkdf::Error::ArgumentsTooLarge => CryptoError::InvalidLength,
+                libcrux_hkdf::ExpandError::OutputTooLong => CryptoError::HkdfOutputLengthInvalid,
+                libcrux_hkdf::ExpandError::ArgumentTooLong => CryptoError::InvalidLength,
+                // TODO: should another error variant be added for this specific case?
+                libcrux_hkdf::ExpandError::PrkTooShort => CryptoError::InvalidLength,
+                libcrux_hkdf::ExpandError::Unknown => CryptoError::CryptoLibraryError,
             })
-            .map(<Vec<u8> as Into<SecretVLBytes>>::into)
+            .map(|_| okm.into())
     }
 
     fn hash(&self, hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
