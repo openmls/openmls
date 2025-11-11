@@ -24,7 +24,7 @@ use crate::{
     },
 };
 
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
 /// New group error
@@ -376,7 +376,7 @@ pub enum ExportGroupInfoError {
 }
 
 /// Export secret error
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum SafeExportSecretError<StorageError> {
     /// See [`MlsGroupStateError`] for more details.
@@ -394,7 +394,7 @@ pub enum SafeExportSecretError<StorageError> {
 }
 
 /// Export secret error
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ProcessedMessageSafeExportSecretError {
     /// See [`StagedSafeExportSecretError`] for more details.
@@ -406,7 +406,7 @@ pub enum ProcessedMessageSafeExportSecretError {
 }
 
 /// Export secret error
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum PendingSafeExportSecretError<StorageError> {
     /// See [`StagedSafeExportSecretError`] for more details.
@@ -424,7 +424,7 @@ pub enum PendingSafeExportSecretError<StorageError> {
 }
 
 /// Export secret from a pending commit
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum StagedSafeExportSecretError {
     /// Only group members can export secrets.

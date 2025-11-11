@@ -12,7 +12,7 @@ use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 use crate::binary_tree::LeafNodeIndex;
 use crate::group::proposal_store::QueuedProposal;
 use crate::group::{MlsGroupJoinConfig, MlsGroupState};
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
     ciphersuite::hash_ref::ProposalRef,
@@ -146,9 +146,9 @@ impl traits::PskId<CURRENT_VERSION> for Psk {}
 impl Entity<CURRENT_VERSION> for PskBundle {}
 impl traits::PskBundle<CURRENT_VERSION> for PskBundle {}
 
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 impl Entity<CURRENT_VERSION> for ApplicationExportTree {}
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 impl traits::ApplicationExportTree<CURRENT_VERSION> for ApplicationExportTree {}
 
 #[cfg(test)]

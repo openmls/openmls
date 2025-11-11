@@ -132,15 +132,15 @@ use crate::{
 
 // Public
 pub mod errors;
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 mod pprf;
 pub mod psk;
 
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 pub use pprf::PprfError;
 
 // Crate
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 pub(crate) mod application_export_tree;
 pub(crate) mod message_secrets;
 
@@ -419,7 +419,7 @@ pub(crate) struct KeySchedule {
 
 pub(crate) struct EpochSecretsResult {
     pub(crate) epoch_secrets: EpochSecrets,
-    #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+    #[cfg(feature = "extensions-draft-08")]
     pub(crate) application_exporter: ApplicationExportSecret,
 }
 
@@ -530,7 +530,7 @@ impl KeySchedule {
         };
 
         let res = EpochSecretsResult {
-            #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+            #[cfg(feature = "extensions-draft-08")]
             application_exporter: ApplicationExportSecret::new(crypto, ciphersuite, &epoch_secret)?,
             epoch_secrets: EpochSecrets::new(crypto, ciphersuite, epoch_secret)?,
         };
@@ -771,7 +771,7 @@ pub struct ApplicationExportSecret {
     secret: Secret,
 }
 
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 impl ApplicationExportSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
     fn new(
