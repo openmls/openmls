@@ -95,11 +95,11 @@ pub enum InvalidExtensionError {
     /// The specified extension could not be found.
     #[error("The specified extension could not be found.")]
     NotFound,
-    /// The provided extension list contains an extension that is not allowed
+    /// The provided extension list contains an extension type that is not allowed
     #[error(
         "The provided extension list contains an extension of type {illegal_extension:?} that is not allowed for type {ty:?}."
     )]
-    NotValid {
+    ExtensionTypeNotValidInObject {
         /// the extension type of the invalid extension
         illegal_extension: ExtensionType,
         /// the name of the type

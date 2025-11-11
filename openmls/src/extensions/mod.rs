@@ -332,16 +332,16 @@ impl<T: ExtensionValidator> ExtensionsForObject<T> {
     /// Validate if the extensions are valid for this context
     pub fn validate<'a>(
         extensions: impl Iterator<Item = &'a Extension>,
-    ) -> Option<InvalidExtensionError> {
+    ) -> Result<(), InvalidExtensionError> {
         for ext in extensions {
-            if !T::valid_extension(ext) {
-                return Some(InvalidExtensionError::NotValid {
+            if !T::valid_extension_type(ext) {
+                return Err(InvalidExtensionError::ExtensionTypeNotValidInObject {
                     illegal_extension: ext.extension_type(),
                     ty: std::any::type_name::<T>(),
                 });
             }
         }
-        None
+        Ok(())
     }
 
     /// Returns an iterator over the extension list.
@@ -400,17 +400,17 @@ impl<T: ExtensionValidator> ExtensionsForObject<T> {
 /// Can be implemented by a type to validate extensions.
 pub trait ExtensionValidator {
     /// Check if the extension is valid.
-    fn valid_extension(ext: &Extension) -> bool;
+    fn valid_extension_type(ext: &Extension) -> bool;
 }
 
 impl ExtensionValidator for AnyObject {
-    fn valid_extension(_ext: &Extension) -> bool {
+    fn valid_extension_type(_ext: &Extension) -> bool {
         true
     }
 }
 
 impl ExtensionValidator for GroupContext {
-    fn valid_extension(ext: &Extension) -> bool {
+    fn valid_extension_type(ext: &Extension) -> bool {
         matches!(
             ext.extension_type(),
             ExtensionType::RequiredCapabilities
@@ -426,8 +426,8 @@ impl<T: ExtensionValidator> TryFrom<Vec<Extension>> for ExtensionsForObject<T> {
     fn try_from(candidate: Vec<Extension>) -> Result<Self, Self::Error> {
         let mut unique: Vec<Extension> = Vec::new();
         for extension in candidate.into_iter() {
-            if !T::valid_extension(&extension) {
-                return Err(InvalidExtensionError::NotValid {
+            if !T::valid_extension_type(&extension) {
+                return Err(InvalidExtensionError::ExtensionTypeNotValidInObject {
                     illegal_extension: extension.extension_type(),
                     ty: std::any::type_name::<T>(),
                 });
@@ -604,10 +604,12 @@ impl TryFrom<Extensions> for ExtensionsForObject<GroupContext> {
     }
 }
 
-// TODO get rid of this
 impl From<ExtensionsForObject<GroupContext>> for Extensions {
     fn from(value: ExtensionsForObject<GroupContext>) -> Self {
-        (&value).into()
+        Extensions {
+            unique: value.unique,
+            _object: PhantomData,
+        }
     }
 }
 

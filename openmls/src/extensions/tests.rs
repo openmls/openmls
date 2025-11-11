@@ -229,7 +229,7 @@ fn wrong_extension_with_group_context_extensions() {
 
     assert_eq!(
         err,
-        InvalidExtensionError::NotValid {
+        InvalidExtensionError::ExtensionTypeNotValidInObject {
             illegal_extension: ExtensionType::ApplicationId,
             ty: std::any::type_name::<GroupContext>()
         }
@@ -246,7 +246,7 @@ fn wrong_extension_with_group_context_extensions() {
 
     assert_eq!(
         err,
-        InvalidExtensionError::NotValid {
+        InvalidExtensionError::ExtensionTypeNotValidInObject {
             illegal_extension: ExtensionType::ApplicationId,
             ty: std::any::type_name::<GroupContext>()
         }
@@ -261,7 +261,7 @@ fn wrong_extension_with_group_context_extensions() {
         .expect_err("builder accepted non-group-context extension");
     assert_eq!(
         err,
-        InvalidExtensionError::NotValid {
+        InvalidExtensionError::ExtensionTypeNotValidInObject {
             illegal_extension: ExtensionType::ExternalPub,
             ty: std::any::type_name::<GroupContext>()
         }
@@ -278,7 +278,7 @@ fn wrong_extension_with_group_context_extensions() {
     .expect_err("builder accepted non-group-context extension");
     assert_eq!(
         err,
-        InvalidExtensionError::NotValid {
+        InvalidExtensionError::ExtensionTypeNotValidInObject {
             illegal_extension: ExtensionType::ExternalPub,
             ty: std::any::type_name::<GroupContext>()
         }
@@ -295,7 +295,7 @@ fn wrong_extension_with_group_context_extensions() {
         .expect_err("builder accepted non-group-context extension");
     assert_eq!(
         err,
-        InvalidExtensionError::NotValid {
+        InvalidExtensionError::ExtensionTypeNotValidInObject {
             illegal_extension: ExtensionType::RatchetTree,
             ty: std::any::type_name::<GroupContext>()
         }
@@ -312,7 +312,7 @@ fn wrong_extension_with_group_context_extensions() {
     .expect_err("builder accepted non-group-context extension");
     assert_eq!(
         err,
-        InvalidExtensionError::NotValid {
+        InvalidExtensionError::ExtensionTypeNotValidInObject {
             illegal_extension: ExtensionType::RatchetTree,
             ty: std::any::type_name::<GroupContext>()
         }

@@ -327,6 +327,7 @@ impl From<GroupContextExtensionProposalIn> for GroupContextExtensionProposal {
     }
 }
 
+#[cfg(any(feature = "test-utils", test))]
 impl From<GroupContextExtensionProposalIn> for Box<GroupContextExtensionProposal> {
     fn from(value: GroupContextExtensionProposalIn) -> Self {
         Box::new(GroupContextExtensionProposal::new(

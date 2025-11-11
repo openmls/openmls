@@ -44,9 +44,7 @@ impl TempBuilderPG1 {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
-        if let Some(err) = ExtensionsForObject::<GroupContext>::validate(extensions.iter()) {
-            return Err(err);
-        }
+        ExtensionsForObject::<GroupContext>::validate(extensions.iter())?;
         self.group_context_extensions = extensions;
         Ok(self)
     }
@@ -57,11 +55,15 @@ impl TempBuilderPG1 {
     ) -> Result<Self, InvalidExtensionError> {
         // None of the default extensions are leaf node extensions, so only
         // unknown extensions can be leaf node extensions.
-        let is_valid_in_leaf_node = extensions
+        let invalid_in_leaf_node: Vec<_> = extensions
             .iter()
-            .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_)));
-        if !is_valid_in_leaf_node {
-            return Err(InvalidExtensionError::IllegalInLeafNodes);
+            .filter(|e| !matches!(e.extension_type(), ExtensionType::Unknown(_)))
+            .collect();
+        if !invalid_in_leaf_node.is_empty() {
+            return Err(InvalidExtensionError::ExtensionTypeNotValidInObject {
+                illegal_extension: invalid_in_leaf_node.first().unwrap().extension_type(),
+                ty: std::any::type_name::<Self>(),
+            });
         }
         self.leaf_node_extensions = extensions;
         Ok(self)
