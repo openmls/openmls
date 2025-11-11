@@ -13,7 +13,7 @@ use crate::{
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub struct PublicStagedCommitState {
-    pub(crate) staged_diff: StagedPublicGroupDiff,
+    pub(super) staged_diff: StagedPublicGroupDiff,
     pub(super) update_path_leaf_node: Option<LeafNode>,
 }
 
