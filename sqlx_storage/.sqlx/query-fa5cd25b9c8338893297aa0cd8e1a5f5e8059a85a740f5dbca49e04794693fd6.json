@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO openmls_signature_key (public_key, signature_key) VALUES (?1, ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "fa5cd25b9c8338893297aa0cd8e1a5f5e8059a85a740f5dbca49e04794693fd6"
+}

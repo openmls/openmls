@@ -7,6 +7,7 @@ use crate::{
 // Verifies that when we add a leaf to a tree with blank leaf nodes, the leaf will be added at the leftmost free leaf index
 #[openmls_test::openmls_test]
 fn test_free_leaf_computation() {
+    let provider = &Provider::default();
     let (c_0, sk_0) = new_credential(provider, b"leaf0", ciphersuite.signature_algorithm());
 
     let kpb_0 = KeyPackageBundle::generate(provider, &sk_0, ciphersuite, c_0);

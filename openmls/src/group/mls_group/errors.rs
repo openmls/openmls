@@ -97,10 +97,39 @@ pub enum MergePendingCommitError<StorageError> {
 
 /// Process message error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ProcessMessageError {
+pub enum PublicProcessMessageError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The message's wire format is incompatible with the group's wire format policy.
+    #[error("The message's wire format is incompatible with the group's wire format policy.")]
+    IncompatibleWireFormat,
+    /// See [`ValidationError`] for more details.
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
+    /// See [`StageCommitError`] for more details.
+    #[error(transparent)]
+    InvalidCommit(#[from] StageCommitError),
+    /// External application messages are not permitted.
+    #[error("External application messages are not permitted.")]
+    UnauthorizedExternalApplicationMessage,
+    /// External commit messages are not permitted.
+    #[error("Commit messages from external senders are not permitted.")]
+    UnauthorizedExternalCommitMessage,
+    /// The proposal is invalid for the Sender of type [External](crate::prelude::Sender::External)
+    #[error("The proposal is invalid for the Sender of type External")]
+    UnsupportedProposalType,
+}
+
+/// Process message error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProcessMessageError<StorageError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// Error writing to storage.
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
     /// The message's wire format is incompatible with the group's wire format policy.
     #[error("The message's wire format is incompatible with the group's wire format policy.")]
     IncompatibleWireFormat,
@@ -156,6 +185,42 @@ pub enum AddMembersError<StorageError> {
     /// Error writing to storage.
     #[error("Error writing to storage")]
     StorageError(StorageError),
+}
+
+/// Add members error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum SwapMembersError<StorageError> {
+    /// Unable to map the key packages to the given leaf indices.
+    #[error("Number of added and removed members is not the same")]
+    InvalidInput,
+
+    /// See [`EmptyInputError`] for more details.
+    #[error(transparent)]
+    EmptyInput(#[from] EmptyInputError),
+
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+
+    /// The member that should be removed can not be found.
+    #[error("The member that should be removed can not be found.")]
+    UnknownMember,
+
+    /// Error writing to storage
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
+
+    /// See [`CommitBuilderStageError`] for more details.
+    #[error(transparent)]
+    CommitBuilderStageError(#[from] CommitBuilderStageError<StorageError>),
+
+    /// See [`CreateCommitError`] for more details.
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError),
 }
 
 /// Propose add members error

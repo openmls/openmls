@@ -34,21 +34,36 @@ fn application_id() {
     assert_eq!(&data[..], &serialized_extension_struct);
 }
 
+// Test adding an ApplicationId extension to the leaf node extensions
+// in an MlsGroupCreateConfig
+#[test]
+fn application_id_in_leaf_node_extensions() {
+    let extensions = Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(&[])));
+
+    let _create_config = MlsGroupCreateConfig::builder()
+        .with_leaf_node_extensions(extensions)
+        .unwrap()
+        .build();
+}
+
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[openmls_test::openmls_test]
 fn ratchet_tree_extension() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     // Basic group setup.
 
     // Create credentials and keys
     let (alice_credential_with_key, alice_signature_keys) =
-        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
     let (bob_credential_with_key, bob_signature_keys) =
-        test_utils::new_credential(provider, b"Bob", ciphersuite.signature_algorithm());
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::generate(
-        provider,
+        bob_provider,
         &bob_signature_keys,
         ciphersuite,
         bob_credential_with_key.clone(),
@@ -60,7 +75,7 @@ fn ratchet_tree_extension() {
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build(
-            provider,
+            alice_provider,
             &alice_signature_keys,
             alice_credential_with_key.clone(),
         )
@@ -68,23 +83,27 @@ fn ratchet_tree_extension() {
 
     // === Alice adds Bob ===
     let (_commit, welcome, _group_info_option) = alice_group
-        .add_members(provider, &alice_signature_keys, from_ref(bob_key_package))
+        .add_members(
+            alice_provider,
+            &alice_signature_keys,
+            from_ref(bob_key_package),
+        )
         .expect("An unexpected error occurred.");
 
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
 
     let config = MlsGroupJoinConfig::builder()
         .use_ratchet_tree_extension(true)
         .build();
 
     let bob_group = StagedWelcome::new_from_welcome(
-        provider,
+        bob_provider,
         &config,
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("Error staging welcome")
-    .into_group(provider)
+    .into_group(bob_provider)
     .expect("Error creating group from welcome");
 
     // Make sure the group state is the same
@@ -101,7 +120,7 @@ fn ratchet_tree_extension() {
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::generate(
-        provider,
+        bob_provider,
         &bob_signature_keys,
         ciphersuite,
         bob_credential_with_key,
@@ -111,22 +130,34 @@ fn ratchet_tree_extension() {
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(false)
-        .build(provider, &alice_signature_keys, alice_credential_with_key)
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential_with_key,
+        )
         .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let (_commit, welcome, _group_info_option) = alice_group
-        .add_members(provider, &alice_signature_keys, from_ref(bob_key_package))
+        .add_members(
+            alice_provider,
+            &alice_signature_keys,
+            from_ref(bob_key_package),
+        )
         .expect("An unexpected error occurred.");
 
     let config = MlsGroupJoinConfig::builder()
         .use_ratchet_tree_extension(false)
         .build();
 
-    let error =
-        StagedWelcome::new_from_welcome(provider, &config, welcome.into_welcome().unwrap(), None)
-            .and_then(|staged_join| staged_join.into_group(provider))
-            .err();
+    let error = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &config,
+        welcome.into_welcome().unwrap(),
+        None,
+    )
+    .and_then(|staged_join| staged_join.into_group(bob_provider))
+    .err();
 
     // We expect an error because the ratchet tree is missing
     assert!(matches!(
@@ -178,6 +209,8 @@ fn required_capabilities() {
 
 #[openmls_test::openmls_test]
 fn with_group_context_extensions() {
+    let provider = &Provider::default();
+
     // create an extension that we can check for later
     let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
     let extensions = Extensions::single(test_extension.clone());
@@ -211,6 +244,8 @@ fn with_group_context_extensions() {
 
 #[openmls_test::openmls_test]
 fn wrong_extension_with_group_context_extensions() {
+    let provider = &Provider::default();
+
     // Extension types that are known to not be allowed here:
     // - application id
     // - external pub
@@ -321,6 +356,9 @@ fn wrong_extension_with_group_context_extensions() {
 
 #[openmls_test::openmls_test]
 fn last_resort_extension() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     let last_resort = Extension::LastResort(LastResortExtension::default());
 
     // Build a KeyPackage with a last resort extension
@@ -342,7 +380,7 @@ fn last_resort_extension() {
         .leaf_node_capabilities(capabilities)
         .build(
             ciphersuite,
-            provider,
+            bob_provider,
             &signer,
             CredentialWithKey {
                 credential: credential.clone().into(),
@@ -357,15 +395,18 @@ fn last_resort_extension() {
         .expect("error encoding key package with last resort extension");
     let decoded_kp = KeyPackageIn::tls_deserialize(&mut encoded_kp.as_slice())
         .expect("error decoding key package with last resort extension")
-        .validate(provider.crypto(), ProtocolVersion::default())
+        .validate(bob_provider.crypto(), ProtocolVersion::default())
         .expect("error validating key package with last resort extension");
     assert!(decoded_kp.last_resort());
 
     // If we join a group using a last resort KP, it shouldn't be deleted from the
     // provider.
 
-    let alice_credential_with_key_and_signer =
-        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
+    let alice_credential_with_key_and_signer = generate_credential_with_key(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
@@ -373,7 +414,7 @@ fn last_resort_extension() {
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new(
-        provider,
+        alice_provider,
         &alice_credential_with_key_and_signer.signer,
         &mls_group_create_config,
         alice_credential_with_key_and_signer.credential_with_key,
@@ -384,32 +425,32 @@ fn last_resort_extension() {
 
     let (_message, welcome, _group_info) = alice_group
         .add_members(
-            provider,
+            alice_provider,
             &alice_credential_with_key_and_signer.signer,
             from_ref(kp.key_package()),
         )
         .expect("An unexpected error occurred.");
 
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome.into_welcome().expect("expected a welcome");
 
     let _bob_group = StagedWelcome::new_from_welcome(
-        provider,
+        bob_provider,
         mls_group_create_config.join_config(),
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
     .expect("An unexpected error occurred.")
-    .into_group(provider)
+    .into_group(bob_provider)
     .expect("An unexpected error occurred.");
 
-    let _: KeyPackageBundle = provider
+    let _: KeyPackageBundle = bob_provider
         .storage()
         .key_package(
             &kp.key_package()
-                .hash_ref(provider.crypto())
+                .hash_ref(bob_provider.crypto())
                 .expect("error hashing key package"),
         )
         .expect("error retrieving key package")

@@ -512,9 +512,11 @@ pub fn run_test_vector(
 }
 
 #[openmls_test::openmls_test]
-fn read_test_vectors_mp(provider: &impl crate::storage::OpenMlsProvider) {
+fn read_test_vectors_mp() {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
+
+    let provider = &Provider::default();
 
     let tests: Vec<MessageProtectionTest> =
         read_json!("../../../../test_vectors/message-protection.json");

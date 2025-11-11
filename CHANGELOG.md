@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- [#1855](https://github.com/openmls/openmls/pull/1855): Added the `swap_members()` method to `MlsGroup` to replace members in a group, as well as the `WelcomeCommitMessages` and `SwapMembersError` structs.
+
+### Fixed
+
+- [#1871](https://github.com/openmls/openmls/pull/1871): Fixed a bug where the application export tree (part of the `extensions-draft-08` feature) was not stored properly after group creation.
+
+## 0.7.1 (2025-09-24)
+
+### Added
+
 - [#1801](https://github.com/openmls/openmls/pull/1801): Added `MlsGroup::external_commit_builder`.
 - [#1814](https://github.com/openmls/openmls/pull/1814): Allow disabling leaf node lifetime validation in the ratchet tree when joining a group.
   - `StagedWelcome::build_from_welcome`: Alternative to `new_from_welcome` in a builder style that allows disabling lifetime validation of the incoming ratchet tree.
@@ -18,7 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#1846](https://github.com/openmls/openmls/pull/1846): Fix persistence during message processing by properly persisting the secret tree after processing private messages and improve forward secrecy within epochs.
+
+### Changed
+
+- [#1846](https://github.com/openmls/openmls/pull/1846): Processing messages in `MlsGroup` and `PublicGroup` now returns two different error types: `ProcessMessageError` and `PublicProcessMessageError`. `ProcessMessageError` now includes a storage error variant and `PublicProcessMessageError` no longer includes the `GroupStateError` variant.
+- [#1851](https://github.com/openmls/openmls/pull/1851): The GroupInfos in Welcome messages no longer contain an ExternalPub extension. This extension is generally useless for new group members, as its only purpose is to facilitate external joins.
+
 ### Deprecated
+
 - [#1801](https://github.com/openmls/openmls/pull/1801): Deprecated `MlsGroup::join_by_external_commit` in favor of `MlsGroup::external_commit_builder`.
 
 ## 0.7.0 (2025-07-17)
@@ -81,7 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#1641](https://github.com/openmls/openmls/pull/1641): Fixed missing storage of queued proposals & clearing of the queued proposals.
 
-## 0.6.0-pre.1 (2024-07-22)
+## 0.6.0 (2024-07-22)
 
 ### Added
 

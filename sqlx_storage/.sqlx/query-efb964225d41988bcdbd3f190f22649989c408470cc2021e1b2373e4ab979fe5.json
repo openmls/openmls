@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO openmls_epoch_key_pairs (group_id, epoch_id, leaf_index, key_pairs)\n            VALUES (?1, ?2, ?3, ?4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "efb964225d41988bcdbd3f190f22649989c408470cc2021e1b2373e4ab979fe5"
+}

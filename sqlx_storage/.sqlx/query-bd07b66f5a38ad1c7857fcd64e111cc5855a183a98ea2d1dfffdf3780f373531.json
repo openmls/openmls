@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM openmls_key_package WHERE key_package_ref = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "bd07b66f5a38ad1c7857fcd64e111cc5855a183a98ea2d1dfffdf3780f373531"
+}

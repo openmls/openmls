@@ -13,8 +13,8 @@ use crate::{
         ProcessedMessageContent, ProtocolMessage, Sender, SenderContext, UnverifiedMessage,
     },
     group::{
-        errors::ValidationError, mls_group::errors::ProcessMessageError,
-        past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
+        errors::ValidationError, past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
+        PublicProcessMessageError,
     },
     messages::proposals::Proposal,
 };
@@ -150,7 +150,7 @@ impl PublicGroup {
         &self,
         crypto: &impl OpenMlsCrypto,
         message: impl Into<ProtocolMessage>,
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, PublicProcessMessageError> {
         let protocol_message = message.into();
         // Checks the following semantic validation:
         //  - ValSem002
@@ -159,7 +159,7 @@ impl PublicGroup {
 
         let decrypted_message = match protocol_message {
             ProtocolMessage::PrivateMessage(_) => {
-                return Err(ProcessMessageError::IncompatibleWireFormat)
+                return Err(PublicProcessMessageError::IncompatibleWireFormat)
             }
             ProtocolMessage::PublicMessage(public_message) => {
                 DecryptedMessage::from_inbound_public_message(
@@ -176,7 +176,7 @@ impl PublicGroup {
 
         let unverified_message = self
             .parse_message(decrypted_message, None)
-            .map_err(ProcessMessageError::from)?;
+            .map_err(PublicProcessMessageError::from)?;
         self.process_unverified_message(crypto, unverified_message)
     }
 }
@@ -212,7 +212,7 @@ impl PublicGroup {
         &self,
         crypto: &impl OpenMlsCrypto,
         unverified_message: UnverifiedMessage,
-    ) -> Result<ProcessedMessage, ProcessMessageError> {
+    ) -> Result<ProcessedMessage, PublicProcessMessageError> {
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
@@ -264,7 +264,7 @@ impl PublicGroup {
                 // https://validation.openmls.tech/#valn1501
                 match content.content() {
                     FramedContentBody::Application(_) => {
-                        Err(ProcessMessageError::UnauthorizedExternalApplicationMessage)
+                        Err(PublicProcessMessageError::UnauthorizedExternalApplicationMessage)
                     }
                     // TODO: https://validation.openmls.tech/#valn1502
                     FramedContentBody::Proposal(Proposal::GroupContextExtensions(_)) => {
@@ -321,10 +321,10 @@ impl PublicGroup {
                     }
                     // TODO #151/#106
                     FramedContentBody::Proposal(_) => {
-                        Err(ProcessMessageError::UnsupportedProposalType)
+                        Err(PublicProcessMessageError::UnsupportedProposalType)
                     }
                     FramedContentBody::Commit(_) => {
-                        Err(ProcessMessageError::UnauthorizedExternalCommitMessage)
+                        Err(PublicProcessMessageError::UnauthorizedExternalCommitMessage)
                     }
                 }
             }

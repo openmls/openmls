@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO openmls_own_leaf_node (group_id, leaf_node) VALUES (?1, ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "b6f1c187dcebda6a541facbec59e4e634961f0713d34637452f13c66bbbbfc6b"
+}

@@ -5,6 +5,8 @@ use crate::{
 // Test the maximum forward ratcheting
 #[openmls_test::openmls_test]
 fn test_max_forward_distance() {
+    let provider = &Provider::default();
+
     let configuration = &SenderRatchetConfiguration::default();
     let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
     let mut ratchet1 = DecryptionRatchet::new(secret.clone());
@@ -42,6 +44,8 @@ fn test_max_forward_distance() {
 // Test out-of-order generations
 #[openmls_test::openmls_test]
 fn test_out_of_order_generations() {
+    let provider = &Provider::default();
+
     let configuration = &SenderRatchetConfiguration::default();
     let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
     let mut ratchet1 = DecryptionRatchet::new(secret);
@@ -79,6 +83,8 @@ fn test_out_of_order_generations() {
 // Test forward secrecy
 #[openmls_test::openmls_test]
 fn test_forward_secrecy() {
+    let provider = &Provider::default();
+
     // Encryption Ratchets are forward-secret by default, since they don't store
     // any keys. Thus, we can only test FS on Decryption Ratchets.
     let configuration = &SenderRatchetConfiguration::default();

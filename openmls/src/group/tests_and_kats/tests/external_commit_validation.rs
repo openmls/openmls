@@ -30,12 +30,20 @@ use crate::{
 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
 #[openmls_test::openmls_test]
 fn test_valsem240() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     let ECValidationTestSetup {
         mut alice_group,
         bob_credential,
         public_message_commit,
         ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
 
     // Setup
     let public_message_commit_bad = {
@@ -78,7 +86,10 @@ fn test_valsem240() {
     // Have alice process the commit resulting from external init.
     // Negative case
     let err = alice_group
-        .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
+        .process_message(
+            alice_provider,
+            ProtocolMessage::from(public_message_commit_bad),
+        )
         .expect_err("Could process message despite missing external init proposal.");
 
     println!("Got the error: {:?}", err);
@@ -92,13 +103,16 @@ fn test_valsem240() {
 
     // Positive case
     alice_group
-        .process_message(provider, ProtocolMessage::from(public_message_commit))
+        .process_message(alice_provider, ProtocolMessage::from(public_message_commit))
         .unwrap();
 }
 
 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
 #[openmls_test::openmls_test]
 fn test_valsem241() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
@@ -106,7 +120,12 @@ fn test_valsem241() {
         bob_credential,
         public_message_commit,
         ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
 
     // Setup
     let public_message_commit_bad = {
@@ -144,7 +163,10 @@ fn test_valsem241() {
     // Have alice process the commit resulting from external init.
     // Negative case
     let err = alice_group
-        .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
+        .process_message(
+            alice_provider,
+            ProtocolMessage::from(public_message_commit_bad),
+        )
         .expect_err("Could process message despite second ext. init proposal in commit.");
 
     assert!(matches!(
@@ -156,20 +178,28 @@ fn test_valsem241() {
 
     // Positive case
     alice_group
-        .process_message(provider, ProtocolMessage::from(public_message_commit))
+        .process_message(alice_provider, ProtocolMessage::from(public_message_commit))
         .expect("Unexpected error.");
 }
 
 // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
 #[openmls_test::openmls_test]
 fn test_valsem242() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
         alice_credential,
         bob_credential,
         ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
 
     // Alice has to add Bob first, so that in the external commit, we can have
     // an Update proposal that comes from a leaf that's actually inside of the
@@ -178,21 +208,21 @@ fn test_valsem242() {
     let bob_key_package = generate_key_package(
         ciphersuite,
         Extensions::empty(),
-        provider,
+        alice_provider,
         bob_credential.clone(),
     );
 
     alice_group
         .add_members(
-            provider,
+            alice_provider,
             &alice_credential.signer,
             core::slice::from_ref(bob_key_package.key_package()),
         )
         .unwrap();
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
 
     let verifiable_group_info = alice_group
-        .export_group_info(provider.crypto(), &alice_credential.signer, true)
+        .export_group_info(alice_provider.crypto(), &alice_credential.signer, true)
         .unwrap()
         .into_verifiable_group_info()
         .unwrap();
@@ -200,21 +230,21 @@ fn test_valsem242() {
     let (_, public_message_commit) = MlsGroup::external_commit_builder()
         .with_config(alice_group.configuration().clone())
         .build_group(
-            provider,
+            bob_provider,
             verifiable_group_info,
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
-        .load_psks(provider.storage())
+        .load_psks(bob_provider.storage())
         .unwrap()
         .build(
-            provider.rand(),
-            provider.crypto(),
+            bob_provider.rand(),
+            bob_provider.crypto(),
             &bob_credential.signer,
             |_| true,
         )
         .unwrap()
-        .finalize(provider)
+        .finalize(bob_provider)
         .unwrap();
 
     let public_message_commit = {
@@ -239,15 +269,16 @@ fn test_valsem242() {
 
     let deny_list = {
         let add_proposal = {
+            let charlie_provider = &Provider::default();
             let charlie_credential = generate_credential_with_key(
                 "Charlie".into(),
                 ciphersuite.signature_algorithm(),
-                provider,
+                charlie_provider,
             );
             let charlie_key_package = generate_key_package(
                 ciphersuite,
                 Extensions::empty(),
-                provider,
+                charlie_provider,
                 charlie_credential,
             );
 
@@ -312,7 +343,7 @@ fn test_valsem242() {
 
         // Negative case
         let err = alice_group
-            .process_message(provider, public_message_commit_bad)
+            .process_message(alice_provider, public_message_commit_bad)
             .unwrap_err();
 
         assert!(matches!(
@@ -324,7 +355,7 @@ fn test_valsem242() {
 
         // Positive case
         alice_group
-            .process_message(provider, public_message_commit.clone())
+            .process_message(alice_provider, public_message_commit.clone())
             .unwrap();
     }
 }
@@ -332,13 +363,21 @@ fn test_valsem242() {
 // ValSem244: External Commit must not include any proposals by reference
 #[openmls_test::openmls_test]
 fn test_valsem244() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
         bob_credential,
         public_message_commit,
         ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
 
     // Setup
     let public_message_commit_bad = {
@@ -353,7 +392,7 @@ fn test_valsem244() {
         let bob_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            bob_provider,
             bob_credential.clone(),
         );
 
@@ -362,7 +401,8 @@ fn test_valsem244() {
         });
 
         let proposal_ref =
-            ProposalRef::from_raw_proposal(ciphersuite, provider.crypto(), &add_proposal).unwrap();
+            ProposalRef::from_raw_proposal(ciphersuite, bob_provider.crypto(), &add_proposal)
+                .unwrap();
 
         // Add an Add proposal to the external commit.
         let add_proposal_ref = ProposalOrRef::reference(proposal_ref);
@@ -390,7 +430,10 @@ fn test_valsem244() {
     // Expect error because the message can't be processed due to the external
     // commit including an external init proposal by reference.
     let err = alice_group
-        .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
+        .process_message(
+            alice_provider,
+            ProtocolMessage::from(public_message_commit_bad),
+        )
         .unwrap_err();
 
     assert!(matches!(
@@ -402,20 +445,28 @@ fn test_valsem244() {
 
     // Positive case
     alice_group
-        .process_message(provider, ProtocolMessage::from(public_message_commit))
+        .process_message(alice_provider, ProtocolMessage::from(public_message_commit))
         .unwrap();
 }
 
 // ValSem245: External Commit: MUST contain a path.
 #[openmls_test::openmls_test]
 fn test_valsem245() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
         bob_credential,
         public_message_commit,
         ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
 
     // Setup
     let public_message_commit_bad = {
@@ -448,7 +499,10 @@ fn test_valsem245() {
     // Have alice process the commit resulting from external init.
     // Negative case
     let err = alice_group
-        .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
+        .process_message(
+            alice_provider,
+            ProtocolMessage::from(public_message_commit_bad),
+        )
         .expect_err("Could process message despite missing path.");
 
     assert!(matches!(
@@ -458,20 +512,28 @@ fn test_valsem245() {
 
     // Positive case
     alice_group
-        .process_message(provider, ProtocolMessage::from(public_message_commit))
+        .process_message(alice_provider, ProtocolMessage::from(public_message_commit))
         .unwrap();
 }
 
 // ValSem246: External Commit: The signature of the PublicMessage MUST be verified with the credential of the KeyPackage in the included `path`.
 #[openmls_test::openmls_test]
 fn test_valsem246() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
         bob_credential,
         public_message_commit,
         ..
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
 
     // Setup
     let public_message_commit_bad = {
@@ -485,14 +547,17 @@ fn test_valsem246() {
         // We test that the message is verified using the credential contained in
         // the path by generating a new credential for bob, putting it in the path
         // and then re-signing the message with his original credential.
-        let bob_new_credential =
-            generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
+        let bob_new_credential = generate_credential_with_key(
+            "Bob".into(),
+            ciphersuite.signature_algorithm(),
+            bob_provider,
+        );
 
         // Generate KeyPackage
         let bob_new_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
-            provider,
+            bob_provider,
             bob_new_credential,
         );
 
@@ -519,7 +584,10 @@ fn test_valsem246() {
     // Have alice process the commit resulting from external init.
     // Negative case
     let err = alice_group
-        .process_message(provider, ProtocolMessage::from(public_message_commit_bad))
+        .process_message(
+            alice_provider,
+            ProtocolMessage::from(public_message_commit_bad),
+        )
         .expect_err("Could process message despite wrong signature.");
 
     // This shows that signature verification fails if the signature is not done
@@ -552,13 +620,13 @@ fn test_valsem246() {
         public_message_commit.clone().into(),
         alice_group.message_secrets(),
         alice_group.message_secrets().serialized_context().to_vec(),
-        provider.crypto(),
+        alice_provider.crypto(),
         ciphersuite,
     )
     .unwrap();
     let verification_result: Result<AuthenticatedContentIn, _> =
         decrypted_message.verifiable_content().clone().verify(
-            provider.crypto(),
+            alice_provider.crypto(),
             &OpenMlsSignaturePublicKey::from_signature_key(
                 bob_credential.credential_with_key.signature_key,
                 ciphersuite.signature_algorithm(),
@@ -570,13 +638,16 @@ fn test_valsem246() {
     // This shows it again, since ValSem010 ensures that the signature is
     // correct (which it only is, if alice is using the credential in the path).
     alice_group
-        .process_message(provider, ProtocolMessage::from(public_message_commit))
+        .process_message(alice_provider, ProtocolMessage::from(public_message_commit))
         .expect("Unexpected error.");
 }
 
 // External Commit should work when group use ciphertext WireFormat
 #[openmls_test::openmls_test]
 fn test_pure_ciphertext() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
     // Test with PrivateMessage
 
     // The setup function already test whether the external commit is a
@@ -585,11 +656,16 @@ fn test_pure_ciphertext() {
         mut alice_group,
         public_message_commit,
         ..
-    } = validation_test_setup(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, ciphersuite, provider);
+    } = validation_test_setup(
+        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
 
     // Would fail if handshake message processing did not distinguish external messages
     assert!(alice_group
-        .process_message(provider, public_message_commit)
+        .process_message(alice_provider, public_message_commit)
         .is_ok());
 }
 
@@ -617,17 +693,21 @@ mod utils {
     pub(super) fn validation_test_setup(
         wire_format_policy: WireFormatPolicy,
         ciphersuite: Ciphersuite,
-        provider: &impl crate::storage::OpenMlsProvider,
+        alice_provider: &impl crate::storage::OpenMlsProvider,
+        bob_provider: &impl crate::storage::OpenMlsProvider,
     ) -> ECValidationTestSetup {
         // Generate credentials with keys
         let alice_credential = generate_credential_with_key(
             "Alice".into(),
             ciphersuite.signature_algorithm(),
-            provider,
+            alice_provider,
         );
 
-        let bob_credential =
-            generate_credential_with_key("Bob".into(), ciphersuite.signature_algorithm(), provider);
+        let bob_credential = generate_credential_with_key(
+            "Bob".into(),
+            ciphersuite.signature_algorithm(),
+            bob_provider,
+        );
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -637,7 +717,7 @@ mod utils {
 
         // Alice creates a group
         let alice_group = MlsGroup::new(
-            provider,
+            alice_provider,
             &alice_credential.signer,
             &mls_group_create_config,
             alice_credential.credential_with_key.clone(),
@@ -648,7 +728,7 @@ mod utils {
 
         // Have Alice export everything that bob needs.
         let verifiable_group_info = alice_group
-            .export_group_info(provider.crypto(), &alice_credential.signer, false)
+            .export_group_info(alice_provider.crypto(), &alice_credential.signer, false)
             .unwrap()
             .into_verifiable_group_info()
             .unwrap();
@@ -658,21 +738,21 @@ mod utils {
             .with_config(alice_group.configuration().clone())
             .with_ratchet_tree(tree_option.into())
             .build_group(
-                provider,
+                bob_provider,
                 verifiable_group_info,
                 bob_credential.credential_with_key.clone(),
             )
             .unwrap()
-            .load_psks(provider.storage())
+            .load_psks(bob_provider.storage())
             .unwrap()
             .build(
-                provider.rand(),
-                provider.crypto(),
+                bob_provider.rand(),
+                bob_provider.crypto(),
                 &bob_credential.signer,
                 |_| true,
             )
             .unwrap()
-            .finalize(provider)
+            .finalize(bob_provider)
             .unwrap();
 
         let mls_message = MlsMessageIn::from(commit_bundle.into_commit());

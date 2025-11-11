@@ -5,10 +5,10 @@
 //!
 //! ## Internal Documentation
 //!
-//! The key schedule is described in Section 9 of the MLS specification. It
+//! The key schedule is described in Section 8 of the MLS specification. It
 //! evolves in epochs, with new key material injected in each epoch.
 //!
-//! The key schedule flow (from Section 9 of the MLS specification) is as follows:
+//! The key schedule flow (from Section 8 of the MLS specification) is as follows:
 //
 // ```text
 //                  init_secret_[n-1]

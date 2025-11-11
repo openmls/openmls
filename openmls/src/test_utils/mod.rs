@@ -78,7 +78,7 @@ pub fn bytes_to_hex(bytes: &[u8]) -> String {
 
 /// Convert a hex string to a byte vector.
 pub fn hex_to_bytes(hex: &str) -> Vec<u8> {
-    assert!(hex.len() % 2 == 0);
+    assert!(hex.len().is_multiple_of(2));
     let mut bytes = Vec::new();
     for i in 0..(hex.len() / 2) {
         bytes.push(

@@ -5,7 +5,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::{errors::InvalidExtensionError, Extensions},
-    group::{ExtensionType, GroupContext, GroupId},
+    group::{GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
     prelude::ExtensionsForObject,
@@ -53,18 +53,9 @@ impl TempBuilderPG1 {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
-        // None of the default extensions are leaf node extensions, so only
-        // unknown extensions can be leaf node extensions.
-        let invalid_in_leaf_node: Vec<_> = extensions
-            .iter()
-            .filter(|e| !matches!(e.extension_type(), ExtensionType::Unknown(_)))
-            .collect();
-        if !invalid_in_leaf_node.is_empty() {
-            return Err(InvalidExtensionError::ExtensionTypeNotValidInObject {
-                illegal_extension: invalid_in_leaf_node.first().unwrap().extension_type(),
-                ty: std::any::type_name::<Self>(),
-            });
-        }
+        // Ensure that these extensions are not invalid for leaf nodes.
+        // https://validation.openmls.tech/#valn1601
+        extensions.validate_extension_types_for_leaf_node()?;
         self.leaf_node_extensions = extensions;
         Ok(self)
     }
