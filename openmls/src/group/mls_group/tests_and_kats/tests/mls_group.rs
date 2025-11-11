@@ -356,7 +356,7 @@ fn export_secret() {
     )
 }
 
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 #[openmls_test]
 fn safe_export_secret() {
     use crate::schedule::application_export_tree::ApplicationExportTreeError;

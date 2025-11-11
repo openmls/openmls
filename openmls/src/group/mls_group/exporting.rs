@@ -1,7 +1,7 @@
 use errors::{ExportGroupInfoError, ExportSecretError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
-#[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+#[cfg(feature = "extensions-draft-08")]
 use crate::group::{PendingSafeExportSecretError, SafeExportSecretError};
 use crate::{
     ciphersuite::HpkePublicKey,
@@ -45,7 +45,7 @@ impl MlsGroup {
 
     /// Export a secret from the forward secure exporter for the component with
     /// the given component ID.
-    #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+    #[cfg(feature = "extensions-draft-08")]
     pub fn safe_export_secret<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         &mut self,
         crypto: &Crypto,
@@ -73,7 +73,7 @@ impl MlsGroup {
 
     /// Export a secret from the forward secure exporter of the pending commit
     /// state for the component with the given component ID.
-    #[cfg(all(feature = "extensions-draft-08", feature = "fs-exporter"))]
+    #[cfg(feature = "extensions-draft-08")]
     pub fn safe_export_secret_from_pending<Provider: StorageProvider>(
         &mut self,
         crypto: &impl OpenMlsCrypto,
