@@ -59,7 +59,7 @@ pub enum ProposalIn {
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
     // # Extensions
     #[cfg(feature = "extensions-draft-08")]
-    AppDataUpdate(AppDataUpdateProposal),
+    AppDataUpdate(Box<AppDataUpdateProposal>),
 
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
