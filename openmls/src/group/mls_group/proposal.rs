@@ -641,7 +641,10 @@ impl MlsGroup {
         operation: AppDataUpdateOperation,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, LibraryError> {
-        let proposal = Proposal::AppDataUpdate(AppDataUpdateProposal::new(component_id, operation));
+        let proposal = Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::new(
+            component_id,
+            operation,
+        )));
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),

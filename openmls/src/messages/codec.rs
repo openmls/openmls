@@ -142,7 +142,7 @@ impl Deserialize for ProposalIn {
             )),
             #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppDataUpdate => {
-                ProposalIn::AppDataUpdate(AppDataUpdateProposal::tls_deserialize(bytes)?)
+                ProposalIn::AppDataUpdate(Box::new(AppDataUpdateProposal::tls_deserialize(bytes)?))
             }
             ProposalType::SelfRemove => ProposalIn::SelfRemove,
             #[cfg(feature = "extensions-draft-08")]
