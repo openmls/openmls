@@ -13,6 +13,9 @@ use crate::{
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::AppDataDictionaryExtension;
+
 use super::{errors::ProcessMessageError, *};
 
 impl MlsGroup {
@@ -316,6 +319,32 @@ impl MlsGroup {
                             leaf_node_keypairs,
                             provider,
                         )?;
+
+                        #[cfg(feature = "extensions-draft-08")]
+                        let staged_commit = {
+                            let mut staged_commit = staged_commit;
+                            if staged_commit.app_data_update() {
+                                // insert a new AppDataDictionary extension if it does not exist
+                                let extensions = staged_commit
+                                    .state
+                                    .staged_diff_mut()
+                                    .group_context_mut()
+                                    .extensions_mut();
+
+                                // TODO: move this elsewhere?
+                                if !extensions.contains(ExtensionType::AppDataDictionary) {
+                                    extensions
+                                        .add(Extension::AppDataDictionary(
+                                            AppDataDictionaryExtension::default(),
+                                        ))
+                                        .map_err(|_| {
+                                            LibraryError::custom("Could not add extension")
+                                        })?;
+                                }
+                            }
+                            staged_commit
+                        };
+
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                 };

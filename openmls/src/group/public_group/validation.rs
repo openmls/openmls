@@ -32,6 +32,13 @@ use crate::{
 
 use crate::treesync::errors::LifetimeError;
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::{
+    group::errors::AppDataUpdateValidationError, messages::proposals::AppDataUpdateOperationType,
+};
+#[cfg(feature = "extensions-draft-08")]
+use std::collections::BTreeMap;
+
 impl PublicGroup {
     // === Messages ===
 
@@ -593,6 +600,95 @@ impl PublicGroup {
                             "found non-gce proposal when filtered for gce proposals",
                         ),
                     ))
+                }
+            }
+        }
+
+        Ok(())
+    }
+    #[cfg(feature = "extensions-draft-08")]
+    /// Returns an [`AppDataUpdateValidationError`] if:
+    ///   - An [`AppDataUpdateProposal`] appears before a [`GroupContextExtensionProposal`]
+    ///   - The [`GroupContextExtensionProposal`] updates the [`AppDataDictionary`] when the
+    ///     required capabilities include AppDataUpdate proposal type
+    ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes both Updates
+    ///   and Removes
+    ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes more than one
+    ///   Remove
+    pub(crate) fn validate_app_data_update_proposals_and_group_context(
+        &self,
+        proposal_queue: &ProposalQueue,
+    ) -> Result<(), AppDataUpdateValidationError> {
+        // retrieve the GroupContextExtensions proposal, if available
+        let group_context_extension = proposal_queue
+            .filtered_by_type(ProposalType::GroupContextExtensions)
+            .filter_map(|queued_proposal| match queued_proposal.proposal() {
+                Proposal::GroupContextExtensions(p) => Some(p),
+                _ => None,
+            })
+            .next();
+
+        // check ordering
+        // return an error if an AppDataUpdate appears before a GroupContextExtensions proposal
+        if proposal_queue
+            .queued_proposals()
+            .map(|proposal| proposal.proposal().proposal_type())
+            .skip_while(|proposal_type| *proposal_type != ProposalType::AppDataUpdate)
+            .any(|proposal_type| proposal_type == ProposalType::GroupContextExtensions)
+        {
+            return Err(AppDataUpdateValidationError::IncorrectOrder);
+        }
+
+        // validate that GroupContextExtensions does not update the AppDataDictionary
+        if let Some(group_context_extension) = group_context_extension {
+            let extensions = group_context_extension.extensions();
+
+            match extensions.required_capabilities() {
+                // TODO: should it also be ensured here that the AppDataDictionary extension type is
+                // supported?
+                Some(caps) if caps.proposal_types().contains(&ProposalType::AppDataUpdate) => {
+                    // if the app data dictionary is not updated, this is valid
+                    if extensions.app_data_dictionary()
+                        != self.group_context().extensions().app_data_dictionary()
+                    {
+                        return Err(AppDataUpdateValidationError::CannotUpdateDictionaryDirectly);
+                    }
+                }
+                // AppDataUpdate not in capabilities
+                // TODO: Should an error be returned from this match arm?
+                _ => return Ok(()),
+            }
+        }
+
+        // get the app data update proposals
+        let app_data_update_proposals = proposal_queue
+            .filtered_by_type(ProposalType::AppDataUpdate)
+            .filter_map(|queued_proposal| match queued_proposal.proposal() {
+                Proposal::AppDataUpdate(p) => Some(p),
+                _ => None,
+            });
+
+        // validate that proposals for each component are either:
+        //   - A: one or more updates, or
+        //   - B: exactly one remove
+        let mut operation_type_per_component_id = BTreeMap::new();
+        for proposal in app_data_update_proposals {
+            let component_id = proposal.component_id();
+            let operation_type = proposal.operation().operation_type();
+
+            match operation_type_per_component_id.get(&component_id) {
+                // mismatched types
+                Some(already_seen) if *already_seen != operation_type => {
+                    return Err(AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations);
+                }
+                // only one remove allowed
+                Some(&AppDataUpdateOperationType::Remove) => {
+                    return Err(AppDataUpdateValidationError::MoreThanOneRemovePerComponentId)
+                }
+                // more updates allowed
+                Some(&AppDataUpdateOperationType::Update) => {}
+                None => {
+                    let _ = operation_type_per_component_id.insert(component_id, operation_type);
                 }
             }
         }
