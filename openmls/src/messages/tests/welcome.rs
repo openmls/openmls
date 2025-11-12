@@ -217,6 +217,7 @@ fn test_welcome_message() {
             }),
             LeafNodeIndex::new(1),
         )
+        .unwrap()
     };
 
     // We need a signer
