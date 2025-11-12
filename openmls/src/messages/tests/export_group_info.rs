@@ -57,6 +57,7 @@ fn external_pub_in_group_info() {
 /// Tests that extension types are validated correctly when adding to the GroupInfo.
 #[openmls_test::openmls_test]
 fn export_group_info_with_additional_extensions() {
+    let provider = &Provider::default();
     // Alice creates a group
     let (group_alice, _, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
