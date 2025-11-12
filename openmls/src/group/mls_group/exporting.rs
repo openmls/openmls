@@ -5,6 +5,7 @@ use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 use crate::group::{PendingSafeExportSecretError, SafeExportSecretError};
 use crate::{
     ciphersuite::HpkePublicKey,
+    extensions::errors::InvalidExtensionError,
     schedule::{EpochAuthenticator, ResumptionPskSecret},
 };
 
@@ -117,6 +118,20 @@ impl MlsGroup {
         signer: &impl Signer,
         with_ratchet_tree: bool,
     ) -> Result<MlsMessageOut, ExportGroupInfoError> {
+        self.export_group_info_with_additional_extensions(crypto, signer, with_ratchet_tree, None)
+    }
+
+    /// Export a group info object for this group, with additional extensions.
+    ///
+    ///  Returns an error if a  [`RatchetTreeExtension`] or [`ExternalPubExtension`] is added
+    ///  directly here.
+    pub fn export_group_info_with_additional_extensions<CryptoProvider: OpenMlsCrypto>(
+        &self,
+        crypto: &CryptoProvider,
+        signer: &impl Signer,
+        with_ratchet_tree: bool,
+        additional_extensions: impl IntoIterator<Item = Extension>,
+    ) -> Result<MlsMessageOut, ExportGroupInfoError> {
         let extensions = {
             let ratchet_tree_extension = || {
                 Extension::RatchetTree(RatchetTreeExtension::new(
@@ -136,16 +151,28 @@ impl MlsGroup {
                 )))
             };
 
-            if with_ratchet_tree {
-                Extensions::from_vec(vec![ratchet_tree_extension(), external_pub_extension()?])
-                    .map_err(|_| {
-                        LibraryError::custom(
-                            "There should not have been duplicate extensions here.",
-                        )
-                    })?
+            let mut extensions = if with_ratchet_tree {
+                vec![ratchet_tree_extension(), external_pub_extension()?]
             } else {
-                Extensions::single(external_pub_extension()?)
-            }
+                vec![external_pub_extension()?]
+            };
+
+            extensions.extend(
+                additional_extensions
+                    .into_iter()
+                    .map(|extension| {
+                        if extension.as_ratchet_tree_extension().is_ok()
+                            || extension.as_external_pub_extension().is_ok()
+                        {
+                            Err(InvalidExtensionError::CannotAddDirectlyToGroupInfo)
+                        } else {
+                            Ok(extension)
+                        }
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
+
+            Extensions::from_vec(extensions)?
         };
 
         // Create to-be-signed group info.
