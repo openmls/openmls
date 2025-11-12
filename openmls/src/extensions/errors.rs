@@ -102,4 +102,12 @@ pub enum InvalidExtensionError {
         "The provided extension list contains an extension that is not allowed in leaf nodes."
     )]
     IllegalInLeafNodes,
+    /// The provided extension list contains an extension that is not allowed in the group info
+    #[error(
+        "The provided extension list contains an extension that is not allowed in the group info."
+    )]
+    IllegalInGroupInfo,
+    /// The provided extension cannot be added directly to the GroupInfo
+    #[error("The provided extension cannot be added directly to the GroupInfo.")]
+    CannotAddDirectlyToGroupInfo,
 }

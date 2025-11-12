@@ -653,7 +653,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                             extensions.clone(),
                             confirmation_tag.clone(),
                             own_leaf_index,
-                        )
+                        )?
                     };
                     // Sign to-be-signed group info.
                     let group_info = group_info_tbs.sign(old_signer)?;
@@ -712,7 +712,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                             extensions,
                             confirmation_tag.clone(),
                             own_leaf_index,
-                        )
+                        )?
                     };
                     // Sign to-be-signed group info.
                     Ok(group_info_tbs.sign(old_signer)?)
