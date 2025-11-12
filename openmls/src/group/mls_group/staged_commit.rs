@@ -11,9 +11,6 @@ use super::proposal_store::{
     QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
 };
 
-#[cfg(feature = "extensions-draft-08")]
-use super::proposal_store::QueuedAppEphemeralProposal;
-
 use super::{
     super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
@@ -32,6 +29,14 @@ use crate::{
     schedule::{CommitSecret, EpochAuthenticator, EpochSecretsResult, InitSecret, PreSharedKeyId},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
+
+#[cfg(feature = "extensions-draft-08")]
+use super::{
+    proposal_store::{QueuedAppDataUpdateProposal, QueuedAppEphemeralProposal},
+    ProposalType,
+};
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::ExtensionType;
 
 impl MlsGroup {
     fn derive_epoch_secrets(
@@ -473,11 +478,10 @@ impl MlsGroup {
     }
 }
 
-/// The staged commit state.
+// TODO: determine whether this struct should be public.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
-pub(crate) enum StagedCommitState {
-    /// The public group variant of the staged commit state.
+pub enum StagedCommitState {
     PublicState(Box<PublicStagedCommitState>),
     /// The group member variant of the staged commit state.
     GroupMember(Box<MemberStagedCommitState>),
@@ -490,7 +494,7 @@ pub struct StagedCommit {
     /// A queue containing the proposals associated with the commit.
     pub staged_proposal_queue: ProposalQueue,
     /// The staged commit state.
-    state: StagedCommitState,
+    pub state: StagedCommitState,
 }
 
 impl StagedCommit {
@@ -530,6 +534,15 @@ impl StagedCommit {
         &self,
     ) -> impl Iterator<Item = QueuedAppEphemeralProposal<'_>> {
         self.staged_proposal_queue.app_ephemeral_proposals()
+    }
+    // NOTE: this is not a default proposal type
+    #[cfg(feature = "extensions-draft-08")]
+    /// Returns the AppDataUpdate proposals that are covered by the Commit message as an iterator
+    /// over [`QueuedAppDataUpdateProposal`].
+    pub fn app_data_update_proposals(
+        &self,
+    ) -> impl Iterator<Item = QueuedAppDataUpdateProposal<'_>> {
+        self.staged_proposal_queue.app_data_update_proposals()
     }
 
     /// Returns an iterator over all [`QueuedProposal`]s.
@@ -641,6 +654,37 @@ impl StagedCommit {
         let secret =
             application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
         Ok(secret.as_slice().to_vec())
+    }
+    #[cfg(feature = "extensions-draft-08")]
+    /// Check whether the AppDataUpdate proposal type and the AppDataDictionary extension type are supported
+    /// Returns `true` if the required capabilities include the AppDataUpdate proposal type and the
+    /// AppDataDictionary extension type, and if the proposal queue includes any AppDataUpdate
+    /// proposals.
+    pub(super) fn app_data_update(&self) -> bool {
+        // retrieve the required capabilities extension
+        if let Some(required_capabilities_extension) = self.group_context().required_capabilities()
+        {
+            // check whether app data update and app data dictionary are supported
+            // NOTE: ExtensionType::AppDataDictionary needs to be supported here,
+            // in order to allow including this extension in the Extensions.
+            let has_required_capabilities = required_capabilities_extension
+                .proposal_types()
+                .contains(&ProposalType::AppDataUpdate)
+                && required_capabilities_extension
+                    .extension_types()
+                    .contains(&ExtensionType::AppDataDictionary);
+
+            // check whether the proposal queue includes AppDataUpdate proposals
+            let includes_updates = self
+                .staged_proposal_queue
+                .app_data_update_proposals()
+                .count()
+                > 0;
+
+            has_required_capabilities && includes_updates
+        } else {
+            false
+        }
     }
 }
 
