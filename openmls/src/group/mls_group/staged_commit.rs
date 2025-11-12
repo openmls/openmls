@@ -688,6 +688,17 @@ impl StagedCommit {
     }
 }
 
+impl StagedCommitState {
+    #[cfg(feature = "extensions-draft-08")]
+    /// Get a mutable reference to the [`StagedPublicGroupDiff`].
+    pub(crate) fn staged_diff_mut(&mut self) -> &mut StagedPublicGroupDiff {
+        match self {
+            StagedCommitState::PublicState(ref mut ps) => &mut ps.staged_diff,
+            StagedCommitState::GroupMember(ref mut gm) => &mut gm.staged_diff,
+        }
+    }
+}
+
 /// This struct is used internally by [`StagedCommit`] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
