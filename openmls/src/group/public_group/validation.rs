@@ -619,6 +619,10 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), AppDataUpdateValidationError> {
+        let at_least_one_app_data_update = proposal_queue.app_data_update_proposals().count() > 0;
+        if !at_least_one_app_data_update {
+            return Ok(());
+        }
         // retrieve the GroupContextExtensions proposal, if available
         let group_context_extension = proposal_queue
             .filtered_by_type(ProposalType::GroupContextExtensions)
