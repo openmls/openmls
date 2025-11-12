@@ -2460,6 +2460,7 @@ fn failed_groupinfo_decryption() {
             confirmation_tag,
             LeafNodeIndex::new(0),
         )
+        .unwrap()
     };
 
     // Generate key and nonce for the symmetric cipher.
