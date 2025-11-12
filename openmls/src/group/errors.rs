@@ -261,6 +261,10 @@ pub enum StageCommitError {
     GroupContextExtensionsProposalValidationError(
         #[from] GroupContextExtensionsProposalValidationError,
     ),
+    #[cfg(feature = "extensions-draft-08")]
+    /// See [`AppDataUpdateValidationError`] for more details.
+    #[error(transparent)]
+    AppDataUpdateValidationError(#[from] AppDataUpdateValidationError),
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
@@ -302,6 +306,10 @@ pub enum CreateCommitError {
     /// See [`InvalidExtensionError`] for more details.
     #[error(transparent)]
     InvalidExtensionError(#[from] InvalidExtensionError),
+    #[cfg(feature = "extensions-draft-08")]
+    /// See [`AppDataUpdateValidationError`] for more details.
+    #[error(transparent)]
+    AppDataUpdateValidationError(#[from] AppDataUpdateValidationError),
     /// See [`GroupContextExtensionsProposalValidationError`] for more details.
     #[error(transparent)]
     GroupContextExtensionsProposalValidationError(
@@ -598,6 +606,29 @@ pub enum MergeCommitError<StorageError> {
     /// Error writing updated group to storage.
     #[error("Error writing updated group data to storage.")]
     StorageError(StorageError),
+}
+
+#[cfg(feature = "extensions-draft-08")]
+/// Error validating an AppDataUpdate proposal.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum AppDataUpdateValidationError {
+    /// [`AppDataUpdateProposal`](crate::messages::proposals::AppDataUpdateProposal)s
+    /// occur before
+    /// [`GroupContextExtensionsProposal`](crate::messages::proposals::GroupContextExtensionProposal)s.
+    #[error("AppDataUpdate proposals occur before GroupContextExtensions proposals.")]
+    IncorrectOrder,
+    /// Attempted to update the [`AppDataDictionary`](crate::extensions::AppDataDictionary)
+    /// in the
+    /// [`GroupContextExtensionsProposal`](crate::messages::proposals::GroupContextExtensionProposal) directly.
+    #[error("Attempted to update the AppDataDictionary in the GroupContextExtensions proposal directly.")]
+    CannotUpdateDictionaryDirectly,
+    /// More than one [`AppDataUpdate]` proposal per
+    /// [`ComponentId`](crate::extensions::ComponentId) had a Remove operation.
+    #[error("More than one AppDataUpdate proposal per ComponentId had a Remove operation.")]
+    MoreThanOneRemovePerComponentId,
+    /// Proposals for a [`ComponentId`](crate::extensions::ComponentId) had both Remove and Update operations.
+    #[error("Proposals for a ComponentId had both Remove and Update operations.")]
+    CombinedRemoveAndUpdateOperations,
 }
 
 /// Error validation a GroupContextExtensions proposal.

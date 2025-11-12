@@ -55,6 +55,8 @@ mod updates;
 use config::*;
 
 // Crate
+#[cfg(feature = "extensions-draft-08")]
+pub(crate) mod app_data_update;
 pub(crate) mod builder;
 pub(crate) mod commit_builder;
 pub(crate) mod config;

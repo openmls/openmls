@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::messages::proposals::AppEphemeralProposal;
+use crate::messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal};
 
 #[derive(Debug, Clone)]
 pub(crate) struct SelfRemoveInStore {
@@ -441,6 +441,23 @@ impl ProposalQueue {
             }
         })
     }
+    #[cfg(feature = "extensions-draft-08")]
+    /// Returns an iterator over all AppDataUpdate proposals in the queue
+    pub(crate) fn app_data_update_proposals(
+        &self,
+    ) -> impl Iterator<Item = QueuedAppDataUpdateProposal<'_>> {
+        self.queued_proposals().filter_map(|queued_proposal| {
+            if let Proposal::AppDataUpdate(app_data_update_proposal) = queued_proposal.proposal() {
+                let sender = queued_proposal.sender();
+                Some(QueuedAppDataUpdateProposal {
+                    app_data_update_proposal,
+                    sender,
+                })
+            } else {
+                None
+            }
+        })
+    }
 
     /// Filters received proposals
     ///
@@ -502,6 +519,8 @@ impl ProposalQueue {
 
         // Parse proposals and build adds and member list
         for queued_proposal in iter {
+            // NOTE: identical proposals (which have the same hash reference)
+            // are automatically deduplicated by this step.
             proposal_pool.insert(
                 queued_proposal.proposal_reference(),
                 queued_proposal.clone(),
@@ -541,6 +560,10 @@ impl ProposalQueue {
                 }
                 Proposal::GroupContextExtensions(_) => {
                     valid_proposals.add(queued_proposal.proposal_reference());
+                }
+                #[cfg(feature = "extensions-draft-08")]
+                Proposal::AppDataUpdate(_) => {
+                    valid_proposals.add(queued_proposal.proposal_reference())
                 }
                 Proposal::SelfRemove => {
                     let Sender::Member(removed) = queued_proposal.sender() else {
@@ -729,12 +752,31 @@ pub struct QueuedAppEphemeralProposal<'a> {
     app_ephemeral_proposal: &'a AppEphemeralProposal,
     sender: &'a Sender,
 }
+#[cfg(feature = "extensions-draft-08")]
+/// A queued AppDataUpdate proposal
+#[derive(PartialEq, Debug)]
+pub struct QueuedAppDataUpdateProposal<'a> {
+    pub(crate) app_data_update_proposal: &'a AppDataUpdateProposal,
+    sender: &'a Sender,
+}
 
 #[cfg(feature = "extensions-draft-08")]
 impl QueuedAppEphemeralProposal<'_> {
     /// Returns a reference to the proposal
     pub fn app_ephemeral_proposal(&self) -> &AppEphemeralProposal {
         self.app_ephemeral_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+#[cfg(feature = "extensions-draft-08")]
+impl QueuedAppDataUpdateProposal<'_> {
+    /// Returns a reference to the proposal
+    pub fn app_data_update_proposal(&self) -> &AppDataUpdateProposal {
+        self.app_data_update_proposal
     }
 
     /// Returns a reference to the sender
