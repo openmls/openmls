@@ -532,6 +532,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .public_group
             .validate_group_context_extensions_proposal(&proposal_queue)?;
 
+        #[cfg(feature = "extensions-draft-08")]
+        group
+            .public_group
+            .validate_app_data_update_proposals_and_group_context(&proposal_queue)?;
+
         if is_external_commit {
             group
                 .public_group
