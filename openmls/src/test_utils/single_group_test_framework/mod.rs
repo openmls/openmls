@@ -90,40 +90,96 @@ pub struct PreGroupPartyState<'a, Provider> {
     pub core_state: &'a CorePartyState<Provider>,
 }
 
-// XXX: This should probably get a builder at some point.
-impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
-    /// Generates the pre-group state for a `CorePartyState`
-    pub fn generate_pre_group(&self, ciphersuite: Ciphersuite) -> PreGroupPartyState<'_, Provider> {
-        self.generate_pre_group_lifetime(ciphersuite, None)
+pub struct PreGroupPartyStateBuilder<'a, Provider: OpenMlsProvider> {
+    ciphersuite: Ciphersuite,
+    lifetime: Option<Lifetime>,
+    key_package_extensions: Option<Extensions>,
+    leaf_node_extensions: Option<Extensions>,
+    leaf_node_capabilities: Option<Capabilities>,
+    core_state: &'a CorePartyState<Provider>,
+}
+
+impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
+    pub fn with_lifetime(mut self, lifetime: impl Into<Option<Lifetime>>) -> Self {
+        self.lifetime = lifetime.into();
+
+        self
+    }
+    pub fn with_key_package_extensions(
+        mut self,
+        extensions: impl Into<Option<Extensions>>,
+    ) -> Self {
+        self.key_package_extensions = extensions.into();
+
+        self
+    }
+    pub fn with_leaf_node_extensions(mut self, extensions: impl Into<Option<Extensions>>) -> Self {
+        self.leaf_node_extensions = extensions.into();
+
+        self
+    }
+    pub fn with_leaf_node_capabilities(
+        mut self,
+        capabilities: impl Into<Option<Capabilities>>,
+    ) -> Self {
+        self.leaf_node_capabilities = capabilities.into();
+
+        self
     }
 
-    /// Generates the pre-group state for a `CorePartyState`
-    pub fn generate_pre_group_lifetime(
-        &self,
-        ciphersuite: Ciphersuite,
-        lifetime: impl Into<Option<Lifetime>>,
-    ) -> PreGroupPartyState<'_, Provider> {
+    pub fn build(self) -> PreGroupPartyState<'a, Provider> {
         let (credential_with_key, signer) = generate_credential(
-            self.name.into(),
-            ciphersuite.signature_algorithm(),
-            &self.provider,
+            self.core_state.name.into(),
+            self.ciphersuite.signature_algorithm(),
+            &self.core_state.provider,
         );
+        let mut builder = KeyPackage::builder()
+            .leaf_node_extensions(self.leaf_node_extensions.unwrap_or_default())
+            .expect("invalid leaf node extensions")
+            .key_package_extensions(self.key_package_extensions.unwrap_or_default())
+            .leaf_node_capabilities(self.leaf_node_capabilities.unwrap_or_default());
 
-        let key_package_bundle = generate_key_package(
-            ciphersuite,
-            credential_with_key.clone(),
-            Extensions::default(), // TODO: provide as argument?
-            &self.provider,
-            lifetime,
-            &signer,
-        );
+        if let Some(lifetime) = self.lifetime {
+            builder = builder.key_package_lifetime(lifetime);
+        }
+
+        let key_package_bundle = builder
+            .build(
+                self.ciphersuite,
+                &self.core_state.provider,
+                &signer,
+                credential_with_key.clone(),
+            )
+            .unwrap();
 
         PreGroupPartyState {
             credential_with_key,
             key_package_bundle,
             signer,
+            core_state: self.core_state,
+        }
+    }
+}
+
+impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
+    /// Returns a builder for the [`CorePartyState`].
+    pub fn pre_group_builder<'a>(
+        &'a self,
+        ciphersuite: Ciphersuite,
+    ) -> PreGroupPartyStateBuilder<'a, Provider> {
+        PreGroupPartyStateBuilder {
+            ciphersuite,
+            lifetime: None,
+            key_package_extensions: None,
+            leaf_node_extensions: None,
+            leaf_node_capabilities: None,
             core_state: self,
         }
+    }
+
+    /// Generates a simple pre-group state for a `CorePartyState`
+    pub fn generate_pre_group(&self, ciphersuite: Ciphersuite) -> PreGroupPartyState<'_, Provider> {
+        self.pre_group_builder(ciphersuite).build()
     }
 }
 
