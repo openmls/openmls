@@ -299,7 +299,7 @@ impl PublicGroup {
         };
 
         // Update group context
-        diff.update_group_context(crypto, apply_proposals_values.extensions.clone())?;
+        diff.update_group_context(crypto, apply_proposals_values.extensions)?;
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
         diff.update_confirmed_transcript_hash(crypto, mls_content)?;
