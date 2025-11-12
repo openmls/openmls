@@ -161,7 +161,7 @@ impl MlsGroup {
                 )
                 .map_err(LibraryError::unexpected_crypto_error)?,
             self.own_leaf_index(),
-        );
+        )?;
 
         // Sign to-be-signed group info.
         let group_info = group_info_tbs
