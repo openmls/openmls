@@ -27,6 +27,9 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::ComponentId;
+
 /// ## MLS Proposal Types
 ///
 ///
@@ -65,10 +68,10 @@ use crate::{
 ///
 /// # Extensions
 ///
-/// | Value  | Name        | Recommended | Path Required | Reference | Notes                        |
-/// |:=======|:============|:============|:==============|:==========|:=============================|
-/// | 0x000a | self_remove | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-07 |
-/// | 0x000b | app_ack     | Y           | N             | RFC XXXX  | draft-ietf-mls-extensions-07 |
+/// | Value  | Name          | Recommended | Path Required | Reference | Notes                        |
+/// |:=======|:==============|:============|:==============|:==========|:=============================|
+/// | 0x0009 | app_ephemeral | Y           | N             | RFC XXXX  | draft-ietf-mls-extensions-08 |
+/// | 0x000a | self_remove   | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-07 |
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
 #[allow(missing_docs)]
 pub enum ProposalType {
@@ -79,8 +82,9 @@ pub enum ProposalType {
     Reinit,
     ExternalInit,
     GroupContextExtensions,
-    AppAck,
     SelfRemove,
+    #[cfg(feature = "extensions-draft-08")]
+    AppEphemeral,
     Custom(u16),
 }
 
@@ -96,7 +100,9 @@ impl ProposalType {
             | ProposalType::Reinit
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions => true,
-            ProposalType::SelfRemove | ProposalType::AppAck | ProposalType::Custom(_) => false,
+            ProposalType::SelfRemove | ProposalType::Custom(_) => false,
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalType::AppEphemeral => false,
         }
     }
 }
@@ -163,8 +169,9 @@ impl From<u16> for ProposalType {
             5 => ProposalType::Reinit,
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
+            #[cfg(feature = "extensions-draft-08")]
+            0x0009 => ProposalType::AppEphemeral,
             0x000a => ProposalType::SelfRemove,
-            0x000b => ProposalType::AppAck,
             other => ProposalType::Custom(other),
         }
     }
@@ -180,8 +187,9 @@ impl From<ProposalType> for u16 {
             ProposalType::Reinit => 5,
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalType::AppEphemeral => 0x0009,
             ProposalType::SelfRemove => 0x000a,
-            ProposalType::AppAck => 0x000b,
             ProposalType::Custom(id) => id,
         }
     }
@@ -218,11 +226,10 @@ pub enum Proposal {
     ExternalInit(Box<ExternalInitProposal>),
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
     // # Extensions
-    // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
-    //             was moved to `draft-ietf-mls-extensions-00`.
-    AppAck(Box<AppAckProposal>),
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
+    #[cfg(feature = "extensions-draft-08")]
+    AppEphemeral(Box<AppEphemeralProposal>),
     Custom(Box<CustomProposal>),
 }
 
@@ -278,8 +285,9 @@ impl Proposal {
             Proposal::ReInit(_) => ProposalType::Reinit,
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
-            Proposal::AppAck(_) => ProposalType::AppAck,
             Proposal::SelfRemove => ProposalType::SelfRemove,
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppEphemeral(_) => ProposalType::AppEphemeral,
             Proposal::Custom(custom) => ProposalType::Custom(custom.proposal_type.to_owned()),
         }
     }
@@ -528,7 +536,8 @@ impl From<Vec<u8>> for ExternalInitProposal {
     }
 }
 
-/// AppAck Proposal.
+#[cfg(feature = "extensions-draft-08")]
+/// AppAck object.
 ///
 /// This is not yet supported.
 #[derive(
@@ -542,8 +551,47 @@ impl From<Vec<u8>> for ExternalInitProposal {
     TlsSerialize,
     TlsSize,
 )]
-pub struct AppAckProposal {
+pub struct AppAck {
     received_ranges: Vec<MessageRange>,
+}
+
+#[cfg(feature = "extensions-draft-08")]
+/// AppEphemeral proposal.
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
+pub struct AppEphemeralProposal {
+    /// The unique [`ComponentId`] associated with the proposal.
+    component_id: ComponentId,
+    /// Application data.
+    data: VLBytes,
+}
+#[cfg(feature = "extensions-draft-08")]
+impl AppEphemeralProposal {
+    /// Create a new [`AppEphemeralProposal`].
+    pub fn new(component_id: ComponentId, data: Vec<u8>) -> Self {
+        Self {
+            component_id,
+            data: data.into(),
+        }
+    }
+    /// Returns the `component_id` contained in the proposal.
+    pub fn component_id(&self) -> ComponentId {
+        self.component_id
+    }
+
+    /// Returns the `data` contained in the proposal.
+    pub fn data(&self) -> &[u8] {
+        self.data.as_slice()
+    }
 }
 
 /// GroupContextExtensions Proposal.

@@ -136,6 +136,9 @@ pub mod errors;
 mod pprf;
 pub mod psk;
 
+#[cfg(feature = "extensions-draft-08")]
+pub use pprf::PprfError;
+
 // Crate
 #[cfg(feature = "extensions-draft-08")]
 pub(crate) mod application_export_tree;

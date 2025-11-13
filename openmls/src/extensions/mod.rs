@@ -61,6 +61,10 @@ use crate::{group::GroupContext, prelude::LeafNode};
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "extensions-draft-08")]
+/// A ComponentId that uniquely identifies a component within the scope of an application.
+pub type ComponentId = u16;
+
 /// MLS Extension Types
 ///
 /// Copied from draft-ietf-mls-protocol-16:

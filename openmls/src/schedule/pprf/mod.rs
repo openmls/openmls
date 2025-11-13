@@ -28,12 +28,16 @@ pub use prefix::Prefix16;
 mod input;
 mod prefix;
 
+/// Error evaluating the PPRF at the given input.
 #[derive(Debug, Clone, Error, PartialEq)]
 pub enum PprfError {
+    /// Index out of bounds.
     #[error("Index out of bounds")]
     IndexOutOfBounds,
+    /// Evaluating on punctured input.
     #[error("Evaluating on punctured input")]
     PuncturedInput,
+    /// Error deriving child node.
     #[error("Error deriving child node: {0}")]
     ChildDerivationError(#[from] CryptoError),
 }

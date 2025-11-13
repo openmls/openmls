@@ -157,17 +157,14 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .unwrap();
 
     let alice_leaf_node = {
-        let capabilities = Capabilities::new(
-            None,
-            Some(&[
+        let capabilities = Capabilities::builder()
+            .ciphersuites(vec![
                 Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
                 Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            ]),
-            None,
-            Some(&[ProposalType::AppAck]),
-            Some(&[CredentialType::Basic]),
-        );
+            ])
+            .credentials(vec![CredentialType::Basic])
+            .build();
 
         LeafNode::generate_update(
             ciphersuite,
