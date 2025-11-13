@@ -45,7 +45,6 @@ zeroize = "1.8.1"
 serde_bytes = "0.11.17"
 
 [features]
-crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
 test-utils = [
     "dep:serde_json",
     "dep:itertools",
@@ -114,3 +113,7 @@ openmls = { path = ".", features = ["test-utils"] }
 [[bench]]
 name = "benchmark"
 harness = false
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
