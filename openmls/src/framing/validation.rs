@@ -219,7 +219,7 @@ pub(crate) enum SenderContext {
 /// The [`OpenMlsSignaturePublicKey`] is used to verify the signature of the
 /// message.
 #[derive(Debug, Clone)]
-pub(crate) struct UnverifiedMessage {
+pub struct UnverifiedMessage {
     verifiable_content: VerifiableAuthenticatedContentIn,
     credential: Credential,
     sender_pk: OpenMlsSignaturePublicKey,
@@ -264,6 +264,11 @@ impl UnverifiedMessage {
     /// Get the content type of the message.
     pub(crate) fn content_type(&self) -> ContentType {
         self.verifiable_content.content_type()
+    }
+
+    /// Get the wire format of the message.
+    pub(crate) fn wire_format(&self) -> WireFormat {
+        self.verifiable_content.wire_format()
     }
 }
 

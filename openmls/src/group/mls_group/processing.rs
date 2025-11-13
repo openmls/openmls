@@ -30,12 +30,29 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+        let message = message.into();
+
+        let unverified_message = self.parse_message(provider, message)?;
+
+        self.process_unverified_message(provider, unverified_message)
+    }
+
+    // TODO: more documentation about checks.
+    /// Parses incoming messages from the DS. If the input is an encrypted
+    /// message, it will be decrypted.
+    pub fn parse_message<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        message: impl Into<ProtocolMessage>,
+    ) -> Result<UnverifiedMessage, ProcessMessageError<Provider::StorageError>> {
         // Make sure we are still a member of the group
+
         if !self.is_active() {
             return Err(ProcessMessageError::GroupStateError(
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
+
         let message = message.into();
 
         // Check that handshake messages are compatible with the incoming wire format policy
@@ -53,10 +70,6 @@ impl MlsGroup {
         // Parse the message
         let sender_ratchet_configuration = *self.configuration().sender_ratchet_configuration();
 
-        // Check if this message will modify the secret tree when decrypting a
-        // private message
-        let will_modify_secret_tree = matches!(message, ProtocolMessage::PrivateMessage(_));
-
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
@@ -70,6 +83,16 @@ impl MlsGroup {
             .parse_message(decrypted_message, &self.message_secrets_store)
             .map_err(ProcessMessageError::from)?;
 
+        Ok(unverified_message)
+    }
+
+    // TODO: more documentation.
+    /// Process an [`UnverifiedMessage`] into a [`ProcessedMessage`].
+    pub fn process_unverified_message<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        unverified_message: UnverifiedMessage,
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // If this is a commit, we need to load the private key material we need for decryption.
         let (old_epoch_keypairs, leaf_node_keypairs) =
             if let ContentType::Commit = unverified_message.content_type() {
@@ -78,7 +101,10 @@ impl MlsGroup {
                 (vec![], vec![])
             };
 
-        let processed_message = self.process_unverified_message(
+        let will_modify_secret_tree =
+            matches!(unverified_message.wire_format(), WireFormat::PrivateMessage);
+
+        let processed_message = self.process_unverified_message_internal(
             provider,
             unverified_message,
             old_epoch_keypairs,
@@ -269,7 +295,7 @@ impl MlsGroup {
     ///  - ValSem242
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
+    pub(crate) fn process_unverified_message_internal<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
