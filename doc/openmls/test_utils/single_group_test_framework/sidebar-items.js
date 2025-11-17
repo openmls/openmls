@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Ciphersuite"],"fn":["generate_credential","random_u32","random_u64","random_u8"],"mod":["vector_converter"],"struct":["AddMemberConfig","CorePartyState","GroupState","HpkeKeyPair","MemberState","PreGroupPartyState"],"trait":["OpenMlsProvider","StorageProviderTrait"],"type":["GroupError"]};

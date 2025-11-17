@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["ActionType","CodecUse"],"fn":["noop_authentication_service"],"mod":["client","errors"],"struct":["Group","MlsGroupTestSetup"]};

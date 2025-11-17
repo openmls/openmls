@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["ciphersuite","credentials","error","extensions","framing","group","key_packages","messages","prelude","prelude_test","schedule","storage","test_utils","treesync","versions","wasm"]};
+window.SIDEBAR_ITEMS = {"mod":["ciphersuite","credentials","error","extensions","framing","group","key_packages","messages","prelude","schedule","storage","treesync","versions"]};

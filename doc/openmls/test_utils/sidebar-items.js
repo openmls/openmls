@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Ciphersuite"],"fn":["bytes_to_hex","hex_to_bytes","hex_to_bytes_option","random_u32","random_u64","random_u8"],"mod":["frankenstein","single_group_test_framework","storage_state","test_framework","vector_converter"],"struct":["HpkeKeyPair"],"trait":["OpenMlsProvider","StorageProviderTrait"],"type":["OpenMlsLibcrux","OpenMlsRustCrypto"]};

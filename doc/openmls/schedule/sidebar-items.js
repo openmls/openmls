@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["PprfError"],"mod":["errors","psk","tests_and_kats"],"struct":["ApplicationExportSecret","EpochAuthenticator","ResumptionPskSecret"]};
+window.SIDEBAR_ITEMS = {"mod":["errors","psk"],"struct":["EpochAuthenticator","ResumptionPskSecret"]};

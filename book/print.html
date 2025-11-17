@@ -224,26 +224,6 @@ on existing implementations of the cryptographic primitives used by MLS. There
 are two different cryptography providers implemented right now. But consumers
 can bring their own implementation. See <a href="https://github.com/openmls/openmls/tree/main/traits">traits</a> for more
 details.</p>
-<h2 id="features"><a class="header" href="#features">Features</a></h2>
-<p>OpenMLS provides the following features</p>
-<ul>
-<li><strong>extensions-draft-08</strong>: enable features defined in <a href="https://messaginglayersecurity.rocks/mls-extensions/draft-ietf-mls-extensions.html">MLS extensions draft-08</a></li>
-<li><strong>fork-resolution</strong>: helper functionality for <a href="https://book.openmls.tech/user_manual/fork-resolution.html">resolving forks</a>.</li>
-<li><strong>js</strong>: enable compilation to wasm</li>
-</ul>
-<details>
-<summary>Developer features</summary>
-<ul>
-<li><strong>libcrux-provider</strong>: enable the libcrux crypto provider dependency</li>
-<li><strong>libcrux-provider-js</strong>: enable the libcrux crypto provider with support for compiling to wasm</li>
-<li><strong>openmls_rust_crypto</strong>: enable the rust crypto provider</li>
-<li><strong>sqlite-provider</strong>: enable the sqlite provider</li>
-<li><strong>backtrace</strong>: enable backtraces</li>
-<li><strong>content-debug</strong>: allow printing sensitive content of messages for debugging</li>
-<li><strong>crypto-debug</strong>: allow printing cryptographic key material for debugging</li>
-<li><strong>test-util</strong>: test utilities</li>
-</ul>
-</details>
 <h2 id="working-on-openmls"><a class="header" href="#working-on-openmls">Working on OpenMLS</a></h2>
 <p>For more details when working on OpenMLS itself please see the <a href="https://github.com/openmls/openmls/blob/main/Developer.md">Developer.md</a>.</p>
 <h2 id="maintenance--support"><a class="header" href="#maintenance--support">Maintenance &amp; Support</a></h2>
