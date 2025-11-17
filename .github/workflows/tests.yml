@@ -68,6 +68,9 @@ jobs:
       - name: Test with Fork Resolution helpers
         run: cargo test $TEST_MODE -p openmls -F fork-resolution
 
+      - name: Test with MLS Extensions Draft feature
+        run: cargo test $TEST_MODE -p openmls -F extensions-draft-08
+
       - name: Test with libcrux provider
         if: matrix.os == 'ubuntu-latest'
         run: |
