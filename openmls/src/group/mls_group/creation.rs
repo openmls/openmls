@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use errors::NewGroupError;
 use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider as StorageProviderTrait};
 
@@ -526,6 +528,94 @@ impl ProcessedWelcome {
     }
 }
 
+/// Prepare the key schedule.
+pub(super) fn prepare_key_schedule<Provider: OpenMlsCrypto, E>(
+    provider: &Provider,
+    welcome: Welcome,
+    key_package_bundle: &KeyPackageBundle,
+    group_secrets: &GroupSecrets,
+    ciphersuite: Ciphersuite,
+    psks: Vec<(impl Borrow<PreSharedKeyId>, crate::prelude::Secret)>,
+) -> Result<(EpochSecretsResult, VerifiableGroupInfo), WelcomeError<E>> {
+    let psk_secret = PskSecret::new(provider, ciphersuite, psks)?;
+    let mut key_schedule = KeySchedule::init(
+        ciphersuite,
+        provider,
+        &group_secrets.joiner_secret,
+        psk_secret,
+    )?;
+
+    let (welcome_key, welcome_nonce) = key_schedule
+        .welcome(provider, ciphersuite)
+        .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
+        .derive_welcome_key_nonce(provider, ciphersuite)
+        .map_err(LibraryError::unexpected_crypto_error)?;
+
+    let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
+        &welcome_key,
+        &welcome_nonce,
+        welcome.encrypted_group_info(),
+        &[],
+        provider,
+    )?;
+
+    if let Some(required_capabilities) = verifiable_group_info.extensions().required_capabilities()
+    {
+        // Also check that our key package actually supports the extensions.
+        // As per the spec, the sender must have checked this. But you never know.
+        key_package_bundle
+            .key_package()
+            .leaf_node()
+            .capabilities()
+            .supports_required_capabilities(required_capabilities)?;
+    }
+
+    if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+        let e = WelcomeError::CiphersuiteMismatch;
+        return Err(e);
+    }
+
+    let serialized_group_context = verifiable_group_info
+        .group_context()
+        .tls_serialize_detached()
+        .map_err(LibraryError::missing_bound_check)?;
+
+    // TODO #751: Implement PSK
+    key_schedule.add_context(provider, &serialized_group_context)?;
+
+    let epoch_secrets = key_schedule.epoch_secrets(provider, ciphersuite)?;
+
+    Ok((epoch_secrets, verifiable_group_info))
+}
+
+/// Decrypt the welcome message and get the decrypted group secrets.
+pub(super) fn decrypt_group_secrets<Provider: OpenMlsCrypto, T>(
+    provider: &Provider,
+    welcome: &Welcome,
+    key_package_bundle: &KeyPackageBundle,
+    // XXX: Fix error type
+) -> Result<GroupSecrets, WelcomeError<T>> {
+    let ciphersuite = welcome.ciphersuite();
+    let Some(egs) =
+        welcome.find_encrypted_group_secret(key_package_bundle.key_package().hash_ref(provider)?)
+    else {
+        return Err(WelcomeError::JoinerSecretNotFound);
+    };
+    if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+        let e = WelcomeError::CiphersuiteMismatch;
+        return Err(e);
+    }
+    let group_secrets = GroupSecrets::try_from_ciphertext(
+        key_package_bundle.init_private_key(),
+        egs.encrypted_group_secrets(),
+        welcome.encrypted_group_info(),
+        ciphersuite,
+        provider,
+    )?;
+    PreSharedKeyId::validate_in_welcome(&group_secrets.psks, ciphersuite)?;
+    Ok(group_secrets)
+}
+
 impl StagedWelcome {
     /// Creates a new staged welcome from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
@@ -554,7 +644,6 @@ impl StagedWelcome {
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-        // ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
         let processed_welcome =
             ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
@@ -687,7 +776,8 @@ impl StagedWelcome {
     }
 }
 
-fn keys_for_welcome<Provider: OpenMlsProvider>(
+/// Read keys for decrypting the welcome message.
+pub(super) fn keys_for_welcome<Provider: OpenMlsProvider>(
     mls_group_config: &MlsGroupJoinConfig,
     welcome: &Welcome,
     provider: &Provider,
