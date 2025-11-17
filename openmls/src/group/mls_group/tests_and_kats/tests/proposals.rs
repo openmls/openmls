@@ -499,8 +499,25 @@ fn group_context_extension_proposal() {
 
     bob_group.merge_pending_commit(bob_provider).unwrap();
 
+    // let processed_message = alice_group
+    //     .process_message(alice_provider, commit.into_protocol_message().unwrap())
+    //     .expect("Error processing commit.");
+
+    let unverified_message = alice_group
+        .process_message1(alice_provider, commit.into_protocol_message().unwrap())
+        .unwrap();
+
+    let proposals = unverified_message.proposals().unwrap();
+    for proposal in proposals {
+        let proposal = proposal
+            .clone()
+            .validate(alice_provider.crypto(), ciphersuite, ProtocolVersion::Mls10)
+            .unwrap();
+        let proposal = proposal.as_reference().unwrap();
+    }
+
     let processed_message = alice_group
-        .process_message(alice_provider, commit.into_protocol_message().unwrap())
+        .process_message2(alice_provider, unverified_message)
         .expect("Error processing commit.");
 
     match processed_message.into_content() {

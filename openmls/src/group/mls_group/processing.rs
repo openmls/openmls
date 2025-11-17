@@ -30,6 +30,40 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+        let unverified_message = self.process_message1(provider, message)?;
+
+        self.process_message2(provider, unverified_message)
+    }
+
+    pub fn process_message2<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        unverified_message: UnverifiedMessage,
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+        // If this is a commit, we need to load the private key material we need for decryption.
+        let (old_epoch_keypairs, leaf_node_keypairs) =
+            if let ContentType::Commit = unverified_message.content_type() {
+                self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?
+            } else {
+                (vec![], vec![])
+            };
+
+        let processed_message = self.process_unverified_message(
+            provider,
+            unverified_message,
+            old_epoch_keypairs,
+            leaf_node_keypairs,
+        )?;
+
+        Ok(processed_message)
+    }
+
+    /// Step 1
+    pub fn process_message1<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        message: impl Into<ProtocolMessage>,
+    ) -> Result<UnverifiedMessage, ProcessMessageError<Provider::StorageError>> {
         // Make sure we are still a member of the group
         if !self.is_active() {
             return Err(ProcessMessageError::GroupStateError(
@@ -65,26 +99,6 @@ impl MlsGroup {
         let decrypted_message =
             self.decrypt_message(provider.crypto(), message, &sender_ratchet_configuration)?;
 
-        let unverified_message = self
-            .public_group
-            .parse_message(decrypted_message, &self.message_secrets_store)
-            .map_err(ProcessMessageError::from)?;
-
-        // If this is a commit, we need to load the private key material we need for decryption.
-        let (old_epoch_keypairs, leaf_node_keypairs) =
-            if let ContentType::Commit = unverified_message.content_type() {
-                self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?
-            } else {
-                (vec![], vec![])
-            };
-
-        let processed_message = self.process_unverified_message(
-            provider,
-            unverified_message,
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-        )?;
-
         // Persist the secret tree if it was modified to ensure forward secrecy
         if will_modify_secret_tree {
             provider
@@ -93,7 +107,12 @@ impl MlsGroup {
                 .map_err(ProcessMessageError::StorageError)?;
         }
 
-        Ok(processed_message)
+        let unverified_message = self
+            .public_group
+            .parse_message(decrypted_message, &self.message_secrets_store)
+            .map_err(ProcessMessageError::from)?;
+
+        Ok(unverified_message)
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]

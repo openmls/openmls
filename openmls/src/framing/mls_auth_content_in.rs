@@ -187,6 +187,10 @@ impl VerifiableAuthenticatedContentIn {
     pub(crate) fn content_type(&self) -> ContentType {
         self.tbs.content.body.content_type()
     }
+
+    pub(crate) fn content(&self) -> &FramedContentIn {
+        &self.tbs.content
+    }
 }
 
 impl Verifiable for VerifiableAuthenticatedContentIn {
