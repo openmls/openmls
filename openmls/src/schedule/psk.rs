@@ -304,11 +304,19 @@ impl PreSharedKeyId {
             Psk::Resumption(resumption_psk) => {
                 // https://validation.openmls.tech/#valn0801
                 // https://validation.openmls.tech/#valn0802
-                if resumption_psk.usage != ResumptionPskUsage::Application {
-                    return Err(PskError::UsageMismatch {
-                        allowed: vec![ResumptionPskUsage::Application],
-                        got: resumption_psk.usage,
-                    });
+                match resumption_psk.usage {
+                    ResumptionPskUsage::Application => {}
+                    ResumptionPskUsage::Reinit => {
+                        return Err(PskError::UsageMismatch {
+                            allowed: vec![ResumptionPskUsage::Application],
+                            got: resumption_psk.usage,
+                        });
+                    }
+                    ResumptionPskUsage::Branch => {
+                        // We can't check anything in here since we need more
+                        // information about the commit. We do this check
+                        // on the outside.
+                    }
                 }
             }
             Psk::External(_) => {}
@@ -514,6 +522,7 @@ impl From<Secret> for PskSecret {
     }
 }
 
+/// Load PSKs from storage
 pub(crate) fn load_psks<'p, Storage: StorageProvider>(
     storage: &Storage,
     resumption_psk_store: &ResumptionPskStore,
@@ -522,14 +531,39 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
     let mut psk_bundles = Vec::new();
 
     for psk_id in psk_ids.iter() {
-        log_crypto!(trace, "PSK store {:?}", resumption_psk_store);
+        // log_crypto!(trace, "PSK store {:?}", resumption_psk_store);
 
         match &psk_id.psk {
             Psk::Resumption(resumption) => {
-                if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
-                    psk_bundles.push((psk_id, psk_bundle.secret.clone()));
-                } else {
-                    return Err(PskError::KeyNotFound);
+                // eprintln!("resumption.psk_epoch(): {}", resumption.psk_epoch());
+                // eprintln!("resumption_psk_store: {:?}", resumption_psk_store);
+                match resumption.usage() {
+                    ResumptionPskUsage::Application => {
+                        // Application PSKs can be from any previous epoch.
+                        if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
+                            psk_bundles.push((psk_id, psk_bundle.secret.clone()));
+                        } else {
+                            debug_assert!(false, "Couldn't find resumption PSK key.");
+                            return Err(PskError::KeyNotFound);
+                        }
+                    }
+                    ResumptionPskUsage::Reinit => {
+                        debug_assert!(false, "Couldn't find resumption PSK key.");
+                        return Err(PskError::LibraryError(LibraryError::custom(
+                            "ReInit is not implemented yet. See #1685.",
+                        )));
+                    }
+                    ResumptionPskUsage::Branch => {
+                        // The branching PSK is not actually in the resumption store.
+                        // This PSK is from a different group and must have been
+                        // loaded into the store beforehand for epoch 0.
+                        if let Some(psk_bundle) = resumption_psk_store.get(0.into()) {
+                            psk_bundles.push((psk_id, psk_bundle.secret.clone()));
+                        } else {
+                            debug_assert!(false, "Couldn't find resumption PSK key.");
+                            return Err(PskError::KeyNotFound);
+                        }
+                    }
                 }
             }
             Psk::External(_) => {
@@ -573,6 +607,12 @@ pub mod store {
                 resumption_psk: vec![],
                 cursor: 0,
             }
+        }
+
+        /// Clear all PSKs.
+        pub(crate) fn clear(&mut self) {
+            self.resumption_psk = vec![];
+            self.cursor = 0;
         }
 
         /// Adds a new entry to the store.
