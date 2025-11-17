@@ -10,7 +10,7 @@ repository = "https://github.com/openmls/openmls/tree/main/openmls_libcrux_crypt
 readme = "../README.md"
 
 [dependencies]
-libcrux-chacha20poly1305 = { version = "0.0.3" }
+libcrux-chacha20poly1305 = { version = "0.0.4" }
 libcrux-ed25519 = { version = "0.0.3", features = ["rand"] }
 libcrux-hkdf = { version = "0.0.3" }
 libcrux-sha2 = { version = "0.0.3" }
