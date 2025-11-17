@@ -7,6 +7,7 @@ pub use crate::group::{
         CommitBuilder, CommitMessageBundle, Complete, ExternalCommitBuilder,
         ExternalCommitBuilderError, Initial, LoadedPsks,
     },
+    group_builder::*,
     Member, *,
 };
 
