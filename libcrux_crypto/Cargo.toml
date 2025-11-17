@@ -25,3 +25,9 @@ rand_chacha = "0.9"
 hpke-rs = { version = "0.3.0", features = ["hazmat", "serialization"] }
 hpke-rs-crypto = { version = "0.3.0" }
 hpke-rs-libcrux = { version = "0.3.0" }
+
+[features]
+extensions-draft-08 = [
+    "openmls_traits/extensions-draft-08",
+    "openmls_memory_storage/extensions-draft-08",
+]
