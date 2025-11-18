@@ -503,12 +503,14 @@ fn group_context_extension_proposal() {
     //     .process_message(alice_provider, commit.into_protocol_message().unwrap())
     //     .expect("Error processing commit.");
 
+    // TODO: Return group context update handle
     let unverified_message = alice_group
         .process_message1(alice_provider, commit.into_protocol_message().unwrap())
         .unwrap();
 
     let proposals = unverified_message.proposals().unwrap();
     for proposal in proposals {
+        // TODO: mutate new alice_group context handle
         let proposal = proposal
             .clone()
             .validate(alice_provider.crypto(), ciphersuite, ProtocolVersion::Mls10)
