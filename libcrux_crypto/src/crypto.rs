@@ -107,6 +107,7 @@ impl OpenMlsCrypto for CryptoProvider {
             .map_err(|e| match e {
                 libcrux_hkdf::ExpandError::OutputTooLong => CryptoError::HkdfOutputLengthInvalid,
                 libcrux_hkdf::ExpandError::ArgumentTooLong => CryptoError::InvalidLength,
+                // TODO: Potentially extend `CryptoError` with a variant for the `PrkTooShort` case
                 libcrux_hkdf::ExpandError::PrkTooShort => CryptoError::InvalidLength,
                 libcrux_hkdf::ExpandError::Unknown => CryptoError::CryptoLibraryError,
             })
