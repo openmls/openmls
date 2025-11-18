@@ -23,9 +23,16 @@ openmls_memory_storage = { workspace = true }
 rand = "0.9"
 tls_codec.workspace = true
 rand_chacha = "0.9"
+
 hpke-rs = { version = "0.3.0", features = [
     "hazmat",
     "serialization",
 ], git = "https://github.com/cryspen/hpke-rs" }
 hpke-rs-crypto = { version = "0.3.0", git = "https://github.com/cryspen/hpke-rs" }
 hpke-rs-libcrux = { version = "0.3.0", git = "https://github.com/cryspen/hpke-rs" }
+
+[features]
+extensions-draft-08 = [
+    "openmls_traits/extensions-draft-08",
+    "openmls_memory_storage/extensions-draft-08",
+]

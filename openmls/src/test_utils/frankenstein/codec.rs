@@ -8,10 +8,13 @@ use super::{
         FrankenExternalPubExtension, FrankenExternalSendersExtension, FrankenRatchetTreeExtension,
         FrankenRequiredCapabilitiesExtension,
     },
-    FrankenAddProposal, FrankenAppAckProposal, FrankenCustomProposal, FrankenExternalInitProposal,
+    FrankenAddProposal, FrankenCustomProposal, FrankenExternalInitProposal,
     FrankenPreSharedKeyProposal, FrankenProposal, FrankenProposalType, FrankenReInitProposal,
     FrankenRemoveProposal, FrankenUpdateProposal,
 };
+
+#[cfg(feature = "extensions-draft-08")]
+use super::FrankenAppEphemeralProposal;
 
 fn vlbytes_len_len(length: usize) -> usize {
     if length < 0x40 {
@@ -74,7 +77,8 @@ impl Size for FrankenProposal {
                 FrankenProposal::ReInit(p) => p.tls_serialized_len(),
                 FrankenProposal::ExternalInit(p) => p.tls_serialized_len(),
                 FrankenProposal::GroupContextExtensions(p) => p.tls_serialized_len(),
-                FrankenProposal::AppAck(p) => p.tls_serialized_len(),
+                #[cfg(feature = "extensions-draft-08")]
+                FrankenProposal::AppEphemeral(p) => p.tls_serialized_len(),
                 FrankenProposal::Custom(p) => p.tls_serialized_len(),
             }
     }
@@ -91,7 +95,8 @@ impl Serialize for FrankenProposal {
             FrankenProposal::ReInit(p) => p.tls_serialize(writer),
             FrankenProposal::ExternalInit(p) => p.tls_serialize(writer),
             FrankenProposal::GroupContextExtensions(p) => p.tls_serialize(writer),
-            FrankenProposal::AppAck(p) => p.tls_serialize(writer),
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposal::AppEphemeral(p) => p.tls_serialize(writer),
             FrankenProposal::Custom(p) => p.payload.tls_serialize(writer),
         }
         .map(|l| written + l)
@@ -126,8 +131,9 @@ impl Deserialize for FrankenProposal {
             FrankenProposalType::GroupContextExtensions => FrankenProposal::GroupContextExtensions(
                 Vec::<FrankenExtension>::tls_deserialize(bytes)?,
             ),
-            FrankenProposalType::AppAck => {
-                FrankenProposal::AppAck(FrankenAppAckProposal::tls_deserialize(bytes)?)
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposalType::AppEphemeral => {
+                FrankenProposal::AppEphemeral(FrankenAppEphemeralProposal::tls_deserialize(bytes)?)
             }
             FrankenProposalType::Custom(_) => {
                 let payload = VLBytes::tls_deserialize(bytes)?;

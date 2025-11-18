@@ -28,12 +28,16 @@ pub use prefix::Prefix16;
 mod input;
 mod prefix;
 
+/// Error evaluating the PPRF at the given input.
 #[derive(Debug, Clone, Error, PartialEq)]
 pub enum PprfError {
+    /// Index out of bounds.
     #[error("Index out of bounds")]
     IndexOutOfBounds,
+    /// Evaluating on punctured input.
     #[error("Evaluating on punctured input")]
     PuncturedInput,
+    /// Error deriving child node.
     #[error("Error deriving child node: {0}")]
     ChildDerivationError(#[from] CryptoError),
 }
@@ -201,8 +205,6 @@ where
 mod tests {
     use super::*;
     use openmls_test::openmls_test;
-    use openmls_traits::OpenMlsProvider;
-    use prefix::{Prefix32, PrefixVec};
     use rand::{
         rngs::{OsRng, StdRng},
         Rng, SeedableRng,
@@ -224,97 +226,70 @@ mod tests {
 
     #[openmls_test]
     fn evaluates_single_path() {
-        fn evaluate_single_path<P: Prefix>(
-            ciphersuite: Ciphersuite,
-            provider: &impl OpenMlsProvider,
-        ) {
-            let seed: [u8; 32] = OsRng.gen();
-            println!("Seed: {:?}", seed);
-            let mut rng = StdRng::from_seed(seed);
-            let root_secret = dummy_secret(&mut rng, ciphersuite);
-            let mut pprf = Pprf::<P>::new_for_test(root_secret);
-            let index = dummy_index::<P>(&mut rng);
-            let crypto = provider.crypto();
+        let provider = &Provider::default();
+        let seed: [u8; 32] = OsRng.gen();
+        println!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
+        let root_secret = dummy_secret(&mut rng, ciphersuite);
+        let mut pprf = Pprf::<Prefix16>::new_for_test(root_secret);
+        let index = dummy_index::<Prefix16>(&mut rng);
+        let crypto = provider.crypto();
 
-            let result = pprf.evaluate(crypto, ciphersuite, &index);
-            assert!(result.is_ok());
-            assert_eq!(result.as_ref().unwrap().as_slice().len(), 32);
-        }
-
-        evaluate_single_path::<PrefixVec>(ciphersuite, provider);
-        evaluate_single_path::<Prefix32>(ciphersuite, provider);
+        let result = pprf.evaluate(crypto, ciphersuite, &index);
+        assert!(result.is_ok());
+        assert_eq!(result.as_ref().unwrap().as_slice().len(), 32);
     }
 
     #[openmls_test]
     fn re_evaluation_of_same_index_returns_error() {
-        fn re_evaluation_of_same_index_returns_error<P: Prefix>(
-            ciphersuite: Ciphersuite,
-            provider: &impl OpenMlsProvider,
-        ) {
-            let seed: [u8; 32] = OsRng.gen();
-            println!("Seed: {:?}", seed);
-            let mut rng = StdRng::from_seed(seed);
-            let root_secret = dummy_secret(&mut rng, ciphersuite);
-            let mut pprf = Pprf::<P>::new_for_test(root_secret);
-            let index = dummy_index::<P>(&mut rng);
-            let crypto = provider.crypto();
+        let provider = &Provider::default();
+        let seed: [u8; 32] = OsRng.gen();
+        println!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
+        let root_secret = dummy_secret(&mut rng, ciphersuite);
+        let mut pprf = Pprf::<Prefix16>::new_for_test(root_secret);
+        let index = dummy_index::<Prefix16>(&mut rng);
+        let crypto = provider.crypto();
 
-            let _first = pprf.evaluate(crypto, ciphersuite, &index).unwrap();
-            let second = pprf
-                .evaluate(crypto, ciphersuite, &index)
-                .expect_err("Evaluation on same input should fail");
+        let _first = pprf.evaluate(crypto, ciphersuite, &index).unwrap();
+        let second = pprf
+            .evaluate(crypto, ciphersuite, &index)
+            .expect_err("Evaluation on same input should fail");
 
-            assert!(matches!(second, PprfError::PuncturedInput));
-        }
-        re_evaluation_of_same_index_returns_error::<PrefixVec>(ciphersuite, provider);
-        re_evaluation_of_same_index_returns_error::<Prefix32>(ciphersuite, provider);
+        assert!(matches!(second, PprfError::PuncturedInput));
     }
 
     #[openmls_test]
     fn different_indices_produce_different_results() {
-        fn different_indices_produce_different_results<P: Prefix>(
-            ciphersuite: Ciphersuite,
-            provider: &impl OpenMlsProvider,
-        ) {
-            let seed: [u8; 32] = OsRng.gen();
-            println!("Seed: {:?}", seed);
-            let mut rng = StdRng::from_seed(seed);
-            let root_secret = dummy_secret(&mut rng, ciphersuite);
-            let mut pprf = Pprf::<P>::new_for_test(root_secret);
-            let index1 = dummy_index::<P>(&mut rng);
-            let index2 = dummy_index::<P>(&mut rng);
-            let crypto = provider.crypto();
+        let provider = &Provider::default();
+        let seed: [u8; 32] = OsRng.gen();
+        println!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
+        let root_secret = dummy_secret(&mut rng, ciphersuite);
+        let mut pprf = Pprf::<Prefix16>::new_for_test(root_secret);
+        let index1 = dummy_index::<Prefix16>(&mut rng);
+        let index2 = dummy_index::<Prefix16>(&mut rng);
+        let crypto = provider.crypto();
 
-            let leaf1 = pprf.evaluate(crypto, ciphersuite, &index1).unwrap();
-            let leaf2 = pprf.evaluate(crypto, ciphersuite, &index2).unwrap();
+        let leaf1 = pprf.evaluate(crypto, ciphersuite, &index1).unwrap();
+        let leaf2 = pprf.evaluate(crypto, ciphersuite, &index2).unwrap();
 
-            assert_ne!(leaf1.as_slice(), leaf2.as_slice());
-        }
-
-        different_indices_produce_different_results::<PrefixVec>(ciphersuite, provider);
-        different_indices_produce_different_results::<Prefix32>(ciphersuite, provider);
+        assert_ne!(leaf1.as_slice(), leaf2.as_slice());
     }
 
     #[openmls_test]
     fn rejects_out_of_bounds_index() {
-        fn rejects_out_of_bounds_index<P: Prefix>(
-            ciphersuite: Ciphersuite,
-            provider: &impl OpenMlsProvider,
-        ) {
-            let seed: [u8; 32] = OsRng.gen();
-            println!("Seed: {:?}", seed);
-            let mut rng = StdRng::from_seed(seed);
-            let root_secret = dummy_secret(&mut rng, ciphersuite);
-            let mut pprf = Pprf::<P>::new_for_test(root_secret);
-            let index = random_vec(&mut rng, P::MAX_INPUT_LEN + 1); // Out of bounds
+        let provider = &Provider::default();
+        let seed: [u8; 32] = OsRng.gen();
+        println!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
+        let root_secret = dummy_secret(&mut rng, ciphersuite);
+        let mut pprf = Pprf::<Prefix16>::new_for_test(root_secret);
+        let index = random_vec(&mut rng, Prefix16::MAX_INPUT_LEN + 1); // Out of bounds
 
-            let crypto = provider.crypto();
+        let crypto = provider.crypto();
 
-            let result = pprf.evaluate(crypto, ciphersuite, &index);
-            assert!(matches!(result, Err(PprfError::IndexOutOfBounds)));
-        }
-
-        rejects_out_of_bounds_index::<PrefixVec>(ciphersuite, provider);
-        rejects_out_of_bounds_index::<Prefix32>(ciphersuite, provider);
+        let result = pprf.evaluate(crypto, ciphersuite, &index);
+        assert!(matches!(result, Err(PprfError::IndexOutOfBounds)));
     }
 }

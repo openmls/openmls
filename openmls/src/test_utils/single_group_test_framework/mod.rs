@@ -27,7 +27,8 @@ use std::collections::HashMap;
 type Name = &'static str;
 
 // TODO: only define this once
-pub(crate) fn generate_credential(
+/// Helper function for generating a credential.
+pub fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
     provider: &impl crate::storage::OpenMlsProvider,

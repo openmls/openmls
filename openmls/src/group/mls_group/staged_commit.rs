@@ -11,6 +11,9 @@ use super::proposal_store::{
     QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use super::proposal_store::QueuedAppEphemeralProposal;
+
 use super::{
     super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
@@ -470,10 +473,13 @@ impl MlsGroup {
     }
 }
 
+/// The staged commit state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) enum StagedCommitState {
+    /// The public group variant of the staged commit state.
     PublicState(Box<PublicStagedCommitState>),
+    /// The group member variant of the staged commit state.
     GroupMember(Box<MemberStagedCommitState>),
 }
 
@@ -481,7 +487,9 @@ pub(crate) enum StagedCommitState {
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub struct StagedCommit {
-    staged_proposal_queue: ProposalQueue,
+    /// A queue containing the proposals associated with the commit.
+    pub staged_proposal_queue: ProposalQueue,
+    /// The staged commit state.
     state: StagedCommitState,
 }
 
@@ -513,6 +521,15 @@ impl StagedCommit {
     /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].
     pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal<'_>> {
         self.staged_proposal_queue.psk_proposals()
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    /// Returns the AppEphemeral proposals that are covered by the Commit message as an iterator
+    /// over [`QueuedAppEphemeralProposal`].
+    pub fn queued_app_ephemeral_proposals(
+        &self,
+    ) -> impl Iterator<Item = QueuedAppEphemeralProposal<'_>> {
+        self.staged_proposal_queue.app_ephemeral_proposals()
     }
 
     /// Returns an iterator over all [`QueuedProposal`]s.
@@ -592,7 +609,6 @@ impl StagedCommit {
             StagedCommitState::GroupMember(ref gm) => gm.group_context(),
         }
     }
-
     /// Consume this [`StagedCommit`] and return the internal [`StagedCommitState`].
     pub(crate) fn into_state(self) -> StagedCommitState {
         self.state
@@ -628,7 +644,7 @@ impl StagedCommit {
     }
 }
 
-/// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
+/// This struct is used internally by [`StagedCommit`] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct MemberStagedCommitState {
