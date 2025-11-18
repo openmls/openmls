@@ -37,3 +37,7 @@ jobs:
         run: cargo build --workspace --all-targets --exclude openmls-fuzz
       - name: Test workspace
         run: cargo test --workspace --all-targets --exclude=openmls --exclude openmls-fuzz
+      - name: Build workspace with `extensions-draft-08` feature
+        run: cargo build --workspace -F extensions-draft-08 --all-targets --exclude openmls-fuzz
+      - name: Test workspace with `extensions-draft-08` feature
+        run: cargo test --workspace -F extensions-draft-08 --all-targets --exclude=openmls --exclude openmls-fuzz
