@@ -43,6 +43,9 @@ use tls_codec::{Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, Tl
 
 use super::LABEL_PREFIX;
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::ComponentId;
+
 /// HPKE labeled encryption errors.
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum Error {
@@ -54,6 +57,10 @@ pub(crate) enum Error {
     /// Decryption failed.
     #[error("Decryption failed.")]
     DecryptionFailed,
+    // TODO: these variants could be a different error type.
+    /// Serializing label failed
+    #[error("Serializing label failed.")]
+    LabelSerializationFailed,
 }
 
 impl From<tls_codec::Error> for Error {
@@ -100,6 +107,17 @@ pub(crate) fn encrypt_with_label(
     crypto: &impl OpenMlsCrypto,
 ) -> Result<HpkeCiphertext, Error> {
     let context: EncryptContext = (label, context).into();
+
+    encrypt_with_label_internal(public_key, context, plaintext, ciphersuite, crypto)
+}
+
+fn encrypt_with_label_internal(
+    public_key: &[u8],
+    context: EncryptContext,
+    plaintext: &[u8],
+    ciphersuite: Ciphersuite,
+    crypto: &impl OpenMlsCrypto,
+) -> Result<HpkeCiphertext, Error> {
     let context = context.tls_serialize_detached()?;
 
     log_crypto!(
@@ -123,6 +141,49 @@ pub(crate) fn encrypt_with_label(
     Ok(cipher)
 }
 
+#[derive(Debug, TlsSerialize, TlsSize)]
+#[cfg(feature = "extensions-draft-08")]
+pub(crate) struct ComponentOperationLabel {
+    base_label: VLBytes,
+    component_id: ComponentId,
+    label: VLBytes,
+}
+#[cfg(feature = "extensions-draft-08")]
+impl ComponentOperationLabel {
+    fn new(component_id: ComponentId, label: &str) -> Self {
+        let base_label = super::LABEL_PREFIX.to_owned() + "Application";
+        Self {
+            base_label: base_label.as_bytes().into(),
+            component_id,
+            label: label.as_bytes().into(),
+        }
+    }
+}
+
+#[cfg(feature = "extensions-draft-08")]
+pub fn safe_encrypt_with_label(
+    public_key: &[u8],
+    component_id: ComponentId,
+    label: &str,
+    context: &[u8],
+    plaintext: &[u8],
+    ciphersuite: Ciphersuite,
+    crypto: &impl OpenMlsCrypto,
+) -> Result<HpkeCiphertext, Error> {
+    let component_operation_label = ComponentOperationLabel::new(component_id, label);
+
+    let serialized_label = component_operation_label
+        .tls_serialize_detached()
+        .map_err(|_| Error::LabelSerializationFailed)?;
+
+    let context: EncryptContext = EncryptContext {
+        label: serialized_label.into(),
+        context: context.into(),
+    };
+
+    encrypt_with_label_internal(public_key, context, plaintext, ciphersuite, crypto)
+}
+
 /// Decrypt with HPKE and label.
 pub(crate) fn decrypt_with_label(
     private_key: &[u8],
@@ -133,6 +194,17 @@ pub(crate) fn decrypt_with_label(
     crypto: &impl OpenMlsCrypto,
 ) -> Result<Vec<u8>, Error> {
     let context: EncryptContext = (label, context).into();
+
+    decrypt_with_label_internal(private_key, context, ciphertext, ciphersuite, crypto)
+}
+
+fn decrypt_with_label_internal(
+    private_key: &[u8],
+    context: EncryptContext,
+    ciphertext: &HpkeCiphertext,
+    ciphersuite: Ciphersuite,
+    crypto: &impl OpenMlsCrypto,
+) -> Result<Vec<u8>, Error> {
     let context = context.tls_serialize_detached()?;
 
     log_crypto!(
@@ -156,4 +228,20 @@ pub(crate) fn decrypt_with_label(
     log_crypto!(debug, "* plaintext:   {plaintext:x?}");
 
     plaintext
+}
+
+#[cfg(feature = "extensions-draft-08")]
+/// Decrypt with HPKE and label.
+pub(crate) fn safe_decrypt_with_label(
+    private_key: &[u8],
+    component_id: ComponentId,
+    label: &str,
+    context: &[u8],
+    ciphertext: &HpkeCiphertext,
+    ciphersuite: Ciphersuite,
+    crypto: &impl OpenMlsCrypto,
+) -> Result<Vec<u8>, Error> {
+    let context: EncryptContext = (label, context).into();
+
+    decrypt_with_label_internal(private_key, context, ciphertext, ciphersuite, crypto)
 }
