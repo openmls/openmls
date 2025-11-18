@@ -4,7 +4,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     error::LibraryError,
     framing::Sender,
-    group::proposal_store::ProposalQueue,
+    group::{processing::ComponentData, proposal_store::ProposalQueue},
     messages::proposals::{AddProposal, ExternalInitProposal, Proposal, ProposalType},
     schedule::psk::PreSharedKeyId,
 };
@@ -54,9 +54,30 @@ impl PublicGroupDiff<'_> {
         &mut self,
         proposal_queue: &ProposalQueue,
         own_leaf_index: impl Into<Option<LeafNodeIndex>>,
+        app_data_dict_updates: Option<Vec<ComponentData>>,
     ) -> Result<ApplyProposalsValues, LibraryError> {
         log::debug!("Applying proposal");
         let mut self_removed = false;
+
+        // If there are app data update prpoposals, there must be a list (but it may be empty)
+        // 0x1234 is a placeholder for the actual proposal type id here
+        if proposal_queue
+            .queued_proposals()
+            .filter(|proposal| proposal.proposal().is_type(ProposalType::Custom(0x1234)))
+            .next()
+            .is_some()
+        {
+            // TODO: use a proper error here
+            let app_data_dict_updates = app_data_dict_updates.ok_or(LibraryError::custom(
+                "found an app data update proposal, need a value here",
+            ))?;
+            for update in app_data_dict_updates {
+                // TODO: apply proposed app data dict updates to diff here
+            }
+        } else if app_data_dict_updates.is_some() {
+            // TODO: return a proper error here
+            return Err(LibraryError::custom("got updates but we don't have a proposal that could have triggered the update, that doesn't make sense. erroring out"));
+        }
 
         // Process external init proposals. We do this before the removes, so we
         // know that removing "ourselves" (i.e. removing the group member in the

@@ -7,8 +7,11 @@ use openmls_traits::storage::StorageProvider as _;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as _;
 
-use super::proposal_store::{
-    QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
+use super::{
+    processing::ComponentData,
+    proposal_store::{
+        QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
+    },
 };
 
 #[cfg(feature = "extensions-draft-08")]
@@ -150,6 +153,7 @@ impl MlsGroup {
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
+        app_data_dict_updates: Option<Vec<ComponentData>>,
         provider: &impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
@@ -169,8 +173,11 @@ impl MlsGroup {
         // group context) and apply proposals.
         let mut diff = self.public_group.empty_diff();
 
-        let apply_proposals_values =
-            diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
+        let apply_proposals_values = diff.apply_proposals(
+            &proposal_queue,
+            self.own_leaf_index(),
+            app_data_dict_updates,
+        )?;
 
         // Determine if Commit has a path
         let (commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =

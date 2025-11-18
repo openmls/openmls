@@ -3,7 +3,7 @@
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
 
-use super::*;
+use super::{processing::AppDataDictionary, *};
 use crate::{
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, ConfirmedTranscriptHashInput},
@@ -46,6 +46,9 @@ pub struct GroupContext {
     tree_hash: VLBytes,
     confirmed_transcript_hash: VLBytes,
     extensions: Extensions,
+    #[tls_codec(skip)]
+    #[serde(skip)]
+    app_data_dict: AppDataDictionary,
 }
 
 #[cfg(any(feature = "test-utils", test))]
@@ -79,7 +82,12 @@ impl GroupContext {
             tree_hash: tree_hash.into(),
             confirmed_transcript_hash: confirmed_transcript_hash.into(),
             extensions,
+            app_data_dict: Default::default(),
         }
+    }
+
+    pub(crate) fn app_data_dict(&self) -> &AppDataDictionary {
+        &self.app_data_dict
     }
 
     /// Create the `GroupContext` needed upon creation of a new group.

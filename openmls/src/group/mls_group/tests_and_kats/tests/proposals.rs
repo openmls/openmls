@@ -13,6 +13,7 @@ use crate::{
             tests_and_kats::utils::{setup_alice_bob_group, setup_client},
             ProcessedMessageContent,
         },
+        processing::ComponentData,
         GroupContext, GroupId, MlsGroup, MlsGroupJoinConfig, StagedWelcome,
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
@@ -503,23 +504,52 @@ fn group_context_extension_proposal() {
     //     .process_message(alice_provider, commit.into_protocol_message().unwrap())
     //     .expect("Error processing commit.");
 
-    // TODO: Return group context update handle
     let unverified_message = alice_group
-        .process_message1(alice_provider, commit.into_protocol_message().unwrap())
+        .unprotect_message(alice_provider, commit.into_protocol_message().unwrap())
         .unwrap();
 
+    let mut app_data_updater = alice_group.app_data_dictionary_updater();
+
     let proposals = unverified_message.proposals().unwrap();
-    for proposal in proposals {
-        // TODO: mutate new alice_group context handle
+    for (i, proposal) in proposals.iter().enumerate() {
         let proposal = proposal
             .clone()
             .validate(alice_provider.crypto(), ciphersuite, ProtocolVersion::Mls10)
             .unwrap();
-        let proposal = proposal.as_reference().unwrap();
+
+        let proposal = match proposal {
+            ProposalOrRef::Proposal(proposal) => Some(proposal),
+            ProposalOrRef::Reference(reference) => alice_group
+                .proposal_store()
+                .proposals()
+                .find(|prop| prop.proposal_reference_ref() == &*reference)
+                .map(|prop| Box::new(prop.proposal().clone())),
+        }
+        .unwrap();
+
+        // this is some stupid dummy change
+        // here too we use 0x1234 for the app data update proposal type
+        if proposal.proposal_type() == ProposalType::Custom(0x1234) {
+            let old_value = app_data_updater
+                .get(i as u32)
+                .map(|component_data| String::from_utf8(component_data.data().as_slice().to_vec()))
+                .unwrap_or(Ok(String::new()))
+                .unwrap();
+
+            app_data_updater.set(ComponentData::new(
+                i as u32,
+                format!("{old_value},{proposal:?}",).as_bytes(),
+            ))
+        }
     }
 
+    // here we pass in the changes we made
     let processed_message = alice_group
-        .process_message2(alice_provider, unverified_message)
+        .process_unverified_message(
+            alice_provider,
+            unverified_message,
+            app_data_updater.changes(),
+        )
         .expect("Error processing commit.");
 
     match processed_message.into_content() {

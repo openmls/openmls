@@ -2,7 +2,8 @@ use super::{super::errors::*, *};
 use crate::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
-        mls_group::staged_commit::StagedCommitState, proposal_store::ProposalQueue, StagedCommit,
+        mls_group::staged_commit::StagedCommitState, processing::ComponentData,
+        proposal_store::ProposalQueue, StagedCommit,
     },
     messages::{
         proposals::{ProposalOrRef, ProposalType},
@@ -251,11 +252,18 @@ impl PublicGroup {
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
+        app_data_dict_updates: Option<Vec<ComponentData>>,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<StagedCommit, StageCommitError> {
         let (commit, proposal_queue, sender_index) = self.validate_commit(mls_content, crypto)?;
 
-        let staged_diff = self.stage_diff(mls_content, &proposal_queue, sender_index, crypto)?;
+        let staged_diff = self.stage_diff(
+            mls_content,
+            &proposal_queue,
+            sender_index,
+            app_data_dict_updates,
+            crypto,
+        )?;
         let staged_state = PublicStagedCommitState {
             staged_diff,
             update_path_leaf_node: commit.path.as_ref().map(|p| p.leaf_node().clone()),
@@ -271,12 +279,14 @@ impl PublicGroup {
         mls_content: &AuthenticatedContent,
         proposal_queue: &ProposalQueue,
         sender_index: LeafNodeIndex,
+        app_data_dict_updates: Option<Vec<ComponentData>>,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<StagedPublicGroupDiff, StageCommitError> {
         let ciphersuite = self.ciphersuite();
         let mut diff = self.empty_diff();
 
-        let apply_proposals_values = diff.apply_proposals(proposal_queue, None)?;
+        let apply_proposals_values =
+            diff.apply_proposals(proposal_queue, None, app_data_dict_updates)?;
 
         let commit = match mls_content.content() {
             FramedContentBody::Commit(commit) => commit,

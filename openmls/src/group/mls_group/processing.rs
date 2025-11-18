@@ -4,6 +4,8 @@ use std::mem;
 
 use errors::{CommitToPendingProposalsError, MergePendingCommitError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
+use serde::{Deserialize, Serialize};
+use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
     framing::mls_content::FramedContentBody,
@@ -14,6 +16,130 @@ use crate::{
 };
 
 use super::{errors::ProcessMessageError, *};
+
+/// the id of a component
+pub type ComponentId = u32;
+
+/// the data for a component
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    Deserialize,
+    Serialize,
+)]
+pub struct ComponentData {
+    component_id: ComponentId,
+    data: VLBytes,
+}
+
+impl ComponentData {
+    /// just for testing
+    pub(crate) fn new(id: ComponentId, data: &[u8]) -> Self {
+        Self {
+            component_id: id,
+            data: data.to_vec().into(),
+        }
+    }
+
+    /// the id of this component data
+    pub fn id(&self) -> ComponentId {
+        self.component_id
+    }
+
+    pub fn data(&self) -> &VLBytes {
+        &self.data
+    }
+}
+
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    Deserialize,
+    Serialize,
+)]
+pub struct AppDataDictionary {
+    /// the component data fields.
+    /// NOTE: These are ordered by component id
+    component_data: Vec<ComponentData>,
+}
+
+impl Default for AppDataDictionary {
+    fn default() -> Self {
+        Self {
+            component_data: vec![],
+        }
+    }
+}
+
+impl AppDataDictionary {
+    /// looks up the offset for the component_data with the provided id.
+    fn binary_search(&self, component_id: ComponentId) -> Result<usize, usize> {
+        self.component_data
+            .binary_search_by_key(&component_id, ComponentData::id)
+    }
+
+    /// looks up the component_data for the provided id.
+    fn search(&self, component_id: ComponentId) -> Option<&ComponentData> {
+        self.binary_search(component_id)
+            .ok()
+            .map(|offset| &self.component_data[offset])
+    }
+}
+
+/// keeps the old dictionary as well as the values that are being overwritten
+pub struct AppDataDictionaryUpdater<'a> {
+    old_dict: &'a AppDataDictionary,
+    new_entries: Option<AppDataDictionary>,
+}
+
+impl<'a> AppDataDictionaryUpdater<'a> {
+    /// get the component data
+    pub fn get(&self, component_id: ComponentId) -> Option<&ComponentData> {
+        self.new_entries
+            .as_ref()
+            .and_then(|new_entries| new_entries.search(component_id))
+            .or_else(|| self.old_dict.search(component_id))
+    }
+
+    /// sets a value in the new_entries. if we arleady have data for taht component id, overwrite
+    /// it. else add it in the right position.
+    pub fn set(&mut self, component_data: ComponentData) {
+        if self.new_entries.is_none() {
+            self.new_entries = Some(AppDataDictionary {
+                component_data: vec![component_data],
+            });
+            return;
+        }
+
+        let new_entries = self.new_entries.as_mut().unwrap();
+        match new_entries
+            .component_data
+            .binary_search_by_key(&component_data.id(), ComponentData::id)
+        {
+            Ok(offset) => new_entries.component_data[offset] = component_data,
+            Err(offset) => new_entries.component_data.insert(offset, component_data),
+        }
+    }
+
+    /// consumes the updater and returns just the changes, so we can pass them into
+    /// process_unverified_message
+    /// only returns Some if we actually called set
+    pub fn changes(self) -> Option<Vec<ComponentData>> {
+        Some(self.new_entries?.component_data)
+    }
+}
 
 impl MlsGroup {
     /// Parses incoming messages from the DS. Checks for syntactic errors and
@@ -30,36 +156,22 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
-        let unverified_message = self.process_message1(provider, message)?;
+        let unverified_message = self.unprotect_message(provider, message)?;
 
-        self.process_message2(provider, unverified_message)
+        self.process_unverified_message(provider, unverified_message, None)
     }
 
-    pub fn process_message2<Provider: OpenMlsProvider>(
-        &mut self,
-        provider: &Provider,
-        unverified_message: UnverifiedMessage,
-    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
-        // If this is a commit, we need to load the private key material we need for decryption.
-        let (old_epoch_keypairs, leaf_node_keypairs) =
-            if let ContentType::Commit = unverified_message.content_type() {
-                self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?
-            } else {
-                (vec![], vec![])
-            };
-
-        let processed_message = self.process_unverified_message(
-            provider,
-            unverified_message,
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-        )?;
-
-        Ok(processed_message)
+    /// returns a new thing for updating the app data
+    pub fn app_data_dictionary_updater<'a>(&'a self) -> AppDataDictionaryUpdater<'a> {
+        AppDataDictionaryUpdater {
+            old_dict: self.context().app_data_dict(),
+            new_entries: None,
+        }
     }
 
-    /// Step 1
-    pub fn process_message1<Provider: OpenMlsProvider>(
+    /// Parses and deprotects incoming messages from the DS. Checks for syntactic errors, but only
+    /// performs limited semantic checks.
+    pub fn unprotect_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
@@ -292,8 +404,7 @@ impl MlsGroup {
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
-        old_epoch_keypairs: Vec<EncryptionKeyPair>,
-        leaf_node_keypairs: Vec<EncryptionKeyPair>,
+        app_data_dict_updates: Option<Vec<ComponentData>>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Checks the following semantic validation:
         //  - ValSem010
@@ -329,10 +440,16 @@ impl MlsGroup {
                         }
                     }
                     FramedContentBody::Commit(_) => {
+                        // DELETE BEFORE MERGE: This was moved here from process_message2
+                        // Since this is a commit, we need to load the private key material we need for decryption.
+                        let (old_epoch_keypairs, leaf_node_keypairs) =
+                            self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
+
                         let staged_commit = self.stage_commit(
                             &content,
                             old_epoch_keypairs,
                             leaf_node_keypairs,
+                            app_data_dict_updates,
                             provider,
                         )?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))

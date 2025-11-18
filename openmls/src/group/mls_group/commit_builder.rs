@@ -481,7 +481,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let mut diff = group.public_group.empty_diff();
 
         // Apply proposals to tree
-        let apply_proposals_values = diff.apply_proposals(&proposal_queue, own_leaf_index)?;
+        // TODO: This None here may need to be updated with the app data updates
+        let apply_proposals_values = diff.apply_proposals(&proposal_queue, own_leaf_index, None)?;
         if apply_proposals_values.self_removed && !is_external_commit {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
