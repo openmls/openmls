@@ -245,13 +245,16 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
 
     /// Adds a GroupContextExtensions proposal for the provided [`Extensions`] to the list of
     /// proposals to be committed.
-    pub fn propose_group_context_extensions(mut self, extensions: Extensions) -> Self {
+    pub fn propose_group_context_extensions(
+        mut self,
+        extensions: Extensions,
+    ) -> Result<Self, CreateCommitError> {
+        let group_extensions = extensions;
+        let proposal = GroupContextExtensionProposal::new(group_extensions.try_into()?);
         self.stage
             .own_proposals
-            .push(Proposal::group_context_extensions(
-                GroupContextExtensionProposal::new(extensions),
-            ));
-        self
+            .push(Proposal::group_context_extensions(proposal));
+        Ok(self)
     }
 
     /// Adds a proposal to the proposals to be committed. To add multiple

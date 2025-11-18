@@ -359,9 +359,10 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
+        let group_context_extensions = extensions.try_into()?;
         let proposal = self.create_group_context_ext_proposal::<Provider>(
             self.framing_parameters(),
-            extensions,
+            group_context_extensions,
             signer,
         )?;
 
@@ -406,7 +407,7 @@ impl MlsGroup {
         // Build and stage Commit containing GroupContextExtensions proposal
         let bundle = self
             .commit_builder()
-            .propose_group_context_extensions(extensions)
+            .propose_group_context_extensions(extensions)?
             .load_psks(provider.storage())?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)?;

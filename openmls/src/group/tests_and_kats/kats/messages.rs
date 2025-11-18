@@ -238,7 +238,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let external_init_proposal = ExternalInitProposal::from(randombytes(32));
 
     let group_context_extensions_proposal =
-        GroupContextExtensionProposal::new(Extensions::default());
+        GroupContextExtensionProposal::new(ExtensionsForObject::<GroupContext>::default());
 
     let (proposal_pt, _) = alice_group
         .propose_add_member(

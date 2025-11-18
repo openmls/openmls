@@ -41,7 +41,13 @@ fn key_package_builder_leaf_node_extensions_validation() {
         .leaf_node_extensions(Extensions::single(extension))
         .unwrap_err();
 
-    assert_eq!(err, InvalidExtensionError::IllegalInLeafNodes);
+    assert_eq!(
+        err,
+        InvalidExtensionError::ExtensionTypeNotValidInObject {
+            illegal_extension: ExtensionType::ExternalSenders,
+            ty: std::any::type_name::<LeafNode>()
+        }
+    );
 }
 
 #[openmls_test::openmls_test]
