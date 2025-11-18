@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         if: matrix.os == 'macos-latest'
         run: brew install protobuf
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build workspace
