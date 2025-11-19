@@ -516,8 +516,7 @@ fn test_app_data_update_multi_remove_validate_incoming() {
     let protocol_message = message_in.try_into_protocol_message().unwrap();
 
     // NOTE: processing currently fails here with a ValidationError::InvalidMembershipTag.
-    let _err = bob
-        .group
+    bob.group
         .process_message(&bob.party.core_state.provider, protocol_message.clone())
-        .unwrap_err();
+        .unwrap();
 }
