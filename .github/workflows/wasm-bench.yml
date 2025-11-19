@@ -15,7 +15,7 @@ jobs:
   measure-wasm-size:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # Install the required target
       - uses: dtolnay/rust-toolchain@stable
         with:

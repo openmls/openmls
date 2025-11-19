@@ -15,8 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: hecrj/setup-rust-action@master
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
       - uses: Swatinem/rust-cache@v2
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v2
@@ -25,7 +27,7 @@ jobs:
       - name: Build docs
         run: |
           cd openmls
-          cargo doc --no-deps
+          RUSTDOCFLAGS="--cfg doc_cfg --cfg docsrs" cargo +nightly doc --all-features --no-deps
           touch ../target/doc/.nojekyll
           cd ..
           mkdir temp_docs
