@@ -87,13 +87,13 @@ pub struct EncryptContext {
 impl EncryptContext {
     /// Create a new [`EncryptContext`] from a string label and the content bytes.
     /// Ensures that the prefix LABEL_PREFIX is prepended to the label.
-    pub fn new(label: &str, context: VLBytes) -> Self {
+    pub(crate) fn new(label: &str, context: VLBytes) -> Self {
         let label_string = LABEL_PREFIX.to_owned() + label;
         let label = label_string.as_bytes().into();
         Self { label, context }
     }
     #[cfg(feature = "extensions-draft-08")]
-    pub fn new_from_component_operation_label(
+    pub(crate) fn new_from_component_operation_label(
         label: ComponentOperationLabel,
         context: VLBytes,
     ) -> Result<Self, Error> {
@@ -181,6 +181,7 @@ impl ComponentOperationLabel {
     }
 }
 
+#[allow(unused)]
 #[cfg(feature = "extensions-draft-08")]
 pub(crate) fn safe_encrypt_with_label(
     public_key: &[u8],
@@ -247,6 +248,7 @@ fn decrypt_with_label_internal(
     plaintext
 }
 
+#[allow(unused)]
 #[cfg(feature = "extensions-draft-08")]
 /// Decrypt with HPKE and label.
 pub(crate) fn safe_decrypt_with_label(
@@ -258,7 +260,12 @@ pub(crate) fn safe_decrypt_with_label(
     ciphersuite: Ciphersuite,
     crypto: &impl OpenMlsCrypto,
 ) -> Result<Vec<u8>, Error> {
-    let context: EncryptContext = (label, context).into();
+    let component_operation_label = ComponentOperationLabel::new(component_id, label);
+
+    let context: EncryptContext = EncryptContext::new_from_component_operation_label(
+        component_operation_label,
+        context.into(),
+    )?;
 
     decrypt_with_label_internal(private_key, context, ciphertext, ciphersuite, crypto)
 }
