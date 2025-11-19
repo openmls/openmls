@@ -11,6 +11,11 @@ use crate::{
 
 use super::*;
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::{
+    AppDataDictionary, AppDataDictionaryExtension, ComponentData, Extension, ExtensionType,
+};
+
 /// This struct contain the return values of the `apply_proposals()` function
 #[derive(Debug)]
 pub(crate) struct ApplyProposalsValues {
@@ -54,6 +59,7 @@ impl PublicGroupDiff<'_> {
         &mut self,
         proposal_queue: &ProposalQueue,
         own_leaf_index: impl Into<Option<LeafNodeIndex>>,
+        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<Vec<ComponentData>>,
     ) -> Result<ApplyProposalsValues, LibraryError> {
         log::debug!("Applying proposal");
         let mut self_removed = false;
@@ -169,6 +175,14 @@ impl PublicGroupDiff<'_> {
                 _ => None,
             });
 
+        // apply AppDataUpdate proposals to the updated GroupContext extensions
+        #[cfg(feature = "extensions-draft-08")]
+        let extensions = self.apply_app_data_update_proposals(
+            extensions,
+            proposal_queue,
+            app_data_dict_updates,
+        )?;
+
         let proposals_require_path = proposal_queue
             .queued_proposals()
             .any(|p| p.proposal().is_path_required());
@@ -188,5 +202,59 @@ impl PublicGroupDiff<'_> {
             external_init_proposal_option,
             extensions,
         })
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn apply_app_data_update_proposals(
+        &mut self,
+        mut group_context_extensions: Option<Extensions>,
+        proposal_queue: &ProposalQueue,
+        app_data_dict_updates: Option<Vec<ComponentData>>,
+    ) -> Result<Option<Extensions>, LibraryError> {
+        // If there are app data update proposals, there must be a list (but it may be empty)
+        if proposal_queue
+            .queued_proposals()
+            .filter(|proposal| proposal.proposal().is_type(ProposalType::AppDataUpdate))
+            .next()
+            .is_some()
+        {
+            // FIXME: skipping for now, since this is called on the CommitBuilder side with `None`
+            // provided for the `app_data_dict_updates`
+            let Some(app_data_dict_updates) = app_data_dict_updates else {
+                return Ok(group_context_extensions);
+            };
+
+            if !group_context_extensions.is_some() {
+                group_context_extensions.insert(Extensions::default());
+            }
+
+            let extensions = group_context_extensions.as_mut().unwrap();
+
+            // TODO: move this elsewhere?
+            if !extensions.contains(ExtensionType::AppDataDictionary) {
+                extensions
+                    .add(Extension::AppDataDictionary(
+                        AppDataDictionaryExtension::default(),
+                    ))
+                    .map_err(|_| LibraryError::custom("Could not add extension"))?;
+            }
+
+            let dictionary = extensions
+                .app_data_dictionary_mut()
+                .unwrap()
+                .dictionary_mut();
+
+            for update in app_data_dict_updates {
+                // TODO: apply proposed app data dict updates to diff here
+                dictionary.insert(update.id(), update.data().to_vec());
+            }
+        } else if app_data_dict_updates.is_some() {
+            // TODO: return a proper error here
+            return Err(LibraryError::custom(
+                    "got updates but we don't have a proposal that could have triggered the update, that doesn't make sense. erroring out"
+                    ));
+        }
+
+        Ok(group_context_extensions)
     }
 }

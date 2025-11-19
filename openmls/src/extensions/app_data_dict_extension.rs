@@ -43,6 +43,11 @@ impl ComponentData {
     pub fn into_parts(self) -> (ComponentId, VLBytes) {
         (self.component_id, self.data)
     }
+
+    /// Create a new ComponentData from parts.
+    pub fn from_parts(component_id: ComponentId, data: VLBytes) -> Self {
+        Self { component_id, data }
+    }
 }
 
 /// Serializable app data dictionary in the [`AppDataDictionaryExtension`].
@@ -68,6 +73,10 @@ impl AppDataDictionary {
     /// ordered by [`ComponentId`].
     pub fn entries(&self) -> impl Iterator<Item = &ComponentData> {
         self.component_data.values()
+    }
+
+    pub fn to_entries(self) -> Vec<ComponentData> {
+        self.entries().cloned().collect()
     }
 
     /// Returns the number of entries in the dictionary.

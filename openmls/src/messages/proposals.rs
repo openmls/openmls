@@ -689,7 +689,7 @@ pub enum ProposalOrRefType {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 #[repr(u8)]
 #[allow(missing_docs)]
-pub(crate) enum ProposalOrRef {
+pub enum ProposalOrRef {
     #[tls_codec(discriminant = 1)]
     Proposal(Box<Proposal>),
     Reference(Box<ProposalRef>),

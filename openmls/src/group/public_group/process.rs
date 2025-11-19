@@ -19,6 +19,9 @@ use crate::{
     messages::proposals::Proposal,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::ComponentData;
+
 use super::PublicGroup;
 
 impl PublicGroup {
@@ -177,7 +180,12 @@ impl PublicGroup {
         let unverified_message = self
             .parse_message(decrypted_message, None)
             .map_err(PublicProcessMessageError::from)?;
-        self.process_unverified_message(crypto, unverified_message)
+        self.process_unverified_message(
+            crypto,
+            unverified_message,
+            #[cfg(feature = "extensions-draft-08")]
+            None,
+        )
     }
 }
 
@@ -212,6 +220,7 @@ impl PublicGroup {
         &self,
         crypto: &impl OpenMlsCrypto,
         unverified_message: UnverifiedMessage,
+        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<Vec<ComponentData>>,
     ) -> Result<ProcessedMessage, PublicProcessMessageError> {
         // Checks the following semantic validation:
         //  - ValSem010
@@ -244,7 +253,12 @@ impl PublicGroup {
                         }
                     }
                     FramedContentBody::Commit(_) => {
-                        let staged_commit = self.stage_commit(&content, crypto)?;
+                        let staged_commit = self.stage_commit(
+                            &content,
+                            crypto,
+                            #[cfg(feature = "extensions-draft-08")]
+                            app_data_dict_updates,
+                        )?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                 };

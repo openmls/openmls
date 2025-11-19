@@ -549,7 +549,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let mut diff = group.public_group.empty_diff();
 
         // Apply proposals to tree
-        let apply_proposals_values = diff.apply_proposals(&proposal_queue, own_leaf_index)?;
+        let apply_proposals_values = diff.apply_proposals(
+            &proposal_queue,
+            own_leaf_index,
+            // NOTE: AppDataUpdates are not passed in here, but rather applied later
+            #[cfg(feature = "extensions-draft-08")]
+            None,
+        )?;
         if apply_proposals_values.self_removed && !is_external_commit {
             return Err(CreateCommitError::CannotRemoveSelf);
         }

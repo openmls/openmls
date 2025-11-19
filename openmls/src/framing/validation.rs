@@ -31,6 +31,7 @@ use crate::{
     error::LibraryError,
     extensions::ExternalSendersExtension,
     group::{errors::ValidationError, mls_group::staged_commit::StagedCommit},
+    messages::proposals_in::ProposalOrRefIn,
     tree::sender_ratchet::SenderRatchetConfiguration,
     versions::ProtocolVersion,
 };
@@ -219,7 +220,7 @@ pub(crate) enum SenderContext {
 /// The [`OpenMlsSignaturePublicKey`] is used to verify the signature of the
 /// message.
 #[derive(Debug, Clone)]
-pub(crate) struct UnverifiedMessage {
+pub struct UnverifiedMessage {
     verifiable_content: VerifiableAuthenticatedContentIn,
     credential: Credential,
     sender_pk: OpenMlsSignaturePublicKey,
@@ -264,6 +265,10 @@ impl UnverifiedMessage {
     /// Get the content type of the message.
     pub(crate) fn content_type(&self) -> ContentType {
         self.verifiable_content.content_type()
+    }
+
+    pub fn proposals(&self) -> Option<&[ProposalOrRefIn]> {
+        self.verifiable_content.content().proposals()
     }
 }
 
