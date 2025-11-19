@@ -6,7 +6,10 @@ use crate::{
     error::LibraryError,
     framing::SenderContext,
     group::{errors::ValidationError, GroupEpoch, GroupId},
-    messages::{proposals_in::ProposalIn, CommitIn},
+    messages::{
+        proposals_in::{ProposalIn, ProposalOrRefIn},
+        CommitIn,
+    },
     versions::ProtocolVersion,
 };
 
@@ -73,6 +76,13 @@ impl FramedContentIn {
                 .body
                 .validate(ciphersuite, crypto, sender_context, protocol_version)?,
         })
+    }
+
+    pub(crate) fn proposals(&self) -> Option<&[ProposalOrRefIn]> {
+        match &self.body {
+            FramedContentBodyIn::Commit(commit_in) => Some(commit_in.proposals()),
+            _ => None,
+        }
     }
 }
 

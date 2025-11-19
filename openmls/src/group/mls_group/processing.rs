@@ -14,9 +14,53 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::AppDataDictionaryExtension;
+use crate::extensions::{
+    AppDataDictionary, AppDataDictionaryExtension, ComponentData, ComponentId,
+};
 
 use super::{errors::ProcessMessageError, *};
+
+#[cfg(feature = "extensions-draft-08")]
+/// keeps the old dictionary as well as the values that are being overwritten
+pub struct AppDataDictionaryUpdater<'a> {
+    old_dict: Option<&'a AppDataDictionary>,
+    new_entries: Option<AppDataDictionary>,
+}
+
+#[cfg(feature = "extensions-draft-08")]
+impl<'a> AppDataDictionaryUpdater<'a> {
+    /// get the component data
+    pub fn get(&self, component_id: ComponentId) -> Option<&ComponentData> {
+        /*
+        self.new_entries
+            .as_ref()
+            .and_then(|new_entries| new_entries.search(component_id))
+            .or_else(|| self.old_dict.search(component_id))
+        */
+        todo!()
+    }
+
+    /// sets a value in the new_entries. if we already have data for that component id, overwrite
+    /// it. else add it in the right position.
+    pub fn set(&mut self, component_data: ComponentData) {
+        let (id, data) = component_data.into_parts();
+
+        if self.new_entries.is_none() {
+            self.new_entries = Some(AppDataDictionary::new());
+        }
+
+        let new_entries = self.new_entries.as_mut().unwrap();
+
+        new_entries.insert(id, data.into());
+    }
+
+    /// consumes the updater and returns just the changes, so we can pass them into
+    /// process_unverified_message
+    /// only returns Some if we actually called set
+    pub fn changes(self) -> Option<Vec<ComponentData>> {
+        self.new_entries.map(|dict| dict.to_entries())
+    }
+}
 
 impl MlsGroup {
     /// Parses incoming messages from the DS. Checks for syntactic errors and
@@ -33,6 +77,32 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+        let unverified_message = self.unprotect_message(provider, message)?;
+
+        self.process_unverified_message(
+            provider,
+            unverified_message,
+            #[cfg(feature = "extensions-draft-08")]
+            None,
+        )
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    /// returns a new thing for updating the app data
+    pub fn app_data_dictionary_updater<'a>(&'a self) -> AppDataDictionaryUpdater<'a> {
+        AppDataDictionaryUpdater {
+            old_dict: self.context().app_data_dict(),
+            new_entries: None,
+        }
+    }
+
+    /// Parses and deprotects incoming messages from the DS. Checks for syntactic errors, but only
+    /// performs limited semantic checks.
+    pub fn unprotect_message<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        message: impl Into<ProtocolMessage>,
+    ) -> Result<UnverifiedMessage, ProcessMessageError<Provider::StorageError>> {
         // Make sure we are still a member of the group
         if !self.is_active() {
             return Err(ProcessMessageError::GroupStateError(
@@ -68,26 +138,6 @@ impl MlsGroup {
         let decrypted_message =
             self.decrypt_message(provider.crypto(), message, &sender_ratchet_configuration)?;
 
-        let unverified_message = self
-            .public_group
-            .parse_message(decrypted_message, &self.message_secrets_store)
-            .map_err(ProcessMessageError::from)?;
-
-        // If this is a commit, we need to load the private key material we need for decryption.
-        let (old_epoch_keypairs, leaf_node_keypairs) =
-            if let ContentType::Commit = unverified_message.content_type() {
-                self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?
-            } else {
-                (vec![], vec![])
-            };
-
-        let processed_message = self.process_unverified_message(
-            provider,
-            unverified_message,
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-        )?;
-
         // Persist the secret tree if it was modified to ensure forward secrecy
         if will_modify_secret_tree {
             provider
@@ -96,7 +146,12 @@ impl MlsGroup {
                 .map_err(ProcessMessageError::StorageError)?;
         }
 
-        Ok(processed_message)
+        let unverified_message = self
+            .public_group
+            .parse_message(decrypted_message, &self.message_secrets_store)
+            .map_err(ProcessMessageError::from)?;
+
+        Ok(unverified_message)
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
@@ -276,8 +331,7 @@ impl MlsGroup {
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
-        old_epoch_keypairs: Vec<EncryptionKeyPair>,
-        leaf_node_keypairs: Vec<EncryptionKeyPair>,
+        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<Vec<ComponentData>>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Checks the following semantic validation:
         //  - ValSem010
@@ -313,37 +367,19 @@ impl MlsGroup {
                         }
                     }
                     FramedContentBody::Commit(_) => {
+                        // DELETE BEFORE MERGE: This was moved here from process_message2
+                        // Since this is a commit, we need to load the private key material we need for decryption.
+                        let (old_epoch_keypairs, leaf_node_keypairs) =
+                            self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
+
                         let staged_commit = self.stage_commit(
                             &content,
                             old_epoch_keypairs,
                             leaf_node_keypairs,
+                            #[cfg(feature = "extensions-draft-08")]
+                            app_data_dict_updates,
                             provider,
                         )?;
-
-                        #[cfg(feature = "extensions-draft-08")]
-                        let staged_commit = {
-                            let mut staged_commit = staged_commit;
-                            if staged_commit.app_data_update() {
-                                // insert a new AppDataDictionary extension if it does not exist
-                                let extensions = staged_commit
-                                    .state
-                                    .staged_diff_mut()
-                                    .group_context_mut()
-                                    .extensions_mut();
-
-                                // TODO: move this elsewhere?
-                                if !extensions.contains(ExtensionType::AppDataDictionary) {
-                                    extensions
-                                        .add(Extension::AppDataDictionary(
-                                            AppDataDictionaryExtension::default(),
-                                        ))
-                                        .map_err(|_| {
-                                            LibraryError::custom("Could not add extension")
-                                        })?;
-                                }
-                            }
-                            staged_commit
-                        };
 
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }

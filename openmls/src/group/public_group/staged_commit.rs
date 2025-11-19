@@ -10,6 +10,9 @@ use crate::{
     },
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::ComponentData;
+
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub struct PublicStagedCommitState {
@@ -256,10 +259,18 @@ impl PublicGroup {
         &self,
         mls_content: &AuthenticatedContent,
         crypto: &impl OpenMlsCrypto,
+        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<Vec<ComponentData>>,
     ) -> Result<StagedCommit, StageCommitError> {
         let (commit, proposal_queue, sender_index) = self.validate_commit(mls_content, crypto)?;
 
-        let staged_diff = self.stage_diff(mls_content, &proposal_queue, sender_index, crypto)?;
+        let staged_diff = self.stage_diff(
+            mls_content,
+            &proposal_queue,
+            sender_index,
+            crypto,
+            #[cfg(feature = "extensions-draft-08")]
+            app_data_dict_updates,
+        )?;
         let staged_state = PublicStagedCommitState {
             staged_diff,
             update_path_leaf_node: commit.path.as_ref().map(|p| p.leaf_node().clone()),
@@ -276,11 +287,18 @@ impl PublicGroup {
         proposal_queue: &ProposalQueue,
         sender_index: LeafNodeIndex,
         crypto: &impl OpenMlsCrypto,
+        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<Vec<ComponentData>>,
     ) -> Result<StagedPublicGroupDiff, StageCommitError> {
         let ciphersuite = self.ciphersuite();
         let mut diff = self.empty_diff();
 
-        let apply_proposals_values = diff.apply_proposals(proposal_queue, None)?;
+        // TODO: This None here may need to be updated with the app data updates
+        let apply_proposals_values = diff.apply_proposals(
+            proposal_queue,
+            None,
+            #[cfg(feature = "extensions-draft-08")]
+            app_data_dict_updates,
+        )?;
 
         let commit = match mls_content.content() {
             FramedContentBody::Commit(commit) => commit,

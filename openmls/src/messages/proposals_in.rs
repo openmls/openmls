@@ -257,7 +257,7 @@ impl UpdateProposalIn {
 )]
 #[repr(u8)]
 #[allow(missing_docs)]
-pub(crate) enum ProposalOrRefIn {
+pub enum ProposalOrRefIn {
     #[tls_codec(discriminant = 1)]
     Proposal(Box<ProposalIn>),
     Reference(Box<ProposalRef>),
@@ -265,7 +265,7 @@ pub(crate) enum ProposalOrRefIn {
 
 impl ProposalOrRefIn {
     /// Returns a [`ProposalOrRef`] after successful validation.
-    pub(crate) fn validate(
+    pub fn validate(
         self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
