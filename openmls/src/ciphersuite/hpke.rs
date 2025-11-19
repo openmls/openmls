@@ -159,9 +159,11 @@ fn encrypt_with_label_internal(
     Ok(cipher)
 }
 
+/// Label for safe encryption/decryption as defined in Section 4.2 of the MLS Extensions draft
 #[derive(Debug, TlsSerialize, TlsSize)]
 #[cfg(feature = "extensions-draft-08")]
 pub(crate) struct ComponentOperationLabel {
+    /// LABEL_PREFIX + "Application"
     base_label: VLBytes,
     component_id: ComponentId,
     label: VLBytes,
