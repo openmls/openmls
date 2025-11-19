@@ -547,11 +547,11 @@ impl KeyPackageBuilder {
     ) -> Result<KeyPackageBundle, KeyPackageNewError> {
         self.ensure_last_resort();
 
-        // Inject GREASE values only if using default capabilities
-        let capabilities = match self.leaf_node_capabilities {
-            Some(caps) => caps,
-            None => Capabilities::default().inject_grease_values(provider.rand()),
-        };
+        // Always inject GREASE values to ensure extensibility
+        let capabilities = self
+            .leaf_node_capabilities
+            .unwrap_or_default()
+            .inject_grease_values(provider.rand());
 
         let KeyPackageCreationResult {
             key_package,

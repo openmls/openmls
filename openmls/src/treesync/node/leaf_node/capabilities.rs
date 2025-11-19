@@ -208,7 +208,8 @@ impl Capabilities {
 
     /// Add random GREASE values to the capabilities to ensure extensibility.
     ///
-    /// This adds one random GREASE value to each capability list:
+    /// This adds one random GREASE value to each capability list if no GREASE
+    /// value is already present:
     /// - Ciphersuites
     /// - Extensions
     /// - Proposals
@@ -224,27 +225,27 @@ impl Capabilities {
         use crate::messages::proposals::ProposalType;
         use openmls_traits::types::VerifiableCiphersuite;
 
-        // Add GREASE ciphersuite
-        let grease_cs = VerifiableCiphersuite::new(crate::grease::random_grease_value(rand));
-        if !self.ciphersuites.contains(&grease_cs) {
+        // Add GREASE ciphersuite if none present
+        if !self.ciphersuites.iter().any(|cs| cs.is_grease()) {
+            let grease_cs = VerifiableCiphersuite::new(crate::grease::random_grease_value(rand));
             self.ciphersuites.push(grease_cs);
         }
 
-        // Add GREASE extension
-        let grease_ext = ExtensionType::Grease(crate::grease::random_grease_value(rand));
-        if !self.extensions.contains(&grease_ext) {
+        // Add GREASE extension if none present
+        if !self.extensions.iter().any(|ext| ext.is_grease()) {
+            let grease_ext = ExtensionType::Grease(crate::grease::random_grease_value(rand));
             self.extensions.push(grease_ext);
         }
 
-        // Add GREASE proposal
-        let grease_prop = ProposalType::Grease(crate::grease::random_grease_value(rand));
-        if !self.proposals.contains(&grease_prop) {
+        // Add GREASE proposal if none present
+        if !self.proposals.iter().any(|prop| prop.is_grease()) {
+            let grease_prop = ProposalType::Grease(crate::grease::random_grease_value(rand));
             self.proposals.push(grease_prop);
         }
 
-        // Add GREASE credential
-        let grease_cred = CredentialType::Grease(crate::grease::random_grease_value(rand));
-        if !self.credentials.contains(&grease_cred) {
+        // Add GREASE credential if none present
+        if !self.credentials.iter().any(|cred| cred.is_grease()) {
+            let grease_cred = CredentialType::Grease(crate::grease::random_grease_value(rand));
             self.credentials.push(grease_cred);
         }
 
