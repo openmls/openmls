@@ -205,6 +205,51 @@ impl Capabilities {
     pub(crate) fn contains_ciphersuite(&self, ciphersuite: VerifiableCiphersuite) -> bool {
         self.ciphersuites().contains(&ciphersuite)
     }
+
+    /// Add random GREASE values to the capabilities to ensure extensibility.
+    ///
+    /// This adds one random GREASE value to each capability list:
+    /// - Ciphersuites
+    /// - Extensions
+    /// - Proposals
+    /// - Credentials
+    ///
+    /// GREASE values are used per [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5).
+    pub(crate) fn inject_grease_values(
+        mut self,
+        rand: &impl openmls_traits::random::OpenMlsRand,
+    ) -> Self {
+        use crate::credentials::CredentialType;
+        use crate::extensions::ExtensionType;
+        use crate::messages::proposals::ProposalType;
+        use openmls_traits::types::VerifiableCiphersuite;
+
+        // Add GREASE ciphersuite
+        let grease_cs = VerifiableCiphersuite::new(crate::grease::random_grease_value(rand));
+        if !self.ciphersuites.contains(&grease_cs) {
+            self.ciphersuites.push(grease_cs);
+        }
+
+        // Add GREASE extension
+        let grease_ext = ExtensionType::Grease(crate::grease::random_grease_value(rand));
+        if !self.extensions.contains(&grease_ext) {
+            self.extensions.push(grease_ext);
+        }
+
+        // Add GREASE proposal
+        let grease_prop = ProposalType::Grease(crate::grease::random_grease_value(rand));
+        if !self.proposals.contains(&grease_prop) {
+            self.proposals.push(grease_prop);
+        }
+
+        // Add GREASE credential
+        let grease_cred = CredentialType::Grease(crate::grease::random_grease_value(rand));
+        if !self.credentials.contains(&grease_cred) {
+            self.credentials.push(grease_cred);
+        }
+
+        self
+    }
 }
 
 /// A helper for building [`Capabilities`]
@@ -326,8 +371,9 @@ mod tests {
             Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448.into(),
             Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384.into(),
             VerifiableCiphersuite::new(0x0000),
-            VerifiableCiphersuite::new(0x0A0A),
-            VerifiableCiphersuite::new(0x7A7A),
+            // Use non-GREASE values (GREASE pattern is 0x_A_A)
+            VerifiableCiphersuite::new(0x0B0B),
+            VerifiableCiphersuite::new(0x7C7C),
             VerifiableCiphersuite::new(0xF000),
             VerifiableCiphersuite::new(0xFFFF),
         ];
@@ -337,13 +383,15 @@ mod tests {
             ExtensionType::Unknown(0xFAFA),
         ];
 
-        let proposals = vec![ProposalType::Custom(0x7A7A)];
+        // Use non-GREASE values
+        let proposals = vec![ProposalType::Custom(0x7C7C)];
 
         let credentials = vec![
             CredentialType::Basic,
             CredentialType::X509,
             CredentialType::Other(0x0000),
-            CredentialType::Other(0x7A7A),
+            // Use non-GREASE values
+            CredentialType::Other(0x7C7C),
             CredentialType::Other(0xFFFF),
         ];
 

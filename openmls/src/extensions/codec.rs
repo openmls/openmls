@@ -118,8 +118,8 @@ impl Deserialize for Extension {
             ExtensionType::LastResort => {
                 Extension::LastResort(LastResortExtension::tls_deserialize(&mut extension_data)?)
             }
-            ExtensionType::Unknown(unknown) => {
-                Extension::Unknown(unknown, UnknownExtension(extension_data.to_vec()))
+            ExtensionType::Grease(grease) | ExtensionType::Unknown(grease) => {
+                Extension::Unknown(grease, UnknownExtension(extension_data.to_vec()))
             }
         })
     }

@@ -103,6 +103,9 @@ pub enum ExtensionType {
     /// scenario.
     LastResort,
 
+    /// A GREASE extension type for ensuring extensibility.
+    Grease(u16),
+
     /// A currently unknown extension type.
     Unknown(u16),
 }
@@ -116,7 +119,9 @@ impl ExtensionType {
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => true,
-            ExtensionType::LastResort | ExtensionType::Unknown(_) => false,
+            ExtensionType::LastResort | ExtensionType::Grease(_) | ExtensionType::Unknown(_) => {
+                false
+            }
         }
     }
 
@@ -132,8 +137,16 @@ impl ExtensionType {
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => Some(false),
             ExtensionType::ApplicationId => Some(true),
-            ExtensionType::Unknown(_) => None,
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) => None,
         }
+    }
+
+    /// Returns true if this is a GREASE extension type.
+    ///
+    /// GREASE values are used to ensure implementations properly handle unknown
+    /// extension types. See [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5).
+    pub fn is_grease(&self) -> bool {
+        matches!(self, ExtensionType::Grease(_))
     }
 }
 
@@ -184,6 +197,7 @@ impl From<u16> for ExtensionType {
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
             10 => ExtensionType::LastResort,
+            unknown if crate::grease::is_grease_value(unknown) => ExtensionType::Grease(unknown),
             unknown => ExtensionType::Unknown(unknown),
         }
     }
@@ -198,6 +212,7 @@ impl From<ExtensionType> for u16 {
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
             ExtensionType::LastResort => 10,
+            ExtensionType::Grease(value) => value,
             ExtensionType::Unknown(unknown) => unknown,
         }
     }
