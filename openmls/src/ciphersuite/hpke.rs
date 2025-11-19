@@ -43,6 +43,9 @@ use tls_codec::{Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, Tl
 
 use super::LABEL_PREFIX;
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::ComponentId;
+
 /// HPKE labeled encryption errors.
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum Error {
@@ -54,6 +57,11 @@ pub(crate) enum Error {
     /// Decryption failed.
     #[error("Decryption failed.")]
     DecryptionFailed,
+    #[cfg(feature = "extensions-draft-08")]
+    // TODO: these variants could be a different error type.
+    /// Serializing label failed
+    #[error("Serializing label failed.")]
+    LabelSerializationFailed,
 }
 
 impl From<tls_codec::Error> for Error {
@@ -71,16 +79,33 @@ impl From<CryptoError> for Error {
 /// Context for HPKE encryption
 #[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 pub struct EncryptContext {
+    /// Prefixed with LABEL_PREFIX
     label: VLBytes,
     context: VLBytes,
 }
 
 impl EncryptContext {
     /// Create a new [`EncryptContext`] from a string label and the content bytes.
-    pub fn new(label: &str, context: VLBytes) -> Self {
+    /// Ensures that the prefix LABEL_PREFIX is prepended to the label.
+    pub(crate) fn new(label: &str, context: VLBytes) -> Self {
         let label_string = LABEL_PREFIX.to_owned() + label;
         let label = label_string.as_bytes().into();
         Self { label, context }
+    }
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn new_from_component_operation_label(
+        label: ComponentOperationLabel,
+        context: VLBytes,
+    ) -> Result<Self, Error> {
+        // The ComponentOperationLabel is already prefixed
+        let serialized_label = label
+            .tls_serialize_detached()
+            .map_err(|_| Error::LabelSerializationFailed)?;
+
+        Ok(Self {
+            label: serialized_label.into(),
+            context: context.into(),
+        })
     }
 }
 
@@ -100,12 +125,24 @@ pub(crate) fn encrypt_with_label(
     crypto: &impl OpenMlsCrypto,
 ) -> Result<HpkeCiphertext, Error> {
     let context: EncryptContext = (label, context).into();
-    let context = context.tls_serialize_detached()?;
 
     log_crypto!(
         debug,
         "HPKE Encrypt with label `{label}` and ciphersuite `{ciphersuite:?}`:"
     );
+
+    encrypt_with_label_internal(public_key, context, plaintext, ciphersuite, crypto)
+}
+
+fn encrypt_with_label_internal(
+    public_key: &[u8],
+    context: EncryptContext,
+    plaintext: &[u8],
+    ciphersuite: Ciphersuite,
+    crypto: &impl OpenMlsCrypto,
+) -> Result<HpkeCiphertext, Error> {
+    let context = context.tls_serialize_detached()?;
+
     log_crypto!(debug, "* context:     {context:x?}");
     log_crypto!(debug, "* public key:  {public_key:x?}");
     log_crypto!(debug, "* plaintext:   {plaintext:x?}");
@@ -123,6 +160,49 @@ pub(crate) fn encrypt_with_label(
     Ok(cipher)
 }
 
+/// Label for safe encryption/decryption as defined in Section 4.2 of the MLS Extensions draft
+#[derive(Debug, TlsSerialize, TlsSize)]
+#[cfg(feature = "extensions-draft-08")]
+pub(crate) struct ComponentOperationLabel {
+    /// LABEL_PREFIX + "Application"
+    base_label: VLBytes,
+    component_id: ComponentId,
+    label: VLBytes,
+}
+#[cfg(feature = "extensions-draft-08")]
+impl ComponentOperationLabel {
+    /// Creates a new ComponentOperationLabel, prefixed with LABEL_PREFIX
+    pub fn new(component_id: ComponentId, label: &str) -> Self {
+        let base_label = super::LABEL_PREFIX.to_owned() + "Application";
+        Self {
+            base_label: base_label.as_bytes().into(),
+            component_id,
+            label: label.as_bytes().into(),
+        }
+    }
+}
+
+#[allow(unused)]
+#[cfg(feature = "extensions-draft-08")]
+pub(crate) fn safe_encrypt_with_label(
+    public_key: &[u8],
+    component_id: ComponentId,
+    label: &str,
+    context: &[u8],
+    plaintext: &[u8],
+    ciphersuite: Ciphersuite,
+    crypto: &impl OpenMlsCrypto,
+) -> Result<HpkeCiphertext, Error> {
+    let component_operation_label = ComponentOperationLabel::new(component_id, label);
+
+    let context: EncryptContext = EncryptContext::new_from_component_operation_label(
+        component_operation_label,
+        context.into(),
+    )?;
+
+    encrypt_with_label_internal(public_key, context, plaintext, ciphersuite, crypto)
+}
+
 /// Decrypt with HPKE and label.
 pub(crate) fn decrypt_with_label(
     private_key: &[u8],
@@ -132,13 +212,25 @@ pub(crate) fn decrypt_with_label(
     ciphersuite: Ciphersuite,
     crypto: &impl OpenMlsCrypto,
 ) -> Result<Vec<u8>, Error> {
-    let context: EncryptContext = (label, context).into();
-    let context = context.tls_serialize_detached()?;
-
     log_crypto!(
         debug,
         "HPKE Decrypt with label `{label}` and `ciphersuite` {ciphersuite:?}:"
     );
+
+    let context: EncryptContext = (label, context).into();
+
+    decrypt_with_label_internal(private_key, context, ciphertext, ciphersuite, crypto)
+}
+
+fn decrypt_with_label_internal(
+    private_key: &[u8],
+    context: EncryptContext,
+    ciphertext: &HpkeCiphertext,
+    ciphersuite: Ciphersuite,
+    crypto: &impl OpenMlsCrypto,
+) -> Result<Vec<u8>, Error> {
+    let context = context.tls_serialize_detached()?;
+
     log_crypto!(debug, "* context:     {context:x?}");
     log_crypto!(debug, "* private key: {private_key:x?}");
     log_crypto!(debug, "* ciphertext:  {ciphertext:x?}");
@@ -156,4 +248,26 @@ pub(crate) fn decrypt_with_label(
     log_crypto!(debug, "* plaintext:   {plaintext:x?}");
 
     plaintext
+}
+
+#[allow(unused)]
+#[cfg(feature = "extensions-draft-08")]
+/// Decrypt with HPKE and label.
+pub(crate) fn safe_decrypt_with_label(
+    private_key: &[u8],
+    component_id: ComponentId,
+    label: &str,
+    context: &[u8],
+    ciphertext: &HpkeCiphertext,
+    ciphersuite: Ciphersuite,
+    crypto: &impl OpenMlsCrypto,
+) -> Result<Vec<u8>, Error> {
+    let component_operation_label = ComponentOperationLabel::new(component_id, label);
+
+    let context: EncryptContext = EncryptContext::new_from_component_operation_label(
+        component_operation_label,
+        context.into(),
+    )?;
+
+    decrypt_with_label_internal(private_key, context, ciphertext, ciphersuite, crypto)
 }
