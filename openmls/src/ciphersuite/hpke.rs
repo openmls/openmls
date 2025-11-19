@@ -180,7 +180,7 @@ impl ComponentOperationLabel {
 }
 
 #[cfg(feature = "extensions-draft-08")]
-pub fn safe_encrypt_with_label(
+pub(crate) fn safe_encrypt_with_label(
     public_key: &[u8],
     component_id: ComponentId,
     label: &str,
