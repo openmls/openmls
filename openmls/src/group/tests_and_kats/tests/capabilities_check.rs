@@ -122,7 +122,14 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
             .leaf_node()
             .capabilities();
 
-        assert_eq!(updated_capabilities.credentials(), credential_types);
+        // Filter out GREASE values for comparison since they're automatically injected
+        let filtered_credentials: Vec<_> = updated_capabilities
+            .credentials()
+            .iter()
+            .filter(|cred| !cred.is_grease())
+            .copied()
+            .collect();
+        assert_eq!(filtered_credentials.as_slice(), credential_types);
 
         // return the updated capabilities
         new_capabilities
