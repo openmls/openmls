@@ -546,6 +546,13 @@ impl KeyPackageBuilder {
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageBundle, KeyPackageNewError> {
         self.ensure_last_resort();
+
+        // Inject GREASE values only if using default capabilities
+        let capabilities = match self.leaf_node_capabilities {
+            Some(caps) => caps,
+            None => Capabilities::default().inject_grease_values(provider.rand()),
+        };
+
         let KeyPackageCreationResult {
             key_package,
             encryption_keypair,
@@ -557,7 +564,7 @@ impl KeyPackageBuilder {
             credential_with_key,
             self.key_package_lifetime.unwrap_or_default(),
             self.key_package_extensions.unwrap_or_default(),
-            self.leaf_node_capabilities.unwrap_or_default(),
+            capabilities,
             self.leaf_node_extensions.unwrap_or_default(),
         )?;
 

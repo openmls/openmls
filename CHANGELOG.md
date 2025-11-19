@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1855](https://github.com/openmls/openmls/pull/1855): Added the `swap_members()` method to `MlsGroup` to replace members in a group, as well as the `WelcomeCommitMessages` and `SwapMembersError` structs.
 - [#1868](https://github.com/openmls/openmls/pull/1868): Implemented AppEphemeral functionality as defined in the MLS Extensions draft and replaced the existing AppAck proposal with the AppAck object, which can now be conveyed inside an AppEphemeral proposal. These features are behind the `extensions-draft-08` feature flag.
 - [#1874](https://github.com/openmls/openmls/pull/1874): In the `openmls_libcrux_crypto` provider, added AES-GCM support.
+- Implemented GREASE (Generate Random Extensions And Sustain Extensibility) support as defined in [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5):
+  - Added `Grease(u16)` variants to `ProposalType`, `ExtensionType`, and `CredentialType` enums
+  - Added `is_grease()` methods to all GREASE-capable types including `VerifiableCiphersuite`
+  - GREASE values are automatically added to KeyPackages and MlsGroups to test extensibility
+  - GREASE values are automatically recognized during deserialization and filtered during validation
+  - Added comprehensive unit and integration tests for GREASE handling
+  - Added user manual documentation for GREASE support
+
 
 ### Fixed
 - [#1868](https://github.com/openmls/openmls/pull/1868): The implementation of [valn0311](https://validation.openmls.tech/#valn0311), was updated to check support for all non-default proposals, instead of only checking support for Custom proposals.
