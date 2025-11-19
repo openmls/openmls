@@ -71,15 +71,11 @@ impl MlsGroupBuilder {
             .unwrap_or_else(|| GroupId::random(provider.rand()));
         let ciphersuite = mls_group_create_config.ciphersuite;
 
-        // Inject GREASE values only if using default capabilities
-        let capabilities = if mls_group_create_config.capabilities == Capabilities::default() {
-            mls_group_create_config
-                .capabilities
-                .clone()
-                .inject_grease_values(provider.rand())
-        } else {
-            mls_group_create_config.capabilities.clone()
-        };
+        // Always inject GREASE values to ensure extensibility
+        let capabilities = mls_group_create_config
+            .capabilities
+            .clone()
+            .inject_grease_values(provider.rand());
 
         let (public_group_builder, commit_secret, leaf_keypair) =
             PublicGroup::builder(group_id, ciphersuite, credential_with_key)
