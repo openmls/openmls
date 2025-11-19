@@ -126,6 +126,11 @@ pub(crate) fn encrypt_with_label(
 ) -> Result<HpkeCiphertext, Error> {
     let context: EncryptContext = (label, context).into();
 
+    log_crypto!(
+        debug,
+        "HPKE Encrypt with label `{label}` and ciphersuite `{ciphersuite:?}`:"
+    );
+
     encrypt_with_label_internal(public_key, context, plaintext, ciphersuite, crypto)
 }
 
@@ -138,10 +143,6 @@ fn encrypt_with_label_internal(
 ) -> Result<HpkeCiphertext, Error> {
     let context = context.tls_serialize_detached()?;
 
-    log_crypto!(
-        debug,
-        "HPKE Encrypt with label `{label}` and ciphersuite `{ciphersuite:?}`:"
-    );
     log_crypto!(debug, "* context:     {context:x?}");
     log_crypto!(debug, "* public key:  {public_key:x?}");
     log_crypto!(debug, "* plaintext:   {plaintext:x?}");
@@ -211,6 +212,11 @@ pub(crate) fn decrypt_with_label(
     ciphersuite: Ciphersuite,
     crypto: &impl OpenMlsCrypto,
 ) -> Result<Vec<u8>, Error> {
+    log_crypto!(
+        debug,
+        "HPKE Decrypt with label `{label}` and `ciphersuite` {ciphersuite:?}:"
+    );
+
     let context: EncryptContext = (label, context).into();
 
     decrypt_with_label_internal(private_key, context, ciphertext, ciphersuite, crypto)
@@ -225,10 +231,6 @@ fn decrypt_with_label_internal(
 ) -> Result<Vec<u8>, Error> {
     let context = context.tls_serialize_detached()?;
 
-    log_crypto!(
-        debug,
-        "HPKE Decrypt with label `{label}` and `ciphersuite` {ciphersuite:?}:"
-    );
     log_crypto!(debug, "* context:     {context:x?}");
     log_crypto!(debug, "* private key: {private_key:x?}");
     log_crypto!(debug, "* ciphertext:  {ciphertext:x?}");
