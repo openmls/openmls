@@ -11,7 +11,7 @@ readme = "README.md"
 
 [dependencies]
 openmls_traits = { workspace = true }
-thiserror = "1.0"
+thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 sqlx = { version = "0.8.6", features = ["sqlite", "migrate", "runtime-tokio"] }
 tokio = { version = "1.47.1", features = ["rt-multi-thread", "macros"] }
