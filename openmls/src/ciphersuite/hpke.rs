@@ -57,6 +57,7 @@ pub(crate) enum Error {
     /// Decryption failed.
     #[error("Decryption failed.")]
     DecryptionFailed,
+    #[cfg(feature = "extensions-draft-08")]
     // TODO: these variants could be a different error type.
     /// Serializing label failed
     #[error("Serializing label failed.")]
@@ -78,16 +79,33 @@ impl From<CryptoError> for Error {
 /// Context for HPKE encryption
 #[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
 pub struct EncryptContext {
+    /// Prefixed with LABEL_PREFIX
     label: VLBytes,
     context: VLBytes,
 }
 
 impl EncryptContext {
     /// Create a new [`EncryptContext`] from a string label and the content bytes.
+    /// Ensures that the prefix LABEL_PREFIX is prepended to the label.
     pub fn new(label: &str, context: VLBytes) -> Self {
         let label_string = LABEL_PREFIX.to_owned() + label;
         let label = label_string.as_bytes().into();
         Self { label, context }
+    }
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn new_from_component_operation_label(
+        label: ComponentOperationLabel,
+        context: VLBytes,
+    ) -> Result<Self, Error> {
+        // The ComponentOperationLabel is already prefixed
+        let serialized_label = label
+            .tls_serialize_detached()
+            .map_err(|_| Error::LabelSerializationFailed)?;
+
+        Ok(Self {
+            label: serialized_label.into(),
+            context: context.into(),
+        })
     }
 }
 
@@ -150,7 +168,8 @@ pub(crate) struct ComponentOperationLabel {
 }
 #[cfg(feature = "extensions-draft-08")]
 impl ComponentOperationLabel {
-    fn new(component_id: ComponentId, label: &str) -> Self {
+    /// Creates a new ComponentOperationLabel, prefixed with LABEL_PREFIX
+    pub fn new(component_id: ComponentId, label: &str) -> Self {
         let base_label = super::LABEL_PREFIX.to_owned() + "Application";
         Self {
             base_label: base_label.as_bytes().into(),
@@ -172,14 +191,10 @@ pub fn safe_encrypt_with_label(
 ) -> Result<HpkeCiphertext, Error> {
     let component_operation_label = ComponentOperationLabel::new(component_id, label);
 
-    let serialized_label = component_operation_label
-        .tls_serialize_detached()
-        .map_err(|_| Error::LabelSerializationFailed)?;
-
-    let context: EncryptContext = EncryptContext {
-        label: serialized_label.into(),
-        context: context.into(),
-    };
+    let context: EncryptContext = EncryptContext::new_from_component_operation_label(
+        component_operation_label,
+        context.into(),
+    )?;
 
     encrypt_with_label_internal(public_key, context, plaintext, ciphersuite, crypto)
 }
