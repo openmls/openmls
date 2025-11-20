@@ -8,8 +8,6 @@ use openmls_traits::{
 };
 use tls_codec::Serialize as _;
 
-#[cfg(feature = "extensions-draft-08")]
-use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{signable::Signable as _, Secret},
@@ -34,6 +32,12 @@ use crate::{
     },
     storage::{OpenMlsProvider, StorageProvider},
     versions::ProtocolVersion,
+};
+#[cfg(feature = "extensions-draft-08")]
+use crate::{
+    extensions::ComponentData, messages::proposals::AppDataUpdateProposal,
+    prelude::processing::AppDataDictionaryUpdater,
+    schedule::application_export_tree::ApplicationExportTree,
 };
 
 pub(crate) mod external_commits;
@@ -103,6 +107,9 @@ pub struct LoadedPsks {
 
     /// The GroupInfo creation config
     group_info_config: GroupInfoConfig,
+
+    #[cfg(feature = "extensions-draft-08")]
+    app_data_dictionary_updates: Option<Vec<ComponentData>>,
 }
 
 /// This stage is after we validated the data, ready for staging and exporting the messages
@@ -351,6 +358,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         consume_proposal_store: stage.consume_proposal_store,
                         group_info_config,
                         external_commit_info: stage.external_commit_info,
+                        #[cfg(feature = "extensions-draft-08")]
+                        app_data_dictionary_updates: None,
                     },
                 )
             })
@@ -554,7 +563,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             own_leaf_index,
             // NOTE: AppDataUpdates are not passed in here, but rather applied later
             #[cfg(feature = "extensions-draft-08")]
-            None,
+            cur_stage.app_data_dictionary_updates,
         )?;
         if apply_proposals_values.self_removed && !is_external_commit {
             return Err(CreateCommitError::CannotRemoveSelf);
@@ -839,6 +848,36 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 .as_ref()
                 .map(|info| info.wire_format_policy),
         }))
+    }
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn app_data_dictionary_updater(&self) -> AppDataDictionaryUpdater<'_> {
+        AppDataDictionaryUpdater::new(self.group.borrow().context().app_data_dict())
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn set_app_data_dictionary_updates(
+        &mut self,
+        app_data_dictionary_updates: Option<Vec<ComponentData>>,
+    ) {
+        self.stage.app_data_dictionary_updates = app_data_dictionary_updates;
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn app_data_update_proposals(&self) -> impl Iterator<Item = &AppDataUpdateProposal> {
+        self.stage
+            .own_proposals
+            .iter()
+            .chain(
+                self.group
+                    .borrow()
+                    .proposal_store()
+                    .proposals()
+                    .map(|queued_proposal| queued_proposal.proposal()),
+            )
+            .filter_map(|proposal| match proposal {
+                Proposal::AppDataUpdate(proposal) => Some(proposal.as_ref()),
+                _ => None,
+            })
     }
 }
 
