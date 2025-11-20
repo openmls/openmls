@@ -85,6 +85,9 @@ fn test_hpke_seal_open() {
 fn test_safe_hpke_seal_open() {
     let provider = &Provider::default();
 
+    const CONTEXT: &[u8] = &[1, 2, 3];
+    const LABEL: &'static str = b"label";
+
     let plaintext = &[1, 2, 3];
     let kp = provider
         .crypto()
@@ -101,8 +104,8 @@ fn test_safe_hpke_seal_open() {
     let ciphertext = hpke::safe_encrypt_with_label(
         &kp.public,
         COMPONENT_ID,
-        "label",
-        &[1, 2, 3],
+        LABEL,
+        CONTEXT,
         plaintext,
         ciphersuite,
         provider.crypto(),
@@ -111,8 +114,8 @@ fn test_safe_hpke_seal_open() {
     let decrypted_payload = hpke::safe_decrypt_with_label(
         &kp.private,
         COMPONENT_ID,
-        "label",
-        &[1, 2, 3],
+        LABEL,
+        CONTEXT,
         &ciphertext,
         ciphersuite,
         provider.crypto(),
@@ -136,8 +139,8 @@ fn test_safe_hpke_seal_open() {
         hpke::safe_decrypt_with_label(
             &kp.private,
             COMPONENT_ID,
-            "label",
-            &[1, 2, 3],
+            LABEL,
+            CONTEXT,
             &broken_ciphertext1,
             ciphersuite,
             provider.crypto(),
@@ -150,8 +153,8 @@ fn test_safe_hpke_seal_open() {
         hpke::safe_decrypt_with_label(
             &kp.private,
             COMPONENT_ID,
-            "label",
-            &[1, 2, 3],
+            LABEL,
+            CONTEXT,
             &broken_ciphertext2,
             ciphersuite,
             provider.crypto(),
