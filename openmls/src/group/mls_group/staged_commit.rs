@@ -36,7 +36,10 @@ use super::{
     ProposalType,
 };
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::{ComponentData, ExtensionType};
+use crate::{
+    extensions::{ComponentData, ExtensionType},
+    prelude::processing::AppDataUpdates,
+};
 
 impl MlsGroup {
     fn derive_epoch_secrets(
@@ -155,7 +158,7 @@ impl MlsGroup {
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<Vec<ComponentData>>,
+        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<AppDataUpdates>,
         provider: &impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group

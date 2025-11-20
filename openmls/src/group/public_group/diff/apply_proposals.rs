@@ -12,8 +12,9 @@ use crate::{
 use super::*;
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::{
-    AppDataDictionary, AppDataDictionaryExtension, ComponentData, Extension, ExtensionType,
+use crate::{
+    extensions::{AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType},
+    prelude::processing::AppDataUpdates,
 };
 
 /// This struct contain the return values of the `apply_proposals()` function
@@ -59,7 +60,7 @@ impl PublicGroupDiff<'_> {
         &mut self,
         proposal_queue: &ProposalQueue,
         own_leaf_index: impl Into<Option<LeafNodeIndex>>,
-        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<Vec<ComponentData>>,
+        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<ApplyProposalsValues, LibraryError> {
         log::debug!("Applying proposal");
         let mut self_removed = false;
@@ -209,7 +210,7 @@ impl PublicGroupDiff<'_> {
         &mut self,
         mut group_context_extensions: Option<Extensions>,
         proposal_queue: &ProposalQueue,
-        app_data_dict_updates: Option<Vec<ComponentData>>,
+        app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<Option<Extensions>, LibraryError> {
         // If there are app data update proposals, there must be a list (but it may be empty)
         if proposal_queue
@@ -244,9 +245,12 @@ impl PublicGroupDiff<'_> {
                 .unwrap()
                 .dictionary_mut();
 
-            for update in app_data_dict_updates {
-                // TODO: apply proposed app data dict updates to diff here
-                dictionary.insert(update.id(), update.data().to_vec());
+            for (id, data) in app_data_dict_updates.into_iter() {
+                if let Some(data) = data {
+                    let _ = dictionary.insert(id, data);
+                } else {
+                    let _ = dictionary.remove(&id);
+                }
             }
         } else if app_data_dict_updates.is_some() {
             // TODO: return a proper error here
