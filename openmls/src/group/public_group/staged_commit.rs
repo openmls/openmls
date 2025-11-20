@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::ComponentData;
+use crate::{extensions::ComponentData, prelude::processing::AppDataUpdates};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
@@ -259,7 +259,7 @@ impl PublicGroup {
         &self,
         mls_content: &AuthenticatedContent,
         crypto: &impl OpenMlsCrypto,
-        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<Vec<ComponentData>>,
+        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<StagedCommit, StageCommitError> {
         let (commit, proposal_queue, sender_index) = self.validate_commit(mls_content, crypto)?;
 
@@ -287,7 +287,7 @@ impl PublicGroup {
         proposal_queue: &ProposalQueue,
         sender_index: LeafNodeIndex,
         crypto: &impl OpenMlsCrypto,
-        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<Vec<ComponentData>>,
+        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<StagedPublicGroupDiff, StageCommitError> {
         let ciphersuite = self.ciphersuite();
         let mut diff = self.empty_diff();

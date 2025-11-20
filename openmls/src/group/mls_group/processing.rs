@@ -14,9 +14,10 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::{
-    AppDataDictionary, AppDataDictionaryExtension, ComponentData, ComponentId,
-};
+use crate::extensions::{AppDataDictionary, ComponentId};
+
+#[cfg(feature = "extensions-draft-08")]
+use std::collections::BTreeMap;
 
 use super::{errors::ProcessMessageError, *};
 
@@ -24,7 +25,20 @@ use super::{errors::ProcessMessageError, *};
 /// keeps the old dictionary as well as the values that are being overwritten
 pub struct AppDataDictionaryUpdater<'a> {
     old_dict: Option<&'a AppDataDictionary>,
-    new_entries: Option<AppDataDictionary>,
+    new_entries: AppDataUpdates,
+}
+
+#[cfg(feature = "extensions-draft-08")]
+pub struct AppDataUpdates(BTreeMap<ComponentId, Option<Vec<u8>>>);
+
+#[cfg(feature = "extensions-draft-08")]
+impl AppDataUpdates {
+    pub fn into_iter(self) -> impl Iterator<Item = (ComponentId, Option<Vec<u8>>)> {
+        self.0.into_iter()
+    }
+    pub fn len(&self) -> usize {
+        self.0.iter().count()
+    }
 }
 
 #[cfg(feature = "extensions-draft-08")]
@@ -32,18 +46,8 @@ impl<'a> AppDataDictionaryUpdater<'a> {
     pub fn new(old_dict: Option<&'a AppDataDictionary>) -> Self {
         Self {
             old_dict,
-            new_entries: None,
+            new_entries: AppDataUpdates(BTreeMap::new()),
         }
-    }
-    /// get the component data
-    pub fn get(&self, component_id: ComponentId) -> Option<&ComponentData> {
-        /*
-        self.new_entries
-            .as_ref()
-            .and_then(|new_entries| new_entries.search(component_id))
-            .or_else(|| self.old_dict.search(component_id))
-        */
-        todo!()
     }
 
     /// sets a value in the new_entries. if we already have data for that component id, overwrite
@@ -51,20 +55,22 @@ impl<'a> AppDataDictionaryUpdater<'a> {
     pub fn set(&mut self, component_data: ComponentData) {
         let (id, data) = component_data.into_parts();
 
-        if self.new_entries.is_none() {
-            self.new_entries = Some(AppDataDictionary::new());
-        }
+        self.new_entries.0.insert(id, Some(data.into()));
+    }
 
-        let new_entries = self.new_entries.as_mut().unwrap();
-
-        new_entries.insert(id, data.into());
+    pub fn remove(&mut self, id: ComponentId) {
+        self.new_entries.0.insert(id, None);
     }
 
     /// consumes the updater and returns just the changes, so we can pass them into
     /// process_unverified_message
     /// only returns Some if we actually called set
-    pub fn changes(self) -> Option<Vec<ComponentData>> {
-        self.new_entries.map(|dict| dict.to_entries())
+    pub fn changes(self) -> Option<AppDataUpdates> {
+        if self.new_entries.0.is_empty() {
+            None
+        } else {
+            Some(self.new_entries)
+        }
     }
 }
 
@@ -94,12 +100,9 @@ impl MlsGroup {
     }
 
     #[cfg(feature = "extensions-draft-08")]
-    /// returns a new thing for updating the app data
+    /// returns a new helper struct for updating the app data
     pub fn app_data_dictionary_updater<'a>(&'a self) -> AppDataDictionaryUpdater<'a> {
-        AppDataDictionaryUpdater {
-            old_dict: self.context().app_data_dict(),
-            new_entries: None,
-        }
+        AppDataDictionaryUpdater::new(self.context().app_data_dict())
     }
 
     /// Parses and deprotects incoming messages from the DS. Checks for syntactic errors, but only
@@ -337,7 +340,7 @@ impl MlsGroup {
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
-        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<Vec<ComponentData>>,
+        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Checks the following semantic validation:
         //  - ValSem010

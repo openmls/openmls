@@ -20,7 +20,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::ComponentData;
+use crate::prelude::processing::AppDataUpdates;
 
 use super::PublicGroup;
 
@@ -220,7 +220,7 @@ impl PublicGroup {
         &self,
         crypto: &impl OpenMlsCrypto,
         unverified_message: UnverifiedMessage,
-        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<Vec<ComponentData>>,
+        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<ProcessedMessage, PublicProcessMessageError> {
         // Checks the following semantic validation:
         //  - ValSem010

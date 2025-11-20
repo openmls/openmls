@@ -35,8 +35,8 @@ use crate::{
 };
 #[cfg(feature = "extensions-draft-08")]
 use crate::{
-    extensions::ComponentData, messages::proposals::AppDataUpdateProposal,
-    prelude::processing::AppDataDictionaryUpdater,
+    messages::proposals::AppDataUpdateProposal,
+    prelude::processing::{AppDataDictionaryUpdater, AppDataUpdates},
     schedule::application_export_tree::ApplicationExportTree,
 };
 
@@ -109,7 +109,7 @@ pub struct LoadedPsks {
     group_info_config: GroupInfoConfig,
 
     #[cfg(feature = "extensions-draft-08")]
-    app_data_dictionary_updates: Option<Vec<ComponentData>>,
+    app_data_dictionary_updates: Option<AppDataUpdates>,
 }
 
 /// This stage is after we validated the data, ready for staging and exporting the messages
@@ -857,7 +857,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     #[cfg(feature = "extensions-draft-08")]
     pub fn set_app_data_dictionary_updates(
         &mut self,
-        app_data_dictionary_updates: Option<Vec<ComponentData>>,
+        app_data_dictionary_updates: Option<AppDataUpdates>,
     ) {
         self.stage.app_data_dictionary_updates = app_data_dictionary_updates;
     }
