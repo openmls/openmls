@@ -29,6 +29,12 @@ pub struct AppDataDictionaryUpdater<'a> {
 
 #[cfg(feature = "extensions-draft-08")]
 impl<'a> AppDataDictionaryUpdater<'a> {
+    pub fn new(old_dict: Option<&'a AppDataDictionary>) -> Self {
+        Self {
+            old_dict,
+            new_entries: None,
+        }
+    }
     /// get the component data
     pub fn get(&self, component_id: ComponentId) -> Option<&ComponentData> {
         /*
