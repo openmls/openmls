@@ -50,7 +50,7 @@ impl ProposalStore {
     pub(crate) fn add(&mut self, queued_proposal: QueuedProposal) {
         self.queued_proposals.push(queued_proposal);
     }
-    pub(crate) fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+    pub fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.queued_proposals.iter()
     }
     pub(crate) fn is_empty(&self) -> bool {
@@ -170,7 +170,7 @@ impl QueuedProposal {
     }
 
     /// Returns the `ProposalRef`.
-    pub(crate) fn proposal_reference_ref(&self) -> &ProposalRef {
+    pub fn proposal_reference_ref(&self) -> &ProposalRef {
         &self.proposal_reference
     }
 

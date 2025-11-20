@@ -14,7 +14,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::{AppDataDictionary, ComponentId};
+use crate::extensions::{AppDataDictionary, ComponentData, ComponentId};
 
 #[cfg(feature = "extensions-draft-08")]
 use std::collections::BTreeMap;
@@ -336,7 +336,7 @@ impl MlsGroup {
     ///  - ValSem242
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
-    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
+    pub fn process_unverified_message<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
