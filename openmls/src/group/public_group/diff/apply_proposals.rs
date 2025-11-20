@@ -219,8 +219,7 @@ impl PublicGroupDiff<'_> {
             .next()
             .is_some()
         {
-            // FIXME: skipping for now, since this is called on the CommitBuilder side with `None`
-            // provided for the `app_data_dict_updates`
+            // NOTE: if the application didn't handle the AppDataUpdates, nothing is updated here
             let Some(app_data_dict_updates) = app_data_dict_updates else {
                 return Ok(group_context_extensions);
             };
