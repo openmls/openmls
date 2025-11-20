@@ -98,13 +98,16 @@ impl EncryptContext {
         label: ComponentOperationLabel,
         context: VLBytes,
     ) -> Result<Self, Error> {
-        // The ComponentOperationLabel is already prefixed
         let serialized_label = label
             .tls_serialize_detached()
             .map_err(|_| Error::LabelSerializationFailed)?;
 
+        // Prefix the serialized label with the LABEL_PREFIX bytes
+        let mut label = LABEL_PREFIX.as_bytes().to_vec();
+        label.extend(serialized_label);
+
         Ok(Self {
-            label: serialized_label.into(),
+            label: label.into(),
             context: context.into(),
         })
     }
@@ -165,18 +168,21 @@ fn encrypt_with_label_internal(
 #[derive(Debug, TlsSerialize, TlsSize)]
 #[cfg(feature = "extensions-draft-08")]
 pub(crate) struct ComponentOperationLabel {
-    /// LABEL_PREFIX + "Application"
+    /// "Application"
     base_label: VLBytes,
     component_id: ComponentId,
     label: VLBytes,
 }
+
+#[cfg(feature = "extensions-draft-08")]
+const COMPONENT_OPERATION_BASE_LABEL: &'static [u8] = b"Application";
+
 #[cfg(feature = "extensions-draft-08")]
 impl ComponentOperationLabel {
-    /// Creates a new ComponentOperationLabel, prefixed with LABEL_PREFIX
+    /// Creates a new ComponentOperationLabel, prefixed with "Application"
     pub fn new(component_id: ComponentId, label: &str) -> Self {
-        let base_label = super::LABEL_PREFIX.to_owned() + "Application";
         Self {
-            base_label: base_label.as_bytes().into(),
+            base_label: COMPONENT_OPERATION_BASE_LABEL.into(),
             component_id,
             label: label.as_bytes().into(),
         }
