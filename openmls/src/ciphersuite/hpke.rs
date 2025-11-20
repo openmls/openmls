@@ -183,9 +183,8 @@ impl ComponentOperationLabel {
     }
 }
 
-#[allow(unused)]
 #[cfg(feature = "extensions-draft-08")]
-pub(crate) fn safe_encrypt_with_label(
+pub fn safe_encrypt_with_label(
     public_key: &[u8],
     component_id: ComponentId,
     label: &str,
@@ -251,10 +250,9 @@ fn decrypt_with_label_internal(
     plaintext
 }
 
-#[allow(unused)]
 #[cfg(feature = "extensions-draft-08")]
 /// Decrypt with HPKE and label.
-pub(crate) fn safe_decrypt_with_label(
+pub fn safe_decrypt_with_label(
     private_key: &[u8],
     component_id: ComponentId,
     label: &str,
