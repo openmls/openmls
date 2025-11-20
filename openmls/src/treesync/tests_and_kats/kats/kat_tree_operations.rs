@@ -114,7 +114,14 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
 
     let mut diff = group.empty_diff();
 
-    let apply_proposal_values = diff.apply_proposals(&proposal_queue, None).unwrap();
+    let apply_proposal_values = diff
+        .apply_proposals(
+            &proposal_queue,
+            None,
+            #[cfg(feature = "extensions-draft-08")]
+            None,
+        )
+        .unwrap();
     diff.update_group_context(provider.crypto(), apply_proposal_values.extensions.clone())
         .unwrap();
 
