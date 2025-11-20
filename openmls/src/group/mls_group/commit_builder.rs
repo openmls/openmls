@@ -875,6 +875,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         // than the own_proposals.
         let all_proposals = proposal_store_proposals.chain(self.stage.own_proposals.iter());
 
+        // Filter for AppDataUpdate proposals
         all_proposals.filter_map(|proposal| match proposal {
             Proposal::AppDataUpdate(proposal) => Some(proposal.as_ref()),
             _ => None,

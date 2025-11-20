@@ -36,10 +36,7 @@ use super::{
     ProposalType,
 };
 #[cfg(feature = "extensions-draft-08")]
-use crate::{
-    extensions::{ComponentData, ExtensionType},
-    prelude::processing::AppDataUpdates,
-};
+use crate::{extensions::ExtensionType, prelude::processing::AppDataUpdates};
 
 impl MlsGroup {
     fn derive_epoch_secrets(
@@ -502,7 +499,7 @@ pub struct StagedCommit {
     /// A queue containing the proposals associated with the commit.
     pub staged_proposal_queue: ProposalQueue,
     /// The staged commit state.
-    pub state: StagedCommitState,
+    pub(super) state: StagedCommitState,
 }
 
 impl StagedCommit {
