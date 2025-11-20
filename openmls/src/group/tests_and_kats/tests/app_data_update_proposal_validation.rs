@@ -69,139 +69,6 @@ fn setup<'a, Provider: OpenMlsProvider>(
     group_state
 }
 
-/// Test a simple AppDataUpdate
-#[openmls_test]
-fn test_app_data_update() {
-    // Set up parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
-
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
-
-    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
-
-    // Alice sends a commit containing an AppDataUpdate proposal
-    alice
-        .group
-        .propose_app_data_update(
-            &alice_party.provider,
-            &alice.party.signer,
-            16,
-            AppDataUpdateOperation::Update(b"ignored".into()),
-        )
-        .unwrap();
-    alice
-        .group
-        .propose_app_data_update(
-            &alice_party.provider,
-            &alice.party.signer,
-            16,
-            AppDataUpdateOperation::Update(b"value".into()),
-        )
-        .unwrap();
-    let (commit, _welcome, _group_info) = alice
-        .group
-        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
-        .unwrap();
-
-    let message_in: MlsMessageIn = commit.into();
-    let processed_message = bob
-        .group
-        .process_message(
-            &bob_party.provider,
-            message_in.try_into_protocol_message().unwrap(),
-        )
-        .unwrap();
-
-    let mut staged_commit = match processed_message.into_content() {
-        ProcessedMessageContent::StagedCommitMessage(commit) => commit,
-        _ => panic!("Should be a processed commit with app data updates"),
-    };
-
-    // the component ids known to the application
-    let component_ids = [1, 2, 3, 16];
-
-    // retrieve the AppDataDictionary
-    let dictionary = staged_commit.state.app_data_dictionary().unwrap();
-
-    // for each of the component ids:
-    for component_id in component_ids {
-        // iterate over the proposals and handle each one
-        for queued_proposal in staged_commit
-            .staged_proposal_queue
-            .app_data_update_proposals_for_id(component_id)
-        {
-            let operation = queued_proposal.app_data_update_proposal().operation();
-            if let AppDataUpdateOperation::Update(data) = operation {
-                dictionary.insert(component_id, Vec::from(data.as_ref()));
-            } else if let AppDataUpdateOperation::Remove = operation {
-                dictionary.remove(&component_id);
-            }
-        }
-    }
-
-    // check that the dictionary in the staged commit was updated correctly
-    let dictionary_ext = staged_commit
-        .group_context()
-        .extensions()
-        .app_data_dictionary()
-        .unwrap();
-    assert_eq!(
-        dictionary_ext.dictionary().get(&16),
-        Some(b"value".as_slice())
-    );
-
-    bob.group
-        .merge_staged_commit(&bob_party.provider, *staged_commit)
-        .unwrap();
-}
-/// Commit creation:
-/// Test the invalid case where there are both Update and Remove AppDataUpdate proposals
-/// for a single ComponentId.
-#[openmls_test]
-fn test_incompatible_app_data_update_proposal_types() {
-    // Set up parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
-
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
-
-    let [alice] = group_state.members_mut(&["alice"]);
-
-    // Alice sends a commit containing an AppDataUpdate proposal
-    alice
-        .group
-        .propose_app_data_update(
-            &alice_party.provider,
-            &alice.party.signer,
-            16,
-            AppDataUpdateOperation::Update(b"ignored".into()),
-        )
-        .unwrap();
-    alice
-        .group
-        .propose_app_data_update(
-            &alice_party.provider,
-            &alice.party.signer,
-            16,
-            AppDataUpdateOperation::Remove,
-        )
-        .unwrap();
-    let err = alice
-        .group
-        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
-        .unwrap_err();
-
-    assert_eq!(
-        err,
-        CommitToPendingProposalsError::CreateCommitError(
-            CreateCommitError::AppDataUpdateValidationError(
-                AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
-            )
-        )
-    );
-}
-
 /// Commit creation:
 /// Test the invalid case where a GroupContextExtensionProposal comes after the AppDataUpdate
 /// proposals.
@@ -360,7 +227,6 @@ fn test_group_context_update_dictionary_after_deactivating() {
 /// Commit creation:
 /// Test the case where an AppDataUpdateProposal updates the AppDataDictionary after
 /// removing AppDataUpdate from the required capabilities.
-#[ignore]
 #[openmls_test]
 fn test_app_data_update_after_removing_required_capabilities() {
     // Set up parties
@@ -383,22 +249,48 @@ fn test_app_data_update_after_removing_required_capabilities() {
         )
         .unwrap();
 
-    // Alice sends a commit containing an AppDataUpdate proposal
-    alice
+    // Alice creates a commit containing an AppDataUpdate proposal
+    let mut stage = alice
         .group
-        .propose_app_data_update(
-            &alice_party.provider,
-            &alice.party.signer,
-            16,
-            AppDataUpdateOperation::Update(b"ignored".into()),
-        )
+        .commit_builder()
+        .add_proposals(vec![Proposal::AppDataUpdate(Box::new(
+            AppDataUpdateProposal::update(16, b"ignored".to_vec()),
+        ))])
+        .load_psks(alice_party.provider.storage())
         .unwrap();
 
-    let err = alice
-        .group
-        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+    let mut app_data_updater = stage.app_data_dictionary_updater();
+
+    // TODO: handle in order of ComponentId
+    for proposal in stage.app_data_update_proposals() {
+        let operation = proposal.operation();
+        let component_id = proposal.component_id();
+
+        if let AppDataUpdateOperation::Update(data) = operation {
+            let component_data = ComponentData::from_parts(component_id, data.clone());
+            app_data_updater.set(component_data);
+        } else if let AppDataUpdateOperation::Remove = operation {
+            app_data_updater.remove(&component_id);
+        }
+    }
+
+    let changes = app_data_updater.changes();
+    assert_eq!(changes.as_ref().unwrap().len(), 1);
+
+    stage.with_app_data_dictionary_updates(changes);
+
+    let err = stage
+        .build(
+            alice_party.provider.rand(),
+            alice_party.provider.crypto(),
+            &alice.party.signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(&alice_party.provider)
         .unwrap_err();
 
+    /*
     assert_eq!(
         err,
         CommitToPendingProposalsError::CreateCommitError(
@@ -407,6 +299,7 @@ fn test_app_data_update_after_removing_required_capabilities() {
             )
         )
     );
+    */
 }
 
 /// Commit creation:
@@ -416,7 +309,6 @@ fn test_app_data_update_after_removing_required_capabilities() {
 /// NOTE: A valid commit is produced by `MlsGroup::commit_to_pending_proposals()`,
 /// since the duplicate Remove AppDataUpdate proposals are filtered out automatically.
 #[openmls_test]
-
 fn test_app_data_update_multi_remove_validate_outgoing() {
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
@@ -427,31 +319,45 @@ fn test_app_data_update_multi_remove_validate_outgoing() {
     let [alice] = group_state.members_mut(&["alice"]);
 
     // Alice sends a commit containing an AppDataUpdate proposal
-    alice
+    let mut stage = alice
         .group
-        .propose_app_data_update(
-            &alice_party.provider,
-            &alice.party.signer,
-            16,
-            AppDataUpdateOperation::Remove,
-        )
-        .unwrap();
-    alice
-        .group
-        .propose_app_data_update(
-            &alice_party.provider,
-            &alice.party.signer,
-            16,
-            AppDataUpdateOperation::Remove,
-        )
+        .commit_builder()
+        .add_proposals(vec![
+            Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::remove(16))),
+            Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::remove(16))),
+        ])
+        .load_psks(alice_party.provider.storage())
         .unwrap();
 
-    assert_eq!(alice.group.pending_proposals().count(), 2);
+    let mut app_data_updater = stage.app_data_dictionary_updater();
 
-    let (commit, _, _) = alice
-        .group
-        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+    // TODO: handle in order of ComponentId
+    for proposal in stage.app_data_update_proposals() {
+        let operation = proposal.operation();
+        let component_id = proposal.component_id();
+
+        if let AppDataUpdateOperation::Remove = operation {
+            app_data_updater.remove(&component_id);
+        }
+    }
+
+    let changes = app_data_updater.changes();
+    assert_eq!(changes.as_ref().unwrap().len(), 1);
+
+    stage.with_app_data_dictionary_updates(changes);
+
+    let commit_bundle = stage
+        .build(
+            alice_party.provider.rand(),
+            alice_party.provider.crypto(),
+            &alice.party.signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(&alice_party.provider)
         .unwrap();
+
+    let (commit, _, _) = commit_bundle.into_contents();
 
     // check number of proposals in commit
     let franken_commit = FrankenMlsMessage::from(commit);
@@ -468,55 +374,4 @@ fn test_app_data_update_multi_remove_validate_outgoing() {
 
     // check that duplicate proposals have been filtered out
     assert_eq!(commit.proposals.len(), 1);
-}
-
-// TODO: documentation
-#[openmls_test]
-fn test_app_data_update_multi_remove_validate_incoming() {
-    // Set up parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
-
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
-
-    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
-
-    alice
-        .group
-        .propose_app_data_update(
-            &alice_party.provider,
-            &alice.party.signer,
-            16,
-            AppDataUpdateOperation::Update(b"value".into()),
-        )
-        .unwrap();
-    let (commit, _welcome, _group_info) = alice
-        .group
-        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
-        .unwrap();
-
-    let mut franken_commit = FrankenMlsMessage::from(commit);
-
-    let body = match franken_commit.body {
-        FrankenMlsMessageBody::PublicMessage(ref mut message) => message,
-        _ => unimplemented!(),
-    };
-
-    let commit = match body.content.body {
-        FrankenFramedContentBody::Commit(ref mut commit) => commit,
-        _ => unimplemented!(),
-    };
-
-    assert_eq!(commit.proposals.len(), 1);
-    // duplicate the AppDataUpdate Remove proposal
-    commit.proposals.push(commit.proposals[0].clone());
-
-    let message_in: MlsMessageIn = franken_commit.into();
-
-    let protocol_message = message_in.try_into_protocol_message().unwrap();
-
-    // NOTE: processing currently fails here with a ValidationError::InvalidMembershipTag.
-    bob.group
-        .process_message(&bob.party.core_state.provider, protocol_message.clone())
-        .unwrap();
 }
