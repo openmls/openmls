@@ -31,12 +31,9 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use super::{
-    proposal_store::{QueuedAppDataUpdateProposal, QueuedAppEphemeralProposal},
-    ProposalType,
-};
+use super::proposal_store::{QueuedAppDataUpdateProposal, QueuedAppEphemeralProposal};
 #[cfg(feature = "extensions-draft-08")]
-use crate::{extensions::ExtensionType, prelude::processing::AppDataUpdates};
+use crate::prelude::processing::AppDataUpdates;
 
 impl MlsGroup {
     fn derive_epoch_secrets(
@@ -659,17 +656,6 @@ impl StagedCommit {
         let secret =
             application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
         Ok(secret.as_slice().to_vec())
-    }
-}
-
-impl StagedCommitState {
-    #[cfg(feature = "extensions-draft-08")]
-    /// Get a mutable reference to the [`StagedPublicGroupDiff`].
-    pub(crate) fn staged_diff_mut(&mut self) -> &mut StagedPublicGroupDiff {
-        match self {
-            StagedCommitState::PublicState(ref mut ps) => &mut ps.staged_diff,
-            StagedCommitState::GroupMember(ref mut gm) => &mut gm.staged_diff,
-        }
     }
 }
 

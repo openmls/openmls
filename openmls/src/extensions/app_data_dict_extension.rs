@@ -220,10 +220,6 @@ impl AppDataDictionaryExtension {
     pub fn dictionary(&self) -> &AppDataDictionary {
         &self.dictionary
     }
-    /// Return a mutable reference to the [`AppDataDictionary`] from this extension.
-    pub(crate) fn dictionary_mut(&mut self) -> &mut AppDataDictionary {
-        &mut self.dictionary
-    }
     /// Build a new extension from an [`AppDataDictionary`].
     pub fn new(dictionary: AppDataDictionary) -> Self {
         Self { dictionary }
