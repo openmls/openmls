@@ -25,10 +25,13 @@ use super::{errors::ProcessMessageError, *};
 /// keeps the old dictionary as well as the values that are being overwritten
 pub struct AppDataDictionaryUpdater<'a> {
     old_dict: Option<&'a AppDataDictionary>,
-    new_entries: AppDataUpdates,
+    new_entries: Option<AppDataUpdates>,
 }
 
+/// A diff of update values that can be provided to [`MlsGroup::process_unverified_message()`]
+/// or [`CommitBuilder::with_app_data_dictionary_updates()`]
 #[cfg(feature = "extensions-draft-08")]
+#[derive(Default, Debug)]
 pub struct AppDataUpdates(BTreeMap<ComponentId, Option<Vec<u8>>>);
 
 #[cfg(feature = "extensions-draft-08")]
@@ -46,8 +49,15 @@ impl<'a> AppDataDictionaryUpdater<'a> {
     pub fn new(old_dict: Option<&'a AppDataDictionary>) -> Self {
         Self {
             old_dict,
-            new_entries: AppDataUpdates(BTreeMap::new()),
+            new_entries: None,
         }
+    }
+
+    /// helper method that returns a mutable reference to the
+    /// [`AppDataUpdates`], creating the struct if it does not exist.
+    fn new_entries_mut(&mut self) -> &mut AppDataUpdates {
+        self.new_entries
+            .get_or_insert_with(|| AppDataUpdates(BTreeMap::new()))
     }
 
     /// sets a value in the new_entries. if we already have data for that component id, overwrite
@@ -55,22 +65,18 @@ impl<'a> AppDataDictionaryUpdater<'a> {
     pub fn set(&mut self, component_data: ComponentData) {
         let (id, data) = component_data.into_parts();
 
-        self.new_entries.0.insert(id, Some(data.into()));
+        self.new_entries_mut().0.insert(id, Some(data.into()));
     }
 
     pub fn remove(&mut self, id: &ComponentId) {
-        self.new_entries.0.insert(*id, None);
+        self.new_entries_mut().0.insert(*id, None);
     }
 
     /// consumes the updater and returns just the changes, so we can pass them into
     /// process_unverified_message
     /// only returns Some if we actually called set
     pub fn changes(self) -> Option<AppDataUpdates> {
-        if self.new_entries.0.is_empty() {
-            None
-        } else {
-            Some(self.new_entries)
-        }
+        self.new_entries
     }
 }
 
