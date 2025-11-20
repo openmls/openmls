@@ -58,8 +58,8 @@ impl<'a> AppDataDictionaryUpdater<'a> {
         self.new_entries.0.insert(id, Some(data.into()));
     }
 
-    pub fn remove(&mut self, id: ComponentId) {
-        self.new_entries.0.insert(id, None);
+    pub fn remove(&mut self, id: &ComponentId) {
+        self.new_entries.0.insert(*id, None);
     }
 
     /// consumes the updater and returns just the changes, so we can pass them into
