@@ -864,20 +864,21 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
 
     #[cfg(feature = "extensions-draft-08")]
     pub fn app_data_update_proposals(&self) -> impl Iterator<Item = &AppDataUpdateProposal> {
-        self.stage
-            .own_proposals
-            .iter()
-            .chain(
-                self.group
-                    .borrow()
-                    .proposal_store()
-                    .proposals()
-                    .map(|queued_proposal| queued_proposal.proposal()),
-            )
-            .filter_map(|proposal| match proposal {
-                Proposal::AppDataUpdate(proposal) => Some(proposal.as_ref()),
-                _ => None,
-            })
+        let proposal_store_proposals = self
+            .group
+            .borrow()
+            .proposal_store()
+            .proposals()
+            .map(|queued_proposal| queued_proposal.proposal());
+
+        // The proposals in the proposal store come earlier
+        // than the own_proposals.
+        let all_proposals = proposal_store_proposals.chain(self.stage.own_proposals.iter());
+
+        all_proposals.filter_map(|proposal| match proposal {
+            Proposal::AppDataUpdate(proposal) => Some(proposal.as_ref()),
+            _ => None,
+        })
     }
 }
 
