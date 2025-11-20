@@ -561,7 +561,6 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let apply_proposals_values = diff.apply_proposals(
             &proposal_queue,
             own_leaf_index,
-            // NOTE: AppDataUpdates are not passed in here, but rather applied later
             #[cfg(feature = "extensions-draft-08")]
             cur_stage.app_data_dictionary_updates,
         )?;
@@ -855,7 +854,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     }
 
     #[cfg(feature = "extensions-draft-08")]
-    pub fn set_app_data_dictionary_updates(
+    pub fn with_app_data_dictionary_updates(
         &mut self,
         app_data_dictionary_updates: Option<AppDataUpdates>,
     ) {

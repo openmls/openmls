@@ -13,7 +13,7 @@ use super::*;
 
 #[cfg(feature = "extensions-draft-08")]
 use crate::{
-    extensions::{AppDataDictionaryExtension, Extension, ExtensionType},
+    extensions::{AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType},
     prelude::processing::AppDataUpdates,
 };
 
@@ -166,8 +166,10 @@ impl PublicGroupDiff<'_> {
             })
             .collect();
 
-        // apply group context extension proposal
-        let extensions = proposal_queue
+        // new extensions from group context extension proposal
+        // can be followed by AppDataUpdate proposals that modify
+        // the AppDataDictionary in the extensions
+        let updated_group_context_extensions = proposal_queue
             .filtered_by_type(ProposalType::GroupContextExtensions)
             .find_map(|queued_proposal| match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) => {
@@ -176,10 +178,11 @@ impl PublicGroupDiff<'_> {
                 _ => None,
             });
 
-        // apply AppDataUpdate proposals to the updated GroupContext extensions
+        // apply AppDataUpdate proposals to the already-updated GroupContext extensions,
+        // if available, or return the new GroupContext extensions if modified.
         #[cfg(feature = "extensions-draft-08")]
-        let extensions = self.apply_app_data_update_proposals(
-            extensions,
+        let updated_group_context_extensions = self.apply_app_data_update_proposals(
+            updated_group_context_extensions,
             proposal_queue,
             app_data_dict_updates,
         )?;
@@ -201,63 +204,90 @@ impl PublicGroupDiff<'_> {
             invitation_list,
             presharedkeys,
             external_init_proposal_option,
-            extensions,
+            extensions: updated_group_context_extensions,
         })
     }
 
+    /// Return the updated GroupContext extensions after applying AppDataUpdates.
     #[cfg(feature = "extensions-draft-08")]
     pub(crate) fn apply_app_data_update_proposals(
         &mut self,
-        mut group_context_extensions: Option<Extensions>,
+        // group_context_extensions if updated by a GroupContextExtensions proposal
+        mut updated_group_context_extensions: Option<Extensions>,
         proposal_queue: &ProposalQueue,
         app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<Option<Extensions>, LibraryError> {
-        // If there are app data update proposals, there must be a list (but it may be empty)
-        if proposal_queue
+        // validation
+        // handle cases where there are no AppDataUpdate proposals in the queue
+        let has_app_data_update_proposals = proposal_queue
             .queued_proposals()
             .filter(|proposal| proposal.proposal().is_type(ProposalType::AppDataUpdate))
             .next()
-            .is_some()
-        {
-            // NOTE: if the application didn't handle the AppDataUpdates, nothing is updated here
-            let Some(app_data_dict_updates) = app_data_dict_updates else {
-                return Ok(group_context_extensions);
-            };
-
-            if !group_context_extensions.is_some() {
-                let _ = group_context_extensions.insert(Extensions::default());
+            .is_some();
+        if !has_app_data_update_proposals {
+            // nothing to update
+            if app_data_dict_updates.is_none() {
+                return Ok(updated_group_context_extensions);
             }
-
-            let extensions = group_context_extensions.as_mut().unwrap();
-
-            // TODO: move this elsewhere?
-            if !extensions.contains(ExtensionType::AppDataDictionary) {
-                extensions
-                    .add(Extension::AppDataDictionary(
-                        AppDataDictionaryExtension::default(),
-                    ))
-                    .map_err(|_| LibraryError::custom("Could not add extension"))?;
-            }
-
-            let dictionary = extensions
-                .app_data_dictionary_mut()
-                .unwrap()
-                .dictionary_mut();
-
-            for (id, data) in app_data_dict_updates.into_iter() {
-                if let Some(data) = data {
-                    let _ = dictionary.insert(id, data);
-                } else {
-                    let _ = dictionary.remove(&id);
-                }
-            }
-        } else if app_data_dict_updates.is_some() {
-            // TODO: return a proper error here
-            return Err(LibraryError::custom(
+            // updates were provided, but no proposals could have triggered the update
+            else if app_data_dict_updates.is_some() {
+                // TODO: return a proper error here
+                return Err(LibraryError::custom(
                     "got updates but we don't have a proposal that could have triggered the update, that doesn't make sense. erroring out"
                     ));
+            }
         }
 
-        Ok(group_context_extensions)
+        // there are AppDataUpdate proposals in the queue; retrieve the user-provided updates.
+        let Some(updates) = app_data_dict_updates else {
+            // If there are app data update proposals, there must be a list (but it may be empty)
+            // TODO: return a proper error here
+            return Err(LibraryError::custom("no changes list provided"));
+        };
+
+        // retrieve the AppDataDictionary to update
+        // (make a copy of the AppDataDictionary, or create a new dictionary).
+        // NOTE: the case where a GroupContextExtensions updates the RequiredCapabilities
+        // to no longer include AppDataUpdate should be already filtered out at this stage.
+        let mut dictionary = self
+            .group_context
+            .app_data_dict()
+            .cloned()
+            .unwrap_or_else(|| Default::default());
+
+        // apply updates
+        for (id, data) in updates.into_iter() {
+            if let Some(data) = data {
+                let _ = dictionary.insert(id, data);
+            } else {
+                let _ = dictionary.remove(&id);
+            }
+        }
+
+        // update the new dictionary in the updated extensions if updated by a
+        // GroupContextExtensions proposal, or make a copy of the existing extensions.
+        let extensions_to_update = updated_group_context_extensions
+            .get_or_insert_with(|| self.group_context.extensions().clone());
+
+        // TODO: validation checks?
+        debug_assert!(extensions_to_update.contains(ExtensionType::RequiredCapabilities));
+
+        debug_assert!(extensions_to_update
+            .required_capabilities()
+            .unwrap()
+            .proposal_types()
+            .contains(&ProposalType::AppDataUpdate));
+
+        debug_assert!(extensions_to_update
+            .required_capabilities()
+            .unwrap()
+            .extension_types()
+            .contains(&ExtensionType::AppDataDictionary));
+
+        extensions_to_update.add_or_replace(Extension::AppDataDictionary(
+            AppDataDictionaryExtension::new(dictionary),
+        ));
+
+        Ok(updated_group_context_extensions)
     }
 }
