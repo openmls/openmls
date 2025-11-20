@@ -269,21 +269,25 @@ impl PublicGroupDiff<'_> {
         let extensions_to_update = updated_group_context_extensions
             .get_or_insert_with(|| self.group_context.extensions().clone());
 
-        // TODO: validation checks?
+        // TODO: check that AppDataUpdates are supported by required capabilities
         debug_assert!(extensions_to_update.contains(ExtensionType::RequiredCapabilities));
-
         debug_assert!(extensions_to_update
             .required_capabilities()
             .unwrap()
             .proposal_types()
             .contains(&ProposalType::AppDataUpdate));
 
+        // TODO: also add a check to ensure that AppDataDictionary is supported by all members and/or included in
+        // required capabilities?
+        /*
         debug_assert!(extensions_to_update
             .required_capabilities()
             .unwrap()
             .extension_types()
             .contains(&ExtensionType::AppDataDictionary));
+        */
 
+        // update the dictionary extension
         extensions_to_update.add_or_replace(Extension::AppDataDictionary(
             AppDataDictionaryExtension::new(dictionary),
         ));
