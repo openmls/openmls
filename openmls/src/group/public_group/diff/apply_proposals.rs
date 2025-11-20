@@ -13,7 +13,7 @@ use super::*;
 
 #[cfg(feature = "extensions-draft-08")]
 use crate::{
-    extensions::{AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType},
+    extensions::{AppDataDictionaryExtension, Extension, ExtensionType},
     prelude::processing::AppDataUpdates,
 };
 
