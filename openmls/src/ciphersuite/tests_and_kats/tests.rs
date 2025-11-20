@@ -78,3 +78,25 @@ fn test_hpke_seal_open() {
         CryptoError::HpkeDecryptionError
     );
 }
+
+// Basic test for aead encrypt/decrypt using the provider.
+#[openmls_test::openmls_test]
+fn test_aead_encrypt_decrypt() {
+    let provider = &Provider::default();
+    let aead_algorithm = ciphersuite.aead_algorithm();
+
+    let plaintext = &[1, 2, 3];
+    let key = vec![0; aead_algorithm.key_size()];
+    let nonce = vec![0; aead_algorithm.nonce_size()];
+
+    let ctxt_tag = provider
+        .crypto()
+        .aead_encrypt(aead_algorithm, &key, plaintext, &nonce, b"aad")
+        .expect("error encrypting");
+
+    let plaintext_out = provider
+        .crypto()
+        .aead_decrypt(aead_algorithm, &key, &ctxt_tag, &nonce, b"aad")
+        .expect("error decrypting");
+    assert_eq!(plaintext_out, plaintext);
+}

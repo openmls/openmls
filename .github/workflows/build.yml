@@ -48,7 +48,7 @@ jobs:
           - release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # Install the required target
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -75,10 +75,13 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-hack
 
+      # Group all features except fork-resolution,js,extensions-draft-08
       - name: Cargo hack
-        run: cargo hack check --feature-powerset --no-dev-deps --verbose -p openmls
+        run: |
+          cargo hack check --feature-powerset --no-dev-deps --verbose -p openmls \
+          --group-features test-utils,crypto-debug,content-debug,crypto-subtle,backtrace,libcrux-provider,libcrux-provider-js,sqlite-provider

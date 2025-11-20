@@ -10,11 +10,12 @@ repository = "https://github.com/openmls/openmls/tree/main/openmls_libcrux_crypt
 readme = "../README.md"
 
 [dependencies]
-libcrux-chacha20poly1305 = { version = "0.0.3" }
-libcrux-ed25519 = { version = "0.0.3", features = ["rand"] }
-libcrux-hkdf = { version = "0.0.3" }
-libcrux-sha2 = { version = "0.0.3" }
-libcrux-hmac = { version = "0.0.3" }
+libcrux-aead = { version = "0.0.4" }
+libcrux-ed25519 = { version = "0.0.4", features = ["rand"] }
+libcrux-hkdf = { version = "0.0.4" }
+libcrux-sha2 = { version = "0.0.4" }
+libcrux-hmac = { version = "0.0.4" }
+libcrux-traits = { version = "0.0.4" }
 
 openmls_traits = { workspace = true }
 openmls_memory_storage = { workspace = true }
@@ -22,6 +23,16 @@ openmls_memory_storage = { workspace = true }
 rand = "0.9"
 tls_codec.workspace = true
 rand_chacha = "0.9"
-hpke-rs = { version = "0.3.0", features = ["hazmat", "serialization"] }
-hpke-rs-crypto = { version = "0.3.0" }
-hpke-rs-libcrux = { version = "0.3.0" }
+
+hpke-rs = { version = "0.3.0", features = [
+    "hazmat",
+    "serialization",
+], git = "https://github.com/cryspen/hpke-rs" }
+hpke-rs-crypto = { version = "0.3.0", git = "https://github.com/cryspen/hpke-rs" }
+hpke-rs-libcrux = { version = "0.3.0", git = "https://github.com/cryspen/hpke-rs" }
+
+[features]
+extensions-draft-08 = [
+    "openmls_traits/extensions-draft-08",
+    "openmls_memory_storage/extensions-draft-08",
+]
