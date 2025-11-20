@@ -92,6 +92,7 @@ impl EncryptContext {
         let label = label_string.as_bytes().into();
         Self { label, context }
     }
+
     #[cfg(feature = "extensions-draft-08")]
     pub(crate) fn new_from_component_operation_label(
         label: ComponentOperationLabel,
