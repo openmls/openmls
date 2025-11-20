@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::{extensions::ComponentData, prelude::processing::AppDataUpdates};
+use crate::prelude::processing::AppDataUpdates;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]

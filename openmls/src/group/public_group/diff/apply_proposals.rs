@@ -13,7 +13,7 @@ use super::*;
 
 #[cfg(feature = "extensions-draft-08")]
 use crate::{
-    extensions::{AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType},
+    extensions::{AppDataDictionaryExtension, Extension, ExtensionType},
     prelude::processing::AppDataUpdates,
 };
 
@@ -226,7 +226,7 @@ impl PublicGroupDiff<'_> {
             };
 
             if !group_context_extensions.is_some() {
-                group_context_extensions.insert(Extensions::default());
+                let _ = group_context_extensions.insert(Extensions::default());
             }
 
             let extensions = group_context_extensions.as_mut().unwrap();
