@@ -86,7 +86,7 @@ fn test_safe_hpke_seal_open() {
     let provider = &Provider::default();
 
     const CONTEXT: &[u8] = &[1, 2, 3];
-    const LABEL: &'static str = b"label";
+    const LABEL: &'static str = "label";
 
     let plaintext = &[1, 2, 3];
     let kp = provider
@@ -123,17 +123,18 @@ fn test_safe_hpke_seal_open() {
     .expect("Unexpected error while decrypting a valid ciphertext.");
     assert_eq!(decrypted_payload, plaintext);
 
-    let mut broken_kem_output = ciphertext.kem_output.clone();
-    broken_kem_output.pop();
-    let mut broken_ciphertext = ciphertext.ciphertext.clone();
-    broken_ciphertext.pop();
+    let mut broken_kem_output: Vec<u8> = ciphertext.kem_output.clone().into();
+    broken_kem_output[0] ^= 0xff;
+    let mut broken_ciphertext: Vec<u8> = ciphertext.ciphertext.clone().into();
+    broken_ciphertext[1] ^= 0xff;
+
     let broken_ciphertext1 = HpkeCiphertext {
-        kem_output: broken_kem_output,
+        kem_output: broken_kem_output.into(),
         ciphertext: ciphertext.ciphertext.clone(),
     };
     let broken_ciphertext2 = HpkeCiphertext {
         kem_output: ciphertext.kem_output,
-        ciphertext: broken_ciphertext,
+        ciphertext: broken_ciphertext.into(),
     };
     assert_eq!(
         hpke::safe_decrypt_with_label(
