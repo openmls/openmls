@@ -53,7 +53,11 @@ impl DerefMut for FrankenLeafNode {
 }
 
 impl SignedStruct<FrankenLeafNodeTbs> for FrankenLeafNode {
-    fn from_payload(tbs: FrankenLeafNodeTbs, signature: Signature) -> Self {
+    fn from_payload(
+        tbs: FrankenLeafNodeTbs,
+        signature: Signature,
+        _serialized_payload: Vec<u8>,
+    ) -> Self {
         Self {
             payload: tbs.payload,
             signature: signature.as_slice().to_owned().into(),
