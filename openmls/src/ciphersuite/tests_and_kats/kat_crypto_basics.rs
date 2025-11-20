@@ -143,12 +143,20 @@ struct SignWithLabelTest {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct MySignature(Signature);
 impl SignedStruct<ParsedSignWithLabel> for MySignature {
-    fn from_payload(_: ParsedSignWithLabel, signature: Signature) -> Self {
+    fn from_payload(
+        _: ParsedSignWithLabel,
+        signature: Signature,
+        _serialized_payload: Vec<u8>,
+    ) -> Self {
         Self(signature)
     }
 }
 impl SignedStruct<SignWithLabelTest> for MySignature {
-    fn from_payload(_: SignWithLabelTest, signature: Signature) -> Self {
+    fn from_payload(
+        _: SignWithLabelTest,
+        signature: Signature,
+        _serialized_payload: Vec<u8>,
+    ) -> Self {
         Self(signature)
     }
 }

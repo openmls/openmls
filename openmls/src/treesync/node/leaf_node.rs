@@ -991,7 +991,7 @@ impl Signable for LeafNodeTbs {
 }
 
 impl SignedStruct<LeafNodeTbs> for LeafNode {
-    fn from_payload(tbs: LeafNodeTbs, signature: Signature) -> Self {
+    fn from_payload(tbs: LeafNodeTbs, signature: Signature, _serialized_payload: Vec<u8>) -> Self {
         Self {
             payload: tbs.payload,
             signature,
