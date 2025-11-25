@@ -25,6 +25,7 @@ mod secret;
 pub mod hash_ref;
 pub mod signable;
 pub mod signature;
+#[cfg(feature = "extensions-draft-08")]
 pub use hpke::{
     safe_decrypt_with_label, safe_encrypt_with_label, Error as HpkeError, SafeEncryptionContext,
 };
