@@ -169,6 +169,8 @@ pub mod error;
 
 // Public
 pub mod ciphersuite;
+#[cfg(feature = "extensions-draft-08")]
+pub mod component;
 pub mod credentials;
 pub mod extensions;
 pub mod framing;

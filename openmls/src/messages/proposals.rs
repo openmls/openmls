@@ -28,7 +28,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::ComponentId;
+use crate::component::ComponentId;
 
 /// ## MLS Proposal Types
 ///

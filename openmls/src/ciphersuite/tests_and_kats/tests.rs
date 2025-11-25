@@ -103,21 +103,25 @@ fn test_safe_hpke_seal_open() {
 
     let ciphertext = hpke::safe_encrypt_with_label(
         &kp.public,
-        COMPONENT_ID,
-        LABEL,
-        CONTEXT,
         plaintext,
         ciphersuite,
+        SafeEncryptionContext {
+            component_id: COMPONENT_ID,
+            label: LABEL,
+            context: CONTEXT,
+        },
         provider.crypto(),
     )
     .unwrap();
     let decrypted_payload = hpke::safe_decrypt_with_label(
         &kp.private,
-        COMPONENT_ID,
-        LABEL,
-        CONTEXT,
         &ciphertext,
         ciphersuite,
+        SafeEncryptionContext {
+            component_id: COMPONENT_ID,
+            label: LABEL,
+            context: CONTEXT,
+        },
         provider.crypto(),
     )
     .expect("Unexpected error while decrypting a valid ciphertext.");
@@ -139,11 +143,13 @@ fn test_safe_hpke_seal_open() {
     assert_eq!(
         hpke::safe_decrypt_with_label(
             &kp.private,
-            COMPONENT_ID,
-            LABEL,
-            CONTEXT,
             &broken_ciphertext1,
             ciphersuite,
+            SafeEncryptionContext {
+                component_id: COMPONENT_ID,
+                label: LABEL,
+                context: CONTEXT,
+            },
             provider.crypto(),
         )
         .map_err(|_| CryptoError::HpkeDecryptionError)
@@ -153,11 +159,13 @@ fn test_safe_hpke_seal_open() {
     assert_eq!(
         hpke::safe_decrypt_with_label(
             &kp.private,
-            COMPONENT_ID,
-            LABEL,
-            CONTEXT,
             &broken_ciphertext2,
             ciphersuite,
+            SafeEncryptionContext {
+                component_id: COMPONENT_ID,
+                label: LABEL,
+                context: CONTEXT,
+            },
             provider.crypto(),
         )
         .map_err(|_| CryptoError::HpkeDecryptionError)

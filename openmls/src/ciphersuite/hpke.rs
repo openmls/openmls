@@ -44,24 +44,20 @@ use tls_codec::{Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, Tl
 use super::LABEL_PREFIX;
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::ComponentId;
+use crate::component::{ComponentId, ComponentOperationLabel};
 
 /// HPKE labeled encryption errors.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum Error {
+pub enum Error {
     /// Error while serializing content. This should only happen if a bounds check was missing.
     #[error(
         "Error while serializing content. This should only happen if a bounds check was missing."
     )]
     MissingBoundCheck,
+
     /// Decryption failed.
     #[error("Decryption failed.")]
     DecryptionFailed,
-    #[cfg(feature = "extensions-draft-08")]
-    // TODO: these variants could be a different error type.
-    /// Serializing label failed
-    #[error("Serializing label failed.")]
-    LabelSerializationFailed,
 }
 
 impl From<tls_codec::Error> for Error {
@@ -98,17 +94,17 @@ impl EncryptContext {
         label: ComponentOperationLabel,
         context: VLBytes,
     ) -> Result<Self, Error> {
-        let serialized_label = label
-            .tls_serialize_detached()
-            .map_err(|_| Error::LabelSerializationFailed)?;
+        let serialized_label = label.tls_serialize_detached()?;
 
         // Prefix the serialized label with the LABEL_PREFIX bytes
+        // Note that the spec isn't precise here. There are different ways to
+        // combine these. https://github.com/mlswg/mls-extensions/issues/79
         let mut label = LABEL_PREFIX.as_bytes().to_vec();
         label.extend(serialized_label);
 
         Ok(Self {
             label: label.into(),
-            context: context.into(),
+            context,
         })
     }
 }
@@ -164,46 +160,38 @@ fn encrypt_with_label_internal(
     Ok(cipher)
 }
 
-/// Label for safe encryption/decryption as defined in Section 4.2 of the MLS Extensions draft
-#[derive(Debug, TlsSerialize, TlsSize)]
+/// Context for [`safe_encrypt_with_label`] and [`safe_decrypt_with_label`].
 #[cfg(feature = "extensions-draft-08")]
-pub(crate) struct ComponentOperationLabel {
-    /// "Application"
-    base_label: VLBytes,
-    component_id: ComponentId,
-    label: VLBytes,
+pub struct SafeEncryptionContext<'a> {
+    /// The [`ComponentId`] to use.
+    pub component_id: ComponentId,
+
+    /// A label
+    pub label: &'a str,
+
+    /// An optional context.
+    pub context: &'a [u8],
 }
 
-#[cfg(feature = "extensions-draft-08")]
-const COMPONENT_OPERATION_BASE_LABEL: &'static [u8] = b"Application";
-
-#[cfg(feature = "extensions-draft-08")]
-impl ComponentOperationLabel {
-    /// Creates a new ComponentOperationLabel, prefixed with "Application"
-    pub fn new(component_id: ComponentId, label: &str) -> Self {
-        Self {
-            base_label: COMPONENT_OPERATION_BASE_LABEL.into(),
-            component_id,
-            label: label.as_bytes().into(),
-        }
-    }
-}
-
+/// Encrypt the provided `plaintext` for the `public_key`.
+/// The [`SafeEncryptionContext`] is used to set the [`ComponentId`], `label`,
+/// and optional `context`.
+///
+/// Returns an [`HpkeCiphertext`] or an [`Error`].
 #[cfg(feature = "extensions-draft-08")]
 pub fn safe_encrypt_with_label(
     public_key: &[u8],
-    component_id: ComponentId,
-    label: &str,
-    context: &[u8],
     plaintext: &[u8],
     ciphersuite: Ciphersuite,
+    context: SafeEncryptionContext,
     crypto: &impl OpenMlsCrypto,
 ) -> Result<HpkeCiphertext, Error> {
-    let component_operation_label = ComponentOperationLabel::new(component_id, label);
+    let component_operation_label =
+        ComponentOperationLabel::new(context.component_id, context.label);
 
-    let context: EncryptContext = EncryptContext::new_from_component_operation_label(
+    let context = EncryptContext::new_from_component_operation_label(
         component_operation_label,
-        context.into(),
+        context.context.into(),
     )?;
 
     encrypt_with_label_internal(public_key, context, plaintext, ciphersuite, crypto)
@@ -257,21 +245,24 @@ fn decrypt_with_label_internal(
 }
 
 #[cfg(feature = "extensions-draft-08")]
-/// Decrypt with HPKE and label.
+/// Decrypt the provided `ciphertext` with the `private_key`.
+/// The [`SafeEncryptionContext`] is used to set the [`ComponentId`], `label`,
+/// and optional `context`.
+///
+/// Returns an [`HpkeCiphertext`] or an [`Error`].
 pub fn safe_decrypt_with_label(
     private_key: &[u8],
-    component_id: ComponentId,
-    label: &str,
-    context: &[u8],
     ciphertext: &HpkeCiphertext,
     ciphersuite: Ciphersuite,
+    context: SafeEncryptionContext,
     crypto: &impl OpenMlsCrypto,
 ) -> Result<Vec<u8>, Error> {
-    let component_operation_label = ComponentOperationLabel::new(component_id, label);
+    let component_operation_label =
+        ComponentOperationLabel::new(context.component_id, context.label);
 
     let context: EncryptContext = EncryptContext::new_from_component_operation_label(
         component_operation_label,
-        context.into(),
+        context.context.into(),
     )?;
 
     decrypt_with_label_internal(private_key, context, ciphertext, ciphersuite, crypto)
