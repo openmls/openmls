@@ -57,6 +57,27 @@ are two different cryptography providers implemented right now. But consumers
 can bring their own implementation. See [traits](https://github.com/openmls/openmls/tree/main/traits) for more
 details.
 
+## Features
+OpenMLS provides the following features
+
+- **extensions-draft-08**: enable features defined in [MLS extensions draft-08](https://messaginglayersecurity.rocks/mls-extensions/draft-ietf-mls-extensions.html)
+- **fork-resolution**: helper functionality for [resolving forks](https://book.openmls.tech/user_manual/fork-resolution.html).
+- **js**: enable compilation to wasm
+
+<details>
+<summary>Developer features</summary>
+
+- **libcrux-provider**: enable the libcrux crypto provider dependency
+- **libcrux-provider-js**: enable the libcrux crypto provider with support for compiling to wasm
+- **openmls_rust_crypto**: enable the rust crypto provider
+- **sqlite-provider**: enable the sqlite provider
+- **backtrace**: enable backtraces
+- **content-debug**: allow printing sensitive content of messages for debugging
+- **crypto-debug**: allow printing cryptographic key material for debugging
+- **test-util**: test utilities
+
+</details>
+
 ## Working on OpenMLS
 
 For more details when working on OpenMLS itself please see the [Developer.md].

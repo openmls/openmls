@@ -45,7 +45,6 @@ zeroize = "1.8.1"
 serde_bytes = "0.11.17"
 
 [features]
-crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
 test-utils = [
     "dep:serde_json",
     "dep:itertools",
@@ -99,7 +98,7 @@ wasm-bindgen-test = "0.3.50"
 clap = { version = "4", features = ["derive"] }
 base64 = "0.22.1"
 flate2 = "1.0"
-indicatif = "0.17.8"
+indicatif = "0.18.3"
 
 # Disable for wasm32 and Win32
 [target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows"))))'.dev-dependencies]
@@ -115,3 +114,7 @@ openmls = { path = ".", features = ["test-utils"] }
 [[bench]]
 name = "benchmark"
 harness = false
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
