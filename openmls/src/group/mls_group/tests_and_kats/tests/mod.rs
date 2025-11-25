@@ -4,4 +4,5 @@ mod external_init;
 mod mls_group;
 mod past_secrets;
 mod proposals;
+mod repro;
 mod secret_tree_persistence;
