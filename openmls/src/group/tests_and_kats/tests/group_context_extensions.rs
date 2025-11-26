@@ -868,7 +868,13 @@ fn fail_2_gce_proposals_1_commit_valn0308() {
                         frankenstein::FrankenProposal::GroupContextExtensions(vec![
                             // ideally this should be some unknown extension, but it's tricky
                             // to get the payload set up correctly so we'll just go with this
-                            frankenstein::FrankenExtension::LastResort,
+                            frankenstein::FrankenExtension::RequiredCapabilities(
+                                frankenstein::FrankenRequiredCapabilitiesExtension {
+                                    extension_types: vec![],
+                                    proposal_types: vec![],
+                                    credential_types: vec![],
+                                },
+                            ),
                         ]),
                     );
 

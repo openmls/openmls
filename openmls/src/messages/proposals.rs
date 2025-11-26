@@ -20,9 +20,9 @@ use crate::{
     framing::{
         mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, ContentType,
     },
-    group::GroupId,
+    group::{GroupContext, GroupId},
     key_packages::*,
-    prelude::LeafNode,
+    prelude::{ExtensionsForObject, LeafNode},
     schedule::psk::*,
     versions::ProtocolVersion,
 };
@@ -605,30 +605,31 @@ impl AppEphemeralProposal {
 ///   Extension extensions<V>;
 /// } GroupContextExtensions;
 /// ```
-#[derive(
-    Debug,
-    PartialEq,
-    Eq,
-    Clone,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSerialize,
-    TlsSize,
-)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct GroupContextExtensionProposal {
-    extensions: Extensions,
+    extensions: ExtensionsForObject<GroupContext>,
+}
+
+impl Size for GroupContextExtensionProposal {
+    fn tls_serialized_len(&self) -> usize {
+        self.extensions.tls_serialized_len()
+    }
+}
+
+impl TlsSerializeTrait for GroupContextExtensionProposal {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        self.extensions.tls_serialize(writer)
+    }
 }
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
-    pub(crate) fn new(extensions: Extensions) -> Self {
+    pub(crate) fn new(extensions: ExtensionsForObject<GroupContext>) -> Self {
         Self { extensions }
     }
 
     /// Get the extensions of the proposal
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &ExtensionsForObject<GroupContext> {
         &self.extensions
     }
 }
