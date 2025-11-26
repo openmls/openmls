@@ -50,7 +50,7 @@ pub enum SignatureError {
 /// This trait must be implemented by all structs that contain a self-signature.
 pub trait SignedStruct<T> {
     /// Build a signed struct version from the payload struct.
-    fn from_payload(payload: T, signature: Signature) -> Self;
+    fn from_payload(payload: T, signature: Signature, serialized_payload: Vec<u8>) -> Self;
 }
 
 /// The `Signable` trait is implemented by all struct that are being signed.
@@ -75,19 +75,23 @@ pub trait Signable: Sized {
         let payload = self
             .unsigned_payload()
             .map_err(|_| SignatureError::SigningError)?;
-        let payload = match SignContent::new(self.label(), payload.into()).tls_serialize_detached()
-        {
-            Ok(p) => p,
-            Err(e) => {
-                log::error!("Serializing SignContent failed, {e:?}");
-                return Err(SignatureError::SigningError);
-            }
-        };
+        let payload_sign_content =
+            match SignContent::new(self.label(), payload.clone().into()).tls_serialize_detached() {
+                Ok(p) => p,
+                Err(e) => {
+                    log::error!("Serializing SignContent failed, {e:?}");
+                    return Err(SignatureError::SigningError);
+                }
+            };
         let signature = signer
-            .sign(&payload)
+            .sign(&payload_sign_content)
             .map_err(|_| SignatureError::SigningError)?;
 
-        Ok(Self::SignedOutput::from_payload(self, signature.into()))
+        Ok(Self::SignedOutput::from_payload(
+            self,
+            signature.into(),
+            payload,
+        ))
     }
 }
 
