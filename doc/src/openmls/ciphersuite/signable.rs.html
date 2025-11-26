@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/ciphersuite/signable.rs`."><title>signable.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e56847b5.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.1 (ed61e7d7e 2025-11-07)" data-channel="1.91.1" data-search-js="search-e256b49e.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-6dc2a7f3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/ciphersuite/</div>signable.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module defines traits used for signing and verifying
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/ciphersuite/signable.rs`."><title>signable.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (80d8f292d 2025-11-25)" data-channel="nightly" data-search-js="search-680b2199.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-a410ff4d.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/ciphersuite/</div>signable.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module defines traits used for signing and verifying
 <a href=#2 id=2 data-nosnippet>2</a>//! structs from the MLS protocol spec.
 <a href=#3 id=3 data-nosnippet>3</a>//!
 <a href=#4 id=4 data-nosnippet>4</a>//! # Type-Enforced Verification
@@ -50,7 +50,7 @@
 <a href=#50 id=50 data-nosnippet>50</a><span class="doccomment">/// This trait must be implemented by all structs that contain a self-signature.
 <a href=#51 id=51 data-nosnippet>51</a></span><span class="kw">pub trait </span>SignedStruct&lt;T&gt; {
 <a href=#52 id=52 data-nosnippet>52</a>    <span class="doccomment">/// Build a signed struct version from the payload struct.
-<a href=#53 id=53 data-nosnippet>53</a>    </span><span class="kw">fn </span>from_payload(payload: T, signature: Signature) -&gt; <span class="self">Self</span>;
+<a href=#53 id=53 data-nosnippet>53</a>    </span><span class="kw">fn </span>from_payload(payload: T, signature: Signature, serialized_payload: Vec&lt;u8&gt;) -&gt; <span class="self">Self</span>;
 <a href=#54 id=54 data-nosnippet>54</a>}
 <a href=#55 id=55 data-nosnippet>55</a>
 <a href=#56 id=56 data-nosnippet>56</a><span class="doccomment">/// The `Signable` trait is implemented by all struct that are being signed.
@@ -75,92 +75,97 @@
 <a href=#75 id=75 data-nosnippet>75</a>        <span class="kw">let </span>payload = <span class="self">self
 <a href=#76 id=76 data-nosnippet>76</a>            </span>.unsigned_payload()
 <a href=#77 id=77 data-nosnippet>77</a>            .map_err(|<span class="kw">_</span>| SignatureError::SigningError)<span class="question-mark">?</span>;
-<a href=#78 id=78 data-nosnippet>78</a>        <span class="kw">let </span>payload = <span class="kw">match </span>SignContent::new(<span class="self">self</span>.label(), payload.into()).tls_serialize_detached()
-<a href=#79 id=79 data-nosnippet>79</a>        {
-<a href=#80 id=80 data-nosnippet>80</a>            <span class="prelude-val">Ok</span>(p) =&gt; p,
-<a href=#81 id=81 data-nosnippet>81</a>            <span class="prelude-val">Err</span>(e) =&gt; {
-<a href=#82 id=82 data-nosnippet>82</a>                <span class="macro">log::error!</span>(<span class="string">"Serializing SignContent failed, {e:?}"</span>);
-<a href=#83 id=83 data-nosnippet>83</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(SignatureError::SigningError);
-<a href=#84 id=84 data-nosnippet>84</a>            }
-<a href=#85 id=85 data-nosnippet>85</a>        };
+<a href=#78 id=78 data-nosnippet>78</a>        <span class="kw">let </span>payload_sign_content =
+<a href=#79 id=79 data-nosnippet>79</a>            <span class="kw">match </span>SignContent::new(<span class="self">self</span>.label(), payload.clone().into()).tls_serialize_detached() {
+<a href=#80 id=80 data-nosnippet>80</a>                <span class="prelude-val">Ok</span>(p) =&gt; p,
+<a href=#81 id=81 data-nosnippet>81</a>                <span class="prelude-val">Err</span>(e) =&gt; {
+<a href=#82 id=82 data-nosnippet>82</a>                    <span class="macro">log::error!</span>(<span class="string">"Serializing SignContent failed, {e:?}"</span>);
+<a href=#83 id=83 data-nosnippet>83</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(SignatureError::SigningError);
+<a href=#84 id=84 data-nosnippet>84</a>                }
+<a href=#85 id=85 data-nosnippet>85</a>            };
 <a href=#86 id=86 data-nosnippet>86</a>        <span class="kw">let </span>signature = signer
-<a href=#87 id=87 data-nosnippet>87</a>            .sign(<span class="kw-2">&amp;</span>payload)
+<a href=#87 id=87 data-nosnippet>87</a>            .sign(<span class="kw-2">&amp;</span>payload_sign_content)
 <a href=#88 id=88 data-nosnippet>88</a>            .map_err(|<span class="kw">_</span>| SignatureError::SigningError)<span class="question-mark">?</span>;
 <a href=#89 id=89 data-nosnippet>89</a>
-<a href=#90 id=90 data-nosnippet>90</a>        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::SignedOutput::from_payload(<span class="self">self</span>, signature.into()))
-<a href=#91 id=91 data-nosnippet>91</a>    }
-<a href=#92 id=92 data-nosnippet>92</a>}
-<a href=#93 id=93 data-nosnippet>93</a>
-<a href=#94 id=94 data-nosnippet>94</a><span class="doccomment">/// This marker trait must be implemented by all structs that contain a verified
-<a href=#95 id=95 data-nosnippet>95</a>/// self-signature.
-<a href=#96 id=96 data-nosnippet>96</a></span><span class="kw">pub trait </span>VerifiedStruct {}
+<a href=#90 id=90 data-nosnippet>90</a>        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::SignedOutput::from_payload(
+<a href=#91 id=91 data-nosnippet>91</a>            <span class="self">self</span>,
+<a href=#92 id=92 data-nosnippet>92</a>            signature.into(),
+<a href=#93 id=93 data-nosnippet>93</a>            payload,
+<a href=#94 id=94 data-nosnippet>94</a>        ))
+<a href=#95 id=95 data-nosnippet>95</a>    }
+<a href=#96 id=96 data-nosnippet>96</a>}
 <a href=#97 id=97 data-nosnippet>97</a>
-<a href=#98 id=98 data-nosnippet>98</a><span class="doccomment">/// The verifiable trait must be implemented by any struct that is signed with
-<a href=#99 id=99 data-nosnippet>99</a>/// a credential. The actual `verify` method is provided.
-<a href=#100 id=100 data-nosnippet>100</a>/// The `unsigned_payload` and `signature` functions have to be implemented for
-<a href=#101 id=101 data-nosnippet>101</a>/// each struct, returning the serialized payload and the signature respectively.
-<a href=#102 id=102 data-nosnippet>102</a>///
-<a href=#103 id=103 data-nosnippet>103</a>/// Note that `Verifiable` should not be implemented on the same struct as
-<a href=#104 id=104 data-nosnippet>104</a>/// `Signable`. If this appears to be necessary, it is probably a sign that the
-<a href=#105 id=105 data-nosnippet>105</a>/// struct implementing them aren't well defined. Not that both traits define an
-<a href=#106 id=106 data-nosnippet>106</a>/// `unsigned_payload` function.
-<a href=#107 id=107 data-nosnippet>107</a></span><span class="kw">pub trait </span>Verifiable: Sized {
-<a href=#108 id=108 data-nosnippet>108</a>    <span class="doccomment">/// The type used for representing the verified data. Must implement the marker trait
-<a href=#109 id=109 data-nosnippet>109</a>    /// [`VerifiedStruct`].
-<a href=#110 id=110 data-nosnippet>110</a>    </span><span class="kw">type </span>VerifiedStruct: VerifiedStruct;
-<a href=#111 id=111 data-nosnippet>111</a>
-<a href=#112 id=112 data-nosnippet>112</a>    <span class="doccomment">/// Return the unsigned, serialized payload that should be verified.
-<a href=#113 id=113 data-nosnippet>113</a>    </span><span class="kw">fn </span>unsigned_payload(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt;;
-<a href=#114 id=114 data-nosnippet>114</a>
-<a href=#115 id=115 data-nosnippet>115</a>    <span class="doccomment">/// A reference to the signature to be verified.
-<a href=#116 id=116 data-nosnippet>116</a>    </span><span class="kw">fn </span>signature(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature;
-<a href=#117 id=117 data-nosnippet>117</a>
-<a href=#118 id=118 data-nosnippet>118</a>    <span class="doccomment">/// Return the string label used for labeled verification.
-<a href=#119 id=119 data-nosnippet>119</a>    </span><span class="kw">fn </span>label(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
-<a href=#120 id=120 data-nosnippet>120</a>
-<a href=#121 id=121 data-nosnippet>121</a>    <span class="doccomment">/// Verifies the payload against the given `credential`.
-<a href=#122 id=122 data-nosnippet>122</a>    /// Usually this is implemented by first checking that `self.verify_no_out()`
-<a href=#123 id=123 data-nosnippet>123</a>    /// does not return an error, and then converting the value into
-<a href=#124 id=124 data-nosnippet>124</a>    /// `Self::VerifiedStruct`.
-<a href=#125 id=125 data-nosnippet>125</a>    ///
-<a href=#126 id=126 data-nosnippet>126</a>    /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
-<a href=#127 id=127 data-nosnippet>127</a>    /// `CredentialError::InvalidSignature` otherwise.
-<a href=#128 id=128 data-nosnippet>128</a>    </span><span class="kw">fn </span>verify(
-<a href=#129 id=129 data-nosnippet>129</a>        <span class="self">self</span>,
-<a href=#130 id=130 data-nosnippet>130</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#131 id=131 data-nosnippet>131</a>        pk: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
-<a href=#132 id=132 data-nosnippet>132</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::VerifiedStruct, SignatureError&gt;;
-<a href=#133 id=133 data-nosnippet>133</a>
-<a href=#134 id=134 data-nosnippet>134</a>    <span class="doccomment">/// Verifies the payload against the given public key.
-<a href=#135 id=135 data-nosnippet>135</a>    /// The signature is fetched via the [`Verifiable::signature()`] function and
-<a href=#136 id=136 data-nosnippet>136</a>    /// the payload via [`Verifiable::unsigned_payload()`].
-<a href=#137 id=137 data-nosnippet>137</a>    ///
-<a href=#138 id=138 data-nosnippet>138</a>    /// Returns `Ok(())` if the signature is valid and
-<a href=#139 id=139 data-nosnippet>139</a>    /// [`SignatureError::VerificationError`] otherwise.
-<a href=#140 id=140 data-nosnippet>140</a>    </span><span class="kw">fn </span>verify_no_out(
-<a href=#141 id=141 data-nosnippet>141</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#142 id=142 data-nosnippet>142</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#143 id=143 data-nosnippet>143</a>        pk: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
-<a href=#144 id=144 data-nosnippet>144</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SignatureError&gt; {
-<a href=#145 id=145 data-nosnippet>145</a>        <span class="kw">let </span>payload = <span class="self">self
-<a href=#146 id=146 data-nosnippet>146</a>            </span>.unsigned_payload()
-<a href=#147 id=147 data-nosnippet>147</a>            .map_err(|<span class="kw">_</span>| SignatureError::VerificationError)<span class="question-mark">?</span>;
-<a href=#148 id=148 data-nosnippet>148</a>        <span class="kw">let </span>sign_content = SignContent::new(<span class="self">self</span>.label(), payload.into());
-<a href=#149 id=149 data-nosnippet>149</a>        <span class="kw">let </span>payload = <span class="kw">match </span>sign_content.tls_serialize_detached() {
-<a href=#150 id=150 data-nosnippet>150</a>            <span class="prelude-val">Ok</span>(p) =&gt; p,
-<a href=#151 id=151 data-nosnippet>151</a>            <span class="prelude-val">Err</span>(e) =&gt; {
-<a href=#152 id=152 data-nosnippet>152</a>                <span class="macro">log::error!</span>(<span class="string">"Serializing SignContent failed, {e:?}"</span>);
-<a href=#153 id=153 data-nosnippet>153</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(SignatureError::VerificationError);
-<a href=#154 id=154 data-nosnippet>154</a>            }
-<a href=#155 id=155 data-nosnippet>155</a>        };
-<a href=#156 id=156 data-nosnippet>156</a>        <span class="comment">// https://validation.openmls.tech/#valn1301
-<a href=#157 id=157 data-nosnippet>157</a>        </span>crypto
-<a href=#158 id=158 data-nosnippet>158</a>            .verify_signature(
-<a href=#159 id=159 data-nosnippet>159</a>                pk.signature_scheme(),
-<a href=#160 id=160 data-nosnippet>160</a>                <span class="kw-2">&amp;</span>payload,
-<a href=#161 id=161 data-nosnippet>161</a>                pk.as_slice(),
-<a href=#162 id=162 data-nosnippet>162</a>                <span class="self">self</span>.signature().value(),
-<a href=#163 id=163 data-nosnippet>163</a>            )
-<a href=#164 id=164 data-nosnippet>164</a>            .map_err(|<span class="kw">_</span>| SignatureError::VerificationError)
-<a href=#165 id=165 data-nosnippet>165</a>    }
-<a href=#166 id=166 data-nosnippet>166</a>}</code></pre></div></section></main></body></html>
+<a href=#98 id=98 data-nosnippet>98</a><span class="doccomment">/// This marker trait must be implemented by all structs that contain a verified
+<a href=#99 id=99 data-nosnippet>99</a>/// self-signature.
+<a href=#100 id=100 data-nosnippet>100</a></span><span class="kw">pub trait </span>VerifiedStruct {}
+<a href=#101 id=101 data-nosnippet>101</a>
+<a href=#102 id=102 data-nosnippet>102</a><span class="doccomment">/// The verifiable trait must be implemented by any struct that is signed with
+<a href=#103 id=103 data-nosnippet>103</a>/// a credential. The actual `verify` method is provided.
+<a href=#104 id=104 data-nosnippet>104</a>/// The `unsigned_payload` and `signature` functions have to be implemented for
+<a href=#105 id=105 data-nosnippet>105</a>/// each struct, returning the serialized payload and the signature respectively.
+<a href=#106 id=106 data-nosnippet>106</a>///
+<a href=#107 id=107 data-nosnippet>107</a>/// Note that `Verifiable` should not be implemented on the same struct as
+<a href=#108 id=108 data-nosnippet>108</a>/// `Signable`. If this appears to be necessary, it is probably a sign that the
+<a href=#109 id=109 data-nosnippet>109</a>/// struct implementing them aren't well defined. Not that both traits define an
+<a href=#110 id=110 data-nosnippet>110</a>/// `unsigned_payload` function.
+<a href=#111 id=111 data-nosnippet>111</a></span><span class="kw">pub trait </span>Verifiable: Sized {
+<a href=#112 id=112 data-nosnippet>112</a>    <span class="doccomment">/// The type used for representing the verified data. Must implement the marker trait
+<a href=#113 id=113 data-nosnippet>113</a>    /// [`VerifiedStruct`].
+<a href=#114 id=114 data-nosnippet>114</a>    </span><span class="kw">type </span>VerifiedStruct: VerifiedStruct;
+<a href=#115 id=115 data-nosnippet>115</a>
+<a href=#116 id=116 data-nosnippet>116</a>    <span class="doccomment">/// Return the unsigned, serialized payload that should be verified.
+<a href=#117 id=117 data-nosnippet>117</a>    </span><span class="kw">fn </span>unsigned_payload(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt;;
+<a href=#118 id=118 data-nosnippet>118</a>
+<a href=#119 id=119 data-nosnippet>119</a>    <span class="doccomment">/// A reference to the signature to be verified.
+<a href=#120 id=120 data-nosnippet>120</a>    </span><span class="kw">fn </span>signature(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature;
+<a href=#121 id=121 data-nosnippet>121</a>
+<a href=#122 id=122 data-nosnippet>122</a>    <span class="doccomment">/// Return the string label used for labeled verification.
+<a href=#123 id=123 data-nosnippet>123</a>    </span><span class="kw">fn </span>label(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
+<a href=#124 id=124 data-nosnippet>124</a>
+<a href=#125 id=125 data-nosnippet>125</a>    <span class="doccomment">/// Verifies the payload against the given `credential`.
+<a href=#126 id=126 data-nosnippet>126</a>    /// Usually this is implemented by first checking that `self.verify_no_out()`
+<a href=#127 id=127 data-nosnippet>127</a>    /// does not return an error, and then converting the value into
+<a href=#128 id=128 data-nosnippet>128</a>    /// `Self::VerifiedStruct`.
+<a href=#129 id=129 data-nosnippet>129</a>    ///
+<a href=#130 id=130 data-nosnippet>130</a>    /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
+<a href=#131 id=131 data-nosnippet>131</a>    /// `CredentialError::InvalidSignature` otherwise.
+<a href=#132 id=132 data-nosnippet>132</a>    </span><span class="kw">fn </span>verify(
+<a href=#133 id=133 data-nosnippet>133</a>        <span class="self">self</span>,
+<a href=#134 id=134 data-nosnippet>134</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#135 id=135 data-nosnippet>135</a>        pk: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
+<a href=#136 id=136 data-nosnippet>136</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::VerifiedStruct, SignatureError&gt;;
+<a href=#137 id=137 data-nosnippet>137</a>
+<a href=#138 id=138 data-nosnippet>138</a>    <span class="doccomment">/// Verifies the payload against the given public key.
+<a href=#139 id=139 data-nosnippet>139</a>    /// The signature is fetched via the [`Verifiable::signature()`] function and
+<a href=#140 id=140 data-nosnippet>140</a>    /// the payload via [`Verifiable::unsigned_payload()`].
+<a href=#141 id=141 data-nosnippet>141</a>    ///
+<a href=#142 id=142 data-nosnippet>142</a>    /// Returns `Ok(())` if the signature is valid and
+<a href=#143 id=143 data-nosnippet>143</a>    /// [`SignatureError::VerificationError`] otherwise.
+<a href=#144 id=144 data-nosnippet>144</a>    </span><span class="kw">fn </span>verify_no_out(
+<a href=#145 id=145 data-nosnippet>145</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#146 id=146 data-nosnippet>146</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#147 id=147 data-nosnippet>147</a>        pk: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
+<a href=#148 id=148 data-nosnippet>148</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SignatureError&gt; {
+<a href=#149 id=149 data-nosnippet>149</a>        <span class="kw">let </span>payload = <span class="self">self
+<a href=#150 id=150 data-nosnippet>150</a>            </span>.unsigned_payload()
+<a href=#151 id=151 data-nosnippet>151</a>            .map_err(|<span class="kw">_</span>| SignatureError::VerificationError)<span class="question-mark">?</span>;
+<a href=#152 id=152 data-nosnippet>152</a>        <span class="kw">let </span>sign_content = SignContent::new(<span class="self">self</span>.label(), payload.into());
+<a href=#153 id=153 data-nosnippet>153</a>        <span class="kw">let </span>payload = <span class="kw">match </span>sign_content.tls_serialize_detached() {
+<a href=#154 id=154 data-nosnippet>154</a>            <span class="prelude-val">Ok</span>(p) =&gt; p,
+<a href=#155 id=155 data-nosnippet>155</a>            <span class="prelude-val">Err</span>(e) =&gt; {
+<a href=#156 id=156 data-nosnippet>156</a>                <span class="macro">log::error!</span>(<span class="string">"Serializing SignContent failed, {e:?}"</span>);
+<a href=#157 id=157 data-nosnippet>157</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(SignatureError::VerificationError);
+<a href=#158 id=158 data-nosnippet>158</a>            }
+<a href=#159 id=159 data-nosnippet>159</a>        };
+<a href=#160 id=160 data-nosnippet>160</a>        <span class="comment">// https://validation.openmls.tech/#valn1301
+<a href=#161 id=161 data-nosnippet>161</a>        </span>crypto
+<a href=#162 id=162 data-nosnippet>162</a>            .verify_signature(
+<a href=#163 id=163 data-nosnippet>163</a>                pk.signature_scheme(),
+<a href=#164 id=164 data-nosnippet>164</a>                <span class="kw-2">&amp;</span>payload,
+<a href=#165 id=165 data-nosnippet>165</a>                pk.as_slice(),
+<a href=#166 id=166 data-nosnippet>166</a>                <span class="self">self</span>.signature().value(),
+<a href=#167 id=167 data-nosnippet>167</a>            )
+<a href=#168 id=168 data-nosnippet>168</a>            .map_err(|<span class="kw">_</span>| SignatureError::VerificationError)
+<a href=#169 id=169 data-nosnippet>169</a>    }
+<a href=#170 id=170 data-nosnippet>170</a>}
+</code></pre></div></section></main></body></html>

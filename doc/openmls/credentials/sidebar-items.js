@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CredentialType"],"mod":["errors"],"struct":["BasicCredential","Certificate","Credential","CredentialWithKey","NewSignerBundle"]};
+window.SIDEBAR_ITEMS = {"enum":["CredentialType"],"mod":["errors","test_utils"],"struct":["BasicCredential","Certificate","Credential","CredentialWithKey","NewSignerBundle"]};

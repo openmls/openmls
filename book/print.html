@@ -13,21 +13,20 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="favicon.svg">
-        <link rel="shortcut icon" href="favicon.png">
-        <link rel="stylesheet" href="css/variables.css">
-        <link rel="stylesheet" href="css/general.css">
-        <link rel="stylesheet" href="css/chrome.css">
-        <link rel="stylesheet" href="css/print.css" media="print">
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-2459343d.css">
+        <link rel="stylesheet" href="css/chrome-ae938929.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
-        <link rel="stylesheet" href="fonts/fonts.css">
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
 
@@ -37,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex.js";
+            window.path_to_searchindex_js = "searchindex-cda49bb9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc.js"></script>
+        <script src="toc-ed38f94f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -54,7 +53,7 @@
             </div>
         </div>
     </div>
-    <div id="body-container">
+    <div id="mdbook-body-container">
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
@@ -83,12 +82,12 @@
             html.classList.add("js");
         </script>
 
-        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
             let sidebar = null;
-            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -103,39 +102,39 @@
             }
         </script>
 
-        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
                 <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
             </noscript>
-            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
             </div>
         </nav>
 
-        <div id="page-wrapper" class="page-wrapper">
+        <div id="mdbook-page-wrapper" class="page-wrapper">
 
             <div class="page">
-                <div id="menu-bar-hover-placeholder"></div>
-                <div id="menu-bar" class="menu-bar sticky">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
-                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
-                            <i class="fa fa-bars"></i>
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
                         </label>
-                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
-                            <i class="fa fa-paint-brush"></i>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
                         </button>
-                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
-                            <i class="fa fa-search"></i>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
                         </button>
                     </div>
 
@@ -143,48 +142,48 @@
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
-                            <i id="print-button" class="fa fa-print"></i>
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
                         </a>
 
                     </div>
                 </div>
 
-                <div id="search-wrapper" class="hidden">
-                    <form id="searchbar-outer" class="searchbar-outer">
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
                         <div class="search-wrapper">
-                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
                             <div class="spinner-wrapper">
-                                <i class="fa fa-spinner fa-spin"></i>
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
                             </div>
                         </div>
                     </form>
-                    <div id="searchresults-outer" class="searchresults-outer hidden">
-                        <div id="searchresults-header" class="searchresults-header"></div>
-                        <ul id="searchresults">
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
                         </ul>
                     </div>
                 </div>
 
                 <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
                 <script>
-                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
-                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
-                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
                         link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
                     });
                 </script>
 
-                <div id="content" class="content">
+                <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
 <!-- Get the Readme without the headline until (including) the introductory sentence  -->
-<p><a href="https://openmls.zulipchat.com"><img src="https://img.shields.io/badge/zulip-join_chat-blue.svg?style=for-the-badge&amp;logo=zulip" alt="OpenMLS Chat" /></a>
-<a href="https://groups.google.com/u/0/g/openmls-dev"><img src="https://img.shields.io/badge/mailing-list-blue.svg?style=for-the-badge" alt="OpenMLS List" /></a></p>
-<p><a href="https://github.com/openmls/openmls/actions/workflows/tests.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/openmls/openmls/tests.yml?branch=main&amp;style=for-the-badge&amp;logo=github" alt="Tests &amp; Checks" /></a>
-<a href="https://codecov.io/gh/openmls/openmls"><img src="https://img.shields.io/codecov/c/github/openmls/openmls/main?logo=codecov&amp;style=for-the-badge" alt="codecov" /></a></p>
-<p><a href="https://docs.rs/crate/openmls/latest"><img src="https://img.shields.io/badge/docs-release-blue.svg?style=for-the-badge" alt="Docs" /></a>
-<a href="https://book.openmls.tech"><img src="https://img.shields.io/badge/book-release-blue.svg?style=for-the-badge" alt="Book" /></a>
-<img src="https://img.shields.io/badge/rustc-1.56+-blue.svg?style=for-the-badge&amp;logo=rust" alt="Rust Version" /></p>
+<p><a href="https://openmls.zulipchat.com"><img src="https://img.shields.io/badge/zulip-join_chat-blue.svg?style=for-the-badge&amp;logo=zulip" alt="OpenMLS Chat"></a>
+<a href="https://groups.google.com/u/0/g/openmls-dev"><img src="https://img.shields.io/badge/mailing-list-blue.svg?style=for-the-badge" alt="OpenMLS List"></a></p>
+<p><a href="https://github.com/openmls/openmls/actions/workflows/tests.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/openmls/openmls/tests.yml?branch=main&amp;style=for-the-badge&amp;logo=github" alt="Tests &amp; Checks"></a>
+<a href="https://codecov.io/gh/openmls/openmls"><img src="https://img.shields.io/codecov/c/github/openmls/openmls/main?logo=codecov&amp;style=for-the-badge" alt="codecov"></a></p>
+<p><a href="https://docs.rs/crate/openmls/latest"><img src="https://img.shields.io/badge/docs-release-blue.svg?style=for-the-badge" alt="Docs"></a>
+<a href="https://book.openmls.tech"><img src="https://img.shields.io/badge/book-release-blue.svg?style=for-the-badge" alt="Book"></a>
+<img src="https://img.shields.io/badge/rustc-1.56+-blue.svg?style=for-the-badge&amp;logo=rust" alt="Rust Version"></p>
 <p><em>OpenMLS</em> is a Rust implementation of the Messaging Layer Security (MLS) protocol, as specified in <a href="https://datatracker.ietf.org/doc/html/rfc9420">RFC 9420</a>.
 OpenMLS provides a high-level API to create and manage MLS groups. It supports basic ciphersuites and an interchangeable cryptographic provider, key store, and random number generator.</p>
 <p>This book provides guidance on using OpenMLS and its <code>MlsGroup</code> API to perform basic group operations, illustrated with examples.</p>
@@ -205,7 +204,7 @@ OpenMLS provides a high-level API to create and manage MLS groups. It supports b
 <li>x86_64-apple-darwin</li>
 </ul>
 <h3 id="unsupported-but-built-on-ci"><a class="header" href="#unsupported-but-built-on-ci">Unsupported, but built on CI</a></h3>
-<p>The Github CI also builds (but doesn't test) the following rust targets.</p>
+<p>The Github CI also builds (but doesn’t test) the following rust targets.</p>
 <ul>
 <li>aarch64-apple-darwin</li>
 <li>aarch64-unknown-linux-gnu</li>
@@ -224,13 +223,34 @@ on existing implementations of the cryptographic primitives used by MLS. There
 are two different cryptography providers implemented right now. But consumers
 can bring their own implementation. See <a href="https://github.com/openmls/openmls/tree/main/traits">traits</a> for more
 details.</p>
+<h2 id="features"><a class="header" href="#features">Features</a></h2>
+<p>OpenMLS provides the following features</p>
+<ul>
+<li><strong>extensions-draft-08</strong>: enable features defined in <a href="https://messaginglayersecurity.rocks/mls-extensions/draft-ietf-mls-extensions.html">MLS extensions draft-08</a></li>
+<li><strong>fork-resolution</strong>: helper functionality for <a href="https://book.openmls.tech/user_manual/fork-resolution.html">resolving forks</a>.</li>
+<li><strong>js</strong>: enable compilation to wasm</li>
+</ul>
+<details>
+<summary>Developer features</summary>
+<ul>
+<li><strong>libcrux-provider</strong>: enable the libcrux crypto provider dependency</li>
+<li><strong>libcrux-provider-js</strong>: enable the libcrux crypto provider with support for compiling to wasm</li>
+<li><strong>openmls_rust_crypto</strong>: enable the rust crypto provider</li>
+<li><strong>sqlite-provider</strong>: enable the sqlite provider</li>
+<li><strong>backtrace</strong>: enable backtraces</li>
+<li><strong>content-debug</strong>: allow printing sensitive content of messages for debugging</li>
+<li><strong>crypto-debug</strong>: allow printing cryptographic key material for debugging</li>
+<li><strong>test-util</strong>: test utilities</li>
+</ul>
+</details>
 <h2 id="working-on-openmls"><a class="header" href="#working-on-openmls">Working on OpenMLS</a></h2>
 <p>For more details when working on OpenMLS itself please see the <a href="https://github.com/openmls/openmls/blob/main/Developer.md">Developer.md</a>.</p>
 <h2 id="maintenance--support"><a class="header" href="#maintenance--support">Maintenance &amp; Support</a></h2>
 <p>OpenMLS is maintained and developed by <a href="https://phnx.im">Phoenix R&amp;D</a> and <a href="https://cryspen.com">Cryspen</a>.</p>
 <h2 id="acknowledgements"><a class="header" href="#acknowledgements">Acknowledgements</a></h2>
-<p><a href="https://zulip.com/">Zulip</a> graciously provides the OpenMLS community with a "Zulip Cloud Standard" tier <a href="https://openmls.zulipchat.com">Zulip instance</a>.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="user-manual"><a class="header" href="#user-manual">User manual</a></h1>
+<p><a href="https://zulip.com/">Zulip</a> graciously provides the OpenMLS community with a “Zulip Cloud Standard” tier <a href="https://openmls.zulipchat.com">Zulip instance</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="user-manual"><a class="header" href="#user-manual">User manual</a></h1>
 <p>The user manual describes how to use the different parts of the OpenMLS API.</p>
 <h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
 <p>Most operations in OpenMLS require a <code>provider</code> object that provides all required cryptographic algorithms via the [<code>OpenMlsProvider</code>] trait.
@@ -239,17 +259,18 @@ Currently, there are two implementations available:</p>
 <li>one through the <a href="https://crates.io/crates/openmls_rust_crypto">openmls_rust_crypto</a> crate.</li>
 <li>one through the <a href="https://crates.io/crates/openmls_libcrux_crypto">openmls_libcrux_crypto</a> crate.</li>
 </ul>
-<p>Thus, you can create the <code>provider</code> object for the following examples using ...</p>
+<p>Thus, you can create the <code>provider</code> object for the following examples using …</p>
 <pre><code class="language-rust no_run noplayground">    let provider: OpenMlsRustCrypto = OpenMlsRustCrypto::default();</code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="credentials"><a class="header" href="#credentials">Credentials</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="credentials"><a class="header" href="#credentials">Credentials</a></h1>
 <p>MLS relies on credentials to encode the identity of clients in the context of a group.
 There are different types of credentials, with the OpenMLS library currently only supporting the <code>BasicCredential</code> credential type (see below).
 Credentials are used to authenticate messages by the owner in the context of a group.
 Note that the link between the credential and its signature keys depends on the credential type.
-For example, the link between the <code>BasicCredential</code>'s and its keys is not defined by MLS.</p>
+For example, the link between the <code>BasicCredential</code>’s and its keys is not defined by MLS.</p>
 <p>A credential is always embedded in a leaf node, which is ultimately used to represent a client in a group and signed by the private key corresponding to the signature public key of the leaf node.
 Clients can decide to use the same credential in multiple leaf nodes (and thus multiple groups) or to use distinct credentials per group.</p>
-<p>The binding between a given credential and owning client's identity is, in turn, authenticated by the Authentication Service, an abstract authentication layer defined by the <a href="https://www.rfc-editor.org/rfc/rfc9750.html">MLS architecture document</a>.
+<p>The binding between a given credential and owning client’s identity is, in turn, authenticated by the Authentication Service, an abstract authentication layer defined by the <a href="https://www.rfc-editor.org/rfc/rfc9750.html">MLS architecture document</a>.
 Note that the implementation of the Authentication Service and, thus, the details of how the binding is authenticated are not specified by MLS.</p>
 <h2 id="creating-and-using-credentials"><a class="header" href="#creating-and-using-credentials">Creating and using credentials</a></h2>
 <p>OpenMLS allows clients to create <code>Credentials</code>.
@@ -265,14 +286,15 @@ OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_c
 <pre><code class="language-rust no_run noplayground">    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(provider.storage()).unwrap();</code></pre>
 <p>All functions and structs related to credentials can be found in the <a href="https://docs.rs/openmls/latest/openmls/credentials/index.html"><code>credentials</code></a> module.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="key-packages"><a class="header" href="#key-packages">Key packages</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="key-packages"><a class="header" href="#key-packages">Key packages</a></h1>
 <p>To enable the asynchronous establishment of groups through pre-publishing key material, as well as to represent clients in the group, MLS relies on key packages. Key packages hold several pieces of information:</p>
 <ul>
-<li>a public HPKE encryption key to enable MLS' basic group key distribution feature</li>
+<li>a public HPKE encryption key to enable MLS’ basic group key distribution feature</li>
 <li>the lifetime throughout which the key package is valid</li>
-<li>information about the client's capabilities (i.e., which features of MLS it supports)</li>
+<li>information about the client’s capabilities (i.e., which features of MLS it supports)</li>
 <li>any extension that the client wants to include</li>
-<li>one of the client's <a href="user_manual/./identity.html">credentials</a>, as well as a signature over the whole key package using the private key corresponding to the credential's signature public key</li>
+<li>one of the client’s <a href="#credentials">credentials</a>, as well as a signature over the whole key package using the private key corresponding to the credential’s signature public key</li>
 </ul>
 <h2 id="creating-key-packages"><a class="header" href="#creating-key-packages">Creating key packages</a></h2>
 <p>Before clients can communicate with each other using OpenMLS, they need to generate key packages and publish them with the Delivery Service. Clients can generate an arbitrary number of key packages ahead of time.</p>
@@ -291,26 +313,39 @@ OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_c
         .unwrap()</code></pre>
 <p>This will also store the private key for the key package in the key store.</p>
 <p>All functions and structs related to key packages can be found in the <a href="https://docs.rs/openmls/latest/openmls/key_packages/index.html"><code>key_packages</code></a> module.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="group-configuration"><a class="header" href="#group-configuration">Group configuration</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="group-configuration"><a class="header" href="#group-configuration">Group configuration</a></h1>
 <p>Two very similar structs can help configure groups upon their creation: <code>MlsGroupJoinConfig</code> and <code>MlsGroupCreateConfig</code>.</p>
 <p><code>MlsGroupJoinConfig</code> contains the following runtime-relevant configuration options for an <code>MlsGroup</code> and can be set on a per-client basis when a group is joined.</p>
-<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Name</th><th>Type</th><th>Explanation</th></tr>
+</thead>
+<tbody>
 <tr><td><code>wire_format_policy</code></td><td><code>WireFormatPolicy</code></td><td>Defines the wire format policy for outgoing and incoming handshake messages.</td></tr>
 <tr><td><code>padding_size</code></td><td><code>usize</code></td><td>Size of padding in bytes. The default is 0.</td></tr>
 <tr><td><code>max_past_epochs</code></td><td><code>usize</code></td><td>Maximum number of past epochs for which application messages can be decrypted. The default is 0.</td></tr>
 <tr><td><code>number_of_resumption_psks</code></td><td><code>usize</code></td><td>Number of resumption psks to keep. The default is 0.</td></tr>
 <tr><td><code>use_ratchet_tree_extension</code></td><td><code>bool</code></td><td>Flag indicating the Ratchet Tree Extension should be used. The default is <code>false</code>.</td></tr>
 <tr><td><code>sender_ratchet_configuration</code></td><td><code>SenderRatchetConfiguration</code></td><td>Sender ratchet configuration.</td></tr>
-</tbody></table>
+</tbody>
+</table>
 </div>
-<p><code>MlsGroupCreateConfig</code> contains an <code>MlsGroupJoinConfig</code>, as well as a few additional parameters that are part of the group state that is agreed-upon by all group members. It can be set at the time of a group's creation and contains the following additional configuration options.</p>
-<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
+<p><code>MlsGroupCreateConfig</code> contains an <code>MlsGroupJoinConfig</code>, as well as a few additional parameters that are part of the group state that is agreed-upon by all group members. It can be set at the time of a group’s creation and contains the following additional configuration options.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Name</th><th>Type</th><th>Explanation</th></tr>
+</thead>
+<tbody>
 <tr><td><code>group_context_extensions</code></td><td><code>Extensions</code></td><td>Optional group-level extensions, e.g. <code>RequiredCapabilitiesExtension</code>.</td></tr>
-<tr><td><code>capabilities</code> .</td><td><code>Capabilities</code></td><td>Lists the capabilities of the group's creator.</td></tr>
-<tr><td><code>leaf_extensions</code> .</td><td><code>Extensions</code></td><td>Extensions to be included in the group creator's leaf</td></tr>
-</tbody></table>
+<tr><td><code>capabilities</code> .</td><td><code>Capabilities</code></td><td>Lists the capabilities of the group’s creator.</td></tr>
+<tr><td><code>leaf_extensions</code> .</td><td><code>Extensions</code></td><td>Extensions to be included in the group creator’s leaf</td></tr>
+</tbody>
+</table>
 </div>
-<p>Both ways of group configurations can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.</p>
+<p>Both ways of group configurations can be specified by using the struct’s builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.</p>
 <p>Example join configuration:</p>
 <pre><code class="language-rust no_run noplayground">    let mls_group_config = MlsGroupJoinConfig::builder()
         .padding_size(100)
@@ -352,9 +387,10 @@ OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_c
         .use_ratchet_tree_extension(true)
         .build();</code></pre>
 <h2 id="unknown-extensions"><a class="header" href="#unknown-extensions">Unknown extensions</a></h2>
-<p>Some extensions carry data, but don't alter the behaviour of the protocol (e.g. the application_id extension). OpenMLS allows the use of arbitrary such extensions in the group context, key packages and leaf nodes. Such extensions can be instantiated and retrieved through the use of the <code>UnknownExtension</code> struct and the <code>ExtensionType::Unknown</code> extension type. Such "unknown" extensions are handled transparently by OpenMLS, but can be used by the application, e.g. to have a group agree on pieces of data.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="creating-groups"><a class="header" href="#creating-groups">Creating groups</a></h1>
-<p>There are two ways to create a group: Either by building an <code>MlsGroup</code> directly, or by using an <code>MlsGroupCreateConfig</code>. The former is slightly simpler, while the latter allows the creating of multiple groups using the same configuration. See <a href="user_manual/./group_config.html">Group configuration</a> for more details on group parameters.</p>
+<p>Some extensions carry data, but don’t alter the behaviour of the protocol (e.g. the application_id extension). OpenMLS allows the use of arbitrary such extensions in the group context, key packages and leaf nodes. Such extensions can be instantiated and retrieved through the use of the <code>UnknownExtension</code> struct and the <code>ExtensionType::Unknown</code> extension type. Such “unknown” extensions are handled transparently by OpenMLS, but can be used by the application, e.g. to have a group agree on pieces of data.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="creating-groups"><a class="header" href="#creating-groups">Creating groups</a></h1>
+<p>There are two ways to create a group: Either by building an <code>MlsGroup</code> directly, or by using an <code>MlsGroupCreateConfig</code>. The former is slightly simpler, while the latter allows the creating of multiple groups using the same configuration. See <a href="#group-configuration">Group configuration</a> for more details on group parameters.</p>
 <p>In addition to the group configuration, the client should define all supported and required extensions for the group. The negotiation mechanism for extension in MLS consists in setting an initial list of extensions at group creation time and choosing key packages of subsequent new members accordingly.</p>
 <p>In practice, the supported and required extensions are set by adding them to the initial <code>KeyPackage</code> of the creator:</p>
 <pre><code class="language-rust no_run noplayground">    // Create the key package
@@ -370,7 +406,7 @@ OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_c
         alice_credential.clone(),
     )
     .expect("An unexpected error occurred.");</code></pre>
-<p>... or using the builder pattern:</p>
+<p>… or using the builder pattern:</p>
 <pre><code class="language-rust no_run noplayground">        let mut alice_group = MlsGroup::builder()
             .padding_size(100)
             .sender_ratchet_configuration(SenderRatchetConfiguration::new(
@@ -385,7 +421,7 @@ OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_c
                 alice_credential.clone(),
             )
             .expect("An unexpected error occurred.");</code></pre>
-<p>Note: Every group is assigned a random group ID during creation. The group ID cannot be changed and remains immutable throughout the group's lifetime. Choosing it randomly makes sure that the group ID doesn't collide with any other group ID in the same system.</p>
+<p>Note: Every group is assigned a random group ID during creation. The group ID cannot be changed and remains immutable throughout the group’s lifetime. Choosing it randomly makes sure that the group ID doesn’t collide with any other group ID in the same system.</p>
 <p>If someone else already gave you a group ID, e.g., a provider server, you can also create a group using a specific group ID:</p>
 <pre><code class="language-rust no_run noplayground">        // Some specific group ID generated by someone else.
         let group_id = GroupId::from_slice(b"123e4567e89b");
@@ -421,10 +457,11 @@ Should the user want to add further extensions, they can use the <code>with_grou
                 alice_credential.clone(),
             )
             .expect("An unexpected error occurred.");</code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="join-a-group-from-a-welcome-message"><a class="header" href="#join-a-group-from-a-welcome-message">Join a group from a Welcome message</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="join-a-group-from-a-welcome-message"><a class="header" href="#join-a-group-from-a-welcome-message">Join a group from a Welcome message</a></h1>
 <p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated from
 the <code>MlsMessageIn</code> message containing the <code>Welcome</code> and an <code>MlsGroupJoinConfig</code>
-(see <a href="user_manual/./group_config.html">Group configuration</a> for more details). This is a
+(see <a href="#group-configuration">Group configuration</a> for more details). This is a
 two-step process: a <code>StagedWelcome</code> is constructed from the <code>Welcome</code>
 and can then be turned into an <code>MlsGroup</code>. If the group configuration does not
 use the ratchet tree extension, the ratchet tree needs to be provided.</p>
@@ -478,7 +515,7 @@ with an invalid MLS group instance.</p>
 <pre><code class="language-rust no_run noplayground">    let staged_welcome: StagedWelcome = processed_welcome
         .into_staged_welcome(bob_provider, None)
         .expect("Error constructing staged welcome");</code></pre>
-<p>Then, more information about the welcome message's sender, such as the credential, signature public key, and encryption public key can also be individually inspected. The welcome message sender's credential can be validated at this stage.</p>
+<p>Then, more information about the welcome message’s sender, such as the credential, signature public key, and encryption public key can also be individually inspected. The welcome message sender’s credential can be validated at this stage.</p>
 <pre><code class="language-rust no_run noplayground">    let welcome_sender: &amp;LeafNode = staged_welcome
         .welcome_sender()
         .expect("Welcome sender could not be retrieved");
@@ -528,7 +565,8 @@ with an invalid MLS group instance.</p>
     let _tree_hash = group_context.tree_hash();
     let _confirmed_transcript_hash = group_context.confirmed_transcript_hash();
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="join-a-group-with-an-external-commit"><a class="header" href="#join-a-group-with-an-external-commit">Join a group with an external commit</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="join-a-group-with-an-external-commit"><a class="header" href="#join-a-group-with-an-external-commit">Join a group with an external commit</a></h1>
 <p>To join a group with an external commit message, a new <code>MlsGroup</code> can be instantiated directly from the <code>GroupInfo</code>.
 The <code>GroupInfo</code>/Ratchet Tree should be shared over a secure channel.
 If the RatchetTree extension is not included in the <code>GroupInfo</code> as a <code>GroupInfoExtension</code>, then the ratchet tree needs to be provided.</p>
@@ -570,7 +608,8 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
         .finalize(bob_provider)
         .expect("error finalizing external commit");</code></pre>
 <p>The resulting external commit message needs to be fanned out to the Delivery Service and accepted by the other members before merging this external commit.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="adding-members-to-a-group"><a class="header" href="#adding-members-to-a-group">Adding members to a group</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="adding-members-to-a-group"><a class="header" href="#adding-members-to-a-group">Adding members to a group</a></h1>
 <h2 id="immediate-operation"><a class="header" href="#immediate-operation">Immediate operation</a></h2>
 <p>Members can be added to the group atomically with the <code>.add_members()</code> function. The application needs to fetch the corresponding key packages from every new member from the Delivery Service first.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome, group_info) = alice_group
@@ -605,7 +644,7 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
 </ul>
 <p>This function returns a <code>CommitMessageBundle</code>, from which the <code>MlsMessageOut</code>, <code>Welcome</code> and <code>GroupInfo</code> can be extracted.</p>
 <h3 id="adding-members-without-update"><a class="header" href="#adding-members-without-update">Adding members without update</a></h3>
-<p>The <code>.add_members_without_update()</code> function functions the same as the <code>.add_members()</code> function, except that it will only include an update to the sender's key material if the sender's proposal store includes a proposal that requires a path. For a list of proposals and an indication whether they require a <code>path</code> (i.e. a key material update) see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-17.4">Section 17.4 of RFC 9420</a>.</p>
+<p>The <code>.add_members_without_update()</code> function functions the same as the <code>.add_members()</code> function, except that it will only include an update to the sender’s key material if the sender’s proposal store includes a proposal that requires a path. For a list of proposals and an indication whether they require a <code>path</code> (i.e. a key material update) see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-17.4">Section 17.4 of RFC 9420</a>.</p>
 <p>Not sending an update means that the sender will not achieve post-compromise security with this particular commit. However, not sending an update saves on performance both in terms of computation and bandwidth. Using <code>.add_members_without_update()</code> can thus be a useful option if the ciphersuite of the group features large public keys and/or expensive encryption operations.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
 <p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
@@ -705,7 +744,8 @@ Since those proposals are crafted by outsiders, they are always public messages.
         }
         _ =&gt; unreachable!(),
     }</code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="removing-members-from-a-group"><a class="header" href="#removing-members-from-a-group">Removing members from a group</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="removing-members-from-a-group"><a class="header" href="#removing-members-from-a-group">Removing members from a group</a></h1>
 <h2 id="immediate-operation-1"><a class="header" href="#immediate-operation-1">Immediate operation</a></h2>
 <p>Members can be removed from the group atomically with the <code>.remove_members()</code> function, which takes the <code>KeyPackageRef</code> of group member as input. References to the <code>KeyPackage</code>s of group members can be obtained using the <code>.members()</code> function, from which one can in turn compute the <code>KeyPackageRef</code> using their <code>.hash_ref()</code> function.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = charlie_group
@@ -728,7 +768,7 @@ Even though members were removed in this operation, the Commit message could pot
         .expect("Could not create proposal to remove Charlie.");</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <h2 id="getting-removed-from-a-group"><a class="header" href="#getting-removed-from-a-group">Getting removed from a group</a></h2>
-<p>A member is removed from a group if another member commits to a remove proposal targeting the member's leaf. Once the to-be-removed member merges that commit via <code>merge_staged_commit()</code>, all other proposals in that commit will still be applied, but the group will be marked as inactive afterward. The group remains usable, e.g., to examine the membership list after the final commit was processed, but it won't be possible to create or process new messages.</p>
+<p>A member is removed from a group if another member commits to a remove proposal targeting the member’s leaf. Once the to-be-removed member merges that commit via <code>merge_staged_commit()</code>, all other proposals in that commit will still be applied, but the group will be marked as inactive afterward. The group remains usable, e.g., to examine the membership list after the final commit was processed, but it won’t be possible to create or process new messages.</p>
 <pre><code class="language-rust no_run noplayground">    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         bob_processed_message.into_content()
     {
@@ -807,7 +847,8 @@ Since those proposals are crafted by outsiders, they are always public messages.
         }
         _ =&gt; unreachable!(),
     }</code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="updating-own-leaf-node"><a class="header" href="#updating-own-leaf-node">Updating own leaf node</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="updating-own-leaf-node"><a class="header" href="#updating-own-leaf-node">Updating own leaf node</a></h1>
 <h2 id="immediate-operation-2"><a class="header" href="#immediate-operation-2">Immediate operation</a></h2>
 <p>Members can update their own leaf node atomically with the <code>.self_update()</code> function.
 By default, only the HPKE encryption key is updated. The application can however also provide more parameters like a new credential, capabilities and extensions using the <code>LeafNodeParameters</code> struct.</p>
@@ -849,7 +890,8 @@ Even though the member updates its own leaf node only in this operation, the Com
         )
         .expect("Could not create update proposal.");</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="using-additional-authenticated-data-aad"><a class="header" href="#using-additional-authenticated-data-aad">Using Additional Authenticated Data (AAD)</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="using-additional-authenticated-data-aad"><a class="header" href="#using-additional-authenticated-data-aad">Using Additional Authenticated Data (AAD)</a></h1>
 <p>The Additional Authenticated Data (AAD) is a byte sequence that can be included in both private and public messages. By design, it is always authenticated (signed) but never encrypted. Its purpose is to contain data that can be inspected but not changed while a message is in transit.</p>
 <h2 id="setting-the-aad"><a class="header" href="#setting-the-aad">Setting the AAD</a></h2>
 <p>Members can set the AAD by calling the <code>.set_aad()</code> function. The AAD will remain set until the next API call that successfully generates an <code>MlsMessageOut</code>. Until then, the AAD can be inspected with the <code>.aad()</code> function.</p>
@@ -863,19 +905,21 @@ Even though the member updates its own leaf node only in this operation, the Com
         .expect("Could not process message.");
 
     assert_eq!(processed_message.aad(), b"Additional Authenticated Data");</code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="leaving-a-group"><a class="header" href="#leaving-a-group">Leaving a group</a></h1>
-<p>Members can indicate to other group members that they wish to leave the group using the <code>leave_group()</code> function, which creates a remove proposal targeting the member's own leaf. The member can't create a Commit message that covers this proposal, as that would violate the Post-compromise Security guarantees of MLS because the member would know the epoch secrets of the next epoch.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="leaving-a-group"><a class="header" href="#leaving-a-group">Leaving a group</a></h1>
+<p>Members can indicate to other group members that they wish to leave the group using the <code>leave_group()</code> function, which creates a remove proposal targeting the member’s own leaf. The member can’t create a Commit message that covers this proposal, as that would violate the Post-compromise Security guarantees of MLS because the member would know the epoch secrets of the next epoch.</p>
 <pre><code class="language-rust no_run noplayground">    let queued_message = bob_group
         .leave_group(bob_provider, &amp;bob_signature_keys)
         .expect("Could not leave group");</code></pre>
 <p>After successfully sending the proposal to the DS for fanout, there is still the possibility that the remove proposal is not covered in the following commit. The member leaving the group thus has two options:</p>
 <ul>
 <li>tear down the local group state and ignore all subsequent messages for that group, or</li>
-<li>wait for the commit to come through and process it (see also <a href="user_manual/remove_members.html#getting-removed-from-a-group">Getting Removed</a>).</li>
+<li>wait for the commit to come through and process it (see also <a href="#getting-removed-from-a-group">Getting Removed</a>).</li>
 </ul>
-<p>For details on creating Remove Proposals, see <a href="user_manual/remove_members.html">Removing members from a group</a>.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="custom-proposals"><a class="header" href="#custom-proposals">Custom proposals</a></h1>
-<p>OpenMLS allows the creation and use of application-defined proposals. To create such a proposal, the application needs to define a Proposal Type in such a way that its value doesn't collide with any Proposal Types defined in Section 17.4. of RFC 9420. If the proposal is meant to be used only inside of a particular application, the value of the Proposal Type is recommended to be in the range between <code>0xF000</code> and <code>0xFFFF</code>, as that range is reserved for private use.</p>
+<p>For details on creating Remove Proposals, see <a href="#removing-members-from-a-group">Removing members from a group</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="custom-proposals"><a class="header" href="#custom-proposals">Custom proposals</a></h1>
+<p>OpenMLS allows the creation and use of application-defined proposals. To create such a proposal, the application needs to define a Proposal Type in such a way that its value doesn’t collide with any Proposal Types defined in Section 17.4. of RFC 9420. If the proposal is meant to be used only inside of a particular application, the value of the Proposal Type is recommended to be in the range between <code>0xF000</code> and <code>0xFFFF</code>, as that range is reserved for private use.</p>
 <p>Custom proposals can contain arbitrary octet-strings as defined by the application. Any policy decisions based on custom proposals will have to be made by the application, such as the decision to include a given custom proposal in a commit, or whether to accept a commit that includes one or more custom proposals. To decide the latter, applications can inspect the queued proposals in a <code>ProcessedMessageContent::StagedCommitMessage(staged_commit)</code>.</p>
 <p>Example on how to use custom proposals:</p>
 <pre><code class="language-rust no_run noplayground">    // Define a custom proposal type
@@ -961,23 +1005,26 @@ Even though the member updates its own leaf node only in this operation, the Com
             &amp;&amp; custom_proposal.payload() == custom_proposal_payload
     }));
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="creating-application-messages"><a class="header" href="#creating-application-messages">Creating application messages</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="creating-application-messages"><a class="header" href="#creating-application-messages">Creating application messages</a></h1>
 <p>Application messages are created from byte slices with the <code>.create_message()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let message_alice = b"Hi, I'm Alice!";
     let mls_message_out = alice_group
         .create_message(alice_provider, &amp;alice_signature_keys, message_alice)
         .expect("Error creating application message.");</code></pre>
 <p>Note that the theoretical maximum length of application messages is 2^32 bytes. However, messages should be much shorter in practice unless the Delivery Service can cope with long messages.</p>
-<p>The function returns an <code>MlsMessageOut</code> that needs to be sent to the Delivery Service for fanout to other group members. To guarantee the best possible Forward Secrecy, the key material used to encrypt messages is immediately discarded after encryption. This means that the message author cannot decrypt application messages. If access to the message's content is required after creating the message, a copy of the plaintext message should be kept by the application.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="committing-to-pending-proposals"><a class="header" href="#committing-to-pending-proposals">Committing to pending proposals</a></h1>
-<p>During an epoch, members can create proposals that are not immediately committed. These proposals are called "pending proposals". They will automatically be covered by any operation that creates a Commit message (like <code>.add_members(),</code> <code>.remove_members()</code>, etc.).</p>
+<p>The function returns an <code>MlsMessageOut</code> that needs to be sent to the Delivery Service for fanout to other group members. To guarantee the best possible Forward Secrecy, the key material used to encrypt messages is immediately discarded after encryption. This means that the message author cannot decrypt application messages. If access to the message’s content is required after creating the message, a copy of the plaintext message should be kept by the application.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="committing-to-pending-proposals"><a class="header" href="#committing-to-pending-proposals">Committing to pending proposals</a></h1>
+<p>During an epoch, members can create proposals that are not immediately committed. These proposals are called “pending proposals”. They will automatically be covered by any operation that creates a Commit message (like <code>.add_members(),</code> <code>.remove_members()</code>, etc.).</p>
 <p>Some operations (like creating application messages) are not allowed as long as pending proposals exist for the current epoch. In that case, the application must first commit to the pending proposals by creating a Commit message that covers these proposals. This can be done with the <code>commit_to_pending_proposals()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option, _group_info) = alice_group
         .commit_to_pending_proposals(alice_provider, &amp;alice_signature_keys)
         .expect("Could not commit to pending proposals.");</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 If the Commit message also covers Add Proposals previously received in the epoch, a <code>Welcome</code> message is required to invite the new members. Therefore the function can also optionally return a <code>Welcome</code> message that must be sent to the newly added members.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="processing-incoming-messages"><a class="header" href="#processing-incoming-messages">Processing incoming messages</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="processing-incoming-messages"><a class="header" href="#processing-incoming-messages">Processing incoming messages</a></h1>
 <p>Processing of incoming messages happens in different phases:</p>
 <h2 id="deserializing-messages"><a class="header" href="#deserializing-messages">Deserializing messages</a></h2>
 <p>Incoming messages can be deserialized from byte slices into an <code>MlsMessageIn</code>:</p>
@@ -1003,7 +1050,7 @@ variants for <code>PrivateMessageIn</code> and <code>PublicMessageIn</code></li>
 find the right group.</p>
 <p>If the message was encrypted (i.e. if it was a <code>PrivateMessageIn</code>), it will be
 decrypted automatically. The processing performs all syntactic and semantic
-validation checks and verifies the message's signature. The function finally
+validation checks and verifies the message’s signature. The function finally
 returns a <code>ProcessedMessage</code> object if all checks are successful.</p>
 <pre><code class="language-rust no_run noplayground">    let protocol_message: ProtocolMessage = mls_message
         .try_into_protocol_message()
@@ -1014,7 +1061,7 @@ returns a <code>ProcessedMessage</code> object if all checks are successful.</p>
 <h2 id="interpreting-the-processed-message"><a class="header" href="#interpreting-the-processed-message">Interpreting the processed message</a></h2>
 <p>In the last step, the message is ready for inspection. The <code>ProcessedMessage</code>
 obtained in the previous step exposes header fields such as group ID, epoch,
-sender, and authenticated data. It also exposes the message's content. There are
+sender, and authenticated data. It also exposes the message’s content. There are
 3 different content types:</p>
 <h3 id="application-messages"><a class="header" href="#application-messages">Application messages</a></h3>
 <p>Application messages simply return the original byte slice:</p>
@@ -1128,7 +1175,8 @@ a proposal from the proposal store. This can be useful for example to roll back 
     } else {
         unreachable!("Expected a StagedCommit.");
     }</code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="persistence-of-group-data"><a class="header" href="#persistence-of-group-data">Persistence of Group Data</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="persistence-of-group-data"><a class="header" href="#persistence-of-group-data">Persistence of Group Data</a></h1>
 <p>The state of a given <code>MlsGroup</code> instance is continuously written to the configured
 <code>StorageProvider</code>. Later, the <code>MlsGroup</code> can be loaded from the provider using
 the <code>load</code> constructor, which can be called with the respective storage provider
@@ -1136,7 +1184,8 @@ as well as the <code>GroupId</code> of the group to be loaded. For this to work,
 must have been written to the provider previously.</p>
 <h2 id="forward-secrecy-considerations"><a class="header" href="#forward-secrecy-considerations">Forward-Secrecy Considerations</a></h2>
 <p>OpenMLS uses the <code>StorageProvider</code> to store sensitive key material. To achieve forward-secrecy (i.e. to prevent an adversary from decrypting messages sent in the past if a client is compromised), OpenMLS frequently deletes previously used key material through calls to the <code>StorageProvider</code>. <code>StorageProvider</code> implementations must thus take care to ensure that values deleted through any of the <code>delete_</code> functions of the trait are irrevocably deleted and that no copies are kept.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="discarding-commits"><a class="header" href="#discarding-commits">Discarding commits</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="discarding-commits"><a class="header" href="#discarding-commits">Discarding commits</a></h1>
 <p>The delivery service may reject a commit sent by a client. In this case, the application needs to ensure that the local state remains the same as it was before the commit was staged.</p>
 <h2 id="cleaning-up-local-state-after-discarded-commits"><a class="header" href="#cleaning-up-local-state-after-discarded-commits">Cleaning up local state after discarded commits</a></h2>
 <p>Generally, if a commit is discarded (e.g. due to being rejected by the Delivery Service), it can be cleaned up by the application in the following way:</p>
@@ -1166,7 +1215,8 @@ must have been written to the provider previously.</p>
         .expect("Could not clear pending commit");</code></pre>
 <h3 id="self-update"><a class="header" href="#self-update">Self Update</a></h3>
 <p>The storage provider may also be used by the application to store signature keypairs. For self updates that update a signature keypair for the client, if the application has stored a new keypair in the storage provider at this point, it can be deleted from the storage provider here.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="credential-validation"><a class="header" href="#credential-validation">Credential validation</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="credential-validation"><a class="header" href="#credential-validation">Credential validation</a></h1>
 <p>Credential validation is a process that allows a member to verify the validity
 of the credentials of other members in the group. The process is described in
 detail in the <a href="https://datatracker.ietf.org/doc/html/rfc9420#name-credential-validation">MLS protocol specification</a>.</p>
@@ -1174,15 +1224,17 @@ detail in the <a href="https://datatracker.ietf.org/doc/html/rfc9420#name-creden
 other members in two instances:</p>
 <ul>
 <li>When joining a new group (by looking at the ratchet tree)</li>
-<li>When <a href="user_manual/./processing.html">processing messages</a> (by looking at a add &amp; update proposals of a StagedCommit)</li>
+<li>When <a href="#processing-incoming-messages">processing messages</a> (by looking at a add &amp; update proposals of a StagedCommit)</li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="webassembly"><a class="header" href="#webassembly">WebAssembly</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="webassembly"><a class="header" href="#webassembly">WebAssembly</a></h1>
 <p>OpenMLS can be built for WebAssembly. However, it does require two features that WebAssembly itself does not provide: access to secure randomness and the current time. Currently, this means that it can only run in a runtime that provides common JavaScript APIs (e.g. in the browser or node.js), accessed through the <code>web_sys</code> crate.
 You can enable the <code>js</code> feature on the <code>openmls</code> crate to signal that the APIs are available.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="fork-resolution"><a class="header" href="#fork-resolution">Fork Resolution</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="fork-resolution"><a class="header" href="#fork-resolution">Fork Resolution</a></h1>
 <p>If members of a group merge different commits, the group state is called forked.
 At this point, the group members have different keys and will not be able to decrypt
-each others' messages. While this should not happen in normal operation, it may
+each others’ messages. While this should not happen in normal operation, it may
 still occur due to bugs. When enabling the <code>fork-resolution-helpers</code> feature,
 OpenMLS comes with helpers to get a working group again. There are two helpers,
 and they use different mechanisms.</p>
@@ -1195,7 +1247,7 @@ all the members.</p>
 <p>We provide examples for how to use both, and in the end provide some guidance on
 detecting forks.</p>
 <h2 id="readd-example"><a class="header" href="#readd-example"><code>readd</code> Example</a></h2>
-<p>First, let's create a forked group. In this example, Alice creates a group and
+<p>First, let’s create a forked group. In this example, Alice creates a group and
 adds Bob. Then, they both merge different commits to add Charlie.</p>
 <pre><code class="language-rust no_run noplayground">    // Alice creates a group
     let mut alice_group = MlsGroup::new(
@@ -1298,7 +1350,7 @@ adds Bob. Then, they both merge different commits to add Charlie.</p>
 </code></pre>
 <p>Then, Alice removes and re-adds Bob using the helper.
 We assume here that Alice knows that only Bob merged the wrong commit. This
-information needs to be transferred somehow, see <a href="user_manual/fork-resolution.html#fork-detection">Fork Detection</a>.
+information needs to be transferred somehow, see <a href="#fork-detection">Fork Detection</a>.
 Notice how Alice needs to provide a new key package for Bob.</p>
 <pre><code class="language-rust no_run noplayground">    // Let Alice re-add the members of the other partition (i.e. Bob)
     let bob_new_kpb = generate_key_package(
@@ -1379,7 +1431,7 @@ Notice how Alice needs to provide a new key package for Bob.</p>
     );</code></pre>
 <p>In the end, they all can communicate again.</p>
 <h2 id="reboot-example"><a class="header" href="#reboot-example"><code>reboot</code> Example</a></h2>
-<p>Again, let's create a forked group. In this example, Alice creates a group and
+<p>Again, let’s create a forked group. In this example, Alice creates a group and
 adds Bob. Then, they both merge different commits to add Charlie.</p>
 <pre><code class="language-rust no_run noplayground">    // Alice creates a group
     let mut alice_group = MlsGroup::new(
@@ -1571,7 +1623,8 @@ However, this may lead to false positives and is not enough to know the membersh
 commit, encrypted for the old epoch, that contains the hash of the commit they are
 merging. This way, all group members know which commits are merged, and the <code>readd</code>
 strategy can be used to resolve possible forks.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="traits--external-types"><a class="header" href="#traits--external-types">Traits &amp; External Types</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="traits--external-types"><a class="header" href="#traits--external-types">Traits &amp; External Types</a></h1>
 <p>OpenMLS defines several traits that have to be implemented to use
 OpenMLS.
 The main goal is to allow OpenMLS to use different implementations for its
@@ -1579,13 +1632,13 @@ cryptographic primitives, persistence, and random number generation.
 This should make it possible to plug in anything from <a href="https://www.w3.org/TR/WebCryptoAPI/">WebCrypto</a> to secure
 enclaves.</p>
 <ul>
-<li><a href="traits/./traits.html">Traits</a></li>
-<li><a href="traits/./types.html">External Types</a></li>
+<li><a href="#openmls-traits">Traits</a></li>
+<li><a href="#external-types">External Types</a></li>
 </ul>
 <h2 id="using-storage"><a class="header" href="#using-storage">Using storage</a></h2>
 <p>The store is probably one of the most interesting traits because applications
 that use OpenMLS will interact with it.
-See the <a href="traits/./traits.html#storageprovider">StorageProvider trait</a> description for details.</p>
+See the <a href="#storageprovider">StorageProvider trait</a> description for details.</p>
 <p>In the following examples, we have a <code>ciphersuite</code> and a <code>provider</code> (<code>OpenMlsProvider</code>).</p>
 <pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
     let credential = BasicCredential::new(b"User ID".to_vec());
@@ -1626,11 +1679,12 @@ as well.</p>
         .storage()
         .delete_key_package(&amp;hash_ref)
         .expect("Error deleting key package");</code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="openmls-traits"><a class="header" href="#openmls-traits">OpenMLS Traits</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="openmls-traits"><a class="header" href="#openmls-traits">OpenMLS Traits</a></h1>
 <blockquote>
 <p><strong>⚠️ These traits are responsible for all cryptographic operations and randomness
 within OpenMLS.
-Please ensure you know what you're doing when implementing your own versions.</strong></p>
+Please ensure you know what you’re doing when implementing your own versions.</strong></p>
 </blockquote>
 <p>Because implementing the <code>OpenMLSCryptoProvider</code> is challenging, requires
 tremendous care, and is not what the average OpenMLS consumer wants to (or should)
@@ -1768,7 +1822,7 @@ period.</p>
 <p>This allows the application to iterate over the hash references and delete outdated
 key packages.</p>
 <h3 id="openmlsprovider"><a class="header" href="#openmlsprovider">OpenMlsProvider</a></h3>
-<p>Additionally, there's a wrapper trait defined that is expected to be passed into
+<p>Additionally, there’s a wrapper trait defined that is expected to be passed into
 the public OpenMLS API.
 Some OpenMLS APIs require only one of the sub-traits, though.</p>
 <pre><code class="language-rust no_run noplayground">pub trait OpenMlsProvider {
@@ -1790,7 +1844,8 @@ Some OpenMLS APIs require only one of the sub-traits, though.</p>
 Suppose you want to use a persisting storage provider. In that case, it is
 sufficient to do a new implementation of the <code>StorageProvider</code> trait and
 combine it with one of the provided crypto and randomness trait implementations.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="external-types"><a class="header" href="#external-types">External Types</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="external-types"><a class="header" href="#external-types">External Types</a></h1>
 <p>For interoperability, this crate also defines several types and algorithm
 identifiers.</p>
 <p><strong>AEADs</strong></p>
@@ -1890,31 +1945,37 @@ pub enum HpkeAeadType {
     Clone,
     Serialize,
     Deserialize,</code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
 <p>OpenMLS implements a variety of syntactical and semantical checks, both when parsing and processing incoming commits and when creating own commits.</p>
 <h2 id="validation-steps"><a class="header" href="#validation-steps">Validation steps</a></h2>
-<p>Validation is enforced using Rust's type system. The chain of functions used to process incoming messages is described in the chapter on <a href="user_manual/processing.html">Processing incoming messages</a>, where each function takes a distinct type as input and produces a distinct type as output, thus ensuring that the individual steps can't be skipped. We now detail which step performs which validation checks.</p>
+<p>Validation is enforced using Rust’s type system. The chain of functions used to process incoming messages is described in the chapter on <a href="#processing-incoming-messages">Processing incoming messages</a>, where each function takes a distinct type as input and produces a distinct type as output, thus ensuring that the individual steps can’t be skipped. We now detail which step performs which validation checks.</p>
 <h3 id="syntax-validation"><a class="header" href="#syntax-validation">Syntax validation</a></h3>
 <p>Incoming messages in the shape of a byte string can only be deserialized into a <code>MlsMessageIn</code> struct. Deserialization ensures that the message is a syntactically correct MLS message, i.e., either a PublicMessage or a PrivateMessage.
 Further syntax checks are applied for the latter case once the message is decrypted.</p>
 <h3 id="semantic-validation"><a class="header" href="#semantic-validation">Semantic validation</a></h3>
-<p>Every function in the processing chain performs several semantic validation steps. For a list of these steps, see <a href="message_validation.html#detailed-list-of-validation-steps">below</a>. In the following, we will give a brief overview of which function performs which category of checks.</p>
+<p>Every function in the processing chain performs several semantic validation steps. For a list of these steps, see <a href="#detailed-list-of-validation-steps">below</a>. In the following, we will give a brief overview of which function performs which category of checks.</p>
 <h4 id="wire-format-policy-and-basic-message-consistency-validation"><a class="header" href="#wire-format-policy-and-basic-message-consistency-validation">Wire format policy and basic message consistency validation</a></h4>
-<p><code>MlsMessageIn</code> struct instances can be passed into the <code>.parse_message()</code> function of the <code>MlsGroup</code> API, which validates that the message conforms to the group's <a href="user_manual/group_config.html">wire format policy</a>. The function also performs several basic semantic validation steps, such as consistency of Group id, Epoch, and Sender data between message and group (<code>ValSem002</code>-<code>ValSem007</code>). It also checks if the sender type (e.g., <code>Member</code>, <code>NewMember</code>, etc.) matches the type of the message (<code>ValSem112</code>), as well as the presence of a path in case of an External Commit (<code>ValSem246</code>).</p>
+<p><code>MlsMessageIn</code> struct instances can be passed into the <code>.parse_message()</code> function of the <code>MlsGroup</code> API, which validates that the message conforms to the group’s <a href="#group-configuration">wire format policy</a>. The function also performs several basic semantic validation steps, such as consistency of Group id, Epoch, and Sender data between message and group (<code>ValSem002</code>-<code>ValSem007</code>). It also checks if the sender type (e.g., <code>Member</code>, <code>NewMember</code>, etc.) matches the type of the message (<code>ValSem112</code>), as well as the presence of a path in case of an External Commit (<code>ValSem246</code>).</p>
 <p><code>.parse_message()</code> then returns an <code>UnverifiedMessage</code> struct instance, which can in turn be used as input for <code>.process_unverified_message()</code>.</p>
 <h4 id="message-specific-semantic-validation"><a class="header" href="#message-specific-semantic-validation">Message-specific semantic validation</a></h4>
-<p><code>.process_unverified_message()</code> performs all other semantic validation steps. In particular, it ensures that ...</p>
+<p><code>.process_unverified_message()</code> performs all other semantic validation steps. In particular, it ensures that …</p>
 <ul>
 <li>the message is correctly authenticated by a signature (<code>ValSem010</code>), membership tag (<code>ValSem008</code>), and confirmation tag (<code>ValSem205</code>),</li>
 <li>proposals are valid relative to one another and the current group state, e.g., no redundant adds or removes targeting non-members (<code>ValSem101</code>-<code>ValSem112</code>),</li>
 <li>commits are valid relative to the group state and the proposals it covers (<code>ValSem200</code>-<code>ValSem205</code>) and</li>
 <li>external commits are valid according to the spec (<code>ValSem240</code>-<code>ValSem245</code>, <code>ValSem247</code> is checked as part of <code>ValSem010</code>).</li>
 </ul>
-<p>After performing these steps, messages are returned as <code>ProcessedMessage</code>s that the application can either use immediately (application messages) or inspect and decide if they find them valid according to the application's policy (proposals and commits). Proposals can then be stored in the proposal queue via <code>.store_pending_proposal()</code>, while commits can be merged into the group state via <code>.merge_staged_commit()</code>.</p>
+<p>After performing these steps, messages are returned as <code>ProcessedMessage</code>s that the application can either use immediately (application messages) or inspect and decide if they find them valid according to the application’s policy (proposals and commits). Proposals can then be stored in the proposal queue via <code>.store_pending_proposal()</code>, while commits can be merged into the group state via <code>.merge_staged_commit()</code>.</p>
 <h2 id="detailed-list-of-validation-steps"><a class="header" href="#detailed-list-of-validation-steps">Detailed list of validation steps</a></h2>
 <p>The following is a list of the individual semantic validation steps performed by OpenMLS, including the location of the tests.</p>
 <h3 id="semantic-validation-of-message-framing"><a class="header" href="#semantic-validation-of-message-framing">Semantic validation of message framing</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr>
+</thead>
+<tbody>
 <tr><td><code>ValSem002</code></td><td>Group id</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem003</code></td><td>Epoch</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem004</code></td><td>Sender: Member: check the sender points to a non-blank leaf</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
@@ -1925,10 +1986,16 @@ Further syntax checks are applied for the latter case once the message is decryp
 <tr><td><code>ValSem009</code></td><td>Confirmation tag presence</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem010</code></td><td>Signature verification</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem011</code></td><td>PrivateMessageContent padding must be all-zero</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing.rs</code></td></tr>
-</tbody></table>
+</tbody>
+</table>
 </div>
 <h3 id="semantic-validation-of-proposals-covered-by-a-commit"><a class="header" href="#semantic-validation-of-proposals-covered-by-a-commit">Semantic validation of proposals covered by a Commit</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr>
+</thead>
+<tbody>
 <tr><td><code>ValSem101</code></td><td>Add Proposal: Signature public key in proposals must be unique among proposals &amp; members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem102</code></td><td>Add Proposal: Init key in proposals must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem103</code></td><td>Add Proposal: Encryption key in proposals must be unique among proposals &amp; members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
@@ -1942,10 +2009,16 @@ Further syntax checks are applied for the latter case once the message is decryp
 <tr><td><code>ValSem111</code></td><td>Update Proposal: The sender of a full Commit must not include own update proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem112</code></td><td>Update Proposal: The sender of a standalone update proposal must be of type member</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem113</code></td><td>All Proposals: The proposal type must be supported by all members of the group</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
-</tbody></table>
+</tbody>
+</table>
 </div>
 <h3 id="commit-message-validation"><a class="header" href="#commit-message-validation">Commit message validation</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr>
+</thead>
+<tbody>
 <tr><td><code>ValSem200</code></td><td>Commit must not cover inline self Remove proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem201</code></td><td>Path must be present, if at least one proposal requires a path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem202</code></td><td>Path must be the right length</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
@@ -1956,31 +2029,52 @@ Further syntax checks are applied for the latter case once the message is decryp
 <tr><td><code>ValSem207</code></td><td>Path encryption keys must be unique among proposals &amp; members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem208</code></td><td>Only one GroupContextExtensions proposal in a commit</td><td>✅</td><td></td><td></td></tr>
 <tr><td><code>ValSem209</code></td><td>GroupContextExtensions proposals may only contain extensions support by all members</td><td>✅</td><td></td><td></td></tr>
-</tbody></table>
+</tbody>
+</table>
 </div>
 <h3 id="external-commit-message-validation"><a class="header" href="#external-commit-message-validation">External Commit message validation</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr>
+</thead>
+<tbody>
 <tr><td><code>ValSem240</code></td><td>External Commit must cover at least one inline ExternalInit proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem241</code></td><td>External Commit must cover at most one inline ExternalInit proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem242</code></td><td>External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem244</code></td><td>External Commit must not include any proposals by reference</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem245</code></td><td>External Commit must contain a path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem246</code></td><td>External Commit signature must be verified using the credential in the path KeyPackage</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
-</tbody></table>
+</tbody>
+</table>
 </div>
 <h3 id="ratchet-tree-validation"><a class="header" href="#ratchet-tree-validation">Ratchet tree validation</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr>
+</thead>
+<tbody>
 <tr><td><code>ValSem300</code></td><td>Exported ratchet trees must not have trailing blank nodes.</td><td>Yes</td><td>Yes</td><td><code>openmls/src/treesync/mod.rs</code></td></tr>
-</tbody></table>
+</tbody>
+</table>
 </div>
 <h3 id="psk-validation"><a class="header" href="#psk-validation">PSK Validation</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr>
+</thead>
+<tbody>
 <tr><td><code>ValSem400</code></td><td>The application SHOULD specify an upper limit on the number of past epochs for which the resumption_psk may be stored.</td><td>❌</td><td>❌</td><td>https://github.com/openmls/openmls/issues/1122</td></tr>
 <tr><td><code>ValSem401</code></td><td>The nonce of a PreSharedKeyID must have length KDF.Nh.</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem402</code></td><td>PSK in proposal must be of type Resumption (with usage Application) or External.</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem403</code></td><td>Proposal list must not contain multiple PreSharedKey proposals that reference the same PreSharedKeyID.</td><td>✅</td><td>❌</td><td>https://github.com/openmls/openmls/issues/1335</td></tr>
-</tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="app-validation"><a class="header" href="#app-validation">App Validation</a></h1>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="app-validation"><a class="header" href="#app-validation">App Validation</a></h1>
 <blockquote>
 <p><strong>NOTE:</strong> This chapter described the validation steps an application, using OpenMLS, has to perform for safe operation of the MLS protocol.</p>
 <p><strong>⚠️</strong> This chapter is work in progress (see <a href="https://github.com/openmls/openmls/issues/1504">#1504</a>).</p>
@@ -1991,27 +2085,27 @@ Further syntax checks are applied for the latter case once the message is decryp
 <p>The application using MLS is responsible for specifying which identifiers
 it finds acceptable for each member in a group. In other words, following
 the model that <a href="https://www.rfc-editor.org/rfc/rfc6125.html">RFC6125</a> describes for TLS, the application maintains a list
-of "reference identifiers" for the members of a group, and the credentials
-provide "presented identifiers". A member of a group is authenticated by first
-validating that the member's credential legitimately represents some presented
+of “reference identifiers” for the members of a group, and the credentials
+provide “presented identifiers”. A member of a group is authenticated by first
+validating that the member’s credential legitimately represents some presented
 identifiers, and then ensuring that the reference identifiers for the member
 are authenticated by those presented identifiers</p>
-<p>-- <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-5.3.1-1">RFC9420, Section 5.3.1</a></p>
+<p>– <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-5.3.1-1">RFC9420, Section 5.3.1</a></p>
 </blockquote>
 <h3 id="validity-of-updated-presented-identifiers"><a class="header" href="#validity-of-updated-presented-identifiers">Validity of Updated Presented Identifiers</a></h3>
 <blockquote>
-<p>In cases where a member's credential is being replaced, such as the Update and
+<p>In cases where a member’s credential is being replaced, such as the Update and
 Commit cases above, the AS MUST also verify that the set of presented identifiers
 in the new credential is valid as a successor to the set of presented identifiers
-in the old credential, according to the application's policy.</p>
-<p>-- <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-5.3.1-5">RFC9420, Section 5.3.1</a></p>
+in the old credential, according to the application’s policy.</p>
+<p>– <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-5.3.1-5">RFC9420, Section 5.3.1</a></p>
 </blockquote>
 <h3 id="application-id-is-not-authenticated-by-as"><a class="header" href="#application-id-is-not-authenticated-by-as">Application ID is Not Authenticated by AS</a></h3>
 <blockquote>
 <p>However, applications MUST NOT rely on the data in an application_id extension
 as if it were authenticated by the Authentication Service, and SHOULD gracefully
 handle cases where the identifier presented is not unique.</p>
-<p>-- <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-5.3.3-6">RFC9420, Section 5.3.3</a></p>
+<p>– <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-5.3.3-6">RFC9420, Section 5.3.3</a></p>
 </blockquote>
 <h2 id="leafnode-validation"><a class="header" href="#leafnode-validation">LeafNode Validation</a></h2>
 <h3 id="specifying-the-maximum-total-acceptable-lifetime"><a class="header" href="#specifying-the-maximum-total-acceptable-lifetime">Specifying the Maximum Total Acceptable Lifetime</a></h3>
@@ -2021,23 +2115,23 @@ LeafNode, and reject any LeafNode where the total lifetime is longer than this
 duration. In order to avoid disagreements about whether a LeafNode has a valid
 lifetime, the clients in a group SHOULD maintain time synchronization (e.g.,
 using the Network Time Protocol <a href="https://www.rfc-editor.org/rfc/rfc5905.html">RFC5905</a>).</p>
-<p>-- <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-7.2-10">RFC9420, Section 7.2</a></p>
+<p>– <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-7.2-10">RFC9420, Section 7.2</a></p>
 </blockquote>
 <h2 id="privatemessage-validation"><a class="header" href="#privatemessage-validation">PrivateMessage Validation</a></h2>
 <h3 id="structure-of-aad-is-application-defined"><a class="header" href="#structure-of-aad-is-application-defined">Structure of AAD is Application-Defined</a></h3>
 <blockquote>
 <p>It is up to the application to decide what authenticated_data to provide and
 how much padding to add to a given message (if any). The overall size of the
-AAD and ciphertext MUST fit within the limits established for the group's AEAD
+AAD and ciphertext MUST fit within the limits established for the group’s AEAD
 algorithm in <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-aead-limits-08">CFRG-AEAD-LIMITS</a>.</p>
-<p>-- <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-6.3.1-11">RFC9420, Section 6.3.1</a></p>
+<p>– <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-6.3.1-11">RFC9420, Section 6.3.1</a></p>
 </blockquote>
 <p>Therefore, the application must also validate whether the AAD adheres to the
 prescribed format.</p>
 <h2 id="proposal-validation"><a class="header" href="#proposal-validation">Proposal Validation</a></h2>
 <p>When processing a commit, the application has to ensure that the application
 specific semantic checks for the validity of the committed proposals are performed.</p>
-<p>This should be done on the <code>StagedCommit</code>. Also see the <a href="./user_manual/processing.html">Message Processing</a>
+<p>This should be done on the <code>StagedCommit</code>. Also see the <a href="#processing-incoming-messages">Message Processing</a>
 chapter</p>
 <pre><code class="language-rust no_run noplayground">    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         alice_processed_message.into_content()
@@ -2069,7 +2163,8 @@ chapter</p>
 </blockquote>
 <p>Since OpenMLS does not know the relevant policies, the application MUST ensure
 that the credentials are checked according to the policy.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="performance"><a class="header" href="#performance">Performance</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="performance"><a class="header" href="#performance">Performance</a></h1>
 <p>How does OpenMLS (and MLS in general) perform in different settings?</p>
 <p>Performance measurements are implemented <a href="https://github.com/openmls/openmls/blob/franziskus/benchmarks/benches/group.rs">here</a> and can be run with <code>cargo bench --bench group</code>.
 Check which scenarios and group sizes are enabled in the code.</p>
@@ -2163,7 +2258,8 @@ What is the performance difference between a message sent right after group setu
 </ul>
 </li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forward-secrecy"><a class="header" href="#forward-secrecy">Forward Secrecy</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="forward-secrecy"><a class="header" href="#forward-secrecy">Forward Secrecy</a></h1>
 <p>OpenMLS drops key material immediately after a given
 key is no longer required by the protocol to achieve forward secrecy. For some keys, this is simple, as they
 are used only once, and there is no need to store them for later use. However,
@@ -2173,7 +2269,7 @@ functionality and forward secrecy. For example, it can be desirable to keep the
 application messages sent in previous epochs.</p>
 <p>In this chapter, we detail how we achieve forward secrecy for the different types of keys used throughout MLS.</p>
 <h2 id="ratchet-tree"><a class="header" href="#ratchet-tree">Ratchet Tree</a></h2>
-<p>The ratchet tree contains the secret key material of the client's leaf, as well
+<p>The ratchet tree contains the secret key material of the client’s leaf, as well
 (potentially) that of nodes in its direct path. The secrets in the tree are
 changed in the same way as the tree itself: via the merge of a previously
 prepared diff.</p>
@@ -2192,7 +2288,7 @@ diff. The diff contains any potential key material they decrypted from the
 commit and any potential key material that was introduced to the tree as
 part of an update that someone else committed for them. The key material in the original ratchet tree is dropped as soon as the <code>StagedCommit</code> (and thus the diff) is merged into the tree.</p>
 <h3 id="sending-application-messages"><a class="header" href="#sending-application-messages">Sending application messages</a></h3>
-<p>When an application message is created, the corresponding encryption key is derived from the <code>SecretTree</code> and immediately discarded after encrypting the message to guarantee the best possible Forward Secrecy. This means that the message author cannot decrypt application messages. If access to the message's content is required after creating the message, a copy of the plaintext message should be kept by the application.</p>
+<p>When an application message is created, the corresponding encryption key is derived from the <code>SecretTree</code> and immediately discarded after encrypting the message to guarantee the best possible Forward Secrecy. This means that the message author cannot decrypt application messages. If access to the message’s content is required after creating the message, a copy of the plaintext message should be kept by the application.</p>
 <h3 id="receiving-encrypted-messages"><a class="header" href="#receiving-encrypted-messages">Receiving encrypted messages</a></h3>
 <p>When an encrypted message is received, the corresponding decryption key is derived from the <code>SecretTree</code>. By default, the key material is discarded immediately after decryption for the best possible Forward Secrecy. In some cases, the Delivery Service cannot guarantee reliable operation, and applications need to be more tolerant to accommodate this – at the expense of Forward Secrecy.</p>
 <p>OpenMLS can address 3 scenarios:</p>
@@ -2204,26 +2300,27 @@ part of an update that someone else committed for them. The key material in the 
 <p>The Delivery Service cannot guarantee that application messages will arrive in order within the same epoch. To address this, applications can configure the <code>out_of_order_tolerance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupCreateConfig</code>.</p>
 </li>
 <li>
-<p>The Delivery Service cannot guarantee that application messages won't be dropped within the same epoch. To address this, applications can configure the <code>maximum_forward_distance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupCreateConfig</code>.</p>
+<p>The Delivery Service cannot guarantee that application messages won’t be dropped within the same epoch. To address this, applications can configure the <code>maximum_forward_distance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupCreateConfig</code>.</p>
 </li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="release-management"><a class="header" href="#release-management">Release management</a></h1>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="release-management"><a class="header" href="#release-management">Release management</a></h1>
 <p>The process for releasing a new version of OpenMLS.</p>
 <h2 id="versioning"><a class="header" href="#versioning">Versioning</a></h2>
 <p>The versioning follows the Rust and semantic <a href="https://semver.org">versioning guidelines</a>.</p>
 <h2 id="release-notes"><a class="header" href="#release-notes">Release Notes</a></h2>
 <p>Release notes are published on GitHub with a full changelog and a discussion in
-the "Release" section.
-In addition, the release notes are prepended to the CHANGELOG file in each crate's
+the “Release” section.
+In addition, the release notes are prepended to the CHANGELOG file in each crate’s
 root folder.
 The entries in the CHANGELOG file should follow the <a href="https://keepachangelog.com/en/1.0.0/">keep a changelog guide</a>.</p>
 <h2 id="pre-release-strategy"><a class="header" href="#pre-release-strategy">Pre-release strategy</a></h2>
 <p>Before releasing a minor or major version of the OpenMLS crate, a pre-release version
 must be published to crates.io.
 Pre-release versions are defined by appending a hyphen, and a series of dot-separated identifiers, i.e., <code>-rc.x</code> where <code>x</code> gets counted up starting at 1.
-Pre-releases must be tagged but don't require release notes or other documentation.
+Pre-releases must be tagged but don’t require release notes or other documentation.
 It is also sufficient to tag only the most high-level crate being published.</p>
-<hr />
+<hr>
 <h2 id="crates-in-this-repository"><a class="header" href="#crates-in-this-repository">Crates in this Repository</a></h2>
 <p>The crates must be published in the order below.</p>
 <ul>
@@ -2263,20 +2360,15 @@ It is also sufficient to tag only the most high-level crate being published.</p>
 </code></pre>
 <h2 id="release-checklist"><a class="header" href="#release-checklist">Release checklist</a></h2>
 <ul>
-<li><input disabled="" type="checkbox"/>
-If this is a minor or major release, has a pre-release version been published at least a week before the release?
+<li><input disabled="" type="checkbox"> If this is a minor or major release, has a pre-release version been published at least a week before the release?
 <ul>
 <li>If not, first do so and push the release one week.</li>
 </ul>
 </li>
-<li><input disabled="" type="checkbox"/>
-Describe the release in the CHANGELOG.md file of each crate.</li>
-<li><input disabled="" type="checkbox"/>
-Create and publish a git tag for each crate, e.g. <code>openmls/v0.4.0-rc.99</code>.</li>
-<li><input disabled="" type="checkbox"/>
-Create and publish release notes on Github.</li>
-<li><input disabled="" type="checkbox"/>
-Publish the crates to crates.io</li>
+<li><input disabled="" type="checkbox"> Describe the release in the CHANGELOG.md file of each crate.</li>
+<li><input disabled="" type="checkbox"> Create and publish a git tag for each crate, e.g. <code>openmls/v0.4.0-rc.99</code>.</li>
+<li><input disabled="" type="checkbox"> Create and publish release notes on Github.</li>
+<li><input disabled="" type="checkbox"> Publish the crates to crates.io</li>
 </ul>
 
                     </main>
@@ -2296,6 +2388,11 @@ Publish the crates to crates.io</li>
 
         </div>
 
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
 
 
@@ -2304,13 +2401,13 @@ Publish the crates to crates.io</li>
         </script>
 
 
-        <script src="elasticlunr.min.js"></script>
-        <script src="mark.min.js"></script>
-        <script src="searcher.js"></script>
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-c2a407aa.js"></script>
 
-        <script src="clipboard.min.js"></script>
-        <script src="highlight.js"></script>
-        <script src="book.js"></script>
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-a0b12cfe.js"></script>
 
         <!-- Custom JS scripts -->
 

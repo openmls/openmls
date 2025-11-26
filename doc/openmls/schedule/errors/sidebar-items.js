@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["PskError"]};
+window.SIDEBAR_ITEMS = {"enum":["KsTestVectorError","PskError"]};

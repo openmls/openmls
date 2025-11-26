@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e56847b5.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.1 (ed61e7d7e 2025-11-07)" data-channel="1.91.1" data-search-js="search-e256b49e.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-6dc2a7f3.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! MLS Group
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (80d8f292d 2025-11-25)" data-channel="nightly" data-search-js="search-680b2199.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-a410ff4d.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! MLS Group
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! This module contains [`MlsGroup`] and its submodules.
 <a href=#4 id=4 data-nosnippet>4</a>//!
@@ -845,62 +845,62 @@
 <a href=#845 id=845 data-nosnippet>845</a>        <span class="kw">if </span><span class="self">self </span>!= <span class="kw-2">&amp;</span>other {
 <a href=#846 id=846 data-nosnippet>846</a>            <span class="kw">let </span><span class="kw-2">mut </span>diagnostics = Vec::new();
 <a href=#847 id=847 data-nosnippet>847</a>
-<a href=#848 id=848 data-nosnippet>848</a>            <span class="kw">if </span><span class="self">self</span>.mls_group_config != other.mls_group_config {
+<a href=#848 id=848 data-nosnippet>848</a>            <span class="kw">if </span><span class="self">self</span>.<span class="macro">mls_group_config !</span>= other.mls_group_config {
 <a href=#849 id=849 data-nosnippet>849</a>                diagnostics.push(<span class="macro">format!</span>(
 <a href=#850 id=850 data-nosnippet>850</a>                    <span class="string">"mls_group_config:\n  Current: {:?}\n  Loaded:  {:?}"</span>,
 <a href=#851 id=851 data-nosnippet>851</a>                    <span class="self">self</span>.mls_group_config, other.mls_group_config
 <a href=#852 id=852 data-nosnippet>852</a>                ));
 <a href=#853 id=853 data-nosnippet>853</a>            }
-<a href=#854 id=854 data-nosnippet>854</a>            <span class="kw">if </span><span class="self">self</span>.public_group != other.public_group {
+<a href=#854 id=854 data-nosnippet>854</a>            <span class="kw">if </span><span class="self">self</span>.<span class="macro">public_group !</span>= other.public_group {
 <a href=#855 id=855 data-nosnippet>855</a>                diagnostics.push(<span class="macro">format!</span>(
 <a href=#856 id=856 data-nosnippet>856</a>                    <span class="string">"public_group:\n  Current: {:?}\n  Loaded:  {:?}"</span>,
 <a href=#857 id=857 data-nosnippet>857</a>                    <span class="self">self</span>.public_group, other.public_group
 <a href=#858 id=858 data-nosnippet>858</a>                ));
 <a href=#859 id=859 data-nosnippet>859</a>            }
-<a href=#860 id=860 data-nosnippet>860</a>            <span class="kw">if </span><span class="self">self</span>.group_epoch_secrets != other.group_epoch_secrets {
+<a href=#860 id=860 data-nosnippet>860</a>            <span class="kw">if </span><span class="self">self</span>.<span class="macro">group_epoch_secrets !</span>= other.group_epoch_secrets {
 <a href=#861 id=861 data-nosnippet>861</a>                diagnostics.push(<span class="macro">format!</span>(
 <a href=#862 id=862 data-nosnippet>862</a>                    <span class="string">"group_epoch_secrets:\n  Current: {:?}\n  Loaded:  {:?}"</span>,
 <a href=#863 id=863 data-nosnippet>863</a>                    <span class="self">self</span>.group_epoch_secrets, other.group_epoch_secrets
 <a href=#864 id=864 data-nosnippet>864</a>                ));
 <a href=#865 id=865 data-nosnippet>865</a>            }
-<a href=#866 id=866 data-nosnippet>866</a>            <span class="kw">if </span><span class="self">self</span>.own_leaf_index != other.own_leaf_index {
+<a href=#866 id=866 data-nosnippet>866</a>            <span class="kw">if </span><span class="self">self</span>.<span class="macro">own_leaf_index !</span>= other.own_leaf_index {
 <a href=#867 id=867 data-nosnippet>867</a>                diagnostics.push(<span class="macro">format!</span>(
 <a href=#868 id=868 data-nosnippet>868</a>                    <span class="string">"own_leaf_index:\n  Current: {:?}\n  Loaded:  {:?}"</span>,
 <a href=#869 id=869 data-nosnippet>869</a>                    <span class="self">self</span>.own_leaf_index, other.own_leaf_index
 <a href=#870 id=870 data-nosnippet>870</a>                ));
 <a href=#871 id=871 data-nosnippet>871</a>            }
-<a href=#872 id=872 data-nosnippet>872</a>            <span class="kw">if </span><span class="self">self</span>.message_secrets_store != other.message_secrets_store {
+<a href=#872 id=872 data-nosnippet>872</a>            <span class="kw">if </span><span class="self">self</span>.<span class="macro">message_secrets_store !</span>= other.message_secrets_store {
 <a href=#873 id=873 data-nosnippet>873</a>                diagnostics.push(<span class="macro">format!</span>(
 <a href=#874 id=874 data-nosnippet>874</a>                    <span class="string">"message_secrets_store:\n  Current: {:?}\n  Loaded:  {:?}"</span>,
 <a href=#875 id=875 data-nosnippet>875</a>                    <span class="self">self</span>.message_secrets_store, other.message_secrets_store
 <a href=#876 id=876 data-nosnippet>876</a>                ));
 <a href=#877 id=877 data-nosnippet>877</a>            }
-<a href=#878 id=878 data-nosnippet>878</a>            <span class="kw">if </span><span class="self">self</span>.resumption_psk_store != other.resumption_psk_store {
+<a href=#878 id=878 data-nosnippet>878</a>            <span class="kw">if </span><span class="self">self</span>.<span class="macro">resumption_psk_store !</span>= other.resumption_psk_store {
 <a href=#879 id=879 data-nosnippet>879</a>                diagnostics.push(<span class="macro">format!</span>(
 <a href=#880 id=880 data-nosnippet>880</a>                    <span class="string">"resumption_psk_store:\n  Current: {:?}\n  Loaded:  {:?}"</span>,
 <a href=#881 id=881 data-nosnippet>881</a>                    <span class="self">self</span>.resumption_psk_store, other.resumption_psk_store
 <a href=#882 id=882 data-nosnippet>882</a>                ));
 <a href=#883 id=883 data-nosnippet>883</a>            }
-<a href=#884 id=884 data-nosnippet>884</a>            <span class="kw">if </span><span class="self">self</span>.own_leaf_nodes != other.own_leaf_nodes {
+<a href=#884 id=884 data-nosnippet>884</a>            <span class="kw">if </span><span class="self">self</span>.<span class="macro">own_leaf_nodes !</span>= other.own_leaf_nodes {
 <a href=#885 id=885 data-nosnippet>885</a>                diagnostics.push(<span class="macro">format!</span>(
 <a href=#886 id=886 data-nosnippet>886</a>                    <span class="string">"own_leaf_nodes:\n  Current: {:?}\n  Loaded:  {:?}"</span>,
 <a href=#887 id=887 data-nosnippet>887</a>                    <span class="self">self</span>.own_leaf_nodes, other.own_leaf_nodes
 <a href=#888 id=888 data-nosnippet>888</a>                ));
 <a href=#889 id=889 data-nosnippet>889</a>            }
-<a href=#890 id=890 data-nosnippet>890</a>            <span class="kw">if </span><span class="self">self</span>.aad != other.aad {
+<a href=#890 id=890 data-nosnippet>890</a>            <span class="kw">if </span><span class="self">self</span>.<span class="macro">aad !</span>= other.aad {
 <a href=#891 id=891 data-nosnippet>891</a>                diagnostics.push(<span class="macro">format!</span>(
 <a href=#892 id=892 data-nosnippet>892</a>                    <span class="string">"aad:\n  Current: {:?}\n  Loaded:  {:?}"</span>,
 <a href=#893 id=893 data-nosnippet>893</a>                    <span class="self">self</span>.aad, other.aad
 <a href=#894 id=894 data-nosnippet>894</a>                ));
 <a href=#895 id=895 data-nosnippet>895</a>            }
-<a href=#896 id=896 data-nosnippet>896</a>            <span class="kw">if </span><span class="self">self</span>.group_state != other.group_state {
+<a href=#896 id=896 data-nosnippet>896</a>            <span class="kw">if </span><span class="self">self</span>.<span class="macro">group_state !</span>= other.group_state {
 <a href=#897 id=897 data-nosnippet>897</a>                diagnostics.push(<span class="macro">format!</span>(
 <a href=#898 id=898 data-nosnippet>898</a>                    <span class="string">"group_state:\n  Current: {:?}\n  Loaded:  {:?}"</span>,
 <a href=#899 id=899 data-nosnippet>899</a>                    <span class="self">self</span>.group_state, other.group_state
 <a href=#900 id=900 data-nosnippet>900</a>                ));
 <a href=#901 id=901 data-nosnippet>901</a>            }
 <a href=#902 id=902 data-nosnippet>902</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
-<a href=#903 id=903 data-nosnippet>903</a>            </span><span class="kw">if </span><span class="self">self</span>.application_export_tree != other.application_export_tree {
+<a href=#903 id=903 data-nosnippet>903</a>            </span><span class="kw">if </span><span class="self">self</span>.<span class="macro">application_export_tree !</span>= other.application_export_tree {
 <a href=#904 id=904 data-nosnippet>904</a>                diagnostics.push(<span class="macro">format!</span>(
 <a href=#905 id=905 data-nosnippet>905</a>                    <span class="string">"application_export_tree:\n  Current: {:?}\n  Loaded:  {:?}"</span>,
 <a href=#906 id=906 data-nosnippet>906</a>                    <span class="self">self</span>.application_export_tree, other.application_export_tree
@@ -976,4 +976,5 @@
 <a href=#976 id=976 data-nosnippet>976</a>    verifiable_group_info: <span class="kw">crate</span>::messages::group_info::VerifiableGroupInfo,
 <a href=#977 id=977 data-nosnippet>977</a>    resumption_psk_store: <span class="kw">crate</span>::schedule::psk::store::ResumptionPskStore,
 <a href=#978 id=978 data-nosnippet>978</a>    key_package_bundle: KeyPackageBundle,
-<a href=#979 id=979 data-nosnippet>979</a>}</code></pre></div></section></main></body></html>
+<a href=#979 id=979 data-nosnippet>979</a>}
+</code></pre></div></section></main></body></html>
