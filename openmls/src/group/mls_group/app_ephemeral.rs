@@ -1,6 +1,7 @@
-use super::proposal_store::{ProposalQueue, QueuedAppEphemeralProposal};
-
-use crate::extensions::ComponentId;
+use crate::{
+    component::ComponentId,
+    group::proposal_store::{ProposalQueue, QueuedAppEphemeralProposal},
+};
 
 use std::collections::BTreeSet;
 

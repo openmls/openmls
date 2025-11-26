@@ -25,7 +25,7 @@ use crate::{
 
 #[cfg(feature = "extensions-draft-08")]
 use crate::{
-    extensions::ComponentId,
+    component::ComponentId,
     group::MlsGroupCreateConfig,
     messages::proposals::AppEphemeralProposal,
     prelude::{MlsMessageIn, StagedCommit},
