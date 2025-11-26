@@ -5,7 +5,8 @@ use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use thiserror::Error;
 use tls_codec::{
-    Deserialize, Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+    Deserialize, Serialize as TlsSerializeTrait, TlsDeserialize, TlsDeserializeBytes, TlsSerialize,
+    TlsSize,
 };
 
 use crate::{
@@ -142,6 +143,7 @@ impl From<VerifiableGroupInfo> for GroupInfo {
         GroupInfo {
             payload: vgi.payload,
             signature: vgi.signature,
+            serialized_payload: None,
         }
     }
 }
@@ -162,11 +164,27 @@ impl From<VerifiableGroupInfo> for GroupInfo {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, SerdeSerialize, SerdeDeserialize)]
+#[derive(Debug, PartialEq, Clone, TlsSize, SerdeSerialize, SerdeDeserialize)]
 #[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
 pub struct GroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
+    #[serde(skip)]
+    #[tls_codec(skip)]
+    serialized_payload: Option<Vec<u8>>,
+}
+
+impl TlsSerializeTrait for GroupInfo {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let mut written = 0;
+        if let Some(ref bytes) = self.serialized_payload {
+            written += writer.write(bytes)?;
+        } else {
+            written += self.payload.tls_serialize(writer)?;
+        }
+        written += self.signature.tls_serialize(writer)?;
+        Ok(written)
+    }
 }
 
 impl GroupInfo {
@@ -273,8 +291,16 @@ impl Signable for GroupInfoTBS {
 }
 
 impl SignedStruct<GroupInfoTBS> for GroupInfo {
-    fn from_payload(payload: GroupInfoTBS, signature: Signature) -> Self {
-        Self { payload, signature }
+    fn from_payload(
+        payload: GroupInfoTBS,
+        signature: Signature,
+        serialized_payload: Vec<u8>,
+    ) -> Self {
+        Self {
+            payload,
+            signature,
+            serialized_payload: Some(serialized_payload),
+        }
     }
 }
 
@@ -302,6 +328,7 @@ impl Verifiable for VerifiableGroupInfo {
         Ok(GroupInfo {
             payload: self.payload,
             signature: self.signature,
+            serialized_payload: None,
         })
     }
 }
