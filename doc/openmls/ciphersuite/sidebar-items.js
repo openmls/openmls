@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["hash_ref","signable","signature"],"struct":["HpkePrivateKey"],"type":["HpkePublicKey"]};
+window.SIDEBAR_ITEMS = {"enum":["HpkeError"],"fn":["safe_decrypt_with_label","safe_encrypt_with_label"],"mod":["hash_ref","signable","signature"],"struct":["HpkePrivateKey","SafeEncryptionContext"],"type":["HpkePublicKey"]};
