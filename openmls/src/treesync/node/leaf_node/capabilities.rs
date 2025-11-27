@@ -215,11 +215,30 @@ impl Capabilities {
     /// - Proposals
     /// - Credentials
     ///
-    /// GREASE values are used per [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5).
-    pub(crate) fn inject_grease_values(
-        mut self,
-        rand: &impl openmls_traits::random::OpenMlsRand,
-    ) -> Self {
+    /// GREASE values are used per [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5)
+    /// to help prevent extensibility failures by ensuring implementations properly
+    /// handle unknown values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use openmls::prelude::*;
+    /// use openmls_rust_crypto::OpenMlsRustCrypto;
+    ///
+    /// let provider = OpenMlsRustCrypto::default();
+    ///
+    /// // Create capabilities with GREASE values injected
+    /// let capabilities = Capabilities::builder()
+    ///     .build()
+    ///     .with_grease(provider.rand());
+    ///
+    /// // Verify GREASE values were added
+    /// assert!(capabilities.ciphersuites().iter().any(|cs| cs.is_grease()));
+    /// assert!(capabilities.extensions().iter().any(|ext| ext.is_grease()));
+    /// assert!(capabilities.proposals().iter().any(|prop| prop.is_grease()));
+    /// assert!(capabilities.credentials().iter().any(|cred| cred.is_grease()));
+    /// ```
+    pub fn with_grease(mut self, rand: &impl openmls_traits::random::OpenMlsRand) -> Self {
         use crate::credentials::CredentialType;
         use crate::extensions::ExtensionType;
         use crate::messages::proposals::ProposalType;
@@ -295,6 +314,30 @@ impl CapabilitiesBuilder {
             credentials,
             ..self.0
         })
+    }
+
+    /// Adds random GREASE values to the capabilities being built.
+    ///
+    /// This is a convenience method that calls [`Capabilities::with_grease`] on the
+    /// built capabilities. See that method for more details.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use openmls::prelude::*;
+    /// use openmls_rust_crypto::OpenMlsRustCrypto;
+    ///
+    /// let provider = OpenMlsRustCrypto::default();
+    ///
+    /// let capabilities = Capabilities::builder()
+    ///     .with_grease(provider.rand())
+    ///     .build();
+    ///
+    /// // GREASE values were added
+    /// assert!(capabilities.ciphersuites().iter().any(|cs| cs.is_grease()));
+    /// ```
+    pub fn with_grease(self, rand: &impl openmls_traits::random::OpenMlsRand) -> Self {
+        Self(self.0.with_grease(rand))
     }
 
     /// Builds the [`Capabilities`].

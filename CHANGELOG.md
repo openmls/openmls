@@ -14,8 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented GREASE (Generate Random Extensions And Sustain Extensibility) support as defined in [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5):
   - Added `Grease(u16)` variants to `ProposalType`, `ExtensionType`, and `CredentialType` enums
   - Added `is_grease()` methods to all GREASE-capable types including `VerifiableCiphersuite`
-  - GREASE values are automatically added to KeyPackages and MlsGroups to test extensibility
-  - GREASE values are automatically recognized during deserialization and filtered during validation
+  - Added `Capabilities::with_grease()` and `CapabilitiesBuilder::with_grease()` convenience methods to inject random GREASE values
+  - GREASE values are automatically recognized during deserialization and filtered during validation (treated the same as unknown values)
   - Added comprehensive unit and integration tests for GREASE handling
   - Added user manual documentation for GREASE support
 

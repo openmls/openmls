@@ -71,12 +71,6 @@ impl MlsGroupBuilder {
             .unwrap_or_else(|| GroupId::random(provider.rand()));
         let ciphersuite = mls_group_create_config.ciphersuite;
 
-        // Always inject GREASE values to ensure extensibility
-        let capabilities = mls_group_create_config
-            .capabilities
-            .clone()
-            .inject_grease_values(provider.rand());
-
         let (public_group_builder, commit_secret, leaf_keypair) =
             PublicGroup::builder(group_id, ciphersuite, credential_with_key)
                 .with_group_context_extensions(
@@ -84,7 +78,7 @@ impl MlsGroupBuilder {
                 )?
                 .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())?
                 .with_lifetime(*mls_group_create_config.lifetime())
-                .with_capabilities(capabilities)
+                .with_capabilities(mls_group_create_config.capabilities.clone())
                 .get_secrets(provider, signer)
                 .map_err(|e| match e {
                     PublicGroupBuildError::LibraryError(e) => NewGroupError::LibraryError(e),

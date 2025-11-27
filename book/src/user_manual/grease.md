@@ -12,20 +12,23 @@ GREASE values are special reserved values that follow a specific pattern (`0x0A0
 
 ## GREASE in OpenMLS
 
-OpenMLS automatically handles GREASE values for the following types:
+OpenMLS supports GREASE values for the following types:
 
 - **Ciphersuites** (`VerifiableCiphersuite`)
 - **Extensions** (`ExtensionType::Grease`)
 - **Proposals** (`ProposalType::Grease`)
 - **Credentials** (`CredentialType::Grease`)
 
-### Automatic Handling
+### GREASE Handling
 
-OpenMLS automatically:
+OpenMLS:
 
 1. **Recognizes GREASE values** during deserialization
-2. **Filters GREASE values** during validation to prevent false negatives
+2. **Filters GREASE values** during validation to prevent false negatives (GREASE values are treated the same as unknown values)
 3. **Preserves GREASE values** when present in capabilities
+4. **Provides convenience methods** to inject random GREASE values into capabilities
+
+**Note:** GREASE values are NOT automatically injected. Library users who wish to include GREASE values in their capabilities should use the `with_grease()` method described below.
 
 ## Using GREASE Values
 
@@ -54,9 +57,31 @@ let capabilities = Capabilities::builder()
     .build();
 ```
 
-### Generating Random GREASE Values
+### Injecting Random GREASE Values
 
-OpenMLS provides a helper function to generate random GREASE values:
+The easiest way to add GREASE values is using the `with_grease()` method on `Capabilities` or `CapabilitiesBuilder`:
+
+```rust
+use openmls::prelude::*;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+
+let provider = OpenMlsRustCrypto::default();
+
+// Using CapabilitiesBuilder
+let capabilities = Capabilities::builder()
+    .with_grease(provider.rand())
+    .build();
+
+// Or on an existing Capabilities instance
+let capabilities = Capabilities::default()
+    .with_grease(provider.rand());
+```
+
+This will add one random GREASE value to each capability list (ciphersuites, extensions, proposals, and credentials) if no GREASE value is already present.
+
+### Generating Individual Random GREASE Values
+
+OpenMLS also provides a helper function to generate individual random GREASE values:
 
 ```rust
 use openmls::grease::random_grease_value;
@@ -134,7 +159,7 @@ Including GREASE values in your capabilities is recommended for testing interope
 
 ## Example: Full Usage
 
-Here's a complete example showing GREASE usage:
+Here's a complete example showing GREASE usage with the recommended `with_grease()` method:
 
 ```rust
 use openmls::prelude::*;
@@ -150,7 +175,47 @@ let signature_keys = SignatureKeyPair::new(
     Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.signature_algorithm()
 ).unwrap();
 
-// Create capabilities with GREASE values
+// Create capabilities with automatic random GREASE values
+let capabilities = Capabilities::builder()
+    .with_grease(provider.rand())
+    .build();
+
+// Create a KeyPackage with GREASE values
+let key_package = KeyPackage::builder()
+    .leaf_node_capabilities(capabilities)
+    .build(
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        &provider,
+        &signature_keys,
+        CredentialWithKey {
+            credential: credential.into(),
+            signature_key: signature_keys.public().into(),
+        },
+    )
+    .unwrap();
+
+// The KeyPackage can be used normally - GREASE values are handled during validation
+```
+
+### Example: Manually Specifying GREASE Values
+
+If you need to specify particular GREASE values (e.g., for testing or interoperability):
+
+```rust
+use openmls::prelude::*;
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::types::Ciphersuite;
+
+let provider = OpenMlsRustCrypto::default();
+
+// Create a credential
+let credential = BasicCredential::new(b"Alice".to_vec());
+let signature_keys = SignatureKeyPair::new(
+    Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.signature_algorithm()
+).unwrap();
+
+// Create capabilities with specific GREASE values
 let capabilities = Capabilities::builder()
     .proposals(vec![
         ProposalType::Add,
@@ -169,7 +234,7 @@ let capabilities = Capabilities::builder()
     ])
     .build();
 
-// Create a KeyPackage with GREASE values
+// Create a KeyPackage with these capabilities
 let key_package = KeyPackage::builder()
     .leaf_node_capabilities(capabilities)
     .build(
@@ -182,8 +247,6 @@ let key_package = KeyPackage::builder()
         },
     )
     .unwrap();
-
-// The KeyPackage can be used normally - GREASE values are automatically handled
 ```
 
 ## Further Reading

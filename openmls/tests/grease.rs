@@ -285,8 +285,9 @@ fn test_grease_type_detection() {
 }
 
 #[test]
-fn test_automatic_grease_in_key_packages() {
-    // Test that KeyPackages automatically include GREASE values
+fn test_grease_not_automatically_injected_in_key_packages() {
+    // Test that KeyPackages do NOT automatically include GREASE values
+    // (library users must opt-in via with_grease())
 
     let provider = OpenMlsRustCrypto::default();
     let (credential, signer) = create_credential(b"Alice");
@@ -303,13 +304,62 @@ fn test_automatic_grease_in_key_packages() {
 
     let capabilities = key_package.key_package().leaf_node().capabilities();
 
-    // Check that GREASE values were automatically added
+    // Check that GREASE values were NOT automatically added
     let has_grease_ciphersuite = capabilities.ciphersuites().iter().any(|cs| cs.is_grease());
-
     let has_grease_extension = capabilities.extensions().iter().any(|ext| ext.is_grease());
-
     let has_grease_proposal = capabilities.proposals().iter().any(|prop| prop.is_grease());
+    let has_grease_credential = capabilities
+        .credentials()
+        .iter()
+        .any(|cred| cred.is_grease());
 
+    assert!(
+        !has_grease_ciphersuite,
+        "KeyPackage should NOT automatically include GREASE ciphersuites"
+    );
+    assert!(
+        !has_grease_extension,
+        "KeyPackage should NOT automatically include GREASE extensions"
+    );
+    assert!(
+        !has_grease_proposal,
+        "KeyPackage should NOT automatically include GREASE proposals"
+    );
+    assert!(
+        !has_grease_credential,
+        "KeyPackage should NOT automatically include GREASE credentials"
+    );
+}
+
+#[test]
+fn test_grease_injection_via_with_grease() {
+    // Test that with_grease() correctly adds GREASE values to capabilities
+
+    let provider = OpenMlsRustCrypto::default();
+    let (credential, signer) = create_credential(b"Alice");
+
+    // Create capabilities with GREASE values using with_grease()
+    let capabilities = Capabilities::builder()
+        .with_grease(provider.rand())
+        .build();
+
+    // Create a KeyPackage with these capabilities
+    let key_package = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities)
+        .build(
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            &provider,
+            &signer,
+            credential,
+        )
+        .expect("Failed to create KeyPackage");
+
+    let capabilities = key_package.key_package().leaf_node().capabilities();
+
+    // Check that GREASE values were added via with_grease()
+    let has_grease_ciphersuite = capabilities.ciphersuites().iter().any(|cs| cs.is_grease());
+    let has_grease_extension = capabilities.extensions().iter().any(|ext| ext.is_grease());
+    let has_grease_proposal = capabilities.proposals().iter().any(|prop| prop.is_grease());
     let has_grease_credential = capabilities
         .credentials()
         .iter()
@@ -317,25 +367,26 @@ fn test_automatic_grease_in_key_packages() {
 
     assert!(
         has_grease_ciphersuite,
-        "KeyPackage should automatically include a GREASE ciphersuite"
+        "with_grease() should add a GREASE ciphersuite"
     );
     assert!(
         has_grease_extension,
-        "KeyPackage should automatically include a GREASE extension"
+        "with_grease() should add a GREASE extension"
     );
     assert!(
         has_grease_proposal,
-        "KeyPackage should automatically include a GREASE proposal"
+        "with_grease() should add a GREASE proposal"
     );
     assert!(
         has_grease_credential,
-        "KeyPackage should automatically include a GREASE credential"
+        "with_grease() should add a GREASE credential"
     );
 }
 
 #[test]
-fn test_automatic_grease_in_groups() {
-    // Test that MlsGroups automatically include GREASE values
+fn test_grease_not_automatically_injected_in_groups() {
+    // Test that MlsGroups do NOT automatically include GREASE values
+    // (library users must opt-in via with_grease())
 
     let provider = OpenMlsRustCrypto::default();
     let (credential, signer) = create_credential(b"Alice");
@@ -351,13 +402,61 @@ fn test_automatic_grease_in_groups() {
         .expect("Should have own leaf node")
         .capabilities();
 
-    // Check that GREASE values were automatically added
+    // Check that GREASE values were NOT automatically added
     let has_grease_ciphersuite = capabilities.ciphersuites().iter().any(|cs| cs.is_grease());
-
     let has_grease_extension = capabilities.extensions().iter().any(|ext| ext.is_grease());
-
     let has_grease_proposal = capabilities.proposals().iter().any(|prop| prop.is_grease());
+    let has_grease_credential = capabilities
+        .credentials()
+        .iter()
+        .any(|cred| cred.is_grease());
 
+    assert!(
+        !has_grease_ciphersuite,
+        "MlsGroup should NOT automatically include GREASE ciphersuites"
+    );
+    assert!(
+        !has_grease_extension,
+        "MlsGroup should NOT automatically include GREASE extensions"
+    );
+    assert!(
+        !has_grease_proposal,
+        "MlsGroup should NOT automatically include GREASE proposals"
+    );
+    assert!(
+        !has_grease_credential,
+        "MlsGroup should NOT automatically include GREASE credentials"
+    );
+}
+
+#[test]
+fn test_grease_injection_in_groups_via_with_grease() {
+    // Test that with_grease() correctly adds GREASE values to MlsGroup capabilities
+
+    let provider = OpenMlsRustCrypto::default();
+    let (credential, signer) = create_credential(b"Alice");
+
+    // Create capabilities with GREASE values using with_grease()
+    let capabilities = Capabilities::builder()
+        .with_grease(provider.rand())
+        .build();
+
+    // Create a group with these capabilities
+    let alice_group = MlsGroup::builder()
+        .with_group_id(GroupId::from_slice(b"test_group"))
+        .with_capabilities(capabilities)
+        .build(&provider, &signer, credential)
+        .expect("Failed to create group");
+
+    let capabilities = alice_group
+        .own_leaf_node()
+        .expect("Should have own leaf node")
+        .capabilities();
+
+    // Check that GREASE values were added via with_grease()
+    let has_grease_ciphersuite = capabilities.ciphersuites().iter().any(|cs| cs.is_grease());
+    let has_grease_extension = capabilities.extensions().iter().any(|ext| ext.is_grease());
+    let has_grease_proposal = capabilities.proposals().iter().any(|prop| prop.is_grease());
     let has_grease_credential = capabilities
         .credentials()
         .iter()
@@ -365,18 +464,18 @@ fn test_automatic_grease_in_groups() {
 
     assert!(
         has_grease_ciphersuite,
-        "MlsGroup should automatically include a GREASE ciphersuite"
+        "with_grease() should add a GREASE ciphersuite"
     );
     assert!(
         has_grease_extension,
-        "MlsGroup should automatically include a GREASE extension"
+        "with_grease() should add a GREASE extension"
     );
     assert!(
         has_grease_proposal,
-        "MlsGroup should automatically include a GREASE proposal"
+        "with_grease() should add a GREASE proposal"
     );
     assert!(
         has_grease_credential,
-        "MlsGroup should automatically include a GREASE credential"
+        "with_grease() should add a GREASE credential"
     );
 }

@@ -15,12 +15,37 @@
 //! - Testing that parsers properly handle unexpected values
 //! - Maintaining forward compatibility
 //!
-//! ## Usage in MLS
+//! ## Usage in OpenMLS
 //!
-//! GREASE values are automatically added to capability lists in KeyPackages and
-//! LeafNodes. During validation, GREASE values are automatically filtered out
-//! and ignored, ensuring they don't interfere with capability checking or other
-//! validation logic.
+//! OpenMLS provides tools for working with GREASE values:
+//!
+//! - **Recognition**: GREASE values are automatically recognized during
+//!   deserialization and stored in dedicated `Grease` variants (e.g.,
+//!   `ProposalType::Grease`, `ExtensionType::Grease`).
+//!
+//! - **Validation**: During capability validation, GREASE values are treated
+//!   the same as unknown values and filtered out appropriately.
+//!
+//! - **Injection**: Library users can inject random GREASE values into
+//!   capabilities using the [`Capabilities::with_grease`](crate::treesync::node::leaf_node::Capabilities::with_grease)
+//!   method or by manually adding `Grease` variants.
+//!
+//! ## Example
+//!
+//! ```
+//! use openmls::prelude::*;
+//! use openmls_rust_crypto::OpenMlsRustCrypto;
+//!
+//! let provider = OpenMlsRustCrypto::default();
+//!
+//! // Inject random GREASE values into capabilities
+//! let capabilities = Capabilities::builder()
+//!     .with_grease(provider.rand())
+//!     .build();
+//!
+//! // Capabilities now contain random GREASE values
+//! assert!(capabilities.ciphersuites().iter().any(|cs| cs.is_grease()));
+//! ```
 
 use openmls_traits::random::OpenMlsRand;
 

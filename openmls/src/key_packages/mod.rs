@@ -547,12 +547,6 @@ impl KeyPackageBuilder {
     ) -> Result<KeyPackageBundle, KeyPackageNewError> {
         self.ensure_last_resort();
 
-        // Always inject GREASE values to ensure extensibility
-        let capabilities = self
-            .leaf_node_capabilities
-            .unwrap_or_default()
-            .inject_grease_values(provider.rand());
-
         let KeyPackageCreationResult {
             key_package,
             encryption_keypair,
@@ -564,7 +558,7 @@ impl KeyPackageBuilder {
             credential_with_key,
             self.key_package_lifetime.unwrap_or_default(),
             self.key_package_extensions.unwrap_or_default(),
-            capabilities,
+            self.leaf_node_capabilities.unwrap_or_default(),
             self.leaf_node_extensions.unwrap_or_default(),
         )?;
 
