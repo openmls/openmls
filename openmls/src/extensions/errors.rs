@@ -97,16 +97,6 @@ pub enum InvalidExtensionError {
     /// The specified extension could not be found.
     #[error("The specified extension could not be found.")]
     NotFound,
-    /// The provided extension list contains an extension type that is not allowed
-    #[error(
-        "The provided extension list contains an extension of type {illegal_extension:?} that is not allowed for type {ty:?}."
-    )]
-    ExtensionTypeNotValidInObject {
-        /// the extension type of the invalid extension
-        illegal_extension: ExtensionType,
-        /// the name of the type
-        ty: &'static str,
-    },
     /// The provided extension list contains an extension type that is not allowed in leaf nodes
     #[error(transparent)]
     ExtensionTypeNotValidInLeafNode(#[from] ExtensionTypeNotValidInLeafNodeError),
@@ -114,35 +104,37 @@ pub enum InvalidExtensionError {
     /// context
     #[error(transparent)]
     ExtensionTypeNotValidInGroupContext(#[from] ExtensionTypeNotValidInGroupContextError),
-    /// The provided extension list contains an extension type that is not allowed in the key
-    /// packages
+    /// The provided extension list contains an extension type that is not allowed in key packages
     #[error(transparent)]
     ExtensionTypeNotValidInKeyPackage(#[from] ExtensionTypeNotValidInKeyPackageError),
-    /// The provided extension list contains an extension that is not allowed in leaf nodes
-    #[error(
-        "The provided extension list contains an extension that is not allowed in leaf nodes."
-    )]
-    IllegalInLeafNodes,
+    /// The provided extension list contains an extension type that is not allowed in the group
+    /// info
+    #[error(transparent)]
+    ExtensionTypeNotValidInGroupInfo(#[from] ExtensionTypeNotValidInGroupInfoError),
 }
 
-/// The provided extension list contains an extension type that is not allowed in the key
-/// packages
+/// The provided extension list contains an extension type that is not allowed in the group info
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
 #[error(
-        "The provided extension list contains an extension of type {0:?} that is not allowed in key packages."
+        "The provided extension list contains an extension of type {0:?} that is not allowed in the group info."
+    )]
+pub struct ExtensionTypeNotValidInGroupInfoError(pub ExtensionType);
+
+/// The provided extension list contains an extension type that is not allowed in the group context
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
+#[error(
+        "The provided extension list contains an extension of type {0:?} that is not allowed in the group context."
     )]
 pub struct ExtensionTypeNotValidInGroupContextError(pub ExtensionType);
 
-/// The provided extension list contains an extension type that is not allowed in the key
-/// packages
+/// The provided extension list contains an extension type that is not allowed in leaf nodes
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
 #[error(
-        "The provided extension list contains an extension of type {0:?} that is not allowed in key packages."
+        "The provided extension list contains an extension of type {0:?} that is not allowed in leaf nodes."
     )]
 pub struct ExtensionTypeNotValidInLeafNodeError(pub ExtensionType);
 
-/// The provided extension list contains an extension type that is not allowed in the key
-/// packages
+/// The provided extension list contains an extension type that is not allowed in key packages
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
 #[error(
         "The provided extension list contains an extension of type {0:?} that is not allowed in key packages."

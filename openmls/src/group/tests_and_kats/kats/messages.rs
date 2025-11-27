@@ -231,9 +231,9 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         group_id: alice_group.group_id().clone(),
         version: ProtocolVersion::Mls10,
         ciphersuite,
-        extensions: Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
-            alice_ratchet_tree.clone(),
-        )))
+        extensions: Extensions::single(Extension::RequiredCapabilities(
+            RequiredCapabilitiesExtension::new(&[ExtensionType::LastResort], &[], &[]),
+        ))
         .expect("failed to create single-element extensions list"),
     };
 

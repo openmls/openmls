@@ -57,7 +57,10 @@ use tls_codec::{
     Size, TlsDeserialize, TlsSerialize, TlsSize,
 };
 
-use crate::{group::GroupContext, prelude::KeyPackage, treesync::LeafNode};
+use crate::{
+    group::GroupContext, key_packages::KeyPackage, messages::group_info::GroupInfo,
+    treesync::LeafNode,
+};
 
 #[cfg(test)]
 mod tests;
@@ -455,6 +458,22 @@ where
             unique,
             _object: PhantomData,
         })
+    }
+}
+
+// https://validation.openmls.tech/#valn1602
+impl ExtensionValidator for GroupInfo {
+    type Error = ExtensionTypeNotValidInGroupInfoError;
+
+    fn validate_extension_type(
+        ext: &Extension,
+    ) -> Result<(), ExtensionTypeNotValidInGroupInfoError> {
+        matches!(
+            ext.extension_type(),
+            ExtensionType::RatchetTree | ExtensionType::ExternalPub | ExtensionType::Unknown(_)
+        )
+        .then_some(())
+        .ok_or(ExtensionTypeNotValidInGroupInfoError(ext.extension_type()))
     }
 }
 
