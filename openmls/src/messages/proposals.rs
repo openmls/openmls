@@ -22,7 +22,7 @@ use crate::{
     },
     group::{GroupContext, GroupId},
     key_packages::*,
-    prelude::{ExtensionsForObject, LeafNode},
+    prelude::LeafNode,
     schedule::psk::*,
     versions::ProtocolVersion,
 };
@@ -491,7 +491,7 @@ pub struct ReInitProposal {
     pub(crate) group_id: GroupId,
     pub(crate) version: ProtocolVersion,
     pub(crate) ciphersuite: Ciphersuite,
-    pub(crate) extensions: Extensions,
+    pub(crate) extensions: Extensions<GroupContext>,
 }
 
 /// ExternalInit Proposal.
@@ -607,7 +607,7 @@ impl AppEphemeralProposal {
 /// ```
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct GroupContextExtensionProposal {
-    extensions: ExtensionsForObject<GroupContext>,
+    extensions: Extensions<GroupContext>,
 }
 
 impl Size for GroupContextExtensionProposal {
@@ -624,13 +624,17 @@ impl TlsSerializeTrait for GroupContextExtensionProposal {
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
-    pub(crate) fn new(extensions: ExtensionsForObject<GroupContext>) -> Self {
+    pub(crate) fn new(extensions: Extensions<GroupContext>) -> Self {
         Self { extensions }
     }
 
     /// Get the extensions of the proposal
-    pub fn extensions(&self) -> &ExtensionsForObject<GroupContext> {
+    pub fn extensions(&self) -> &Extensions<GroupContext> {
         &self.extensions
+    }
+
+    pub fn into_extensions(self) -> Extensions<GroupContext> {
+        self.extensions
     }
 }
 

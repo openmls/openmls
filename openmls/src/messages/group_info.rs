@@ -14,7 +14,7 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         AeadKey, AeadNonce, Signature,
     },
-    extensions::Extensions,
+    extensions::{AnyObject, Extensions},
     group::{GroupContext, GroupEpoch, GroupId},
     messages::ConfirmationTag,
 };
@@ -48,7 +48,7 @@ impl VerifiableGroupInfo {
     /// Create a new [`VerifiableGroupInfo`] from its contents.
     pub fn new(
         group_context: GroupContext,
-        extensions: Extensions,
+        extensions: Extensions<AnyObject>,
         confirmation_tag: ConfirmationTag,
         signer: LeafNodeIndex,
         signature: Signature,
@@ -103,7 +103,7 @@ impl VerifiableGroupInfo {
     /// Get (unverified) extensions of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<AnyObject> {
         &self.payload.extensions
     }
 
@@ -176,7 +176,7 @@ impl GroupInfo {
     }
 
     /// Returns the [`GroupInfo`] extensions.
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<AnyObject> {
         &self.payload.extensions
     }
 
@@ -229,7 +229,7 @@ impl GroupInfo {
 )]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
-    extensions: Extensions,
+    extensions: Extensions<AnyObject>,
     confirmation_tag: ConfirmationTag,
     signer: LeafNodeIndex,
 }
@@ -238,7 +238,7 @@ impl GroupInfoTBS {
     /// Create a new to-be-signed group info.
     pub(crate) fn new(
         group_context: GroupContext,
-        extensions: Extensions,
+        extensions: Extensions<AnyObject>,
         confirmation_tag: ConfirmationTag,
         signer: LeafNodeIndex,
     ) -> Self {

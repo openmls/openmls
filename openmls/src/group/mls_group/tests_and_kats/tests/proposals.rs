@@ -306,10 +306,10 @@ fn required_extension_key_package_mismatch() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
-        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-            required_capabilities,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities))
+                .expect("failed to create single-element extensions list"),
+        )
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
 
@@ -351,10 +351,10 @@ fn group_context_extensions() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
-        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-            required_capabilities,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities))
+                .expect("failed to create single-element extensions list"),
+        )
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
 
@@ -405,10 +405,10 @@ fn group_context_extension_proposal_fails() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
-        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-            required_capabilities,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities))
+                .expect("failed to create single-element extensions list"),
+        )
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
 
@@ -474,7 +474,8 @@ fn group_context_extension_proposal() {
     let (gce_proposal, _) = alice_group
         .propose_group_context_extensions(
             alice_provider,
-            Extensions::single(required_application_id),
+            Extensions::single(required_application_id)
+                .expect("failed to create single-element extensions list"),
             &alice_signer,
         )
         .expect("Error proposing gce.");

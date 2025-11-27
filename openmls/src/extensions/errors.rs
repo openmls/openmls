@@ -9,9 +9,11 @@
 //! * `ParentHashError`
 //! * `RatchetTreeError`
 
+use std::convert::Infallible;
+
 use crate::{
     error::{ErrorString, LibraryError},
-    prelude::ExtensionType,
+    extensions::ExtensionType,
 };
 
 use thiserror::Error;
@@ -105,9 +107,50 @@ pub enum InvalidExtensionError {
         /// the name of the type
         ty: &'static str,
     },
+    /// The provided extension list contains an extension type that is not allowed in leaf nodes
+    #[error(transparent)]
+    ExtensionTypeNotValidInLeafNode(#[from] ExtensionTypeNotValidInLeafNodeError),
+    /// The provided extension list contains an extension type that is not allowed in the group
+    /// context
+    #[error(transparent)]
+    ExtensionTypeNotValidInGroupContext(#[from] ExtensionTypeNotValidInGroupContextError),
+    /// The provided extension list contains an extension type that is not allowed in the key
+    /// packages
+    #[error(transparent)]
+    ExtensionTypeNotValidInKeyPackage(#[from] ExtensionTypeNotValidInKeyPackageError),
     /// The provided extension list contains an extension that is not allowed in leaf nodes
     #[error(
         "The provided extension list contains an extension that is not allowed in leaf nodes."
     )]
     IllegalInLeafNodes,
+}
+
+/// The provided extension list contains an extension type that is not allowed in the key
+/// packages
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
+#[error(
+        "The provided extension list contains an extension of type {0:?} that is not allowed in key packages."
+    )]
+pub struct ExtensionTypeNotValidInGroupContextError(pub ExtensionType);
+
+/// The provided extension list contains an extension type that is not allowed in the key
+/// packages
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
+#[error(
+        "The provided extension list contains an extension of type {0:?} that is not allowed in key packages."
+    )]
+pub struct ExtensionTypeNotValidInLeafNodeError(pub ExtensionType);
+
+/// The provided extension list contains an extension type that is not allowed in the key
+/// packages
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
+#[error(
+        "The provided extension list contains an extension of type {0:?} that is not allowed in key packages."
+    )]
+pub struct ExtensionTypeNotValidInKeyPackageError(pub ExtensionType);
+
+impl From<Infallible> for InvalidExtensionError {
+    fn from(value: Infallible) -> Self {
+        match value {}
+    }
 }

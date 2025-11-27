@@ -15,7 +15,6 @@ use crate::{
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
-    prelude::ExtensionsForObject,
     storage::{OpenMlsProvider, StorageProvider},
 };
 use openmls_traits::signatures::Signer;
@@ -73,15 +72,13 @@ impl ExternalProposal {
     /// * `sender` - index of the sender of the proposal (in the [crate::extensions::ExternalSendersExtension] array
     ///   from the Group Context)
     pub fn new_group_context_extensions<Provider: OpenMlsProvider>(
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
         group_id: GroupId,
         epoch: GroupEpoch,
         signer: &impl Signer,
         sender_index: SenderExtensionIndex,
     ) -> Result<MlsMessageOut, CreateGroupContextExtProposalError<Provider::StorageError>> {
-        let group_context_extensions: ExtensionsForObject<GroupContext> = extensions.try_into()?;
-
-        let proposal = GroupContextExtensionProposal::new(group_context_extensions);
+        let proposal = GroupContextExtensionProposal::new(extensions);
 
         AuthenticatedContent::new_external_proposal(
             Proposal::GroupContextExtensions(Box::new(proposal)),

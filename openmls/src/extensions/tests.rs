@@ -38,7 +38,8 @@ fn application_id() {
 // in an MlsGroupCreateConfig
 #[test]
 fn application_id_in_leaf_node_extensions() {
-    let extensions = Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(&[])));
+    let extensions = Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(&[])))
+        .expect("failed to create single-element extensions list");
 
     let _create_config = MlsGroupCreateConfig::builder()
         .with_leaf_node_extensions(extensions)
@@ -213,14 +214,14 @@ fn with_group_context_extensions() {
 
     // create an extension that we can check for later
     let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
-    let extensions = Extensions::single(test_extension.clone());
+    let extensions = Extensions::single(test_extension.clone())
+        .expect("failed to create single-element extensions list");
 
     let alice_credential_with_key_and_signer =
         generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .with_group_context_extensions(extensions)
-        .expect("failed to apply extensions at group config builder")
         .ciphersuite(ciphersuite)
         .build();
 
@@ -244,113 +245,51 @@ fn with_group_context_extensions() {
 
 #[openmls_test::openmls_test]
 fn wrong_extension_with_group_context_extensions() {
-    let provider = &Provider::default();
-
     // Extension types that are known to not be allowed here:
     // - application id
     // - external pub
     // - ratchet tree
 
-    let alice_credential_with_key_and_signer =
-        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
-
     // create an extension that we can check for later
     let test_extension = Extension::ApplicationId(ApplicationIdExtension::new(&[0xca, 0xfe]));
-    let extensions = Extensions::single(test_extension.clone());
-
-    let err = MlsGroup::builder()
-        .with_group_context_extensions(extensions.clone())
-        .expect_err("builder accepted non-group-context extension");
+    let err = Extensions::<GroupContext>::single(test_extension.clone()).expect_err(
+        "should not be able to put non-group-context extension into group context extensions",
+    );
 
     assert_eq!(
         err,
-        InvalidExtensionError::ExtensionTypeNotValidInObject {
-            illegal_extension: ExtensionType::ApplicationId,
-            ty: std::any::type_name::<GroupContext>()
-        }
+        InvalidExtensionError::ExtensionTypeNotValidInGroupContext(
+            ExtensionTypeNotValidInGroupContextError(ExtensionType::ApplicationId)
+        )
     );
-    let err = PublicGroup::builder(
-        GroupId::from_slice(&[0xbe, 0xef]),
-        ciphersuite,
-        alice_credential_with_key_and_signer
-            .credential_with_key
-            .clone(),
-    )
-    .with_group_context_extensions(extensions)
-    .expect_err("builder accepted non-group-context extension");
 
-    assert_eq!(
-        err,
-        InvalidExtensionError::ExtensionTypeNotValidInObject {
-            illegal_extension: ExtensionType::ApplicationId,
-            ty: std::any::type_name::<GroupContext>()
-        }
-    );
     // create an extension that we can check for later
     let test_extension =
         Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(vec![])));
-    let extensions = Extensions::single(test_extension.clone());
-
-    let err = MlsGroup::builder()
-        .with_group_context_extensions(extensions.clone())
-        .expect_err("builder accepted non-group-context extension");
-    assert_eq!(
-        err,
-        InvalidExtensionError::ExtensionTypeNotValidInObject {
-            illegal_extension: ExtensionType::ExternalPub,
-            ty: std::any::type_name::<GroupContext>()
-        }
+    let err = Extensions::<GroupContext>::single(test_extension.clone()).expect_err(
+        "should not be able to put non-group-context extension into group context extensions",
     );
 
-    let err = PublicGroup::builder(
-        GroupId::from_slice(&[0xbe, 0xef]),
-        ciphersuite,
-        alice_credential_with_key_and_signer
-            .credential_with_key
-            .clone(),
-    )
-    .with_group_context_extensions(extensions)
-    .expect_err("builder accepted non-group-context extension");
     assert_eq!(
         err,
-        InvalidExtensionError::ExtensionTypeNotValidInObject {
-            illegal_extension: ExtensionType::ExternalPub,
-            ty: std::any::type_name::<GroupContext>()
-        }
+        InvalidExtensionError::ExtensionTypeNotValidInGroupContext(
+            ExtensionTypeNotValidInGroupContextError(ExtensionType::ExternalPub)
+        )
     );
 
     // create an extension that we can check for later
     let test_extension = Extension::RatchetTree(RatchetTreeExtension::new(
         RatchetTreeIn::from_nodes(vec![]).into(),
     ));
-    let extensions = Extensions::single(test_extension.clone());
-
-    let err = MlsGroup::builder()
-        .with_group_context_extensions(extensions.clone())
-        .expect_err("builder accepted non-group-context extension");
-    assert_eq!(
-        err,
-        InvalidExtensionError::ExtensionTypeNotValidInObject {
-            illegal_extension: ExtensionType::RatchetTree,
-            ty: std::any::type_name::<GroupContext>()
-        }
+    let err = Extensions::<GroupContext>::single(test_extension.clone()).expect_err(
+        "should not be able to put non-group-context extension into group context extensions",
     );
 
-    let err = PublicGroup::builder(
-        GroupId::from_slice(&[0xbe, 0xef]),
-        ciphersuite,
-        alice_credential_with_key_and_signer
-            .credential_with_key
-            .clone(),
-    )
-    .with_group_context_extensions(extensions)
-    .expect_err("builder accepted non-group-context extension");
     assert_eq!(
         err,
-        InvalidExtensionError::ExtensionTypeNotValidInObject {
-            illegal_extension: ExtensionType::RatchetTree,
-            ty: std::any::type_name::<GroupContext>()
-        }
+        InvalidExtensionError::ExtensionTypeNotValidInGroupContext(
+            ExtensionTypeNotValidInGroupContextError(ExtensionType::RatchetTree)
+        )
     );
 }
 
@@ -366,7 +305,8 @@ fn last_resort_extension() {
     let signer =
         openmls_basic_credential::SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
-    let extensions = Extensions::single(last_resort);
+    let extensions =
+        Extensions::single(last_resort).expect("failed to create single-element extensions list");
     let capabilities = Capabilities::new(
         None,
         None,

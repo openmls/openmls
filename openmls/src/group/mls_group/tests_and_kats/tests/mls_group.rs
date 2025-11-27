@@ -19,7 +19,9 @@ use crate::{
     messages::{
         group_info::GroupInfoTBS, proposals::*, EncryptedGroupSecrets, GroupSecretsError, Welcome,
     },
-    prelude::{ConfirmationTag, LeafNode},
+    prelude::{
+        ConfirmationTag, ExtensionTypeNotValidInLeafNodeError, InvalidExtensionError, LeafNode,
+    },
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     test_utils::{
         frankenstein::{FrankenFramedContentBody, FrankenPublicMessage},
@@ -31,9 +33,7 @@ use crate::{
     },
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::{
-        errors::{ApplyUpdatePathError, LeafNodeValidationError},
-        node::leaf_node::Capabilities,
-        LeafNodeParameters, TreeSync,
+        errors::ApplyUpdatePathError, node::leaf_node::Capabilities, LeafNodeParameters, TreeSync,
     },
 };
 
@@ -1505,7 +1505,8 @@ fn builder_pattern() {
     let test_leaf_extensions = Extensions::single(Extension::Unknown(
         0xff00,
         UnknownExtension(vec![0x00, 0x01, 0x02]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     // === Alice creates a group ===
     let alice_group = MlsGroup::builder()
@@ -1513,7 +1514,6 @@ fn builder_pattern() {
         .padding_size(test_padding_size)
         .sender_ratchet_configuration(test_sender_ratchet_config)
         .with_group_context_extensions(test_gc_extensions.clone())
-        .expect("error adding group context extension to builder")
         .ciphersuite(test_ciphersuite)
         .with_wire_format_policy(test_wire_format_policy)
         .lifetime(test_lifetime)
@@ -1570,14 +1570,19 @@ fn builder_pattern() {
     assert_eq!(leaf_extensions, &test_leaf_extensions);
 
     // Make sure that building with an invalid leaf node extension fails
-    let invalid_leaf_extensions = Extensions::single(Extension::RequiredCapabilities(
+    let err = Extensions::<LeafNode>::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[], &[], &[]),
-    ));
+    ))
+    .expect_err(
+        "should not be able single-element leaf node extensions list with RequiredCapabilities",
+    );
 
-    let builder_err = MlsGroup::builder()
-        .with_leaf_node_extensions(invalid_leaf_extensions)
-        .expect_err("successfully built group with invalid leaf extensions");
-    assert_eq!(builder_err, LeafNodeValidationError::UnsupportedExtensions);
+    assert_eq!(
+        err,
+        InvalidExtensionError::ExtensionTypeNotValidInLeafNode(
+            ExtensionTypeNotValidInLeafNodeError(ExtensionType::RequiredCapabilities)
+        )
+    );
 }
 
 // Test the successful update of Group Context Extension with type Extension::Unknown(0xff11)
@@ -1606,7 +1611,6 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     .expect("error creating test group context extensions");
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .with_group_context_extensions(test_gc_extensions.clone())
-        .expect("error adding unknown extension to config")
         .capabilities(capabilities.clone())
         .ciphersuite(ciphersuite)
         .build();
@@ -1695,7 +1699,9 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     );
 
     let mut updated_extensions = test_gc_extensions.clone();
-    updated_extensions.add_or_replace(updated_unknown_gc_extension);
+    updated_extensions
+        .add_or_replace(updated_unknown_gc_extension)
+        .expect("updated extension should be valid here");
     let (update_proposal, _) = alice_group
         .propose_group_context_extensions(alice_provider, updated_extensions, &alice_signer)
         .expect("failed to propose group context extensions with unknown extension");
@@ -2031,7 +2037,6 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
     .expect("error creating test group context extensions");
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .with_group_context_extensions(test_gc_extensions.clone())
-        .expect("error adding unknown extension to config")
         .capabilities(capabilities.clone())
         .ciphersuite(ciphersuite)
         .build();
@@ -2067,7 +2072,9 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
     );
 
     let mut updated_extensions = test_gc_extensions.clone();
-    updated_extensions.add_or_replace(updated_unknown_gc_extension);
+    updated_extensions
+        .add_or_replace(updated_unknown_gc_extension)
+        .expect("updated extension should be valid here");
 
     let update_result = alice_group.update_group_context_extensions(
         alice_provider,
@@ -2105,7 +2112,9 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
     );
 
     let mut updated_extensions = test_gc_extensions.clone();
-    updated_extensions.add_or_replace(updated_unknown_gc_extension);
+    updated_extensions
+        .add_or_replace(updated_unknown_gc_extension)
+        .expect("updated extension should be valid here");
     let update_result = alice_group.update_group_context_extensions(
         alice_provider,
         updated_extensions,
@@ -2159,16 +2168,19 @@ fn unknown_extensions() {
         required_capabilities.clone(),
     ])
     .expect("error creating group context extensions");
-    let test_kp_extensions = Extensions::single(unknown_kp_extension.clone());
+    let test_kp_extensions = Extensions::single(unknown_kp_extension.clone())
+        .expect("failed to create single-element extensions list");
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_capabilities(capabilities.clone())
-        .with_leaf_node_extensions(Extensions::single(unknown_leaf_extension.clone()))
+        .with_leaf_node_extensions(
+            Extensions::single(unknown_leaf_extension.clone())
+                .expect("failed to create single-element extensions list"),
+        )
         .expect("error adding unknown leaf extension to builder")
         .with_group_context_extensions(test_gc_extensions.clone())
-        .expect("error adding unknown extension to builder")
         .build(alice_provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");
 
@@ -2179,6 +2191,7 @@ fn unknown_extensions() {
     assert_eq!(
         leaf_node.extensions(),
         &Extensions::single(unknown_leaf_extension)
+            .expect("failed to create single-element extensions list")
     );
 
     // Now let's add Bob to the group and make sure that he joins the group successfully
@@ -2202,6 +2215,7 @@ fn unknown_extensions() {
     assert_eq!(
         bob_key_package.key_package().extensions(),
         &Extensions::single(unknown_kp_extension)
+            .expect("failed to create single-element extensions list")
     );
 
     // alice adds bob and bob processes the welcome to ensure that the unknown
@@ -2245,7 +2259,8 @@ fn join_multiple_groups_last_resort_extension() {
         setup_client("charlie", ciphersuite, charlie_provider);
     let leaf_capabilities =
         Capabilities::new(None, None, Some(&[ExtensionType::LastResort]), None, None);
-    let keypkg_extensions = Extensions::single(Extension::LastResort(LastResortExtension::new()));
+    let keypkg_extensions = Extensions::single(Extension::LastResort(LastResortExtension::new()))
+        .expect("failed to create single-element extensions list");
     // alice creates MlsGroup
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)

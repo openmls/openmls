@@ -8,6 +8,7 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
+    extensions::Extensions,
     framing::*,
     group::{
         tests_and_kats::utils::{
@@ -358,7 +359,7 @@ fn test_valsem201() {
         }))
     };
 
-    let group_context_extensions: ExtensionsForObject<GroupContext> = alice_group
+    let group_context_extensions: Extensions<GroupContext> = alice_group
         .context()
         .extensions()
         .clone()

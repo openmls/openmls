@@ -96,9 +96,7 @@ use crate::{
     },
     credentials::*,
     error::LibraryError,
-    extensions::{
-        errors::InvalidExtensionError, Extension, ExtensionType, Extensions, LastResortExtension,
-    },
+    extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
     storage::OpenMlsProvider,
     treesync::{
         node::{
@@ -153,7 +151,7 @@ struct KeyPackageTbs {
     ciphersuite: Ciphersuite,
     init_key: InitKey,
     leaf_node: LeafNode,
-    extensions: Extensions,
+    extensions: Extensions<KeyPackage>,
 }
 
 impl Signable for KeyPackageTbs {
@@ -263,9 +261,9 @@ impl KeyPackage {
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         lifetime: Lifetime,
-        extensions: Extensions,
+        extensions: Extensions<KeyPackage>,
         leaf_node_capabilities: Capabilities,
-        leaf_node_extensions: Extensions,
+        leaf_node_extensions: Extensions<LeafNode>,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError> {
         if ciphersuite.signature_algorithm() != signer.signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
@@ -315,9 +313,9 @@ impl KeyPackage {
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         lifetime: Lifetime,
-        extensions: Extensions,
+        extensions: Extensions<KeyPackage>,
         capabilities: Capabilities,
-        leaf_node_extensions: Extensions,
+        leaf_node_extensions: Extensions<LeafNode>,
         init_key: InitKey,
     ) -> Result<(Self, EncryptionKeyPair), KeyPackageNewError> {
         // We don't need the private key here. It's stored in the key store for
@@ -349,7 +347,7 @@ impl KeyPackage {
     }
 
     /// Get a reference to the extensions of this key package.
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<KeyPackage> {
         &self.payload.extensions
     }
 
@@ -423,9 +421,9 @@ impl KeyPackage {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPackageBuilder {
     key_package_lifetime: Option<Lifetime>,
-    key_package_extensions: Option<Extensions>,
+    key_package_extensions: Option<Extensions<KeyPackage>>,
     leaf_node_capabilities: Option<Capabilities>,
-    leaf_node_extensions: Option<Extensions>,
+    leaf_node_extensions: Option<Extensions<LeafNode>>,
     last_resort: bool,
 }
 
@@ -448,7 +446,7 @@ impl KeyPackageBuilder {
     }
 
     /// Set the key package extensions.
-    pub fn key_package_extensions(mut self, extensions: Extensions) -> Self {
+    pub fn key_package_extensions(mut self, extensions: Extensions<KeyPackage>) -> Self {
         self.key_package_extensions.replace(extensions);
         self
     }
@@ -468,15 +466,9 @@ impl KeyPackageBuilder {
     /// Set the leaf node extensions.
     ///
     /// Returns an error if one or more of the extensions is invalid in leaf nodes.
-    pub fn leaf_node_extensions(
-        mut self,
-        extensions: Extensions,
-    ) -> Result<Self, InvalidExtensionError> {
-        // https://validation.openmls.tech/#valn1601
-        extensions.validate_extension_types_for_leaf_node()?;
+    pub fn leaf_node_extensions(mut self, extensions: Extensions<LeafNode>) -> Self {
         self.leaf_node_extensions.replace(extensions);
-
-        Ok(self)
+        self
     }
 
     /// Ensure that a last-resort extension is present in the key package if the
@@ -485,9 +477,14 @@ impl KeyPackageBuilder {
         if self.last_resort {
             let last_resort_extension = Extension::LastResort(LastResortExtension::default());
             if let Some(extensions) = self.key_package_extensions.as_mut() {
-                extensions.add_or_replace(last_resort_extension);
+                extensions
+                    .add_or_replace(last_resort_extension)
+                    .expect("LastResort extensions are allowed in key packages");
             } else {
-                self.key_package_extensions = Some(Extensions::single(last_resort_extension));
+                self.key_package_extensions = Some(
+                    Extensions::single(last_resort_extension)
+                        .expect("LastResort extensions are allowed in key packages"),
+                );
             }
         }
     }

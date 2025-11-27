@@ -163,16 +163,12 @@ fn leaf_node_params_extension_validation() {
     let extension = Extension::ExternalSenders(ExternalSendersExtension::new());
     assert!(extension.extension_type().is_valid_in_leaf_node() == Some(false));
 
-    // add the extension to the builder
-    let err = LeafNodeParameters::builder()
-        .with_extensions(Extensions::single(extension))
-        .unwrap_err();
+    let result: Result<Extensions<LeafNode>, _> = Extensions::single(extension);
 
     assert_eq!(
-        err,
-        InvalidExtensionError::ExtensionTypeNotValidInObject {
-            illegal_extension: ExtensionType::ExternalSenders,
-            ty: std::any::type_name::<LeafNode>()
-        }
+        result.expect_err("expected an error because ExternalSenders is illegal in leaf nodes"),
+        InvalidExtensionError::ExtensionTypeNotValidInLeafNode(
+            ExtensionTypeNotValidInLeafNodeError(ExtensionType::ExternalSenders)
+        ),
     );
 }

@@ -13,10 +13,11 @@ use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{signable::Signable as _, Secret},
+    extensions::Extensions,
     framing::{FramingParameters, WireFormat},
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
-        CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
+        CommitBuilderStageError, CreateCommitError, Extension, ExternalPubExtension, GroupContext,
         ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
         WireFormatPolicy,
     },
@@ -247,10 +248,9 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// proposals to be committed.
     pub fn propose_group_context_extensions(
         mut self,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
     ) -> Result<Self, CreateCommitError> {
-        let group_extensions = extensions;
-        let proposal = GroupContextExtensionProposal::new(group_extensions.try_into()?);
+        let proposal = GroupContextExtensionProposal::new(extensions);
         self.stage
             .own_proposals
             .push(Proposal::group_context_extensions(proposal));

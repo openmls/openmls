@@ -4,7 +4,7 @@
 
 use tls_codec::{Deserialize, DeserializeBytes, Serialize, Size};
 
-use crate::prelude::GroupContextExtensionProposalIn;
+use crate::messages::proposals_in::GroupContextExtensionProposalIn;
 
 use super::{
     proposals::{

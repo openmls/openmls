@@ -284,7 +284,7 @@ pub(crate) fn generate_credential_with_key<Provider: OpenMlsProvider>(
 // Helper function to generate a KeyPackageBundle
 pub(crate) fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    extensions: Extensions,
+    extensions: Extensions<KeyPackage>,
     provider: &Provider,
     credential_with_keys: CredentialWithKeyAndSigner,
 ) -> KeyPackageBundle {

@@ -78,7 +78,6 @@ fn opaque_extension() {
             ])
             .unwrap(),
         )
-        .unwrap()
         // we need to specify the non-default extension in alices leaf node's capabilities.
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
@@ -232,7 +231,7 @@ fn opaque_extension() {
 fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
-    extensions: Extensions,
+    extensions: Extensions<KeyPackage>,
     provider: &impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackageBundle {

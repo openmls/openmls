@@ -9,9 +9,9 @@ use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     credentials::Credential,
-    extensions::Extensions,
+    extensions::{AnyObject, Extensions},
     framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut},
-    group::{errors::CreateAddProposalError, GroupId, ValidationError},
+    group::{errors::CreateAddProposalError, GroupContext, GroupId, ValidationError},
     key_packages::KeyPackage,
     messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
     prelude::LibraryError,
@@ -44,14 +44,14 @@ pub enum Propose {
         group_id: GroupId,
         version: ProtocolVersion,
         ciphersuite: Ciphersuite,
-        extensions: Extensions,
+        extensions: Extensions<AnyObject>,
     },
 
     /// An external init proposal gets the raw bytes from the KEM output.
     ExternalInit(Vec<u8>),
 
     /// Propose adding new group context extensions.
-    GroupContextExtensions(Extensions),
+    GroupContextExtensions(Extensions<AnyObject>),
 
     /// A custom proposal with semantics to be implemented by the application.
     Custom(CustomProposal),
@@ -354,15 +354,14 @@ impl MlsGroup {
     pub fn propose_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
         signer: &impl Signer,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
-        let group_context_extensions = extensions.try_into()?;
         let proposal = self.create_group_context_ext_proposal::<Provider>(
             self.framing_parameters(),
-            group_context_extensions,
+            extensions,
             signer,
         )?;
 
@@ -396,7 +395,7 @@ impl MlsGroup {
     pub fn update_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),

@@ -155,7 +155,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     /// Thin wrapper around [`MlsGroup::propose_group_context_extensions`].
     fn propose_group_context_extensions(
         &mut self,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
     ) -> (MlsMessageOut, ProposalRef) {
         self.group
             .propose_group_context_extensions(&self.party.provider, extensions, &self.party.signer)
@@ -165,7 +165,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     /// Thin wrapper around [`MlsGroup::update_group_context_extensions`].
     fn update_group_context_extensions(
         &mut self,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
     ) -> (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>) {
         self.group
             .update_group_context_extensions(&self.party.provider, extensions, &self.party.signer)
@@ -293,7 +293,8 @@ fn happy_case() {
     let (commit, _, _) =
         alice.update_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
             RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
-        )));
+        ))
+        .expect("failed to create single-element extensions list"));
 
     alice.merge_pending_commit();
     bob.process_and_merge_commit(commit.into());
@@ -309,7 +310,8 @@ fn happy_case() {
             &[],
             &[],
         )),
-    ));
+    )
+    .expect("failed to create single-element extensions list"));
 
     alice.process_and_store_proposal(proposal.into());
 
@@ -444,7 +446,8 @@ fn fail_insufficient_extensiontype_capabilities_add_valn0103() {
     let (gce_req_cap_commit, _, _) =
         alice.update_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
             RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf002)], &[], &[]),
-        )));
+        ))
+        .expect("failed to create single-element extensions list"));
 
     alice.merge_pending_commit();
     bob.process_and_merge_commit(gce_req_cap_commit.clone().into());
@@ -563,7 +566,8 @@ fn fail_insufficient_extensiontype_capabilities_update_valn0103() {
     let (gce_req_cap_commit, _, _) =
         alice.update_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
             RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf002)], &[], &[]),
-        )));
+        ))
+        .expect("failed to create single-element extensions list"));
 
     alice.merge_pending_commit();
     bob.process_and_merge_commit(gce_req_cap_commit.clone().into());
@@ -842,7 +846,8 @@ fn fail_2_gce_proposals_1_commit_valn0308() {
 
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     let (proposal, _) = alice.propose_group_context_extensions(new_extensions.clone());
     bob.process_and_store_proposal(proposal.into());
@@ -955,7 +960,8 @@ fn fail_unsupported_gces_add_valn1001() {
 
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     let (original_proposal, _) = bob.propose_group_context_extensions(new_extensions.clone());
 
@@ -1077,7 +1083,8 @@ fn proposal() {
 
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     let (proposal, _) = alice.propose_group_context_extensions(new_extensions.clone());
     bob.process_and_store_proposal(proposal.into());
@@ -1101,7 +1108,8 @@ fn proposal() {
     // === committing to two group context extensions should fail
     let new_extensions_2 = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::RatchetTree], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     alice
         .group
@@ -1137,7 +1145,8 @@ fn proposal() {
     // contains unsupported extension
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     alice
         .group

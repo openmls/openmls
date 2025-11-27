@@ -36,10 +36,10 @@ fn new_test_group(
                 .extensions(vec![ExtensionType::Unknown(0xf001)])
                 .build(),
         )
-        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(
-            external_senders,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::ExternalSenders(external_senders))
+                .expect("failed to create single-element extensions list"),
+        )
         .build();
 
     let group = MlsGroup::new_with_group_id(
@@ -161,7 +161,8 @@ fn external_group_context_ext_proposal_should_succeed() {
     // define the new group context extensions
     let extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     // Now Delivery Service wants to update the group context extensions
     let external_group_context_ext_proposal: MlsMessageIn =

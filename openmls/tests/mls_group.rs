@@ -11,7 +11,7 @@ use openmls_traits::signatures::Signer;
 
 fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    extensions: Extensions,
+    extensions: Extensions<KeyPackage>,
     provider: &Provider,
     credential_with_key: CredentialWithKey,
     signer: &impl Signer,
@@ -1729,11 +1729,13 @@ fn group_context_extensions_proposal() {
 
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::RequiredCapabilities], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     let new_extensions_2 = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::RatchetTree], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     alice_group
         .propose_group_context_extensions(alice_provider, new_extensions.clone(), &alice_signer)
@@ -1790,7 +1792,8 @@ fn group_context_extensions_proposal() {
     // contains unsupported extension
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     alice_group
         .propose_group_context_extensions(alice_provider, new_extensions, &alice_signer)

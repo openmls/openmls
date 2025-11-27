@@ -5,10 +5,11 @@
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     credentials::CredentialWithKey,
+    extensions::{AnyObject, Extensions},
     framing::SenderContext,
     group::errors::ValidationError,
     key_packages::*,
-    prelude::Extensions,
+    prelude::InvalidExtensionError,
     treesync::node::leaf_node::{LeafNodeIn, TreePosition, VerifiableLeafNode},
     versions::ProtocolVersion,
 };
@@ -341,7 +342,7 @@ impl From<GroupContextExtensionProposalIn> for Box<GroupContextExtensionProposal
 impl From<GroupContextExtensionProposal> for GroupContextExtensionProposalIn {
     fn from(value: crate::messages::proposals::GroupContextExtensionProposal) -> Self {
         Self {
-            extensions_tbv: value.extensions().into(),
+            extensions_tbv: value.extensions().clone().into(),
         }
     }
 }
@@ -349,7 +350,7 @@ impl From<GroupContextExtensionProposal> for GroupContextExtensionProposalIn {
 impl From<GroupContextExtensionProposal> for Box<GroupContextExtensionProposalIn> {
     fn from(value: GroupContextExtensionProposal) -> Self {
         Box::new(GroupContextExtensionProposalIn {
-            extensions_tbv: value.extensions().into(),
+            extensions_tbv: value.into_extensions().into(),
         })
     }
 }
@@ -448,14 +449,16 @@ impl From<crate::messages::proposals::ProposalOrRef> for ProposalOrRefIn {
     TlsSize,
 )]
 pub struct GroupContextExtensionProposalIn {
-    extensions_tbv: Extensions,
+    extensions_tbv: Extensions<AnyObject>,
 }
 
 impl GroupContextExtensionProposalIn {
     pub(crate) fn validate(self) -> Result<GroupContextExtensionProposal, ValidationError> {
         let group_context_extensions = self.extensions_tbv;
         Ok(GroupContextExtensionProposal::new(
-            group_context_extensions.try_into()?,
+            group_context_extensions
+                .try_into()
+                .map_err(InvalidExtensionError::from)?,
         ))
     }
 }
