@@ -32,7 +32,7 @@
 //!     signature_keys
 //!         .store(provider.storage())
 //!         .expect("Error storing signature keys in key store.");
-//!     
+//!
 //!     (
 //!         CredentialWithKey {
 //!             credential: credential.into(),
@@ -174,6 +174,7 @@ pub mod component;
 pub mod credentials;
 pub mod extensions;
 pub mod framing;
+pub mod grease;
 pub mod group;
 pub mod key_packages;
 pub mod messages;
