@@ -790,6 +790,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         .public;
 
                     // FIXME: ensure ExternalPub extension is at correct placement in list
+                    //   keks: I am not sure what is meant here, I don't think there needs to be
+                    //   any particular order:
+                    //   <https://www.rfc-editor.org/rfc/rfc9420.html#section-12.4.3-4>
                     let external_pub_extension =
                         Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
                     extensions.add(external_pub_extension)?;

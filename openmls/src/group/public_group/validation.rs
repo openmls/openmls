@@ -619,8 +619,8 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), AppDataUpdateValidationError> {
-        let at_least_one_app_data_update = proposal_queue.app_data_update_proposals().count() > 0;
-        if !at_least_one_app_data_update {
+        let no_app_data_updates = proposal_queue.app_data_update_proposals().next().is_none();
+        if no_app_data_updates {
             return Ok(());
         }
         // retrieve the GroupContextExtensions proposal, if available
@@ -643,14 +643,30 @@ impl PublicGroup {
             return Err(AppDataUpdateValidationError::IncorrectOrder);
         }
 
-        // validate that GroupContextExtensions does not update the AppDataDictionary
+        // FIXME(keks): I believe this whole check is wrong. I think we need to
+        // 1. check that this is supported by everyone before using it
+        // 2. if appdataupdate is in required_capabilities, then do not allow using the old way of
+        //    updating a group context extension to change the app data dict.
+        //   validate that GroupContextExtensions does not update the AppDataDictionary using
+        //   GroupContextExtensions. However, posting such an extensions with the current state is
+        //   fine
+        //   https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-6
+        //   What the doc doesn't make entirely clear I think is what if we have both appdataupdate
+        //   and gce, and the gce contains the full state after the diff was applied (for compat).
+        //   is that legal?
+        //   Sort of encoded in
+        //   https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-7
+        //   but not explicitly
         if let Some(group_context_extension) = group_context_extension {
             let extensions = group_context_extension.extensions();
 
-            match extensions.required_capabilities() {
+            if let Some(required_capabilities) = extensions.required_capabilities() {
                 // TODO: should it also be ensured here that the AppDataDictionary extension type is
                 // supported?
-                Some(caps) if caps.proposal_types().contains(&ProposalType::AppDataUpdate) => {
+                if required_capabilities
+                    .proposal_types()
+                    .contains(&ProposalType::AppDataUpdate)
+                {
                     // if the app data dictionary is not updated, this is valid
                     if extensions.app_data_dictionary()
                         != self.group_context().extensions().app_data_dictionary()
@@ -658,9 +674,6 @@ impl PublicGroup {
                         return Err(AppDataUpdateValidationError::CannotUpdateDictionaryDirectly);
                     }
                 }
-                // AppDataUpdate not in capabilities
-                // TODO: Should an error be returned from this match arm?
-                _ => return Ok(()),
             }
         }
 
