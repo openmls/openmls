@@ -211,7 +211,7 @@ impl PublicGroupDiff<'_> {
     /// Return the updated GroupContext extensions after applying AppDataUpdates.
     #[cfg(feature = "extensions-draft-08")]
     pub(crate) fn apply_app_data_update_proposals(
-        &mut self,
+        &self,
         // group_context_extensions if updated by a GroupContextExtensions proposal
         mut updated_group_context_extensions: Option<Extensions>,
         proposal_queue: &ProposalQueue,
