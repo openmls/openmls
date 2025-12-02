@@ -58,7 +58,10 @@ impl ComponentData {
 #[derive(PartialEq, Eq, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct AppDataDictionary {
     // NOTE: A BTreeMap is used here to ensure that the data is ordered by keys,
-    // and unique.
+    // and unique. Since this also goes into the actual MLS Extension message, you could argue that
+    // this should be a Vec<ComponentData>. However, inserting in the middle is much easier (and
+    // cheaper) with the BTreeMap. The one thing that is a bit slower now is the `len` method,
+    // which iterates over all keys.
     component_data: BTreeMap<ComponentId, ComponentData>,
 }
 
@@ -81,8 +84,8 @@ impl AppDataDictionary {
 
     /// Returns the number of entries in the dictionary.
     pub fn len(&self) -> usize {
-        // NOTE: BTreeMap::len() is unstable,
-        // so BTreeMap::keys().count() is used instead.
+        // NOTE: BTreeMap::len() is unstable, so BTreeMap::keys().count() is used instead.
+        // This is O(n) instead of O(1) - easy to optimize if this is a bottleneck.
         self.component_data.keys().count()
     }
 
