@@ -851,6 +851,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 .map(|info| info.wire_format_policy),
         }))
     }
+
     #[cfg(feature = "extensions-draft-08")]
     pub fn app_data_dictionary_updater(&self) -> AppDataDictionaryUpdater<'_> {
         AppDataDictionaryUpdater::new(self.group.borrow().context().app_data_dict())
@@ -873,15 +874,22 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .proposals()
             .map(|queued_proposal| queued_proposal.proposal());
 
+        // FIXME: (keks) Uhm, why?
+        //
         // The proposals in the proposal store come earlier
         // than the own_proposals.
         let all_proposals = proposal_store_proposals.chain(self.stage.own_proposals.iter());
 
         // Filter for AppDataUpdate proposals
-        all_proposals.filter_map(|proposal| match proposal {
-            Proposal::AppDataUpdate(proposal) => Some(proposal.as_ref()),
-            _ => None,
-        })
+        let mut app_data_update_proposals: Vec<&AppDataUpdateProposal> = all_proposals
+            .filter_map(|proposal| match proposal {
+                Proposal::AppDataUpdate(proposal) => Some(proposal.as_ref()),
+                _ => None,
+            })
+            .collect();
+
+        app_data_update_proposals.sort_by_key(|prop| prop.component_id());
+        app_data_update_proposals.into_iter()
     }
 }
 

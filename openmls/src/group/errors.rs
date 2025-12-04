@@ -629,6 +629,10 @@ pub enum AppDataUpdateValidationError {
     /// Proposals for a [`ComponentId`](crate::extensions::ComponentId) had both Remove and Update operations.
     #[error("Proposals for a ComponentId had both Remove and Update operations.")]
     CombinedRemoveAndUpdateOperations,
+    /// Proposals for a [`ComponentId`](crate::extensions::ComponentId) had a Remove for a
+    /// nonexistent component.
+    #[error("Proposals for a ComponentId had a Remove for a nonexistent component.")]
+    CannotRemoveNonexistentComponent,
 }
 
 /// Error validation a GroupContextExtensions proposal.

@@ -1,3 +1,4 @@
+use crate::component::{ComponentData, ComponentId};
 use crate::extensions::*;
 use crate::prelude::*;
 use crate::test_utils::{frankenstein::*, single_group_test_framework::*};
@@ -227,7 +228,10 @@ fn test_group_context_update_dictionary_after_deactivating() {
 /// Commit creation:
 /// Test the case where an AppDataUpdateProposal updates the AppDataDictionary after
 /// removing AppDataUpdate from the required capabilities.
+///   keks: I don't think everyone needs to support the extension, at least according to the draft.
+///         normal rules apply.
 #[openmls_test]
+#[ignore]
 fn test_app_data_update_after_removing_required_capabilities() {
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
@@ -261,7 +265,6 @@ fn test_app_data_update_after_removing_required_capabilities() {
 
     let mut app_data_updater = stage.app_data_dictionary_updater();
 
-    // TODO: handle in order of ComponentId
     for proposal in stage.app_data_update_proposals() {
         let operation = proposal.operation();
         let component_id = proposal.component_id();

@@ -1,4 +1,5 @@
-use super::{ComponentId, Deserialize, Serialize};
+use crate::component::{ComponentData, ComponentId};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 
@@ -8,46 +9,6 @@ enum BuildAppDataDictionaryError {
     EntriesNotInOrder,
     #[error("duplicate entries")]
     DuplicateEntries,
-}
-
-/// An entry in the [`AppDataDictionary`].
-#[derive(
-    PartialEq,
-    Eq,
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSize,
-)]
-pub struct ComponentData {
-    component_id: ComponentId,
-    data: VLBytes,
-}
-
-impl ComponentData {
-    /// Return the [`ComponentId`] for this entry.
-    pub fn id(&self) -> ComponentId {
-        self.component_id
-    }
-
-    /// Return the data as a byte slice.
-    pub fn data(&self) -> &[u8] {
-        self.data.as_ref()
-    }
-
-    /// Consumes the struct and returns its component parts.
-    pub fn into_parts(self) -> (ComponentId, VLBytes) {
-        (self.component_id, self.data)
-    }
-
-    /// Create a new ComponentData from parts.
-    pub fn from_parts(component_id: ComponentId, data: VLBytes) -> Self {
-        Self { component_id, data }
-    }
 }
 
 /// Serializable app data dictionary in the [`AppDataDictionaryExtension`].
@@ -93,7 +54,7 @@ impl AppDataDictionary {
     pub fn get(&self, component_id: &ComponentId) -> Option<&[u8]> {
         self.component_data
             .get(component_id)
-            .map(|component_data| component_data.data.as_slice())
+            .map(|component_data| component_data.data())
     }
 
     /// Insert an entry into the dictionary. If an entry for this [`ComponentId`] already exists,
@@ -102,12 +63,9 @@ impl AppDataDictionary {
         self.component_data
             .insert(
                 component_id,
-                ComponentData {
-                    component_id,
-                    data: data.into(),
-                },
+                ComponentData::from_parts(component_id, data.into()),
             )
-            .map(|component_data| component_data.data)
+            .map(|component_data| component_data.into_data())
     }
 
     /// Returns `true` if the dictionary contains an entry for the specified [`ComponentId`].
@@ -120,7 +78,7 @@ impl AppDataDictionary {
     pub fn remove(&mut self, component_id: &ComponentId) -> Option<VLBytes> {
         self.component_data
             .remove(component_id)
-            .map(|component_data| component_data.data)
+            .map(|component_data| component_data.into_data())
     }
 
     /// Creates an [`AppDataDictionary`] from an `impl IntoIterator<Item = ComponentData>`.
@@ -132,7 +90,8 @@ impl AppDataDictionary {
     ) -> Result<Self, BuildAppDataDictionaryError> {
         let mut map = BTreeMap::<ComponentId, ComponentData>::new();
 
-        for ComponentData { component_id, data } in data {
+        for component_data in data {
+            let (component_id, data) = component_data.into_parts();
             // Check for duplicates
             if map.contains_key(&component_id) {
                 return Err(BuildAppDataDictionaryError::DuplicateEntries);
@@ -146,7 +105,7 @@ impl AppDataDictionary {
                 }
             }
             // Update the last component id
-            let _ = map.insert(component_id, ComponentData { component_id, data });
+            let _ = map.insert(component_id, ComponentData::from_parts(component_id, data));
         }
 
         Ok(Self {
@@ -281,18 +240,9 @@ mod test {
         // incorrect dictionary with repeat entries
         // serialize the raw content
         let component_data = vec![
-            ComponentData {
-                component_id: 5,
-                data: vec![].into(),
-            },
-            ComponentData {
-                component_id: 5,
-                data: vec![1, 2, 3].into(),
-            },
-            ComponentData {
-                component_id: 9,
-                data: vec![].into(),
-            },
+            ComponentData::from_parts(5, vec![].into()),
+            ComponentData::from_parts(5, vec![1, 2, 3].into()),
+            ComponentData::from_parts(9, vec![].into()),
         ];
 
         let serialized = component_data.tls_serialize_detached().unwrap();
@@ -307,18 +257,9 @@ mod test {
         // incorrect dictionary with out-of-order entries
         // serialize the raw content
         let component_data = vec![
-            ComponentData {
-                component_id: 5,
-                data: vec![].into(),
-            },
-            ComponentData {
-                component_id: 9,
-                data: vec![].into(),
-            },
-            ComponentData {
-                component_id: 4,
-                data: vec![1, 2, 3].into(),
-            },
+            ComponentData::from_parts(5, vec![].into()),
+            ComponentData::from_parts(9, vec![].into()),
+            ComponentData::from_parts(4, vec![1, 2, 3].into()),
         ];
 
         let serialized = component_data.tls_serialize_detached().unwrap();

@@ -9,12 +9,12 @@ use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     credentials::Credential,
+    error::LibraryError,
     extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut},
     group::{errors::CreateAddProposalError, GroupId, ValidationError},
     key_packages::KeyPackage,
     messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
-    prelude::LibraryError,
     schedule::PreSharedKeyId,
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{LeafNode, LeafNodeParameters},
@@ -23,7 +23,7 @@ use crate::{
 
 #[cfg(feature = "extensions-draft-08")]
 use crate::{
-    extensions::ComponentId,
+    component::ComponentId,
     messages::proposals::{AppDataUpdateOperation, AppDataUpdateProposal},
 };
 
@@ -470,7 +470,6 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
-        // TODO: validate the component_id here?
         let proposal = self.create_app_data_update_proposal(
             self.framing_parameters(),
             component_id,

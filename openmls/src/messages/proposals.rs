@@ -22,8 +22,8 @@ use crate::{
     },
     group::GroupId,
     key_packages::*,
-    prelude::LeafNode,
     schedule::psk::*,
+    treesync::LeafNode,
     versions::ProtocolVersion,
 };
 
@@ -818,7 +818,7 @@ pub(crate) struct MessageRange {
 mod app_data_update {
 
     use super::*;
-    use crate::prelude::ComponentId;
+    use crate::component::ComponentId;
 
     /// [`AppDataUpdateProposal`] operation types
     #[repr(u8)]

@@ -14,7 +14,10 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::extensions::{AppDataDictionary, ComponentData, ComponentId};
+use crate::{
+    component::{ComponentData, ComponentId},
+    extensions::AppDataDictionary,
+};
 
 #[cfg(feature = "extensions-draft-08")]
 use std::collections::BTreeMap;

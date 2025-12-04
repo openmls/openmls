@@ -8,6 +8,7 @@
 use thiserror::Error;
 
 use crate::{
+    component::ComponentId,
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
     group::{
@@ -496,6 +497,9 @@ pub enum ProposalError<StorageError> {
     /// See [`CreateGroupContextExtProposalError`] for more details.
     #[error(transparent)]
     CreateGroupContextExtProposalError(#[from] CreateGroupContextExtProposalError<StorageError>),
+    /// The provided Component ID is unknown.
+    #[error("the provided component id is unknown")]
+    UnknownComponentId(ComponentId),
     /// Error writing proposal to storage.
     #[error("error writing proposal to storage")]
     StorageError(StorageError),

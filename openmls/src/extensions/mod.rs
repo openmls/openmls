@@ -45,7 +45,7 @@ pub mod errors;
 
 // Public re-exports
 #[cfg(feature = "extensions-draft-08")]
-pub use app_data_dict_extension::{AppDataDictionary, AppDataDictionaryExtension, ComponentData};
+pub use app_data_dict_extension::{AppDataDictionary, AppDataDictionaryExtension};
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
 pub use external_sender_extension::{
@@ -54,6 +54,7 @@ pub use external_sender_extension::{
 pub use last_resort::LastResortExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
+
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, DeserializeBytes, Error, Serialize as TlsSerializeTrait,
     Size, TlsSize,
@@ -61,10 +62,6 @@ use tls_codec::{
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(feature = "extensions-draft-08")]
-/// A ComponentId that uniquely identifies a component within the scope of an application.
-pub type ComponentId = u16;
 
 /// MLS Extension Types
 ///

@@ -442,21 +442,40 @@ impl ProposalQueue {
         })
     }
     #[cfg(feature = "extensions-draft-08")]
-    /// Returns an iterator over all AppDataUpdate proposals in the queue
+    /// Returns an iterator over all AppDataUpdate proposals in the queue, sorted by Component ID
     pub(crate) fn app_data_update_proposals(
         &self,
     ) -> impl Iterator<Item = QueuedAppDataUpdateProposal<'_>> {
-        self.queued_proposals().filter_map(|queued_proposal| {
-            if let Proposal::AppDataUpdate(app_data_update_proposal) = queued_proposal.proposal() {
-                let sender = queued_proposal.sender();
-                Some(QueuedAppDataUpdateProposal {
-                    app_data_update_proposal,
-                    sender,
-                })
-            } else {
-                None
-            }
-        })
+        let mut proposals: Vec<_> = self
+            .queued_proposals()
+            .filter_map(|queued_proposal| {
+                if let Proposal::AppDataUpdate(app_data_update_proposal) =
+                    queued_proposal.proposal()
+                {
+                    let sender = queued_proposal.sender();
+
+                    Some(QueuedAppDataUpdateProposal {
+                        app_data_update_proposal,
+                        sender,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        proposals.sort_by_key(|proposal| {
+            (
+                proposal.app_data_update_proposal.component_id(),
+                // This reverses the sort order and puts removes first
+                u8::MAX
+                    - (proposal
+                        .app_data_update_proposal
+                        .operation()
+                        .operation_type() as u8),
+            )
+        });
+        proposals.into_iter()
     }
 
     /// Filters received proposals

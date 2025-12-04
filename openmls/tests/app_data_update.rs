@@ -1,5 +1,6 @@
 #![cfg(feature = "extensions-draft-08")]
 
+use openmls::component::*;
 use openmls::extensions::*;
 use openmls::prelude::*;
 use openmls::test_utils::single_group_test_framework::*;

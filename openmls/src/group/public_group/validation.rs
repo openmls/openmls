@@ -606,7 +606,7 @@ impl PublicGroup {
 
         Ok(())
     }
-    #[cfg(feature = "extensions-draft-08")]
+
     /// Returns an [`AppDataUpdateValidationError`] if:
     ///   - An [`AppDataUpdateProposal`] appears before a [`GroupContextExtensionProposal`]
     ///   - The [`GroupContextExtensionProposal`] updates the [`AppDataDictionary`] when the
@@ -615,16 +615,23 @@ impl PublicGroup {
     ///   and Removes
     ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes more than one
     ///   Remove
+    #[cfg(feature = "extensions-draft-08")]
     pub(crate) fn validate_app_data_update_proposals_and_group_context(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), AppDataUpdateValidationError> {
+        use crate::prelude::GroupContextExtensionProposal;
+
         let no_app_data_updates = proposal_queue.app_data_update_proposals().next().is_none();
         if no_app_data_updates {
             return Ok(());
         }
+
+        // fetch the current group context extensions
+        let group_context_extensions = self.group_context.extensions();
+
         // retrieve the GroupContextExtensions proposal, if available
-        let group_context_extension = proposal_queue
+        let group_context_extension_proposal = proposal_queue
             .filtered_by_type(ProposalType::GroupContextExtensions)
             .filter_map(|queued_proposal| match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(p) => Some(p),
@@ -634,6 +641,17 @@ impl PublicGroup {
 
         // check ordering
         // return an error if an AppDataUpdate appears before a GroupContextExtensions proposal
+        //
+        // From the draft:
+        //
+        // A commit can contain a GroupContextExtensions proposal which modifies
+        // GroupContext extensions other than app_data_dictionary, and can be
+        // followed by zero or more AppDataUpdate proposals.
+        //
+        // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-7
+        //
+        // Note that it is a bit unclear if this is really needed; we already require that default
+        // proposals are processed first.
         if proposal_queue
             .queued_proposals()
             .map(|proposal| proposal.proposal().proposal_type())
@@ -643,70 +661,85 @@ impl PublicGroup {
             return Err(AppDataUpdateValidationError::IncorrectOrder);
         }
 
-        // FIXME(keks): I believe this whole check is wrong. I think we need to
-        // 1. check that this is supported by everyone before using it
-        // 2. if appdataupdate is in required_capabilities, then do not allow using the old way of
-        //    updating a group context extension to change the app data dict.
-        //   validate that GroupContextExtensions does not update the AppDataDictionary using
-        //   GroupContextExtensions. However, posting such an extensions with the current state is
-        //   fine
-        //   https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-6
-        //   What the doc doesn't make entirely clear I think is what if we have both appdataupdate
-        //   and gce, and the gce contains the full state after the diff was applied (for compat).
-        //   is that legal?
-        //   Sort of encoded in
-        //   https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-7
-        //   but not explicitly
-        if let Some(group_context_extension) = group_context_extension {
-            let extensions = group_context_extension.extensions();
+        if let Some(group_context_extension) = group_context_extension_proposal {
+            let required_capabilities_contain_app_data_update_proposal = group_context_extension
+                .extensions()
+                .required_capabilities()
+                .and_then(|required_capabilities| {
+                    Some(
+                        required_capabilities
+                            .proposal_types()
+                            .contains(&ProposalType::AppDataUpdate),
+                    )
+                })
+                .unwrap_or(false);
 
-            if let Some(required_capabilities) = extensions.required_capabilities() {
-                // TODO: should it also be ensured here that the AppDataDictionary extension type is
-                // supported?
-                if required_capabilities
-                    .proposal_types()
-                    .contains(&ProposalType::AppDataUpdate)
-                {
-                    // if the app data dictionary is not updated, this is valid
-                    if extensions.app_data_dictionary()
-                        != self.group_context().extensions().app_data_dictionary()
-                    {
-                        return Err(AppDataUpdateValidationError::CannotUpdateDictionaryDirectly);
-                    }
-                }
+            // From https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-6:
+            // When an MLS group contains the AppDataUpdate proposal type in the proposal_types list in
+            // the group's required_capabilities extension, a GroupContextExtensions proposal MUST NOT
+            // add, remove, or modify the app_data_dictionary GroupContext extension. In other words,
+            // when every member of the group supports the AppDataUpdate proposal, a
+            // GroupContextExtensions proposal could be sent to update some other extension(s), but the
+            // app_data_dictionary GroupContext extension, if it exists, is left as it was.I
+            if required_capabilities_contain_app_data_update_proposal
+                && group_context_extension.extensions().app_data_dictionary()
+                    != self.group_context().extensions().app_data_dictionary()
+            {
+                return Err(AppDataUpdateValidationError::CannotUpdateDictionaryDirectly);
             }
         }
 
-        // get the app data update proposals
-        let app_data_update_proposals = proposal_queue
-            .filtered_by_type(ProposalType::AppDataUpdate)
-            .filter_map(|queued_proposal| match queued_proposal.proposal() {
-                Proposal::AppDataUpdate(p) => Some(p),
-                _ => None,
-            });
-
-        // validate that proposals for each component are either:
-        //   - A: one or more updates, or
-        //   - B: exactly one remove
-        let mut operation_type_per_component_id = BTreeMap::new();
-        for proposal in app_data_update_proposals {
+        // From the draft:
+        //
+        // A proposal list is invalid if it includes multiple AppDataUpdate proposals that remove state for the same component_id, or proposals that both update and remove state for the same component_id.
+        //
+        // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-4
+        // NOTE: We depend on the proposals being sorted by component id first and by
+        // type second - for a given ID, removes come first. The sorting is stable and
+        // won't mess with the ordering of updates within a component.
+        // This is ensured in ProposalQueue::app_data_update_proposals.
+        let mut latest = None;
+        for proposal in proposal_queue.app_data_update_proposals() {
+            let proposal = &proposal.app_data_update_proposal;
             let component_id = proposal.component_id();
             let operation_type = proposal.operation().operation_type();
 
-            match operation_type_per_component_id.get(&component_id) {
-                // mismatched types
-                Some(already_seen) if *already_seen != operation_type => {
-                    return Err(AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations);
+            if latest == Some(component_id) {
+                let app_data_update_validation_error = match operation_type {
+                    AppDataUpdateOperationType::Update => {
+                        AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
+                    }
+                    AppDataUpdateOperationType::Remove => {
+                        AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
+                    }
+                };
+
+                return Err(app_data_update_validation_error);
+            }
+
+            if proposal.operation().operation_type() == AppDataUpdateOperationType::Remove {
+                // From the draft:
+                //
+                // An AppDataUpdate proposal is invalid if [...] it specifies the removal of
+                // state for a component_id that has no state present.
+                //
+                // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-4
+                let Some(gce) = group_context_extension_proposal else {
+                    // extension gets implicitly created in the group context, so absence is not an
+                    // error condition
+                    return Ok(());
+                };
+                let Some(app_data_dict) = gce.extensions().app_data_dictionary() else {
+                    // extension gets implicitly created in the group context, so absence is not an
+                    // error condition
+                    return Ok(());
+                };
+
+                if app_data_dict.dictionary().get(&component_id).is_none() {
+                    return Err(AppDataUpdateValidationError::CannotRemoveNonexistentComponent);
                 }
-                // only one remove allowed
-                Some(&AppDataUpdateOperationType::Remove) => {
-                    return Err(AppDataUpdateValidationError::MoreThanOneRemovePerComponentId)
-                }
-                // more updates allowed
-                Some(&AppDataUpdateOperationType::Update) => {}
-                None => {
-                    let _ = operation_type_per_component_id.insert(component_id, operation_type);
-                }
+
+                latest = Some(component_id)
             }
         }
 
