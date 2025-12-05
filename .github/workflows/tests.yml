@@ -7,7 +7,7 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
@@ -19,78 +19,69 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
+        target:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu }
+          - { os: ubuntu-latest, target: i686-unknown-linux-gnu }
+          - { os: windows-latest, target: i686-pc-windows-msvc }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+          - { os: macos-latest, target: x86_64-apple-darwin }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu }
         mode:
-          - debug
-          - release
-    runs-on: ${{ matrix.os }}
+          - { name: debug, arg: "" }
+          - { name: release, arg: --release }
+        features:
+          - { name: "", arg: "" }
+          - { name: fork-resolution, arg: "-F fork-resolution" }
+          - { name: extensions-draft-08, arg: "-F extensions-draft-08" }
+    runs-on: ${{ matrix.target.os }}
+    name: ${{ matrix.target.target }} (${{ matrix.mode.name }}/${{ matrix.features.name }})
     steps:
+      # Checkout
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+      - uses: Swatinem/rust-cache@v2
+
+      # Install 32 bit toolchains
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.target.target == 'i686-pc-windows-msvc'
+        with:
+          targets: i686-pc-windows-msvc
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.target.target == 'i686-unknown-linux-gnu'
+        with:
+          targets: i686-unknown-linux-gnu
+
+      - name: Tests
+        run: cargo test ${{ matrix.mode.arg }} -p openmls --verbose --no-default-features ${{ matrix.features.arg }}
+
+  wasm:
+    runs-on: "ubuntu-latest"
+    steps:
+      # Checkout
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: Swatinem/rust-cache@v2
+
+      # Install toolchain
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: i686-pc-windows-msvc, i686-unknown-linux-gnu, wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
+          targets: wasm32-unknown-unknown
+
+      # Setup wasm bindings
       - uses: baptiste0928/cargo-install@v3
-        # we only test wasm bindings on ubuntu-latest
-        if: matrix.os == 'ubuntu-latest'
         with:
           crate: wasm-bindgen-cli
 
-      - name: Toggle rustc mode
-        if: matrix.os != 'windows-latest'
-        run: |
-          if [ ${{ matrix.mode }} == debug ]; then
-            echo "TEST_MODE=" >> $GITHUB_ENV
-          else
-            echo "TEST_MODE=--release" >> $GITHUB_ENV
-          fi
-
       - name: Tests Wasm32 on linux
-        if: matrix.os == 'ubuntu-latest'
         run: |
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo-install/wasm-bindgen-cli/bin/wasm-bindgen-test-runner
-          cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js
+          cargo test -p openmls -vv --target wasm32-unknown-unknown -F js
 
       - name: Tests Wasm32 on linux with libcrux provider
-        if: matrix.os == 'ubuntu-latest'
         env:
           RUSTFLAGS: --cfg getrandom_backend="wasm_js"
         run: |
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo-install/wasm-bindgen-cli/bin/wasm-bindgen-test-runner
-          cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js,libcrux-provider,libcrux-provider-js
-
-
-      - name: Test with Fork Resolution helpers
-        run: cargo test $TEST_MODE -p openmls -F fork-resolution
-
-      - name: Test with MLS Extensions Draft feature
-        run: cargo test $TEST_MODE -p openmls -F extensions-draft-08
-
-      - name: Test with libcrux provider
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          cargo test $TEST_MODE -p openmls -vv -F libcrux-provider
-
-      - name: Tests
-        if: matrix.os != 'windows-latest'
-        run: cargo test $TEST_MODE -p openmls --verbose
-
-      # Test 32 bit builds on windows
-      - name: Tests 32bit windows debug
-        if: matrix.mode == 'debug' && matrix.os == 'windows-latest'
-        run: cargo test -p openmls --verbose --target i686-pc-windows-msvc
-      - name: Tests 32bit windows release
-        if: matrix.mode == 'release' && matrix.os == 'windows-latest'
-        run: cargo test --release -p openmls --verbose --target i686-pc-windows-msvc
-
-        # Test 32 bit builds on linux
-      - name: Tests 32bit linux
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt update && sudo apt install gcc-multilib
-          cargo test $TEST_MODE -p openmls --verbose --target i686-unknown-linux-gnu
+          cargo test -p openmls -vv --target wasm32-unknown-unknown -F js,libcrux-provider,libcrux-provider-js
