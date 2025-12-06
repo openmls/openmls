@@ -511,6 +511,29 @@ impl TryFrom<VerifiableCiphersuite> for Ciphersuite {
 }
 
 /// MLS ciphersuites.
+///
+/// # Examples
+///
+/// Creating a custom ciphersuite:
+/// ```
+/// use openmls_traits::types::{
+///     Ciphersuite, HashType, SignatureScheme, AeadType,
+///     HpkeKdfType, HpkeKemType, HpkeAeadType,
+/// };
+///
+/// let custom_ciphersuite = Ciphersuite::Custom {
+///     value: 0xFF00,
+///     hash_algorithm: HashType::Sha2_256,
+///     signature_algorithm: SignatureScheme::ED25519,
+///     aead_algorithm: AeadType::Aes128Gcm,
+///     hpke_kdf_algorithm: HpkeKdfType::HkdfSha256,
+///     hpke_kem_algorithm: HpkeKemType::DhKem25519,
+///     hpke_aead_algorithm: HpkeAeadType::AesGcm128,
+/// };
+///
+/// assert_eq!(custom_ciphersuite.value(), 0xFF00);
+/// assert_eq!(custom_ciphersuite.hash_algorithm().size(), 32);
+/// ```
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
 #[derive(
