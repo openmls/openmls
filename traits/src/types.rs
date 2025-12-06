@@ -9,27 +9,49 @@ use tls_codec::{
     SecretVLBytes, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
-#[repr(u16)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 /// AEAD types
 pub enum AeadType {
     /// AES GCM 128
-    Aes128Gcm = 0x0001,
+    Aes128Gcm,
 
     /// AES GCM 256
-    Aes256Gcm = 0x0002,
+    Aes256Gcm,
 
     /// ChaCha20 Poly1305
-    ChaCha20Poly1305 = 0x0003,
+    ChaCha20Poly1305,
+
+    /// Custom AEAD type
+    Custom {
+        /// The raw value for this custom AEAD type
+        value: u16,
+        /// Tag size in bytes
+        tag_size: usize,
+        /// Key size in bytes
+        key_size: usize,
+        /// Nonce size in bytes
+        nonce_size: usize,
+    },
 }
 
 impl AeadType {
+    /// Get the u16 value for this AEAD type
+    pub const fn as_u16(&self) -> u16 {
+        match self {
+            AeadType::Aes128Gcm => 0x0001,
+            AeadType::Aes256Gcm => 0x0002,
+            AeadType::ChaCha20Poly1305 => 0x0003,
+            AeadType::Custom { value, .. } => *value,
+        }
+    }
+
     /// Get the tag size of the [`AeadType`] in bytes.
     pub const fn tag_size(&self) -> usize {
         match self {
             AeadType::Aes128Gcm => 16,
             AeadType::Aes256Gcm => 16,
             AeadType::ChaCha20Poly1305 => 16,
+            AeadType::Custom { tag_size, .. } => *tag_size,
         }
     }
 
@@ -39,6 +61,7 @@ impl AeadType {
             AeadType::Aes128Gcm => 16,
             AeadType::Aes256Gcm => 32,
             AeadType::ChaCha20Poly1305 => 32,
+            AeadType::Custom { key_size, .. } => *key_size,
         }
     }
 
@@ -46,21 +69,39 @@ impl AeadType {
     pub const fn nonce_size(&self) -> usize {
         match self {
             AeadType::Aes128Gcm | AeadType::Aes256Gcm | AeadType::ChaCha20Poly1305 => 12,
+            AeadType::Custom { nonce_size, .. } => *nonce_size,
         }
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[repr(u8)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
 /// Hash types
 pub enum HashType {
-    Sha2_256 = 0x04,
-    Sha2_384 = 0x05,
-    Sha2_512 = 0x06,
+    Sha2_256,
+    Sha2_384,
+    Sha2_512,
+    /// Custom hash type
+    Custom {
+        /// The raw value for this custom hash type
+        value: u8,
+        /// Output size in bytes
+        size: usize,
+    },
 }
 
 impl HashType {
+    /// Get the u8 value for this hash type
+    #[inline]
+    pub const fn as_u8(&self) -> u8 {
+        match self {
+            HashType::Sha2_256 => 0x04,
+            HashType::Sha2_384 => 0x05,
+            HashType::Sha2_512 => 0x06,
+            HashType::Custom { value, .. } => *value,
+        }
+    }
+
     /// Returns the output size of a hash by [`HashType`].
     #[inline]
     pub const fn size(&self) -> usize {
@@ -68,6 +109,7 @@ impl HashType {
             HashType::Sha2_256 => 32,
             HashType::Sha2_384 => 48,
             HashType::Sha2_512 => 64,
+            HashType::Custom { size, .. } => *size,
         }
     }
 }
@@ -84,36 +126,74 @@ impl HashType {
     Debug,
     Serialize,
     Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSize,
 )]
-#[repr(u16)]
 pub enum SignatureScheme {
     /// ECDSA_SECP256R1_SHA256
-    ECDSA_SECP256R1_SHA256 = 0x0403,
+    ECDSA_SECP256R1_SHA256,
     /// ECDSA_SECP384R1_SHA384
-    ECDSA_SECP384R1_SHA384 = 0x0503,
+    ECDSA_SECP384R1_SHA384,
     /// ECDSA_SECP521R1_SHA512
-    ECDSA_SECP521R1_SHA512 = 0x0603,
+    ECDSA_SECP521R1_SHA512,
     /// ED25519
-    ED25519 = 0x0807,
+    ED25519,
     /// ED448
-    ED448 = 0x0808,
+    ED448,
+    /// Custom signature scheme
+    Custom {
+        /// The raw value for this custom signature scheme
+        value: u16,
+    },
 }
 
-impl TryFrom<u16> for SignatureScheme {
-    type Error = String;
+impl SignatureScheme {
+    /// Get the u16 value for this signature scheme
+    pub const fn as_u16(&self) -> u16 {
+        match self {
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => 0x0403,
+            SignatureScheme::ECDSA_SECP384R1_SHA384 => 0x0503,
+            SignatureScheme::ECDSA_SECP521R1_SHA512 => 0x0603,
+            SignatureScheme::ED25519 => 0x0807,
+            SignatureScheme::ED448 => 0x0808,
+            SignatureScheme::Custom { value } => *value,
+        }
+    }
+}
 
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
+impl tls_codec::Size for SignatureScheme {
+    fn tls_serialized_len(&self) -> usize {
+        2 // u16
+    }
+}
+
+impl tls_codec::Serialize for SignatureScheme {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        self.as_u16().tls_serialize(writer)
+    }
+}
+
+impl tls_codec::Deserialize for SignatureScheme {
+    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let value = u16::tls_deserialize(bytes)?;
+        Ok(SignatureScheme::from(value))
+    }
+}
+
+impl tls_codec::DeserializeBytes for SignatureScheme {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error> {
+        let (value, rest) = u16::tls_deserialize_bytes(bytes)?;
+        Ok((SignatureScheme::from(value), rest))
+    }
+}
+
+impl From<u16> for SignatureScheme {
+    fn from(value: u16) -> Self {
         match value {
-            0x0403 => Ok(SignatureScheme::ECDSA_SECP256R1_SHA256),
-            0x0503 => Ok(SignatureScheme::ECDSA_SECP384R1_SHA384),
-            0x0603 => Ok(SignatureScheme::ECDSA_SECP521R1_SHA512),
-            0x0807 => Ok(SignatureScheme::ED25519),
-            0x0808 => Ok(SignatureScheme::ED448),
-            _ => Err(format!("Unsupported SignatureScheme: {value}")),
+            0x0403 => SignatureScheme::ECDSA_SECP256R1_SHA256,
+            0x0503 => SignatureScheme::ECDSA_SECP384R1_SHA384,
+            0x0603 => SignatureScheme::ECDSA_SECP521R1_SHA512,
+            0x0807 => SignatureScheme::ED25519,
+            0x0808 => SignatureScheme::ED448,
+            _ => SignatureScheme::Custom { value },
         }
     }
 }
@@ -162,57 +242,149 @@ impl std::error::Error for CryptoError {}
 pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
 
 /// KEM Types for HPKE
-#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
-#[repr(u16)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Hash, Serialize, Deserialize)]
 pub enum HpkeKemType {
     /// DH KEM on P256
-    DhKemP256 = 0x0010,
+    DhKemP256,
 
     /// DH KEM on P384
-    DhKemP384 = 0x0011,
+    DhKemP384,
 
     /// DH KEM on P521
-    DhKemP521 = 0x0012,
+    DhKemP521,
 
     /// DH KEM on x25519
-    DhKem25519 = 0x0020,
+    DhKem25519,
 
     /// DH KEM on x448
-    DhKem448 = 0x0021,
+    DhKem448,
 
     /// XWing combiner for ML-KEM and X25519
-    XWingKemDraft6 = 0x004D,
+    XWingKemDraft6,
+
+    /// Custom KEM type
+    Custom {
+        /// The raw value for this custom KEM type
+        value: u16,
+    },
+}
+
+impl HpkeKemType {
+    /// Get the u16 value for this KEM type
+    pub const fn as_u16(&self) -> u16 {
+        match self {
+            HpkeKemType::DhKemP256 => 0x0010,
+            HpkeKemType::DhKemP384 => 0x0011,
+            HpkeKemType::DhKemP521 => 0x0012,
+            HpkeKemType::DhKem25519 => 0x0020,
+            HpkeKemType::DhKem448 => 0x0021,
+            HpkeKemType::XWingKemDraft6 => 0x004D,
+            HpkeKemType::Custom { value } => *value,
+        }
+    }
+}
+
+impl From<u16> for HpkeKemType {
+    fn from(value: u16) -> Self {
+        match value {
+            0x0010 => HpkeKemType::DhKemP256,
+            0x0011 => HpkeKemType::DhKemP384,
+            0x0012 => HpkeKemType::DhKemP521,
+            0x0020 => HpkeKemType::DhKem25519,
+            0x0021 => HpkeKemType::DhKem448,
+            0x004D => HpkeKemType::XWingKemDraft6,
+            _ => HpkeKemType::Custom { value },
+        }
+    }
 }
 
 /// KDF Types for HPKE
-#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
-#[repr(u16)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Hash, Serialize, Deserialize)]
 pub enum HpkeKdfType {
     /// HKDF SHA 256
-    HkdfSha256 = 0x0001,
+    HkdfSha256,
 
     /// HKDF SHA 384
-    HkdfSha384 = 0x0002,
+    HkdfSha384,
 
     /// HKDF SHA 512
-    HkdfSha512 = 0x0003,
+    HkdfSha512,
+
+    /// Custom KDF type
+    Custom {
+        /// The raw value for this custom KDF type
+        value: u16,
+    },
+}
+
+impl HpkeKdfType {
+    /// Get the u16 value for this KDF type
+    pub const fn as_u16(&self) -> u16 {
+        match self {
+            HpkeKdfType::HkdfSha256 => 0x0001,
+            HpkeKdfType::HkdfSha384 => 0x0002,
+            HpkeKdfType::HkdfSha512 => 0x0003,
+            HpkeKdfType::Custom { value } => *value,
+        }
+    }
+}
+
+impl From<u16> for HpkeKdfType {
+    fn from(value: u16) -> Self {
+        match value {
+            0x0001 => HpkeKdfType::HkdfSha256,
+            0x0002 => HpkeKdfType::HkdfSha384,
+            0x0003 => HpkeKdfType::HkdfSha512,
+            _ => HpkeKdfType::Custom { value },
+        }
+    }
 }
 
 /// AEAD Types for HPKE.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[repr(u16)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum HpkeAeadType {
     /// AES GCM 128
-    AesGcm128 = 0x0001,
+    AesGcm128,
 
     /// AES GCM 256
-    AesGcm256 = 0x0002,
+    AesGcm256,
 
     /// ChaCha20 Poly1305
-    ChaCha20Poly1305 = 0x0003,
+    ChaCha20Poly1305,
 
     /// Export-only
-    Export = 0xFFFF,
+    Export,
+
+    /// Custom HPKE AEAD type
+    Custom {
+        /// The raw value for this custom HPKE AEAD type
+        value: u16,
+    },
+}
+
+impl HpkeAeadType {
+    /// Get the u16 value for this HPKE AEAD type
+    pub const fn as_u16(&self) -> u16 {
+        match self {
+            HpkeAeadType::AesGcm128 => 0x0001,
+            HpkeAeadType::AesGcm256 => 0x0002,
+            HpkeAeadType::ChaCha20Poly1305 => 0x0003,
+            HpkeAeadType::Export => 0xFFFF,
+            HpkeAeadType::Custom { value } => *value,
+        }
+    }
+}
+
+impl From<u16> for HpkeAeadType {
+    fn from(value: u16) -> Self {
+        match value {
+            0x0001 => HpkeAeadType::AesGcm128,
+            0x0002 => HpkeAeadType::AesGcm256,
+            0x0003 => HpkeAeadType::ChaCha20Poly1305,
+            0xFFFF => HpkeAeadType::Export,
+            _ => HpkeAeadType::Custom { value },
+        }
+    }
 }
 
 /// 7.7. Update Paths
@@ -326,7 +498,7 @@ impl VerifiableCiphersuite {
 
 impl From<Ciphersuite> for VerifiableCiphersuite {
     fn from(value: Ciphersuite) -> Self {
-        Self(value as u16)
+        Self(value.as_u16())
     }
 }
 
@@ -339,6 +511,29 @@ impl TryFrom<VerifiableCiphersuite> for Ciphersuite {
 }
 
 /// MLS ciphersuites.
+///
+/// # Examples
+///
+/// Creating a custom ciphersuite:
+/// ```
+/// use openmls_traits::types::{
+///     Ciphersuite, HashType, SignatureScheme, AeadType,
+///     HpkeKdfType, HpkeKemType, HpkeAeadType,
+/// };
+///
+/// let custom_ciphersuite = Ciphersuite::Custom {
+///     value: 0xFF00,
+///     hash_algorithm: HashType::Sha2_256,
+///     signature_algorithm: SignatureScheme::ED25519,
+///     aead_algorithm: AeadType::Aes128Gcm,
+///     hpke_kdf_algorithm: HpkeKdfType::HkdfSha256,
+///     hpke_kem_algorithm: HpkeKemType::DhKem25519,
+///     hpke_aead_algorithm: HpkeAeadType::AesGcm128,
+/// };
+///
+/// assert_eq!(custom_ciphersuite.as_u16(), 0xFF00);
+/// assert_eq!(custom_ciphersuite.hash_algorithm().size(), 32);
+/// ```
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
 #[derive(
@@ -347,41 +542,95 @@ impl TryFrom<VerifiableCiphersuite> for Ciphersuite {
     Copy,
     PartialEq,
     Eq,
-    PartialOrd,
-    Ord,
     Hash,
     Serialize,
     Deserialize,
-    TlsDeserialize,
-    TlsDeserializeBytes,
-    TlsSerialize,
-    TlsSize,
 )]
-#[repr(u16)]
 pub enum Ciphersuite {
     /// DH KEM x25519 | AES-GCM 128 | SHA2-256 | Ed25519
-    MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 = 0x0001,
+    MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
 
     /// DH KEM P256 | AES-GCM 128 | SHA2-256 | EcDSA P256
-    MLS_128_DHKEMP256_AES128GCM_SHA256_P256 = 0x0002,
+    MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
 
     /// DH KEM x25519 | Chacha20Poly1305 | SHA2-256 | Ed25519
-    MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 = 0x0003,
+    MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
 
     /// DH KEM x448 | AES-GCM 256 | SHA2-512 | Ed448
-    MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448 = 0x0004,
+    MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448,
 
     /// DH KEM P521 | AES-GCM 256 | SHA2-512 | EcDSA P521
-    MLS_256_DHKEMP521_AES256GCM_SHA512_P521 = 0x0005,
+    MLS_256_DHKEMP521_AES256GCM_SHA512_P521,
 
     /// DH KEM x448 | Chacha20Poly1305 | SHA2-512 | Ed448
-    MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 = 0x0006,
+    MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
 
     /// DH KEM P384 | AES-GCM 256 | SHA2-384 | EcDSA P384
-    MLS_256_DHKEMP384_AES256GCM_SHA384_P384 = 0x0007,
+    MLS_256_DHKEMP384_AES256GCM_SHA384_P384,
 
     /// X-WING KEM draft-01 | Chacha20Poly1305 | SHA2-256 | Ed25519
-    MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519 = 0x004D,
+    MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
+
+    /// Custom ciphersuite with user-provided algorithms
+    Custom {
+        /// The raw value for this custom ciphersuite
+        value: u16,
+        /// The hash algorithm to use
+        hash_algorithm: HashType,
+        /// The signature scheme to use
+        signature_algorithm: SignatureScheme,
+        /// The AEAD algorithm to use
+        aead_algorithm: AeadType,
+        /// The HPKE KDF algorithm to use
+        hpke_kdf_algorithm: HpkeKdfType,
+        /// The HPKE KEM algorithm to use
+        hpke_kem_algorithm: HpkeKemType,
+        /// The HPKE AEAD algorithm to use
+        hpke_aead_algorithm: HpkeAeadType,
+    },
+}
+
+impl Ciphersuite {
+    /// Get the u16 value for this ciphersuite
+    pub const fn as_u16(&self) -> u16 {
+        match self {
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => 0x0001,
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => 0x0002,
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => 0x0003,
+            Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448 => 0x0004,
+            Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521 => 0x0005,
+            Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => 0x0006,
+            Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384 => 0x0007,
+            Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519 => 0x004D,
+            Ciphersuite::Custom { value, .. } => *value,
+        }
+    }
+}
+
+impl tls_codec::Size for Ciphersuite {
+    fn tls_serialized_len(&self) -> usize {
+        2 // u16
+    }
+}
+
+impl tls_codec::Serialize for Ciphersuite {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        self.as_u16().tls_serialize(writer)
+    }
+}
+
+impl tls_codec::Deserialize for Ciphersuite {
+    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let value = u16::tls_deserialize(bytes)?;
+        Ciphersuite::try_from(value)
+    }
+}
+
+impl tls_codec::DeserializeBytes for Ciphersuite {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error> {
+        let (value, rest) = u16::tls_deserialize_bytes(bytes)?;
+        Ok((Ciphersuite::try_from(value)?, rest))
+    }
 }
 
 impl core::fmt::Display for Ciphersuite {
@@ -393,14 +642,14 @@ impl core::fmt::Display for Ciphersuite {
 impl From<Ciphersuite> for u16 {
     #[inline(always)]
     fn from(s: Ciphersuite) -> u16 {
-        s as u16
+        s.as_u16()
     }
 }
 
 impl From<&Ciphersuite> for u16 {
     #[inline(always)]
     fn from(s: &Ciphersuite) -> u16 {
-        *s as u16
+        s.as_u16()
     }
 }
 
@@ -480,6 +729,7 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448
             | Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521
             | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => HashType::Sha2_512,
+            Ciphersuite::Custom { hash_algorithm, .. } => *hash_algorithm,
         }
     }
 
@@ -505,6 +755,7 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384 => {
                 SignatureScheme::ECDSA_SECP384R1_SHA384
             }
+            Ciphersuite::Custom { signature_algorithm, .. } => *signature_algorithm,
         }
     }
 
@@ -522,6 +773,7 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448
             | Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521
             | Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384 => AeadType::Aes256Gcm,
+            Ciphersuite::Custom { aead_algorithm, .. } => *aead_algorithm,
         }
     }
 
@@ -539,6 +791,7 @@ impl Ciphersuite {
             | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 HpkeKdfType::HkdfSha512
             }
+            Ciphersuite::Custom { hpke_kdf_algorithm, .. } => *hpke_kdf_algorithm,
         }
     }
 
@@ -558,6 +811,7 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519 => {
                 HpkeKemType::XWingKemDraft6
             }
+            Ciphersuite::Custom { hpke_kem_algorithm, .. } => *hpke_kem_algorithm,
         }
     }
 
@@ -577,6 +831,7 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 HpkeAeadType::ChaCha20Poly1305
             }
+            Ciphersuite::Custom { hpke_aead_algorithm, .. } => *hpke_aead_algorithm,
         }
     }
 
