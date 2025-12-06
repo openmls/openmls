@@ -61,6 +61,9 @@ fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
         HpkeKemType::XWingKemDraft6 => {
             unimplemented!("XWingKemDraft6 is not supported by the RustCrypto provider.")
         }
+        HpkeKemType::Custom { .. } => {
+            unimplemented!("Custom KEM types are not supported by the RustCrypto provider.")
+        }
     }
 }
 
@@ -70,6 +73,9 @@ fn kdf_mode(kdf: HpkeKdfType) -> hpke_types::KdfAlgorithm {
         HpkeKdfType::HkdfSha256 => hpke_types::KdfAlgorithm::HkdfSha256,
         HpkeKdfType::HkdfSha384 => hpke_types::KdfAlgorithm::HkdfSha384,
         HpkeKdfType::HkdfSha512 => hpke_types::KdfAlgorithm::HkdfSha512,
+        HpkeKdfType::Custom { .. } => {
+            unimplemented!("Custom KDF types are not supported by the RustCrypto provider.")
+        }
     }
 }
 
@@ -80,6 +86,9 @@ fn aead_mode(aead: HpkeAeadType) -> hpke_types::AeadAlgorithm {
         HpkeAeadType::AesGcm256 => hpke_types::AeadAlgorithm::Aes256Gcm,
         HpkeAeadType::ChaCha20Poly1305 => hpke_types::AeadAlgorithm::ChaCha20Poly1305,
         HpkeAeadType::Export => hpke_types::AeadAlgorithm::HpkeExport,
+        HpkeAeadType::Custom { .. } => {
+            unimplemented!("Custom HPKE AEAD types are not supported by the RustCrypto provider.")
+        }
     }
 }
 
@@ -112,6 +121,7 @@ impl OpenMlsCrypto for RustCrypto {
             HashType::Sha2_256 => Ok(Hkdf::<Sha256>::extract(Some(salt), ikm).0.as_slice().into()),
             HashType::Sha2_384 => Ok(Hkdf::<Sha384>::extract(Some(salt), ikm).0.as_slice().into()),
             HashType::Sha2_512 => Ok(Hkdf::<Sha512>::extract(Some(salt), ikm).0.as_slice().into()),
+            HashType::Custom { .. } => Err(CryptoError::UnsupportedHashAlgorithm),
         }
     }
 
@@ -156,6 +166,7 @@ impl OpenMlsCrypto for RustCrypto {
                     .map_err(|_| CryptoError::HkdfOutputLengthInvalid)?;
                 Ok(okm.into())
             }
+            HashType::Custom { .. } => Err(CryptoError::UnsupportedHashAlgorithm),
         }
     }
 
@@ -169,6 +180,7 @@ impl OpenMlsCrypto for RustCrypto {
             HashType::Sha2_256 => Ok(Sha256::digest(data).as_slice().into()),
             HashType::Sha2_384 => Ok(Sha384::digest(data).as_slice().into()),
             HashType::Sha2_512 => Ok(Sha512::digest(data).as_slice().into()),
+            HashType::Custom { .. } => Err(CryptoError::UnsupportedHashAlgorithm),
         }
     }
 
@@ -203,6 +215,7 @@ impl OpenMlsCrypto for RustCrypto {
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::CryptoLibraryError)
             }
+            AeadType::Custom { .. } => Err(CryptoError::UnsupportedAeadAlgorithm),
         }
     }
 
@@ -237,6 +250,7 @@ impl OpenMlsCrypto for RustCrypto {
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::AeadDecryptionError)
             }
+            AeadType::Custom { .. } => Err(CryptoError::UnsupportedAeadAlgorithm),
         }
     }
 

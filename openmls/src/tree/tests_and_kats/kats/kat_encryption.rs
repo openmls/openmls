@@ -434,7 +434,7 @@ pub fn generate_test_vector(
     }
 
     EncryptionTestVector {
-        cipher_suite: ciphersuite_name as u16,
+        cipher_suite: ciphersuite_name.value(),
         n_leaves,
         encryption_secret: bytes_to_hex(&encryption_secret_bytes),
         sender_data_secret: bytes_to_hex(sender_data_secret_bytes),

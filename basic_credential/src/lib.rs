@@ -71,7 +71,7 @@ fn id(public_key: &[u8], signature_scheme: SignatureScheme) -> Vec<u8> {
     const LABEL: &[u8; 22] = b"RustCryptoSignatureKey";
     let mut id = public_key.to_vec();
     id.extend_from_slice(LABEL);
-    let signature_scheme = (signature_scheme as u16).to_be_bytes();
+    let signature_scheme = signature_scheme.value().to_be_bytes();
     id.extend_from_slice(&signature_scheme);
     id
 }
