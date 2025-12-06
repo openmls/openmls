@@ -36,7 +36,7 @@ pub enum AeadType {
 
 impl AeadType {
     /// Get the u16 value for this AEAD type
-    pub const fn value(&self) -> u16 {
+    pub const fn as_u16(&self) -> u16 {
         match self {
             AeadType::Aes128Gcm => 0x0001,
             AeadType::Aes256Gcm => 0x0002,
@@ -93,7 +93,7 @@ pub enum HashType {
 impl HashType {
     /// Get the u8 value for this hash type
     #[inline]
-    pub const fn value(&self) -> u8 {
+    pub const fn as_u8(&self) -> u8 {
         match self {
             HashType::Sha2_256 => 0x04,
             HashType::Sha2_384 => 0x05,
@@ -147,7 +147,7 @@ pub enum SignatureScheme {
 
 impl SignatureScheme {
     /// Get the u16 value for this signature scheme
-    pub const fn value(&self) -> u16 {
+    pub const fn as_u16(&self) -> u16 {
         match self {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => 0x0403,
             SignatureScheme::ECDSA_SECP384R1_SHA384 => 0x0503,
@@ -167,7 +167,7 @@ impl tls_codec::Size for SignatureScheme {
 
 impl tls_codec::Serialize for SignatureScheme {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        self.value().tls_serialize(writer)
+        self.as_u16().tls_serialize(writer)
     }
 }
 
@@ -271,7 +271,7 @@ pub enum HpkeKemType {
 
 impl HpkeKemType {
     /// Get the u16 value for this KEM type
-    pub const fn value(&self) -> u16 {
+    pub const fn as_u16(&self) -> u16 {
         match self {
             HpkeKemType::DhKemP256 => 0x0010,
             HpkeKemType::DhKemP384 => 0x0011,
@@ -319,7 +319,7 @@ pub enum HpkeKdfType {
 
 impl HpkeKdfType {
     /// Get the u16 value for this KDF type
-    pub const fn value(&self) -> u16 {
+    pub const fn as_u16(&self) -> u16 {
         match self {
             HpkeKdfType::HkdfSha256 => 0x0001,
             HpkeKdfType::HkdfSha384 => 0x0002,
@@ -364,7 +364,7 @@ pub enum HpkeAeadType {
 
 impl HpkeAeadType {
     /// Get the u16 value for this HPKE AEAD type
-    pub const fn value(&self) -> u16 {
+    pub const fn as_u16(&self) -> u16 {
         match self {
             HpkeAeadType::AesGcm128 => 0x0001,
             HpkeAeadType::AesGcm256 => 0x0002,
@@ -498,7 +498,7 @@ impl VerifiableCiphersuite {
 
 impl From<Ciphersuite> for VerifiableCiphersuite {
     fn from(value: Ciphersuite) -> Self {
-        Self(value.value())
+        Self(value.as_u16())
     }
 }
 
@@ -531,7 +531,7 @@ impl TryFrom<VerifiableCiphersuite> for Ciphersuite {
 ///     hpke_aead_algorithm: HpkeAeadType::AesGcm128,
 /// };
 ///
-/// assert_eq!(custom_ciphersuite.value(), 0xFF00);
+/// assert_eq!(custom_ciphersuite.as_u16(), 0xFF00);
 /// assert_eq!(custom_ciphersuite.hash_algorithm().size(), 32);
 /// ```
 #[allow(non_camel_case_types)]
@@ -592,7 +592,7 @@ pub enum Ciphersuite {
 
 impl Ciphersuite {
     /// Get the u16 value for this ciphersuite
-    pub const fn value(&self) -> u16 {
+    pub const fn as_u16(&self) -> u16 {
         match self {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => 0x0001,
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => 0x0002,
@@ -615,7 +615,7 @@ impl tls_codec::Size for Ciphersuite {
 
 impl tls_codec::Serialize for Ciphersuite {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        self.value().tls_serialize(writer)
+        self.as_u16().tls_serialize(writer)
     }
 }
 
@@ -642,14 +642,14 @@ impl core::fmt::Display for Ciphersuite {
 impl From<Ciphersuite> for u16 {
     #[inline(always)]
     fn from(s: Ciphersuite) -> u16 {
-        s.value()
+        s.as_u16()
     }
 }
 
 impl From<&Ciphersuite> for u16 {
     #[inline(always)]
     fn from(s: &Ciphersuite) -> u16 {
-        s.value()
+        s.as_u16()
     }
 }
 

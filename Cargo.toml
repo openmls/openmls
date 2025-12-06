@@ -5,7 +5,7 @@ members = [
     "openmls_rust_crypto",
     "libcrux_crypto",
     "fuzz",
-    # "cli",  # Temporarily excluded due to network dependency issue
+    "cli",
     "interop_client",
     "memory_storage",
     "sqlite_storage",
