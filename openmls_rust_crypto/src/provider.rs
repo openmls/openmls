@@ -278,7 +278,10 @@ impl OpenMlsCrypto for RustCrypto {
                 let pk = sk.verifying_key().to_bytes().into();
                 Ok((sk.to_bytes().into(), pk))
             }
-            _ => Err(CryptoError::UnsupportedSignatureScheme),
+            SignatureScheme::ECDSA_SECP384R1_SHA384
+            | SignatureScheme::ECDSA_SECP521R1_SHA512
+            | SignatureScheme::ED448
+            | SignatureScheme::Custom { .. } => Err(CryptoError::UnsupportedSignatureScheme),
         }
     }
 
@@ -312,7 +315,10 @@ impl OpenMlsCrypto for RustCrypto {
                 k.verify_strict(data, &ed25519_dalek::Signature::from(sig))
                     .map_err(|_| CryptoError::InvalidSignature)
             }
-            _ => Err(CryptoError::UnsupportedSignatureScheme),
+            SignatureScheme::ECDSA_SECP384R1_SHA384
+            | SignatureScheme::ECDSA_SECP521R1_SHA512
+            | SignatureScheme::ED448
+            | SignatureScheme::Custom { .. } => Err(CryptoError::UnsupportedSignatureScheme),
         }
     }
 
@@ -335,7 +341,10 @@ impl OpenMlsCrypto for RustCrypto {
                 let signature = k.sign(data);
                 Ok(signature.to_bytes().into())
             }
-            _ => Err(CryptoError::UnsupportedSignatureScheme),
+            SignatureScheme::ECDSA_SECP384R1_SHA384
+            | SignatureScheme::ECDSA_SECP521R1_SHA512
+            | SignatureScheme::ED448
+            | SignatureScheme::Custom { .. } => Err(CryptoError::UnsupportedSignatureScheme),
         }
     }
 

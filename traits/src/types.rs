@@ -35,6 +35,16 @@ pub enum AeadType {
 }
 
 impl AeadType {
+    /// Get the u16 value for this AEAD type
+    pub const fn value(&self) -> u16 {
+        match self {
+            AeadType::Aes128Gcm => 0x0001,
+            AeadType::Aes256Gcm => 0x0002,
+            AeadType::ChaCha20Poly1305 => 0x0003,
+            AeadType::Custom { value, .. } => *value,
+        }
+    }
+
     /// Get the tag size of the [`AeadType`] in bytes.
     pub const fn tag_size(&self) -> usize {
         match self {
@@ -81,6 +91,17 @@ pub enum HashType {
 }
 
 impl HashType {
+    /// Get the u8 value for this hash type
+    #[inline]
+    pub const fn value(&self) -> u8 {
+        match self {
+            HashType::Sha2_256 => 0x04,
+            HashType::Sha2_384 => 0x05,
+            HashType::Sha2_512 => 0x06,
+            HashType::Custom { value, .. } => *value,
+        }
+    }
+
     /// Returns the output size of a hash by [`HashType`].
     #[inline]
     pub const fn size(&self) -> usize {
