@@ -5,6 +5,7 @@ on:
 
 jobs:
   check:
+    if: github.repository == 'openmls/openmls'
     name: coverage
     runs-on: ubuntu-latest
     steps:

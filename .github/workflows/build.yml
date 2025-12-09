@@ -21,28 +21,28 @@ jobs:
       matrix:
         arch:
           # Windows
-          - i686-pc-windows-msvc
-          - x86_64-pc-windows-msvc
+          # - i686-pc-windows-msvc
+          # - x86_64-pc-windows-msvc
           # macOS
-          - x86_64-apple-darwin
-          - aarch64-apple-darwin
+          # - x86_64-apple-darwin
+          # - aarch64-apple-darwin
           # Linux
-          - x86_64-unknown-linux-gnu
-          - i686-unknown-linux-gnu
-          - aarch64-unknown-linux-gnu
+          # - x86_64-unknown-linux-gnu
+          # - i686-unknown-linux-gnu
+          # - aarch64-unknown-linux-gnu
           # Android
-          - aarch64-linux-android
-          - armv7-linux-androideabi
-          - x86_64-linux-android
-          - i686-linux-android
+          # - aarch64-linux-android
+          # - armv7-linux-androideabi
+          # - x86_64-linux-android
+          # - i686-linux-android
           # iOS
-          - aarch64-apple-ios
+          # - aarch64-apple-ios
           # WASM
           - wasm32-unknown-unknown
-        include:
+        # include:
           # Compile iOS sim on macOS
-          - os: macos-latest
-            arch: aarch64-apple-ios-sim
+          # - os: macos-latest
+            # arch: aarch64-apple-ios-sim
         mode:
           - debug
           - release

@@ -35,3 +35,12 @@ impl OpenMlsProvider for OpenMlsRustCrypto {
         &self.crypto
     }
 }
+
+impl OpenMlsRustCrypto {
+    pub fn with_seed(seed: &[u8]) -> Self {
+        Self {
+            crypto: RustCrypto::with_seed(seed),
+            key_store: MemoryStorage::default(),
+        }
+    }
+}

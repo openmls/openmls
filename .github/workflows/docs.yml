@@ -12,6 +12,7 @@ concurrency:
 name: Cargo doc check
 jobs:
   checks:
+    if: github.repository == 'openmls/openmls'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   documentation:
+    if: github.repository == 'openmls/openmls'
     runs-on: ubuntu-latest
     steps:
       - uses: hecrj/setup-rust-action@master

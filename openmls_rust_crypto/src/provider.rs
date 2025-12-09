@@ -33,6 +33,16 @@ pub struct RustCrypto {
     rng: RwLock<rand_chacha::ChaCha20Rng>,
 }
 
+impl RustCrypto {
+    pub fn with_seed(seed: &[u8]) -> Self {
+        let mut seed_array = [0u8; 32];
+        seed_array.copy_from_slice(seed);
+        Self {
+            rng: RwLock::new(rand_chacha::ChaCha20Rng::from_seed(seed_array)),
+        }
+    }
+}
+
 // For testing we want to clone.
 // But really we just create a new Rng.
 #[cfg(feature = "test-utils")]
