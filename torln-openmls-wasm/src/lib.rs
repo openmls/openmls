@@ -1,5 +1,8 @@
 mod utils;
 
+#[cfg(test)]
+mod tests;
+
 use js_sys::Uint8Array;
 use openmls::{
     credentials::{BasicCredential, CredentialWithKey},
@@ -14,13 +17,12 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
 use tls_codec::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
+use std::convert::TryInto;
 
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
 
-    // Use `js_namespace` here to bind `console.log(..)` instead of just
-    // `log(..)`
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
 }
@@ -47,14 +49,96 @@ impl AsMut<OpenMlsRustCrypto> for Provider {
 #[wasm_bindgen]
 impl Provider {
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        Self::default()
+    pub fn create(seed: Option<Vec<u8>>) -> Result<Self, JsError> {
+        if let Some(seed_vec) = seed {
+            if seed_vec.len() != 32 {
+                return Err(JsError::new("Seed must be exactly 32 bytes"));
+            }
+            let provider = OpenMlsRustCrypto::with_seed(&seed_vec);
+            Ok(Self(provider))
+        } else {
+            Ok(Self::default())
+        }
     }
-}
 
-#[wasm_bindgen]
-pub fn greet() {
-    alert("Hello, openmls!");
+    /// Export the entire provider storage as a compact binary blob for backup
+    #[wasm_bindgen(js_name = exportStorage)]
+    pub fn export_storage(&self) -> Result<Vec<u8>, JsError> {
+        let storage = self.0.storage();
+        let values = storage.values.read().map_err(|e| {
+            JsError::new(&format!("Failed to read storage: {}", e))
+        })?;
+
+        // Binary format (little endian):
+        // [u32 entry_count] then for each entry: [u32 key_len][u32 val_len][key bytes][val bytes]
+        let mut out = Vec::with_capacity(4 + values.len() * 8);
+        out.extend_from_slice(&(values.len() as u32).to_le_bytes());
+
+        for (key, value) in values.iter() {
+            out.extend_from_slice(&(key.len() as u32).to_le_bytes());
+            out.extend_from_slice(&(value.len() as u32).to_le_bytes());
+            out.extend_from_slice(key);
+            out.extend_from_slice(value);
+        }
+
+        Ok(out)
+    }
+
+    /// Import storage from a previously exported binary blob
+    #[wasm_bindgen(js_name = importStorage)]
+    pub fn import_storage(&self, storage_bytes: &[u8]) -> Result<(), JsError> {
+        let storage = self.0.storage();
+        let mut values = storage.values.write().map_err(|e| {
+            JsError::new(&format!("Failed to write to storage: {}", e))
+        })?;
+
+        // Parse the binary format described in `export_storage`.
+        let mut cursor = 0usize;
+        let len = storage_bytes.len();
+
+        // Need at least 4 bytes for the entry count
+        if len < 4 {
+            return Err(JsError::new("Storage data too short"));
+        }
+
+        let read_u32 = |data: &[u8]| -> u32 {
+            u32::from_le_bytes(data.try_into().unwrap())
+        };
+
+        let entry_count = read_u32(&storage_bytes[cursor..cursor + 4]) as usize;
+        cursor += 4;
+
+        for _ in 0..entry_count {
+            if cursor + 8 > len {
+                return Err(JsError::new("Corrupted storage: truncated lengths"));
+            }
+
+            let key_len = read_u32(&storage_bytes[cursor..cursor + 4]) as usize;
+            cursor += 4;
+            let val_len = read_u32(&storage_bytes[cursor..cursor + 4]) as usize;
+            cursor += 4;
+
+            if cursor + key_len + val_len > len {
+                return Err(JsError::new("Corrupted storage: truncated key/value"));
+            }
+
+            let key = storage_bytes[cursor..cursor + key_len].to_vec();
+            cursor += key_len;
+            let value = storage_bytes[cursor..cursor + val_len].to_vec();
+            cursor += val_len;
+
+            values.insert(key, value);
+        }
+
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = createFromStorage)]
+    pub fn create_from_storage(seed: Option<Vec<u8>>, storage_bytes: &[u8]) -> Result<Self, JsError> {
+        let provider = Self::create(seed)?;
+        provider.import_storage(storage_bytes)?;
+        Ok(provider)
+    }
 }
 
 #[wasm_bindgen]
@@ -66,11 +150,16 @@ pub struct Identity {
 #[wasm_bindgen]
 impl Identity {
     #[wasm_bindgen(constructor)]
-    pub fn new(provider: &Provider, name: &str) -> Result<Identity, JsError> {
+    pub fn create(provider: &Provider, name: &str, keypair_bytes: Option<Vec<u8>>) -> Result<Identity, JsError> {
         let signature_scheme = SignatureScheme::ED25519;
         let identity = name.bytes().collect();
         let credential = BasicCredential::new(identity);
-        let keypair = SignatureKeyPair::new(signature_scheme)?;
+
+        let keypair = if let Some(bytes) = keypair_bytes {
+            SignatureKeyPair::tls_deserialize(&mut bytes.as_slice())?
+        } else {
+            SignatureKeyPair::new(signature_scheme)?
+        };
 
         keypair.store(provider.0.storage())?;
 
@@ -85,7 +174,8 @@ impl Identity {
         })
     }
 
-    pub fn key_package(&self, provider: &Provider) -> KeyPackage {
+    #[wasm_bindgen(js_name = getKeyPackage)]
+    pub fn get_key_package(&self, provider: &Provider) -> KeyPackage {
         KeyPackage(
             OpenMlsKeyPackage::builder()
                 .build(
@@ -98,6 +188,22 @@ impl Identity {
                 .key_package()
                 .clone(),
         )
+    }
+
+    #[wasm_bindgen(js_name = getPublicKeyBytes)]
+    pub fn get_public_key_bytes(&self) -> Vec<u8> {
+        self.keypair.public().to_vec()
+    }
+
+    /// Export the keypair as bytes for backup/recovery purposes
+    #[wasm_bindgen(js_name = exportKeypairBytes)]
+    pub fn export_keypair_bytes(&self) -> Result<Vec<u8>, JsError> {
+        Ok(self.keypair.tls_serialize_detached()?)
+    }
+
+    #[wasm_bindgen(js_name = getCredentialBytes)]
+    pub fn get_credential_bytes(&self) -> Result<Vec<u8>, JsError> {
+        Ok(self.credential_with_key.credential.tls_serialize_detached()?)
     }
 }
 
@@ -114,11 +220,10 @@ pub struct AddMessages {
 }
 
 #[cfg(test)]
-#[allow(dead_code)]
-struct NativeAddMessages {
-    proposal: Vec<u8>,
-    commit: Vec<u8>,
-    welcome: Vec<u8>,
+pub(crate) struct NativeAddMessages {
+    pub(crate) proposal: Vec<u8>,
+    pub(crate) commit: Vec<u8>,
+    pub(crate) welcome: Vec<u8>,
 }
 
 #[wasm_bindgen]
@@ -139,6 +244,7 @@ impl AddMessages {
 
 #[wasm_bindgen]
 impl Group {
+    #[wasm_bindgen(js_name = createNew)]
     pub fn create_new(provider: &Provider, founder: &Identity, group_id: &str) -> Group {
         let group_id_bytes = group_id.bytes().collect::<Vec<_>>();
 
@@ -154,6 +260,25 @@ impl Group {
 
         Group { mls_group }
     }
+
+    /// Load an existing group from provider storage by group ID
+    #[wasm_bindgen(js_name = loadFromStorage)]
+    pub fn load_from_storage(provider: &Provider, group_id: &str) -> Result<Group, JsError> {
+        let group_id_bytes = group_id.bytes().collect::<Vec<_>>();
+        let group_id_obj = GroupId::from_slice(&group_id_bytes);
+
+        let mls_group = MlsGroup::load(provider.0.storage(), &group_id_obj)
+            .map_err(|e| JsError::new(&format!("Failed to load group: {}", e)))?
+            .ok_or_else(|| JsError::new("Group not found in storage"))?;
+
+        Ok(Group { mls_group })
+    }
+
+    #[wasm_bindgen(js_name = groupId)]
+    pub fn group_id(&self) -> String {
+        String::from_utf8_lossy(self.mls_group.group_id().as_slice()).to_string()
+    }
+
     pub fn join(
         provider: &Provider,
         mut welcome: &[u8],
@@ -173,10 +298,12 @@ impl Group {
         Ok(Group { mls_group })
     }
 
+    #[wasm_bindgen(js_name = exportRatchetTree)]
     pub fn export_ratchet_tree(&self) -> RatchetTree {
         RatchetTree(self.mls_group.export_ratchet_tree().into())
     }
 
+    #[wasm_bindgen(js_name = proposeAndCommitAdd)]
     pub fn propose_and_commit_add(
         &mut self,
         provider: &Provider,
@@ -204,12 +331,14 @@ impl Group {
         })
     }
 
+    #[wasm_bindgen(js_name = mergePendingCommit)]
     pub fn merge_pending_commit(&mut self, provider: &mut Provider) -> Result<(), JsError> {
         self.mls_group
             .merge_pending_commit(provider.as_mut())
             .map_err(|e| e.into())
     }
 
+    #[wasm_bindgen(js_name = createMessage)]
     pub fn create_message(
         &mut self,
         provider: &Provider,
@@ -224,6 +353,7 @@ impl Group {
         Ok(serialized)
     }
 
+    #[wasm_bindgen(js_name = processMessage)]
     pub fn process_message(
         &mut self,
         provider: &mut Provider,
@@ -260,7 +390,8 @@ impl Group {
         }
     }
 
-    pub fn export_key(
+    #[wasm_bindgen(js_name = exportSecret)]
+    pub fn export_secret(
         &self,
         provider: &Provider,
         label: &str,
@@ -274,11 +405,16 @@ impl Group {
                 e.into()
             })
     }
+
+    #[wasm_bindgen(js_name = getEpoch)]
+    pub fn get_epoch(&self) -> u32 {
+        self.mls_group.epoch().as_u64() as u32
+    }
 }
 
 #[cfg(test)]
 impl Group {
-    fn native_propose_and_commit_add(
+    pub(crate) fn native_propose_and_commit_add(
         &mut self,
         provider: &Provider,
         sender: &Identity,
@@ -305,11 +441,14 @@ impl Group {
         })
     }
 
-    fn native_join(provider: &Provider, mut welcome: &[u8], ratchet_tree: RatchetTree) -> Group {
-        let welcome = MlsMessageIn::tls_deserialize(&mut welcome)
+    pub(crate) fn native_join(provider: &Provider, mut welcome: &[u8], ratchet_tree: RatchetTree) -> Group {
+        let welcome = match MlsMessageIn::tls_deserialize(&mut welcome)
             .unwrap()
-            .into_welcome()
-            .expect("expected a message of type welcome");
+            .extract()
+        {
+            MlsMessageBodyIn::Welcome(welcome) => welcome,
+            _ => panic!("expected a message of type welcome"),
+        };
         let config = MlsGroupJoinConfig::builder().build();
         let mls_group = StagedWelcome::new_from_welcome(
             provider.as_ref(),
@@ -341,6 +480,14 @@ impl std::error::Error for NoWelcomeError {}
 pub struct KeyPackage(OpenMlsKeyPackage);
 
 #[wasm_bindgen]
+impl KeyPackage {
+    #[wasm_bindgen(js_name = toBytes)]
+    pub fn to_bytes(&self) -> Result<Vec<u8>, JsError> {
+        Ok(self.0.tls_serialize_detached()?)
+    }
+}
+
+#[wasm_bindgen]
 pub struct RatchetTree(RatchetTreeIn);
 
 fn mls_message_to_uint8array(msg: &MlsMessageOut) -> Uint8Array {
@@ -353,95 +500,10 @@ fn mls_message_to_uint8array(msg: &MlsMessageOut) -> Uint8Array {
 }
 
 #[cfg(test)]
-fn mls_message_to_u8vec(msg: &MlsMessageOut) -> Vec<u8> {
+pub(crate) fn mls_message_to_u8vec(msg: &MlsMessageOut) -> Vec<u8> {
     // see https://github.com/rustwasm/wasm-bindgen/issues/1619#issuecomment-505065294
 
     let mut serialized = vec![];
     msg.tls_serialize(&mut serialized).unwrap();
     serialized
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn js_error_to_string(e: JsError) -> String {
-        let v: JsValue = e.into();
-        v.as_string().unwrap()
-    }
-
-    fn create_group_alice_and_bob() -> (Provider, Identity, Group, Provider, Identity, Group) {
-        let mut alice_provider = Provider::new();
-        let bob_provider = Provider::new();
-
-        let alice = Identity::new(&alice_provider, "alice")
-            .map_err(js_error_to_string)
-            .unwrap();
-        let bob = Identity::new(&bob_provider, "bob")
-            .map_err(js_error_to_string)
-            .unwrap();
-
-        let mut chess_club_alice = Group::create_new(&alice_provider, &alice, "chess club");
-
-        let bob_key_pkg = bob.key_package(&bob_provider);
-
-        let add_msgs = chess_club_alice
-            .native_propose_and_commit_add(&alice_provider, &alice, &bob_key_pkg)
-            .map_err(js_error_to_string)
-            .unwrap();
-
-        chess_club_alice
-            .merge_pending_commit(&mut alice_provider)
-            .map_err(js_error_to_string)
-            .unwrap();
-
-        let ratchet_tree = chess_club_alice.export_ratchet_tree();
-
-        let chess_club_bob = Group::native_join(&bob_provider, &add_msgs.welcome, ratchet_tree);
-
-        (
-            alice_provider,
-            alice,
-            chess_club_alice,
-            bob_provider,
-            bob,
-            chess_club_bob,
-        )
-    }
-
-    #[test]
-    fn basic() {
-        let (alice_provider, _, chess_club_alice, bob_provider, _, chess_club_bob) =
-            create_group_alice_and_bob();
-
-        let bob_exported_key = chess_club_bob
-            .export_key(&bob_provider, "chess_key", &[0x30], 32)
-            .map_err(js_error_to_string)
-            .unwrap();
-        let alice_exported_key = chess_club_alice
-            .export_key(&alice_provider, "chess_key", &[0x30], 32)
-            .map_err(js_error_to_string)
-            .unwrap();
-
-        assert_eq!(bob_exported_key, alice_exported_key);
-    }
-
-    #[test]
-    fn create_message() {
-        let (alice_provider, alice, mut chess_club_alice, mut bob_provider, _, mut chess_club_bob) =
-            create_group_alice_and_bob();
-
-        let alice_msg = "hello, bob!".as_bytes();
-        let msg_out = chess_club_alice
-            .create_message(&alice_provider, &alice, alice_msg)
-            .map_err(js_error_to_string)
-            .unwrap();
-
-        let bob_msg = chess_club_bob
-            .process_message(&mut bob_provider, &msg_out)
-            .map_err(js_error_to_string)
-            .unwrap();
-
-        assert_eq!(alice_msg, bob_msg);
-    }
 }

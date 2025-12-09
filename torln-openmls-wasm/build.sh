@@ -6,5 +6,5 @@ trap "popd >/dev/null" EXIT
 set -e
 
 mkdir -p pkg
-wasm-pack build --target web
+wasm-pack build --target web --scope torlnapp
 cp static/index.html pkg/index.html
