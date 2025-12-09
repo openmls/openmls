@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn provider_with_seed() {
         let seed = [42u8; 32];
-        
+
         let provider1 = OpenMlsRustCrypto::with_seed(&seed);
         let provider2 = OpenMlsRustCrypto::with_seed(&seed);
 
@@ -100,7 +100,7 @@ mod tests {
     fn provider_with_different_seeds() {
         let seed1 = [42u8; 32];
         let seed2 = [43u8; 32];
-        
+
         let provider1 = OpenMlsRustCrypto::with_seed(&seed1);
         let provider2 = OpenMlsRustCrypto::with_seed(&seed2);
 
@@ -135,18 +135,13 @@ mod tests {
         let key_pkg1 = alice1.get_key_package(&provider1);
         let key_pkg2 = alice2.get_key_package(&provider2);
 
-        let pub_key1 = key_pkg1
-            .0
-            .leaf_node()
-            .signature_key()
-            .as_slice();
-        let pub_key2 = key_pkg2
-            .0
-            .leaf_node()
-            .signature_key()
-            .as_slice();
+        let pub_key1 = key_pkg1.0.leaf_node().signature_key().as_slice();
+        let pub_key2 = key_pkg2.0.leaf_node().signature_key().as_slice();
 
-        assert_eq!(pub_key1, pub_key2, "Public keys should match after recovery");
+        assert_eq!(
+            pub_key1, pub_key2,
+            "Public keys should match after recovery"
+        );
     }
 
     #[test]
@@ -196,20 +191,15 @@ mod tests {
 
         // Verify recovered identity has the same public key
         let key_pkg1 = alice1.get_key_package(&alice_provider1);
-        let pub_key1 = key_pkg1
-            .0
-            .leaf_node()
-            .signature_key()
-            .as_slice();
-        
-        let key_pkg2 = alice2.get_key_package(&alice_provider2);
-        let pub_key2 = key_pkg2
-            .0
-            .leaf_node()
-            .signature_key()
-            .as_slice();
+        let pub_key1 = key_pkg1.0.leaf_node().signature_key().as_slice();
 
-        assert_eq!(pub_key1, pub_key2, "Recovered identity should have same public key");
+        let key_pkg2 = alice2.get_key_package(&alice_provider2);
+        let pub_key2 = key_pkg2.0.leaf_node().signature_key().as_slice();
+
+        assert_eq!(
+            pub_key1, pub_key2,
+            "Recovered identity should have same public key"
+        );
 
         // Alice sends a message using original identity
         let alice_msg = "hello from alice!".as_bytes();
@@ -224,7 +214,10 @@ mod tests {
             .map_err(js_error_to_string)
             .unwrap();
 
-        assert_eq!(alice_msg, received_msg, "Bob should receive Alice's message correctly");
+        assert_eq!(
+            alice_msg, received_msg,
+            "Bob should receive Alice's message correctly"
+        );
     }
 
     #[test]
@@ -288,9 +281,13 @@ mod tests {
 
         // Verify Alice can still send messages in the restored group
         let test_msg = "hello after restore!".as_bytes();
-        let msg_result = restored_group.create_message(&restored_provider, &restored_alice, test_msg);
-        
-        assert!(msg_result.is_ok(), "Restored Alice should be able to send messages");
+        let msg_result =
+            restored_group.create_message(&restored_provider, &restored_alice, test_msg);
+
+        assert!(
+            msg_result.is_ok(),
+            "Restored Alice should be able to send messages"
+        );
     }
 
     #[test]

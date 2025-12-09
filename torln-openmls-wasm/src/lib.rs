@@ -15,9 +15,9 @@ use openmls::{
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use std::convert::TryInto;
 use tls_codec::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
-use std::convert::TryInto;
 
 #[wasm_bindgen]
 extern "C" {
@@ -65,9 +65,10 @@ impl Provider {
     #[wasm_bindgen(js_name = exportStorage)]
     pub fn export_storage(&self) -> Result<Vec<u8>, JsError> {
         let storage = self.0.storage();
-        let values = storage.values.read().map_err(|e| {
-            JsError::new(&format!("Failed to read storage: {}", e))
-        })?;
+        let values = storage
+            .values
+            .read()
+            .map_err(|e| JsError::new(&format!("Failed to read storage: {}", e)))?;
 
         // Binary format (little endian):
         // [u32 entry_count] then for each entry: [u32 key_len][u32 val_len][key bytes][val bytes]
@@ -88,9 +89,10 @@ impl Provider {
     #[wasm_bindgen(js_name = importStorage)]
     pub fn import_storage(&self, storage_bytes: &[u8]) -> Result<(), JsError> {
         let storage = self.0.storage();
-        let mut values = storage.values.write().map_err(|e| {
-            JsError::new(&format!("Failed to write to storage: {}", e))
-        })?;
+        let mut values = storage
+            .values
+            .write()
+            .map_err(|e| JsError::new(&format!("Failed to write to storage: {}", e)))?;
 
         // Parse the binary format described in `export_storage`.
         let mut cursor = 0usize;
@@ -101,9 +103,7 @@ impl Provider {
             return Err(JsError::new("Storage data too short"));
         }
 
-        let read_u32 = |data: &[u8]| -> u32 {
-            u32::from_le_bytes(data.try_into().unwrap())
-        };
+        let read_u32 = |data: &[u8]| -> u32 { u32::from_le_bytes(data.try_into().unwrap()) };
 
         let entry_count = read_u32(&storage_bytes[cursor..cursor + 4]) as usize;
         cursor += 4;
@@ -134,7 +134,10 @@ impl Provider {
     }
 
     #[wasm_bindgen(js_name = createFromStorage)]
-    pub fn create_from_storage(seed: Option<Vec<u8>>, storage_bytes: &[u8]) -> Result<Self, JsError> {
+    pub fn create_from_storage(
+        seed: Option<Vec<u8>>,
+        storage_bytes: &[u8],
+    ) -> Result<Self, JsError> {
         let provider = Self::create(seed)?;
         provider.import_storage(storage_bytes)?;
         Ok(provider)
@@ -150,7 +153,11 @@ pub struct Identity {
 #[wasm_bindgen]
 impl Identity {
     #[wasm_bindgen(constructor)]
-    pub fn create(provider: &Provider, name: &str, keypair_bytes: Option<Vec<u8>>) -> Result<Identity, JsError> {
+    pub fn create(
+        provider: &Provider,
+        name: &str,
+        keypair_bytes: Option<Vec<u8>>,
+    ) -> Result<Identity, JsError> {
         let signature_scheme = SignatureScheme::ED25519;
         let identity = name.bytes().collect();
         let credential = BasicCredential::new(identity);
@@ -203,7 +210,10 @@ impl Identity {
 
     #[wasm_bindgen(js_name = getCredentialBytes)]
     pub fn get_credential_bytes(&self) -> Result<Vec<u8>, JsError> {
-        Ok(self.credential_with_key.credential.tls_serialize_detached()?)
+        Ok(self
+            .credential_with_key
+            .credential
+            .tls_serialize_detached()?)
     }
 }
 
@@ -441,7 +451,11 @@ impl Group {
         })
     }
 
-    pub(crate) fn native_join(provider: &Provider, mut welcome: &[u8], ratchet_tree: RatchetTree) -> Group {
+    pub(crate) fn native_join(
+        provider: &Provider,
+        mut welcome: &[u8],
+        ratchet_tree: RatchetTree,
+    ) -> Group {
         let welcome = match MlsMessageIn::tls_deserialize(&mut welcome)
             .unwrap()
             .extract()
