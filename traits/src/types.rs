@@ -117,16 +117,7 @@ impl HashType {
 /// SignatureScheme according to IANA TLS parameters
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
-#[derive(
-    Copy,
-    Hash,
-    Eq,
-    PartialEq,
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-)]
+#[derive(Copy, Hash, Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub enum SignatureScheme {
     /// ECDSA_SECP256R1_SHA256
     ECDSA_SECP256R1_SHA256,
@@ -536,16 +527,7 @@ impl TryFrom<VerifiableCiphersuite> for Ciphersuite {
 /// ```
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-    Serialize,
-    Deserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Ciphersuite {
     /// DH KEM x25519 | AES-GCM 128 | SHA2-256 | Ed25519
     MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
@@ -755,7 +737,10 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384 => {
                 SignatureScheme::ECDSA_SECP384R1_SHA384
             }
-            Ciphersuite::Custom { signature_algorithm, .. } => *signature_algorithm,
+            Ciphersuite::Custom {
+                signature_algorithm,
+                ..
+            } => *signature_algorithm,
         }
     }
 
@@ -791,7 +776,9 @@ impl Ciphersuite {
             | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 HpkeKdfType::HkdfSha512
             }
-            Ciphersuite::Custom { hpke_kdf_algorithm, .. } => *hpke_kdf_algorithm,
+            Ciphersuite::Custom {
+                hpke_kdf_algorithm, ..
+            } => *hpke_kdf_algorithm,
         }
     }
 
@@ -811,7 +798,9 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519 => {
                 HpkeKemType::XWingKemDraft6
             }
-            Ciphersuite::Custom { hpke_kem_algorithm, .. } => *hpke_kem_algorithm,
+            Ciphersuite::Custom {
+                hpke_kem_algorithm, ..
+            } => *hpke_kem_algorithm,
         }
     }
 
@@ -831,7 +820,10 @@ impl Ciphersuite {
             Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 HpkeAeadType::ChaCha20Poly1305
             }
-            Ciphersuite::Custom { hpke_aead_algorithm, .. } => *hpke_aead_algorithm,
+            Ciphersuite::Custom {
+                hpke_aead_algorithm,
+                ..
+            } => *hpke_aead_algorithm,
         }
     }
 
