@@ -215,7 +215,7 @@ fn book_example_readd() {
     {
         charlie_group
             .merge_staged_commit(charlie_provider, *staged_commit)
-            .unwrap()
+            .unwrap();
     } else {
         panic!("expected a commit")
     }

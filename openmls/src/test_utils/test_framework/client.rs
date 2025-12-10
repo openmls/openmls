@@ -151,7 +151,7 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         if sender_id == self.identity && message.content_type() == ContentType::Commit {
-            group_state.merge_pending_commit(&self.provider)?
+            let _added_members = group_state.merge_pending_commit(&self.provider)?;
         } else {
             if message.content_type() == ContentType::Commit {
                 // Clear any potential pending commits.

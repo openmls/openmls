@@ -23,6 +23,7 @@ use super::{
 use crate::schedule::application_export_tree::ApplicationExportTree;
 
 use crate::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
     group::public_group::{
@@ -171,6 +172,13 @@ impl MlsGroup {
 
         let apply_proposals_values =
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
+
+        // Extract the leaf indices of added members before moving apply_proposals_values
+        let added_member_indices: Vec<LeafNodeIndex> = apply_proposals_values
+            .invitation_list
+            .iter()
+            .map(|(index, _)| *index)
+            .collect();
 
         // Determine if Commit has a path
         let (commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =
@@ -336,14 +344,14 @@ impl MlsGroup {
                 update_path_leaf_node,
                 #[cfg(feature = "extensions-draft-08")]
                 application_export_tree,
+                added_member_indices,
             )));
         let staged_commit = StagedCommit::new(proposal_queue, staged_commit_state);
 
         Ok(staged_commit)
     }
 
-    /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
-    /// from the previous epoch. The secret tree is returned if the Commit does not contain a self removal.
+    /// Merges a [StagedCommit] into the group state and return the indices of any members that were added.
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
@@ -351,7 +359,7 @@ impl MlsGroup {
         &mut self,
         provider: &Provider,
         staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<Provider::StorageError>> {
+    ) -> Result<Vec<LeafNodeIndex>, MergeCommitError<Provider::StorageError>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self
@@ -363,13 +371,17 @@ impl MlsGroup {
                     .merge_diff(staged_state.into_staged_diff());
                 self.store(provider.storage())
                     .map_err(MergeCommitError::StorageError)?;
-                Ok(())
+                Ok(vec![])
             }
             StagedCommitState::GroupMember(state) => {
                 // Save the past epoch
                 let past_epoch = self.context().epoch();
                 // Get all the full leaves
                 let leaves = self.public_group().members().collect();
+
+                // Extract the added member indices before consuming state
+                let added_member_indices = state.added_member_indices.clone();
+
                 // Merge the staged commit into the group state and store the secret tree from the
                 // previous epoch in the message secrets store.
                 self.group_epoch_secrets = state.group_epoch_secrets;
@@ -467,7 +479,7 @@ impl MlsGroup {
                     .map_err(MergeCommitError::StorageError)?;
                 self.proposal_store_mut().empty();
 
-                Ok(())
+                Ok(added_member_indices)
             }
         }
     }
@@ -659,6 +671,9 @@ pub(crate) struct MemberStagedCommitState {
     // This is `None` only if the group was stored using an older version of
     // OpenMLS that did not support the application exporter.
     application_export_tree: Option<ApplicationExportTree>,
+    /// Indices of members that were added in this commit
+    #[serde(default)]
+    added_member_indices: Vec<LeafNodeIndex>,
 }
 
 impl MemberStagedCommitState {
@@ -670,6 +685,7 @@ impl MemberStagedCommitState {
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
         update_path_leaf_node: Option<LeafNode>,
         #[cfg(feature = "extensions-draft-08")] application_export_tree: ApplicationExportTree,
+        added_member_indices: Vec<LeafNodeIndex>,
     ) -> Self {
         Self {
             group_epoch_secrets,
@@ -680,6 +696,7 @@ impl MemberStagedCommitState {
             update_path_leaf_node,
             #[cfg(feature = "extensions-draft-08")]
             application_export_tree: Some(application_export_tree),
+            added_member_indices,
         }
     }
 

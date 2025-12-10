@@ -6,6 +6,7 @@ use errors::{CommitToPendingProposalsError, MergePendingCommitError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
 
 use crate::{
+    binary_tree::LeafNodeIndex,
     framing::mls_content::FramedContentBody,
     group::{errors::MergeCommitError, StageCommitError, ValidationError},
     messages::group_info::GroupInfo,
@@ -156,11 +157,13 @@ impl MlsGroup {
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
+    ///
+    /// Returns a vector of leaf indices for any members that were added in this commit.
     pub fn merge_staged_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         staged_commit: StagedCommit,
-    ) -> Result<(), MergeCommitError<Provider::StorageError>> {
+    ) -> Result<Vec<LeafNodeIndex>, MergeCommitError<Provider::StorageError>> {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
@@ -171,7 +174,7 @@ impl MlsGroup {
             .map_err(MergeCommitError::StorageError)?;
 
         // Merge staged commit
-        self.merge_commit(provider, staged_commit)?;
+        let added_member_indices = self.merge_commit(provider, staged_commit)?;
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group_epoch_secrets().resumption_psk();
@@ -193,25 +196,29 @@ impl MlsGroup {
         self.clear_pending_commit(provider.storage())
             .map_err(MergeCommitError::StorageError)?;
 
-        Ok(())
+        Ok(added_member_indices)
     }
 
     /// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
+    ///
+    /// Returns a vector of leaf indices for any members that were added in this commit.
     pub fn merge_pending_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
-    ) -> Result<(), MergePendingCommitError<Provider::StorageError>> {
+    ) -> Result<Vec<LeafNodeIndex>, MergePendingCommitError<Provider::StorageError>> {
         match &self.group_state {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
                 if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    self.merge_staged_commit(provider, (*pending_commit_state).into())?;
+                    let added_indices =
+                        self.merge_staged_commit(provider, (*pending_commit_state).into())?;
+                    return Ok(added_indices);
                 }
-                Ok(())
+                Ok(vec![])
             }
             MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction)?,
-            MlsGroupState::Operational => Ok(()),
+            MlsGroupState::Operational => Ok(vec![]),
         }
     }
 

@@ -452,7 +452,7 @@ impl User {
                     remove_proposal = true;
                 }
                 match mls_group.merge_staged_commit(&self.provider, *commit_ptr) {
-                    Ok(()) => {
+                    Ok(_) => {
                         if remove_proposal {
                             log::debug!(
                                 "update::Processing StagedCommitMessage removing {} from group {} ",

@@ -735,9 +735,11 @@ fn test_valsem204() {
         .process_message(charlie_provider, original_plaintext.clone())
         .unwrap();
     match message.into_content() {
-        ProcessedMessageContent::StagedCommitMessage(staged_commit) => charlie_group
-            .merge_staged_commit(charlie_provider, *staged_commit)
-            .unwrap(),
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
+            charlie_group
+                .merge_staged_commit(charlie_provider, *staged_commit)
+                .unwrap();
+        }
         _ => panic!("Unexpected message type."),
     }
     let mut encryption_context = alice_group.export_group_context().clone();

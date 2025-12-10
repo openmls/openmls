@@ -189,12 +189,13 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
             .unwrap_or_else(|err| panic!("error processing message at {}: {err}", self.party.name));
 
         match processed_msg.into_content() {
-            ProcessedMessageContent::StagedCommitMessage(staged_commit) => self
-                .group
-                .merge_staged_commit(&self.party.provider, *staged_commit)
-                .unwrap_or_else(|err| {
-                    panic!("error merging staged commit at {}: {err}", self.party.name)
-                }),
+            ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
+                self.group
+                    .merge_staged_commit(&self.party.provider, *staged_commit)
+                    .unwrap_or_else(|err| {
+                        panic!("error merging staged commit at {}: {err}", self.party.name)
+                    });
+            }
 
             other => {
                 panic!(
@@ -425,7 +426,7 @@ fn self_update_happy_case_simple() {
         )
         .unwrap();
 
-    bob_group.merge_pending_commit(&bob_party.provider).unwrap()
+    bob_group.merge_pending_commit(&bob_party.provider).unwrap();
 }
 
 /// This tests makes sure that validation check 103 is performed:

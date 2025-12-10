@@ -486,6 +486,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
 
+        // Extract the leaf indices of added members before moving apply_proposals_values
+        let added_member_indices: Vec<LeafNodeIndex> = apply_proposals_values
+            .invitation_list
+            .iter()
+            .map(|(index, _)| *index)
+            .collect();
+
         let path_computation_result =
             // If path is needed, compute path values
             if apply_proposals_values.path_required
@@ -742,6 +749,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             update_path_leaf_node,
             #[cfg(feature = "extensions-draft-08")]
             application_export_tree,
+            added_member_indices,
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,

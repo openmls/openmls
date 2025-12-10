@@ -211,9 +211,11 @@ fn external_join_add_proposal_should_succeed() {
             .process_message(bob_provider, commit.into_protocol_message().unwrap())
             .unwrap();
         match msg.into_content() {
-            ProcessedMessageContent::StagedCommitMessage(commit) => bob_group
-                .merge_staged_commit(bob_provider, *commit)
-                .unwrap(),
+            ProcessedMessageContent::StagedCommitMessage(commit) => {
+                bob_group
+                    .merge_staged_commit(bob_provider, *commit)
+                    .unwrap();
+            }
             _ => unreachable!(),
         }
         assert_eq!(bob_group.members().count(), 3);

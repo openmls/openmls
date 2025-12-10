@@ -207,6 +207,7 @@ impl Group {
     pub fn merge_pending_commit(&mut self, provider: &mut Provider) -> Result<(), JsError> {
         self.mls_group
             .merge_pending_commit(provider.as_mut())
+            .map(|_added_members| ())
             .map_err(|e| e.into())
     }
 
