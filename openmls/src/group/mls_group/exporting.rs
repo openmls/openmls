@@ -164,7 +164,7 @@ impl MlsGroup {
                         if extension.as_ratchet_tree_extension().is_ok()
                             || extension.as_external_pub_extension().is_ok()
                         {
-                            Err(InvalidExtensionError::IllegalInGroupInfo)
+                            Err(InvalidExtensionError::CannotAddDirectlyToGroupInfo)
                         } else {
                             Ok(extension)
                         }
