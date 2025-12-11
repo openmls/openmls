@@ -44,6 +44,17 @@ impl ApplyProposalsValues {
     }
 }
 
+/**
+*
+* feature-gated arguments are kinda bad
+*
+* - we also don't want to make the API annoying for normal use
+* - maybe it'ss actually fine for non-pub functions?
+*
+*
+*
+**/
+
 /// Applies a list of proposals from a Commit to the tree.
 /// `proposal_queue` is the queue of proposals received or sent in the
 /// current epoch `updates_key_package_bundles` is the list of own
@@ -60,7 +71,6 @@ impl PublicGroupDiff<'_> {
         &mut self,
         proposal_queue: &ProposalQueue,
         own_leaf_index: impl Into<Option<LeafNodeIndex>>,
-        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<ApplyProposalsValues, LibraryError> {
         log::debug!("Applying proposal");
         let mut self_removed = false;
@@ -178,15 +188,6 @@ impl PublicGroupDiff<'_> {
                 _ => None,
             });
 
-        // apply AppDataUpdate proposals to the already-updated GroupContext extensions,
-        // if available, or return the new GroupContext extensions if modified.
-        #[cfg(feature = "extensions-draft-08")]
-        let updated_group_context_extensions = self.apply_app_data_update_proposals(
-            updated_group_context_extensions,
-            proposal_queue,
-            app_data_dict_updates,
-        )?;
-
         let proposals_require_path = proposal_queue
             .queued_proposals()
             .any(|p| p.proposal().is_path_required());
@@ -197,6 +198,41 @@ impl PublicGroupDiff<'_> {
         // * (or) it is an external commit
         // External commits always have an ExternalInit proposal, which requires a path. Therefore the last check is redundant.
         let path_required = proposals_require_path || proposal_queue.is_empty();
+
+        Ok(ApplyProposalsValues {
+            path_required,
+            self_removed,
+            invitation_list,
+            presharedkeys,
+            external_init_proposal_option,
+            extensions: updated_group_context_extensions,
+        })
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn apply_proposals_with_app_data_updates(
+        &mut self,
+        proposal_queue: &ProposalQueue,
+        own_leaf_index: impl Into<Option<LeafNodeIndex>>,
+        app_data_dict_updates: Option<AppDataUpdates>,
+    ) -> Result<ApplyProposalsValues, LibraryError> {
+        let ApplyProposalsValues {
+            path_required,
+            self_removed,
+            invitation_list,
+            presharedkeys,
+            external_init_proposal_option,
+            extensions,
+        } = self.apply_proposals(proposal_queue, own_leaf_index)?;
+
+        // apply AppDataUpdate proposals to the already-updated GroupContext extensions,
+        // if available, or return the new GroupContext extensions if modified.
+        #[cfg(feature = "extensions-draft-08")]
+        let updated_group_context_extensions = self.apply_app_data_update_proposals(
+            extensions,
+            proposal_queue,
+            app_data_dict_updates,
+        )?;
 
         Ok(ApplyProposalsValues {
             path_required,

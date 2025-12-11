@@ -189,7 +189,7 @@ fn test_app_data_update_simple() {
     // process the message after applying updates (including staging)
     let processed_message = bob
         .group
-        .process_unverified_message(
+        .process_unverified_message_with_app_data_updates(
             &bob_party.provider,
             unverified_message,
             app_data_updater.changes(),
@@ -354,7 +354,7 @@ fn test_app_data_update_with_welcome() {
     // process the message after applying updates (including staging)
     let processed_message = bob
         .group
-        .process_unverified_message(
+        .process_unverified_message_with_app_data_updates(
             &bob_party.provider,
             unverified_message,
             app_data_updater.changes(),

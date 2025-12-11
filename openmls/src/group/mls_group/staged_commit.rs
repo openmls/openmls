@@ -16,6 +16,8 @@ use super::{
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
+use crate::group::diff::PublicGroupDiff;
+use crate::prelude::{Commit, LeafNodeIndex};
 #[cfg(feature = "extensions-draft-08")]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 
@@ -152,7 +154,6 @@ impl MlsGroup {
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
-        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<AppDataUpdates>,
         provider: &impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
@@ -172,13 +173,78 @@ impl MlsGroup {
         // group context) and apply proposals.
         let mut diff = self.public_group.empty_diff();
 
-        let apply_proposals_values = diff.apply_proposals(
+        let apply_proposals_values =
+            diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
+
+        self.stage_applied_proposal_values(
+            apply_proposals_values,
+            diff,
+            commit,
+            proposal_queue,
+            sender_index,
+            mls_content,
+            old_epoch_keypairs,
+            leaf_node_keypairs,
+            provider,
+        )
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn stage_commit_with_app_data_updates(
+        &self,
+        mls_content: &AuthenticatedContent,
+        old_epoch_keypairs: Vec<EncryptionKeyPair>,
+        leaf_node_keypairs: Vec<EncryptionKeyPair>,
+        app_data_dict_updates: Option<AppDataUpdates>,
+        provider: &impl OpenMlsProvider,
+    ) -> Result<StagedCommit, StageCommitError> {
+        // Check that the sender is another member of the group
+        if let Sender::Member(member) = mls_content.sender() {
+            if member == &self.own_leaf_index() {
+                return Err(StageCommitError::OwnCommit);
+            }
+        }
+
+        let (commit, proposal_queue, sender_index) = self
+            .public_group
+            .validate_commit(mls_content, provider.crypto())?;
+
+        // Create the provisional public group state (including the tree and
+        // group context) and apply proposals.
+        let mut diff = self.public_group.empty_diff();
+
+        let apply_proposals_values = diff.apply_proposals_with_app_data_updates(
             &proposal_queue,
             self.own_leaf_index(),
-            #[cfg(feature = "extensions-draft-08")]
             app_data_dict_updates,
         )?;
 
+        self.stage_applied_proposal_values(
+            apply_proposals_values,
+            diff,
+            commit,
+            proposal_queue,
+            sender_index,
+            mls_content,
+            old_epoch_keypairs,
+            leaf_node_keypairs,
+            provider,
+        )
+    }
+
+    fn stage_applied_proposal_values(
+        &self,
+        apply_proposals_values: ApplyProposalsValues,
+        mut diff: PublicGroupDiff,
+        commit: &Commit,
+        proposal_queue: ProposalQueue,
+        sender_index: LeafNodeIndex,
+        mls_content: &AuthenticatedContent,
+        old_epoch_keypairs: Vec<EncryptionKeyPair>,
+        leaf_node_keypairs: Vec<EncryptionKeyPair>,
+        provider: &impl OpenMlsProvider,
+    ) -> Result<StagedCommit, StageCommitError> {
+        let ciphersuite = self.ciphersuite();
         // Determine if Commit has a path
         let (commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =
             if let Some(path) = commit.path.clone() {

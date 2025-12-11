@@ -100,12 +100,7 @@ impl MlsGroup {
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         let unverified_message = self.unprotect_message(provider, message)?;
 
-        self.process_unverified_message(
-            provider,
-            unverified_message,
-            #[cfg(feature = "extensions-draft-08")]
-            None,
-        )
+        self.process_unverified_message(provider, unverified_message)
     }
 
     #[cfg(feature = "extensions-draft-08")]
@@ -317,6 +312,75 @@ impl MlsGroup {
         Ok((old_epoch_keypairs, leaf_node_keypairs))
     }
 
+    /// This function processes a message and returns a message type that can be inspected.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn process_unverified_message_with_app_data_updates<Provider: OpenMlsProvider>(
+        &self,
+        provider: &Provider,
+        unverified_message: UnverifiedMessage,
+        app_data_dict_updates: Option<AppDataUpdates>,
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+        // Checks the following semantic validation:
+        //  - ValSem010
+        //  - ValSem246 (as part of ValSem010)
+        //  - https://validation.openmls.tech/#valn1302
+        //  - https://validation.openmls.tech/#valn1304
+        let (content, credential) =
+            unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
+
+        // When handling app data updates, we only need to override the handling of this case.
+        if let (
+            Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal,
+            FramedContentBody::Commit(_),
+        ) = (content.sender(), content.content())
+        {
+            let sender = content.sender().clone();
+            let authenticated_data = content.authenticated_data().to_owned();
+            let epoch = content.epoch();
+
+            // Since this is a commit, we need to load the private key material we need for decryption.
+            let (old_epoch_keypairs, leaf_node_keypairs) =
+                self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
+
+            let staged_commit = self.stage_commit_with_app_data_updates(
+                &content,
+                old_epoch_keypairs,
+                leaf_node_keypairs,
+                app_data_dict_updates,
+                provider,
+            )?;
+
+            let content = ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit));
+
+            Ok(ProcessedMessage::new(
+                self.group_id().clone(),
+                epoch,
+                sender,
+                authenticated_data,
+                content,
+                credential,
+            ))
+        } else {
+            self.process_unverified_message_internal(provider, content, credential)
+        }
+    }
+
+    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
+        &self,
+        provider: &Provider,
+        unverified_message: UnverifiedMessage,
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+        // Checks the following semantic validation:
+        //  - ValSem010
+        //  - ValSem246 (as part of ValSem010)
+        //  - https://validation.openmls.tech/#valn1302
+        //  - https://validation.openmls.tech/#valn1304
+        let (content, credential) =
+            unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
+
+        self.process_unverified_message_internal(provider, content, credential)
+    }
+
     /// This processing function does most of the semantic verifications.
     /// It returns a [ProcessedMessage] enum.
     /// Checks the following semantic validation:
@@ -345,20 +409,12 @@ impl MlsGroup {
     ///  - ValSem242
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
-    pub fn process_unverified_message<Provider: OpenMlsProvider>(
+    fn process_unverified_message_internal<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
-        unverified_message: UnverifiedMessage,
-        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<AppDataUpdates>,
+        content: AuthenticatedContent,
+        credential: Credential,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
-        // Checks the following semantic validation:
-        //  - ValSem010
-        //  - ValSem246 (as part of ValSem010)
-        //  - https://validation.openmls.tech/#valn1302
-        //  - https://validation.openmls.tech/#valn1304
-        let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
-
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 let sender = content.sender().clone();
@@ -385,7 +441,6 @@ impl MlsGroup {
                         }
                     }
                     FramedContentBody::Commit(_) => {
-                        // DELETE BEFORE MERGE: This was moved here from process_message2
                         // Since this is a commit, we need to load the private key material we need for decryption.
                         let (old_epoch_keypairs, leaf_node_keypairs) =
                             self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
@@ -394,8 +449,6 @@ impl MlsGroup {
                             &content,
                             old_epoch_keypairs,
                             leaf_node_keypairs,
-                            #[cfg(feature = "extensions-draft-08")]
-                            app_data_dict_updates,
                             provider,
                         )?;
 
