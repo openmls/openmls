@@ -7,13 +7,19 @@ use sqlx::Connection as _;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn proposals() {
+    let connection = sqlx::SqliteConnection::connect("sqlite::memory:")
+        .await
+        .unwrap();
+
+    proposals_inner(connection).await;
+}
+
+async fn proposals_inner(mut connection: sqlx::SqliteConnection) {
     let group_id = TestGroupId(b"TestGroupId".to_vec());
     let proposals = (0..10)
         .map(|i| TestProposal(format!("TestProposal{i}").as_bytes().to_vec()))
         .collect::<Vec<_>>();
-    let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:")
-        .await
-        .unwrap();
+
     let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
 
     storage.run_migrations().unwrap();
@@ -69,6 +75,14 @@ async fn proposals() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn group_data_roundtrip() {
+    let connection = sqlx::SqliteConnection::connect("sqlite::memory:")
+        .await
+        .unwrap();
+
+    group_data_roundtrip_inner(connection).await;
+}
+
+async fn group_data_roundtrip_inner(mut connection: sqlx::SqliteConnection) {
     let group_id = TestGroupId(b"group-data".to_vec());
     let join_config = TestBlob(b"join-config".to_vec());
     let tree = TestBlob(b"tree".to_vec());
@@ -83,9 +97,6 @@ async fn group_data_roundtrip() {
     let leaf_a = TestBlob(b"leaf-a".to_vec());
     let leaf_b = TestBlob(b"leaf-b".to_vec());
 
-    let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:")
-        .await
-        .unwrap();
     let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
     storage.run_migrations().unwrap();
 
@@ -195,6 +206,13 @@ async fn group_data_roundtrip() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn key_material_roundtrip() {
+    let connection = sqlx::SqliteConnection::connect("sqlite::memory:")
+        .await
+        .unwrap();
+    key_material_roundtrip_inner(connection).await;
+}
+
+async fn key_material_roundtrip_inner(mut connection: sqlx::SqliteConnection) {
     let group_id = TestGroupId(b"key-material-group".to_vec());
     let signature_public_key = TestSignaturePublicKey(b"signature-public".to_vec());
     let signature_key_pair = TestSignatureKeyPair(b"signature-key-pair".to_vec());
@@ -211,9 +229,6 @@ async fn key_material_roundtrip() {
     let psk_bundle = TestPskBundle(b"psk-bundle".to_vec());
     let leaf_index: u32 = 7;
 
-    let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:")
-        .await
-        .unwrap();
     let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
     storage.run_migrations().unwrap();
 
