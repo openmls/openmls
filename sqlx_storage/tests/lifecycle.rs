@@ -3,14 +3,33 @@ mod common;
 use common::*;
 use openmls_sqlx_storage::SqliteStorageProvider;
 use openmls_traits::storage::StorageProvider;
-use sqlx::Connection as _;
+
+/// if the `test_sqlcipher` flag is set, set the initial `key` pragma
+/// to specify the encryption passphrase.
+#[cfg(test_sqlcipher)]
+async fn sqlite_connection() -> sqlx::SqliteConnection {
+    use sqlx::ConnectOptions as _;
+
+    let connect_options = sqlx::sqlite::SqliteConnectOptions::new()
+        .in_memory(true)
+        .pragma("key", "test_passphrase");
+
+    connect_options.connect().await.unwrap()
+}
+
+/// if the `test_sqlcipher` flag is not set, set up a simple Sqlite connection
+#[cfg(not(test_sqlcipher))]
+async fn sqlite_connection() -> sqlx::SqliteConnection {
+    use sqlx::Connection as _;
+
+    sqlx::SqliteConnection::connect("sqlite::memory:")
+        .await
+        .unwrap()
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn proposals() {
-    let connection = sqlx::SqliteConnection::connect("sqlite::memory:")
-        .await
-        .unwrap();
-
+    let connection = sqlite_connection().await;
     proposals_inner(connection).await;
 }
 
@@ -75,9 +94,7 @@ async fn proposals_inner(mut connection: sqlx::SqliteConnection) {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn group_data_roundtrip() {
-    let connection = sqlx::SqliteConnection::connect("sqlite::memory:")
-        .await
-        .unwrap();
+    let connection = sqlite_connection().await;
 
     group_data_roundtrip_inner(connection).await;
 }
@@ -206,9 +223,7 @@ async fn group_data_roundtrip_inner(mut connection: sqlx::SqliteConnection) {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn key_material_roundtrip() {
-    let connection = sqlx::SqliteConnection::connect("sqlite::memory:")
-        .await
-        .unwrap();
+    let connection = sqlite_connection().await;
     key_material_roundtrip_inner(connection).await;
 }
 

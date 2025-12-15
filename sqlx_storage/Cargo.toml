@@ -22,3 +22,9 @@ serde_json = { version = "1.0" }
 
 [features]
 extensions-draft-08 = ["openmls_traits/extensions-draft-08"]
+
+[target.'cfg(test_sqlcipher)'.dev-dependencies]
+libsqlite3-sys = { version = "0.30.1", features = ["bundled-sqlcipher"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(test_sqlcipher)'] }
