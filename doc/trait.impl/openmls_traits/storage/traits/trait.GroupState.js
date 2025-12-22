@@ -1,9 +1,9 @@
 (function() {
-    var implementors = Object.fromEntries([["openmls",[["impl GroupState&lt;CURRENT_VERSION&gt; for <a class=\"enum\" href=\"openmls/group/enum.MlsGroupState.html\" title=\"enum openmls::group::MlsGroupState\">MlsGroupState</a>"]]]]);
+    const implementors = Object.fromEntries([["openmls",[["impl GroupState&lt;CURRENT_VERSION&gt; for <a class=\"enum\" href=\"openmls/group/enum.MlsGroupState.html\" title=\"enum openmls::group::MlsGroupState\">MlsGroupState</a>",0]]]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
         window.pending_implementors = implementors;
     }
 })()
-//{"start":57,"fragment_lengths":[188]}
+//{"start":59,"fragment_lengths":[190]}
