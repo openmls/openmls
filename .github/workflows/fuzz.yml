@@ -16,6 +16,7 @@ env:
 
 jobs:
   fuzz:
+    if: github.repository == 'openmls/openmls'
     strategy:
       fail-fast: false
       matrix:

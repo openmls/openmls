@@ -1,0 +1,34 @@
+[package]
+name = "torln-openmls-wasm"
+version = "0.1.0"
+authors = ["Torln"]
+edition = "2021"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/torlnapp/openmls/tree/main/torln-openmls-wasm"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["console_error_panic_hook"]
+
+[dependencies]
+wasm-bindgen = "0.2.84"
+openmls = { path = "../openmls", features = ["js"] }
+openmls_traits = { path = "../traits" }
+openmls_rust_crypto = { path = "../openmls_rust_crypto" }
+openmls_basic_credential = { path = "../basic_credential" }
+tls_codec = { workspace = true }
+
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+console_error_panic_hook = { version = "0.1.7", optional = true }
+js-sys = "0.3.68"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.34"
