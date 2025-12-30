@@ -177,7 +177,7 @@ pub struct SafeEncryptionContext<'a> {
 /// The [`SafeEncryptionContext`] is used to set the [`ComponentId`], `label`,
 /// and optional `context`.
 ///
-/// Returns an [`HpkeCiphertext`] or an [`Error`].
+/// Returns an [`HpkeCiphertext`] or an [`enum@Error`].
 #[cfg(feature = "extensions-draft-08")]
 pub fn safe_encrypt_with_label(
     public_key: &[u8],
@@ -249,7 +249,7 @@ fn decrypt_with_label_internal(
 /// The [`SafeEncryptionContext`] is used to set the [`ComponentId`], `label`,
 /// and optional `context`.
 ///
-/// Returns an [`HpkeCiphertext`] or an [`Error`].
+/// Returns an [`HpkeCiphertext`] or an [`enum@Error`].
 pub fn safe_decrypt_with_label(
     private_key: &[u8],
     ciphertext: &HpkeCiphertext,
