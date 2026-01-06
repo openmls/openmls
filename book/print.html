@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-cda49bb9.js";
+            window.path_to_searchindex_js = "searchindex-6675f4cf.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-28f6623d.js"></script>
+        <script src="toc-2146cd29.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -1225,6 +1225,249 @@ other members in two instances:</p>
 <ul>
 <li>When joining a new group (by looking at the ratchet tree)</li>
 <li>When <a href="#processing-incoming-messages">processing messages</a> (by looking at a add &amp; update proposals of a StagedCommit)</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="grease-support"><a class="header" href="#grease-support">GREASE Support</a></h1>
+<p>GREASE (Generate Random Extensions And Sustain Extensibility) is a mechanism defined in <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5">RFC 9420 Section 13.5</a> to ensure that implementations properly handle unknown values and maintain protocol extensibility.</p>
+<h2 id="what-is-grease"><a class="header" href="#what-is-grease">What is GREASE?</a></h2>
+<p>GREASE values are special reserved values that follow a specific pattern (<code>0x0A0A, 0x1A1A, 0x2A2A, ..., 0xEAEA</code>) and are used to:</p>
+<ol>
+<li><strong>Test extensibility</strong>: Ensure implementations don’t reject messages containing unknown values</li>
+<li><strong>Prevent ossification</strong>: Help maintain forward compatibility by exercising unknown value handling paths</li>
+<li><strong>Identify bugs</strong>: Catch implementations that incorrectly assume all possible values are known</li>
+</ol>
+<h3 id="rfc-defined-vs-custom-grease-values"><a class="header" href="#rfc-defined-vs-custom-grease-values">RFC-defined vs. Custom GREASE Values</a></h3>
+<p>The <a href="#grease-values">15 values defined in RFC 9420</a> are the “official” GREASE values. When OpenMLS generates GREASE values (e.g., via <code>with_grease()</code>), it uses these RFC-defined values. The <code>is_grease()</code> method only returns <code>true</code> for these specific values.</p>
+<p>However, <strong>any</strong> unknown value can serve a similar purpose. The difference is that for non-RFC values, we cannot distinguish whether they are intentionally injected “GREASE-like” values or genuinely unknown identifiers from future protocol extensions.</p>
+<h3 id="the-purpose-of-grease"><a class="header" href="#the-purpose-of-grease">The Purpose of GREASE</a></h3>
+<p><strong>Important:</strong> The entire point of GREASE is that implementations should <strong>not</strong> check for these values. GREASE values exist to ensure that your unknown-value handling code paths are exercised. Applications can inject GREASE values into their capabilities to discourage other implementations from:</p>
+<ul>
+<li>Failing on unknown values</li>
+<li>Hard-coding assumptions about which values exist</li>
+<li>Breaking when the protocol is extended</li>
+</ul>
+<p>See <a href="#important-notes">Important Notes</a> for details on how OpenMLS handles GREASE during validation.</p>
+<h2 id="grease-in-openmls"><a class="header" href="#grease-in-openmls">GREASE in OpenMLS</a></h2>
+<p>OpenMLS supports GREASE values for the following types:</p>
+<ul>
+<li><strong>Ciphersuites</strong> (<code>VerifiableCiphersuite</code>)</li>
+<li><strong>Extensions</strong> (<code>ExtensionType::Grease</code>)</li>
+<li><strong>Proposals</strong> (<code>ProposalType::Grease</code>)</li>
+<li><strong>Credentials</strong> (<code>CredentialType::Grease</code>)</li>
+</ul>
+<h3 id="grease-handling"><a class="header" href="#grease-handling">GREASE Handling</a></h3>
+<p>OpenMLS:</p>
+<ol>
+<li><strong>Recognizes GREASE values</strong> during deserialization</li>
+<li><strong>Filters GREASE values</strong> during validation to prevent false negatives (GREASE values are treated the same as unknown values)</li>
+<li><strong>Preserves GREASE values</strong> when present in capabilities</li>
+<li><strong>Provides convenience methods</strong> to inject random GREASE values into capabilities</li>
+</ol>
+<p><strong>Note:</strong> GREASE values are NOT automatically injected. Library users who wish to include GREASE values in their capabilities should use the <code>with_grease()</code> method described below.</p>
+<h2 id="using-grease-values"><a class="header" href="#using-grease-values">Using GREASE Values</a></h2>
+<h3 id="in-capabilities"><a class="header" href="#in-capabilities">In Capabilities</a></h3>
+<p>You can include GREASE values in your KeyPackage capabilities to test interoperability:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::prelude::*;
+
+let capabilities = Capabilities::builder()
+    .proposals(vec![
+        ProposalType::Add,
+        ProposalType::Update,
+        ProposalType::Remove,
+        ProposalType::Grease(0x0A0A), // Add a GREASE proposal type
+    ])
+    .extensions(vec![
+        ExtensionType::ApplicationId,
+        ExtensionType::Grease(0x1A1A), // Add a GREASE extension type
+    ])
+    .credentials(vec![
+        CredentialType::Basic,
+        CredentialType::Grease(0x2A2A), // Add a GREASE credential type
+    ])
+    .build();
+<span class="boring">}</span></code></pre>
+<h3 id="injecting-random-grease-values"><a class="header" href="#injecting-random-grease-values">Injecting Random GREASE Values</a></h3>
+<p>The easiest way to add GREASE values is using the <code>with_grease()</code> method on <code>Capabilities</code> or <code>CapabilitiesBuilder</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::prelude::*;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+
+let provider = OpenMlsRustCrypto::default();
+
+// Using CapabilitiesBuilder
+let capabilities = Capabilities::builder()
+    .with_grease(provider.rand())
+    .build();
+
+// Or on an existing Capabilities instance
+let capabilities = Capabilities::default()
+    .with_grease(provider.rand());
+<span class="boring">}</span></code></pre>
+<p>This will add one random GREASE value to each capability list (ciphersuites, extensions, proposals, and credentials) if no GREASE value is already present.</p>
+<h3 id="generating-individual-random-grease-values"><a class="header" href="#generating-individual-random-grease-values">Generating Individual Random GREASE Values</a></h3>
+<p>OpenMLS also provides a helper function to generate individual random GREASE values:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::grease::random_grease_value;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+
+let crypto = OpenMlsRustCrypto::default();
+let grease_value = random_grease_value(&amp;crypto);
+
+// Use in capabilities
+let grease_proposal = ProposalType::Grease(grease_value);
+<span class="boring">}</span></code></pre>
+<h3 id="checking-for-grease-values"><a class="header" href="#checking-for-grease-values">Checking for GREASE Values</a></h3>
+<p>All GREASE-capable types provide an <code>is_grease()</code> method. Note that this method only identifies the <a href="#grease-values">RFC-defined GREASE values</a>—it cannot detect custom unknown values that serve a similar purpose.</p>
+<p><strong>Caution:</strong> As explained in <a href="#the-purpose-of-grease">The Purpose of GREASE</a>, applications should generally <strong>not</strong> use <code>is_grease()</code> for filtering or decision-making. The method exists primarily for OpenMLS’s internal validation logic and for testing/debugging purposes.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::prelude::*;
+
+let proposal = ProposalType::Grease(0x0A0A);
+assert!(proposal.is_grease());
+
+let extension = ExtensionType::Grease(0x1A1A);
+assert!(extension.is_grease());
+
+let credential = CredentialType::Grease(0x2A2A);
+assert!(credential.is_grease());
+
+use openmls_traits::types::VerifiableCiphersuite;
+let ciphersuite = VerifiableCiphersuite::new(0x3A3A);
+assert!(ciphersuite.is_grease());
+<span class="boring">}</span></code></pre>
+<h2 id="grease-values"><a class="header" href="#grease-values">GREASE Values</a></h2>
+<p>The following 15 values are defined as GREASE values in RFC 9420:</p>
+<ul>
+<li><code>0x0A0A</code></li>
+<li><code>0x1A1A</code></li>
+<li><code>0x2A2A</code></li>
+<li><code>0x3A3A</code></li>
+<li><code>0x4A4A</code></li>
+<li><code>0x5A5A</code></li>
+<li><code>0x6A6A</code></li>
+<li><code>0x7A7A</code></li>
+<li><code>0x8A8A</code></li>
+<li><code>0x9A9A</code></li>
+<li><code>0xAAAA</code></li>
+<li><code>0xBABA</code></li>
+<li><code>0xCACA</code></li>
+<li><code>0xDADA</code></li>
+<li><code>0xEAEA</code></li>
+</ul>
+<h2 id="important-notes"><a class="header" href="#important-notes">Important Notes</a></h2>
+<h3 id="grease-values-cannot-be-used-for-operations"><a class="header" href="#grease-values-cannot-be-used-for-operations">GREASE Values Cannot Be Used for Operations</a></h3>
+<p>GREASE ciphersuites, in particular, cannot be used for actual cryptographic operations. They exist only to test capability negotiation and should never be selected as the active ciphersuite for a group.</p>
+<h3 id="validation-automatically-filters-grease"><a class="header" href="#validation-automatically-filters-grease">Validation Automatically Filters GREASE</a></h3>
+<p>When OpenMLS validates capabilities, it automatically filters out GREASE values. This means:</p>
+<ul>
+<li>Two members with different GREASE values in their capabilities can still interoperate</li>
+<li>GREASE values don’t affect capability intersection or matching</li>
+<li>Required capabilities never include GREASE values</li>
+</ul>
+<h3 id="interoperability-testing"><a class="header" href="#interoperability-testing">Interoperability Testing</a></h3>
+<p>Including GREASE values in your capabilities is recommended for testing interoperability with other MLS implementations. It helps ensure that:</p>
+<ol>
+<li>Other implementations correctly handle unknown values</li>
+<li>Your implementation correctly filters GREASE during validation</li>
+<li>Protocol extensibility is maintained</li>
+</ol>
+<h2 id="example-full-usage"><a class="header" href="#example-full-usage">Example: Full Usage</a></h2>
+<p>Here’s a complete example showing GREASE usage with the recommended <code>with_grease()</code> method:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::prelude::*;
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::types::Ciphersuite;
+
+let provider = OpenMlsRustCrypto::default();
+
+// Create a credential
+let credential = BasicCredential::new(b"Alice".to_vec());
+let signature_keys = SignatureKeyPair::new(
+    Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.signature_algorithm()
+).unwrap();
+
+// Create capabilities with automatic random GREASE values
+let capabilities = Capabilities::builder()
+    .with_grease(provider.rand())
+    .build();
+
+// Create a KeyPackage with GREASE values
+let key_package = KeyPackage::builder()
+    .leaf_node_capabilities(capabilities)
+    .build(
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        &amp;provider,
+        &amp;signature_keys,
+        CredentialWithKey {
+            credential: credential.into(),
+            signature_key: signature_keys.public().into(),
+        },
+    )
+    .unwrap();
+
+// The KeyPackage can be used normally - GREASE values are handled during validation
+<span class="boring">}</span></code></pre>
+<h3 id="example-manually-specifying-grease-values"><a class="header" href="#example-manually-specifying-grease-values">Example: Manually Specifying GREASE Values</a></h3>
+<p>If you need to specify particular GREASE values (e.g., for testing or interoperability):</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::prelude::*;
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::types::Ciphersuite;
+
+let provider = OpenMlsRustCrypto::default();
+
+// Create a credential
+let credential = BasicCredential::new(b"Alice".to_vec());
+let signature_keys = SignatureKeyPair::new(
+    Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.signature_algorithm()
+).unwrap();
+
+// Create capabilities with specific GREASE values
+let capabilities = Capabilities::builder()
+    .proposals(vec![
+        ProposalType::Add,
+        ProposalType::Update,
+        ProposalType::Remove,
+        ProposalType::Grease(0x0A0A),
+        ProposalType::Grease(0x1A1A),
+    ])
+    .extensions(vec![
+        ExtensionType::ApplicationId,
+        ExtensionType::Grease(0x2A2A),
+    ])
+    .credentials(vec![
+        CredentialType::Basic,
+        CredentialType::Grease(0x3A3A),
+    ])
+    .build();
+
+// Create a KeyPackage with these capabilities
+let key_package = KeyPackage::builder()
+    .leaf_node_capabilities(capabilities)
+    .build(
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        &amp;provider,
+        &amp;signature_keys,
+        CredentialWithKey {
+            credential: credential.into(),
+            signature_key: signature_keys.public().into(),
+        },
+    )
+    .unwrap();
+<span class="boring">}</span></code></pre>
+<h2 id="further-reading"><a class="header" href="#further-reading">Further Reading</a></h2>
+<ul>
+<li><a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5">RFC 9420 Section 13.5: GREASE</a></li>
+<li><a href="https://www.rfc-editor.org/rfc/rfc8701.html">RFC 8701: Applying GREASE to TLS Extensibility</a> - The original GREASE specification for TLS</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="webassembly"><a class="header" href="#webassembly">WebAssembly</a></h1>

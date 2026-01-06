@@ -137,7 +137,7 @@
 <a href=#137 id=137 data-nosnippet>137</a>            </span>ProposalType::AppEphemeral =&gt; {
 <a href=#138 id=138 data-nosnippet>138</a>                ProposalIn::AppEphemeral(Box::new(AppEphemeralProposal::tls_deserialize(bytes)<span class="question-mark">?</span>))
 <a href=#139 id=139 data-nosnippet>139</a>            }
-<a href=#140 id=140 data-nosnippet>140</a>            ProposalType::Custom(<span class="kw">_</span>) =&gt; {
+<a href=#140 id=140 data-nosnippet>140</a>            ProposalType::Grease(<span class="kw">_</span>) | ProposalType::Custom(<span class="kw">_</span>) =&gt; {
 <a href=#141 id=141 data-nosnippet>141</a>                <span class="kw">let </span>payload = Vec::&lt;u8&gt;::tls_deserialize(bytes)<span class="question-mark">?</span>;
 <a href=#142 id=142 data-nosnippet>142</a>                <span class="kw">let </span>custom_proposal = CustomProposal::new(proposal_type.into(), payload);
 <a href=#143 id=143 data-nosnippet>143</a>                ProposalIn::Custom(Box::new(custom_proposal))

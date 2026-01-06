@@ -118,8 +118,8 @@
 <a href=#118 id=118 data-nosnippet>118</a>            ExtensionType::LastResort =&gt; {
 <a href=#119 id=119 data-nosnippet>119</a>                Extension::LastResort(LastResortExtension::tls_deserialize(<span class="kw-2">&amp;mut </span>extension_data)<span class="question-mark">?</span>)
 <a href=#120 id=120 data-nosnippet>120</a>            }
-<a href=#121 id=121 data-nosnippet>121</a>            ExtensionType::Unknown(unknown) =&gt; {
-<a href=#122 id=122 data-nosnippet>122</a>                Extension::Unknown(unknown, UnknownExtension(extension_data.to_vec()))
+<a href=#121 id=121 data-nosnippet>121</a>            ExtensionType::Grease(grease) | ExtensionType::Unknown(grease) =&gt; {
+<a href=#122 id=122 data-nosnippet>122</a>                Extension::Unknown(grease, UnknownExtension(extension_data.to_vec()))
 <a href=#123 id=123 data-nosnippet>123</a>            }
 <a href=#124 id=124 data-nosnippet>124</a>        })
 <a href=#125 id=125 data-nosnippet>125</a>    }
