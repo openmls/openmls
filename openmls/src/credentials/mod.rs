@@ -84,8 +84,20 @@ pub enum CredentialType {
     Basic = 1,
     /// An X.509 [`Certificate`]
     X509 = 2,
+    /// A GREASE credential type for ensuring extensibility.
+    Grease(u16),
     /// Another type of credential that is not in the MLS protocol spec.
     Other(u16),
+}
+
+impl CredentialType {
+    /// Returns true if this is a GREASE credential type.
+    ///
+    /// GREASE values are used to ensure implementations properly handle unknown
+    /// credential types. See [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5).
+    pub fn is_grease(&self) -> bool {
+        matches!(self, CredentialType::Grease(_))
+    }
 }
 
 impl Size for CredentialType {
@@ -131,6 +143,7 @@ impl From<u16> for CredentialType {
         match value {
             1 => CredentialType::Basic,
             2 => CredentialType::X509,
+            other if crate::grease::is_grease_value(other) => CredentialType::Grease(other),
             other => CredentialType::Other(other),
         }
     }
@@ -141,6 +154,7 @@ impl From<CredentialType> for u16 {
         match value {
             CredentialType::Basic => 1,
             CredentialType::X509 => 2,
+            CredentialType::Grease(value) => value,
             CredentialType::Other(other) => other,
         }
     }

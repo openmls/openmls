@@ -137,7 +137,7 @@ impl Deserialize for ProposalIn {
             ProposalType::AppEphemeral => {
                 ProposalIn::AppEphemeral(Box::new(AppEphemeralProposal::tls_deserialize(bytes)?))
             }
-            ProposalType::Custom(_) => {
+            ProposalType::Grease(_) | ProposalType::Custom(_) => {
                 let payload = Vec::<u8>::tls_deserialize(bytes)?;
                 let custom_proposal = CustomProposal::new(proposal_type.into(), payload);
                 ProposalIn::Custom(Box::new(custom_proposal))
