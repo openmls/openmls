@@ -10,6 +10,22 @@ GREASE values are special reserved values that follow a specific pattern (`0x0A0
 2. **Prevent ossification**: Help maintain forward compatibility by exercising unknown value handling paths
 3. **Identify bugs**: Catch implementations that incorrectly assume all possible values are known
 
+### RFC-defined vs. Custom GREASE Values
+
+The [15 values defined in RFC 9420](#grease-values) are the "official" GREASE values. When OpenMLS generates GREASE values (e.g., via `with_grease()`), it uses these RFC-defined values. The `is_grease()` method only returns `true` for these specific values.
+
+However, **any** unknown value can serve a similar purpose. The difference is that for non-RFC values, we cannot distinguish whether they are intentionally injected "GREASE-like" values or genuinely unknown identifiers from future protocol extensions.
+
+### The Purpose of GREASE
+
+**Important:** The entire point of GREASE is that implementations should **not** check for these values. GREASE values exist to ensure that your unknown-value handling code paths are exercised. Applications can inject GREASE values into their capabilities to discourage other implementations from:
+
+- Failing on unknown values
+- Hard-coding assumptions about which values exist
+- Breaking when the protocol is extended
+
+See [Important Notes](#important-notes) for details on how OpenMLS handles GREASE during validation.
+
 ## GREASE in OpenMLS
 
 OpenMLS supports GREASE values for the following types:
@@ -96,7 +112,9 @@ let grease_proposal = ProposalType::Grease(grease_value);
 
 ### Checking for GREASE Values
 
-All GREASE-capable types provide an `is_grease()` method:
+All GREASE-capable types provide an `is_grease()` method. Note that this method only identifies the [RFC-defined GREASE values](#grease-values)—it cannot detect custom unknown values that serve a similar purpose.
+
+**Caution:** As explained in [The Purpose of GREASE](#the-purpose-of-grease), applications should generally **not** use `is_grease()` for filtering or decision-making. The method exists primarily for OpenMLS's internal validation logic and for testing/debugging purposes.
 
 ```rust
 use openmls::prelude::*;
