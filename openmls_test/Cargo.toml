@@ -26,5 +26,5 @@ rstest = { version = "0.26" }
 rstest_reuse = { version = "0.7" }
 openmls_rust_crypto = { workspace = true }
 openmls_libcrux_crypto = { workspace = true, optional = true }
-openmls_traits = { workspace = true }
+openmls_traits = { workspace = true, features = ["sync"] }
 openmls_sqlite_storage = { workspace = true, optional = true }

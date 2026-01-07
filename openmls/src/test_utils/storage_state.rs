@@ -23,32 +23,34 @@ pub struct NonProposalGroupStorageState {
 }
 
 impl NonProposalGroupStorageState {
-    pub fn from_storage(
+    #[maybe_async::maybe_async]
+    pub async fn from_storage(
         store: &impl StorageProvider<CURRENT_VERSION>,
         group_id: &impl GroupId<CURRENT_VERSION>,
     ) -> NonProposalGroupStorageState {
-        let own_leaf_nodes = store.own_leaf_nodes(group_id).unwrap();
+        let own_leaf_nodes = store.own_leaf_nodes(group_id).await.unwrap();
 
-        let group_config = store.mls_group_join_config(group_id).unwrap();
+        let group_config = store.mls_group_join_config(group_id).await.unwrap();
 
-        let tree = store.tree(group_id).unwrap();
-        let confirmation_tag = store.confirmation_tag(group_id).unwrap();
+        let tree = store.tree(group_id).await.unwrap();
+        let confirmation_tag = store.confirmation_tag(group_id).await.unwrap();
 
-        let group_state = store.group_state(group_id).unwrap();
+        let group_state = store.group_state(group_id).await.unwrap();
 
-        let context = store.group_context(group_id).unwrap();
+        let context = store.group_context(group_id).await.unwrap();
 
         let interim_transcript_hash = store
             .interim_transcript_hash(group_id)
+            .await
             .unwrap()
             .map(|hash: InterimTranscriptHash| hash.0);
 
-        let message_secrets = store.message_secrets(group_id).unwrap();
+        let message_secrets = store.message_secrets(group_id).await.unwrap();
 
-        let resumption_psk_secrets = store.resumption_psk_store(group_id).unwrap();
-        let own_leaf_index = store.own_leaf_index(group_id).unwrap();
+        let resumption_psk_secrets = store.resumption_psk_store(group_id).await.unwrap();
+        let own_leaf_index = store.own_leaf_index(group_id).await.unwrap();
 
-        let group_epoch_secrets = store.group_epoch_secrets(group_id).unwrap();
+        let group_epoch_secrets = store.group_epoch_secrets(group_id).await.unwrap();
 
         Self {
             own_leaf_nodes,
@@ -77,12 +79,13 @@ impl GroupStorageState {
     pub fn non_proposal_state(&self) -> &NonProposalGroupStorageState {
         &self.non_proposal_state
     }
-    pub fn from_storage(
+    #[maybe_async::maybe_async]
+    pub async fn from_storage(
         store: &impl StorageProvider<CURRENT_VERSION>,
         group_id: &impl GroupId<CURRENT_VERSION>,
     ) -> GroupStorageState {
-        let queued_proposals = store.queued_proposals(group_id).unwrap();
-        let non_proposal_state = NonProposalGroupStorageState::from_storage(store, group_id);
+        let queued_proposals = store.queued_proposals(group_id).await.unwrap();
+        let non_proposal_state = NonProposalGroupStorageState::from_storage(store, group_id).await;
 
         GroupStorageState {
             queued_proposals,

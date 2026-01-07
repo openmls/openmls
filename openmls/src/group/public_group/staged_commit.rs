@@ -318,7 +318,8 @@ impl PublicGroup {
     }
 
     /// Merges a [StagedCommit] into the public group state.
-    pub fn merge_commit<Storage: PublicStorageProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn merge_commit<Storage: PublicStorageProvider>(
         &mut self,
         storage: &Storage,
         staged_commit: StagedCommit,
@@ -333,7 +334,10 @@ impl PublicGroup {
         self.proposal_store.empty();
         storage
             .clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())
+            .await
             .map_err(MergeCommitError::StorageError)?;
-        self.store(storage).map_err(MergeCommitError::StorageError)
+        self.store(storage)
+            .await
+            .map_err(MergeCommitError::StorageError)
     }
 }

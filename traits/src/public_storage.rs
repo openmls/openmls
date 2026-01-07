@@ -4,6 +4,8 @@
 
 use crate::storage::StorageProvider;
 
+#[maybe_async::maybe_async(AFIT)]
+#[allow(async_fn_in_trait)]
 pub trait PublicStorageProvider<const VERSION: u16> {
     /// An opaque error returned by all methods on this trait.
     type PublicError: core::fmt::Debug + std::error::Error;
@@ -14,7 +16,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     }
 
     /// Write the TreeSync tree.
-    fn write_tree<
+    async fn write_tree<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         TreeSync: crate::storage::traits::TreeSync<VERSION>,
     >(
@@ -24,7 +26,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::PublicError>;
 
     /// Write the interim transcript hash.
-    fn write_interim_transcript_hash<
+    async fn write_interim_transcript_hash<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         InterimTranscriptHash: crate::storage::traits::InterimTranscriptHash<VERSION>,
     >(
@@ -34,7 +36,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::PublicError>;
 
     /// Write the group context.
-    fn write_context<
+    async fn write_context<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         GroupContext: crate::storage::traits::GroupContext<VERSION>,
     >(
@@ -44,7 +46,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::PublicError>;
 
     /// Write the confirmation tag.
-    fn write_confirmation_tag<
+    async fn write_confirmation_tag<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ConfirmationTag: crate::storage::traits::ConfirmationTag<VERSION>,
     >(
@@ -54,7 +56,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::PublicError>;
 
     /// Enqueue a proposal.
-    fn queue_proposal<
+    async fn queue_proposal<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
         QueuedProposal: crate::storage::traits::QueuedProposal<VERSION>,
@@ -66,7 +68,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::PublicError>;
 
     /// Returns all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
-    fn queued_proposals<
+    async fn queued_proposals<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
         QueuedProposal: crate::storage::traits::QueuedProposal<VERSION>,
@@ -76,7 +78,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::PublicError>;
 
     /// Returns the TreeSync tree for the group with group id `group_id`.
-    fn tree<
+    async fn tree<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         TreeSync: crate::storage::traits::TreeSync<VERSION>,
     >(
@@ -85,7 +87,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<Option<TreeSync>, Self::PublicError>;
 
     /// Returns the group context for the group with group id `group_id`.
-    fn group_context<
+    async fn group_context<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         GroupContext: crate::storage::traits::GroupContext<VERSION>,
     >(
@@ -94,7 +96,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<Option<GroupContext>, Self::PublicError>;
 
     /// Returns the interim transcript hash for the group with group id `group_id`.
-    fn interim_transcript_hash<
+    async fn interim_transcript_hash<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         InterimTranscriptHash: crate::storage::traits::InterimTranscriptHash<VERSION>,
     >(
@@ -103,7 +105,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<Option<InterimTranscriptHash>, Self::PublicError>;
 
     /// Returns the confirmation tag for the group with group id `group_id`.
-    fn confirmation_tag<
+    async fn confirmation_tag<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ConfirmationTag: crate::storage::traits::ConfirmationTag<VERSION>,
     >(
@@ -112,31 +114,31 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<Option<ConfirmationTag>, Self::PublicError>;
 
     /// Deletes the tree from storage
-    fn delete_tree<GroupId: crate::storage::traits::GroupId<VERSION>>(
+    async fn delete_tree<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::PublicError>;
 
     /// Deletes the confirmation tag from storage
-    fn delete_confirmation_tag<GroupId: crate::storage::traits::GroupId<VERSION>>(
+    async fn delete_confirmation_tag<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::PublicError>;
 
     /// Deletes the group context for the group with given id
-    fn delete_context<GroupId: crate::storage::traits::GroupId<VERSION>>(
+    async fn delete_context<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::PublicError>;
 
     /// Deletes the interim transcript hash for the group with given id
-    fn delete_interim_transcript_hash<GroupId: crate::storage::traits::GroupId<VERSION>>(
+    async fn delete_interim_transcript_hash<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::PublicError>;
 
     /// Removes an individual proposal from the proposal queue of the group with the provided id
-    fn remove_proposal<
+    async fn remove_proposal<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
     >(
@@ -146,7 +148,7 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::PublicError>;
 
     /// Clear the proposal queue for the group with the given id.
-    fn clear_proposal_queue<
+    async fn clear_proposal_queue<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
     >(
@@ -155,13 +157,14 @@ pub trait PublicStorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::PublicError>;
 }
 
+#[maybe_async::maybe_async(AFIT)]
 impl<T, const VERSION: u16> PublicStorageProvider<VERSION> for T
 where
     T: StorageProvider<VERSION>,
 {
     type PublicError = <T as StorageProvider<VERSION>>::Error;
 
-    fn write_tree<
+    async fn write_tree<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         TreeSync: crate::storage::traits::TreeSync<VERSION>,
     >(
@@ -169,10 +172,10 @@ where
         group_id: &GroupId,
         tree: &TreeSync,
     ) -> Result<(), Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::write_tree(self, group_id, tree)
+        <Self as StorageProvider<VERSION>>::write_tree(self, group_id, tree).await
     }
 
-    fn write_interim_transcript_hash<
+    async fn write_interim_transcript_hash<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         InterimTranscriptHash: crate::storage::traits::InterimTranscriptHash<VERSION>,
     >(
@@ -185,9 +188,10 @@ where
             group_id,
             interim_transcript_hash,
         )
+        .await
     }
 
-    fn write_context<
+    async fn write_context<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         GroupContext: crate::storage::traits::GroupContext<VERSION>,
     >(
@@ -195,10 +199,10 @@ where
         group_id: &GroupId,
         group_context: &GroupContext,
     ) -> Result<(), Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::write_context(self, group_id, group_context)
+        <Self as StorageProvider<VERSION>>::write_context(self, group_id, group_context).await
     }
 
-    fn write_confirmation_tag<
+    async fn write_confirmation_tag<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ConfirmationTag: crate::storage::traits::ConfirmationTag<VERSION>,
     >(
@@ -207,9 +211,10 @@ where
         confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::PublicError> {
         <Self as StorageProvider<VERSION>>::write_confirmation_tag(self, group_id, confirmation_tag)
+            .await
     }
 
-    fn queue_proposal<
+    async fn queue_proposal<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
         QueuedProposal: crate::storage::traits::QueuedProposal<VERSION>,
@@ -220,9 +225,10 @@ where
         proposal: &QueuedProposal,
     ) -> Result<(), Self::PublicError> {
         <Self as StorageProvider<VERSION>>::queue_proposal(self, group_id, proposal_ref, proposal)
+            .await
     }
 
-    fn queued_proposals<
+    async fn queued_proposals<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
         QueuedProposal: crate::storage::traits::QueuedProposal<VERSION>,
@@ -230,78 +236,78 @@ where
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::queued_proposals(self, group_id)
+        <Self as StorageProvider<VERSION>>::queued_proposals(self, group_id).await
     }
 
-    fn tree<
+    async fn tree<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         TreeSync: crate::storage::traits::TreeSync<VERSION>,
     >(
         &self,
         group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::tree(self, group_id)
+        <Self as StorageProvider<VERSION>>::tree(self, group_id).await
     }
 
-    fn group_context<
+    async fn group_context<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         GroupContext: crate::storage::traits::GroupContext<VERSION>,
     >(
         &self,
         group_id: &GroupId,
     ) -> Result<Option<GroupContext>, Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::group_context(self, group_id)
+        <Self as StorageProvider<VERSION>>::group_context(self, group_id).await
     }
 
-    fn interim_transcript_hash<
+    async fn interim_transcript_hash<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         InterimTranscriptHash: crate::storage::traits::InterimTranscriptHash<VERSION>,
     >(
         &self,
         group_id: &GroupId,
     ) -> Result<Option<InterimTranscriptHash>, Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::interim_transcript_hash(self, group_id)
+        <Self as StorageProvider<VERSION>>::interim_transcript_hash(self, group_id).await
     }
 
-    fn confirmation_tag<
+    async fn confirmation_tag<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ConfirmationTag: crate::storage::traits::ConfirmationTag<VERSION>,
     >(
         &self,
         group_id: &GroupId,
     ) -> Result<Option<ConfirmationTag>, Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::confirmation_tag(self, group_id)
+        <Self as StorageProvider<VERSION>>::confirmation_tag(self, group_id).await
     }
 
-    fn delete_tree<GroupId: crate::storage::traits::GroupId<VERSION>>(
+    async fn delete_tree<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::delete_tree(self, group_id)
+        <Self as StorageProvider<VERSION>>::delete_tree(self, group_id).await
     }
 
-    fn delete_confirmation_tag<GroupId: crate::storage::traits::GroupId<VERSION>>(
+    async fn delete_confirmation_tag<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::delete_confirmation_tag(self, group_id)
+        <Self as StorageProvider<VERSION>>::delete_confirmation_tag(self, group_id).await
     }
 
-    fn delete_context<GroupId: crate::storage::traits::GroupId<VERSION>>(
+    async fn delete_context<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::delete_context(self, group_id)
+        <Self as StorageProvider<VERSION>>::delete_context(self, group_id).await
     }
 
-    fn delete_interim_transcript_hash<GroupId: crate::storage::traits::GroupId<VERSION>>(
+    async fn delete_interim_transcript_hash<GroupId: crate::storage::traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::delete_interim_transcript_hash(self, group_id)
+        <Self as StorageProvider<VERSION>>::delete_interim_transcript_hash(self, group_id).await
     }
 
-    fn remove_proposal<
+    async fn remove_proposal<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
     >(
@@ -309,10 +315,10 @@ where
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
     ) -> Result<(), Self::PublicError> {
-        <Self as StorageProvider<VERSION>>::remove_proposal(self, group_id, proposal_ref)
+        <Self as StorageProvider<VERSION>>::remove_proposal(self, group_id, proposal_ref).await
     }
 
-    fn clear_proposal_queue<
+    async fn clear_proposal_queue<
         GroupId: crate::storage::traits::GroupId<VERSION>,
         ProposalRef: crate::storage::traits::ProposalRef<VERSION>,
     >(
@@ -322,5 +328,6 @@ where
         <Self as StorageProvider<VERSION>>::clear_proposal_queue::<GroupId, ProposalRef>(
             self, group_id,
         )
+        .await
     }
 }
