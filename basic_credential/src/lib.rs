@@ -117,15 +117,17 @@ impl SignatureKeyPair {
     }
 
     /// Store this signature key pair in the key store.
-    pub fn store<T>(&self, store: &T) -> Result<(), T::Error>
+    #[maybe_async::maybe_async]
+    pub async fn store<T>(&self, store: &T) -> Result<(), T::Error>
     where
         T: StorageProvider<CURRENT_VERSION>,
     {
-        store.write_signature_key_pair(&self.id(), self)
+        store.write_signature_key_pair(&self.id(), self).await
     }
 
     /// Read a signature key pair from the key store.
-    pub fn read(
+    #[maybe_async::maybe_async]
+    pub async fn read(
         store: &impl StorageProvider<CURRENT_VERSION>,
         public_key: &[u8],
         signature_scheme: SignatureScheme,
@@ -134,12 +136,14 @@ impl SignatureKeyPair {
             .signature_key_pair(&StorageId {
                 value: id(public_key, signature_scheme),
             })
+            .await
             .ok()
             .flatten()
     }
 
     /// Delete a signature key pair from the key store.
-    pub fn delete<T: StorageProvider<CURRENT_VERSION>>(
+    #[maybe_async::maybe_async]
+    pub async fn delete<T: StorageProvider<CURRENT_VERSION>>(
         store: &T,
         public_key: &[u8],
         signature_scheme: SignatureScheme,
@@ -147,7 +151,7 @@ impl SignatureKeyPair {
         let id = StorageId {
             value: id(public_key, signature_scheme),
         };
-        store.delete_signature_key_pair(&id)
+        store.delete_signature_key_pair(&id).await
     }
 
     /// Get the public key as byte slice.

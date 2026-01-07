@@ -16,22 +16,24 @@ async fn proposals() {
         .unwrap();
     let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
 
-    storage.run_migrations().unwrap();
+    storage.run_migrations().await.unwrap();
 
     for (i, proposal) in proposals.iter().enumerate() {
         storage
             .queue_proposal(&group_id, &TestProposalRef(i), proposal)
+            .await
             .unwrap();
     }
 
-    let proposal_refs_read: Vec<TestProposalRef> = storage.queued_proposal_refs(&group_id).unwrap();
+    let proposal_refs_read: Vec<TestProposalRef> =
+        storage.queued_proposal_refs(&group_id).await.unwrap();
     assert_eq!(
         (0..10).map(TestProposalRef).collect::<Vec<_>>(),
         proposal_refs_read
     );
 
     let proposals_read: Vec<(TestProposalRef, TestProposal)> =
-        storage.queued_proposals(&group_id).unwrap();
+        storage.queued_proposals(&group_id).await.unwrap();
     let proposals_expected: Vec<(TestProposalRef, TestProposal)> = (0..10)
         .map(TestProposalRef)
         .zip(proposals.clone())
@@ -40,15 +42,17 @@ async fn proposals() {
 
     storage
         .remove_proposal(&group_id, &TestProposalRef(5))
+        .await
         .unwrap();
 
-    let proposal_refs_read: Vec<TestProposalRef> = storage.queued_proposal_refs(&group_id).unwrap();
+    let proposal_refs_read: Vec<TestProposalRef> =
+        storage.queued_proposal_refs(&group_id).await.unwrap();
     let mut expected = (0..10).map(TestProposalRef).collect::<Vec<_>>();
     expected.remove(5);
     assert_eq!(expected, proposal_refs_read);
 
     let proposals_read: Vec<(TestProposalRef, TestProposal)> =
-        storage.queued_proposals(&group_id).unwrap();
+        storage.queued_proposals(&group_id).await.unwrap();
     let mut proposals_expected: Vec<(TestProposalRef, TestProposal)> = (0..10)
         .map(TestProposalRef)
         .zip(proposals.clone())
@@ -58,12 +62,14 @@ async fn proposals() {
 
     storage
         .clear_proposal_queue::<TestGroupId, TestProposalRef>(&group_id)
+        .await
         .unwrap();
-    let proposal_refs_read: Vec<TestProposalRef> = storage.queued_proposal_refs(&group_id).unwrap();
+    let proposal_refs_read: Vec<TestProposalRef> =
+        storage.queued_proposal_refs(&group_id).await.unwrap();
     assert!(proposal_refs_read.is_empty());
 
     let proposals_read: Vec<(TestProposalRef, TestProposal)> =
-        storage.queued_proposals(&group_id).unwrap();
+        storage.queued_proposals(&group_id).await.unwrap();
     assert!(proposals_read.is_empty());
 }
 
@@ -87,109 +93,117 @@ async fn group_data_roundtrip() {
         .await
         .unwrap();
     let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
-    storage.run_migrations().unwrap();
+    storage.run_migrations().await.unwrap();
 
     storage
         .write_mls_join_config(&group_id, &join_config)
+        .await
         .unwrap();
-    let join_read: Option<TestBlob> = storage.mls_group_join_config(&group_id).unwrap();
+    let join_read: Option<TestBlob> = storage.mls_group_join_config(&group_id).await.unwrap();
     assert_eq!(Some(join_config.clone()), join_read);
-    storage.delete_group_config(&group_id).unwrap();
-    let join_after_delete: Option<TestBlob> = storage.mls_group_join_config(&group_id).unwrap();
+    storage.delete_group_config(&group_id).await.unwrap();
+    let join_after_delete: Option<TestBlob> = storage.mls_group_join_config(&group_id).await.unwrap();
     assert!(join_after_delete.is_none());
 
-    storage.write_tree(&group_id, &tree).unwrap();
-    let tree_read: Option<TestBlob> = storage.tree(&group_id).unwrap();
+    storage.write_tree(&group_id, &tree).await.unwrap();
+    let tree_read: Option<TestBlob> = storage.tree(&group_id).await.unwrap();
     assert_eq!(Some(tree.clone()), tree_read);
-    storage.delete_tree(&group_id).unwrap();
-    let tree_after_delete: Option<TestBlob> = storage.tree(&group_id).unwrap();
+    storage.delete_tree(&group_id).await.unwrap();
+    let tree_after_delete: Option<TestBlob> = storage.tree(&group_id).await.unwrap();
     assert!(tree_after_delete.is_none());
 
-    storage.write_context(&group_id, &group_context).unwrap();
-    let context_read: Option<TestBlob> = storage.group_context(&group_id).unwrap();
+    storage.write_context(&group_id, &group_context).await.unwrap();
+    let context_read: Option<TestBlob> = storage.group_context(&group_id).await.unwrap();
     assert_eq!(Some(group_context.clone()), context_read);
-    storage.delete_context(&group_id).unwrap();
-    let context_after_delete: Option<TestBlob> = storage.group_context(&group_id).unwrap();
+    storage.delete_context(&group_id).await.unwrap();
+    let context_after_delete: Option<TestBlob> = storage.group_context(&group_id).await.unwrap();
     assert!(context_after_delete.is_none());
 
     storage
         .write_interim_transcript_hash(&group_id, &interim)
+        .await
         .unwrap();
-    let interim_read: Option<TestBlob> = storage.interim_transcript_hash(&group_id).unwrap();
+    let interim_read: Option<TestBlob> = storage.interim_transcript_hash(&group_id).await.unwrap();
     assert_eq!(Some(interim.clone()), interim_read);
-    storage.delete_interim_transcript_hash(&group_id).unwrap();
+    storage.delete_interim_transcript_hash(&group_id).await.unwrap();
     let interim_after_delete: Option<TestBlob> =
-        storage.interim_transcript_hash(&group_id).unwrap();
+        storage.interim_transcript_hash(&group_id).await.unwrap();
     assert!(interim_after_delete.is_none());
 
     storage
         .write_confirmation_tag(&group_id, &confirmation)
+        .await
         .unwrap();
-    let confirmation_read: Option<TestBlob> = storage.confirmation_tag(&group_id).unwrap();
+    let confirmation_read: Option<TestBlob> = storage.confirmation_tag(&group_id).await.unwrap();
     assert_eq!(Some(confirmation.clone()), confirmation_read);
-    storage.delete_confirmation_tag(&group_id).unwrap();
-    let confirmation_after_delete: Option<TestBlob> = storage.confirmation_tag(&group_id).unwrap();
+    storage.delete_confirmation_tag(&group_id).await.unwrap();
+    let confirmation_after_delete: Option<TestBlob> = storage.confirmation_tag(&group_id).await.unwrap();
     assert!(confirmation_after_delete.is_none());
 
-    storage.write_group_state(&group_id, &group_state).unwrap();
-    let group_state_read: Option<TestBlob> = storage.group_state(&group_id).unwrap();
+    storage.write_group_state(&group_id, &group_state).await.unwrap();
+    let group_state_read: Option<TestBlob> = storage.group_state(&group_id).await.unwrap();
     assert_eq!(Some(group_state.clone()), group_state_read);
-    storage.delete_group_state(&group_id).unwrap();
-    let group_state_after_delete: Option<TestBlob> = storage.group_state(&group_id).unwrap();
+    storage.delete_group_state(&group_id).await.unwrap();
+    let group_state_after_delete: Option<TestBlob> = storage.group_state(&group_id).await.unwrap();
     assert!(group_state_after_delete.is_none());
 
     storage
         .write_message_secrets(&group_id, &message_secrets)
+        .await
         .unwrap();
-    let message_secrets_read: Option<TestBlob> = storage.message_secrets(&group_id).unwrap();
+    let message_secrets_read: Option<TestBlob> = storage.message_secrets(&group_id).await.unwrap();
     assert_eq!(Some(message_secrets.clone()), message_secrets_read);
-    storage.delete_message_secrets(&group_id).unwrap();
+    storage.delete_message_secrets(&group_id).await.unwrap();
     let message_secrets_after_delete: Option<TestBlob> =
-        storage.message_secrets(&group_id).unwrap();
+        storage.message_secrets(&group_id).await.unwrap();
     assert!(message_secrets_after_delete.is_none());
 
     storage
         .write_resumption_psk_store(&group_id, &resumption)
+        .await
         .unwrap();
-    let resumption_read: Option<TestBlob> = storage.resumption_psk_store(&group_id).unwrap();
+    let resumption_read: Option<TestBlob> = storage.resumption_psk_store(&group_id).await.unwrap();
     assert_eq!(Some(resumption.clone()), resumption_read);
     storage
         .delete_all_resumption_psk_secrets(&group_id)
+        .await
         .unwrap();
     let resumption_after_delete: Option<TestBlob> =
-        storage.resumption_psk_store(&group_id).unwrap();
+        storage.resumption_psk_store(&group_id).await.unwrap();
     assert!(resumption_after_delete.is_none());
 
     storage
         .write_group_epoch_secrets(&group_id, &epoch_secrets)
+        .await
         .unwrap();
-    let epoch_secrets_read: Option<TestBlob> = storage.group_epoch_secrets(&group_id).unwrap();
+    let epoch_secrets_read: Option<TestBlob> = storage.group_epoch_secrets(&group_id).await.unwrap();
     assert_eq!(Some(epoch_secrets.clone()), epoch_secrets_read);
-    storage.delete_group_epoch_secrets(&group_id).unwrap();
+    storage.delete_group_epoch_secrets(&group_id).await.unwrap();
     let epoch_secrets_after_delete: Option<TestBlob> =
-        storage.group_epoch_secrets(&group_id).unwrap();
+        storage.group_epoch_secrets(&group_id).await.unwrap();
     assert!(epoch_secrets_after_delete.is_none());
 
     storage
         .write_own_leaf_index(&group_id, &own_leaf_index)
+        .await
         .unwrap();
-    let own_index_read: Option<TestLeafIndex> = storage.own_leaf_index(&group_id).unwrap();
+    let own_index_read: Option<TestLeafIndex> = storage.own_leaf_index(&group_id).await.unwrap();
     assert_eq!(Some(own_leaf_index.clone()), own_index_read);
-    storage.delete_own_leaf_index(&group_id).unwrap();
-    let own_index_after_delete: Option<TestLeafIndex> = storage.own_leaf_index(&group_id).unwrap();
+    storage.delete_own_leaf_index(&group_id).await.unwrap();
+    let own_index_after_delete: Option<TestLeafIndex> = storage.own_leaf_index(&group_id).await.unwrap();
     assert!(own_index_after_delete.is_none());
 
-    storage.append_own_leaf_node(&group_id, &leaf_a).unwrap();
-    let leaf_nodes_read: Vec<TestBlob> = storage.own_leaf_nodes(&group_id).unwrap();
+    storage.append_own_leaf_node(&group_id, &leaf_a).await.unwrap();
+    let leaf_nodes_read: Vec<TestBlob> = storage.own_leaf_nodes(&group_id).await.unwrap();
     assert_eq!(vec![leaf_a.clone()], leaf_nodes_read);
 
-    storage.delete_own_leaf_nodes(&group_id).unwrap();
-    storage.append_own_leaf_node(&group_id, &leaf_b).unwrap();
-    let leaf_nodes_replaced: Vec<TestBlob> = storage.own_leaf_nodes(&group_id).unwrap();
+    storage.delete_own_leaf_nodes(&group_id).await.unwrap();
+    storage.append_own_leaf_node(&group_id, &leaf_b).await.unwrap();
+    let leaf_nodes_replaced: Vec<TestBlob> = storage.own_leaf_nodes(&group_id).await.unwrap();
     assert_eq!(vec![leaf_b.clone()], leaf_nodes_replaced);
 
-    storage.delete_own_leaf_nodes(&group_id).unwrap();
-    let leaf_nodes_after_delete: Vec<TestBlob> = storage.own_leaf_nodes(&group_id).unwrap();
+    storage.delete_own_leaf_nodes(&group_id).await.unwrap();
+    let leaf_nodes_after_delete: Vec<TestBlob> = storage.own_leaf_nodes(&group_id).await.unwrap();
     assert!(leaf_nodes_after_delete.is_empty());
 }
 
@@ -215,58 +229,66 @@ async fn key_material_roundtrip() {
         .await
         .unwrap();
     let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
-    storage.run_migrations().unwrap();
+    storage.run_migrations().await.unwrap();
 
     storage
         .write_signature_key_pair(&signature_public_key, &signature_key_pair)
+        .await
         .unwrap();
     let signature_pair_read: Option<TestSignatureKeyPair> =
-        storage.signature_key_pair(&signature_public_key).unwrap();
+        storage.signature_key_pair(&signature_public_key).await.unwrap();
     assert_eq!(Some(signature_key_pair.clone()), signature_pair_read);
     storage
         .delete_signature_key_pair(&signature_public_key)
+        .await
         .unwrap();
     let signature_pair_after_delete: Option<TestSignatureKeyPair> =
-        storage.signature_key_pair(&signature_public_key).unwrap();
+        storage.signature_key_pair(&signature_public_key).await.unwrap();
     assert!(signature_pair_after_delete.is_none());
 
     storage
         .write_encryption_key_pair(&encryption_key, &encryption_pair)
+        .await
         .unwrap();
     let encryption_pair_read: Option<TestHpkeKeyPair> =
-        storage.encryption_key_pair(&encryption_key).unwrap();
+        storage.encryption_key_pair(&encryption_key).await.unwrap();
     assert_eq!(Some(encryption_pair.clone()), encryption_pair_read);
-    storage.delete_encryption_key_pair(&encryption_key).unwrap();
+    storage.delete_encryption_key_pair(&encryption_key).await.unwrap();
     let encryption_pair_after_delete: Option<TestHpkeKeyPair> =
-        storage.encryption_key_pair(&encryption_key).unwrap();
+        storage.encryption_key_pair(&encryption_key).await.unwrap();
     assert!(encryption_pair_after_delete.is_none());
 
     storage
         .write_encryption_epoch_key_pairs(&group_id, &epoch, leaf_index, &epoch_pairs)
+        .await
         .unwrap();
     let epoch_pairs_read: Vec<TestHpkeKeyPair> = storage
         .encryption_epoch_key_pairs(&group_id, &epoch, leaf_index)
+        .await
         .unwrap();
     assert_eq!(epoch_pairs.clone(), epoch_pairs_read);
     storage
         .delete_encryption_epoch_key_pairs(&group_id, &epoch, leaf_index)
+        .await
         .unwrap();
     let epoch_pairs_after_delete: Vec<TestHpkeKeyPair> = storage
         .encryption_epoch_key_pairs(&group_id, &epoch, leaf_index)
+        .await
         .unwrap();
     assert!(epoch_pairs_after_delete.is_empty());
 
-    storage.write_key_package(&hash_ref, &key_package).unwrap();
-    let key_package_read: Option<TestKeyPackage> = storage.key_package(&hash_ref).unwrap();
+    storage.write_key_package(&hash_ref, &key_package).await.unwrap();
+    let key_package_read: Option<TestKeyPackage> = storage.key_package(&hash_ref).await.unwrap();
     assert_eq!(Some(key_package.clone()), key_package_read);
-    storage.delete_key_package(&hash_ref).unwrap();
-    let key_package_after_delete: Option<TestKeyPackage> = storage.key_package(&hash_ref).unwrap();
+    storage.delete_key_package(&hash_ref).await.unwrap();
+    let key_package_after_delete: Option<TestKeyPackage> =
+        storage.key_package(&hash_ref).await.unwrap();
     assert!(key_package_after_delete.is_none());
 
-    storage.write_psk(&psk_id, &psk_bundle).unwrap();
-    let psk_bundle_read: Option<TestPskBundle> = storage.psk(&psk_id).unwrap();
+    storage.write_psk(&psk_id, &psk_bundle).await.unwrap();
+    let psk_bundle_read: Option<TestPskBundle> = storage.psk(&psk_id).await.unwrap();
     assert_eq!(Some(psk_bundle.clone()), psk_bundle_read);
-    storage.delete_psk(&psk_id).unwrap();
-    let psk_bundle_after_delete: Option<TestPskBundle> = storage.psk(&psk_id).unwrap();
+    storage.delete_psk(&psk_id).await.unwrap();
+    let psk_bundle_after_delete: Option<TestPskBundle> = storage.psk(&psk_id).await.unwrap();
     assert!(psk_bundle_after_delete.is_none());
 }

@@ -11,6 +11,7 @@ readme = "README.md"
 
 [dependencies]
 openmls_traits = { workspace = true }
+maybe-async = { workspace = true }
 tls_codec = { workspace = true }
 serde = "1.0"
 
@@ -20,5 +21,7 @@ p256 = { version = "0.13" }
 rand = "0.8"
 
 [features]
-clonable = []   # Make the keys clonable
-test-utils = [] # Only use for tests!
+sync = ["maybe-async/is_sync", "openmls_traits/sync"]
+async = ["openmls_traits/async"]
+clonable = []                                         # Make the keys clonable
+test-utils = []                                       # Only use for tests!

@@ -26,6 +26,8 @@ pub const V_TEST: u16 = u16::MAX;
 /// loading a group.
 ///
 /// More details can be taken from the comments on the respective method.
+#[maybe_async::maybe_async(AFIT)]
+#[allow(async_fn_in_trait)]
 pub trait StorageProvider<const VERSION: u16> {
     /// An opaque error returned by all methods on this trait.
     type Error: core::fmt::Debug + std::error::Error;
@@ -40,7 +42,7 @@ pub trait StorageProvider<const VERSION: u16> {
     //
 
     /// Writes the MlsGroupJoinConfig for the group with given id to storage
-    fn write_mls_join_config<
+    async fn write_mls_join_config<
         GroupId: traits::GroupId<VERSION>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<VERSION>,
     >(
@@ -50,7 +52,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Adds an own leaf node for the group with given id to storage
-    fn append_own_leaf_node<
+    async fn append_own_leaf_node<
         GroupId: traits::GroupId<VERSION>,
         LeafNode: traits::LeafNode<VERSION>,
     >(
@@ -63,7 +65,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// A good way to implement this could be to add a proposal to a proposal store, indexed by the
     /// proposal reference, and adding the reference to a per-group proposal queue list.
-    fn queue_proposal<
+    async fn queue_proposal<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,
         QueuedProposal: traits::QueuedProposal<VERSION>,
@@ -75,14 +77,14 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Write the TreeSync tree.
-    fn write_tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
+    async fn write_tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
         &self,
         group_id: &GroupId,
         tree: &TreeSync,
     ) -> Result<(), Self::Error>;
 
     /// Write the interim transcript hash.
-    fn write_interim_transcript_hash<
+    async fn write_interim_transcript_hash<
         GroupId: traits::GroupId<VERSION>,
         InterimTranscriptHash: traits::InterimTranscriptHash<VERSION>,
     >(
@@ -92,7 +94,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Write the group context.
-    fn write_context<
+    async fn write_context<
         GroupId: traits::GroupId<VERSION>,
         GroupContext: traits::GroupContext<VERSION>,
     >(
@@ -102,7 +104,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Write the confirmation tag.
-    fn write_confirmation_tag<
+    async fn write_confirmation_tag<
         GroupId: traits::GroupId<VERSION>,
         ConfirmationTag: traits::ConfirmationTag<VERSION>,
     >(
@@ -112,7 +114,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Writes the MlsGroupState for group with given id.
-    fn write_group_state<
+    async fn write_group_state<
         GroupState: traits::GroupState<VERSION>,
         GroupId: traits::GroupId<VERSION>,
     >(
@@ -122,7 +124,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Writes the MessageSecretsStore for the group with the given id.
-    fn write_message_secrets<
+    async fn write_message_secrets<
         GroupId: traits::GroupId<VERSION>,
         MessageSecrets: traits::MessageSecrets<VERSION>,
     >(
@@ -132,7 +134,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Writes the ResumptionPskStore for the group with the given id.
-    fn write_resumption_psk_store<
+    async fn write_resumption_psk_store<
         GroupId: traits::GroupId<VERSION>,
         ResumptionPskStore: traits::ResumptionPskStore<VERSION>,
     >(
@@ -142,7 +144,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Writes the own leaf index inside the group for the group with the given id.
-    fn write_own_leaf_index<
+    async fn write_own_leaf_index<
         GroupId: traits::GroupId<VERSION>,
         LeafNodeIndex: traits::LeafNodeIndex<VERSION>,
     >(
@@ -152,7 +154,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Writes the GroupEpochSecrets for the group with the given id.
-    fn write_group_epoch_secrets<
+    async fn write_group_epoch_secrets<
         GroupId: traits::GroupId<VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<VERSION>,
     >(
@@ -163,7 +165,7 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Write the ApplicationExportTree for the group with the given id.
     #[cfg(feature = "extensions-draft-08")]
-    fn write_application_export_tree<
+    async fn write_application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
     >(
@@ -180,7 +182,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// The signature key pair is not known to OpenMLS. This may be used by the
     /// application
-    fn write_signature_key_pair<
+    async fn write_signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<VERSION>,
     >(
@@ -195,7 +197,7 @@ pub trait StorageProvider<const VERSION: u16> {
     /// This is only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    fn write_encryption_key_pair<
+    async fn write_encryption_key_pair<
         EncryptionKey: traits::EncryptionKey<VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
     >(
@@ -206,7 +208,7 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Store a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
-    fn write_encryption_epoch_key_pairs<
+    async fn write_encryption_epoch_key_pairs<
         GroupId: traits::GroupId<VERSION>,
         EpochKey: traits::EpochKey<VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
@@ -227,7 +229,7 @@ pub trait StorageProvider<const VERSION: u16> {
     /// in order to iterate over key packages. OpenMLS does not have a reference
     /// for them.
     // ANCHOR: write_key_package
-    fn write_key_package<
+    async fn write_key_package<
         HashReference: traits::HashReference<VERSION>,
         KeyPackage: traits::KeyPackage<VERSION>,
     >(
@@ -243,7 +245,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// PSKs are only read by OpenMLS. The application is responsible for managing
     /// and storing PSKs.
-    fn write_psk<PskId: traits::PskId<VERSION>, PskBundle: traits::PskBundle<VERSION>>(
+    async fn write_psk<PskId: traits::PskId<VERSION>, PskBundle: traits::PskBundle<VERSION>>(
         &self,
         psk_id: &PskId,
         psk: &PskBundle,
@@ -254,7 +256,7 @@ pub trait StorageProvider<const VERSION: u16> {
     //
 
     /// Returns the MlsGroupJoinConfig for the group with given id
-    fn mls_group_join_config<
+    async fn mls_group_join_config<
         GroupId: traits::GroupId<VERSION>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<VERSION>,
     >(
@@ -264,14 +266,17 @@ pub trait StorageProvider<const VERSION: u16> {
 
     // ANCHOR: own_leaf_nodes
     /// Returns the own leaf nodes for the group with given id
-    fn own_leaf_nodes<GroupId: traits::GroupId<VERSION>, LeafNode: traits::LeafNode<VERSION>>(
+    async fn own_leaf_nodes<
+        GroupId: traits::GroupId<VERSION>,
+        LeafNode: traits::LeafNode<VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error>;
     // ANCHOR_END: own_leaf_nodes
 
     /// Returns references of all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
-    fn queued_proposal_refs<
+    async fn queued_proposal_refs<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,
     >(
@@ -280,7 +285,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Vec<ProposalRef>, Self::Error>;
 
     /// Returns all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
-    fn queued_proposals<
+    async fn queued_proposals<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,
         QueuedProposal: traits::QueuedProposal<VERSION>,
@@ -290,13 +295,13 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error>;
 
     /// Returns the TreeSync tree for the group with group id `group_id`.
-    fn tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
+    async fn tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error>;
 
     /// Returns the group context for the group with group id `group_id`.
-    fn group_context<
+    async fn group_context<
         GroupId: traits::GroupId<VERSION>,
         GroupContext: traits::GroupContext<VERSION>,
     >(
@@ -305,7 +310,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<GroupContext>, Self::Error>;
 
     /// Returns the interim transcript hash for the group with group id `group_id`.
-    fn interim_transcript_hash<
+    async fn interim_transcript_hash<
         GroupId: traits::GroupId<VERSION>,
         InterimTranscriptHash: traits::InterimTranscriptHash<VERSION>,
     >(
@@ -314,7 +319,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<InterimTranscriptHash>, Self::Error>;
 
     /// Returns the confirmation tag for the group with group id `group_id`.
-    fn confirmation_tag<
+    async fn confirmation_tag<
         GroupId: traits::GroupId<VERSION>,
         ConfirmationTag: traits::ConfirmationTag<VERSION>,
     >(
@@ -323,13 +328,16 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<ConfirmationTag>, Self::Error>;
 
     /// Returns the group state for the group with group id `group_id`.
-    fn group_state<GroupState: traits::GroupState<VERSION>, GroupId: traits::GroupId<VERSION>>(
+    async fn group_state<
+        GroupState: traits::GroupState<VERSION>,
+        GroupId: traits::GroupId<VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<Option<GroupState>, Self::Error>;
 
     /// Returns the MessageSecretsStore for the group with the given id.
-    fn message_secrets<
+    async fn message_secrets<
         GroupId: traits::GroupId<VERSION>,
         MessageSecrets: traits::MessageSecrets<VERSION>,
     >(
@@ -341,7 +349,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// Returning `None` here is considered an error because the store is needed
     /// by OpenMLS when loading a group.
-    fn resumption_psk_store<
+    async fn resumption_psk_store<
         GroupId: traits::GroupId<VERSION>,
         ResumptionPskStore: traits::ResumptionPskStore<VERSION>,
     >(
@@ -350,7 +358,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<ResumptionPskStore>, Self::Error>;
 
     /// Returns the own leaf index inside the group for the group with the given id.
-    fn own_leaf_index<
+    async fn own_leaf_index<
         GroupId: traits::GroupId<VERSION>,
         LeafNodeIndex: traits::LeafNodeIndex<VERSION>,
     >(
@@ -359,7 +367,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<LeafNodeIndex>, Self::Error>;
 
     /// Returns the GroupEpochSecrets for the group with the given id.
-    fn group_epoch_secrets<
+    async fn group_epoch_secrets<
         GroupId: traits::GroupId<VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<VERSION>,
     >(
@@ -375,7 +383,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// The signature key pair is not known to OpenMLS. This may be used by the
     /// application
-    fn signature_key_pair<
+    async fn signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<VERSION>,
     >(
@@ -388,7 +396,7 @@ pub trait StorageProvider<const VERSION: u16> {
     /// This is only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    fn encryption_key_pair<
+    async fn encryption_key_pair<
         HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
         EncryptionKey: traits::EncryptionKey<VERSION>,
     >(
@@ -398,7 +406,7 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Get a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
-    fn encryption_epoch_key_pairs<
+    async fn encryption_epoch_key_pairs<
         GroupId: traits::GroupId<VERSION>,
         EpochKey: traits::EpochKey<VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
@@ -410,7 +418,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Vec<HpkeKeyPair>, Self::Error>;
 
     /// Get a key package based on its hash reference.
-    fn key_package<
+    async fn key_package<
         KeyPackageRef: traits::HashReference<VERSION>,
         KeyPackage: traits::KeyPackage<VERSION>,
     >(
@@ -419,14 +427,14 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<KeyPackage>, Self::Error>;
 
     /// Get a PSK based on the PSK identifier.
-    fn psk<PskBundle: traits::PskBundle<VERSION>, PskId: traits::PskId<VERSION>>(
+    async fn psk<PskBundle: traits::PskBundle<VERSION>, PskId: traits::PskId<VERSION>>(
         &self,
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error>;
 
     #[cfg(feature = "extensions-draft-08")]
     /// Get the application export tree for the group with the given id.
-    fn application_export_tree<
+    async fn application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
     >(
@@ -439,7 +447,7 @@ pub trait StorageProvider<const VERSION: u16> {
     //
 
     /// Removes an individual proposal from the proposal queue of the group with the provided id
-    fn remove_proposal<
+    async fn remove_proposal<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,
     >(
@@ -449,73 +457,73 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Deletes own leaf nodes for the given id from storage
-    fn delete_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
+    async fn delete_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Deletes the MlsGroupJoinConfig for the given id from storage
-    fn delete_group_config<GroupId: traits::GroupId<VERSION>>(
+    async fn delete_group_config<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Deletes the tree from storage
-    fn delete_tree<GroupId: traits::GroupId<VERSION>>(
+    async fn delete_tree<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Deletes the confirmation tag from storage
-    fn delete_confirmation_tag<GroupId: traits::GroupId<VERSION>>(
+    async fn delete_confirmation_tag<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Deletes the MlsGroupState for group with given id.
-    fn delete_group_state<GroupId: traits::GroupId<VERSION>>(
+    async fn delete_group_state<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Deletes the group context for the group with given id
-    fn delete_context<GroupId: traits::GroupId<VERSION>>(
+    async fn delete_context<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Deletes the interim transcript hash for the group with given id
-    fn delete_interim_transcript_hash<GroupId: traits::GroupId<VERSION>>(
+    async fn delete_interim_transcript_hash<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Deletes the MessageSecretsStore for the group with the given id.
-    fn delete_message_secrets<GroupId: traits::GroupId<VERSION>>(
+    async fn delete_message_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Deletes the ResumptionPskStore for the group with the given id.
-    fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<VERSION>>(
+    async fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Deletes the own leaf index inside the group for the group with the given id.
-    fn delete_own_leaf_index<GroupId: traits::GroupId<VERSION>>(
+    async fn delete_own_leaf_index<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Deletes the GroupEpochSecrets for the group with the given id.
-    fn delete_group_epoch_secrets<GroupId: traits::GroupId<VERSION>>(
+    async fn delete_group_epoch_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
     /// Clear the proposal queue for the group with the given id.
-    fn clear_proposal_queue<
+    async fn clear_proposal_queue<
         GroupId: traits::GroupId<VERSION>,
         ProposalRef: traits::ProposalRef<VERSION>,
     >(
@@ -531,7 +539,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// The signature key pair is not known to OpenMLS. This may be used by the
     /// application
-    fn delete_signature_key_pair<SignaturePublicKey: traits::SignaturePublicKey<VERSION>>(
+    async fn delete_signature_key_pair<SignaturePublicKey: traits::SignaturePublicKey<VERSION>>(
         &self,
         public_key: &SignaturePublicKey,
     ) -> Result<(), Self::Error>;
@@ -541,14 +549,14 @@ pub trait StorageProvider<const VERSION: u16> {
     /// This is only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<VERSION>>(
+    async fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<VERSION>>(
         &self,
         public_key: &EncryptionKey,
     ) -> Result<(), Self::Error>;
 
     /// Delete a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
-    fn delete_encryption_epoch_key_pairs<
+    async fn delete_encryption_epoch_key_pairs<
         GroupId: traits::GroupId<VERSION>,
         EpochKey: traits::EpochKey<VERSION>,
     >(
@@ -562,20 +570,20 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// This function only deletes the key package.
     /// The corresponding encryption keys must be deleted separately.
-    fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
+    async fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error>;
 
     /// Delete a PSK based on an identifier.
-    fn delete_psk<PskKey: traits::PskId<VERSION>>(
+    async fn delete_psk<PskKey: traits::PskId<VERSION>>(
         &self,
         psk_id: &PskKey,
     ) -> Result<(), Self::Error>;
 
     /// Delete the application export tree for the group with the given id.
     #[cfg(feature = "extensions-draft-08")]
-    fn delete_application_export_tree<
+    async fn delete_application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
     >(
