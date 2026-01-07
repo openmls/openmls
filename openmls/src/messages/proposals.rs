@@ -85,6 +85,7 @@ pub enum ProposalType {
     SelfRemove,
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral,
+    Grease(u16),
     Custom(u16),
 }
 
@@ -100,10 +101,18 @@ impl ProposalType {
             | ProposalType::Reinit
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions => true,
-            ProposalType::SelfRemove | ProposalType::Custom(_) => false,
+            ProposalType::SelfRemove | ProposalType::Grease(_) | ProposalType::Custom(_) => false,
             #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppEphemeral => false,
         }
+    }
+
+    /// Returns true if this is a GREASE proposal type.
+    ///
+    /// GREASE values are used to ensure implementations properly handle unknown
+    /// proposal types. See [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5).
+    pub fn is_grease(&self) -> bool {
+        matches!(self, ProposalType::Grease(_))
     }
 }
 
@@ -172,6 +181,7 @@ impl From<u16> for ProposalType {
             #[cfg(feature = "extensions-draft-08")]
             0x0009 => ProposalType::AppEphemeral,
             0x000a => ProposalType::SelfRemove,
+            other if crate::grease::is_grease_value(other) => ProposalType::Grease(other),
             other => ProposalType::Custom(other),
         }
     }
@@ -190,6 +200,7 @@ impl From<ProposalType> for u16 {
             #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppEphemeral => 0x0009,
             ProposalType::SelfRemove => 0x000a,
+            ProposalType::Grease(id) => id,
             ProposalType::Custom(id) => id,
         }
     }
@@ -848,7 +859,8 @@ mod tests {
 
     #[test]
     fn that_unknown_proposal_types_are_de_serialized_correctly() {
-        let proposal_types = [0x0000u16, 0x0A0A, 0x7A7A, 0xF000, 0xFFFF];
+        // Use non-GREASE unknown values for testing (GREASE values have pattern 0x_A_A)
+        let proposal_types = [0x0000u16, 0x0B0B, 0x7C7C, 0xF000, 0xFFFF];
 
         for proposal_type in proposal_types.into_iter() {
             // Construct an unknown proposal type.

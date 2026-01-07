@@ -322,6 +322,21 @@ impl VerifiableCiphersuite {
     pub fn new(value: u16) -> Self {
         Self(value)
     }
+
+    /// Returns the raw u16 value of this ciphersuite.
+    pub fn value(&self) -> u16 {
+        self.0
+    }
+
+    /// Returns true if this is a GREASE ciphersuite value.
+    ///
+    /// GREASE values are used to ensure implementations properly handle unknown
+    /// ciphersuites. See [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5).
+    ///
+    /// GREASE ciphersuites cannot be used for actual cryptographic operations.
+    pub fn is_grease(&self) -> bool {
+        crate::grease::is_grease_value(self.0)
+    }
 }
 
 impl From<Ciphersuite> for VerifiableCiphersuite {
