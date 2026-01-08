@@ -28,3 +28,6 @@ extensions-draft-08 = ["openmls_traits/extensions-draft-08"]
 
 [dev-dependencies]
 openmls_memory_storage = { path = ".", features = ["test-utils"] }
+futures = "0.3.31"
+rand = "0.9"
+tls_codec = { workspace = true }
