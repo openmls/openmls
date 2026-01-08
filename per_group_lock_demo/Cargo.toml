@@ -1,0 +1,19 @@
+[package]
+edition = "2024"
+name = "storage-provider-lock-demo"
+version = "0.1.0"
+
+[dependencies]
+openmls = { git = "https://github.com/openmls/openmls.git", package = "openmls" }
+openmls_libcrux_crypto = { git = "https://github.com/openmls/openmls.git", package = "openmls_libcrux_crypto" }
+openmls_memory_storage = { git = "https://github.com/openmls/openmls.git", package = "openmls_memory_storage" }
+openmls_traits = { git = "https://github.com/openmls/openmls.git", package = "openmls_traits" }
+parking_lot = { version = "0.12.5", features = ["arc_lock"] }
+tokio = { version = "1.49.0", features = ["full"] }
+
+[dev-dependencies]
+futures = "0.3.31"
+openmls = { git = "https://github.com/openmls/openmls.git", package = "openmls", features = [
+    "test-utils",
+] }
+rand = "0.9"

@@ -14,7 +14,7 @@ members = [
     "delivery-service/ds-lib",
     "basic_credential",
     "openmls-wasm",
-    "openmls_test",
+    "openmls_test", "per_group_lock_demo",
 ]
 resolver = "2"
 
