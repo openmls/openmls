@@ -952,6 +952,10 @@ fn epoch_key_pairs_id<'a>(
     Ok(key)
 }
 
+/// Build a key for a GroupId/ProposalRef.
+/// Design considerations:
+/// - Provide pre-serialized GroupId
+/// - Key should not overlap with other keys
 fn proposal_ref_key<ProposalRef: traits::ProposalRef<CURRENT_VERSION>>(
     serialized_group_id: &SerializedGroupIdRef<'_>,
     proposal_ref: &ProposalRef,
