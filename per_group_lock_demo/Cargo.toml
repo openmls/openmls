@@ -9,6 +9,8 @@ openmls_libcrux_crypto = { workspace = true }
 openmls_memory_storage = { workspace = true }
 openmls_traits = { workspace = true }
 tokio = { version = "1.49.0", features = ["full"] }
+# workspace dependency?
+serde_json = "1.0"
 
 [dev-dependencies]
 futures = "0.3.31"

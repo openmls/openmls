@@ -1,6 +1,6 @@
-//! Example implementation of a GroupId lock handler
+//! Example implementation of a SerializedGroupId lock handler
 
-use openmls::prelude::GroupId;
+type SerializedGroupId = Vec<u8>;
 use openmls_memory_storage::MemoryStorage;
 
 use std::sync::Arc;
@@ -9,10 +9,10 @@ use crate::Error;
 
 /// An entry in a `LockHandleRegistry`.
 /// This struct keeps track of the mutex representing the mutex that
-/// can be used to acquire a lock for a given GroupId.
+/// can be used to acquire a lock for a given SerializedGroupId.
 struct Entry {
     /// A mutex containing a dummy value, representing the
-    /// relevant mutex for a given GroupId.
+    /// relevant mutex for a given SerializedGroupId.
     mutex: Arc<tokio::sync::Mutex<()>>,
 
     /// The total number of handles that exist for this entry
@@ -25,24 +25,24 @@ struct Entry {
     handle_count: usize,
 }
 
-/// A registry of mutexes that can be used to acquire a lock for a given GroupId.
+/// A registry of mutexes that can be used to acquire a lock for a given SerializedGroupId.
 ///
 /// NOTE: since the registry wraps the HashMap in an `std::sync::Mutex`, locking it
 /// could block the executor.
-type LockHandleRegistry = std::sync::Mutex<std::collections::HashMap<GroupId, Entry>>;
+type LockHandleRegistry = std::sync::Mutex<std::collections::HashMap<SerializedGroupId, Entry>>;
 
-/// A wrapper around a `MutexGuard` representing a lock for a given GroupId.
+/// A wrapper around a `MutexGuard` representing a lock for a given SerializedGroupId.
 /// The `Guard` contains a reference to the underlying storage,
 /// which is used to access the data.
 pub struct Guard<'lock, 'a: 'lock> {
     // TODO: use this id later to ensure that all operations use correct id
     #[allow(dead_code)]
-    id: &'lock GroupId,
+    id: &'lock SerializedGroupId,
     storage_provider: &'a MemoryStorage,
     _guard: tokio::sync::MutexGuard<'lock, ()>,
 }
 
-impl crate::traits::StorageProviderGuard for Guard<'_, '_> {
+impl crate::traits::StorageProviderGuard<{ crate::traits::CURRENT_VERSION }> for Guard<'_, '_> {
     type Provider = MemoryStorage;
 
     fn provider(&self) -> &Self::Provider {
@@ -50,17 +50,17 @@ impl crate::traits::StorageProviderGuard for Guard<'_, '_> {
     }
 }
 
-/// A handle that can be used to acquire a lock for a given GroupId.
+/// A handle that can be used to acquire a lock for a given SerializedGroupId.
 /// This struct also contains a reference to the underlying storage,
 /// which is used by a `Guard` to access the data.
 pub struct Handle<'a> {
-    id: GroupId,
+    id: SerializedGroupId,
     storage_provider: &'a MemoryStorage,
     registry: Arc<LockHandleRegistry>,
     mutex: Arc<tokio::sync::Mutex<()>>,
 }
 
-impl crate::traits::StorageProviderHandle for Handle<'_> {
+impl crate::traits::StorageProviderHandle<{ crate::traits::CURRENT_VERSION }> for Handle<'_> {
     type Guard<'lock, 'a: 'lock>
         = Guard<'lock, 'a>
     where
@@ -112,7 +112,7 @@ impl Drop for Handle<'_> {
 }
 
 /// A struct representing a lock handler that can be used
-/// to lock the storage provider for a specific `GroupId` key.
+/// to lock the storage provider for a specific `SerializedGroupId` key.
 #[derive(Default)]
 #[cfg_attr(test, derive(Clone))]
 pub struct DataLockHandler {
@@ -143,19 +143,29 @@ impl DataLockHandler {
     }
 }
 
-impl crate::traits::StorageProviderManager for DataLockHandler {
+impl crate::traits::StorageProviderManager<{ crate::traits::CURRENT_VERSION }> for DataLockHandler {
     type Handle<'a> = Handle<'a>;
     /// Lock the provided id.
-    fn get_handle(&self, id: &GroupId) -> Result<Handle<'_>, Error> {
+    fn get_handle<
+        GroupId: openmls_traits::storage::traits::GroupId<{ crate::traits::CURRENT_VERSION }>,
+    >(
+        &self,
+        id: &GroupId,
+    ) -> Result<Handle<'_>, Error> {
         // retrieve the registry of locks
         let mut registry = self.registry.lock().map_err(|_| Error)?;
 
+        // serialize the GroupId
+        let serialized_id = serde_json::to_vec(id).map_err(|_| Error)?;
+
         // retrieve the correct mutex from the registry,
         // inserting if not included yet.
-        let entry = registry.entry(id.clone()).or_insert_with(|| Entry {
-            handle_count: 0,
-            mutex: Arc::new(tokio::sync::Mutex::new(())),
-        });
+        let entry = registry
+            .entry(serialized_id.clone())
+            .or_insert_with(|| Entry {
+                handle_count: 0,
+                mutex: Arc::new(tokio::sync::Mutex::new(())),
+            });
 
         // clone the reference to the mutex
         let mutex = Arc::clone(&entry.mutex);
@@ -164,7 +174,7 @@ impl crate::traits::StorageProviderManager for DataLockHandler {
         entry.handle_count += 1;
 
         Ok(Handle {
-            id: id.clone(),
+            id: serialized_id,
             storage_provider: &self.storage_provider,
             registry: Arc::clone(&self.registry),
             mutex,
@@ -178,6 +188,7 @@ impl crate::traits::StorageProviderManager for DataLockHandler {
 mod test {
     use super::*;
     use crate::traits::*;
+    use openmls::prelude::GroupId;
 
     // Test that the internal counts are handled correctly (based on Gemini output)
     #[test]

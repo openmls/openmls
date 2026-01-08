@@ -2,24 +2,21 @@
 
 use crate::Error;
 
-// FIXME: use trait instead
-use openmls::prelude::GroupId;
-
 // Import here for conciseness
-use openmls_traits::storage::CURRENT_VERSION;
+pub(crate) use openmls_traits::storage::CURRENT_VERSION;
 
 // TODO: `StorageProviderGuard` and `StorageProvider` should not be separate traits
 /// A lock guard for a storage provider
-pub trait StorageProviderGuard {
-    type Provider: openmls_traits::storage::StorageProvider<{ CURRENT_VERSION }>;
+pub trait StorageProviderGuard<const CURRENT_VERSION: u16> {
+    type Provider: openmls_traits::storage::StorageProvider<CURRENT_VERSION>;
 
     fn provider(&self) -> &Self::Provider;
 }
 
 /// A locking handler for a provider, tied to a specific GroupId
-pub trait StorageProviderHandle {
+pub trait StorageProviderHandle<const CURRENT_VERSION: u16> {
     // TODO: combine with the Provider type above
-    type Guard<'lock, 'a: 'lock>: StorageProviderGuard
+    type Guard<'lock, 'a: 'lock>: StorageProviderGuard<CURRENT_VERSION>
     where
         Self: 'a;
 
@@ -30,13 +27,15 @@ pub trait StorageProviderHandle {
 }
 
 /// A trait for managing storage providers
-pub trait StorageProviderManager {
-    type Handle<'a>: StorageProviderHandle
+pub trait StorageProviderManager<const CURRENT_VERSION: u16> {
+    type Handle<'a>: StorageProviderHandle<CURRENT_VERSION>
     where
         Self: 'a;
 
-    // TODO: id should implement GroupId<CURRENT_VERSION>
-    fn get_handle(&self, id: &GroupId) -> Result<Self::Handle<'_>, Error>;
+    fn get_handle<GroupId: openmls_traits::storage::traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        id: &GroupId,
+    ) -> Result<Self::Handle<'_>, Error>;
 }
 
 pub trait OpenMlsProvider {
@@ -44,7 +43,7 @@ pub trait OpenMlsProvider {
     type RandProvider: openmls_traits::random::OpenMlsRand;
 
     // replace the `StorageProvider` type with the `StorageProviderManager`
-    type StorageProviderManager: StorageProviderManager;
+    type StorageProviderManager: StorageProviderManager<{ CURRENT_VERSION }>;
 
     /// Get the storage provider manager.
     fn storage_manager(&self) -> &Self::StorageProviderManager;

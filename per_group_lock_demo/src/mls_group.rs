@@ -18,7 +18,9 @@ pub struct MlsGroup {
 
 impl MlsGroup {
     /// Loads the state of the group with given id from persisted state.
-    pub async fn load<Storage: crate::traits::StorageProviderManager>(
+    pub async fn load<
+        Storage: crate::traits::StorageProviderManager<{ crate::traits::CURRENT_VERSION }>,
+    >(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Option<Self>, Error> {
