@@ -369,11 +369,13 @@ pub struct RatchetTree(RatchetTreeIn);
 
 #[wasm_bindgen]
 impl RatchetTree {
+    /// Serialize this RatchetTree to bytes
     #[wasm_bindgen]
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.tls_serialize_detached().unwrap()
     }
 
+    /// Deserialize a RatchetTree from bytes
     #[wasm_bindgen]
     pub fn from_bytes(bytes: &[u8]) -> Result<RatchetTree, JsError> {
         let mut s = bytes;
