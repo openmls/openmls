@@ -896,7 +896,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             APPLICATION_EXPORT_TREE_LABEL,
-            &self.serialized_group_id,
+            self.serialized_group_id.bytes,
             serde_json::to_vec(&application_export_tree).unwrap(),
         )
     }
@@ -908,7 +908,10 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         &self,
     ) -> Result<Option<ApplicationExportTree>, Self::Error> {
         let values = self.storage.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &GroupId>(APPLICATION_EXPORT_TREE_LABEL, group_id);
+        let key = build_key_from_vec::<CURRENT_VERSION>(
+            APPLICATION_EXPORT_TREE_LABEL,
+            self.serialized_group_id.bytes,
+        );
 
         let Some(value) = values.get(&key) else {
             return Ok(None);
@@ -924,7 +927,10 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     >(
         &self,
     ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(APPLICATION_EXPORT_TREE_LABEL, self.serialized_group_id)
+        self.delete::<CURRENT_VERSION>(
+            APPLICATION_EXPORT_TREE_LABEL,
+            self.serialized_group_id.bytes,
+        )
     }
 }
 
