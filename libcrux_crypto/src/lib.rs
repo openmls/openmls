@@ -10,7 +10,7 @@ pub use rand::RandError;
 pub struct Provider {
     // The CryptoProvider serves as both the Rand and Crypto provider
     crypto: crypto::CryptoProvider,
-    storage: openmls_memory_storage::MemoryStorage,
+    storage: openmls_memory_storage::MemoryStorageManager,
 }
 
 impl Provider {
@@ -19,7 +19,7 @@ impl Provider {
     /// and should be preferred to `Provider::default()`.
     pub fn new() -> Result<Self, CryptoError> {
         let crypto = crypto::CryptoProvider::new()?;
-        let storage = openmls_memory_storage::MemoryStorage::default();
+        let storage = openmls_memory_storage::MemoryStorageManager::default();
 
         Ok(Self { crypto, storage })
     }
@@ -28,7 +28,7 @@ impl Provider {
 impl Default for Provider {
     fn default() -> Self {
         let crypto = crypto::CryptoProvider::new().unwrap();
-        let storage = openmls_memory_storage::MemoryStorage::default();
+        let storage = openmls_memory_storage::MemoryStorageManager::default();
 
         Self { crypto, storage }
     }
@@ -37,9 +37,9 @@ impl Default for Provider {
 impl OpenMlsProvider for Provider {
     type CryptoProvider = CryptoProvider;
     type RandProvider = CryptoProvider;
-    type StorageProvider = openmls_memory_storage::MemoryStorage;
+    type StorageProviderManager = openmls_memory_storage::MemoryStorageManager;
 
-    fn storage(&self) -> &Self::StorageProvider {
+    fn storage_manager(&self) -> &Self::StorageProviderManager {
         &self.storage
     }
 
