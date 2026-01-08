@@ -1,5 +1,4 @@
 use openmls_libcrux_crypto::Provider;
-use openmls_memory_storage::MemoryStorageManager;
 use openmls_traits::{storage::*, OpenMlsProvider};
 
 // Test type
