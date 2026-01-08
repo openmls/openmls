@@ -16,6 +16,8 @@ enum TestGroupState {
 impl traits::GroupState<CURRENT_VERSION> for TestGroupState {}
 impl Entity<CURRENT_VERSION> for TestGroupState {}
 
+/// A basic example with `openmls_libcrux_provider::Provider`, which uses the
+/// `MemoryStorageManager`.
 #[tokio::test]
 async fn basic_example() {
     // initialize a new provider
@@ -27,6 +29,8 @@ async fn basic_example() {
     {
         // acquire a lock
         let storage_provider = handle.lock().await;
+
+        // write some data
         storage_provider
             .write_group_state(&TestGroupState::Operational)
             .unwrap();
