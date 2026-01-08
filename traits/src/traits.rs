@@ -4,7 +4,8 @@
 //! API of OpenMLS.
 
 pub mod crypto;
-pub mod public_storage;
+// TODO: adapt public storage traits
+// pub mod public_storage;
 pub mod random;
 pub mod signatures;
 pub mod storage;
@@ -28,10 +29,11 @@ pub mod prelude {
 pub trait OpenMlsProvider {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
-    type StorageProvider: storage::StorageProvider<{ storage::CURRENT_VERSION }>;
 
-    // Get the storage provider.
-    fn storage(&self) -> &Self::StorageProvider;
+    type StorageProviderManager: storage::StorageProviderManager<{ storage::CURRENT_VERSION }>;
+
+    /// Get the storage provider manager.
+    fn storage_manager(&self) -> &Self::StorageProviderManager;
 
     /// Get the crypto provider.
     fn crypto(&self) -> &Self::CryptoProvider;

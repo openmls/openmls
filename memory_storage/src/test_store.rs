@@ -1,7 +1,7 @@
 use super::*;
 use std::io::Write;
 
-impl StorageProvider<V_TEST> for MemoryStorage {
+impl StorageProvider<V_TEST> for MemoryStorageGuard<'_> {
     type Error = MemoryStorageError;
 
     fn write_encryption_key_pair<
@@ -20,12 +20,10 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn encryption_epoch_key_pairs<
-        GroupId: traits::GroupId<V_TEST>,
         EpochKey: traits::EpochKey<V_TEST>,
         HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
     >(
         &self,
-        group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
     ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
@@ -33,7 +31,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         write!(
             &mut key,
             "{group_id},{epoch},{leaf_index}",
-            group_id = serde_json::to_string(group_id).unwrap(),
+            group_id = serde_json::to_string(&self.serialized_group_id.bytes).unwrap(),
             epoch = serde_json::to_string(epoch).unwrap(),
         )
         .unwrap();
@@ -52,7 +50,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         println!("getting key package at {key:?} for version {V_TEST}");
         println!(
             "the whole store when trying to get the key package: {:?}",
-            self.values.read().unwrap()
+            self.storage.values.read().unwrap()
         );
         self.read(KEY_PACKAGE_LABEL, &key)
     }
@@ -79,54 +77,46 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn queue_proposal<
-        GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
         QueuedProposal: traits::QueuedProposal<V_TEST>,
     >(
         &self,
-        _group_id: &GroupId,
+
         _proposal_ref: &ProposalRef,
         _proposal: &QueuedProposal,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn write_tree<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
+    fn write_tree<TreeSync: traits::TreeSync<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _tree: &TreeSync,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn write_interim_transcript_hash<
-        GroupId: traits::GroupId<V_TEST>,
         InterimTranscriptHash: traits::InterimTranscriptHash<V_TEST>,
     >(
         &self,
-        _group_id: &GroupId,
+
         _interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn write_context<
-        GroupId: traits::GroupId<V_TEST>,
-        GroupContext: traits::GroupContext<V_TEST>,
-    >(
+    fn write_context<GroupContext: traits::GroupContext<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _group_context: &GroupContext,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn write_confirmation_tag<
-        GroupId: traits::GroupId<V_TEST>,
-        ConfirmationTag: traits::ConfirmationTag<V_TEST>,
-    >(
+    fn write_confirmation_tag<ConfirmationTag: traits::ConfirmationTag<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::Error> {
         todo!()
@@ -144,12 +134,11 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     fn write_encryption_epoch_key_pairs<
-        GroupId: traits::GroupId<V_TEST>,
         EpochKey: traits::EpochKey<V_TEST>,
         HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
     >(
         &self,
-        _group_id: &GroupId,
+
         _epoch: &EpochKey,
         _leaf_index: u32,
         _key_pairs: &[HpkeKeyPair],
@@ -165,49 +154,30 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn queued_proposal_refs<
-        GroupId: traits::GroupId<V_TEST>,
-        ProposalRef: traits::ProposalRef<V_TEST>,
-    >(
+    fn queued_proposal_refs<ProposalRef: traits::ProposalRef<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Vec<ProposalRef>, Self::Error> {
         todo!()
     }
 
-    fn tree<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<Option<TreeSync>, Self::Error> {
+    fn tree<TreeSync: traits::TreeSync<V_TEST>>(&self) -> Result<Option<TreeSync>, Self::Error> {
         todo!()
     }
 
-    fn group_context<
-        GroupId: traits::GroupId<V_TEST>,
-        GroupContext: traits::GroupContext<V_TEST>,
-    >(
+    fn group_context<GroupContext: traits::GroupContext<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Option<GroupContext>, Self::Error> {
         todo!()
     }
 
-    fn interim_transcript_hash<
-        GroupId: traits::GroupId<V_TEST>,
-        InterimTranscriptHash: traits::InterimTranscriptHash<V_TEST>,
-    >(
+    fn interim_transcript_hash<InterimTranscriptHash: traits::InterimTranscriptHash<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
         todo!()
     }
 
-    fn confirmation_tag<
-        GroupId: traits::GroupId<V_TEST>,
-        ConfirmationTag: traits::ConfirmationTag<V_TEST>,
-    >(
+    fn confirmation_tag<ConfirmationTag: traits::ConfirmationTag<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Option<ConfirmationTag>, Self::Error> {
         todo!()
     }
@@ -253,12 +223,9 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn delete_encryption_epoch_key_pairs<
-        GroupId: traits::GroupId<V_TEST>,
-        EpochKey: traits::EpochKey<V_TEST>,
-    >(
+    fn delete_encryption_epoch_key_pairs<EpochKey: traits::EpochKey<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _epoch: &EpochKey,
         _leaf_index: u32,
     ) -> Result<(), Self::Error> {
@@ -279,286 +246,194 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn group_state<GroupState: traits::GroupState<V_TEST>, GroupId: traits::GroupId<V_TEST>>(
+    fn group_state<GroupState: traits::GroupState<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Option<GroupState>, Self::Error> {
         todo!()
     }
 
-    fn write_group_state<
-        GroupState: traits::GroupState<V_TEST>,
-        GroupId: traits::GroupId<V_TEST>,
-    >(
+    fn write_group_state<GroupState: traits::GroupState<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _group_state: &GroupState,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_group_state<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
+    fn delete_group_state(&self) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn message_secrets<
-        GroupId: traits::GroupId<V_TEST>,
-        MessageSecrets: traits::MessageSecrets<V_TEST>,
-    >(
+    fn message_secrets<MessageSecrets: traits::MessageSecrets<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Option<MessageSecrets>, Self::Error> {
         todo!()
     }
 
-    fn write_message_secrets<
-        GroupId: traits::GroupId<V_TEST>,
-        MessageSecrets: traits::MessageSecrets<V_TEST>,
-    >(
+    fn write_message_secrets<MessageSecrets: traits::MessageSecrets<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _message_secrets: &MessageSecrets,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_message_secrets<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
+    fn delete_message_secrets(&self) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn resumption_psk_store<
-        GroupId: traits::GroupId<V_TEST>,
-        ResumptionPskStore: traits::ResumptionPskStore<V_TEST>,
-    >(
+    fn resumption_psk_store<ResumptionPskStore: traits::ResumptionPskStore<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Option<ResumptionPskStore>, Self::Error> {
         todo!()
     }
 
-    fn write_resumption_psk_store<
-        GroupId: traits::GroupId<V_TEST>,
-        ResumptionPskStore: traits::ResumptionPskStore<V_TEST>,
-    >(
+    fn write_resumption_psk_store<ResumptionPskStore: traits::ResumptionPskStore<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _resumption_psk_store: &ResumptionPskStore,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
+    fn delete_all_resumption_psk_secrets(&self) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn own_leaf_index<
-        GroupId: traits::GroupId<V_TEST>,
-        LeafNodeIndex: traits::LeafNodeIndex<V_TEST>,
-    >(
+    fn own_leaf_index<LeafNodeIndex: traits::LeafNodeIndex<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Option<LeafNodeIndex>, Self::Error> {
         todo!()
     }
 
-    fn write_own_leaf_index<
-        GroupId: traits::GroupId<V_TEST>,
-        LeafNodeIndex: traits::LeafNodeIndex<V_TEST>,
-    >(
+    fn write_own_leaf_index<LeafNodeIndex: traits::LeafNodeIndex<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_own_leaf_index<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
+    fn delete_own_leaf_index(&self) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn group_epoch_secrets<
-        GroupId: traits::GroupId<V_TEST>,
-        GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>,
-    >(
+    fn group_epoch_secrets<GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
         todo!()
     }
 
-    fn write_group_epoch_secrets<
-        GroupId: traits::GroupId<V_TEST>,
-        GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>,
-    >(
+    fn write_group_epoch_secrets<GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_group_epoch_secrets<GroupId: traits::GroupId<V_TEST>>(
+    fn delete_group_epoch_secrets(&self) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn clear_proposal_queue<ProposalRef: traits::ProposalRef<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn clear_proposal_queue<
-        GroupId: traits::GroupId<V_TEST>,
-        ProposalRef: traits::ProposalRef<V_TEST>,
-    >(
+    fn mls_group_join_config<MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>>(
         &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
-    fn mls_group_join_config<
-        GroupId: traits::GroupId<V_TEST>,
-        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>,
-    >(
-        &self,
-        _group_id: &GroupId,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
         todo!()
     }
 
-    fn write_mls_join_config<
-        GroupId: traits::GroupId<V_TEST>,
-        MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>,
-    >(
+    fn write_mls_join_config<MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _config: &MlsGroupJoinConfig,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn own_leaf_nodes<GroupId: traits::GroupId<V_TEST>, LeafNode: traits::LeafNode<V_TEST>>(
+    fn own_leaf_nodes<LeafNode: traits::LeafNode<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error> {
         todo!()
     }
 
-    fn append_own_leaf_node<
-        GroupId: traits::GroupId<V_TEST>,
-        LeafNode: traits::LeafNode<V_TEST>,
-    >(
+    fn append_own_leaf_node<LeafNode: traits::LeafNode<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _leaf_node: &LeafNode,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     fn queued_proposals<
-        GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
         QueuedProposal: traits::QueuedProposal<V_TEST>,
     >(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
         todo!()
     }
 
-    fn remove_proposal<
-        GroupId: traits::GroupId<V_TEST>,
-        ProposalRef: traits::ProposalRef<V_TEST>,
-    >(
+    fn remove_proposal<ProposalRef: traits::ProposalRef<V_TEST>>(
         &self,
-        _group_id: &GroupId,
+
         _proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_own_leaf_nodes<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
+    fn delete_own_leaf_nodes(&self) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_group_config<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
+    fn delete_group_config(&self) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_tree<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
+    fn delete_tree(&self) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_confirmation_tag<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
+    fn delete_confirmation_tag(&self) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_context<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
+    fn delete_context(&self) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_interim_transcript_hash<GroupId: traits::GroupId<V_TEST>>(
-        &self,
-        _group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
+    fn delete_interim_transcript_hash(&self) -> Result<(), Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "extensions-draft-08")]
     fn write_application_export_tree<
-        GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
         &self,
-        _group_id: &GroupId,
+
         _application_export_tree: &ApplicationExportTree,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "extensions-draft-08")]
-    fn application_export_tree<
-        GroupId: traits::GroupId<V_TEST>,
-        ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
-    >(
+    fn application_export_tree<ApplicationExportTree: traits::ApplicationExportTree<V_TEST>>(
         &self,
-        _group_id: &GroupId,
     ) -> Result<Option<ApplicationExportTree>, Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "extensions-draft-08")]
     fn delete_application_export_tree<
-        GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
         &self,
-        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
