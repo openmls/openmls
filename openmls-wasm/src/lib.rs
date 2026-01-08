@@ -342,7 +342,7 @@ pub struct KeyPackage(OpenMlsKeyPackage);
 
 #[wasm_bindgen]
 impl KeyPackage {
-    /// Serialize this KeyPackage to bytes (for copy-paste)
+    /// Serialize this KeyPackage to bytes
     #[wasm_bindgen]
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.tls_serialize_detached().unwrap()
