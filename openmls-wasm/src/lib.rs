@@ -348,7 +348,7 @@ impl KeyPackage {
         self.0.tls_serialize_detached().unwrap()
     }
 
-    /// Deserialize a KeyPackage from bytes (for copy-paste)
+    /// Deserialize a KeyPackage from bytes
     #[wasm_bindgen]
     pub fn from_bytes(bytes: &[u8]) -> Result<KeyPackage, JsError> {
         let mut s = bytes;
