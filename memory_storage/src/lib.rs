@@ -105,7 +105,7 @@ impl MemoryStorageGuard<'_> {
         value: Vec<u8>,
     ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.storage.values.write().unwrap();
-        let storage_key = build_key_from_vec::<VERSION>(label, key);
+        let storage_key = build_key_from_bytes::<VERSION>(label, key);
 
         #[cfg(feature = "test-utils")]
         log::debug!("  write key: {}", hex::encode(&storage_key));
@@ -122,7 +122,7 @@ impl MemoryStorageGuard<'_> {
         value: Vec<u8>,
     ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.storage.values.write().unwrap();
-        let storage_key = build_key_from_vec::<VERSION>(label, key);
+        let storage_key = build_key_from_bytes::<VERSION>(label, key);
 
         #[cfg(feature = "test-utils")]
         log::debug!("  write key: {}", hex::encode(&storage_key));
@@ -149,7 +149,7 @@ impl MemoryStorageGuard<'_> {
         value: Vec<u8>,
     ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.storage.values.write().unwrap();
-        let storage_key = build_key_from_vec::<VERSION>(label, key);
+        let storage_key = build_key_from_bytes::<VERSION>(label, key);
 
         #[cfg(feature = "test-utils")]
         log::debug!("  write key: {}", hex::encode(&storage_key));
@@ -179,7 +179,7 @@ impl MemoryStorageGuard<'_> {
         key: &[u8],
     ) -> Result<Option<V>, <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let values = self.storage.values.read().unwrap();
-        let storage_key = build_key_from_vec::<VERSION>(label, key);
+        let storage_key = build_key_from_bytes::<VERSION>(label, key);
 
         #[cfg(feature = "test-utils")]
         log::debug!("  read key: {}", hex::encode(&storage_key));
@@ -332,7 +332,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::Error> {
         let mut values = self.storage.values.write().unwrap();
-        let key = build_key_from_vec::<CURRENT_VERSION>(
+        let key = build_key_from_bytes::<CURRENT_VERSION>(
             INTERIM_TRANSCRIPT_HASH_LABEL,
             self.serialized_group_id.bytes,
         );
@@ -348,7 +348,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         group_context: &GroupContext,
     ) -> Result<(), Self::Error> {
         let mut values = self.storage.values.write().unwrap();
-        let key = build_key_from_vec::<CURRENT_VERSION>(
+        let key = build_key_from_bytes::<CURRENT_VERSION>(
             GROUP_CONTEXT_LABEL,
             self.serialized_group_id.bytes,
         );
@@ -364,7 +364,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::Error> {
         let mut values = self.storage.values.write().unwrap();
-        let key = build_key_from_vec::<CURRENT_VERSION>(
+        let key = build_key_from_bytes::<CURRENT_VERSION>(
             CONFIRMATION_TAG_LABEL,
             self.serialized_group_id.bytes,
         );
@@ -420,7 +420,8 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         &self,
     ) -> Result<Option<TreeSync>, Self::Error> {
         let values = self.storage.values.read().unwrap();
-        let key = build_key_from_vec::<CURRENT_VERSION>(TREE_LABEL, self.serialized_group_id.bytes);
+        let key =
+            build_key_from_bytes::<CURRENT_VERSION>(TREE_LABEL, self.serialized_group_id.bytes);
 
         let Some(value) = values.get(&key) else {
             return Ok(None);
@@ -434,7 +435,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         &self,
     ) -> Result<Option<GroupContext>, Self::Error> {
         let values = self.storage.values.read().unwrap();
-        let key = build_key_from_vec::<CURRENT_VERSION>(
+        let key = build_key_from_bytes::<CURRENT_VERSION>(
             GROUP_CONTEXT_LABEL,
             self.serialized_group_id.bytes,
         );
@@ -453,7 +454,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         &self,
     ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
         let values = self.storage.values.read().unwrap();
-        let key = build_key_from_vec::<CURRENT_VERSION>(
+        let key = build_key_from_bytes::<CURRENT_VERSION>(
             INTERIM_TRANSCRIPT_HASH_LABEL,
             self.serialized_group_id.bytes,
         );
@@ -470,7 +471,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         &self,
     ) -> Result<Option<ConfirmationTag>, Self::Error> {
         let values = self.storage.values.read().unwrap();
-        let key = build_key_from_vec::<CURRENT_VERSION>(
+        let key = build_key_from_bytes::<CURRENT_VERSION>(
             CONFIRMATION_TAG_LABEL,
             self.serialized_group_id.bytes,
         );
@@ -761,7 +762,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         leaf_index: u32,
     ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
         let key = epoch_key_pairs_id(&self.serialized_group_id, epoch, leaf_index)?;
-        let storage_key = build_key_from_vec::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, key);
+        let storage_key = build_key_from_bytes::<CURRENT_VERSION>(EPOCH_KEY_PAIRS_LABEL, key);
         log::debug!("Reading encryption epoch key pairs");
 
         let values = self.storage.values.read().unwrap();
@@ -803,7 +804,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         }
 
         // Delete the proposal refs from the store.
-        let key = build_key_from_vec::<CURRENT_VERSION>(
+        let key = build_key_from_bytes::<CURRENT_VERSION>(
             PROPOSAL_QUEUE_REFS_LABEL,
             self.serialized_group_id.bytes,
         );
@@ -908,7 +909,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         &self,
     ) -> Result<Option<ApplicationExportTree>, Self::Error> {
         let values = self.storage.values.read().unwrap();
-        let key = build_key_from_vec::<CURRENT_VERSION>(
+        let key = build_key_from_bytes::<CURRENT_VERSION>(
             APPLICATION_EXPORT_TREE_LABEL,
             self.serialized_group_id.bytes,
         );
@@ -935,7 +936,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
 }
 
 /// Build a key with version and label.
-fn build_key_from_vec<const V: u16>(label: &[u8], key: impl AsRef<[u8]>) -> Vec<u8> {
+fn build_key_from_bytes<const V: u16>(label: &[u8], key: impl AsRef<[u8]>) -> Vec<u8> {
     let mut key_out = label.to_vec();
     key_out.extend_from_slice(key.as_ref());
     key_out.extend_from_slice(&u16::to_be_bytes(V));
@@ -944,7 +945,7 @@ fn build_key_from_vec<const V: u16>(label: &[u8], key: impl AsRef<[u8]>) -> Vec<
 
 /// Build a key with version and label.
 fn build_key<const V: u16, K: Serialize>(label: &[u8], key: K) -> Vec<u8> {
-    build_key_from_vec::<V>(label, serde_json::to_vec(&key).unwrap())
+    build_key_from_bytes::<V>(label, serde_json::to_vec(&key).unwrap())
 }
 
 fn epoch_key_pairs_id<'a>(
