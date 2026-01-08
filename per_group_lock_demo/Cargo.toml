@@ -8,7 +8,6 @@ openmls = { workspace = true }
 openmls_libcrux_crypto = { workspace = true }
 openmls_memory_storage = { workspace = true }
 openmls_traits = { workspace = true }
-parking_lot = { version = "0.12.5", features = ["arc_lock"] }
 tokio = { version = "1.49.0", features = ["full"] }
 
 [dev-dependencies]
