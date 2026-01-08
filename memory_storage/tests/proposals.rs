@@ -1,7 +1,7 @@
-use openmls_memory_storage::{MemoryStorageGuard, MemoryStorageManager};
+use openmls_memory_storage::MemoryStorageManager;
 use openmls_traits::storage::{
     traits::{self},
-    Entity, Key, StorageProvider, CURRENT_VERSION,
+    Entity, Key, CURRENT_VERSION,
 };
 use serde::{Deserialize, Serialize};
 

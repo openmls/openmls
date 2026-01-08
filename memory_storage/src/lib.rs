@@ -2,6 +2,9 @@ use openmls_traits::storage::*;
 use serde::Serialize;
 use std::{collections::HashMap, sync::RwLock};
 
+#[cfg(test)]
+mod tests;
+
 #[cfg(feature = "test-utils")]
 use std::io::Write as _;
 
