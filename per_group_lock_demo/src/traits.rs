@@ -8,7 +8,7 @@ use openmls::prelude::GroupId;
 // Import here for conciseness
 use openmls_traits::storage::CURRENT_VERSION;
 
-// TODO: consolidate this with the below
+// TODO: `StorageProviderGuard` and `StorageProvider` should not be separate traits
 /// A lock guard for a storage provider
 pub trait StorageProviderGuard {
     type Provider: openmls_traits::storage::StorageProvider<{ CURRENT_VERSION }>;
