@@ -86,7 +86,7 @@ impl openmls_traits::storage::StorageProviderHandle<{ CURRENT_VERSION }> for Han
 
         Self::Guard {
             serialized_group_id: super::SerializedGroupIdRef {
-                bytes: &serialized_group_id,
+                bytes: serialized_group_id,
             },
             storage,
             _guard,

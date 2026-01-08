@@ -105,7 +105,7 @@ impl MemoryStorageGuard<'_> {
         value: Vec<u8>,
     ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.storage.values.write().unwrap();
-        let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
+        let storage_key = build_key_from_vec::<VERSION>(label, key);
 
         #[cfg(feature = "test-utils")]
         log::debug!("  write key: {}", hex::encode(&storage_key));
@@ -122,7 +122,7 @@ impl MemoryStorageGuard<'_> {
         value: Vec<u8>,
     ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.storage.values.write().unwrap();
-        let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
+        let storage_key = build_key_from_vec::<VERSION>(label, key);
 
         #[cfg(feature = "test-utils")]
         log::debug!("  write key: {}", hex::encode(&storage_key));
@@ -149,7 +149,7 @@ impl MemoryStorageGuard<'_> {
         value: Vec<u8>,
     ) -> Result<(), <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let mut values = self.storage.values.write().unwrap();
-        let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
+        let storage_key = build_key_from_vec::<VERSION>(label, key);
 
         #[cfg(feature = "test-utils")]
         log::debug!("  write key: {}", hex::encode(&storage_key));
@@ -179,7 +179,7 @@ impl MemoryStorageGuard<'_> {
         key: &[u8],
     ) -> Result<Option<V>, <Self as StorageProvider<CURRENT_VERSION>>::Error> {
         let values = self.storage.values.read().unwrap();
-        let storage_key = build_key_from_vec::<VERSION>(label, key.to_vec());
+        let storage_key = build_key_from_vec::<VERSION>(label, key);
 
         #[cfg(feature = "test-utils")]
         log::debug!("  read key: {}", hex::encode(&storage_key));
@@ -307,7 +307,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         // update proposal list for group_id
         let key = self.serialized_group_id.bytes;
         let value = serde_json::to_vec(proposal_ref)?;
-        self.append::<CURRENT_VERSION>(PROPOSAL_QUEUE_REFS_LABEL, &key, value)?;
+        self.append::<CURRENT_VERSION>(PROPOSAL_QUEUE_REFS_LABEL, key, value)?;
 
         Ok(())
     }
@@ -319,7 +319,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             TREE_LABEL,
-            &self.serialized_group_id.bytes,
+            self.serialized_group_id.bytes,
             serde_json::to_vec(&tree).unwrap(),
         )
     }
@@ -334,7 +334,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         let mut values = self.storage.values.write().unwrap();
         let key = build_key_from_vec::<CURRENT_VERSION>(
             INTERIM_TRANSCRIPT_HASH_LABEL,
-            self.serialized_group_id.bytes.to_vec(),
+            self.serialized_group_id.bytes,
         );
         let value = serde_json::to_vec(&interim_transcript_hash).unwrap();
 
@@ -350,7 +350,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         let mut values = self.storage.values.write().unwrap();
         let key = build_key_from_vec::<CURRENT_VERSION>(
             GROUP_CONTEXT_LABEL,
-            self.serialized_group_id.bytes.to_vec(),
+            self.serialized_group_id.bytes,
         );
         let value = serde_json::to_vec(&group_context).unwrap();
 
@@ -366,7 +366,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         let mut values = self.storage.values.write().unwrap();
         let key = build_key_from_vec::<CURRENT_VERSION>(
             CONFIRMATION_TAG_LABEL,
-            self.serialized_group_id.bytes.to_vec(),
+            self.serialized_group_id.bytes,
         );
         let value = serde_json::to_vec(&confirmation_tag).unwrap();
 
@@ -394,7 +394,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     fn queued_proposal_refs<ProposalRef: traits::ProposalRef<CURRENT_VERSION>>(
         &self,
     ) -> Result<Vec<ProposalRef>, Self::Error> {
-        self.read_list(PROPOSAL_QUEUE_REFS_LABEL, &self.serialized_group_id.bytes)
+        self.read_list(PROPOSAL_QUEUE_REFS_LABEL, self.serialized_group_id.bytes)
     }
 
     fn queued_proposals<
@@ -404,7 +404,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         &self,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
         let refs: Vec<ProposalRef> =
-            self.read_list(PROPOSAL_QUEUE_REFS_LABEL, &self.serialized_group_id.bytes)?;
+            self.read_list(PROPOSAL_QUEUE_REFS_LABEL, self.serialized_group_id.bytes)?;
 
         refs.into_iter()
             .map(|proposal_ref| -> Result<_, _> {
@@ -420,10 +420,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         &self,
     ) -> Result<Option<TreeSync>, Self::Error> {
         let values = self.storage.values.read().unwrap();
-        let key = build_key_from_vec::<CURRENT_VERSION>(
-            TREE_LABEL,
-            self.serialized_group_id.bytes.to_vec(),
-        );
+        let key = build_key_from_vec::<CURRENT_VERSION>(TREE_LABEL, self.serialized_group_id.bytes);
 
         let Some(value) = values.get(&key) else {
             return Ok(None);
@@ -439,7 +436,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         let values = self.storage.values.read().unwrap();
         let key = build_key_from_vec::<CURRENT_VERSION>(
             GROUP_CONTEXT_LABEL,
-            self.serialized_group_id.bytes.to_vec(),
+            self.serialized_group_id.bytes,
         );
 
         let Some(value) = values.get(&key) else {
@@ -458,7 +455,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         let values = self.storage.values.read().unwrap();
         let key = build_key_from_vec::<CURRENT_VERSION>(
             INTERIM_TRANSCRIPT_HASH_LABEL,
-            self.serialized_group_id.bytes.to_vec(),
+            self.serialized_group_id.bytes,
         );
 
         let Some(value) = values.get(&key) else {
@@ -475,7 +472,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         let values = self.storage.values.read().unwrap();
         let key = build_key_from_vec::<CURRENT_VERSION>(
             CONFIRMATION_TAG_LABEL,
-            self.serialized_group_id.bytes.to_vec(),
+            self.serialized_group_id.bytes,
         );
 
         let Some(value) = values.get(&key) else {
@@ -623,7 +620,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     fn group_state<GroupState: traits::GroupState<CURRENT_VERSION>>(
         &self,
     ) -> Result<Option<GroupState>, Self::Error> {
-        self.read(GROUP_STATE_LABEL, &self.serialized_group_id.bytes)
+        self.read(GROUP_STATE_LABEL, self.serialized_group_id.bytes)
     }
 
     fn write_group_state<GroupState: traits::GroupState<CURRENT_VERSION>>(
@@ -633,19 +630,19 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             GROUP_STATE_LABEL,
-            &self.serialized_group_id.bytes,
+            self.serialized_group_id.bytes,
             serde_json::to_vec(group_state)?,
         )
     }
 
     fn delete_group_state(&self) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(GROUP_STATE_LABEL, &self.serialized_group_id.bytes)
+        self.delete::<CURRENT_VERSION>(GROUP_STATE_LABEL, self.serialized_group_id.bytes)
     }
 
     fn message_secrets<MessageSecrets: traits::MessageSecrets<CURRENT_VERSION>>(
         &self,
     ) -> Result<Option<MessageSecrets>, Self::Error> {
-        self.read(MESSAGE_SECRETS_LABEL, &self.serialized_group_id.bytes)
+        self.read(MESSAGE_SECRETS_LABEL, self.serialized_group_id.bytes)
     }
 
     fn write_message_secrets<MessageSecrets: traits::MessageSecrets<CURRENT_VERSION>>(
@@ -655,19 +652,19 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             MESSAGE_SECRETS_LABEL,
-            &self.serialized_group_id.bytes,
+            self.serialized_group_id.bytes,
             serde_json::to_vec(message_secrets)?,
         )
     }
 
     fn delete_message_secrets(&self) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(MESSAGE_SECRETS_LABEL, &self.serialized_group_id.bytes)
+        self.delete::<CURRENT_VERSION>(MESSAGE_SECRETS_LABEL, self.serialized_group_id.bytes)
     }
 
     fn resumption_psk_store<ResumptionPskStore: traits::ResumptionPskStore<CURRENT_VERSION>>(
         &self,
     ) -> Result<Option<ResumptionPskStore>, Self::Error> {
-        self.read(RESUMPTION_PSK_STORE_LABEL, &self.serialized_group_id.bytes)
+        self.read(RESUMPTION_PSK_STORE_LABEL, self.serialized_group_id.bytes)
     }
 
     fn write_resumption_psk_store<
@@ -679,19 +676,19 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             RESUMPTION_PSK_STORE_LABEL,
-            &self.serialized_group_id.bytes,
+            self.serialized_group_id.bytes,
             serde_json::to_vec(resumption_psk_store)?,
         )
     }
 
     fn delete_all_resumption_psk_secrets(&self) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(RESUMPTION_PSK_STORE_LABEL, &self.serialized_group_id.bytes)
+        self.delete::<CURRENT_VERSION>(RESUMPTION_PSK_STORE_LABEL, self.serialized_group_id.bytes)
     }
 
     fn own_leaf_index<LeafNodeIndex: traits::LeafNodeIndex<CURRENT_VERSION>>(
         &self,
     ) -> Result<Option<LeafNodeIndex>, Self::Error> {
-        self.read(OWN_LEAF_NODE_INDEX_LABEL, &self.serialized_group_id.bytes)
+        self.read(OWN_LEAF_NODE_INDEX_LABEL, self.serialized_group_id.bytes)
     }
 
     fn write_own_leaf_index<LeafNodeIndex: traits::LeafNodeIndex<CURRENT_VERSION>>(
@@ -701,19 +698,19 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             OWN_LEAF_NODE_INDEX_LABEL,
-            &self.serialized_group_id.bytes,
+            self.serialized_group_id.bytes,
             serde_json::to_vec(own_leaf_index)?,
         )
     }
 
     fn delete_own_leaf_index(&self) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(OWN_LEAF_NODE_INDEX_LABEL, &self.serialized_group_id.bytes)
+        self.delete::<CURRENT_VERSION>(OWN_LEAF_NODE_INDEX_LABEL, self.serialized_group_id.bytes)
     }
 
     fn group_epoch_secrets<GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>>(
         &self,
     ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
-        self.read(EPOCH_SECRETS_LABEL, &self.serialized_group_id.bytes)
+        self.read(EPOCH_SECRETS_LABEL, self.serialized_group_id.bytes)
     }
 
     fn write_group_epoch_secrets<GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>>(
@@ -723,13 +720,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             EPOCH_SECRETS_LABEL,
-            &self.serialized_group_id.bytes,
+            self.serialized_group_id.bytes,
             serde_json::to_vec(group_epoch_secrets)?,
         )
     }
 
     fn delete_group_epoch_secrets(&self) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(EPOCH_SECRETS_LABEL, &self.serialized_group_id.bytes)
+        self.delete::<CURRENT_VERSION>(EPOCH_SECRETS_LABEL, self.serialized_group_id.bytes)
     }
 
     fn write_encryption_epoch_key_pairs<
@@ -797,7 +794,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     ) -> Result<(), Self::Error> {
         // Get all proposal refs for this group.
         let proposal_refs: Vec<ProposalRef> =
-            self.read_list(PROPOSAL_QUEUE_REFS_LABEL, &self.serialized_group_id.bytes)?;
+            self.read_list(PROPOSAL_QUEUE_REFS_LABEL, self.serialized_group_id.bytes)?;
         let mut values = self.storage.values.write().unwrap();
         for proposal_ref in proposal_refs {
             // Delete all proposals.
@@ -808,7 +805,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         // Delete the proposal refs from the store.
         let key = build_key_from_vec::<CURRENT_VERSION>(
             PROPOSAL_QUEUE_REFS_LABEL,
-            self.serialized_group_id.bytes.to_vec(),
+            self.serialized_group_id.bytes,
         );
         values.remove(&key);
 
@@ -818,7 +815,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     fn mls_group_join_config<MlsGroupJoinConfig: traits::MlsGroupJoinConfig<CURRENT_VERSION>>(
         &self,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
-        self.read(JOIN_CONFIG_LABEL, &self.serialized_group_id.bytes)
+        self.read(JOIN_CONFIG_LABEL, self.serialized_group_id.bytes)
     }
 
     fn write_mls_join_config<MlsGroupJoinConfig: traits::MlsGroupJoinConfig<CURRENT_VERSION>>(
@@ -829,13 +826,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         let key = self.serialized_group_id.bytes;
         let value = serde_json::to_vec(config).unwrap();
 
-        self.write::<CURRENT_VERSION>(JOIN_CONFIG_LABEL, &key, value)
+        self.write::<CURRENT_VERSION>(JOIN_CONFIG_LABEL, key, value)
     }
 
     fn own_leaf_nodes<LeafNode: traits::LeafNode<CURRENT_VERSION>>(
         &self,
     ) -> Result<Vec<LeafNode>, Self::Error> {
-        self.read_list(OWN_LEAF_NODES_LABEL, &self.serialized_group_id.bytes)
+        self.read_list(OWN_LEAF_NODES_LABEL, self.serialized_group_id.bytes)
     }
 
     fn append_own_leaf_node<LeafNode: traits::LeafNode<CURRENT_VERSION>>(
@@ -845,33 +842,33 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
     ) -> Result<(), Self::Error> {
         let key = self.serialized_group_id.bytes;
         let value = serde_json::to_vec(leaf_node)?;
-        self.append::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &key, value)
+        self.append::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, key, value)
     }
 
     fn delete_own_leaf_nodes(&self) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, &self.serialized_group_id.bytes)
+        self.delete::<CURRENT_VERSION>(OWN_LEAF_NODES_LABEL, self.serialized_group_id.bytes)
     }
 
     fn delete_group_config(&self) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(JOIN_CONFIG_LABEL, &self.serialized_group_id.bytes)
+        self.delete::<CURRENT_VERSION>(JOIN_CONFIG_LABEL, self.serialized_group_id.bytes)
     }
 
     fn delete_tree(&self) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(TREE_LABEL, &self.serialized_group_id.bytes)
+        self.delete::<CURRENT_VERSION>(TREE_LABEL, self.serialized_group_id.bytes)
     }
 
     fn delete_confirmation_tag(&self) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(CONFIRMATION_TAG_LABEL, &self.serialized_group_id.bytes)
+        self.delete::<CURRENT_VERSION>(CONFIRMATION_TAG_LABEL, self.serialized_group_id.bytes)
     }
 
     fn delete_context(&self) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(GROUP_CONTEXT_LABEL, &self.serialized_group_id.bytes)
+        self.delete::<CURRENT_VERSION>(GROUP_CONTEXT_LABEL, self.serialized_group_id.bytes)
     }
 
     fn delete_interim_transcript_hash(&self) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
             INTERIM_TRANSCRIPT_HASH_LABEL,
-            &self.serialized_group_id.bytes,
+            self.serialized_group_id.bytes,
         )
     }
 
@@ -883,7 +880,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorageGuard<'_> {
         let key = self.serialized_group_id.bytes;
         let value = serde_json::to_vec(proposal_ref).unwrap();
 
-        self.remove_item::<CURRENT_VERSION>(PROPOSAL_QUEUE_REFS_LABEL, &key, value)?;
+        self.remove_item::<CURRENT_VERSION>(PROPOSAL_QUEUE_REFS_LABEL, key, value)?;
 
         let key = proposal_ref_key(&self.serialized_group_id, proposal_ref)?;
         self.delete::<CURRENT_VERSION>(QUEUED_PROPOSAL_LABEL, &key)
