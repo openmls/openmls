@@ -42,6 +42,8 @@ pub struct Handle<'a> {
 }
 
 impl Drop for Handle<'_> {
+    /// Drop the entry from the lock handle registry when this is the last handle left
+    /// for its GroupId.
     fn drop(&mut self) {
         // acquire the lock on the registry
         // NOTE: since this is a synchronous mutex,
@@ -124,6 +126,10 @@ impl openmls_traits::storage::StorageProviderManager<{ CURRENT_VERSION }> for Me
     type Error = MemoryStorageError;
     type Handle<'a> = Handle<'a>;
     /// Lock the provided id.
+    ///
+    /// NOTE: a MutexGuard<'_> for the id can't be returned directly here, since the mutex
+    /// is nested inside of the mutex containing the HashMap. Instead, a handle is returned
+    /// that can be used to acquire a lock.
     fn get_handle<GroupId: openmls_traits::storage::traits::GroupId<{ CURRENT_VERSION }>>(
         &self,
         id: &GroupId,

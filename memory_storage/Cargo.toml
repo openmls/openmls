@@ -18,7 +18,7 @@ serde = { version = "1.0", features = ["derive"] }
 log = { version = "0.4" }
 hex = { version = "0.4", features = ["serde"], optional = true }
 base64 = { version = "0.22", optional = true }
-# TODO: which features are needed?
+# for `tokio::sync::Mutex`
 tokio = { version = "1.49.0", features = ["full"] }
 
 [features]
