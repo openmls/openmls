@@ -275,7 +275,8 @@ impl TreeSyncDiff<'_> {
         leaf_index: LeafNodeIndex,
     ) -> Result<PathDerivationResult, LibraryError> {
         let path_secret = PathSecret::from(
-            Secret::random(ciphersuite, rand).map_err(LibraryError::unexpected_crypto_error)?,
+            Secret::random_path_secret(ciphersuite, rand)
+                .map_err(LibraryError::unexpected_crypto_error)?,
         );
 
         let path_indices = self.filtered_direct_path(leaf_index);

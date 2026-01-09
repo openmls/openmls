@@ -14,7 +14,7 @@ impl ReuseGuard {
     pub(crate) fn try_from_random(rng: &impl OpenMlsRand) -> Result<Self, CryptoError> {
         Ok(Self {
             value: rng
-                .random_array()
+                .reuse_guard()
                 .map_err(|_| CryptoError::InsufficientRandomness)?,
         })
     }
