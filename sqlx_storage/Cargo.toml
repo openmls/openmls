@@ -10,7 +10,7 @@ repository = "https://github.com/openmls/openmls/tree/main/sqlx_storage"
 readme = "README.md"
 
 [dependencies]
-openmls_traits = { workspace = true }
+openmls_traits = { path = "../traits", features = ["async"] }
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 sqlx = { version = "0.8.6", features = ["sqlite", "migrate", "runtime-tokio"] }

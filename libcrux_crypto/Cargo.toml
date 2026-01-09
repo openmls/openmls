@@ -36,3 +36,5 @@ extensions-draft-08 = [
     "openmls_traits/extensions-draft-08",
     "openmls_memory_storage/extensions-draft-08",
 ]
+sync = ["openmls_traits/sync"]
+async = ["openmls_traits/async"]

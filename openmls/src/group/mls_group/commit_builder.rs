@@ -298,7 +298,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     }
 
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
-    pub fn load_psks<Storage: StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn load_psks<Storage: StorageProvider>(
         self,
         storage: &'a Storage,
     ) -> Result<CommitBuilder<'a, LoadedPsks, G>, CreateCommitError> {
@@ -320,7 +321,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             .collect();
 
         // Load the PSKs and make the PskIds owned.
-        let psks = load_psks(storage, &self.group.borrow().resumption_psk_store, &psk_ids)?
+        let psks = load_psks(storage, &self.group.borrow().resumption_psk_store, &psk_ids)
+            .await?
             .into_iter()
             .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
             .collect();
@@ -771,7 +773,8 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     }
 
     /// Stages the commit and returns the protocol messages.
-    pub fn stage_commit<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn stage_commit<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<CommitMessageBundle, CommitBuilderStageError<Provider::StorageError>> {
@@ -794,6 +797,7 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
         provider
             .storage()
             .write_group_state(group.group_id(), &group.group_state)
+            .await
             .map_err(CommitBuilderStageError::KeyStoreError)?;
 
         group.reset_aad();
@@ -803,7 +807,9 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
         //
         // Note that this performs writes to the storage, so we should do that here, rather than
         // when working with the result.
-        let mls_message = group.content_to_mls_message(create_commit_result.commit, provider)?;
+        let mls_message = group
+            .content_to_mls_message(create_commit_result.commit, provider)
+            .await?;
 
         Ok(CommitMessageBundle {
             version: group.version(),

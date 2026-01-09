@@ -13,6 +13,7 @@ exclude = ["/test_vectors"]
 
 [dependencies]
 openmls_traits = { workspace = true }
+maybe-async = { workspace = true }
 openmls_rust_crypto = { workspace = true, optional = true }
 openmls_basic_credential = { workspace = true, optional = true, features = [
     "clonable",
@@ -45,6 +46,12 @@ zeroize = "1.8.1"
 serde_bytes = "0.11.17"
 
 [features]
+sync = [
+    "maybe-async/is_sync",
+    "openmls_traits/sync",
+    "openmls_basic_credential?/sync",
+]
+async = ["openmls_traits/async", "openmls_basic_credential?/async"]
 test-utils = [
     "dep:serde_json",
     "dep:itertools",

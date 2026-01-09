@@ -72,7 +72,8 @@ impl<'a> RebootBuilder<'a> {
     /// Creates the group and commit using the provided `extensions` and `new_members`. The caller
     /// can also make further changes to the [`CommitBuilder`] using the `refine_commit_builder`
     /// argument. If that is not desired, provide the identity function (`|b| b`).
-    pub fn finish<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn finish<Provider: OpenMlsProvider>(
         self,
         extensions: Extensions,
         new_members: Vec<KeyPackage>,
@@ -85,15 +86,19 @@ impl<'a> RebootBuilder<'a> {
             .group_builder
             .with_group_context_extensions(extensions)?;
 
-        let mut new_group = group_builder.build(provider, signer, credential_with_key)?;
+        let mut new_group = group_builder
+            .build(provider, signer, credential_with_key)
+            .await?;
 
         new_group
             .commit_builder()
             .propose_adds(new_members)
             .pipe_through(refine_commit_builder)
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
+            .await
             .map_err(RebootError::CommitBuilderStage)
             .map(|message_bundle| (new_group, message_bundle))
     }
