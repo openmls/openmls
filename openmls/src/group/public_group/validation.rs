@@ -5,32 +5,32 @@ use std::collections::{BTreeSet, HashSet};
 
 use openmls_traits::types::VerifiableCiphersuite;
 
-use super::PublicGroup;
-use crate::extensions::RequiredCapabilitiesExtension;
-use crate::group::creation::LeafNodeLifetimePolicy;
-use crate::group::proposal_store::ProposalQueue;
-use crate::group::GroupContextExtensionsProposalValidationError;
-use crate::prelude::LibraryError;
-use crate::treesync::{errors::LeafNodeValidationError, LeafNode};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
+    extensions::RequiredCapabilitiesExtension,
     framing::{
         mls_auth_content_in::VerifiableAuthenticatedContentIn, ContentType, ProtocolMessage,
         Sender, WireFormat,
     },
+    group::public_group::PublicGroup,
     group::{
+        creation::LeafNodeLifetimePolicy,
         errors::{ExternalCommitValidationError, ProposalValidationError, ValidationError},
         past_secrets::MessageSecretsStore,
-        Member,
+        proposal_store::ProposalQueue,
+        GroupContextExtensionsProposalValidationError, Member,
     },
     messages::{
         proposals::{Proposal, ProposalOrRefType, ProposalType},
         Commit,
     },
-    schedule::errors::PskError,
+    prelude::LibraryError,
+    schedule::{errors::PskError, psk::ResumptionPskUsage, Psk},
+    treesync::{
+        errors::{LeafNodeValidationError, LifetimeError},
+        LeafNode,
+    },
 };
-
-use crate::treesync::errors::LifetimeError;
 
 impl PublicGroup {
     // === Messages ===
@@ -477,6 +477,18 @@ impl PublicGroup {
             // ValSem402
             // https://validation.openmls.tech/#valn0803
             let psk_id = psk_id.validate_in_proposal(self.ciphersuite())?;
+            if let Psk::Resumption(psk) = psk_id.psk() {
+                if matches!(psk.usage(), ResumptionPskUsage::Branch) {
+                    // https://validation.openmls.tech/#valn0802
+                    // Branching PSKs must only be processed as part of the
+                    // initial commit, adding the other members.
+                    if self.group_context.epoch().as_u64() != 0 {
+                        return Err(PskError::NotAllowed.into());
+                    }
+
+                    // FIXME: check for https://validation.openmls.tech/#valn1401
+                }
+            }
 
             // ValSem403 (2/2)
             if !visited_psk_ids.contains(&psk_id) {

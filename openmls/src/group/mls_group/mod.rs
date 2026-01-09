@@ -60,6 +60,7 @@ pub(crate) mod commit_builder;
 pub(crate) mod config;
 pub(crate) mod creation;
 pub(crate) mod errors;
+pub(crate) mod group_builder;
 pub(crate) mod membership;
 pub(crate) mod past_secrets;
 pub(crate) mod processing;

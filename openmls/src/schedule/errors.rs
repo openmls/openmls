@@ -67,6 +67,9 @@ pub enum PskError {
         /// First detected duplicate.
         first: PreSharedKeyId,
     },
+    /// PSK not allowed in this place.
+    #[error("PSK not allowed in this place.")]
+    NotAllowed,
 }
 
 // === Crate ===
