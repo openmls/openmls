@@ -50,6 +50,67 @@ impl PartialEq for Secret {
 }
 
 impl Secret {
+    /// Randomly sample a fresh `Secret` for use as seed to generate the init
+    /// key pair in a `KeyPackage`.
+    /// This default random initialiser uses the default Secret length of
+    /// `hash_length`. The function can return a [`CryptoError`] if there is
+    /// insufficient randomness.
+    pub(crate) fn random_init_key_seed(
+        ciphersuite: Ciphersuite,
+        rand: &impl OpenMlsRand,
+    ) -> Result<Self, CryptoError> {
+        Ok(Secret {
+            value: rand
+                .init_key_seed(ciphersuite.hash_length())
+                .map_err(|_| CryptoError::InsufficientRandomness)?
+                .into(),
+        })
+    }
+    /// Randomly sample a fresh `Secret` for use as `InitSecret`.
+    /// This default random initialiser uses the default Secret length of `hash_length`.
+    /// The function can return a [`CryptoError`] if there is insufficient randomness.
+    pub(crate) fn random_init_secret(
+        ciphersuite: Ciphersuite,
+        rand: &impl OpenMlsRand,
+    ) -> Result<Self, CryptoError> {
+        Ok(Secret {
+            value: rand
+                .init_secret(ciphersuite.hash_length())
+                .map_err(|_| CryptoError::InsufficientRandomness)?
+                .into(),
+        })
+    }
+
+    /// Randomly sample a fresh `Secret` for use as a `PathSecret`.
+    /// This default random initialiser uses the default Secret length of `hash_length`.
+    /// The function can return a [`CryptoError`] if there is insufficient randomness.
+    pub(crate) fn random_path_secret(
+        ciphersuite: Ciphersuite,
+        rand: &impl OpenMlsRand,
+    ) -> Result<Self, CryptoError> {
+        Ok(Secret {
+            value: rand
+                .path_secret(ciphersuite.hash_length())
+                .map_err(|_| CryptoError::InsufficientRandomness)?
+                .into(),
+        })
+    }
+
+    /// Randomly sample a fresh `Secret` for use as an encryption key seed.
+    /// This default random initialiser uses the default Secret length of `hash_length`.
+    /// The function can return a [`CryptoError`] if there is insufficient randomness.
+    pub(crate) fn random_encryption_key_seed(
+        ciphersuite: Ciphersuite,
+        rand: &impl OpenMlsRand,
+    ) -> Result<Self, CryptoError> {
+        Ok(Secret {
+            value: rand
+                .encryption_key_seed(ciphersuite.hash_length())
+                .map_err(|_| CryptoError::InsufficientRandomness)?
+                .into(),
+        })
+    }
+
     /// Randomly sample a fresh `Secret`.
     /// This default random initialiser uses the default Secret length of `hash_length`.
     /// The function can return a [`CryptoError`] if there is insufficient randomness.

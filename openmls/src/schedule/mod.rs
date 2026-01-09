@@ -293,7 +293,7 @@ impl InitSecret {
         rand: &impl OpenMlsRand,
     ) -> Result<Self, CryptoError> {
         Ok(InitSecret {
-            secret: Secret::random(ciphersuite, rand)?,
+            secret: Secret::random_init_secret(ciphersuite, rand)?,
         })
     }
 

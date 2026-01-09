@@ -210,8 +210,8 @@ impl EncryptionKeyPair {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<Self, LibraryError> {
-        let ikm =
-            Secret::random(ciphersuite, rand).map_err(LibraryError::unexpected_crypto_error)?;
+        let ikm = Secret::random_encryption_key_seed(ciphersuite, rand)
+            .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(crypto
             .derive_hpke_keypair(ciphersuite.hpke_config(), ikm.as_slice())
             .map_err(LibraryError::unexpected_crypto_error)?
