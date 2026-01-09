@@ -168,5 +168,11 @@ fn leaf_node_params_extension_validation() {
         .with_extensions(Extensions::single(extension))
         .unwrap_err();
 
-    assert_eq!(err, InvalidExtensionError::IllegalInLeafNodes);
+    assert_eq!(
+        err,
+        InvalidExtensionError::ExtensionTypeNotValidInObject {
+            illegal_extension: ExtensionType::ExternalSenders,
+            ty: std::any::type_name::<LeafNode>()
+        }
+    );
 }

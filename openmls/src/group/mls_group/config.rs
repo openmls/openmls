@@ -327,12 +327,7 @@ impl MlsGroupCreateConfigBuilder {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
-        let is_valid_in_group_context = extensions.application_id().is_none()
-            && extensions.ratchet_tree().is_none()
-            && extensions.external_pub().is_none();
-        if !is_valid_in_group_context {
-            return Err(InvalidExtensionError::IllegalInGroupContext);
-        }
+        ExtensionsForObject::<GroupContext>::validate(extensions.iter())?;
         self.config.group_context_extensions = extensions;
         Ok(self)
     }

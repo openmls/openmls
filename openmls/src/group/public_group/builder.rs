@@ -8,6 +8,7 @@ use crate::{
     group::{GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
+    prelude::ExtensionsForObject,
     schedule::CommitSecret,
     storage::OpenMlsProvider,
     treesync::{
@@ -43,12 +44,7 @@ impl TempBuilderPG1 {
         mut self,
         extensions: Extensions,
     ) -> Result<Self, InvalidExtensionError> {
-        let is_valid_in_group_context = extensions.application_id().is_none()
-            && extensions.ratchet_tree().is_none()
-            && extensions.external_pub().is_none();
-        if !is_valid_in_group_context {
-            return Err(InvalidExtensionError::IllegalInGroupContext);
-        }
+        ExtensionsForObject::<GroupContext>::validate(extensions.iter())?;
         self.group_context_extensions = extensions;
         Ok(self)
     }
@@ -60,7 +56,6 @@ impl TempBuilderPG1 {
         // Ensure that these extensions are not invalid for leaf nodes.
         // https://validation.openmls.tech/#valn1601
         extensions.validate_extension_types_for_leaf_node()?;
-
         self.leaf_node_extensions = extensions;
         Ok(self)
     }

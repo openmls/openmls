@@ -358,9 +358,16 @@ fn test_valsem201() {
         }))
     };
 
+    let group_context_extensions: ExtensionsForObject<GroupContext> = alice_group
+        .context()
+        .extensions()
+        .clone()
+        .try_into()
+        .unwrap();
+
     let gce_proposal = || {
         queued(Proposal::group_context_extensions(
-            GroupContextExtensionProposal::new(alice_group.context().extensions().clone()),
+            GroupContextExtensionProposal::new(group_context_extensions),
         ))
     };
 
