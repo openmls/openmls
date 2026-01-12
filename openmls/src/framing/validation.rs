@@ -262,11 +262,7 @@ impl UnverifiedMessage {
         Ok((content, self.credential))
     }
 
-    /// Get the content type of the message.
-    pub(crate) fn content_type(&self) -> ContentType {
-        self.verifiable_content.content_type()
-    }
-
+    /// Get the proposals of the commit, if it is one. If not, return `None`.
     pub fn proposals(&self) -> Option<&[ProposalOrRefIn]> {
         self.verifiable_content.content().proposals()
     }

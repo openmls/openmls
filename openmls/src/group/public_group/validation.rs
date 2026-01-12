@@ -36,8 +36,6 @@ use crate::treesync::errors::LifetimeError;
 use crate::{
     group::errors::AppDataUpdateValidationError, messages::proposals::AppDataUpdateOperationType,
 };
-#[cfg(feature = "extensions-draft-08")]
-use std::collections::BTreeMap;
 
 impl PublicGroup {
     // === Messages ===
@@ -620,15 +618,10 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), AppDataUpdateValidationError> {
-        use crate::prelude::GroupContextExtensionProposal;
-
         let no_app_data_updates = proposal_queue.app_data_update_proposals().next().is_none();
         if no_app_data_updates {
             return Ok(());
         }
-
-        // fetch the current group context extensions
-        let group_context_extensions = self.group_context.extensions();
 
         // retrieve the GroupContextExtensions proposal, if available
         let group_context_extension_proposal = proposal_queue

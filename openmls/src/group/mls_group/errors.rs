@@ -8,7 +8,6 @@
 use thiserror::Error;
 
 use crate::{
-    component::ComponentId,
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
     group::{

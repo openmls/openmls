@@ -1,4 +1,3 @@
-use crate::component::{ComponentData, ComponentId};
 use crate::extensions::*;
 use crate::prelude::*;
 use crate::test_utils::{frankenstein::*, single_group_test_framework::*};
@@ -222,87 +221,6 @@ fn test_group_context_update_dictionary_after_deactivating() {
             )
         )
     );
-}
-
-// FIXME: validate that all proposal types in the commit are supported by the new GroupContextExtensions proposal
-/// Commit creation:
-/// Test the case where an AppDataUpdateProposal updates the AppDataDictionary after
-/// removing AppDataUpdate from the required capabilities.
-///   keks: I don't think everyone needs to support the extension, at least according to the draft.
-///         normal rules apply.
-#[openmls_test]
-#[ignore]
-fn test_app_data_update_after_removing_required_capabilities() {
-    // Set up parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
-
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
-
-    let [alice] = group_state.members_mut(&["alice"]);
-
-    let required_capabilities_extension =
-        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(&[], &[], &[]));
-
-    alice
-        .group
-        .propose_group_context_extensions(
-            &alice_party.provider,
-            Extensions::from_vec(vec![required_capabilities_extension]).unwrap(),
-            &alice.party.signer,
-        )
-        .unwrap();
-
-    // Alice creates a commit containing an AppDataUpdate proposal
-    let mut stage = alice
-        .group
-        .commit_builder()
-        .add_proposals(vec![Proposal::AppDataUpdate(Box::new(
-            AppDataUpdateProposal::update(16, b"ignored".to_vec()),
-        ))])
-        .load_psks(alice_party.provider.storage())
-        .unwrap();
-
-    let mut app_data_updater = stage.app_data_dictionary_updater();
-
-    for proposal in stage.app_data_update_proposals() {
-        let operation = proposal.operation();
-        let component_id = proposal.component_id();
-
-        if let AppDataUpdateOperation::Update(data) = operation {
-            let component_data = ComponentData::from_parts(component_id, data.clone());
-            app_data_updater.set(component_data);
-        } else if let AppDataUpdateOperation::Remove = operation {
-            app_data_updater.remove(&component_id);
-        }
-    }
-
-    let changes = app_data_updater.changes();
-    assert_eq!(changes.as_ref().unwrap().len(), 1);
-
-    stage.with_app_data_dictionary_updates(changes);
-
-    let err = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
-        .unwrap()
-        .stage_commit(&alice_party.provider)
-        .unwrap_err();
-
-    /*
-    assert_eq!(
-        err,
-        CommitToPendingProposalsError::CreateCommitError(
-            CreateCommitError::GroupContextExtensionsProposalValidationError(
-                GroupContextExtensionsProposalValidationError::ExtensionNotInRequiredCapabilities
-            )
-        )
-    );
-    */
 }
 
 /// Commit creation:

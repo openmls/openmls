@@ -259,18 +259,10 @@ impl PublicGroup {
         &self,
         mls_content: &AuthenticatedContent,
         crypto: &impl OpenMlsCrypto,
-        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<StagedCommit, StageCommitError> {
         let (commit, proposal_queue, sender_index) = self.validate_commit(mls_content, crypto)?;
 
-        let staged_diff = self.stage_diff(
-            mls_content,
-            &proposal_queue,
-            sender_index,
-            crypto,
-            #[cfg(feature = "extensions-draft-08")]
-            app_data_dict_updates,
-        )?;
+        let staged_diff = self.stage_diff(mls_content, &proposal_queue, sender_index, crypto)?;
         let staged_state = PublicStagedCommitState {
             staged_diff,
             update_path_leaf_node: commit.path.as_ref().map(|p| p.leaf_node().clone()),
@@ -281,6 +273,7 @@ impl PublicGroup {
         Ok(StagedCommit::new(proposal_queue, staged_commit_state))
     }
 
+    #[cfg(feature = "extensions-draft-08")]
     pub(crate) fn stage_commit_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,
@@ -289,7 +282,7 @@ impl PublicGroup {
     ) -> Result<StagedCommit, StageCommitError> {
         let (commit, proposal_queue, sender_index) = self.validate_commit(mls_content, crypto)?;
 
-        let staged_diff = self.stage_diff(
+        let staged_diff = self.stage_diff_with_app_data_updates(
             mls_content,
             &proposal_queue,
             sender_index,
@@ -312,7 +305,6 @@ impl PublicGroup {
         proposal_queue: &ProposalQueue,
         sender_index: LeafNodeIndex,
         crypto: &impl OpenMlsCrypto,
-        #[cfg(feature = "extensions-draft-08")] app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<StagedPublicGroupDiff, StageCommitError> {
         let mut diff = self.empty_diff();
 
@@ -322,7 +314,6 @@ impl PublicGroup {
             mls_content,
             apply_proposals_values,
             diff,
-            proposal_queue,
             sender_index,
             crypto,
         )
@@ -349,7 +340,6 @@ impl PublicGroup {
             mls_content,
             apply_proposals_values,
             diff,
-            proposal_queue,
             sender_index,
             crypto,
         )
@@ -360,7 +350,6 @@ impl PublicGroup {
         mls_content: &AuthenticatedContent,
         apply_proposals_values: ApplyProposalsValues,
         mut diff: PublicGroupDiff,
-        proposal_queue: &ProposalQueue,
         sender_index: LeafNodeIndex,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<StagedPublicGroupDiff, StageCommitError> {

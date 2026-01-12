@@ -56,6 +56,11 @@ impl<'a> AppDataDictionaryUpdater<'a> {
         }
     }
 
+    /// Looks up the old value for a component.
+    pub fn old_value(&self, component_id: ComponentId) -> Option<&[u8]> {
+        self.old_dict?.get(&component_id)
+    }
+
     /// helper method that returns a mutable reference to the
     /// [`AppDataUpdates`], creating the struct if it does not exist.
     fn new_entries_mut(&mut self) -> &mut AppDataUpdates {
@@ -71,11 +76,12 @@ impl<'a> AppDataDictionaryUpdater<'a> {
         self.new_entries_mut().0.insert(id, Some(data.into()));
     }
 
+    /// Flags an entry in the dictionary for removal
     pub fn remove(&mut self, id: &ComponentId) {
         self.new_entries_mut().0.insert(*id, None);
     }
 
-    /// consumes the updater and returns just the changes, so we can pass them into
+    /// Consumes the updater and returns just the changes, so we can pass them into
     /// process_unverified_message
     /// only returns Some if we actually called set
     pub fn changes(self) -> Option<AppDataUpdates> {

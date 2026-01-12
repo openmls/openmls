@@ -163,8 +163,6 @@ impl MlsGroup {
             }
         }
 
-        let ciphersuite = self.ciphersuite();
-
         let (commit, proposal_queue, sender_index) = self
             .public_group
             .validate_commit(mls_content, provider.crypto())?;

@@ -50,6 +50,9 @@ impl ProposalStore {
     pub(crate) fn add(&mut self, queued_proposal: QueuedProposal) {
         self.queued_proposals.push(queued_proposal);
     }
+    /// Returns an iterator over the stored [`Proposal`]s and [`ProposalRef`]s
+    ///
+    /// [`ProposalRef`]: crate::messages::proposals::ProposalRef
     pub fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.queued_proposals.iter()
     }
