@@ -69,11 +69,19 @@ sqlite-provider = [
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 js = [
-    "dep:getrandom_old",
+    "dep:getrandom",
     "dep:fluvio-wasm-timer",
 
     # enable randomness source
+    "getrandom/wasm_js",
+]
+
+js-test = [
+    "dep:getrandom_old",
+
+    # enable randomness source
     "getrandom_old/js",
+
 ]
 
 extensions-draft-08 = [
@@ -109,7 +117,7 @@ openmls = { path = ".", features = [
 ] }
 
 [target.'cfg(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows")))'.dev-dependencies]
-openmls = { path = ".", features = ["test-utils"] }
+openmls = { path = ".", features = ["test-utils", "js-test"] }
 
 [[bench]]
 name = "benchmark"
