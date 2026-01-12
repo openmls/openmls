@@ -79,11 +79,11 @@ jobs:
           RUSTFLAGS: --cfg getrandom_backend="wasm_js"
         run: |
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo-install/wasm-bindgen-cli/bin/wasm-bindgen-test-runner
-          cargo test -p openmls -vv --target wasm32-unknown-unknown -F js
+          cargo test -p openmls -vv --target wasm32-unknown-unknown -F js,js-test
 
       - name: Tests Wasm32 on linux with libcrux provider
         env:
           RUSTFLAGS: --cfg getrandom_backend="wasm_js"
         run: |
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo-install/wasm-bindgen-cli/bin/wasm-bindgen-test-runner
-          cargo test -p openmls -vv --target wasm32-unknown-unknown -F js,libcrux-provider,libcrux-provider-js
+          cargo test -p openmls -vv --target wasm32-unknown-unknown -F js,js-test,libcrux-provider,libcrux-provider-js
