@@ -1,7 +1,7 @@
 //! This module contains validation functions for incoming messages
 //! as defined in <https://github.com/openmls/openmls/wiki/Message-validation>
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::HashSet;
 
 use openmls_traits::types::VerifiableCiphersuite;
 
@@ -27,7 +27,6 @@ use crate::{
         proposals::{Proposal, ProposalOrRefType, ProposalType},
         Commit,
     },
-    schedule::errors::PskError,
 };
 
 use crate::treesync::errors::LifetimeError;
@@ -460,30 +459,17 @@ impl PublicGroup {
     ///
     /// * ValSem401: The nonce of a PreSharedKeyID must have length KDF.Nh.
     /// * ValSem402: PSK in proposal must be of type Resumption (with usage Application) or External.
-    /// * ValSem403: Proposal list must not contain multiple PreSharedKey proposals that reference the same PreSharedKeyID.
     pub(crate) fn validate_pre_shared_key_proposals(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
-        // ValSem403 (1/2)
-        // TODO(#1335): Duplicate proposals are (likely) filtered.
-        //              Let's do this check here until we haven't made sure.
-        let mut visited_psk_ids = BTreeSet::new();
-
         for proposal in proposal_queue.psk_proposals() {
             let psk_id = proposal.psk_proposal().clone().into_psk_id();
 
             // ValSem401
             // ValSem402
             // https://validation.openmls.tech/#valn0803
-            let psk_id = psk_id.validate_in_proposal(self.ciphersuite())?;
-
-            // ValSem403 (2/2)
-            if !visited_psk_ids.contains(&psk_id) {
-                visited_psk_ids.insert(psk_id);
-            } else {
-                return Err(PskError::Duplicate { first: psk_id }.into());
-            }
+            psk_id.validate_in_proposal(self.ciphersuite())?;
         }
 
         Ok(())

@@ -120,6 +120,7 @@ impl PublicGroup {
                 FromCommittedProposalsError::LibraryError(e) => StageCommitError::LibraryError(e),
                 FromCommittedProposalsError::ProposalNotFound => StageCommitError::MissingProposal,
                 FromCommittedProposalsError::SelfRemoval => StageCommitError::AttemptedSelfRemoval,
+                FromCommittedProposalsError::DuplicatePskId => StageCommitError::DuplicatePskId,
             }
         })?;
 

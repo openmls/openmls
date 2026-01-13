@@ -264,6 +264,9 @@ pub enum StageCommitError {
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// Duplicate PSK ID.
+    #[error("Duplicate PSK proposal.")]
+    DuplicatePskId,
 }
 
 /// Create commit error
@@ -558,6 +561,9 @@ pub(crate) enum FromCommittedProposalsError {
     /// The sender of a Commit tried to remove themselves.
     #[error("The sender of a Commit tried to remove themselves.")]
     SelfRemoval,
+    /// Commit contains two PSK proposals with the same PSK ID.
+    #[error("Commit contains two PSK proposals with the same PSK ID.")]
+    DuplicatePskId,
 }
 
 /// Create group context ext proposal error

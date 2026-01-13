@@ -265,6 +265,8 @@ impl ProposalQueue {
         // Build the actual queue
         let mut proposal_queue = ProposalQueue::default();
 
+        let mut visited_psk_ids = HashSet::new();
+
         // Iterate over the committed proposals and insert the proposals in the queue
         log::trace!("   committed proposals ...");
         for proposal_or_ref in committed_proposals.into_iter() {
@@ -285,6 +287,16 @@ impl ProposalQueue {
                         return Err(FromCommittedProposalsError::SelfRemoval);
                     };
 
+                    // https://validation.openmls.tech/#valn0804
+                    if let Proposal::PreSharedKey(psk_proposal) = &*proposal {
+                        let psk_id = psk_proposal.clone().into_psk_id();
+                        if visited_psk_ids.contains(&psk_id) {
+                            return Err(FromCommittedProposalsError::DuplicatePskId);
+                        } else {
+                            visited_psk_ids.insert(psk_id);
+                        }
+                    }
+
                     QueuedProposal::from_proposal_and_sender(
                         ciphersuite,
                         crypto,
@@ -302,6 +314,17 @@ impl ProposalQueue {
                                     if remove_proposal.removed() == *leaf_index {
                                         return Err(FromCommittedProposalsError::SelfRemoval);
                                     }
+                                }
+                            }
+
+                            // https://validation.openmls.tech/#valn0804
+                            if let Proposal::PreSharedKey(psk_proposal) = &queued_proposal.proposal
+                            {
+                                let psk_id = psk_proposal.clone().into_psk_id();
+                                if visited_psk_ids.contains(&psk_id) {
+                                    return Err(FromCommittedProposalsError::DuplicatePskId);
+                                } else {
+                                    visited_psk_ids.insert(psk_id);
                                 }
                             }
 
