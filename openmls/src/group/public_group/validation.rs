@@ -374,19 +374,6 @@ impl PublicGroup {
         Ok(())
     }
 
-    /// Validate that none of the remove proposals in the queue remove the committer.
-    pub(crate) fn validate_remove_proposals_dont_remove_comitter(
-        &self,
-        proposal_queue: &ProposalQueue,
-        committer: LeafNodeIndex,
-    ) -> Result<(), ProposalValidationError> {
-        // https::validation.openmls.org/#valn0303
-        proposal_queue
-            .remove_proposals()
-            .all(|proposal| proposal.remove_proposal().removed != committer)
-            .then_some(())
-            .ok_or(ProposalValidationError::RemovingCommitter)
-    }
     /// Validate Remove proposals. This function implements the following checks:
     ///  - ValSem107: Remove Proposal: Removed member must be unique among proposals
     ///  - ValSem108: Remove Proposal: Removed member must be an existing group member

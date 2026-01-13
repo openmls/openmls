@@ -157,12 +157,6 @@ impl PublicGroup {
 
         match sender {
             Sender::Member(committer_leaf_index) => {
-                // https::validation.openmls.org/#valn0303
-                self.validate_remove_proposals_dont_remove_comitter(
-                    &proposal_queue,
-                    *committer_leaf_index,
-                )?;
-
                 // ValSem110
                 // ValSem111
                 // ValSem112
