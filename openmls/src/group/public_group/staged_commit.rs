@@ -156,11 +156,17 @@ impl PublicGroup {
         self.validate_pre_shared_key_proposals(&proposal_queue)?;
 
         match sender {
-            Sender::Member(leaf_index) => {
+            Sender::Member(committer_leaf_index) => {
+                // https::validation.openmls.org/#valn0303
+                self.validate_remove_proposals_dont_remove_comitter(
+                    &proposal_queue,
+                    *committer_leaf_index,
+                )?;
+
                 // ValSem110
                 // ValSem111
                 // ValSem112
-                self.validate_update_proposals(&proposal_queue, *leaf_index)?;
+                self.validate_update_proposals(&proposal_queue, *committer_leaf_index)?;
 
                 self.validate_no_external_init_proposals(&proposal_queue)?;
             }

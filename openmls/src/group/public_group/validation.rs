@@ -199,7 +199,7 @@ impl PublicGroup {
             encryption_key,
             signature_key,
             ..
-        } in self.treesync().full_leave_members()
+        } in self.treesync().full_leaf_members()
         {
             if !remove_proposals.contains(&index) {
                 signature_key_set.insert(signature_key);
@@ -288,6 +288,7 @@ impl PublicGroup {
         //  - ValSem206
         //  - ValSem207
         //  - https://validation.openmls.tech/#valn0112
+        //  - https://validation.openmls.tech/#valn1209
         for encryption_key in encryption_keys {
             if init_key_set.contains(&encryption_key) {
                 return Err(ProposalValidationError::InitEncryptionKeyCollision);
@@ -373,6 +374,19 @@ impl PublicGroup {
         Ok(())
     }
 
+    /// Validate that none of the remove proposals in the queue remove the committer.
+    pub(crate) fn validate_remove_proposals_dont_remove_comitter(
+        &self,
+        proposal_queue: &ProposalQueue,
+        committer: LeafNodeIndex,
+    ) -> Result<(), ProposalValidationError> {
+        // https::validation.openmls.org/#valn0303
+        proposal_queue
+            .remove_proposals()
+            .all(|proposal| proposal.remove_proposal().removed != committer)
+            .then_some(())
+            .ok_or(ProposalValidationError::RemovingCommitter)
+    }
     /// Validate Remove proposals. This function implements the following checks:
     ///  - ValSem107: Remove Proposal: Removed member must be unique among proposals
     ///  - ValSem108: Remove Proposal: Removed member must be an existing group member
@@ -440,6 +454,7 @@ impl PublicGroup {
             // The sender of a standalone update proposal must be of type member
             if let Sender::Member(sender_index) = update_proposal.sender() {
                 // ValSem111
+                // https://validation.openmls.tech/#valn0302
                 // The sender of a full Commit must not include own update proposals
                 if committer == *sender_index {
                     return Err(ProposalValidationError::CommitterIncludedOwnUpdate);

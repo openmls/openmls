@@ -458,6 +458,9 @@ pub enum ProposalValidationError {
     /// The remove proposal referenced a non-existing member.
     #[error("The remove proposal referenced a non-existing member.")]
     UnknownMemberRemoval,
+    /// Found Remove proposal that removes committer
+    #[error("Found Remove proposal that removes committer")]
+    RemovingCommitterError,
     /// Found an update from a non-member.
     #[error("Found an update from a non-member.")]
     UpdateFromNonMember,

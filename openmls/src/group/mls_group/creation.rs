@@ -370,7 +370,7 @@ impl ProcessedWelcome {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Verify confirmation tag
-        // https://validation.openmls.tech/#valn1410
+        // https://validation.openmls.tech/#valn1411
         if &confirmation_tag != public_group.confirmation_tag() {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
