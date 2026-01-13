@@ -128,7 +128,10 @@ impl PublicGroup {
             self.validate_leaf_node(update_path.leaf_node())?;
         }
 
-        // Validate the staged proposals. This implements https://validation.openmls.tech/#valn1204.
+        // Validate the staged proposals. This implements
+        // - https://validation.openmls.tech/#valn0301
+        // - https://validation.openmls.tech/#valn1204
+        //
         // This is done by doing the following checks:
 
         // ValSem101
