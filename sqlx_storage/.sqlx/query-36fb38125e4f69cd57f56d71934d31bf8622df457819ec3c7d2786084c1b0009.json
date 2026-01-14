@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR REPLACE INTO openmls_psk (psk_id, psk_bundle) VALUES (?1, ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "36fb38125e4f69cd57f56d71934d31bf8622df457819ec3c7d2786084c1b0009"
+}

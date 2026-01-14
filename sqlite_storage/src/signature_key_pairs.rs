@@ -25,8 +25,8 @@ impl<SignatureKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>
     ) -> Result<Option<SignatureKeyPairs>, rusqlite::Error> {
         let signature_key = connection
             .query_row(
-                "SELECT signature_key 
-                FROM openmls_signature_keys 
+                "SELECT signature_key
+                FROM openmls_signature_keys
                 WHERE public_key = ?1
                     AND provider_version = ?2",
                 params![
@@ -57,7 +57,7 @@ impl<SignatureKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>
         public_key: &SignaturePublicKey,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO openmls_signature_keys (public_key, signature_key, provider_version) 
+            "INSERT OR REPLACE INTO openmls_signature_keys (public_key, signature_key, provider_version)
             VALUES (?1, ?2, ?3)",
             params![
                 KeyRefWrapper::<C, _>(public_key, PhantomData),
@@ -82,8 +82,8 @@ impl<SignaturePublicKey: Key<STORAGE_PROVIDER_VERSION>>
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "DELETE FROM openmls_signature_keys 
-            WHERE public_key = ?1 
+            "DELETE FROM openmls_signature_keys
+            WHERE public_key = ?1
                 AND provider_version = ?2",
             params![
                 KeyRefWrapper::<C, _>(self.0, PhantomData),
