@@ -791,10 +791,6 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         .map_err(LibraryError::unexpected_crypto_error)?
                         .public;
 
-                    // FIXME: ensure ExternalPub extension is at correct placement in list
-                    //   keks: I am not sure what is meant here, I don't think there needs to be
-                    //   any particular order:
-                    //   <https://www.rfc-editor.org/rfc/rfc9420.html#section-12.4.3-4>
                     let external_pub_extension =
                         Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
                     extensions.add(external_pub_extension)?;
@@ -854,11 +850,14 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         }))
     }
 
+    /// Creates a new [`AppDataUpdates`] based on the current state of the
+    /// [`AppDataDictionary`] of the group.
     #[cfg(feature = "extensions-draft-08")]
     pub fn app_data_dictionary_updater(&self) -> AppDataDictionaryUpdater<'_> {
         AppDataDictionaryUpdater::new(self.group.borrow().context().app_data_dict())
     }
 
+    /// Sets the [`AppDataUpdates`] that contain the changes made by the AppDataUpdate proposals
     #[cfg(feature = "extensions-draft-08")]
     pub fn with_app_data_dictionary_updates(
         &mut self,
@@ -867,6 +866,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         self.stage.app_data_dictionary_updates = app_data_dictionary_updates;
     }
 
+    /// Returns an iterator over all AppDataUpdate propoas in the proposal store of the group
     #[cfg(feature = "extensions-draft-08")]
     pub fn app_data_update_proposals(&self) -> impl Iterator<Item = &AppDataUpdateProposal> {
         let proposal_store_proposals = self
@@ -876,10 +876,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .proposals()
             .map(|queued_proposal| queued_proposal.proposal());
 
-        // FIXME: (keks) Uhm, why?
-        //
-        // The proposals in the proposal store come earlier
-        // than the own_proposals.
+        // The proposals in the proposal store come earlier than the own_proposals.
         let all_proposals = proposal_store_proposals.chain(self.stage.own_proposals.iter());
 
         // Filter for AppDataUpdate proposals

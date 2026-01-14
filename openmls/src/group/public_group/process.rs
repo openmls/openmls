@@ -342,6 +342,11 @@ impl PublicGroup {
         let sender = content.sender().clone();
         let authenticated_data = content.authenticated_data().to_owned();
 
+        debug_assert!(matches!(
+            sender,
+            Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal
+        ));
+
         let content = match content.content() {
             FramedContentBody::Application(application_message) => {
                 ProcessedMessageContent::ApplicationMessage(ApplicationMessage::new(
@@ -389,6 +394,8 @@ impl PublicGroup {
     ) -> Result<ProcessedMessage, PublicProcessMessageError> {
         let sender = content.sender().clone();
         let data = content.authenticated_data().to_owned();
+
+        debug_assert!(matches!(sender, Sender::External(_)));
 
         // https://validation.openmls.tech/#valn1501
         match content.content() {

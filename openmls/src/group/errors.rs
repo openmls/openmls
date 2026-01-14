@@ -4,6 +4,9 @@
 
 use thiserror::Error;
 
+#[cfg(feature = "extensions-draft-08")]
+use super::public_group::errors::ApplyAppDataUpdateError;
+
 pub use super::mls_group::errors::*;
 use super::public_group::errors::CreationFromExternalError;
 use crate::{
@@ -268,6 +271,10 @@ pub enum StageCommitError {
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// See [`ApplyAppDataUpdateError`] for more details.
+    #[cfg(feature = "extensions-draft-08")]
+    #[error(transparent)]
+    ApplyAppDataUpdateError(#[from] ApplyAppDataUpdateError),
 }
 
 /// Create commit error
@@ -324,6 +331,10 @@ pub enum CreateCommitError {
     /// Invalid external commit.
     #[error("Invalid external commit.")]
     InvalidExternalCommit(#[from] ExternalCommitValidationError),
+    /// See [`ApplyAppDataUpdateError`] for more details.
+    #[cfg(feature = "extensions-draft-08")]
+    #[error(transparent)]
+    ApplyAppDataUpdateError(#[from] ApplyAppDataUpdateError),
 }
 
 /// Stage commit error

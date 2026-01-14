@@ -98,7 +98,8 @@ fn test_app_data_update_simple() {
 
     let mut app_data_updater = stage.app_data_dictionary_updater();
 
-    // TODO: handle in order of ComponentId
+    // Technically we should handle these in order of component ID. In this case the handlers are
+    // independent, so we don't bother to sort them.
     for proposal in stage.app_data_update_proposals() {
         let operation = proposal.operation();
         let component_id = proposal.component_id();
@@ -174,7 +175,8 @@ fn test_app_data_update_simple() {
         };
 
         // handle the proposal
-        // TODO: handle in order of ComponentId
+        // Technically we should handle these in order of component ID. In this case the handlers are
+        // independent, so we don't bother to sort them.
         let operation = proposal.operation();
         let component_id = proposal.component_id();
 
@@ -263,7 +265,8 @@ fn test_app_data_update_with_welcome() {
     // retrieve the update helper struct for the stage
     let mut app_data_updater = stage.app_data_dictionary_updater();
 
-    // TODO: handle in order of ComponentId
+    // Technically we should handle these in order of component ID. In this case the handlers are
+    // independent, so we don't bother to sort them.
     for proposal in stage.app_data_update_proposals() {
         let operation = proposal.operation();
         let component_id = proposal.component_id();
@@ -339,7 +342,8 @@ fn test_app_data_update_with_welcome() {
         };
 
         // handle the proposal
-        // TODO: handle in order of ComponentId
+        // Technically we should handle these in order of component ID. In this case the handlers are
+        // independent, so we don't bother to sort them.
         let operation = proposal.operation();
         let component_id = proposal.component_id();
 

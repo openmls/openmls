@@ -39,6 +39,7 @@ impl AppDataDictionary {
         self.component_data.values()
     }
 
+    /// Returns the data that is currently stored in the [`AppDataDictionary`].
     pub fn to_entries(self) -> Vec<ComponentData> {
         self.entries().cloned().collect()
     }

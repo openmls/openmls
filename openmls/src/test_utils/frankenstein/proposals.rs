@@ -1,7 +1,10 @@
+use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::messages::proposals::AppDataUpdateProposal;
+use crate::component::ComponentId;
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals::AppDataUpdateOperation;
 
 use super::{extensions::FrankenExtension, FrankenKeyPackage, FrankenLeafNode};
 
@@ -100,9 +103,23 @@ pub enum FrankenProposal {
     Custom(FrankenCustomProposal),
 }
 
-// TODO: is this sufficient?
 #[cfg(feature = "extensions-draft-08")]
-pub type FrankenAppDataUpdateProposal = AppDataUpdateProposal;
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+)]
+pub struct FrankenAppDataUpdateProposal {
+    pub component_id: ComponentId,
+    pub operation: AppDataUpdateOperation,
+}
 
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,

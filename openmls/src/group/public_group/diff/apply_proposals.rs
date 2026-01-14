@@ -44,17 +44,6 @@ impl ApplyProposalsValues {
     }
 }
 
-/**
-*
-* feature-gated arguments are kinda bad
-*
-* - we also don't want to make the API annoying for normal use
-* - maybe it'ss actually fine for non-pub functions?
-*
-*
-*
-**/
-
 /// Applies a list of proposals from a Commit to the tree.
 /// `proposal_queue` is the queue of proposals received or sent in the
 /// current epoch `updates_key_package_bundles` is the list of own
@@ -215,7 +204,7 @@ impl PublicGroupDiff<'_> {
         proposal_queue: &ProposalQueue,
         own_leaf_index: impl Into<Option<LeafNodeIndex>>,
         app_data_dict_updates: Option<AppDataUpdates>,
-    ) -> Result<ApplyProposalsValues, LibraryError> {
+    ) -> Result<ApplyProposalsValues, ApplyAppDataUpdateError> {
         let ApplyProposalsValues {
             path_required,
             self_removed,
@@ -252,33 +241,25 @@ impl PublicGroupDiff<'_> {
         mut updated_group_context_extensions: Option<Extensions>,
         proposal_queue: &ProposalQueue,
         app_data_dict_updates: Option<AppDataUpdates>,
-    ) -> Result<Option<Extensions>, LibraryError> {
-        // validation
-        // handle cases where there are no AppDataUpdate proposals in the queue
+    ) -> Result<Option<Extensions>, ApplyAppDataUpdateError> {
         let has_app_data_update_proposals = proposal_queue
             .queued_proposals()
-            .filter(|proposal| proposal.proposal().is_type(ProposalType::AppDataUpdate))
-            .next()
-            .is_some();
-        if !has_app_data_update_proposals {
-            // nothing to update
-            if app_data_dict_updates.is_none() {
-                return Ok(updated_group_context_extensions);
+            .any(|proposal| proposal.proposal().is_type(ProposalType::AppDataUpdate));
+
+        let updates = match (has_app_data_update_proposals, app_data_dict_updates) {
+            // there are AppDataUpdate proposals and we were provided the AooDataUpdates
+            (true, Some(updates)) => updates,
+            // there are no AppDataUpdate proposals in the queue, and we weren't provided any updates
+            (false, None) => return Ok(updated_group_context_extensions),
+
+            // If there are app data update proposals, there must be a list
+            (true, None) => {
+                return Err(ApplyAppDataUpdateError::MissingAppDataUpdates);
             }
             // updates were provided, but no proposals could have triggered the update
-            else if app_data_dict_updates.is_some() {
-                // TODO: return a proper error here
-                return Err(LibraryError::custom(
-                    "got updates but we don't have a proposal that could have triggered the update, that doesn't make sense. erroring out"
-                    ));
+            (false, Some(_)) => {
+                return Err(ApplyAppDataUpdateError::SuperfluousAppDataUpdates);
             }
-        }
-
-        // there are AppDataUpdate proposals in the queue; retrieve the user-provided updates.
-        let Some(updates) = app_data_dict_updates else {
-            // If there are app data update proposals, there must be a list (but it may be empty)
-            // TODO: return a proper error here
-            return Err(LibraryError::custom("no changes list provided"));
         };
 
         // retrieve the AppDataDictionary to update

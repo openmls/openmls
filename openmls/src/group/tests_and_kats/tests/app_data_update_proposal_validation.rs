@@ -252,7 +252,6 @@ fn test_app_data_update_multi_remove_validate_outgoing() {
 
     let mut app_data_updater = stage.app_data_dictionary_updater();
 
-    // TODO: handle in order of ComponentId
     for proposal in stage.app_data_update_proposals() {
         let operation = proposal.operation();
         let component_id = proposal.component_id();

@@ -171,9 +171,16 @@ impl MlsGroup {
         // group context) and apply proposals.
         let mut diff = self.public_group.empty_diff();
 
+        #[cfg(not(feature = "extensions-draft-08"))]
         let apply_proposals_values =
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
 
+        #[cfg(feature = "extensions-draft-08")]
+        let apply_proposals_values = diff.apply_proposals_with_app_data_updates(
+            &proposal_queue,
+            self.own_leaf_index(),
+            None,
+        )?;
         self.stage_applied_proposal_values(
             apply_proposals_values,
             diff,
@@ -544,10 +551,9 @@ impl MlsGroup {
     }
 }
 
-// TODO: determine whether this struct should be public.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
-pub enum StagedCommitState {
+pub(crate) enum StagedCommitState {
     PublicState(Box<PublicStagedCommitState>),
     /// The group member variant of the staged commit state.
     GroupMember(Box<MemberStagedCommitState>),
