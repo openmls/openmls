@@ -956,10 +956,6 @@ pub struct StagedWelcome {
 
     /// If we got a path secret, these are the derived path keys.
     path_keypairs: Option<Vec<EncryptionKeyPair>>,
-
-    /// Determines whether an existing group with the same Group ID
-    /// should be replaced when calling `into_group`.
-    replace_old_group: bool,
 }
 
 /// A `Welcome` message that has been processed but not staged yet.

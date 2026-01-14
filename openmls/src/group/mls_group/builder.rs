@@ -82,7 +82,10 @@ impl MlsGroupBuilder {
         let ciphersuite = mls_group_create_config.ciphersuite;
 
         if !self.replace_old_group {
-            if MlsGroup::load(provider.storage(), &group_id).is_ok() {
+            if MlsGroup::load(provider.storage(), &group_id)
+                .map_err(NewGroupError::StorageError)?
+                .is_some()
+            {
                 return Err(NewGroupError::GroupAlreadyExists);
             }
         }

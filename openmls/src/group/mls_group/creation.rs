@@ -276,6 +276,15 @@ impl ProcessedWelcome {
         validate_lifetimes: LeafNodeLifetimePolicy,
         replace_old_group: bool,
     ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+        // Check if we need to replace an old group
+        if !replace_old_group
+            && MlsGroup::load(provider.storage(), self.verifiable_group_info.group_id())
+                .map_err(WelcomeError::StorageError)?
+                .is_some()
+        {
+            return Err(WelcomeError::GroupAlreadyExists);
+        }
+
         // Build the ratchet tree and group
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -430,7 +439,6 @@ impl ProcessedWelcome {
             verifiable_group_info: self.verifiable_group_info,
             key_package_bundle: self.key_package_bundle,
             path_keypairs,
-            replace_old_group,
         };
 
         Ok(staged_welcome)
@@ -514,18 +522,6 @@ impl StagedWelcome {
         self,
         provider: &Provider,
     ) -> Result<MlsGroup, WelcomeError<Provider::StorageError>> {
-        // Check if we need to replace an old group
-        if !self.replace_old_group
-            && MlsGroup::load(
-                provider.storage(),
-                self.public_group.group_context().group_id(),
-            )
-            .map_err(WelcomeError::StorageError)?
-            .is_some()
-        {
-            return Err(WelcomeError::GroupAlreadyExists);
-        }
-
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
         let group_keypairs = if let Some(path_keypairs) = self.path_keypairs {
