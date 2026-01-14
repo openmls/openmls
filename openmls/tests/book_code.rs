@@ -1099,15 +1099,20 @@ fn book_operations() {
         .expect("expected the message to be a welcome message");
 
     // Bob creates a new group
-    let mut bob_group = StagedWelcome::new_from_welcome(
+    let processed_welcome = ProcessedWelcome::new_from_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
         welcome,
-        Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating StagedWelcome")
-    .into_group(bob_provider)
-    .expect("Error creating group from StagedWelcome");
+    .expect("Error creating ProcessedWelcome");
+    let mut bob_group = JoinBuilder::new(bob_provider, processed_welcome)
+        // Replace bob's previous group state
+        .replace_old_group()
+        .with_ratchet_tree(alice_group.export_ratchet_tree().into())
+        .build()
+        .expect("Error creating group from ProcessedWelcome")
+        .into_group(bob_provider)
+        .expect("Error creating group from StagedWelcome");
 
     // Make sure the group contains two members
     assert_eq!(alice_group.members().count(), 2);
@@ -1315,6 +1320,9 @@ fn book_operations() {
         .expect("Could not create external Add proposal");
     // ANCHOR_END: external_join_proposal
 
+    // Delete Bob's group s.t. we can re-create it later
+    bob_group.delete(bob_provider.storage()).unwrap();
+
     // ANCHOR: decrypt_external_join_proposal
     let alice_processed_message = alice_group
         .process_message(
@@ -1461,6 +1469,9 @@ fn book_operations() {
     alice_group
         .merge_pending_commit(alice_provider)
         .expect("error merging pending commit");
+
+    // Delete Bob's group s.t. we can re-create it
+    bob_group.delete(bob_provider.storage()).unwrap();
 
     let welcome: MlsMessageIn = welcome.unwrap().into();
     let welcome = welcome

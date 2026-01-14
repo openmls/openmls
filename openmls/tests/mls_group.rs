@@ -1088,6 +1088,7 @@ fn mls_group_operations() {
             .expect("expected the message to be a welcome message");
 
         // Bob creates a new group
+        bob_group.delete(bob_provider.storage()).unwrap();
         let mut bob_group = StagedWelcome::new_from_welcome(
             bob_provider,
             mls_group_create_config.join_config(),
@@ -1287,6 +1288,8 @@ fn mls_group_operations() {
             .into_welcome()
             .expect("expected the message to be a welcome message");
 
+        // Delete Bob's old group before loading the new state
+        bob_group.delete(bob_provider.storage()).unwrap();
         let mut bob_group = StagedWelcome::new_from_welcome(
             bob_provider,
             mls_group_create_config.join_config(),

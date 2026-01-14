@@ -319,10 +319,14 @@ fn test_welcome_message_encoding() {
         // example the RatchetTreeExtension.
         let config = MlsGroupJoinConfig::default();
         let ratchet_tree = Some(group_state.export_ratchet_tree().into());
-        let charlie_group =
-            StagedWelcome::new_from_welcome(provider, &config, welcome, ratchet_tree)
-                .unwrap()
-                .into_group(provider);
+        let processed_welcome =
+            ProcessedWelcome::new_from_welcome(provider, &config, welcome.clone()).unwrap();
+        let charlie_group = JoinBuilder::new(provider, processed_welcome)
+            .replace_old_group()
+            .with_ratchet_tree(ratchet_tree.unwrap())
+            .build()
+            .unwrap()
+            .into_group(provider);
         assert!(charlie_group.is_ok());
     }
 }

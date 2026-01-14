@@ -3335,3 +3335,136 @@ fn signature_key_rotation() {
         })
         .unwrap();
 }
+
+#[openmls_test::openmls_test]
+fn group_replacement() {
+    // Create a group with Alice and Bob
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+
+    let alice_credential_with_key = alice_pre_group.credential_with_key.clone();
+    let alice_signer = alice_pre_group.signer.clone();
+
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+
+    let bob_kpb = KeyPackageBundle::generate(
+        &bob_party.provider,
+        &bob_pre_group.signer,
+        ciphersuite,
+        bob_pre_group.credential_with_key.clone(),
+    );
+
+    let bob_kpb2 = KeyPackageBundle::generate(
+        &bob_party.provider,
+        &bob_pre_group.signer,
+        ciphersuite,
+        bob_pre_group.credential_with_key.clone(),
+    );
+
+    // Create config
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    // Join config
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    // Initialize the group state
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id.clone(), alice_pre_group, mls_group_create_config)
+            .unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    // Creating a new group with the same ID should fail
+    let err = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_group_id(group_id.clone())
+        .use_ratchet_tree_extension(true)
+        .build(
+            &alice_party.provider,
+            &alice_signer,
+            alice_credential_with_key.clone(),
+        )
+        .expect_err("Creating a group with an existing ID succeeded unexpectedly.");
+    assert_eq!(err, NewGroupError::GroupAlreadyExists);
+
+    let mut alice_group = MlsGroup::builder()
+        .replace_old_group()
+        .ciphersuite(ciphersuite)
+        .with_group_id(group_id.clone())
+        .use_ratchet_tree_extension(true)
+        .build(
+            &alice_party.provider,
+            &alice_signer,
+            alice_credential_with_key.clone(),
+        )
+        .expect("Group creation failed despite replace flag");
+
+    // Alice invites Bob to the new group
+    let (_commit, welcome, _group_info_option) = alice_group
+        .add_members(
+            &alice_party.provider,
+            &alice_signer,
+            &[bob_kpb.key_package().clone()],
+        )
+        .unwrap();
+
+    let welcome = welcome.into_welcome().unwrap();
+    let processed_welcome = ProcessedWelcome::new_from_welcome(
+        &bob_party.provider,
+        &mls_group_join_config,
+        welcome.clone(),
+    )
+    .unwrap();
+    let err = JoinBuilder::new(&bob_party.provider, processed_welcome)
+        .build()
+        .expect_err("Bob joined the new group unexpectedly.");
+    assert_eq!(err, WelcomeError::GroupAlreadyExists);
+
+    let mut alice_group = MlsGroup::builder()
+        .replace_old_group()
+        .ciphersuite(ciphersuite)
+        .with_group_id(group_id)
+        .use_ratchet_tree_extension(true)
+        .build(
+            &alice_party.provider,
+            &alice_signer,
+            alice_credential_with_key,
+        )
+        .expect("Group creation failed despite replace flag");
+
+    // Alice invites Bob to the new group
+    let (_commit, welcome, _group_info_option) = alice_group
+        .add_members(
+            &alice_party.provider,
+            &alice_signer,
+            &[bob_kpb2.key_package().clone()],
+        )
+        .unwrap();
+
+    let welcome = welcome.into_welcome().unwrap();
+
+    let processed_welcome = ProcessedWelcome::new_from_welcome(
+        &bob_party.provider,
+        &mls_group_join_config,
+        welcome.clone(),
+    )
+    .unwrap();
+
+    let _ = JoinBuilder::new(&bob_party.provider, processed_welcome)
+        .replace_old_group()
+        .build()
+        .expect("Bob failed to join the new group despite replace flag.");
+}
