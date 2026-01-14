@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - [#1874](https://github.com/openmls/openmls/pull/1874): Changed `ProposalType`, `ExtensionType`, and `CredentialType` enums to include `Grease(u16)` variant.
 - [#1924](https://github.com/openmls/openmls/pull/1924): Exposed `JoinBuilder::new` as public API.
+- [#1929](https://github.com/openmls/openmls/pull/1929): Change creation of new `MlsGroup`s s.t. creation fails if there is already a group with the same `GroupId` in storage. This affects both creation of fresh groups and creation of groups through a `Welcome` message. An application that wants to replace a group can either delete the group manually or call `replace_old_group` in the `JoinBuilder` or the `MlsGroupBuilder`.
 
 ## 0.7.1 (2025-09-24)
 
