@@ -81,13 +81,12 @@ impl MlsGroupBuilder {
             .unwrap_or_else(|| GroupId::random(provider.rand()));
         let ciphersuite = mls_group_create_config.ciphersuite;
 
-        if !self.replace_old_group {
-            if MlsGroup::load(provider.storage(), &group_id)
+        if !self.replace_old_group
+            && MlsGroup::load(provider.storage(), &group_id)
                 .map_err(NewGroupError::StorageError)?
                 .is_some()
-            {
-                return Err(NewGroupError::GroupAlreadyExists);
-            }
+        {
+            return Err(NewGroupError::GroupAlreadyExists);
         }
 
         let (public_group_builder, commit_secret, leaf_keypair) =
