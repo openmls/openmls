@@ -27,6 +27,9 @@ use crate::{
 #[cfg(feature = "extensions-draft-08")]
 pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
+#[cfg(doc)]
+use crate::group::GroupId;
+
 /// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum NewGroupError<StorageError> {

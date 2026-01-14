@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[cfg(doc)]
-use crate::treesync::LeafNodeParameters;
+use crate::{group::GroupId, treesync::LeafNodeParameters};
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
