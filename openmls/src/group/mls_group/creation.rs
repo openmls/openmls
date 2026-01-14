@@ -259,7 +259,12 @@ impl ProcessedWelcome {
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
-        self.into_staged_welcome_inner(provider, ratchet_tree, LeafNodeLifetimePolicy::Verify)
+        self.into_staged_welcome_inner(
+            provider,
+            ratchet_tree,
+            LeafNodeLifetimePolicy::Verify,
+            false,
+        )
     }
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
@@ -269,6 +274,7 @@ impl ProcessedWelcome {
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
         validate_lifetimes: LeafNodeLifetimePolicy,
+        replace_old_group: bool,
     ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
         // Build the ratchet tree and group
 
@@ -424,6 +430,7 @@ impl ProcessedWelcome {
             verifiable_group_info: self.verifiable_group_info,
             key_package_bundle: self.key_package_bundle,
             path_keypairs,
+            replace_old_group,
         };
 
         Ok(staged_welcome)
@@ -507,6 +514,18 @@ impl StagedWelcome {
         self,
         provider: &Provider,
     ) -> Result<MlsGroup, WelcomeError<Provider::StorageError>> {
+        // Check if we need to replace an old group
+        if !self.replace_old_group
+            && MlsGroup::load(
+                provider.storage(),
+                self.public_group.group_context().group_id(),
+            )
+            .map_err(WelcomeError::StorageError)?
+            .is_some()
+        {
+            return Err(WelcomeError::GroupAlreadyExists);
+        }
+
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
         let group_keypairs = if let Some(path_keypairs) = self.path_keypairs {
@@ -602,6 +621,7 @@ pub struct JoinBuilder<'a, Provider: OpenMlsProvider> {
     processed_welcome: ProcessedWelcome,
     ratchet_tree: Option<RatchetTreeIn>,
     validate_lifetimes: LeafNodeLifetimePolicy,
+    replace_old_group: bool,
 }
 
 impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
@@ -611,6 +631,7 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
             provider,
             processed_welcome,
             ratchet_tree: None,
+            replace_old_group: false,
             validate_lifetimes: LeafNodeLifetimePolicy::Verify,
         }
     }
@@ -618,6 +639,12 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     /// The ratchet tree to use for the new group.
     pub fn with_ratchet_tree(mut self, ratchet_tree: RatchetTreeIn) -> Self {
         self.ratchet_tree = Some(ratchet_tree);
+        self
+    }
+
+    /// Instruct the builder to replace any existing group with the same ID.
+    pub fn replace_old_group(mut self) -> Self {
+        self.replace_old_group = true;
         self
     }
 
@@ -643,6 +670,7 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
             self.provider,
             self.ratchet_tree,
             self.validate_lifetimes,
+            self.replace_old_group,
         )
     }
 }

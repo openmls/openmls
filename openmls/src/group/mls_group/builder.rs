@@ -28,6 +28,7 @@ use crate::{
 pub struct MlsGroupBuilder {
     group_id: Option<GroupId>,
     mls_group_create_config_builder: MlsGroupCreateConfigBuilder,
+    replace_old_group: bool,
     psk_ids: Vec<PreSharedKeyId>,
 }
 
@@ -39,6 +40,12 @@ impl MlsGroupBuilder {
     /// Sets the group ID of the [`MlsGroup`].
     pub fn with_group_id(mut self, group_id: GroupId) -> Self {
         self.group_id = Some(group_id);
+        self
+    }
+
+    /// Instruct the builder to replace any existing group with the same ID.
+    pub fn replace_old_group(mut self) -> Self {
+        self.replace_old_group = true;
         self
     }
 
@@ -57,6 +64,9 @@ impl MlsGroupBuilder {
     /// If an [`MlsGroupCreateConfig`] is provided, it will be used to configure the
     /// group. Otherwise, the internal builder is used to build one with the
     /// parameters set on this builder.
+    ///
+    /// If a group with the same ID already exists in storage and
+    /// `replace_old_group` was not set, an error will be returned.
     pub(super) fn build_internal<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
@@ -70,6 +80,12 @@ impl MlsGroupBuilder {
             .group_id
             .unwrap_or_else(|| GroupId::random(provider.rand()));
         let ciphersuite = mls_group_create_config.ciphersuite;
+
+        if !self.replace_old_group {
+            if MlsGroup::load(provider.storage(), &group_id).is_ok() {
+                return Err(NewGroupError::GroupAlreadyExists);
+            }
+        }
 
         let (public_group_builder, commit_secret, leaf_keypair) =
             PublicGroup::builder(group_id, ciphersuite, credential_with_key)

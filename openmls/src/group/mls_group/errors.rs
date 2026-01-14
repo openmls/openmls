@@ -48,6 +48,9 @@ pub enum NewGroupError<StorageError> {
     /// Invalid extensions set in configuration
     #[error("Invalid extensions set in configuration")]
     InvalidExtensions(#[from] InvalidExtensionError),
+    /// A group with the given [`GroupId`] already exists.
+    #[error("A group with the given GroupId already exists.")]
+    GroupAlreadyExists,
 }
 
 /// EmptyInput error
