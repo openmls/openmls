@@ -15,11 +15,13 @@ use super::proposal_store::{
 use super::proposal_store::QueuedAppEphemeralProposal;
 
 use super::{
-    super::errors::*, load_psks, Credential, GroupContext, GroupEpochSecrets, GroupId,
+    super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
-use crate::prelude::Extension;
+#[cfg(feature = "extensions-draft-08")]
+use crate::schedule::application_export_tree::ApplicationExportTree;
+
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,

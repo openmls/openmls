@@ -13,6 +13,7 @@ use crate::{
         CommitBuilderStageError, CreateCommitError, Extensions, GroupId, Member, MlsGroup,
         NewGroupError,
     },
+    prelude::GroupContext,
     prelude::KeyPackage,
     storage::OpenMlsProvider,
 };
@@ -47,7 +48,7 @@ pub struct RebootBuilder<'a> {
 impl<'a> RebootBuilder<'a> {
     /// Returns the group context extensions of the old group, so they can be updated and passed
     /// into the new group.
-    pub fn old_group_context_extensions(&self) -> &Extensions {
+    pub fn old_group_context_extensions(&self) -> &Extensions<GroupContext> {
         self.group.context().extensions()
     }
 
@@ -74,16 +75,14 @@ impl<'a> RebootBuilder<'a> {
     /// argument. If that is not desired, provide the identity function (`|b| b`).
     pub fn finish<Provider: OpenMlsProvider>(
         self,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
         new_members: Vec<KeyPackage>,
         refine_commit_builder: impl FnMut(CommitBuilder<Initial>) -> CommitBuilder<Initial>,
         provider: &Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<(MlsGroup, CommitMessageBundle), RebootError<Provider::StorageError>> {
-        let group_builder = self
-            .group_builder
-            .with_group_context_extensions(extensions)?;
+        let group_builder = self.group_builder.with_group_context_extensions(extensions);
 
         let mut new_group = group_builder.build(provider, signer, credential_with_key)?;
 
