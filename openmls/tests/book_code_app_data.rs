@@ -559,7 +559,7 @@ fn app_data_update_increment_then_decrement() {
             .unwrap();
     }
 
-    // Verify counter is 2
+    // Verify counter is 1
     let dict = alice.group.extensions().app_data_dictionary().unwrap();
     let val = u32::from_be_bytes(
         dict.dictionary()
