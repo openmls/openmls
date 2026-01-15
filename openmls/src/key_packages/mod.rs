@@ -546,6 +546,7 @@ impl KeyPackageBuilder {
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageBundle, KeyPackageNewError> {
         self.ensure_last_resort();
+
         let KeyPackageCreationResult {
             key_package,
             encryption_keypair,

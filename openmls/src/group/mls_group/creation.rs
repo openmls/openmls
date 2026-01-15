@@ -606,7 +606,7 @@ pub struct JoinBuilder<'a, Provider: OpenMlsProvider> {
 
 impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     /// Create a new builder for the [`JoinBuilder`].
-    pub(crate) fn new(provider: &'a Provider, processed_welcome: ProcessedWelcome) -> Self {
+    pub fn new(provider: &'a Provider, processed_welcome: ProcessedWelcome) -> Self {
         Self {
             provider,
             processed_welcome,
