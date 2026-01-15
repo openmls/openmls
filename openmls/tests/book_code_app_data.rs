@@ -279,11 +279,6 @@ fn app_data_update_book_example() {
     // store and inline proposals).
     let mut alice_updater = commit_stage.app_data_dictionary_updater();
 
-    println!(
-        "committer sees proposals: {:?}",
-        commit_stage.app_data_update_proposals().collect_vec()
-    );
-
     process_app_data_proposals(&mut alice_updater, commit_stage.app_data_update_proposals())
         .expect("failed to process proposals");
 
@@ -332,7 +327,6 @@ fn app_data_update_book_example() {
     let mut app_data_updates: Vec<AppDataUpdateProposal> = Vec::new();
 
     for proposal_or_ref in committed_proposals.iter() {
-        println!("bob rx {proposal_or_ref:?}");
         // Validate and potentially resolve the reference
         let validated = proposal_or_ref
             .clone()
@@ -343,7 +337,6 @@ fn app_data_update_book_example() {
             )
             .expect("invalid proposal");
 
-        println!("bob val {proposal_or_ref:?}");
         // Resolve to the actual proposal
         let proposal: Box<Proposal> = match validated {
             ProposalOrRef::Proposal(proposal) => proposal,
@@ -357,11 +350,9 @@ fn app_data_update_book_example() {
                     .expect("proposal not found in store")
             }
         };
-        println!("bob got {proposal:?}");
 
         // Collect AppDataUpdate proposals for processing
         if let Proposal::AppDataUpdate(app_data_proposal) = *proposal {
-            println!("bob adds {app_data_proposal:?}");
             app_data_updates.push(*app_data_proposal);
         }
     }
