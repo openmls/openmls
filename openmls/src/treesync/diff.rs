@@ -316,7 +316,14 @@ impl TreeSyncDiff<'_> {
         // We calculate the parent hash so that we can use it for a fresh leaf
         let (path, update_path_nodes, parent_keypairs, commit_secret) =
             self.derive_path(rand, crypto, ciphersuite, leaf_index)?;
-        let parent_hash = self.process_update_path(crypto, ciphersuite, leaf_index, path)?;
+        let parent_hash = self
+            .process_update_path(crypto, ciphersuite, leaf_index, path)
+            .map_err(|e| match e {
+                ApplyUpdatePathError::LibraryError(e) => TreeSyncAddLeaf::LibraryError(e),
+                _ => TreeSyncAddLeaf::LibraryError(LibraryError::custom(
+                    "Unexpected error in process_update_path",
+                )),
+            })?;
 
         // We generate the new leaf with all parameters
         let (leaf_node, node_keypair) = LeafNode::new_with_parent_hash(
@@ -345,7 +352,6 @@ impl TreeSyncDiff<'_> {
     ///
     /// Returns an error if the `sender_leaf_index` is outside of the tree.
     /// ValSem202: Path must be the right length
-    /// TODO #804
     pub(crate) fn apply_received_update_path(
         &mut self,
         crypto: &impl OpenMlsCrypto,
@@ -410,14 +416,13 @@ impl TreeSyncDiff<'_> {
     ///
     /// Returns the parent hash of the leaf at `leaf_index`. Returns an error if
     /// the target leaf is outside of the tree.
-    /// TODO #804
     fn process_update_path(
         &mut self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
         mut path: Vec<(ParentNodeIndex, ParentNode)>,
-    ) -> Result<Vec<u8>, LibraryError> {
+    ) -> Result<Vec<u8>, ApplyUpdatePathError> {
         // Compute the parent hash.
         let parent_hash = self.set_parent_hashes(crypto, ciphersuite, &mut path, leaf_index)?;
 
@@ -429,7 +434,6 @@ impl TreeSyncDiff<'_> {
 
         // Set the node of the filtered direct path.
         // Note, that the nodes here don't have a tree hash set.
-        // TODO #804
         for (index, node) in path.into_iter() {
             *self.diff.parent_mut(index) = node.into();
         }
@@ -448,7 +452,7 @@ impl TreeSyncDiff<'_> {
         ciphersuite: Ciphersuite,
         path: &mut [(ParentNodeIndex, ParentNode)],
         leaf_index: LeafNodeIndex,
-    ) -> Result<Vec<u8>, LibraryError> {
+    ) -> Result<Vec<u8>, ApplyUpdatePathError> {
         // If the path is empty, return a zero-length string. This is the case
         // when the tree has only one leaf.
         if path.is_empty() {
@@ -459,6 +463,9 @@ impl TreeSyncDiff<'_> {
         // direct path.
         let filtered_copath = self.filtered_copath(leaf_index);
         debug_assert_eq!(filtered_copath.len(), path.len());
+        if filtered_copath.len() != path.len() {
+            return Err(ApplyUpdatePathError::PathLengthMismatch);
+        }
 
         // For every copath node, compute the tree hash.
         let copath_tree_hashes = filtered_copath.into_iter().map(|node_index| {

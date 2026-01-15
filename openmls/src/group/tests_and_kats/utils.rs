@@ -8,7 +8,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{signatures::Signer, types::SignatureScheme};
-use rand::{rngs::OsRng, RngCore};
+use rand::{rngs::OsRng, RngCore, TryRngCore};
 use tls_codec::Serialize;
 
 use crate::{
@@ -210,13 +210,13 @@ pub(crate) fn setup(
 }
 
 pub fn random_usize() -> usize {
-    OsRng.next_u64() as usize
+    OsRng.unwrap_mut().next_u64() as usize
 }
 
 /// No crypto randomness!
 pub fn randombytes(n: usize) -> Vec<u8> {
     let mut out = vec![0u8; n];
-    OsRng.fill_bytes(&mut out);
+    OsRng.unwrap_mut().fill_bytes(&mut out);
     out
 }
 
