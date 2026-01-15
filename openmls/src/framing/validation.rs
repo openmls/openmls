@@ -263,8 +263,9 @@ impl UnverifiedMessage {
     }
 
     /// Get the proposals of the commit, if it is one. If not, return `None`.
-    pub fn proposals(&self) -> Option<&[ProposalOrRefIn]> {
-        self.verifiable_content.content().proposals()
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
+        self.verifiable_content.committed_proposals()
     }
 }
 

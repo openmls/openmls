@@ -144,7 +144,7 @@ fn test_app_data_update_simple() {
     // create the AppDataUpdater for Bob
     let mut app_data_updater = bob.group.app_data_dictionary_updater();
 
-    let proposals = unverified_message.proposals().unwrap();
+    let proposals = unverified_message.committed_proposals().unwrap();
 
     for proposal in proposals.iter() {
         // validate the proposal
@@ -311,7 +311,7 @@ fn test_app_data_update_with_welcome() {
     // create the AppDataUpdater for Bob
     let mut app_data_updater = bob.group.app_data_dictionary_updater();
 
-    let proposals = unverified_message.proposals().unwrap();
+    let proposals = unverified_message.committed_proposals().unwrap();
 
     for proposal in proposals.iter() {
         // validate the proposal

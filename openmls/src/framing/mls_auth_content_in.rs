@@ -17,7 +17,7 @@ use crate::{
     ciphersuite::signable::{SignedStruct, Verifiable, VerifiedStruct},
     credentials::CredentialWithKey,
     group::errors::ValidationError,
-    messages::proposals_in::ProposalIn,
+    messages::proposals_in::{ProposalIn, ProposalOrRefIn},
     versions::ProtocolVersion,
 };
 
@@ -188,9 +188,11 @@ impl VerifiableAuthenticatedContentIn {
         self.tbs.content.body.content_type()
     }
 
-    /// Get the content.
-    pub(crate) fn content(&self) -> &FramedContentIn {
-        &self.tbs.content
+    /// If this message is a commit, this returns the unverified list of committed porposals.
+    /// Otherwise it returns `None`.
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
+        self.tbs.content.proposals()
     }
 }
 
