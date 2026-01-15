@@ -866,7 +866,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         self.stage.app_data_dictionary_updates = app_data_dictionary_updates;
     }
 
-    /// Returns an iterator over all AppDataUpdate propoas in the proposal store of the group
+    /// Returns an iterator over all AppDataUpdate proposals in the proposal store of the group
     #[cfg(feature = "extensions-draft-08")]
     pub fn app_data_update_proposals(&self) -> impl Iterator<Item = &AppDataUpdateProposal> {
         let proposal_store_proposals = self
