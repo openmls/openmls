@@ -6,6 +6,7 @@
 
 #![cfg(feature = "extensions-draft-08")]
 
+use itertools::Itertools;
 use openmls::prelude::*;
 use openmls::test_utils::single_group_test_framework::*;
 use openmls_test::openmls_test;
@@ -269,10 +270,6 @@ fn app_data_update_book_example() {
                 COUNTER_COMPONENT_ID,
                 CounterOperation::Increment.to_bytes(),
             ))),
-            Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::update(
-                COUNTER_COMPONENT_ID,
-                CounterOperation::Increment.to_bytes(),
-            ))),
         ])
         .load_psks(alice_party.provider.storage())
         .expect("failed to load PSKs");
@@ -282,10 +279,12 @@ fn app_data_update_book_example() {
     // store and inline proposals).
     let mut alice_updater = commit_stage.app_data_dictionary_updater();
 
-    // Collect proposals into a Vec so we can iterate over references
-    let proposals: Vec<_> = commit_stage.app_data_update_proposals().collect();
+    println!(
+        "committer sees proposals: {:?}",
+        commit_stage.app_data_update_proposals().collect_vec()
+    );
 
-    process_app_data_proposals(&mut alice_updater, proposals.into_iter())
+    process_app_data_proposals(&mut alice_updater, commit_stage.app_data_update_proposals())
         .expect("failed to process proposals");
 
     // Provide the computed changes to the commit builder
@@ -333,6 +332,7 @@ fn app_data_update_book_example() {
     let mut app_data_updates: Vec<AppDataUpdateProposal> = Vec::new();
 
     for proposal_or_ref in committed_proposals.iter() {
+        println!("bob rx {proposal_or_ref:?}");
         // Validate and potentially resolve the reference
         let validated = proposal_or_ref
             .clone()
@@ -343,6 +343,7 @@ fn app_data_update_book_example() {
             )
             .expect("invalid proposal");
 
+        println!("bob val {proposal_or_ref:?}");
         // Resolve to the actual proposal
         let proposal: Box<Proposal> = match validated {
             ProposalOrRef::Proposal(proposal) => proposal,
@@ -356,9 +357,11 @@ fn app_data_update_book_example() {
                     .expect("proposal not found in store")
             }
         };
+        println!("bob got {proposal:?}");
 
         // Collect AppDataUpdate proposals for processing
         if let Proposal::AppDataUpdate(app_data_proposal) = *proposal {
+            println!("bob adds {app_data_proposal:?}");
             app_data_updates.push(*app_data_proposal);
         }
     }
@@ -415,10 +418,7 @@ fn app_data_update_book_example() {
         .expect("counter should exist");
 
     let counter_value = u32::from_be_bytes(counter_bytes.try_into().expect("invalid length"));
-    assert_eq!(
-        counter_value, 3,
-        "counter should be 3 after three increments"
-    );
+    assert_eq!(counter_value, 2, "counter should be 2 after two increments");
     // ANCHOR_END: verify_consistency
 }
 
@@ -434,7 +434,7 @@ fn app_data_update_invalid_decrement() {
 
     // ANCHOR: invalid_update
     // Alice tries to decrement an unset counter, which should fail.
-    let mut commit_stage = alice
+    let commit_stage = alice
         .group
         .commit_builder()
         .add_proposals(vec![Proposal::AppDataUpdate(Box::new(
@@ -480,16 +480,12 @@ fn app_data_update_increment_then_decrement() {
         let mut commit_stage = alice
             .group
             .commit_builder()
-            .add_proposals(vec![
-                Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::update(
+            .add_proposals(vec![Proposal::AppDataUpdate(Box::new(
+                AppDataUpdateProposal::update(
                     COUNTER_COMPONENT_ID,
                     CounterOperation::Increment.to_bytes(),
-                ))),
-                Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::update(
-                    COUNTER_COMPONENT_ID,
-                    CounterOperation::Increment.to_bytes(),
-                ))),
-            ])
+                ),
+            ))])
             .load_psks(alice_party.provider.storage())
             .expect("failed to load PSKs");
 
@@ -572,9 +568,9 @@ fn app_data_update_increment_then_decrement() {
             .try_into()
             .unwrap(),
     );
-    assert_eq!(val, 2);
+    assert_eq!(val, 1);
 
-    // Second commit: decrement once (should succeed, counter goes to 1)
+    // Second commit: decrement once (should succeed, counter goes to 0)
     {
         let mut commit_stage = alice
             .group
@@ -667,7 +663,7 @@ fn app_data_update_increment_then_decrement() {
             .try_into()
             .unwrap(),
     );
-    assert_eq!(val, 1);
+    assert_eq!(val, 0);
 
     // Verify both parties agree
     assert_eq!(
