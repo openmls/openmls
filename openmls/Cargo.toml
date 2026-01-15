@@ -32,12 +32,12 @@ rayon = "^1.5.0"
 thiserror = "^2.0"
 backtrace = { version = "0.3", optional = true }
 # Only required for tests.
-rand = { version = "0.8", optional = true }
+rand = { version = "0.9", optional = true }
 serde_json = { version = "1.0", optional = true }
 # Crypto providers required for KAT and testing - "test-utils" feature
 itertools = { version = "0.14", optional = true }
 wasm-bindgen-test = { version = "0.3.50", optional = true }
-getrandom = { version = "0.3.2", optional = true }
+getrandom = { version = "0.3.4", optional = true }
 getrandom_old = { package = "getrandom", version = "0.2.15", optional = true }
 fluvio-wasm-timer = { version = "0.2.5", optional = true }
 once_cell = { version = "1.19.0", optional = true }
@@ -69,11 +69,19 @@ sqlite-provider = [
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 js = [
-    "dep:getrandom_old",
+    "dep:getrandom",
     "dep:fluvio-wasm-timer",
 
     # enable randomness source
+    "getrandom/wasm_js",
+]
+
+js-test = [
+    "dep:getrandom_old",
+
+    # enable randomness source
     "getrandom_old/js",
+
 ]
 
 extensions-draft-08 = [
@@ -82,7 +90,6 @@ extensions-draft-08 = [
     "openmls_sqlite_storage?/extensions-draft-08",
     "openmls_libcrux_crypto?/extensions-draft-08",
 ]
-libcrux-provider-js = ["dep:getrandom", "getrandom/wasm_js"]
 # enable randomness source
 fork-resolution = []
 
