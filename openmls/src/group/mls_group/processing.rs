@@ -389,13 +389,6 @@ impl MlsGroup {
         let (content, credential) =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        #[cfg(feature = "extensions-draft-08")]
-        if let FramedContentBody::Proposal(proposal) = content.content() {
-            if matches!(proposal.proposal_type(), ProposalType::AppDataUpdate) {
-                return Err(ProcessMessageError::FoundAppDataUpdateProposal);
-            }
-        };
-
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => {
                 self.process_internal_authenticated_content(provider, content, credential)
