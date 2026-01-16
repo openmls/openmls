@@ -479,12 +479,14 @@ impl ExtensionValidator for GroupInfo {
     fn validate_extension_type(
         ext: &Extension,
     ) -> Result<(), ExtensionTypeNotValidInGroupInfoError> {
-        matches!(
+        if matches!(
             ext.extension_type(),
             ExtensionType::RatchetTree | ExtensionType::ExternalPub | ExtensionType::Unknown(_)
-        )
-        .then_some(())
-        .ok_or(ExtensionTypeNotValidInGroupInfoError(ext.extension_type()))
+        ) {
+            Ok(())
+        } else {
+            Err(ExtensionTypeNotValidInGroupInfoError(ext.extension_type()))
+        }
     }
 }
 
