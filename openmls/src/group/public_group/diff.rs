@@ -120,7 +120,6 @@ impl<'a> PublicGroupDiff<'a> {
     ///
     /// ValSem203: Path secrets must decrypt correctly
     /// ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-    /// TODO #804
     pub(crate) fn decrypt_path(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -158,7 +157,6 @@ impl<'a> PublicGroupDiff<'a> {
     ///
     /// Returns an error if the `sender_leaf_index` is outside of the tree.
     /// ValSem202: Path must be the right length
-    /// TODO #804
     pub(crate) fn apply_received_update_path(
         &mut self,
         crypto: &impl OpenMlsCrypto,
