@@ -248,8 +248,10 @@ impl Group {
             openmls::framing::ProcessedMessageContent::ApplicationMessage(app_msg) => {
                 Ok(app_msg.into_bytes())
             }
-            openmls::framing::ProcessedMessageContent::ProposalMessage(_)
-            | openmls::framing::ProcessedMessageContent::ExternalJoinProposalMessage(_) => {
+            openmls::framing::ProcessedMessageContent::ProposalMessage(proposal)
+            | openmls::framing::ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
+                self.mls_group
+                    .store_pending_proposal(provider.0.storage(), *proposal)?;
                 Ok(vec![])
             }
             openmls::framing::ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
