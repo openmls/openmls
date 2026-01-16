@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/treesync/diff.rs`."><title>diff.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-2eb46af5.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (fecb335cb 2026-01-07)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/treesync/</div>diff.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/treesync/diff.rs`."><title>diff.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-77263533.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (22c74ba91 2026-01-15)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/treesync/</div>diff.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! # About
 <a href=#4 id=4 data-nosnippet>4</a>//!
@@ -316,620 +316,627 @@
 <a href=#316 id=316 data-nosnippet>316</a>        <span class="comment">// We calculate the parent hash so that we can use it for a fresh leaf
 <a href=#317 id=317 data-nosnippet>317</a>        </span><span class="kw">let </span>(path, update_path_nodes, parent_keypairs, commit_secret) =
 <a href=#318 id=318 data-nosnippet>318</a>            <span class="self">self</span>.derive_path(rand, crypto, ciphersuite, leaf_index)<span class="question-mark">?</span>;
-<a href=#319 id=319 data-nosnippet>319</a>        <span class="kw">let </span>parent_hash = <span class="self">self</span>.process_update_path(crypto, ciphersuite, leaf_index, path)<span class="question-mark">?</span>;
-<a href=#320 id=320 data-nosnippet>320</a>
-<a href=#321 id=321 data-nosnippet>321</a>        <span class="comment">// We generate the new leaf with all parameters
-<a href=#322 id=322 data-nosnippet>322</a>        </span><span class="kw">let </span>(leaf_node, node_keypair) = LeafNode::new_with_parent_hash(
-<a href=#323 id=323 data-nosnippet>323</a>            rand,
-<a href=#324 id=324 data-nosnippet>324</a>            crypto,
-<a href=#325 id=325 data-nosnippet>325</a>            ciphersuite,
-<a href=#326 id=326 data-nosnippet>326</a>            <span class="kw-2">&amp;</span>parent_hash,
-<a href=#327 id=327 data-nosnippet>327</a>            leaf_node_params,
-<a href=#328 id=328 data-nosnippet>328</a>            group_id,
-<a href=#329 id=329 data-nosnippet>329</a>            leaf_index,
-<a href=#330 id=330 data-nosnippet>330</a>            signer,
-<a href=#331 id=331 data-nosnippet>331</a>        )<span class="question-mark">?</span>;
-<a href=#332 id=332 data-nosnippet>332</a>
-<a href=#333 id=333 data-nosnippet>333</a>        <span class="comment">// We insert the fresh leaf into the tree.
-<a href=#334 id=334 data-nosnippet>334</a>        </span><span class="self">self</span>.diff.replace_leaf(leaf_index, leaf_node.into());
-<a href=#335 id=335 data-nosnippet>335</a>
-<a href=#336 id=336 data-nosnippet>336</a>        <span class="comment">// Prepend parent keypairs with node keypair
-<a href=#337 id=337 data-nosnippet>337</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>keypairs = <span class="macro">vec!</span>[node_keypair];
-<a href=#338 id=338 data-nosnippet>338</a>        keypairs.extend(parent_keypairs);
+<a href=#319 id=319 data-nosnippet>319</a>        <span class="kw">let </span>parent_hash = <span class="self">self
+<a href=#320 id=320 data-nosnippet>320</a>            </span>.process_update_path(crypto, ciphersuite, leaf_index, path)
+<a href=#321 id=321 data-nosnippet>321</a>            .map_err(|e| <span class="kw">match </span>e {
+<a href=#322 id=322 data-nosnippet>322</a>                ApplyUpdatePathError::LibraryError(e) =&gt; TreeSyncAddLeaf::LibraryError(e),
+<a href=#323 id=323 data-nosnippet>323</a>                <span class="kw">_ </span>=&gt; TreeSyncAddLeaf::LibraryError(LibraryError::custom(
+<a href=#324 id=324 data-nosnippet>324</a>                    <span class="string">"Unexpected error in process_update_path"</span>,
+<a href=#325 id=325 data-nosnippet>325</a>                )),
+<a href=#326 id=326 data-nosnippet>326</a>            })<span class="question-mark">?</span>;
+<a href=#327 id=327 data-nosnippet>327</a>
+<a href=#328 id=328 data-nosnippet>328</a>        <span class="comment">// We generate the new leaf with all parameters
+<a href=#329 id=329 data-nosnippet>329</a>        </span><span class="kw">let </span>(leaf_node, node_keypair) = LeafNode::new_with_parent_hash(
+<a href=#330 id=330 data-nosnippet>330</a>            rand,
+<a href=#331 id=331 data-nosnippet>331</a>            crypto,
+<a href=#332 id=332 data-nosnippet>332</a>            ciphersuite,
+<a href=#333 id=333 data-nosnippet>333</a>            <span class="kw-2">&amp;</span>parent_hash,
+<a href=#334 id=334 data-nosnippet>334</a>            leaf_node_params,
+<a href=#335 id=335 data-nosnippet>335</a>            group_id,
+<a href=#336 id=336 data-nosnippet>336</a>            leaf_index,
+<a href=#337 id=337 data-nosnippet>337</a>            signer,
+<a href=#338 id=338 data-nosnippet>338</a>        )<span class="question-mark">?</span>;
 <a href=#339 id=339 data-nosnippet>339</a>
-<a href=#340 id=340 data-nosnippet>340</a>        <span class="prelude-val">Ok</span>((update_path_nodes, keypairs, commit_secret))
-<a href=#341 id=341 data-nosnippet>341</a>    }
+<a href=#340 id=340 data-nosnippet>340</a>        <span class="comment">// We insert the fresh leaf into the tree.
+<a href=#341 id=341 data-nosnippet>341</a>        </span><span class="self">self</span>.diff.replace_leaf(leaf_index, leaf_node.into());
 <a href=#342 id=342 data-nosnippet>342</a>
-<a href=#343 id=343 data-nosnippet>343</a>    <span class="doccomment">/// Set the given path as the direct path of the `sender_leaf_index` and
-<a href=#344 id=344 data-nosnippet>344</a>    /// replace the [`LeafNode`] in the corresponding leaf with the given one.
-<a href=#345 id=345 data-nosnippet>345</a>    ///
-<a href=#346 id=346 data-nosnippet>346</a>    /// Returns an error if the `sender_leaf_index` is outside of the tree.
-<a href=#347 id=347 data-nosnippet>347</a>    /// ValSem202: Path must be the right length
-<a href=#348 id=348 data-nosnippet>348</a>    /// TODO #804
-<a href=#349 id=349 data-nosnippet>349</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>apply_received_update_path(
-<a href=#350 id=350 data-nosnippet>350</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#351 id=351 data-nosnippet>351</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#352 id=352 data-nosnippet>352</a>        ciphersuite: Ciphersuite,
-<a href=#353 id=353 data-nosnippet>353</a>        sender_leaf_index: LeafNodeIndex,
-<a href=#354 id=354 data-nosnippet>354</a>        update_path: <span class="kw-2">&amp;</span>UpdatePath,
-<a href=#355 id=355 data-nosnippet>355</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ApplyUpdatePathError&gt; {
-<a href=#356 id=356 data-nosnippet>356</a>        <span class="kw">let </span>path = update_path.nodes();
-<a href=#357 id=357 data-nosnippet>357</a>
-<a href=#358 id=358 data-nosnippet>358</a>        <span class="comment">// If the committer is a `NewMemberCommit`, we have to add the
-<a href=#359 id=359 data-nosnippet>359</a>        // leaf to the tree before we can apply an update path. This is
-<a href=#360 id=360 data-nosnippet>360</a>        // s.t. the tree can be grown if necessary.
-<a href=#361 id=361 data-nosnippet>361</a>        </span><span class="kw">if </span><span class="self">self</span>.diff.leaf(sender_leaf_index).node().is_none()
-<a href=#362 id=362 data-nosnippet>362</a>            || sender_leaf_index.u32() &gt;= <span class="self">self</span>.leaf_count()
-<a href=#363 id=363 data-nosnippet>363</a>        {
-<a href=#364 id=364 data-nosnippet>364</a>            <span class="kw">let </span>new_leaf_index =
-<a href=#365 id=365 data-nosnippet>365</a>                <span class="self">self</span>.add_leaf(update_path.leaf_node().clone())
-<a href=#366 id=366 data-nosnippet>366</a>                    .map_err(|e| <span class="kw">match </span>e {
-<a href=#367 id=367 data-nosnippet>367</a>                        TreeSyncAddLeaf::LibraryError(e) =&gt; ApplyUpdatePathError::LibraryError(e),
-<a href=#368 id=368 data-nosnippet>368</a>                        TreeSyncAddLeaf::TreeFull =&gt; ApplyUpdatePathError::TreeFull,
-<a href=#369 id=369 data-nosnippet>369</a>                    })<span class="question-mark">?</span>;
-<a href=#370 id=370 data-nosnippet>370</a>            <span class="comment">// The new member should have the same index as the claimed sender index.
-<a href=#371 id=371 data-nosnippet>371</a>            </span><span class="kw">if </span><span class="macro">sender_leaf_index !</span>= new_leaf_index {
-<a href=#372 id=372 data-nosnippet>372</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::InconsistentSenderIndex);
-<a href=#373 id=373 data-nosnippet>373</a>            }
-<a href=#374 id=374 data-nosnippet>374</a>        }
-<a href=#375 id=375 data-nosnippet>375</a>
-<a href=#376 id=376 data-nosnippet>376</a>        <span class="comment">// ValSem202: Path must be the right length
-<a href=#377 id=377 data-nosnippet>377</a>        // https://validation.openmls.tech/#valn1101
-<a href=#378 id=378 data-nosnippet>378</a>        </span><span class="kw">let </span>filtered_direct_path = <span class="self">self</span>.filtered_direct_path(sender_leaf_index);
-<a href=#379 id=379 data-nosnippet>379</a>        <span class="kw">if </span>filtered_direct_path.len() != path.len() {
-<a href=#380 id=380 data-nosnippet>380</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::PathLengthMismatch);
-<a href=#381 id=381 data-nosnippet>381</a>        };
-<a href=#382 id=382 data-nosnippet>382</a>
-<a href=#383 id=383 data-nosnippet>383</a>        <span class="kw">let </span>path = filtered_direct_path
-<a href=#384 id=384 data-nosnippet>384</a>            .into_iter()
-<a href=#385 id=385 data-nosnippet>385</a>            .zip(
-<a href=#386 id=386 data-nosnippet>386</a>                path.iter()
-<a href=#387 id=387 data-nosnippet>387</a>                    .map(|update_path_node| update_path_node.public_key.clone().into()),
-<a href=#388 id=388 data-nosnippet>388</a>            )
-<a href=#389 id=389 data-nosnippet>389</a>            .collect();
-<a href=#390 id=390 data-nosnippet>390</a>
-<a href=#391 id=391 data-nosnippet>391</a>        <span class="comment">// Verify the parent hash.
-<a href=#392 id=392 data-nosnippet>392</a>        </span><span class="kw">let </span>parent_hash = <span class="self">self</span>.process_update_path(crypto, ciphersuite, sender_leaf_index, path)<span class="question-mark">?</span>;
-<a href=#393 id=393 data-nosnippet>393</a>        <span class="kw">let </span>leaf_node_parent_hash = update_path
-<a href=#394 id=394 data-nosnippet>394</a>            .leaf_node()
-<a href=#395 id=395 data-nosnippet>395</a>            .parent_hash()
-<a href=#396 id=396 data-nosnippet>396</a>            .ok_or(ApplyUpdatePathError::MissingParentHash)<span class="question-mark">?</span>;
-<a href=#397 id=397 data-nosnippet>397</a>        <span class="kw">if </span><span class="macro">leaf_node_parent_hash !</span>= parent_hash {
-<a href=#398 id=398 data-nosnippet>398</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::ParentHashMismatch);
-<a href=#399 id=399 data-nosnippet>399</a>        };
-<a href=#400 id=400 data-nosnippet>400</a>
-<a href=#401 id=401 data-nosnippet>401</a>        <span class="comment">// Update the `encryption_key` in the leaf.
-<a href=#402 id=402 data-nosnippet>402</a>        </span><span class="kw">let </span>leaf: LeafNode = update_path.leaf_node().clone();
-<a href=#403 id=403 data-nosnippet>403</a>        <span class="self">self</span>.diff.replace_leaf(sender_leaf_index, leaf.into());
-<a href=#404 id=404 data-nosnippet>404</a>        <span class="prelude-val">Ok</span>(())
-<a href=#405 id=405 data-nosnippet>405</a>    }
+<a href=#343 id=343 data-nosnippet>343</a>        <span class="comment">// Prepend parent keypairs with node keypair
+<a href=#344 id=344 data-nosnippet>344</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>keypairs = <span class="macro">vec!</span>[node_keypair];
+<a href=#345 id=345 data-nosnippet>345</a>        keypairs.extend(parent_keypairs);
+<a href=#346 id=346 data-nosnippet>346</a>
+<a href=#347 id=347 data-nosnippet>347</a>        <span class="prelude-val">Ok</span>((update_path_nodes, keypairs, commit_secret))
+<a href=#348 id=348 data-nosnippet>348</a>    }
+<a href=#349 id=349 data-nosnippet>349</a>
+<a href=#350 id=350 data-nosnippet>350</a>    <span class="doccomment">/// Set the given path as the direct path of the `sender_leaf_index` and
+<a href=#351 id=351 data-nosnippet>351</a>    /// replace the [`LeafNode`] in the corresponding leaf with the given one.
+<a href=#352 id=352 data-nosnippet>352</a>    ///
+<a href=#353 id=353 data-nosnippet>353</a>    /// Returns an error if the `sender_leaf_index` is outside of the tree.
+<a href=#354 id=354 data-nosnippet>354</a>    /// ValSem202: Path must be the right length
+<a href=#355 id=355 data-nosnippet>355</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>apply_received_update_path(
+<a href=#356 id=356 data-nosnippet>356</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#357 id=357 data-nosnippet>357</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#358 id=358 data-nosnippet>358</a>        ciphersuite: Ciphersuite,
+<a href=#359 id=359 data-nosnippet>359</a>        sender_leaf_index: LeafNodeIndex,
+<a href=#360 id=360 data-nosnippet>360</a>        update_path: <span class="kw-2">&amp;</span>UpdatePath,
+<a href=#361 id=361 data-nosnippet>361</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ApplyUpdatePathError&gt; {
+<a href=#362 id=362 data-nosnippet>362</a>        <span class="kw">let </span>path = update_path.nodes();
+<a href=#363 id=363 data-nosnippet>363</a>
+<a href=#364 id=364 data-nosnippet>364</a>        <span class="comment">// If the committer is a `NewMemberCommit`, we have to add the
+<a href=#365 id=365 data-nosnippet>365</a>        // leaf to the tree before we can apply an update path. This is
+<a href=#366 id=366 data-nosnippet>366</a>        // s.t. the tree can be grown if necessary.
+<a href=#367 id=367 data-nosnippet>367</a>        </span><span class="kw">if </span><span class="self">self</span>.diff.leaf(sender_leaf_index).node().is_none()
+<a href=#368 id=368 data-nosnippet>368</a>            || sender_leaf_index.u32() &gt;= <span class="self">self</span>.leaf_count()
+<a href=#369 id=369 data-nosnippet>369</a>        {
+<a href=#370 id=370 data-nosnippet>370</a>            <span class="kw">let </span>new_leaf_index =
+<a href=#371 id=371 data-nosnippet>371</a>                <span class="self">self</span>.add_leaf(update_path.leaf_node().clone())
+<a href=#372 id=372 data-nosnippet>372</a>                    .map_err(|e| <span class="kw">match </span>e {
+<a href=#373 id=373 data-nosnippet>373</a>                        TreeSyncAddLeaf::LibraryError(e) =&gt; ApplyUpdatePathError::LibraryError(e),
+<a href=#374 id=374 data-nosnippet>374</a>                        TreeSyncAddLeaf::TreeFull =&gt; ApplyUpdatePathError::TreeFull,
+<a href=#375 id=375 data-nosnippet>375</a>                    })<span class="question-mark">?</span>;
+<a href=#376 id=376 data-nosnippet>376</a>            <span class="comment">// The new member should have the same index as the claimed sender index.
+<a href=#377 id=377 data-nosnippet>377</a>            </span><span class="kw">if </span><span class="macro">sender_leaf_index !</span>= new_leaf_index {
+<a href=#378 id=378 data-nosnippet>378</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::InconsistentSenderIndex);
+<a href=#379 id=379 data-nosnippet>379</a>            }
+<a href=#380 id=380 data-nosnippet>380</a>        }
+<a href=#381 id=381 data-nosnippet>381</a>
+<a href=#382 id=382 data-nosnippet>382</a>        <span class="comment">// ValSem202: Path must be the right length
+<a href=#383 id=383 data-nosnippet>383</a>        // https://validation.openmls.tech/#valn1101
+<a href=#384 id=384 data-nosnippet>384</a>        </span><span class="kw">let </span>filtered_direct_path = <span class="self">self</span>.filtered_direct_path(sender_leaf_index);
+<a href=#385 id=385 data-nosnippet>385</a>        <span class="kw">if </span>filtered_direct_path.len() != path.len() {
+<a href=#386 id=386 data-nosnippet>386</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::PathLengthMismatch);
+<a href=#387 id=387 data-nosnippet>387</a>        };
+<a href=#388 id=388 data-nosnippet>388</a>
+<a href=#389 id=389 data-nosnippet>389</a>        <span class="kw">let </span>path = filtered_direct_path
+<a href=#390 id=390 data-nosnippet>390</a>            .into_iter()
+<a href=#391 id=391 data-nosnippet>391</a>            .zip(
+<a href=#392 id=392 data-nosnippet>392</a>                path.iter()
+<a href=#393 id=393 data-nosnippet>393</a>                    .map(|update_path_node| update_path_node.public_key.clone().into()),
+<a href=#394 id=394 data-nosnippet>394</a>            )
+<a href=#395 id=395 data-nosnippet>395</a>            .collect();
+<a href=#396 id=396 data-nosnippet>396</a>
+<a href=#397 id=397 data-nosnippet>397</a>        <span class="comment">// Verify the parent hash.
+<a href=#398 id=398 data-nosnippet>398</a>        </span><span class="kw">let </span>parent_hash = <span class="self">self</span>.process_update_path(crypto, ciphersuite, sender_leaf_index, path)<span class="question-mark">?</span>;
+<a href=#399 id=399 data-nosnippet>399</a>        <span class="kw">let </span>leaf_node_parent_hash = update_path
+<a href=#400 id=400 data-nosnippet>400</a>            .leaf_node()
+<a href=#401 id=401 data-nosnippet>401</a>            .parent_hash()
+<a href=#402 id=402 data-nosnippet>402</a>            .ok_or(ApplyUpdatePathError::MissingParentHash)<span class="question-mark">?</span>;
+<a href=#403 id=403 data-nosnippet>403</a>        <span class="kw">if </span><span class="macro">leaf_node_parent_hash !</span>= parent_hash {
+<a href=#404 id=404 data-nosnippet>404</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::ParentHashMismatch);
+<a href=#405 id=405 data-nosnippet>405</a>        };
 <a href=#406 id=406 data-nosnippet>406</a>
-<a href=#407 id=407 data-nosnippet>407</a>    <span class="doccomment">/// Process a given update path, consisting of a vector of `ParentNode`.
-<a href=#408 id=408 data-nosnippet>408</a>    /// This function replaces the nodes in the direct path of the given
-<a href=#409 id=409 data-nosnippet>409</a>    /// `leaf_index` with the the ones in `path`.
-<a href=#410 id=410 data-nosnippet>410</a>    ///
-<a href=#411 id=411 data-nosnippet>411</a>    /// Returns the parent hash of the leaf at `leaf_index`. Returns an error if
-<a href=#412 id=412 data-nosnippet>412</a>    /// the target leaf is outside of the tree.
-<a href=#413 id=413 data-nosnippet>413</a>    /// TODO #804
-<a href=#414 id=414 data-nosnippet>414</a>    </span><span class="kw">fn </span>process_update_path(
-<a href=#415 id=415 data-nosnippet>415</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#416 id=416 data-nosnippet>416</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#417 id=417 data-nosnippet>417</a>        ciphersuite: Ciphersuite,
-<a href=#418 id=418 data-nosnippet>418</a>        leaf_index: LeafNodeIndex,
-<a href=#419 id=419 data-nosnippet>419</a>        <span class="kw-2">mut </span>path: Vec&lt;(ParentNodeIndex, ParentNode)&gt;,
-<a href=#420 id=420 data-nosnippet>420</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
-<a href=#421 id=421 data-nosnippet>421</a>        <span class="comment">// Compute the parent hash.
-<a href=#422 id=422 data-nosnippet>422</a>        </span><span class="kw">let </span>parent_hash = <span class="self">self</span>.set_parent_hashes(crypto, ciphersuite, <span class="kw-2">&amp;mut </span>path, leaf_index)<span class="question-mark">?</span>;
-<a href=#423 id=423 data-nosnippet>423</a>
-<a href=#424 id=424 data-nosnippet>424</a>        <span class="comment">// While probably not necessary, the spec mandates we blank the direct path nodes
-<a href=#425 id=425 data-nosnippet>425</a>        </span><span class="kw">let </span>direct_path_nodes = <span class="self">self</span>.diff.direct_path(leaf_index);
-<a href=#426 id=426 data-nosnippet>426</a>        <span class="kw">for </span>node <span class="kw">in </span>direct_path_nodes {
-<a href=#427 id=427 data-nosnippet>427</a>            <span class="kw-2">*</span><span class="self">self</span>.diff.parent_mut(node) = TreeSyncParentNode::blank();
-<a href=#428 id=428 data-nosnippet>428</a>        }
-<a href=#429 id=429 data-nosnippet>429</a>
-<a href=#430 id=430 data-nosnippet>430</a>        <span class="comment">// Set the node of the filtered direct path.
-<a href=#431 id=431 data-nosnippet>431</a>        // Note, that the nodes here don't have a tree hash set.
-<a href=#432 id=432 data-nosnippet>432</a>        // TODO #804
-<a href=#433 id=433 data-nosnippet>433</a>        </span><span class="kw">for </span>(index, node) <span class="kw">in </span>path.into_iter() {
-<a href=#434 id=434 data-nosnippet>434</a>            <span class="kw-2">*</span><span class="self">self</span>.diff.parent_mut(index) = node.into();
-<a href=#435 id=435 data-nosnippet>435</a>        }
-<a href=#436 id=436 data-nosnippet>436</a>
-<a href=#437 id=437 data-nosnippet>437</a>        <span class="prelude-val">Ok</span>(parent_hash)
-<a href=#438 id=438 data-nosnippet>438</a>    }
-<a href=#439 id=439 data-nosnippet>439</a>
-<a href=#440 id=440 data-nosnippet>440</a>    <span class="doccomment">/// Set the parent hash of the given nodes assuming that they are the new
-<a href=#441 id=441 data-nosnippet>441</a>    /// filtered direct path of the leaf with the given index.
-<a href=#442 id=442 data-nosnippet>442</a>    ///
-<a href=#443 id=443 data-nosnippet>443</a>    /// Returns the parent hash of the leaf node at `leaf_index` and a
-<a href=#444 id=444 data-nosnippet>444</a>    /// `LibraryError` if an unexpected error occurs.
-<a href=#445 id=445 data-nosnippet>445</a>    </span><span class="kw">fn </span>set_parent_hashes(
-<a href=#446 id=446 data-nosnippet>446</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#447 id=447 data-nosnippet>447</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#448 id=448 data-nosnippet>448</a>        ciphersuite: Ciphersuite,
-<a href=#449 id=449 data-nosnippet>449</a>        path: <span class="kw-2">&amp;mut </span>[(ParentNodeIndex, ParentNode)],
-<a href=#450 id=450 data-nosnippet>450</a>        leaf_index: LeafNodeIndex,
-<a href=#451 id=451 data-nosnippet>451</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
-<a href=#452 id=452 data-nosnippet>452</a>        <span class="comment">// If the path is empty, return a zero-length string. This is the case
-<a href=#453 id=453 data-nosnippet>453</a>        // when the tree has only one leaf.
-<a href=#454 id=454 data-nosnippet>454</a>        </span><span class="kw">if </span>path.is_empty() {
-<a href=#455 id=455 data-nosnippet>455</a>            <span class="kw">return </span><span class="prelude-val">Ok</span>(Vec::new());
-<a href=#456 id=456 data-nosnippet>456</a>        }
-<a href=#457 id=457 data-nosnippet>457</a>
-<a href=#458 id=458 data-nosnippet>458</a>        <span class="comment">// Compute the filtered copath corresponding to the given filtered
-<a href=#459 id=459 data-nosnippet>459</a>        // direct path.
-<a href=#460 id=460 data-nosnippet>460</a>        </span><span class="kw">let </span>filtered_copath = <span class="self">self</span>.filtered_copath(leaf_index);
-<a href=#461 id=461 data-nosnippet>461</a>        <span class="macro">debug_assert_eq!</span>(filtered_copath.len(), path.len());
-<a href=#462 id=462 data-nosnippet>462</a>
-<a href=#463 id=463 data-nosnippet>463</a>        <span class="comment">// For every copath node, compute the tree hash.
-<a href=#464 id=464 data-nosnippet>464</a>        </span><span class="kw">let </span>copath_tree_hashes = filtered_copath.into_iter().map(|node_index| {
-<a href=#465 id=465 data-nosnippet>465</a>            <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, node_index, <span class="kw-2">&amp;</span>HashSet::new())
-<a href=#466 id=466 data-nosnippet>466</a>        });
-<a href=#467 id=467 data-nosnippet>467</a>
-<a href=#468 id=468 data-nosnippet>468</a>        <span class="comment">// We go through the nodes in the direct path in reverse order and get
-<a href=#469 id=469 data-nosnippet>469</a>        // the corresponding tree hash for each copath node.
-<a href=#470 id=470 data-nosnippet>470</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>previous_parent_hash = <span class="macro">vec!</span>[];
-<a href=#471 id=471 data-nosnippet>471</a>        <span class="kw">for </span>((<span class="kw">_</span>, path_node), original_sibling_tree_hash) <span class="kw">in
-<a href=#472 id=472 data-nosnippet>472</a>            </span>path.iter_mut().rev().zip(copath_tree_hashes.rev())
-<a href=#473 id=473 data-nosnippet>473</a>        {
-<a href=#474 id=474 data-nosnippet>474</a>            path_node.set_parent_hash(previous_parent_hash);
-<a href=#475 id=475 data-nosnippet>475</a>            <span class="kw">let </span>parent_hash =
-<a href=#476 id=476 data-nosnippet>476</a>                path_node.compute_parent_hash(crypto, ciphersuite, <span class="kw-2">&amp;</span>original_sibling_tree_hash<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-<a href=#477 id=477 data-nosnippet>477</a>            previous_parent_hash = parent_hash
-<a href=#478 id=478 data-nosnippet>478</a>        }
-<a href=#479 id=479 data-nosnippet>479</a>        <span class="comment">// The final hash is the one of the leaf's parent.
-<a href=#480 id=480 data-nosnippet>480</a>        </span><span class="prelude-val">Ok</span>(previous_parent_hash)
-<a href=#481 id=481 data-nosnippet>481</a>    }
-<a href=#482 id=482 data-nosnippet>482</a>
-<a href=#483 id=483 data-nosnippet>483</a>    <span class="doccomment">/// Helper function computing the resolution of a node with the given index.
-<a href=#484 id=484 data-nosnippet>484</a>    /// If an exclusion list is given, do not add the leaves given in the list.
-<a href=#485 id=485 data-nosnippet>485</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>resolution(
-<a href=#486 id=486 data-nosnippet>486</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#487 id=487 data-nosnippet>487</a>        node_index: TreeNodeIndex,
-<a href=#488 id=488 data-nosnippet>488</a>        excluded_indices: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
-<a href=#489 id=489 data-nosnippet>489</a>    ) -&gt; Vec&lt;(TreeNodeIndex, NodeReference&lt;<span class="lifetime">'_</span>&gt;)&gt; {
-<a href=#490 id=490 data-nosnippet>490</a>        <span class="kw">match </span>node_index {
-<a href=#491 id=491 data-nosnippet>491</a>            TreeNodeIndex::Leaf(leaf_index) =&gt; {
-<a href=#492 id=492 data-nosnippet>492</a>                <span class="comment">// If the node is a leaf, check if it is in the exclusion list.
-<a href=#493 id=493 data-nosnippet>493</a>                </span><span class="kw">if </span>excluded_indices.contains(<span class="kw-2">&amp;</span>leaf_index) {
-<a href=#494 id=494 data-nosnippet>494</a>                    <span class="macro">vec!</span>[]
-<a href=#495 id=495 data-nosnippet>495</a>                } <span class="kw">else </span>{
-<a href=#496 id=496 data-nosnippet>496</a>                    <span class="comment">// If it's not, return it as its resolution.
-<a href=#497 id=497 data-nosnippet>497</a>                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = <span class="self">self</span>.diff.leaf(leaf_index).node() {
-<a href=#498 id=498 data-nosnippet>498</a>                        <span class="macro">vec!</span>[(TreeNodeIndex::Leaf(leaf_index), NodeReference::Leaf(leaf))]
-<a href=#499 id=499 data-nosnippet>499</a>                    } <span class="kw">else </span>{
-<a href=#500 id=500 data-nosnippet>500</a>                        <span class="comment">// If it's a blank, return an empty vector.
-<a href=#501 id=501 data-nosnippet>501</a>                        </span><span class="macro">vec!</span>[]
-<a href=#502 id=502 data-nosnippet>502</a>                    }
-<a href=#503 id=503 data-nosnippet>503</a>                }
-<a href=#504 id=504 data-nosnippet>504</a>            }
-<a href=#505 id=505 data-nosnippet>505</a>            TreeNodeIndex::Parent(parent_index) =&gt; {
-<a href=#506 id=506 data-nosnippet>506</a>                <span class="kw">match </span><span class="self">self</span>.diff.parent(parent_index).node() {
-<a href=#507 id=507 data-nosnippet>507</a>                    <span class="prelude-val">Some</span>(parent) =&gt; {
-<a href=#508 id=508 data-nosnippet>508</a>                        <span class="comment">// If it's a non-blank parent node, get the unmerged
-<a href=#509 id=509 data-nosnippet>509</a>                        // leaves, exclude them as necessary and add the node to
-<a href=#510 id=510 data-nosnippet>510</a>                        // the resulting resolution.
-<a href=#511 id=511 data-nosnippet>511</a>                        </span><span class="kw">let </span><span class="kw-2">mut </span>resolution = <span class="macro">vec!</span>[(
-<a href=#512 id=512 data-nosnippet>512</a>                            TreeNodeIndex::Parent(parent_index),
-<a href=#513 id=513 data-nosnippet>513</a>                            NodeReference::Parent(parent),
-<a href=#514 id=514 data-nosnippet>514</a>                        )];
-<a href=#515 id=515 data-nosnippet>515</a>                        <span class="kw">for </span>leaf_index <span class="kw">in </span>parent.unmerged_leaves() {
-<a href=#516 id=516 data-nosnippet>516</a>                            <span class="kw">if </span>!excluded_indices.contains(<span class="kw-2">&amp;</span>leaf_index) {
-<a href=#517 id=517 data-nosnippet>517</a>                                <span class="kw">let </span>leaf = <span class="self">self</span>.diff.leaf(<span class="kw-2">*</span>leaf_index);
-<a href=#518 id=518 data-nosnippet>518</a>                                <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf_node) = leaf.node() {
-<a href=#519 id=519 data-nosnippet>519</a>                                    resolution.push((
-<a href=#520 id=520 data-nosnippet>520</a>                                        TreeNodeIndex::Leaf(<span class="kw-2">*</span>leaf_index),
-<a href=#521 id=521 data-nosnippet>521</a>                                        NodeReference::Leaf(leaf_node),
-<a href=#522 id=522 data-nosnippet>522</a>                                    ))
-<a href=#523 id=523 data-nosnippet>523</a>                                } <span class="kw">else </span>{
-<a href=#524 id=524 data-nosnippet>524</a>                                    <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">"Unmerged leaves should not be blank."</span>);
-<a href=#525 id=525 data-nosnippet>525</a>                                }
-<a href=#526 id=526 data-nosnippet>526</a>                            }
-<a href=#527 id=527 data-nosnippet>527</a>                        }
-<a href=#528 id=528 data-nosnippet>528</a>                        resolution
-<a href=#529 id=529 data-nosnippet>529</a>                    }
-<a href=#530 id=530 data-nosnippet>530</a>                    <span class="prelude-val">None </span>=&gt; {
-<a href=#531 id=531 data-nosnippet>531</a>                        <span class="comment">// If it is a blank parent node, continue resolving
-<a href=#532 id=532 data-nosnippet>532</a>                        // down the tree.
-<a href=#533 id=533 data-nosnippet>533</a>                        </span><span class="kw">let </span><span class="kw-2">mut </span>resolution = Vec::new();
-<a href=#534 id=534 data-nosnippet>534</a>                        <span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_index);
-<a href=#535 id=535 data-nosnippet>535</a>                        <span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_index);
-<a href=#536 id=536 data-nosnippet>536</a>                        resolution.append(<span class="kw-2">&amp;mut </span><span class="self">self</span>.resolution(left_child, excluded_indices));
-<a href=#537 id=537 data-nosnippet>537</a>                        resolution.append(<span class="kw-2">&amp;mut </span><span class="self">self</span>.resolution(right_child, excluded_indices));
-<a href=#538 id=538 data-nosnippet>538</a>                        resolution
-<a href=#539 id=539 data-nosnippet>539</a>                    }
-<a href=#540 id=540 data-nosnippet>540</a>                }
-<a href=#541 id=541 data-nosnippet>541</a>            }
-<a href=#542 id=542 data-nosnippet>542</a>        }
-<a href=#543 id=543 data-nosnippet>543</a>    }
-<a href=#544 id=544 data-nosnippet>544</a>
-<a href=#545 id=545 data-nosnippet>545</a>    <span class="doccomment">/// Compute the resolution of the copath of the leaf node corresponding to
-<a href=#546 id=546 data-nosnippet>546</a>    /// the given leaf index. This includes the neighbour of the given leaf. If
-<a href=#547 id=547 data-nosnippet>547</a>    /// an exclusion list is given, do not add the public keys of the leaves
-<a href=#548 id=548 data-nosnippet>548</a>    /// given in the list.
-<a href=#549 id=549 data-nosnippet>549</a>    ///
-<a href=#550 id=550 data-nosnippet>550</a>    /// Returns a vector containing the copath resolutions of the given
-<a href=#551 id=551 data-nosnippet>551</a>    /// `leaf_index` beginning with the neighbour of the leaf. Returns an error
-<a href=#552 id=552 data-nosnippet>552</a>    /// if the target leaf is outside of the tree.
-<a href=#553 id=553 data-nosnippet>553</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>copath_resolutions(
-<a href=#554 id=554 data-nosnippet>554</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#555 id=555 data-nosnippet>555</a>        leaf_index: LeafNodeIndex,
-<a href=#556 id=556 data-nosnippet>556</a>    ) -&gt; Vec&lt;Vec&lt;(TreeNodeIndex, NodeReference&lt;<span class="lifetime">'_</span>&gt;)&gt;&gt; {
-<a href=#557 id=557 data-nosnippet>557</a>        <span class="comment">// If we're the only node in the tree, there's no copath.
-<a href=#558 id=558 data-nosnippet>558</a>        </span><span class="kw">if </span><span class="self">self</span>.diff.leaf_count() == MIN_TREE_SIZE {
-<a href=#559 id=559 data-nosnippet>559</a>            <span class="kw">return </span><span class="macro">vec!</span>[];
-<a href=#560 id=560 data-nosnippet>560</a>        }
-<a href=#561 id=561 data-nosnippet>561</a>
-<a href=#562 id=562 data-nosnippet>562</a>        <span class="comment">// Get the copath of the given leaf index and compute the resolution of
-<a href=#563 id=563 data-nosnippet>563</a>        // each node.
-<a href=#564 id=564 data-nosnippet>564</a>        </span><span class="self">self</span>.diff
-<a href=#565 id=565 data-nosnippet>565</a>            .copath(leaf_index)
-<a href=#566 id=566 data-nosnippet>566</a>            .into_iter()
-<a href=#567 id=567 data-nosnippet>567</a>            .map(|node_index| <span class="self">self</span>.resolution(node_index, <span class="kw-2">&amp;</span>HashSet::new()))
-<a href=#568 id=568 data-nosnippet>568</a>            .collect()
-<a href=#569 id=569 data-nosnippet>569</a>    }
-<a href=#570 id=570 data-nosnippet>570</a>
-<a href=#571 id=571 data-nosnippet>571</a>    <span class="doccomment">/// Compute the copath resolutions, but leave out empty resolutions.
-<a href=#572 id=572 data-nosnippet>572</a>    /// Additionally, resolutions are filtered by the given exclusion list.
-<a href=#573 id=573 data-nosnippet>573</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>filtered_copath_resolutions(
-<a href=#574 id=574 data-nosnippet>574</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#575 id=575 data-nosnippet>575</a>        leaf_index: LeafNodeIndex,
-<a href=#576 id=576 data-nosnippet>576</a>        exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
-<a href=#577 id=577 data-nosnippet>577</a>    ) -&gt; Vec&lt;Vec&lt;(TreeNodeIndex, NodeReference&lt;<span class="lifetime">'_</span>&gt;)&gt;&gt; {
-<a href=#578 id=578 data-nosnippet>578</a>        <span class="comment">// If we're the only node in the tree, there's no copath.
-<a href=#579 id=579 data-nosnippet>579</a>        </span><span class="kw">if </span><span class="self">self</span>.diff.leaf_count() == <span class="number">1 </span>{
-<a href=#580 id=580 data-nosnippet>580</a>            <span class="kw">return </span><span class="macro">vec!</span>[];
-<a href=#581 id=581 data-nosnippet>581</a>        }
-<a href=#582 id=582 data-nosnippet>582</a>
-<a href=#583 id=583 data-nosnippet>583</a>        <span class="kw">let </span><span class="kw-2">mut </span>copath_resolutions = Vec::new();
-<a href=#584 id=584 data-nosnippet>584</a>        <span class="kw">for </span>node_index <span class="kw">in </span><span class="self">self</span>.diff.copath(leaf_index) {
-<a href=#585 id=585 data-nosnippet>585</a>            <span class="kw">let </span>resolution = <span class="self">self</span>.resolution(node_index, <span class="kw-2">&amp;</span>HashSet::new());
-<a href=#586 id=586 data-nosnippet>586</a>            <span class="kw">if </span>!resolution.is_empty() {
-<a href=#587 id=587 data-nosnippet>587</a>                <span class="kw">let </span>filtered_resolution = resolution
-<a href=#588 id=588 data-nosnippet>588</a>                    .into_iter()
-<a href=#589 id=589 data-nosnippet>589</a>                    .filter_map(|(index, node)| {
-<a href=#590 id=590 data-nosnippet>590</a>                        <span class="kw">if let </span>TreeNodeIndex::Leaf(leaf_index) = index {
-<a href=#591 id=591 data-nosnippet>591</a>                            <span class="kw">if </span>exclusion_list.contains(<span class="kw-2">&amp;</span>leaf_index) {
-<a href=#592 id=592 data-nosnippet>592</a>                                <span class="prelude-val">None
-<a href=#593 id=593 data-nosnippet>593</a>                            </span>} <span class="kw">else </span>{
-<a href=#594 id=594 data-nosnippet>594</a>                                <span class="prelude-val">Some</span>((TreeNodeIndex::Leaf(leaf_index), node))
-<a href=#595 id=595 data-nosnippet>595</a>                            }
-<a href=#596 id=596 data-nosnippet>596</a>                        } <span class="kw">else </span>{
-<a href=#597 id=597 data-nosnippet>597</a>                            <span class="prelude-val">Some</span>((index, node))
-<a href=#598 id=598 data-nosnippet>598</a>                        }
-<a href=#599 id=599 data-nosnippet>599</a>                    })
-<a href=#600 id=600 data-nosnippet>600</a>                    .collect();
-<a href=#601 id=601 data-nosnippet>601</a>                copath_resolutions.push(filtered_resolution);
-<a href=#602 id=602 data-nosnippet>602</a>            }
-<a href=#603 id=603 data-nosnippet>603</a>        }
-<a href=#604 id=604 data-nosnippet>604</a>        copath_resolutions
-<a href=#605 id=605 data-nosnippet>605</a>    }
-<a href=#606 id=606 data-nosnippet>606</a>
-<a href=#607 id=607 data-nosnippet>607</a>    <span class="doccomment">/// Verify the parent hashes of all parent nodes in the tree.
-<a href=#608 id=608 data-nosnippet>608</a>    ///
-<a href=#609 id=609 data-nosnippet>609</a>    /// Returns an error if one of the parent nodes in the tree has an invalid
-<a href=#610 id=610 data-nosnippet>610</a>    /// parent hash.
-<a href=#611 id=611 data-nosnippet>611</a>    ///
-<a href=#612 id=612 data-nosnippet>612</a>    /// Checks [valn1406](https://validation.openmls.tech/#valn1406).
-<a href=#613 id=613 data-nosnippet>613</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>verify_parent_hashes(
-<a href=#614 id=614 data-nosnippet>614</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#615 id=615 data-nosnippet>615</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#616 id=616 data-nosnippet>616</a>        ciphersuite: Ciphersuite,
-<a href=#617 id=617 data-nosnippet>617</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncParentHashError&gt; {
-<a href=#618 id=618 data-nosnippet>618</a>        <span class="comment">// We traverse the tree by iterating over all parent nodes. For each
-<a href=#619 id=619 data-nosnippet>619</a>        // parent node, we compute the parent hash and compare it to the parent
-<a href=#620 id=620 data-nosnippet>620</a>        // hash in its descendants.
-<a href=#621 id=621 data-nosnippet>621</a>        //
-<a href=#622 id=622 data-nosnippet>622</a>        // We need to consider all nodes in the the descendants list (the
-<a href=#623 id=623 data-nosnippet>623</a>        // resolution), since we cannot determine which descedant was the
-<a href=#624 id=624 data-nosnippet>624</a>        // previous one in the update path when the original commit occurred.
-<a href=#625 id=625 data-nosnippet>625</a>        //
-<a href=#626 id=626 data-nosnippet>626</a>        // We look at both righ &amp; left subtree of a give node separately and
-<a href=#627 id=627 data-nosnippet>627</a>        // compute the original sibling tree hash for the sibling of the subtree
-<a href=#628 id=628 data-nosnippet>628</a>        // root.
-<a href=#629 id=629 data-nosnippet>629</a>        //
-<a href=#630 id=630 data-nosnippet>630</a>        // The parent hash for a given node is valid, when exactly one descendant
-<a href=#631 id=631 data-nosnippet>631</a>        // carries the parent hash it its parent hash field.
-<a href=#632 id=632 data-nosnippet>632</a>        </span><span class="kw">for </span>(parent_index, tree_sync_parent_node) <span class="kw">in </span><span class="self">self</span>.diff.parents() {
-<a href=#633 id=633 data-nosnippet>633</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(parent_node) = tree_sync_parent_node.node() {
-<a href=#634 id=634 data-nosnippet>634</a>                <span class="comment">// We consider both children of the parent node. One of them
-<a href=#635 id=635 data-nosnippet>635</a>                // takes the role of the descendant, whose resolution carries
-<a href=#636 id=636 data-nosnippet>636</a>                // the parent hash. The other one is the descendants sibling,
-<a href=#637 id=637 data-nosnippet>637</a>                // whose original tree hash is used to compute the parent hash.
-<a href=#638 id=638 data-nosnippet>638</a>                </span><span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_index);
-<a href=#639 id=639 data-nosnippet>639</a>                <span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_index);
-<a href=#640 id=640 data-nosnippet>640</a>
-<a href=#641 id=641 data-nosnippet>641</a>                <span class="comment">// We exclude the unmerged leaves from the parent node for the
-<a href=#642 id=642 data-nosnippet>642</a>                // following computations. Those leaves were obviously added
-<a href=#643 id=643 data-nosnippet>643</a>                // after the parent node was populated during a commit and must
-<a href=#644 id=644 data-nosnippet>644</a>                // therefore be removed to recreate the tree state at the time
-<a href=#645 id=645 data-nosnippet>645</a>                // of the commit.
-<a href=#646 id=646 data-nosnippet>646</a>                </span><span class="kw">let </span>exclusion_list = HashSet::from_iter(parent_node.unmerged_leaves().iter());
+<a href=#407 id=407 data-nosnippet>407</a>        <span class="comment">// Update the `encryption_key` in the leaf.
+<a href=#408 id=408 data-nosnippet>408</a>        </span><span class="kw">let </span>leaf: LeafNode = update_path.leaf_node().clone();
+<a href=#409 id=409 data-nosnippet>409</a>        <span class="self">self</span>.diff.replace_leaf(sender_leaf_index, leaf.into());
+<a href=#410 id=410 data-nosnippet>410</a>        <span class="prelude-val">Ok</span>(())
+<a href=#411 id=411 data-nosnippet>411</a>    }
+<a href=#412 id=412 data-nosnippet>412</a>
+<a href=#413 id=413 data-nosnippet>413</a>    <span class="doccomment">/// Process a given update path, consisting of a vector of `ParentNode`.
+<a href=#414 id=414 data-nosnippet>414</a>    /// This function replaces the nodes in the direct path of the given
+<a href=#415 id=415 data-nosnippet>415</a>    /// `leaf_index` with the the ones in `path`.
+<a href=#416 id=416 data-nosnippet>416</a>    ///
+<a href=#417 id=417 data-nosnippet>417</a>    /// Returns the parent hash of the leaf at `leaf_index`. Returns an error if
+<a href=#418 id=418 data-nosnippet>418</a>    /// the target leaf is outside of the tree.
+<a href=#419 id=419 data-nosnippet>419</a>    </span><span class="kw">fn </span>process_update_path(
+<a href=#420 id=420 data-nosnippet>420</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#421 id=421 data-nosnippet>421</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#422 id=422 data-nosnippet>422</a>        ciphersuite: Ciphersuite,
+<a href=#423 id=423 data-nosnippet>423</a>        leaf_index: LeafNodeIndex,
+<a href=#424 id=424 data-nosnippet>424</a>        <span class="kw-2">mut </span>path: Vec&lt;(ParentNodeIndex, ParentNode)&gt;,
+<a href=#425 id=425 data-nosnippet>425</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ApplyUpdatePathError&gt; {
+<a href=#426 id=426 data-nosnippet>426</a>        <span class="comment">// Compute the parent hash.
+<a href=#427 id=427 data-nosnippet>427</a>        </span><span class="kw">let </span>parent_hash = <span class="self">self</span>.set_parent_hashes(crypto, ciphersuite, <span class="kw-2">&amp;mut </span>path, leaf_index)<span class="question-mark">?</span>;
+<a href=#428 id=428 data-nosnippet>428</a>
+<a href=#429 id=429 data-nosnippet>429</a>        <span class="comment">// While probably not necessary, the spec mandates we blank the direct path nodes
+<a href=#430 id=430 data-nosnippet>430</a>        </span><span class="kw">let </span>direct_path_nodes = <span class="self">self</span>.diff.direct_path(leaf_index);
+<a href=#431 id=431 data-nosnippet>431</a>        <span class="kw">for </span>node <span class="kw">in </span>direct_path_nodes {
+<a href=#432 id=432 data-nosnippet>432</a>            <span class="kw-2">*</span><span class="self">self</span>.diff.parent_mut(node) = TreeSyncParentNode::blank();
+<a href=#433 id=433 data-nosnippet>433</a>        }
+<a href=#434 id=434 data-nosnippet>434</a>
+<a href=#435 id=435 data-nosnippet>435</a>        <span class="comment">// Set the node of the filtered direct path.
+<a href=#436 id=436 data-nosnippet>436</a>        // Note, that the nodes here don't have a tree hash set.
+<a href=#437 id=437 data-nosnippet>437</a>        </span><span class="kw">for </span>(index, node) <span class="kw">in </span>path.into_iter() {
+<a href=#438 id=438 data-nosnippet>438</a>            <span class="kw-2">*</span><span class="self">self</span>.diff.parent_mut(index) = node.into();
+<a href=#439 id=439 data-nosnippet>439</a>        }
+<a href=#440 id=440 data-nosnippet>440</a>
+<a href=#441 id=441 data-nosnippet>441</a>        <span class="prelude-val">Ok</span>(parent_hash)
+<a href=#442 id=442 data-nosnippet>442</a>    }
+<a href=#443 id=443 data-nosnippet>443</a>
+<a href=#444 id=444 data-nosnippet>444</a>    <span class="doccomment">/// Set the parent hash of the given nodes assuming that they are the new
+<a href=#445 id=445 data-nosnippet>445</a>    /// filtered direct path of the leaf with the given index.
+<a href=#446 id=446 data-nosnippet>446</a>    ///
+<a href=#447 id=447 data-nosnippet>447</a>    /// Returns the parent hash of the leaf node at `leaf_index` and a
+<a href=#448 id=448 data-nosnippet>448</a>    /// `LibraryError` if an unexpected error occurs.
+<a href=#449 id=449 data-nosnippet>449</a>    </span><span class="kw">fn </span>set_parent_hashes(
+<a href=#450 id=450 data-nosnippet>450</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#451 id=451 data-nosnippet>451</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#452 id=452 data-nosnippet>452</a>        ciphersuite: Ciphersuite,
+<a href=#453 id=453 data-nosnippet>453</a>        path: <span class="kw-2">&amp;mut </span>[(ParentNodeIndex, ParentNode)],
+<a href=#454 id=454 data-nosnippet>454</a>        leaf_index: LeafNodeIndex,
+<a href=#455 id=455 data-nosnippet>455</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ApplyUpdatePathError&gt; {
+<a href=#456 id=456 data-nosnippet>456</a>        <span class="comment">// If the path is empty, return a zero-length string. This is the case
+<a href=#457 id=457 data-nosnippet>457</a>        // when the tree has only one leaf.
+<a href=#458 id=458 data-nosnippet>458</a>        </span><span class="kw">if </span>path.is_empty() {
+<a href=#459 id=459 data-nosnippet>459</a>            <span class="kw">return </span><span class="prelude-val">Ok</span>(Vec::new());
+<a href=#460 id=460 data-nosnippet>460</a>        }
+<a href=#461 id=461 data-nosnippet>461</a>
+<a href=#462 id=462 data-nosnippet>462</a>        <span class="comment">// Compute the filtered copath corresponding to the given filtered
+<a href=#463 id=463 data-nosnippet>463</a>        // direct path.
+<a href=#464 id=464 data-nosnippet>464</a>        </span><span class="kw">let </span>filtered_copath = <span class="self">self</span>.filtered_copath(leaf_index);
+<a href=#465 id=465 data-nosnippet>465</a>        <span class="macro">debug_assert_eq!</span>(filtered_copath.len(), path.len());
+<a href=#466 id=466 data-nosnippet>466</a>        <span class="kw">if </span>filtered_copath.len() != path.len() {
+<a href=#467 id=467 data-nosnippet>467</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::PathLengthMismatch);
+<a href=#468 id=468 data-nosnippet>468</a>        }
+<a href=#469 id=469 data-nosnippet>469</a>
+<a href=#470 id=470 data-nosnippet>470</a>        <span class="comment">// For every copath node, compute the tree hash.
+<a href=#471 id=471 data-nosnippet>471</a>        </span><span class="kw">let </span>copath_tree_hashes = filtered_copath.into_iter().map(|node_index| {
+<a href=#472 id=472 data-nosnippet>472</a>            <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, node_index, <span class="kw-2">&amp;</span>HashSet::new())
+<a href=#473 id=473 data-nosnippet>473</a>        });
+<a href=#474 id=474 data-nosnippet>474</a>
+<a href=#475 id=475 data-nosnippet>475</a>        <span class="comment">// We go through the nodes in the direct path in reverse order and get
+<a href=#476 id=476 data-nosnippet>476</a>        // the corresponding tree hash for each copath node.
+<a href=#477 id=477 data-nosnippet>477</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>previous_parent_hash = <span class="macro">vec!</span>[];
+<a href=#478 id=478 data-nosnippet>478</a>        <span class="kw">for </span>((<span class="kw">_</span>, path_node), original_sibling_tree_hash) <span class="kw">in
+<a href=#479 id=479 data-nosnippet>479</a>            </span>path.iter_mut().rev().zip(copath_tree_hashes.rev())
+<a href=#480 id=480 data-nosnippet>480</a>        {
+<a href=#481 id=481 data-nosnippet>481</a>            path_node.set_parent_hash(previous_parent_hash);
+<a href=#482 id=482 data-nosnippet>482</a>            <span class="kw">let </span>parent_hash =
+<a href=#483 id=483 data-nosnippet>483</a>                path_node.compute_parent_hash(crypto, ciphersuite, <span class="kw-2">&amp;</span>original_sibling_tree_hash<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+<a href=#484 id=484 data-nosnippet>484</a>            previous_parent_hash = parent_hash
+<a href=#485 id=485 data-nosnippet>485</a>        }
+<a href=#486 id=486 data-nosnippet>486</a>        <span class="comment">// The final hash is the one of the leaf's parent.
+<a href=#487 id=487 data-nosnippet>487</a>        </span><span class="prelude-val">Ok</span>(previous_parent_hash)
+<a href=#488 id=488 data-nosnippet>488</a>    }
+<a href=#489 id=489 data-nosnippet>489</a>
+<a href=#490 id=490 data-nosnippet>490</a>    <span class="doccomment">/// Helper function computing the resolution of a node with the given index.
+<a href=#491 id=491 data-nosnippet>491</a>    /// If an exclusion list is given, do not add the leaves given in the list.
+<a href=#492 id=492 data-nosnippet>492</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>resolution(
+<a href=#493 id=493 data-nosnippet>493</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#494 id=494 data-nosnippet>494</a>        node_index: TreeNodeIndex,
+<a href=#495 id=495 data-nosnippet>495</a>        excluded_indices: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
+<a href=#496 id=496 data-nosnippet>496</a>    ) -&gt; Vec&lt;(TreeNodeIndex, NodeReference&lt;<span class="lifetime">'_</span>&gt;)&gt; {
+<a href=#497 id=497 data-nosnippet>497</a>        <span class="kw">match </span>node_index {
+<a href=#498 id=498 data-nosnippet>498</a>            TreeNodeIndex::Leaf(leaf_index) =&gt; {
+<a href=#499 id=499 data-nosnippet>499</a>                <span class="comment">// If the node is a leaf, check if it is in the exclusion list.
+<a href=#500 id=500 data-nosnippet>500</a>                </span><span class="kw">if </span>excluded_indices.contains(<span class="kw-2">&amp;</span>leaf_index) {
+<a href=#501 id=501 data-nosnippet>501</a>                    <span class="macro">vec!</span>[]
+<a href=#502 id=502 data-nosnippet>502</a>                } <span class="kw">else </span>{
+<a href=#503 id=503 data-nosnippet>503</a>                    <span class="comment">// If it's not, return it as its resolution.
+<a href=#504 id=504 data-nosnippet>504</a>                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = <span class="self">self</span>.diff.leaf(leaf_index).node() {
+<a href=#505 id=505 data-nosnippet>505</a>                        <span class="macro">vec!</span>[(TreeNodeIndex::Leaf(leaf_index), NodeReference::Leaf(leaf))]
+<a href=#506 id=506 data-nosnippet>506</a>                    } <span class="kw">else </span>{
+<a href=#507 id=507 data-nosnippet>507</a>                        <span class="comment">// If it's a blank, return an empty vector.
+<a href=#508 id=508 data-nosnippet>508</a>                        </span><span class="macro">vec!</span>[]
+<a href=#509 id=509 data-nosnippet>509</a>                    }
+<a href=#510 id=510 data-nosnippet>510</a>                }
+<a href=#511 id=511 data-nosnippet>511</a>            }
+<a href=#512 id=512 data-nosnippet>512</a>            TreeNodeIndex::Parent(parent_index) =&gt; {
+<a href=#513 id=513 data-nosnippet>513</a>                <span class="kw">match </span><span class="self">self</span>.diff.parent(parent_index).node() {
+<a href=#514 id=514 data-nosnippet>514</a>                    <span class="prelude-val">Some</span>(parent) =&gt; {
+<a href=#515 id=515 data-nosnippet>515</a>                        <span class="comment">// If it's a non-blank parent node, get the unmerged
+<a href=#516 id=516 data-nosnippet>516</a>                        // leaves, exclude them as necessary and add the node to
+<a href=#517 id=517 data-nosnippet>517</a>                        // the resulting resolution.
+<a href=#518 id=518 data-nosnippet>518</a>                        </span><span class="kw">let </span><span class="kw-2">mut </span>resolution = <span class="macro">vec!</span>[(
+<a href=#519 id=519 data-nosnippet>519</a>                            TreeNodeIndex::Parent(parent_index),
+<a href=#520 id=520 data-nosnippet>520</a>                            NodeReference::Parent(parent),
+<a href=#521 id=521 data-nosnippet>521</a>                        )];
+<a href=#522 id=522 data-nosnippet>522</a>                        <span class="kw">for </span>leaf_index <span class="kw">in </span>parent.unmerged_leaves() {
+<a href=#523 id=523 data-nosnippet>523</a>                            <span class="kw">if </span>!excluded_indices.contains(<span class="kw-2">&amp;</span>leaf_index) {
+<a href=#524 id=524 data-nosnippet>524</a>                                <span class="kw">let </span>leaf = <span class="self">self</span>.diff.leaf(<span class="kw-2">*</span>leaf_index);
+<a href=#525 id=525 data-nosnippet>525</a>                                <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf_node) = leaf.node() {
+<a href=#526 id=526 data-nosnippet>526</a>                                    resolution.push((
+<a href=#527 id=527 data-nosnippet>527</a>                                        TreeNodeIndex::Leaf(<span class="kw-2">*</span>leaf_index),
+<a href=#528 id=528 data-nosnippet>528</a>                                        NodeReference::Leaf(leaf_node),
+<a href=#529 id=529 data-nosnippet>529</a>                                    ))
+<a href=#530 id=530 data-nosnippet>530</a>                                } <span class="kw">else </span>{
+<a href=#531 id=531 data-nosnippet>531</a>                                    <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">"Unmerged leaves should not be blank."</span>);
+<a href=#532 id=532 data-nosnippet>532</a>                                }
+<a href=#533 id=533 data-nosnippet>533</a>                            }
+<a href=#534 id=534 data-nosnippet>534</a>                        }
+<a href=#535 id=535 data-nosnippet>535</a>                        resolution
+<a href=#536 id=536 data-nosnippet>536</a>                    }
+<a href=#537 id=537 data-nosnippet>537</a>                    <span class="prelude-val">None </span>=&gt; {
+<a href=#538 id=538 data-nosnippet>538</a>                        <span class="comment">// If it is a blank parent node, continue resolving
+<a href=#539 id=539 data-nosnippet>539</a>                        // down the tree.
+<a href=#540 id=540 data-nosnippet>540</a>                        </span><span class="kw">let </span><span class="kw-2">mut </span>resolution = Vec::new();
+<a href=#541 id=541 data-nosnippet>541</a>                        <span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_index);
+<a href=#542 id=542 data-nosnippet>542</a>                        <span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_index);
+<a href=#543 id=543 data-nosnippet>543</a>                        resolution.append(<span class="kw-2">&amp;mut </span><span class="self">self</span>.resolution(left_child, excluded_indices));
+<a href=#544 id=544 data-nosnippet>544</a>                        resolution.append(<span class="kw-2">&amp;mut </span><span class="self">self</span>.resolution(right_child, excluded_indices));
+<a href=#545 id=545 data-nosnippet>545</a>                        resolution
+<a href=#546 id=546 data-nosnippet>546</a>                    }
+<a href=#547 id=547 data-nosnippet>547</a>                }
+<a href=#548 id=548 data-nosnippet>548</a>            }
+<a href=#549 id=549 data-nosnippet>549</a>        }
+<a href=#550 id=550 data-nosnippet>550</a>    }
+<a href=#551 id=551 data-nosnippet>551</a>
+<a href=#552 id=552 data-nosnippet>552</a>    <span class="doccomment">/// Compute the resolution of the copath of the leaf node corresponding to
+<a href=#553 id=553 data-nosnippet>553</a>    /// the given leaf index. This includes the neighbour of the given leaf. If
+<a href=#554 id=554 data-nosnippet>554</a>    /// an exclusion list is given, do not add the public keys of the leaves
+<a href=#555 id=555 data-nosnippet>555</a>    /// given in the list.
+<a href=#556 id=556 data-nosnippet>556</a>    ///
+<a href=#557 id=557 data-nosnippet>557</a>    /// Returns a vector containing the copath resolutions of the given
+<a href=#558 id=558 data-nosnippet>558</a>    /// `leaf_index` beginning with the neighbour of the leaf. Returns an error
+<a href=#559 id=559 data-nosnippet>559</a>    /// if the target leaf is outside of the tree.
+<a href=#560 id=560 data-nosnippet>560</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>copath_resolutions(
+<a href=#561 id=561 data-nosnippet>561</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#562 id=562 data-nosnippet>562</a>        leaf_index: LeafNodeIndex,
+<a href=#563 id=563 data-nosnippet>563</a>    ) -&gt; Vec&lt;Vec&lt;(TreeNodeIndex, NodeReference&lt;<span class="lifetime">'_</span>&gt;)&gt;&gt; {
+<a href=#564 id=564 data-nosnippet>564</a>        <span class="comment">// If we're the only node in the tree, there's no copath.
+<a href=#565 id=565 data-nosnippet>565</a>        </span><span class="kw">if </span><span class="self">self</span>.diff.leaf_count() == MIN_TREE_SIZE {
+<a href=#566 id=566 data-nosnippet>566</a>            <span class="kw">return </span><span class="macro">vec!</span>[];
+<a href=#567 id=567 data-nosnippet>567</a>        }
+<a href=#568 id=568 data-nosnippet>568</a>
+<a href=#569 id=569 data-nosnippet>569</a>        <span class="comment">// Get the copath of the given leaf index and compute the resolution of
+<a href=#570 id=570 data-nosnippet>570</a>        // each node.
+<a href=#571 id=571 data-nosnippet>571</a>        </span><span class="self">self</span>.diff
+<a href=#572 id=572 data-nosnippet>572</a>            .copath(leaf_index)
+<a href=#573 id=573 data-nosnippet>573</a>            .into_iter()
+<a href=#574 id=574 data-nosnippet>574</a>            .map(|node_index| <span class="self">self</span>.resolution(node_index, <span class="kw-2">&amp;</span>HashSet::new()))
+<a href=#575 id=575 data-nosnippet>575</a>            .collect()
+<a href=#576 id=576 data-nosnippet>576</a>    }
+<a href=#577 id=577 data-nosnippet>577</a>
+<a href=#578 id=578 data-nosnippet>578</a>    <span class="doccomment">/// Compute the copath resolutions, but leave out empty resolutions.
+<a href=#579 id=579 data-nosnippet>579</a>    /// Additionally, resolutions are filtered by the given exclusion list.
+<a href=#580 id=580 data-nosnippet>580</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>filtered_copath_resolutions(
+<a href=#581 id=581 data-nosnippet>581</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#582 id=582 data-nosnippet>582</a>        leaf_index: LeafNodeIndex,
+<a href=#583 id=583 data-nosnippet>583</a>        exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
+<a href=#584 id=584 data-nosnippet>584</a>    ) -&gt; Vec&lt;Vec&lt;(TreeNodeIndex, NodeReference&lt;<span class="lifetime">'_</span>&gt;)&gt;&gt; {
+<a href=#585 id=585 data-nosnippet>585</a>        <span class="comment">// If we're the only node in the tree, there's no copath.
+<a href=#586 id=586 data-nosnippet>586</a>        </span><span class="kw">if </span><span class="self">self</span>.diff.leaf_count() == <span class="number">1 </span>{
+<a href=#587 id=587 data-nosnippet>587</a>            <span class="kw">return </span><span class="macro">vec!</span>[];
+<a href=#588 id=588 data-nosnippet>588</a>        }
+<a href=#589 id=589 data-nosnippet>589</a>
+<a href=#590 id=590 data-nosnippet>590</a>        <span class="kw">let </span><span class="kw-2">mut </span>copath_resolutions = Vec::new();
+<a href=#591 id=591 data-nosnippet>591</a>        <span class="kw">for </span>node_index <span class="kw">in </span><span class="self">self</span>.diff.copath(leaf_index) {
+<a href=#592 id=592 data-nosnippet>592</a>            <span class="kw">let </span>resolution = <span class="self">self</span>.resolution(node_index, <span class="kw-2">&amp;</span>HashSet::new());
+<a href=#593 id=593 data-nosnippet>593</a>            <span class="kw">if </span>!resolution.is_empty() {
+<a href=#594 id=594 data-nosnippet>594</a>                <span class="kw">let </span>filtered_resolution = resolution
+<a href=#595 id=595 data-nosnippet>595</a>                    .into_iter()
+<a href=#596 id=596 data-nosnippet>596</a>                    .filter_map(|(index, node)| {
+<a href=#597 id=597 data-nosnippet>597</a>                        <span class="kw">if let </span>TreeNodeIndex::Leaf(leaf_index) = index {
+<a href=#598 id=598 data-nosnippet>598</a>                            <span class="kw">if </span>exclusion_list.contains(<span class="kw-2">&amp;</span>leaf_index) {
+<a href=#599 id=599 data-nosnippet>599</a>                                <span class="prelude-val">None
+<a href=#600 id=600 data-nosnippet>600</a>                            </span>} <span class="kw">else </span>{
+<a href=#601 id=601 data-nosnippet>601</a>                                <span class="prelude-val">Some</span>((TreeNodeIndex::Leaf(leaf_index), node))
+<a href=#602 id=602 data-nosnippet>602</a>                            }
+<a href=#603 id=603 data-nosnippet>603</a>                        } <span class="kw">else </span>{
+<a href=#604 id=604 data-nosnippet>604</a>                            <span class="prelude-val">Some</span>((index, node))
+<a href=#605 id=605 data-nosnippet>605</a>                        }
+<a href=#606 id=606 data-nosnippet>606</a>                    })
+<a href=#607 id=607 data-nosnippet>607</a>                    .collect();
+<a href=#608 id=608 data-nosnippet>608</a>                copath_resolutions.push(filtered_resolution);
+<a href=#609 id=609 data-nosnippet>609</a>            }
+<a href=#610 id=610 data-nosnippet>610</a>        }
+<a href=#611 id=611 data-nosnippet>611</a>        copath_resolutions
+<a href=#612 id=612 data-nosnippet>612</a>    }
+<a href=#613 id=613 data-nosnippet>613</a>
+<a href=#614 id=614 data-nosnippet>614</a>    <span class="doccomment">/// Verify the parent hashes of all parent nodes in the tree.
+<a href=#615 id=615 data-nosnippet>615</a>    ///
+<a href=#616 id=616 data-nosnippet>616</a>    /// Returns an error if one of the parent nodes in the tree has an invalid
+<a href=#617 id=617 data-nosnippet>617</a>    /// parent hash.
+<a href=#618 id=618 data-nosnippet>618</a>    ///
+<a href=#619 id=619 data-nosnippet>619</a>    /// Checks [valn1406](https://validation.openmls.tech/#valn1406).
+<a href=#620 id=620 data-nosnippet>620</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>verify_parent_hashes(
+<a href=#621 id=621 data-nosnippet>621</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#622 id=622 data-nosnippet>622</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#623 id=623 data-nosnippet>623</a>        ciphersuite: Ciphersuite,
+<a href=#624 id=624 data-nosnippet>624</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncParentHashError&gt; {
+<a href=#625 id=625 data-nosnippet>625</a>        <span class="comment">// We traverse the tree by iterating over all parent nodes. For each
+<a href=#626 id=626 data-nosnippet>626</a>        // parent node, we compute the parent hash and compare it to the parent
+<a href=#627 id=627 data-nosnippet>627</a>        // hash in its descendants.
+<a href=#628 id=628 data-nosnippet>628</a>        //
+<a href=#629 id=629 data-nosnippet>629</a>        // We need to consider all nodes in the the descendants list (the
+<a href=#630 id=630 data-nosnippet>630</a>        // resolution), since we cannot determine which descedant was the
+<a href=#631 id=631 data-nosnippet>631</a>        // previous one in the update path when the original commit occurred.
+<a href=#632 id=632 data-nosnippet>632</a>        //
+<a href=#633 id=633 data-nosnippet>633</a>        // We look at both righ &amp; left subtree of a give node separately and
+<a href=#634 id=634 data-nosnippet>634</a>        // compute the original sibling tree hash for the sibling of the subtree
+<a href=#635 id=635 data-nosnippet>635</a>        // root.
+<a href=#636 id=636 data-nosnippet>636</a>        //
+<a href=#637 id=637 data-nosnippet>637</a>        // The parent hash for a given node is valid, when exactly one descendant
+<a href=#638 id=638 data-nosnippet>638</a>        // carries the parent hash it its parent hash field.
+<a href=#639 id=639 data-nosnippet>639</a>        </span><span class="kw">for </span>(parent_index, tree_sync_parent_node) <span class="kw">in </span><span class="self">self</span>.diff.parents() {
+<a href=#640 id=640 data-nosnippet>640</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(parent_node) = tree_sync_parent_node.node() {
+<a href=#641 id=641 data-nosnippet>641</a>                <span class="comment">// We consider both children of the parent node. One of them
+<a href=#642 id=642 data-nosnippet>642</a>                // takes the role of the descendant, whose resolution carries
+<a href=#643 id=643 data-nosnippet>643</a>                // the parent hash. The other one is the descendants sibling,
+<a href=#644 id=644 data-nosnippet>644</a>                // whose original tree hash is used to compute the parent hash.
+<a href=#645 id=645 data-nosnippet>645</a>                </span><span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_index);
+<a href=#646 id=646 data-nosnippet>646</a>                <span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_index);
 <a href=#647 id=647 data-nosnippet>647</a>
-<a href=#648 id=648 data-nosnippet>648</a>                <span class="comment">// Compute the original tree hash (oth) for the left and right child.
-<a href=#649 id=649 data-nosnippet>649</a>                </span><span class="kw">let </span>oth_left =
-<a href=#650 id=650 data-nosnippet>650</a>                    <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, left_child, <span class="kw-2">&amp;</span>exclusion_list)<span class="question-mark">?</span>;
-<a href=#651 id=651 data-nosnippet>651</a>
-<a href=#652 id=652 data-nosnippet>652</a>                <span class="kw">let </span>oth_right =
-<a href=#653 id=653 data-nosnippet>653</a>                    <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, right_child, <span class="kw-2">&amp;</span>exclusion_list)<span class="question-mark">?</span>;
+<a href=#648 id=648 data-nosnippet>648</a>                <span class="comment">// We exclude the unmerged leaves from the parent node for the
+<a href=#649 id=649 data-nosnippet>649</a>                // following computations. Those leaves were obviously added
+<a href=#650 id=650 data-nosnippet>650</a>                // after the parent node was populated during a commit and must
+<a href=#651 id=651 data-nosnippet>651</a>                // therefore be removed to recreate the tree state at the time
+<a href=#652 id=652 data-nosnippet>652</a>                // of the commit.
+<a href=#653 id=653 data-nosnippet>653</a>                </span><span class="kw">let </span>exclusion_list = HashSet::from_iter(parent_node.unmerged_leaves().iter());
 <a href=#654 id=654 data-nosnippet>654</a>
-<a href=#655 id=655 data-nosnippet>655</a>                <span class="comment">// Compute the parent hash for both child roles.
-<a href=#656 id=656 data-nosnippet>656</a>                </span><span class="kw">let </span>parent_hash_left =
-<a href=#657 id=657 data-nosnippet>657</a>                    parent_node.compute_parent_hash(crypto, ciphersuite, <span class="kw-2">&amp;</span>oth_right)<span class="question-mark">?</span>;
+<a href=#655 id=655 data-nosnippet>655</a>                <span class="comment">// Compute the original tree hash (oth) for the left and right child.
+<a href=#656 id=656 data-nosnippet>656</a>                </span><span class="kw">let </span>oth_left =
+<a href=#657 id=657 data-nosnippet>657</a>                    <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, left_child, <span class="kw-2">&amp;</span>exclusion_list)<span class="question-mark">?</span>;
 <a href=#658 id=658 data-nosnippet>658</a>
-<a href=#659 id=659 data-nosnippet>659</a>                <span class="kw">let </span>parent_hash_right =
-<a href=#660 id=660 data-nosnippet>660</a>                    parent_node.compute_parent_hash(crypto, ciphersuite, <span class="kw-2">&amp;</span>oth_left)<span class="question-mark">?</span>;
+<a href=#659 id=659 data-nosnippet>659</a>                <span class="kw">let </span>oth_right =
+<a href=#660 id=660 data-nosnippet>660</a>                    <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, right_child, <span class="kw-2">&amp;</span>exclusion_list)<span class="question-mark">?</span>;
 <a href=#661 id=661 data-nosnippet>661</a>
-<a href=#662 id=662 data-nosnippet>662</a>                <span class="comment">// Compute the resolution for both children.
-<a href=#663 id=663 data-nosnippet>663</a>                </span><span class="kw">let </span>left_resolution = <span class="self">self</span>.resolution(left_child, <span class="kw-2">&amp;</span>exclusion_list);
-<a href=#664 id=664 data-nosnippet>664</a>
-<a href=#665 id=665 data-nosnippet>665</a>                <span class="kw">let </span>right_resolution = <span class="self">self</span>.resolution(right_child, <span class="kw-2">&amp;</span>exclusion_list);
-<a href=#666 id=666 data-nosnippet>666</a>
-<a href=#667 id=667 data-nosnippet>667</a>                <span class="comment">// Find parent hash in the left resolution.
-<a href=#668 id=668 data-nosnippet>668</a>                </span><span class="kw">let </span>left_descendant = left_resolution.iter().find(|(<span class="kw">_</span>, node)| <span class="kw">match </span>node {
-<a href=#669 id=669 data-nosnippet>669</a>                    NodeReference::Leaf(leaf) =&gt; leaf
-<a href=#670 id=670 data-nosnippet>670</a>                        .parent_hash()
-<a href=#671 id=671 data-nosnippet>671</a>                        .map(|parent_hash| parent_hash == parent_hash_left)
-<a href=#672 id=672 data-nosnippet>672</a>                        .unwrap_or(<span class="bool-val">false</span>),
-<a href=#673 id=673 data-nosnippet>673</a>                    NodeReference::Parent(parent) =&gt; parent.parent_hash() == parent_hash_left,
-<a href=#674 id=674 data-nosnippet>674</a>                });
-<a href=#675 id=675 data-nosnippet>675</a>
-<a href=#676 id=676 data-nosnippet>676</a>                <span class="comment">// Find parent hash in the right resolution.
-<a href=#677 id=677 data-nosnippet>677</a>                </span><span class="kw">let </span>right_descendant = right_resolution.iter().find(|(<span class="kw">_</span>, node)| <span class="kw">match </span>node {
-<a href=#678 id=678 data-nosnippet>678</a>                    NodeReference::Leaf(leaf) =&gt; leaf
-<a href=#679 id=679 data-nosnippet>679</a>                        .parent_hash()
-<a href=#680 id=680 data-nosnippet>680</a>                        .map(|parent_hash| parent_hash == parent_hash_right)
-<a href=#681 id=681 data-nosnippet>681</a>                        .unwrap_or(<span class="bool-val">false</span>),
-<a href=#682 id=682 data-nosnippet>682</a>                    NodeReference::Parent(parent) =&gt; parent.parent_hash() == parent_hash_right,
-<a href=#683 id=683 data-nosnippet>683</a>                });
-<a href=#684 id=684 data-nosnippet>684</a>
-<a href=#685 id=685 data-nosnippet>685</a>                <span class="comment">// If one of the parent hashes is in the resolution of the
-<a href=#686 id=686 data-nosnippet>686</a>                // other child, the parent hash is valid.
-<a href=#687 id=687 data-nosnippet>687</a>                </span><span class="kw">if </span>left_descendant.is_none() ^ right_descendant.is_some() {
-<a href=#688 id=688 data-nosnippet>688</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncParentHashError::InvalidParentHash);
-<a href=#689 id=689 data-nosnippet>689</a>                }
-<a href=#690 id=690 data-nosnippet>690</a>            }
-<a href=#691 id=691 data-nosnippet>691</a>        }
-<a href=#692 id=692 data-nosnippet>692</a>        <span class="prelude-val">Ok</span>(())
-<a href=#693 id=693 data-nosnippet>693</a>    }
-<a href=#694 id=694 data-nosnippet>694</a>
-<a href=#695 id=695 data-nosnippet>695</a>    <span class="doccomment">/// This turns the diff into a staged diff. In the process, the diff
-<a href=#696 id=696 data-nosnippet>696</a>    /// computes and sets the new tree hash.
-<a href=#697 id=697 data-nosnippet>697</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_staged_diff(
-<a href=#698 id=698 data-nosnippet>698</a>        <span class="self">self</span>,
-<a href=#699 id=699 data-nosnippet>699</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#700 id=700 data-nosnippet>700</a>        ciphersuite: Ciphersuite,
-<a href=#701 id=701 data-nosnippet>701</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedTreeSyncDiff, LibraryError&gt; {
-<a href=#702 id=702 data-nosnippet>702</a>        <span class="kw">let </span>new_tree_hash = <span class="self">self</span>.compute_tree_hashes(crypto, ciphersuite)<span class="question-mark">?</span>;
-<a href=#703 id=703 data-nosnippet>703</a>        <span class="macro">debug_assert!</span>(<span class="self">self</span>.verify_parent_hashes(crypto, ciphersuite).is_ok());
-<a href=#704 id=704 data-nosnippet>704</a>        <span class="prelude-val">Ok</span>(StagedTreeSyncDiff {
-<a href=#705 id=705 data-nosnippet>705</a>            diff: <span class="self">self</span>.diff.into(),
-<a href=#706 id=706 data-nosnippet>706</a>            new_tree_hash,
-<a href=#707 id=707 data-nosnippet>707</a>        })
-<a href=#708 id=708 data-nosnippet>708</a>    }
-<a href=#709 id=709 data-nosnippet>709</a>
-<a href=#710 id=710 data-nosnippet>710</a>    <span class="doccomment">/// Helper function to compute and set the tree hash of the given node and
-<a href=#711 id=711 data-nosnippet>711</a>    /// all nodes below it in the tree. The leaf nodes in `exclusion_list` are
-<a href=#712 id=712 data-nosnippet>712</a>    /// not included in the tree hash.
-<a href=#713 id=713 data-nosnippet>713</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_tree_hash(
-<a href=#714 id=714 data-nosnippet>714</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#715 id=715 data-nosnippet>715</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#716 id=716 data-nosnippet>716</a>        ciphersuite: Ciphersuite,
-<a href=#717 id=717 data-nosnippet>717</a>        node_index: TreeNodeIndex,
-<a href=#718 id=718 data-nosnippet>718</a>        exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
-<a href=#719 id=719 data-nosnippet>719</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
-<a href=#720 id=720 data-nosnippet>720</a>        <span class="kw">match </span>node_index {
-<a href=#721 id=721 data-nosnippet>721</a>            TreeNodeIndex::Leaf(leaf_index) =&gt; {
-<a href=#722 id=722 data-nosnippet>722</a>                <span class="kw">let </span>leaf = <span class="self">self</span>.diff.leaf(leaf_index);
-<a href=#723 id=723 data-nosnippet>723</a>
-<a href=#724 id=724 data-nosnippet>724</a>                <span class="kw">if </span>exclusion_list.contains(<span class="kw-2">&amp;</span>leaf_index) {
-<a href=#725 id=725 data-nosnippet>725</a>                    TreeSyncLeafNode::blank().compute_tree_hash(crypto, ciphersuite, leaf_index)
-<a href=#726 id=726 data-nosnippet>726</a>                } <span class="kw">else </span>{
-<a href=#727 id=727 data-nosnippet>727</a>                    leaf.compute_tree_hash(crypto, ciphersuite, leaf_index)
-<a href=#728 id=728 data-nosnippet>728</a>                }
-<a href=#729 id=729 data-nosnippet>729</a>            }
-<a href=#730 id=730 data-nosnippet>730</a>            TreeNodeIndex::Parent(parent_index) =&gt; {
-<a href=#731 id=731 data-nosnippet>731</a>                <span class="comment">// Compute left hash.
-<a href=#732 id=732 data-nosnippet>732</a>                </span><span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_index);
-<a href=#733 id=733 data-nosnippet>733</a>                <span class="kw">let </span>left_hash =
-<a href=#734 id=734 data-nosnippet>734</a>                    <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, left_child, exclusion_list)<span class="question-mark">?</span>;
-<a href=#735 id=735 data-nosnippet>735</a>                <span class="comment">// Compute right hash.
-<a href=#736 id=736 data-nosnippet>736</a>                </span><span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_index);
-<a href=#737 id=737 data-nosnippet>737</a>                <span class="kw">let </span>right_hash =
-<a href=#738 id=738 data-nosnippet>738</a>                    <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, right_child, exclusion_list)<span class="question-mark">?</span>;
-<a href=#739 id=739 data-nosnippet>739</a>
-<a href=#740 id=740 data-nosnippet>740</a>                <span class="kw">let </span>node = <span class="self">self</span>.diff.parent(parent_index);
-<a href=#741 id=741 data-nosnippet>741</a>
-<a href=#742 id=742 data-nosnippet>742</a>                node.compute_tree_hash(crypto, ciphersuite, left_hash, right_hash, exclusion_list)
-<a href=#743 id=743 data-nosnippet>743</a>            }
-<a href=#744 id=744 data-nosnippet>744</a>        }
-<a href=#745 id=745 data-nosnippet>745</a>    }
+<a href=#662 id=662 data-nosnippet>662</a>                <span class="comment">// Compute the parent hash for both child roles.
+<a href=#663 id=663 data-nosnippet>663</a>                </span><span class="kw">let </span>parent_hash_left =
+<a href=#664 id=664 data-nosnippet>664</a>                    parent_node.compute_parent_hash(crypto, ciphersuite, <span class="kw-2">&amp;</span>oth_right)<span class="question-mark">?</span>;
+<a href=#665 id=665 data-nosnippet>665</a>
+<a href=#666 id=666 data-nosnippet>666</a>                <span class="kw">let </span>parent_hash_right =
+<a href=#667 id=667 data-nosnippet>667</a>                    parent_node.compute_parent_hash(crypto, ciphersuite, <span class="kw-2">&amp;</span>oth_left)<span class="question-mark">?</span>;
+<a href=#668 id=668 data-nosnippet>668</a>
+<a href=#669 id=669 data-nosnippet>669</a>                <span class="comment">// Compute the resolution for both children.
+<a href=#670 id=670 data-nosnippet>670</a>                </span><span class="kw">let </span>left_resolution = <span class="self">self</span>.resolution(left_child, <span class="kw-2">&amp;</span>exclusion_list);
+<a href=#671 id=671 data-nosnippet>671</a>
+<a href=#672 id=672 data-nosnippet>672</a>                <span class="kw">let </span>right_resolution = <span class="self">self</span>.resolution(right_child, <span class="kw-2">&amp;</span>exclusion_list);
+<a href=#673 id=673 data-nosnippet>673</a>
+<a href=#674 id=674 data-nosnippet>674</a>                <span class="comment">// Find parent hash in the left resolution.
+<a href=#675 id=675 data-nosnippet>675</a>                </span><span class="kw">let </span>left_descendant = left_resolution.iter().find(|(<span class="kw">_</span>, node)| <span class="kw">match </span>node {
+<a href=#676 id=676 data-nosnippet>676</a>                    NodeReference::Leaf(leaf) =&gt; leaf
+<a href=#677 id=677 data-nosnippet>677</a>                        .parent_hash()
+<a href=#678 id=678 data-nosnippet>678</a>                        .map(|parent_hash| parent_hash == parent_hash_left)
+<a href=#679 id=679 data-nosnippet>679</a>                        .unwrap_or(<span class="bool-val">false</span>),
+<a href=#680 id=680 data-nosnippet>680</a>                    NodeReference::Parent(parent) =&gt; parent.parent_hash() == parent_hash_left,
+<a href=#681 id=681 data-nosnippet>681</a>                });
+<a href=#682 id=682 data-nosnippet>682</a>
+<a href=#683 id=683 data-nosnippet>683</a>                <span class="comment">// Find parent hash in the right resolution.
+<a href=#684 id=684 data-nosnippet>684</a>                </span><span class="kw">let </span>right_descendant = right_resolution.iter().find(|(<span class="kw">_</span>, node)| <span class="kw">match </span>node {
+<a href=#685 id=685 data-nosnippet>685</a>                    NodeReference::Leaf(leaf) =&gt; leaf
+<a href=#686 id=686 data-nosnippet>686</a>                        .parent_hash()
+<a href=#687 id=687 data-nosnippet>687</a>                        .map(|parent_hash| parent_hash == parent_hash_right)
+<a href=#688 id=688 data-nosnippet>688</a>                        .unwrap_or(<span class="bool-val">false</span>),
+<a href=#689 id=689 data-nosnippet>689</a>                    NodeReference::Parent(parent) =&gt; parent.parent_hash() == parent_hash_right,
+<a href=#690 id=690 data-nosnippet>690</a>                });
+<a href=#691 id=691 data-nosnippet>691</a>
+<a href=#692 id=692 data-nosnippet>692</a>                <span class="comment">// If one of the parent hashes is in the resolution of the
+<a href=#693 id=693 data-nosnippet>693</a>                // other child, the parent hash is valid.
+<a href=#694 id=694 data-nosnippet>694</a>                </span><span class="kw">if </span>left_descendant.is_none() ^ right_descendant.is_some() {
+<a href=#695 id=695 data-nosnippet>695</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncParentHashError::InvalidParentHash);
+<a href=#696 id=696 data-nosnippet>696</a>                }
+<a href=#697 id=697 data-nosnippet>697</a>            }
+<a href=#698 id=698 data-nosnippet>698</a>        }
+<a href=#699 id=699 data-nosnippet>699</a>        <span class="prelude-val">Ok</span>(())
+<a href=#700 id=700 data-nosnippet>700</a>    }
+<a href=#701 id=701 data-nosnippet>701</a>
+<a href=#702 id=702 data-nosnippet>702</a>    <span class="doccomment">/// This turns the diff into a staged diff. In the process, the diff
+<a href=#703 id=703 data-nosnippet>703</a>    /// computes and sets the new tree hash.
+<a href=#704 id=704 data-nosnippet>704</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_staged_diff(
+<a href=#705 id=705 data-nosnippet>705</a>        <span class="self">self</span>,
+<a href=#706 id=706 data-nosnippet>706</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#707 id=707 data-nosnippet>707</a>        ciphersuite: Ciphersuite,
+<a href=#708 id=708 data-nosnippet>708</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedTreeSyncDiff, LibraryError&gt; {
+<a href=#709 id=709 data-nosnippet>709</a>        <span class="kw">let </span>new_tree_hash = <span class="self">self</span>.compute_tree_hashes(crypto, ciphersuite)<span class="question-mark">?</span>;
+<a href=#710 id=710 data-nosnippet>710</a>        <span class="macro">debug_assert!</span>(<span class="self">self</span>.verify_parent_hashes(crypto, ciphersuite).is_ok());
+<a href=#711 id=711 data-nosnippet>711</a>        <span class="prelude-val">Ok</span>(StagedTreeSyncDiff {
+<a href=#712 id=712 data-nosnippet>712</a>            diff: <span class="self">self</span>.diff.into(),
+<a href=#713 id=713 data-nosnippet>713</a>            new_tree_hash,
+<a href=#714 id=714 data-nosnippet>714</a>        })
+<a href=#715 id=715 data-nosnippet>715</a>    }
+<a href=#716 id=716 data-nosnippet>716</a>
+<a href=#717 id=717 data-nosnippet>717</a>    <span class="doccomment">/// Helper function to compute and set the tree hash of the given node and
+<a href=#718 id=718 data-nosnippet>718</a>    /// all nodes below it in the tree. The leaf nodes in `exclusion_list` are
+<a href=#719 id=719 data-nosnippet>719</a>    /// not included in the tree hash.
+<a href=#720 id=720 data-nosnippet>720</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_tree_hash(
+<a href=#721 id=721 data-nosnippet>721</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#722 id=722 data-nosnippet>722</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#723 id=723 data-nosnippet>723</a>        ciphersuite: Ciphersuite,
+<a href=#724 id=724 data-nosnippet>724</a>        node_index: TreeNodeIndex,
+<a href=#725 id=725 data-nosnippet>725</a>        exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
+<a href=#726 id=726 data-nosnippet>726</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
+<a href=#727 id=727 data-nosnippet>727</a>        <span class="kw">match </span>node_index {
+<a href=#728 id=728 data-nosnippet>728</a>            TreeNodeIndex::Leaf(leaf_index) =&gt; {
+<a href=#729 id=729 data-nosnippet>729</a>                <span class="kw">let </span>leaf = <span class="self">self</span>.diff.leaf(leaf_index);
+<a href=#730 id=730 data-nosnippet>730</a>
+<a href=#731 id=731 data-nosnippet>731</a>                <span class="kw">if </span>exclusion_list.contains(<span class="kw-2">&amp;</span>leaf_index) {
+<a href=#732 id=732 data-nosnippet>732</a>                    TreeSyncLeafNode::blank().compute_tree_hash(crypto, ciphersuite, leaf_index)
+<a href=#733 id=733 data-nosnippet>733</a>                } <span class="kw">else </span>{
+<a href=#734 id=734 data-nosnippet>734</a>                    leaf.compute_tree_hash(crypto, ciphersuite, leaf_index)
+<a href=#735 id=735 data-nosnippet>735</a>                }
+<a href=#736 id=736 data-nosnippet>736</a>            }
+<a href=#737 id=737 data-nosnippet>737</a>            TreeNodeIndex::Parent(parent_index) =&gt; {
+<a href=#738 id=738 data-nosnippet>738</a>                <span class="comment">// Compute left hash.
+<a href=#739 id=739 data-nosnippet>739</a>                </span><span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_index);
+<a href=#740 id=740 data-nosnippet>740</a>                <span class="kw">let </span>left_hash =
+<a href=#741 id=741 data-nosnippet>741</a>                    <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, left_child, exclusion_list)<span class="question-mark">?</span>;
+<a href=#742 id=742 data-nosnippet>742</a>                <span class="comment">// Compute right hash.
+<a href=#743 id=743 data-nosnippet>743</a>                </span><span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_index);
+<a href=#744 id=744 data-nosnippet>744</a>                <span class="kw">let </span>right_hash =
+<a href=#745 id=745 data-nosnippet>745</a>                    <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, right_child, exclusion_list)<span class="question-mark">?</span>;
 <a href=#746 id=746 data-nosnippet>746</a>
-<a href=#747 id=747 data-nosnippet>747</a>    <span class="doccomment">/// Return a reference to the leaf with the given index.
-<a href=#748 id=748 data-nosnippet>748</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, index: LeafNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
-<a href=#749 id=749 data-nosnippet>749</a>        <span class="self">self</span>.diff.leaf(index).node().as_ref()
-<a href=#750 id=750 data-nosnippet>750</a>    }
-<a href=#751 id=751 data-nosnippet>751</a>
-<a href=#752 id=752 data-nosnippet>752</a>    <span class="doccomment">/// Compute and set the tree hash of all nodes in the tree.
-<a href=#753 id=753 data-nosnippet>753</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_tree_hashes(
-<a href=#754 id=754 data-nosnippet>754</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#755 id=755 data-nosnippet>755</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#756 id=756 data-nosnippet>756</a>        ciphersuite: Ciphersuite,
-<a href=#757 id=757 data-nosnippet>757</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
-<a href=#758 id=758 data-nosnippet>758</a>        <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, <span class="self">self</span>.diff.root(), <span class="kw-2">&amp;</span>HashSet::new())
-<a href=#759 id=759 data-nosnippet>759</a>    }
-<a href=#760 id=760 data-nosnippet>760</a>
-<a href=#761 id=761 data-nosnippet>761</a>    <span class="doccomment">/// Returns the position of the subtree root shared by both given indices in
-<a href=#762 id=762 data-nosnippet>762</a>    /// the direct path of `leaf_index_1`.
-<a href=#763 id=763 data-nosnippet>763</a>    ///
-<a href=#764 id=764 data-nosnippet>764</a>    /// Returns a [LibraryError] if there's an error in the tree math computation.
-<a href=#765 id=765 data-nosnippet>765</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>subtree_root_position(
-<a href=#766 id=766 data-nosnippet>766</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#767 id=767 data-nosnippet>767</a>        leaf_index_1: LeafNodeIndex,
-<a href=#768 id=768 data-nosnippet>768</a>        leaf_index_2: LeafNodeIndex,
-<a href=#769 id=769 data-nosnippet>769</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, TreeSyncDiffError&gt; {
-<a href=#770 id=770 data-nosnippet>770</a>        <span class="kw">let </span>subtree_root_node_index = <span class="self">self</span>.diff.lowest_common_ancestor(leaf_index_1, leaf_index_2);
-<a href=#771 id=771 data-nosnippet>771</a>        <span class="kw">let </span>leaf_index_1_direct_path = <span class="self">self</span>.filtered_direct_path(leaf_index_1);
-<a href=#772 id=772 data-nosnippet>772</a>
-<a href=#773 id=773 data-nosnippet>773</a>        leaf_index_1_direct_path
-<a href=#774 id=774 data-nosnippet>774</a>            .iter()
-<a href=#775 id=775 data-nosnippet>775</a>            .position(|<span class="kw-2">&amp;</span>direct_path_node_index| direct_path_node_index == subtree_root_node_index)
-<a href=#776 id=776 data-nosnippet>776</a>            <span class="comment">// The shared subtree root has to be in the direct path of both nodes.
-<a href=#777 id=777 data-nosnippet>777</a>            </span>.ok_or_else(|| LibraryError::custom(<span class="string">"index should be in the direct path"</span>).into())
-<a href=#778 id=778 data-nosnippet>778</a>    }
+<a href=#747 id=747 data-nosnippet>747</a>                <span class="kw">let </span>node = <span class="self">self</span>.diff.parent(parent_index);
+<a href=#748 id=748 data-nosnippet>748</a>
+<a href=#749 id=749 data-nosnippet>749</a>                node.compute_tree_hash(crypto, ciphersuite, left_hash, right_hash, exclusion_list)
+<a href=#750 id=750 data-nosnippet>750</a>            }
+<a href=#751 id=751 data-nosnippet>751</a>        }
+<a href=#752 id=752 data-nosnippet>752</a>    }
+<a href=#753 id=753 data-nosnippet>753</a>
+<a href=#754 id=754 data-nosnippet>754</a>    <span class="doccomment">/// Return a reference to the leaf with the given index.
+<a href=#755 id=755 data-nosnippet>755</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, index: LeafNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
+<a href=#756 id=756 data-nosnippet>756</a>        <span class="self">self</span>.diff.leaf(index).node().as_ref()
+<a href=#757 id=757 data-nosnippet>757</a>    }
+<a href=#758 id=758 data-nosnippet>758</a>
+<a href=#759 id=759 data-nosnippet>759</a>    <span class="doccomment">/// Compute and set the tree hash of all nodes in the tree.
+<a href=#760 id=760 data-nosnippet>760</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_tree_hashes(
+<a href=#761 id=761 data-nosnippet>761</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#762 id=762 data-nosnippet>762</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#763 id=763 data-nosnippet>763</a>        ciphersuite: Ciphersuite,
+<a href=#764 id=764 data-nosnippet>764</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
+<a href=#765 id=765 data-nosnippet>765</a>        <span class="self">self</span>.compute_tree_hash(crypto, ciphersuite, <span class="self">self</span>.diff.root(), <span class="kw-2">&amp;</span>HashSet::new())
+<a href=#766 id=766 data-nosnippet>766</a>    }
+<a href=#767 id=767 data-nosnippet>767</a>
+<a href=#768 id=768 data-nosnippet>768</a>    <span class="doccomment">/// Returns the position of the subtree root shared by both given indices in
+<a href=#769 id=769 data-nosnippet>769</a>    /// the direct path of `leaf_index_1`.
+<a href=#770 id=770 data-nosnippet>770</a>    ///
+<a href=#771 id=771 data-nosnippet>771</a>    /// Returns a [LibraryError] if there's an error in the tree math computation.
+<a href=#772 id=772 data-nosnippet>772</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>subtree_root_position(
+<a href=#773 id=773 data-nosnippet>773</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#774 id=774 data-nosnippet>774</a>        leaf_index_1: LeafNodeIndex,
+<a href=#775 id=775 data-nosnippet>775</a>        leaf_index_2: LeafNodeIndex,
+<a href=#776 id=776 data-nosnippet>776</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, TreeSyncDiffError&gt; {
+<a href=#777 id=777 data-nosnippet>777</a>        <span class="kw">let </span>subtree_root_node_index = <span class="self">self</span>.diff.lowest_common_ancestor(leaf_index_1, leaf_index_2);
+<a href=#778 id=778 data-nosnippet>778</a>        <span class="kw">let </span>leaf_index_1_direct_path = <span class="self">self</span>.filtered_direct_path(leaf_index_1);
 <a href=#779 id=779 data-nosnippet>779</a>
-<a href=#780 id=780 data-nosnippet>780</a>    <span class="doccomment">/// Compute the position of the highest node in the tree in the filtered
-<a href=#781 id=781 data-nosnippet>781</a>    /// copath resolution of the given `sender_leaf_index` where a corresponding
-<a href=#782 id=782 data-nosnippet>782</a>    /// [`EncryptionKeyPair`] can be found.
-<a href=#783 id=783 data-nosnippet>783</a>    ///
-<a href=#784 id=784 data-nosnippet>784</a>    /// Returns the resulting position, as well as the private key of that node.
-<a href=#785 id=785 data-nosnippet>785</a>    /// Returns an error if the given `sender_leaf_index` is outside of the
-<a href=#786 id=786 data-nosnippet>786</a>    /// tree.
-<a href=#787 id=787 data-nosnippet>787</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decryption_key&lt;<span class="lifetime">'private_key</span>&gt;(
-<a href=#788 id=788 data-nosnippet>788</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#789 id=789 data-nosnippet>789</a>        sender_leaf_index: LeafNodeIndex,
-<a href=#790 id=790 data-nosnippet>790</a>        excluded_indices: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
-<a href=#791 id=791 data-nosnippet>791</a>        owned_keys: <span class="kw-2">&amp;</span><span class="lifetime">'private_key </span>[<span class="kw-2">&amp;</span>EncryptionKeyPair],
-<a href=#792 id=792 data-nosnippet>792</a>        leaf_index: LeafNodeIndex,
-<a href=#793 id=793 data-nosnippet>793</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'private_key </span>EncryptionPrivateKey, usize), TreeSyncDiffError&gt; {
-<a href=#794 id=794 data-nosnippet>794</a>        <span class="comment">// Get the copath node of the sender that is in our direct path, as well
-<a href=#795 id=795 data-nosnippet>795</a>        // as its position in our direct path.
-<a href=#796 id=796 data-nosnippet>796</a>        </span><span class="kw">let </span>subtree_root_copath_node_id = <span class="self">self
-<a href=#797 id=797 data-nosnippet>797</a>            </span>.diff
-<a href=#798 id=798 data-nosnippet>798</a>            .subtree_root_copath_node(sender_leaf_index, leaf_index);
-<a href=#799 id=799 data-nosnippet>799</a>
-<a href=#800 id=800 data-nosnippet>800</a>        <span class="kw">let </span>sender_copath_resolution: Vec&lt;EncryptionKey&gt; = <span class="self">self
-<a href=#801 id=801 data-nosnippet>801</a>            </span>.resolution(subtree_root_copath_node_id, excluded_indices)
-<a href=#802 id=802 data-nosnippet>802</a>            .into_iter()
-<a href=#803 id=803 data-nosnippet>803</a>            .map(|(<span class="kw">_</span>, node_ref)| <span class="kw">match </span>node_ref {
-<a href=#804 id=804 data-nosnippet>804</a>                NodeReference::Leaf(leaf) =&gt; leaf.encryption_key().clone(),
-<a href=#805 id=805 data-nosnippet>805</a>                NodeReference::Parent(parent) =&gt; parent.encryption_key().clone(),
-<a href=#806 id=806 data-nosnippet>806</a>            })
-<a href=#807 id=807 data-nosnippet>807</a>            .collect();
-<a href=#808 id=808 data-nosnippet>808</a>
-<a href=#809 id=809 data-nosnippet>809</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>((keypair, resolution_position)) = sender_copath_resolution
-<a href=#810 id=810 data-nosnippet>810</a>            .iter()
-<a href=#811 id=811 data-nosnippet>811</a>            .enumerate()
-<a href=#812 id=812 data-nosnippet>812</a>            .find_map(|(position, pk)| {
-<a href=#813 id=813 data-nosnippet>813</a>                owned_keys
-<a href=#814 id=814 data-nosnippet>814</a>                    .iter()
-<a href=#815 id=815 data-nosnippet>815</a>                    .find(|<span class="kw-2">&amp;</span>owned_keypair| owned_keypair.public_key() == pk)
-<a href=#816 id=816 data-nosnippet>816</a>                    .map(|keypair| (keypair, position))
-<a href=#817 id=817 data-nosnippet>817</a>            })
-<a href=#818 id=818 data-nosnippet>818</a>        {
-<a href=#819 id=819 data-nosnippet>819</a>            <span class="macro">debug!</span>(<span class="string">"Found fitting keypair in the filtered resolution:"</span>);
-<a href=#820 id=820 data-nosnippet>820</a>            <span class="macro">debug!</span>(<span class="string">"* private key: {:x?}"</span>, keypair.private_key());
-<a href=#821 id=821 data-nosnippet>821</a>            <span class="macro">debug!</span>(<span class="string">"* public key: {:x?}"</span>, keypair.public_key());
-<a href=#822 id=822 data-nosnippet>822</a>
-<a href=#823 id=823 data-nosnippet>823</a>            <span class="kw">return </span><span class="prelude-val">Ok</span>((keypair.private_key(), resolution_position));
-<a href=#824 id=824 data-nosnippet>824</a>        };
-<a href=#825 id=825 data-nosnippet>825</a>        <span class="prelude-val">Err</span>(TreeSyncDiffError::NoPrivateKeyFound)
-<a href=#826 id=826 data-nosnippet>826</a>    }
-<a href=#827 id=827 data-nosnippet>827</a>
-<a href=#828 id=828 data-nosnippet>828</a>    <span class="doccomment">/// Returns a vector of all nodes in the tree resulting from merging this
-<a href=#829 id=829 data-nosnippet>829</a>    /// diff.
-<a href=#830 id=830 data-nosnippet>830</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RatchetTree {
-<a href=#831 id=831 data-nosnippet>831</a>        <span class="kw">let </span><span class="kw-2">mut </span>nodes = Vec::new();
-<a href=#832 id=832 data-nosnippet>832</a>
-<a href=#833 id=833 data-nosnippet>833</a>        <span class="comment">// Determine the index of the rightmost full leaf.
-<a href=#834 id=834 data-nosnippet>834</a>        </span><span class="kw">let </span>max_length = <span class="self">self</span>.rightmost_full_leaf();
-<a href=#835 id=835 data-nosnippet>835</a>
-<a href=#836 id=836 data-nosnippet>836</a>        <span class="comment">// We take all the leaves including the rightmost full leaf, blank
-<a href=#837 id=837 data-nosnippet>837</a>        // leaves beyond that are trimmed.
-<a href=#838 id=838 data-nosnippet>838</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>leaves = <span class="self">self
-<a href=#839 id=839 data-nosnippet>839</a>            </span>.diff
-<a href=#840 id=840 data-nosnippet>840</a>            .leaves()
-<a href=#841 id=841 data-nosnippet>841</a>            .map(|(<span class="kw">_</span>, leaf)| leaf)
-<a href=#842 id=842 data-nosnippet>842</a>            .take(max_length.usize() + <span class="number">1</span>);
-<a href=#843 id=843 data-nosnippet>843</a>
-<a href=#844 id=844 data-nosnippet>844</a>        <span class="comment">// Get the first leaf.
-<a href=#845 id=845 data-nosnippet>845</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = leaves.next() {
-<a href=#846 id=846 data-nosnippet>846</a>            nodes.push(leaf.node().clone().map(Node::leaf_node));
-<a href=#847 id=847 data-nosnippet>847</a>        } <span class="kw">else </span>{
-<a href=#848 id=848 data-nosnippet>848</a>            <span class="comment">// The tree was empty.
-<a href=#849 id=849 data-nosnippet>849</a>            </span><span class="kw">return </span>RatchetTree::trimmed(<span class="macro">vec!</span>[]);
-<a href=#850 id=850 data-nosnippet>850</a>        }
-<a href=#851 id=851 data-nosnippet>851</a>
-<a href=#852 id=852 data-nosnippet>852</a>        <span class="comment">// Blank parent node used for padding
-<a href=#853 id=853 data-nosnippet>853</a>        </span><span class="kw">let </span>default_parent = TreeSyncParentNode::default();
-<a href=#854 id=854 data-nosnippet>854</a>
-<a href=#855 id=855 data-nosnippet>855</a>        <span class="comment">// Get the parents.
-<a href=#856 id=856 data-nosnippet>856</a>        </span><span class="kw">let </span>parents = <span class="self">self
-<a href=#857 id=857 data-nosnippet>857</a>            </span>.diff
-<a href=#858 id=858 data-nosnippet>858</a>            .parents()
-<a href=#859 id=859 data-nosnippet>859</a>            <span class="comment">// Drop the index
-<a href=#860 id=860 data-nosnippet>860</a>            </span>.map(|(<span class="kw">_</span>, parent)| parent)
-<a href=#861 id=861 data-nosnippet>861</a>            <span class="comment">// Take the parents up to the max length
-<a href=#862 id=862 data-nosnippet>862</a>            </span>.take(max_length.usize())
-<a href=#863 id=863 data-nosnippet>863</a>            <span class="comment">// Pad the parents with blank nodes if needed
-<a href=#864 id=864 data-nosnippet>864</a>            </span>.chain(
-<a href=#865 id=865 data-nosnippet>865</a>                (<span class="self">self</span>.diff.parents().count()..<span class="self">self</span>.diff.leaves().count() - <span class="number">1</span>)
-<a href=#866 id=866 data-nosnippet>866</a>                    .map(|<span class="kw">_</span>| <span class="kw-2">&amp;</span>default_parent),
-<a href=#867 id=867 data-nosnippet>867</a>            );
-<a href=#868 id=868 data-nosnippet>868</a>
-<a href=#869 id=869 data-nosnippet>869</a>        <span class="comment">// Interleave the leaves and parents.
-<a href=#870 id=870 data-nosnippet>870</a>        </span><span class="kw">for </span>(leaf, parent) <span class="kw">in </span>leaves.zip(parents) {
-<a href=#871 id=871 data-nosnippet>871</a>            nodes.push(parent.node().clone().map(Node::parent_node));
-<a href=#872 id=872 data-nosnippet>872</a>            nodes.push(leaf.node().clone().map(Node::leaf_node));
-<a href=#873 id=873 data-nosnippet>873</a>        }
-<a href=#874 id=874 data-nosnippet>874</a>
-<a href=#875 id=875 data-nosnippet>875</a>        RatchetTree::trimmed(nodes)
-<a href=#876 id=876 data-nosnippet>876</a>    }
-<a href=#877 id=877 data-nosnippet>877</a>
-<a href=#878 id=878 data-nosnippet>878</a>    <span class="doccomment">/// Returns the filtered common path two leaf nodes share. If the leaves are
-<a href=#879 id=879 data-nosnippet>879</a>    /// identical, the common path is the leaf's direct path.
-<a href=#880 id=880 data-nosnippet>880</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>filtered_common_direct_path(
-<a href=#881 id=881 data-nosnippet>881</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#882 id=882 data-nosnippet>882</a>        leaf_index_1: LeafNodeIndex,
-<a href=#883 id=883 data-nosnippet>883</a>        leaf_index_2: LeafNodeIndex,
-<a href=#884 id=884 data-nosnippet>884</a>    ) -&gt; Vec&lt;ParentNodeIndex&gt; {
-<a href=#885 id=885 data-nosnippet>885</a>        <span class="kw">let </span><span class="kw-2">mut </span>x_path = <span class="self">self</span>.filtered_direct_path(leaf_index_1);
-<a href=#886 id=886 data-nosnippet>886</a>        <span class="kw">let </span><span class="kw-2">mut </span>y_path = <span class="self">self</span>.filtered_direct_path(leaf_index_2);
-<a href=#887 id=887 data-nosnippet>887</a>        x_path.reverse();
-<a href=#888 id=888 data-nosnippet>888</a>        y_path.reverse();
-<a href=#889 id=889 data-nosnippet>889</a>
-<a href=#890 id=890 data-nosnippet>890</a>        <span class="kw">let </span><span class="kw-2">mut </span>common_path = <span class="macro">vec!</span>[];
-<a href=#891 id=891 data-nosnippet>891</a>
-<a href=#892 id=892 data-nosnippet>892</a>        <span class="kw">for </span>(x, y) <span class="kw">in </span>x_path.iter().zip(y_path.iter()) {
-<a href=#893 id=893 data-nosnippet>893</a>            <span class="kw">if </span>x == y {
-<a href=#894 id=894 data-nosnippet>894</a>                common_path.push(<span class="kw-2">*</span>x);
-<a href=#895 id=895 data-nosnippet>895</a>            } <span class="kw">else </span>{
-<a href=#896 id=896 data-nosnippet>896</a>                <span class="kw">break</span>;
-<a href=#897 id=897 data-nosnippet>897</a>            }
-<a href=#898 id=898 data-nosnippet>898</a>        }
-<a href=#899 id=899 data-nosnippet>899</a>
-<a href=#900 id=900 data-nosnippet>900</a>        common_path.reverse();
-<a href=#901 id=901 data-nosnippet>901</a>        common_path
-<a href=#902 id=902 data-nosnippet>902</a>    }
-<a href=#903 id=903 data-nosnippet>903</a>
-<a href=#904 id=904 data-nosnippet>904</a>    <span class="doccomment">/// Return an iterator over references to all [`EncryptionKey`]s for which
-<a href=#905 id=905 data-nosnippet>905</a>    /// the owner of the given `leaf_index` should have private key material.
-<a href=#906 id=906 data-nosnippet>906</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encryption_keys(
-<a href=#907 id=907 data-nosnippet>907</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#908 id=908 data-nosnippet>908</a>        leaf_index: LeafNodeIndex,
-<a href=#909 id=909 data-nosnippet>909</a>    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>EncryptionKey&gt; {
-<a href=#910 id=910 data-nosnippet>910</a>        <span class="kw">let </span>encryption_keys = <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = <span class="self">self</span>.diff.leaf(leaf_index).node() {
-<a href=#911 id=911 data-nosnippet>911</a>            <span class="macro">vec!</span>[leaf.encryption_key()]
-<a href=#912 id=912 data-nosnippet>912</a>        } <span class="kw">else </span>{
-<a href=#913 id=913 data-nosnippet>913</a>            <span class="comment">// If our own leaf is empty, we don't expect to own any other keys.
-<a href=#914 id=914 data-nosnippet>914</a>            </span><span class="macro">vec!</span>[]
-<a href=#915 id=915 data-nosnippet>915</a>        };
-<a href=#916 id=916 data-nosnippet>916</a>        encryption_keys.into_iter().chain(
-<a href=#917 id=917 data-nosnippet>917</a>            <span class="self">self</span>.filtered_direct_path(leaf_index)
-<a href=#918 id=918 data-nosnippet>918</a>                .into_iter()
-<a href=#919 id=919 data-nosnippet>919</a>                .filter_map(<span class="kw">move </span>|parent_index| {
-<a href=#920 id=920 data-nosnippet>920</a>                    <span class="comment">// Filter out all blanks.
-<a href=#921 id=921 data-nosnippet>921</a>                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.diff.parent(parent_index).node().as_ref() {
-<a href=#922 id=922 data-nosnippet>922</a>                        <span class="comment">// Filter all nodes where our leaf is an unmerged leaf.
-<a href=#923 id=923 data-nosnippet>923</a>                        </span><span class="kw">if </span>!node.unmerged_leaves().contains(<span class="kw-2">&amp;</span>leaf_index) {
-<a href=#924 id=924 data-nosnippet>924</a>                            <span class="prelude-val">Some</span>(node.encryption_key())
-<a href=#925 id=925 data-nosnippet>925</a>                        } <span class="kw">else </span>{
-<a href=#926 id=926 data-nosnippet>926</a>                            <span class="prelude-val">None
-<a href=#927 id=927 data-nosnippet>927</a>                        </span>}
-<a href=#928 id=928 data-nosnippet>928</a>                    } <span class="kw">else </span>{
-<a href=#929 id=929 data-nosnippet>929</a>                        <span class="prelude-val">None
-<a href=#930 id=930 data-nosnippet>930</a>                    </span>}
-<a href=#931 id=931 data-nosnippet>931</a>                }),
-<a href=#932 id=932 data-nosnippet>932</a>        )
-<a href=#933 id=933 data-nosnippet>933</a>    }
-<a href=#934 id=934 data-nosnippet>934</a>}
+<a href=#780 id=780 data-nosnippet>780</a>        leaf_index_1_direct_path
+<a href=#781 id=781 data-nosnippet>781</a>            .iter()
+<a href=#782 id=782 data-nosnippet>782</a>            .position(|<span class="kw-2">&amp;</span>direct_path_node_index| direct_path_node_index == subtree_root_node_index)
+<a href=#783 id=783 data-nosnippet>783</a>            <span class="comment">// The shared subtree root has to be in the direct path of both nodes.
+<a href=#784 id=784 data-nosnippet>784</a>            </span>.ok_or_else(|| LibraryError::custom(<span class="string">"index should be in the direct path"</span>).into())
+<a href=#785 id=785 data-nosnippet>785</a>    }
+<a href=#786 id=786 data-nosnippet>786</a>
+<a href=#787 id=787 data-nosnippet>787</a>    <span class="doccomment">/// Compute the position of the highest node in the tree in the filtered
+<a href=#788 id=788 data-nosnippet>788</a>    /// copath resolution of the given `sender_leaf_index` where a corresponding
+<a href=#789 id=789 data-nosnippet>789</a>    /// [`EncryptionKeyPair`] can be found.
+<a href=#790 id=790 data-nosnippet>790</a>    ///
+<a href=#791 id=791 data-nosnippet>791</a>    /// Returns the resulting position, as well as the private key of that node.
+<a href=#792 id=792 data-nosnippet>792</a>    /// Returns an error if the given `sender_leaf_index` is outside of the
+<a href=#793 id=793 data-nosnippet>793</a>    /// tree.
+<a href=#794 id=794 data-nosnippet>794</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decryption_key&lt;<span class="lifetime">'private_key</span>&gt;(
+<a href=#795 id=795 data-nosnippet>795</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#796 id=796 data-nosnippet>796</a>        sender_leaf_index: LeafNodeIndex,
+<a href=#797 id=797 data-nosnippet>797</a>        excluded_indices: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
+<a href=#798 id=798 data-nosnippet>798</a>        owned_keys: <span class="kw-2">&amp;</span><span class="lifetime">'private_key </span>[<span class="kw-2">&amp;</span>EncryptionKeyPair],
+<a href=#799 id=799 data-nosnippet>799</a>        leaf_index: LeafNodeIndex,
+<a href=#800 id=800 data-nosnippet>800</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'private_key </span>EncryptionPrivateKey, usize), TreeSyncDiffError&gt; {
+<a href=#801 id=801 data-nosnippet>801</a>        <span class="comment">// Get the copath node of the sender that is in our direct path, as well
+<a href=#802 id=802 data-nosnippet>802</a>        // as its position in our direct path.
+<a href=#803 id=803 data-nosnippet>803</a>        </span><span class="kw">let </span>subtree_root_copath_node_id = <span class="self">self
+<a href=#804 id=804 data-nosnippet>804</a>            </span>.diff
+<a href=#805 id=805 data-nosnippet>805</a>            .subtree_root_copath_node(sender_leaf_index, leaf_index);
+<a href=#806 id=806 data-nosnippet>806</a>
+<a href=#807 id=807 data-nosnippet>807</a>        <span class="kw">let </span>sender_copath_resolution: Vec&lt;EncryptionKey&gt; = <span class="self">self
+<a href=#808 id=808 data-nosnippet>808</a>            </span>.resolution(subtree_root_copath_node_id, excluded_indices)
+<a href=#809 id=809 data-nosnippet>809</a>            .into_iter()
+<a href=#810 id=810 data-nosnippet>810</a>            .map(|(<span class="kw">_</span>, node_ref)| <span class="kw">match </span>node_ref {
+<a href=#811 id=811 data-nosnippet>811</a>                NodeReference::Leaf(leaf) =&gt; leaf.encryption_key().clone(),
+<a href=#812 id=812 data-nosnippet>812</a>                NodeReference::Parent(parent) =&gt; parent.encryption_key().clone(),
+<a href=#813 id=813 data-nosnippet>813</a>            })
+<a href=#814 id=814 data-nosnippet>814</a>            .collect();
+<a href=#815 id=815 data-nosnippet>815</a>
+<a href=#816 id=816 data-nosnippet>816</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>((keypair, resolution_position)) = sender_copath_resolution
+<a href=#817 id=817 data-nosnippet>817</a>            .iter()
+<a href=#818 id=818 data-nosnippet>818</a>            .enumerate()
+<a href=#819 id=819 data-nosnippet>819</a>            .find_map(|(position, pk)| {
+<a href=#820 id=820 data-nosnippet>820</a>                owned_keys
+<a href=#821 id=821 data-nosnippet>821</a>                    .iter()
+<a href=#822 id=822 data-nosnippet>822</a>                    .find(|<span class="kw-2">&amp;</span>owned_keypair| owned_keypair.public_key() == pk)
+<a href=#823 id=823 data-nosnippet>823</a>                    .map(|keypair| (keypair, position))
+<a href=#824 id=824 data-nosnippet>824</a>            })
+<a href=#825 id=825 data-nosnippet>825</a>        {
+<a href=#826 id=826 data-nosnippet>826</a>            <span class="macro">debug!</span>(<span class="string">"Found fitting keypair in the filtered resolution:"</span>);
+<a href=#827 id=827 data-nosnippet>827</a>            <span class="macro">debug!</span>(<span class="string">"* private key: {:x?}"</span>, keypair.private_key());
+<a href=#828 id=828 data-nosnippet>828</a>            <span class="macro">debug!</span>(<span class="string">"* public key: {:x?}"</span>, keypair.public_key());
+<a href=#829 id=829 data-nosnippet>829</a>
+<a href=#830 id=830 data-nosnippet>830</a>            <span class="kw">return </span><span class="prelude-val">Ok</span>((keypair.private_key(), resolution_position));
+<a href=#831 id=831 data-nosnippet>831</a>        };
+<a href=#832 id=832 data-nosnippet>832</a>        <span class="prelude-val">Err</span>(TreeSyncDiffError::NoPrivateKeyFound)
+<a href=#833 id=833 data-nosnippet>833</a>    }
+<a href=#834 id=834 data-nosnippet>834</a>
+<a href=#835 id=835 data-nosnippet>835</a>    <span class="doccomment">/// Returns a vector of all nodes in the tree resulting from merging this
+<a href=#836 id=836 data-nosnippet>836</a>    /// diff.
+<a href=#837 id=837 data-nosnippet>837</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RatchetTree {
+<a href=#838 id=838 data-nosnippet>838</a>        <span class="kw">let </span><span class="kw-2">mut </span>nodes = Vec::new();
+<a href=#839 id=839 data-nosnippet>839</a>
+<a href=#840 id=840 data-nosnippet>840</a>        <span class="comment">// Determine the index of the rightmost full leaf.
+<a href=#841 id=841 data-nosnippet>841</a>        </span><span class="kw">let </span>max_length = <span class="self">self</span>.rightmost_full_leaf();
+<a href=#842 id=842 data-nosnippet>842</a>
+<a href=#843 id=843 data-nosnippet>843</a>        <span class="comment">// We take all the leaves including the rightmost full leaf, blank
+<a href=#844 id=844 data-nosnippet>844</a>        // leaves beyond that are trimmed.
+<a href=#845 id=845 data-nosnippet>845</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>leaves = <span class="self">self
+<a href=#846 id=846 data-nosnippet>846</a>            </span>.diff
+<a href=#847 id=847 data-nosnippet>847</a>            .leaves()
+<a href=#848 id=848 data-nosnippet>848</a>            .map(|(<span class="kw">_</span>, leaf)| leaf)
+<a href=#849 id=849 data-nosnippet>849</a>            .take(max_length.usize() + <span class="number">1</span>);
+<a href=#850 id=850 data-nosnippet>850</a>
+<a href=#851 id=851 data-nosnippet>851</a>        <span class="comment">// Get the first leaf.
+<a href=#852 id=852 data-nosnippet>852</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = leaves.next() {
+<a href=#853 id=853 data-nosnippet>853</a>            nodes.push(leaf.node().clone().map(Node::leaf_node));
+<a href=#854 id=854 data-nosnippet>854</a>        } <span class="kw">else </span>{
+<a href=#855 id=855 data-nosnippet>855</a>            <span class="comment">// The tree was empty.
+<a href=#856 id=856 data-nosnippet>856</a>            </span><span class="kw">return </span>RatchetTree::trimmed(<span class="macro">vec!</span>[]);
+<a href=#857 id=857 data-nosnippet>857</a>        }
+<a href=#858 id=858 data-nosnippet>858</a>
+<a href=#859 id=859 data-nosnippet>859</a>        <span class="comment">// Blank parent node used for padding
+<a href=#860 id=860 data-nosnippet>860</a>        </span><span class="kw">let </span>default_parent = TreeSyncParentNode::default();
+<a href=#861 id=861 data-nosnippet>861</a>
+<a href=#862 id=862 data-nosnippet>862</a>        <span class="comment">// Get the parents.
+<a href=#863 id=863 data-nosnippet>863</a>        </span><span class="kw">let </span>parents = <span class="self">self
+<a href=#864 id=864 data-nosnippet>864</a>            </span>.diff
+<a href=#865 id=865 data-nosnippet>865</a>            .parents()
+<a href=#866 id=866 data-nosnippet>866</a>            <span class="comment">// Drop the index
+<a href=#867 id=867 data-nosnippet>867</a>            </span>.map(|(<span class="kw">_</span>, parent)| parent)
+<a href=#868 id=868 data-nosnippet>868</a>            <span class="comment">// Take the parents up to the max length
+<a href=#869 id=869 data-nosnippet>869</a>            </span>.take(max_length.usize())
+<a href=#870 id=870 data-nosnippet>870</a>            <span class="comment">// Pad the parents with blank nodes if needed
+<a href=#871 id=871 data-nosnippet>871</a>            </span>.chain(
+<a href=#872 id=872 data-nosnippet>872</a>                (<span class="self">self</span>.diff.parents().count()..<span class="self">self</span>.diff.leaves().count() - <span class="number">1</span>)
+<a href=#873 id=873 data-nosnippet>873</a>                    .map(|<span class="kw">_</span>| <span class="kw-2">&amp;</span>default_parent),
+<a href=#874 id=874 data-nosnippet>874</a>            );
+<a href=#875 id=875 data-nosnippet>875</a>
+<a href=#876 id=876 data-nosnippet>876</a>        <span class="comment">// Interleave the leaves and parents.
+<a href=#877 id=877 data-nosnippet>877</a>        </span><span class="kw">for </span>(leaf, parent) <span class="kw">in </span>leaves.zip(parents) {
+<a href=#878 id=878 data-nosnippet>878</a>            nodes.push(parent.node().clone().map(Node::parent_node));
+<a href=#879 id=879 data-nosnippet>879</a>            nodes.push(leaf.node().clone().map(Node::leaf_node));
+<a href=#880 id=880 data-nosnippet>880</a>        }
+<a href=#881 id=881 data-nosnippet>881</a>
+<a href=#882 id=882 data-nosnippet>882</a>        RatchetTree::trimmed(nodes)
+<a href=#883 id=883 data-nosnippet>883</a>    }
+<a href=#884 id=884 data-nosnippet>884</a>
+<a href=#885 id=885 data-nosnippet>885</a>    <span class="doccomment">/// Returns the filtered common path two leaf nodes share. If the leaves are
+<a href=#886 id=886 data-nosnippet>886</a>    /// identical, the common path is the leaf's direct path.
+<a href=#887 id=887 data-nosnippet>887</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>filtered_common_direct_path(
+<a href=#888 id=888 data-nosnippet>888</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#889 id=889 data-nosnippet>889</a>        leaf_index_1: LeafNodeIndex,
+<a href=#890 id=890 data-nosnippet>890</a>        leaf_index_2: LeafNodeIndex,
+<a href=#891 id=891 data-nosnippet>891</a>    ) -&gt; Vec&lt;ParentNodeIndex&gt; {
+<a href=#892 id=892 data-nosnippet>892</a>        <span class="kw">let </span><span class="kw-2">mut </span>x_path = <span class="self">self</span>.filtered_direct_path(leaf_index_1);
+<a href=#893 id=893 data-nosnippet>893</a>        <span class="kw">let </span><span class="kw-2">mut </span>y_path = <span class="self">self</span>.filtered_direct_path(leaf_index_2);
+<a href=#894 id=894 data-nosnippet>894</a>        x_path.reverse();
+<a href=#895 id=895 data-nosnippet>895</a>        y_path.reverse();
+<a href=#896 id=896 data-nosnippet>896</a>
+<a href=#897 id=897 data-nosnippet>897</a>        <span class="kw">let </span><span class="kw-2">mut </span>common_path = <span class="macro">vec!</span>[];
+<a href=#898 id=898 data-nosnippet>898</a>
+<a href=#899 id=899 data-nosnippet>899</a>        <span class="kw">for </span>(x, y) <span class="kw">in </span>x_path.iter().zip(y_path.iter()) {
+<a href=#900 id=900 data-nosnippet>900</a>            <span class="kw">if </span>x == y {
+<a href=#901 id=901 data-nosnippet>901</a>                common_path.push(<span class="kw-2">*</span>x);
+<a href=#902 id=902 data-nosnippet>902</a>            } <span class="kw">else </span>{
+<a href=#903 id=903 data-nosnippet>903</a>                <span class="kw">break</span>;
+<a href=#904 id=904 data-nosnippet>904</a>            }
+<a href=#905 id=905 data-nosnippet>905</a>        }
+<a href=#906 id=906 data-nosnippet>906</a>
+<a href=#907 id=907 data-nosnippet>907</a>        common_path.reverse();
+<a href=#908 id=908 data-nosnippet>908</a>        common_path
+<a href=#909 id=909 data-nosnippet>909</a>    }
+<a href=#910 id=910 data-nosnippet>910</a>
+<a href=#911 id=911 data-nosnippet>911</a>    <span class="doccomment">/// Return an iterator over references to all [`EncryptionKey`]s for which
+<a href=#912 id=912 data-nosnippet>912</a>    /// the owner of the given `leaf_index` should have private key material.
+<a href=#913 id=913 data-nosnippet>913</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encryption_keys(
+<a href=#914 id=914 data-nosnippet>914</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#915 id=915 data-nosnippet>915</a>        leaf_index: LeafNodeIndex,
+<a href=#916 id=916 data-nosnippet>916</a>    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>EncryptionKey&gt; {
+<a href=#917 id=917 data-nosnippet>917</a>        <span class="kw">let </span>encryption_keys = <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = <span class="self">self</span>.diff.leaf(leaf_index).node() {
+<a href=#918 id=918 data-nosnippet>918</a>            <span class="macro">vec!</span>[leaf.encryption_key()]
+<a href=#919 id=919 data-nosnippet>919</a>        } <span class="kw">else </span>{
+<a href=#920 id=920 data-nosnippet>920</a>            <span class="comment">// If our own leaf is empty, we don't expect to own any other keys.
+<a href=#921 id=921 data-nosnippet>921</a>            </span><span class="macro">vec!</span>[]
+<a href=#922 id=922 data-nosnippet>922</a>        };
+<a href=#923 id=923 data-nosnippet>923</a>        encryption_keys.into_iter().chain(
+<a href=#924 id=924 data-nosnippet>924</a>            <span class="self">self</span>.filtered_direct_path(leaf_index)
+<a href=#925 id=925 data-nosnippet>925</a>                .into_iter()
+<a href=#926 id=926 data-nosnippet>926</a>                .filter_map(<span class="kw">move </span>|parent_index| {
+<a href=#927 id=927 data-nosnippet>927</a>                    <span class="comment">// Filter out all blanks.
+<a href=#928 id=928 data-nosnippet>928</a>                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.diff.parent(parent_index).node().as_ref() {
+<a href=#929 id=929 data-nosnippet>929</a>                        <span class="comment">// Filter all nodes where our leaf is an unmerged leaf.
+<a href=#930 id=930 data-nosnippet>930</a>                        </span><span class="kw">if </span>!node.unmerged_leaves().contains(<span class="kw-2">&amp;</span>leaf_index) {
+<a href=#931 id=931 data-nosnippet>931</a>                            <span class="prelude-val">Some</span>(node.encryption_key())
+<a href=#932 id=932 data-nosnippet>932</a>                        } <span class="kw">else </span>{
+<a href=#933 id=933 data-nosnippet>933</a>                            <span class="prelude-val">None
+<a href=#934 id=934 data-nosnippet>934</a>                        </span>}
+<a href=#935 id=935 data-nosnippet>935</a>                    } <span class="kw">else </span>{
+<a href=#936 id=936 data-nosnippet>936</a>                        <span class="prelude-val">None
+<a href=#937 id=937 data-nosnippet>937</a>                    </span>}
+<a href=#938 id=938 data-nosnippet>938</a>                }),
+<a href=#939 id=939 data-nosnippet>939</a>        )
+<a href=#940 id=940 data-nosnippet>940</a>    }
+<a href=#941 id=941 data-nosnippet>941</a>}
 </code></pre></div></section></main></body></html>
