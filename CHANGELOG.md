@@ -8,16 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+
 - [#1855](https://github.com/openmls/openmls/pull/1855): Added the `swap_members()` method to `MlsGroup` to replace members in a group, as well as the `WelcomeCommitMessages` and `SwapMembersError` structs.
 - [#1868](https://github.com/openmls/openmls/pull/1868): Implemented AppEphemeral functionality as defined in the MLS Extensions draft and replaced the existing AppAck proposal with the AppAck object, which can now be conveyed inside an AppEphemeral proposal. These features are behind the `extensions-draft-08` feature flag.
 - [#1874](https://github.com/openmls/openmls/pull/1874): In the `openmls_libcrux_crypto` provider, added AES-GCM support.
-- Implemented GREASE (Generate Random Extensions And Sustain Extensibility) support as defined in [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5):
+- [#1900](https://github.com/openmls/openmls/pull/1900): Implemented GREASE (Generate Random Extensions And Sustain Extensibility) support as defined in [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5):
   - Added `Grease(u16)` variants to `ProposalType`, `ExtensionType`, and `CredentialType` enums
   - Added `is_grease()` methods to all GREASE-capable types including `VerifiableCiphersuite`
   - Added `Capabilities::with_grease()` and `CapabilitiesBuilder::with_grease()` convenience methods to inject random GREASE values
   - GREASE values are automatically recognized during deserialization and filtered during validation (treated the same as unknown values)
   - Added comprehensive unit and integration tests for GREASE handling
   - Added user manual documentation for GREASE support
+- [#1903](https://github.com/openmls/openmls/pull/1903): Added new error variants `MissingOwnLeaf` and `MissingCiphertext` to `ApplyUpdatePathError` for more fine-grained error handling in TreeSync.
 
 ### Fixed
 - [#1868](https://github.com/openmls/openmls/pull/1868): The implementation of [valn0311](https://validation.openmls.tech/#valn0311), was updated to check support for all non-default proposals, instead of only checking support for Custom proposals.
@@ -27,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1874](https://github.com/openmls/openmls/pull/1874): Changed `ProposalType`, `ExtensionType`, and `CredentialType` enums to include `Grease(u16)` variant.
 - [#1924](https://github.com/openmls/openmls/pull/1924): Exposed `JoinBuilder::new` as public API.
 - [#1928](https://github.com/openmls/openmls/pull/1928): Processing a commit now fails if it contains a duplicate PSK proposal.
+
+- [#1926](https://github.com/openmls/openmls/pull/1926):
+  - Updated `getrandom` dependency in `js` feature to `0.3.4`
+  - Removed `libcrux-provider-js` feature (the `libcrux-provider`,`js` features are now sufficient to enable the libcrux crypto provider with support for compiling to wasm)
 
 ## 0.7.1 (2025-09-24)
 
