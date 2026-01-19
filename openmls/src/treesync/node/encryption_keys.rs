@@ -158,11 +158,14 @@ impl EncryptionKeyPair {
     /// This must only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    pub(crate) fn write<Storage: StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn write<Storage: StorageProvider>(
         &self,
         store: &Storage,
     ) -> Result<(), Storage::Error> {
-        store.write_encryption_key_pair(self.public_key(), self)
+        store
+            .write_encryption_key_pair(self.public_key(), self)
+            .await
     }
 
     /// Read the [`EncryptionKeyPair`] from the key store of the `provider`. This
@@ -174,13 +177,15 @@ impl EncryptionKeyPair {
     /// of the key package or the epoch encryption key pairs.
     ///
     /// Returns `None` if the keypair cannot be read from the store.
-    pub(crate) fn read(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn read(
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
         provider
             .storage()
             .encryption_key_pair(encryption_key)
+            .await
             .ok()
             .flatten()
     }
@@ -190,11 +195,12 @@ impl EncryptionKeyPair {
     /// This must only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    pub(crate) fn delete<Storage: StorageProviderTrait<CURRENT_VERSION>>(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn delete<Storage: StorageProviderTrait<CURRENT_VERSION>>(
         &self,
         store: &Storage,
     ) -> Result<(), Storage::Error> {
-        store.delete_encryption_key_pair(self.public_key())
+        store.delete_encryption_key_pair(self.public_key()).await
     }
 
     pub(crate) fn public_key(&self) -> &EncryptionKey {
@@ -223,11 +229,14 @@ impl EncryptionKeyPair {
 pub mod test_utils {
     use super::*;
 
-    pub fn read_keys_from_key_store(
+    #[maybe_async::maybe_async]
+    pub async fn read_keys_from_key_store(
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> HpkeKeyPair {
-        let keys = EncryptionKeyPair::read(provider, encryption_key).unwrap();
+        let keys = EncryptionKeyPair::read(provider, encryption_key)
+            .await
+            .unwrap();
 
         HpkeKeyPair {
             private: keys.private_key.key,
@@ -235,10 +244,14 @@ pub mod test_utils {
         }
     }
 
-    pub fn write_keys_from_key_store(provider: &impl OpenMlsProvider, encryption_key: HpkeKeyPair) {
+    #[maybe_async::maybe_async]
+    pub async fn write_keys_from_key_store(
+        provider: &impl OpenMlsProvider,
+        encryption_key: HpkeKeyPair,
+    ) {
         let keypair = EncryptionKeyPair::from(encryption_key);
 
-        keypair.write(provider.storage()).unwrap();
+        keypair.write(provider.storage()).await.unwrap();
     }
 }
 

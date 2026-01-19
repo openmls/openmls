@@ -9,7 +9,6 @@ members = [
     "interop_client",
     "memory_storage",
     "sqlite_storage",
-    "sqlx_storage",
     "delivery-service/ds",
     "delivery-service/ds-lib",
     "basic_credential",
@@ -21,6 +20,7 @@ resolver = "2"
 # Central dependency management for some crates
 [workspace.dependencies]
 tls_codec = { version = "0.4.2", features = ["derive", "serde", "mls"] }
+maybe-async = "0.2"
 
 openmls = { version = "0.7.1", path = "openmls" }
 

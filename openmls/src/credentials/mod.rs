@@ -370,14 +370,15 @@ pub mod test_utils {
     /// Returns the [`Credential`] and the [`SignatureKeyPair`].
     ///
     /// [`Credential`]: super::Credential
-    pub fn new_credential(
+    #[maybe_async::maybe_async]
+    pub async fn new_credential(
         provider: &impl OpenMlsProvider,
         identity: &[u8],
         signature_scheme: SignatureScheme,
     ) -> (CredentialWithKey, SignatureKeyPair) {
         let credential = BasicCredential::new(identity.into());
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
-        signature_keys.store(provider.storage()).unwrap();
+        signature_keys.store(provider.storage()).await.unwrap();
 
         (
             CredentialWithKey {

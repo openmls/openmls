@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 openmls = { workspace = true, features = ["test-utils"] }
-openmls_traits = { workspace = true }
+openmls_traits = { workspace = true, features = ["sync"] }
 openmls_rust_crypto = { workspace = true }
 openmls_memory_storage = { workspace = true }
 openmls_basic_credential = { workspace = true }
