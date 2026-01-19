@@ -31,10 +31,12 @@ use crate::{
     error::LibraryError,
     extensions::ExternalSendersExtension,
     group::{errors::ValidationError, mls_group::staged_commit::StagedCommit},
-    messages::proposals_in::ProposalOrRefIn,
     tree::sender_ratchet::SenderRatchetConfiguration,
     versions::ProtocolVersion,
 };
+
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals_in::ProposalOrRefIn;
 
 use super::{
     mls_auth_content::AuthenticatedContent,

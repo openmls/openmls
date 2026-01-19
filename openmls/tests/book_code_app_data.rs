@@ -6,7 +6,6 @@
 
 #![cfg(feature = "extensions-draft-08")]
 
-use itertools::Itertools;
 use openmls::prelude::*;
 use openmls::test_utils::single_group_test_framework::*;
 use openmls_test::openmls_test;

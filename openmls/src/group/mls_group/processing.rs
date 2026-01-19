@@ -17,6 +17,7 @@ use crate::{
 use crate::{
     component::{ComponentData, ComponentId},
     extensions::AppDataDictionary,
+    messages::proposals_in::{ProposalIn, ProposalOrRefIn},
 };
 
 #[cfg(feature = "extensions-draft-08")]
@@ -106,6 +107,18 @@ impl MlsGroup {
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         let unverified_message = self.unprotect_message(provider, message)?;
 
+        // Check if the commit contains AppDataUpdate proposals - if so, the caller
+        // must use process_unverified_message_with_app_data_updates instead
+        #[cfg(feature = "extensions-draft-08")]
+        if let Some(proposals) = unverified_message.committed_proposals() {
+            for proposal_or_ref in proposals {
+                if let ProposalOrRefIn::Proposal(proposal) = proposal_or_ref {
+                    if matches!(proposal.as_ref(), ProposalIn::AppDataUpdate(_)) {
+                        return Err(ProcessMessageError::FoundAppDataUpdateProposal);
+                    }
+                }
+            }
+        }
         self.process_unverified_message(provider, unverified_message)
     }
 

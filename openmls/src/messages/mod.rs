@@ -275,6 +275,7 @@ impl CommitIn {
         Ok(Commit { proposals, path })
     }
 
+    #[cfg(feature = "extensions-draft-08")]
     pub(crate) fn proposals(&self) -> &[ProposalOrRefIn] {
         &self.proposals
     }

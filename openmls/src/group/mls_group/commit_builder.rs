@@ -113,6 +113,7 @@ pub struct LoadedPsks {
 }
 
 /// This stage is after we validated the data, ready for staging and exporting the messages
+#[derive(Debug)]
 pub struct Complete {
     result: CreateCommitResult,
     // Only for external commits

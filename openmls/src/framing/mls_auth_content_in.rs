@@ -17,9 +17,12 @@ use crate::{
     ciphersuite::signable::{SignedStruct, Verifiable, VerifiedStruct},
     credentials::CredentialWithKey,
     group::errors::ValidationError,
-    messages::proposals_in::{ProposalIn, ProposalOrRefIn},
+    messages::proposals_in::ProposalIn,
     versions::ProtocolVersion,
 };
+
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals_in::ProposalOrRefIn;
 
 #[cfg(doc)]
 use super::{PrivateMessageIn, PublicMessageIn};

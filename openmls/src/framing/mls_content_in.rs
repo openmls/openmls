@@ -6,12 +6,12 @@ use crate::{
     error::LibraryError,
     framing::SenderContext,
     group::{errors::ValidationError, GroupEpoch, GroupId},
-    messages::{
-        proposals_in::{ProposalIn, ProposalOrRefIn},
-        CommitIn,
-    },
+    messages::{proposals_in::ProposalIn, CommitIn},
     versions::ProtocolVersion,
 };
+
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals_in::ProposalOrRefIn;
 
 use std::io::{Read, Write};
 
@@ -78,6 +78,7 @@ impl FramedContentIn {
         })
     }
 
+    #[cfg(feature = "extensions-draft-08")]
     pub(crate) fn proposals(&self) -> Option<&[ProposalOrRefIn]> {
         match &self.body {
             FramedContentBodyIn::Commit(commit_in) => Some(commit_in.proposals()),
