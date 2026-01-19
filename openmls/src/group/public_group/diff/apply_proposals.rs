@@ -217,8 +217,10 @@ impl PublicGroupDiff<'_> {
         // apply AppDataUpdate proposals to the already-updated GroupContext extensions,
         // if available, or return the new GroupContext extensions if modified.
         #[cfg(feature = "extensions-draft-08")]
-        let updated_group_context_extensions = self.apply_app_data_update_proposals(
-            extensions,
+        let mut extensions = extensions;
+        #[cfg(feature = "extensions-draft-08")]
+        self.apply_app_data_update_proposals(
+            &mut extensions,
             proposal_queue,
             app_data_dict_updates,
         )?;
@@ -229,7 +231,7 @@ impl PublicGroupDiff<'_> {
             invitation_list,
             presharedkeys,
             external_init_proposal_option,
-            extensions: updated_group_context_extensions,
+            extensions,
         })
     }
 
@@ -238,10 +240,10 @@ impl PublicGroupDiff<'_> {
     pub(crate) fn apply_app_data_update_proposals(
         &self,
         // group_context_extensions if updated by a GroupContextExtensions proposal
-        mut updated_group_context_extensions: Option<Extensions>,
+        updated_group_context_extensions: &mut Option<Extensions>,
         proposal_queue: &ProposalQueue,
         app_data_dict_updates: Option<AppDataUpdates>,
-    ) -> Result<Option<Extensions>, ApplyAppDataUpdateError> {
+    ) -> Result<(), ApplyAppDataUpdateError> {
         let has_app_data_update_proposals = proposal_queue
             .queued_proposals()
             .any(|proposal| proposal.proposal().is_type(ProposalType::AppDataUpdate));
@@ -250,7 +252,7 @@ impl PublicGroupDiff<'_> {
             // there are AppDataUpdate proposals and we were provided the AooDataUpdates
             (true, Some(updates)) => updates,
             // there are no AppDataUpdate proposals in the queue, and we weren't provided any updates
-            (false, None) => return Ok(updated_group_context_extensions),
+            (false, None) => return Ok(()),
 
             // If there are app data update proposals, there must be a list
             (true, None) => {
@@ -270,7 +272,7 @@ impl PublicGroupDiff<'_> {
             .group_context
             .app_data_dict()
             .cloned()
-            .unwrap_or_else(|| Default::default());
+            .unwrap_or_default();
 
         // apply updates
         for (id, data) in updates.into_iter() {
@@ -291,6 +293,6 @@ impl PublicGroupDiff<'_> {
             AppDataDictionaryExtension::new(dictionary),
         ));
 
-        Ok(updated_group_context_extensions)
+        Ok(())
     }
 }

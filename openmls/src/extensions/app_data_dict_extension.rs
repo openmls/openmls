@@ -46,9 +46,12 @@ impl AppDataDictionary {
 
     /// Returns the number of entries in the dictionary.
     pub fn len(&self) -> usize {
-        // NOTE: BTreeMap::len() is unstable, so BTreeMap::keys().count() is used instead.
-        // This is O(n) instead of O(1) - easy to optimize if this is a bottleneck.
-        self.component_data.keys().count()
+        self.component_data.len()
+    }
+
+    /// Returns whether the dictionary has entries.
+    pub fn is_empty(&self) -> bool {
+        self.component_data.is_empty()
     }
 
     /// Get a reference to an entry in the dictionary.

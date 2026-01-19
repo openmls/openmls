@@ -56,6 +56,8 @@ impl ComponentData {
 pub struct UnknownComponentId(u16);
 
 impl UnknownComponentId {
+    /// Creates a new [`UnknownComponentId`]. Only returns [`Some`] if it is not covered by any of the
+    /// specified ranges.
     pub fn new(id: u16) -> Option<Self> {
         let is_grease = (id & 0x0f0f == 0x0a0a) && (id & 0xff == (id >> 8)) && id != 0xfefe;
         (!is_grease && matches!(id, ..0x8000)).then_some(Self(id))
@@ -67,6 +69,9 @@ impl UnknownComponentId {
 pub struct PrivateComponentId(u16);
 
 impl PrivateComponentId {
+    /// Creates a new [`PrivateComponentId`]. Only returns [`Some`] if it is in the range specified
+    /// for private components (`0x8000..=0xffff`)
+    /// specified ranges.
     pub fn new(id: u16) -> Option<Self> {
         matches!(id, 0x8000..).then_some(Self(id))
     }
@@ -74,27 +79,49 @@ impl PrivateComponentId {
 
 #[cfg(feature = "extensions-draft-08")]
 #[repr(u16)]
+/// The type of a Component ID
 pub enum ComponentType {
+    /// ComponentId 0 is reserved
     Reserved = 0,
+    /// The AppComponents component.
     AppComponents = 1,
+    /// The SafeAad component.
     SafeAad = 2,
+    /// The ComponentMediaTypes component.
     ComponentMediaTypes = 3,
+    /// The LastResortKeyPackage component.
     LastResortKeyPackage = 4,
+    /// The AppAck component.
     AppAck = 5,
+    /// The GREASE component with ID 0x0A0A.
     Grease0A0A = 0x0a0a,
+    /// The GREASE component with ID 0x1A1A.
     Grease1A1A = 0x1a1a,
+    /// The GREASE component with ID 0x2A2A.
     Grease2A2A = 0x2a2a,
+    /// The GREASE component with ID 0x3A3A.
     Grease3A3A = 0x3a3a,
+    /// The GREASE component with ID 0x4A4A.
     Grease4A4A = 0x4a4a,
+    /// The GREASE component with ID 0x5A5A.
     Grease5A5A = 0x5a5a,
+    /// The GREASE component with ID 0x6A6A.
     Grease6A6A = 0x6a6a,
+    /// The GREASE component with ID 0x7A7A.
     Grease7A7A = 0x7a7a,
+    /// The GREASE component with ID 0x8A8A.
     Grease8A8A = 0x8a8a,
+    /// The GREASE component with ID 0x9A9A.
     Grease9A9A = 0x9a9a,
+    /// The GREASE component with ID 0xAAAA.
     GreaseAAAA = 0xaaaa,
+    /// The GREASE component with ID 0xBABA.
     GreaseBABA = 0xbaba,
+    /// The GREASE component with ID 0xCACA.
     GreaseCACA = 0xcaca,
+    /// The GREASE component with ID 0xDADA.
     GreaseDADA = 0xdada,
+    /// The GREASE component with ID 0xEAEA.
     GreaseEAEA = 0xeaea,
 
     /// An unknown component id in the standardized range (0x0000-0x7fff)
@@ -106,6 +133,9 @@ pub enum ComponentType {
 
 impl From<ComponentId> for ComponentType {
     fn from(value: ComponentId) -> Self {
+        // We allow this here because we use the overlapping one at the bottom (..0x8000) as a catch-all.
+        // This would be annoying to do explicitly because of the sparse GREASE values.
+        #[allow(clippy::match_overlapping_arm)]
         match value {
             0 => Self::Reserved,
             1 => Self::AppComponents,
@@ -130,7 +160,7 @@ impl From<ComponentId> for ComponentType {
             0xdada => Self::GreaseDADA,
             0xeaea => Self::GreaseEAEA,
 
-            ..0x8000 => Self::Unknown(UnknownComponentId(value)),
+            6..0x8000 => Self::Unknown(UnknownComponentId(value)),
             0x8000.. => Self::Private(PrivateComponentId(value)),
         }
     }

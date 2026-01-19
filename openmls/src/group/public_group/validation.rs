@@ -610,9 +610,9 @@ impl PublicGroup {
     ///   - The [`GroupContextExtensionProposal`] updates the [`AppDataDictionary`] when the
     ///     required capabilities include AppDataUpdate proposal type
     ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes both Updates
-    ///   and Removes
+    ///     and Removes
     ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes more than one
-    ///   Remove
+    ///     Remove
     #[cfg(feature = "extensions-draft-08")]
     pub(crate) fn validate_app_data_update_proposals_and_group_context(
         &self,
@@ -658,12 +658,10 @@ impl PublicGroup {
             let required_capabilities_contain_app_data_update_proposal = group_context_extension
                 .extensions()
                 .required_capabilities()
-                .and_then(|required_capabilities| {
-                    Some(
-                        required_capabilities
-                            .proposal_types()
-                            .contains(&ProposalType::AppDataUpdate),
-                    )
+                .map(|required_capabilities| {
+                    required_capabilities
+                        .proposal_types()
+                        .contains(&ProposalType::AppDataUpdate)
                 })
                 .unwrap_or(false);
 

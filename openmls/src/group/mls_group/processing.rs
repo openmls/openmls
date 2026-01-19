@@ -39,17 +39,32 @@ pub struct AppDataDictionaryUpdater<'a> {
 pub struct AppDataUpdates(BTreeMap<ComponentId, Option<Vec<u8>>>);
 
 #[cfg(feature = "extensions-draft-08")]
-impl AppDataUpdates {
-    pub fn into_iter(self) -> impl Iterator<Item = (ComponentId, Option<Vec<u8>>)> {
+impl IntoIterator for AppDataUpdates {
+    type Item = (ComponentId, Option<Vec<u8>>);
+
+    type IntoIter = <BTreeMap<ComponentId, Option<Vec<u8>>> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
+}
+
+#[cfg(feature = "extensions-draft-08")]
+impl AppDataUpdates {
+    /// Returns the number of changes.
     pub fn len(&self) -> usize {
-        self.0.iter().count()
+        self.0.len()
+    }
+
+    /// Returns whether there are changes.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 
 #[cfg(feature = "extensions-draft-08")]
 impl<'a> AppDataDictionaryUpdater<'a> {
+    /// Creates a new [`AppDataDictionaryUpdater`].
     pub fn new(old_dict: Option<&'a AppDataDictionary>) -> Self {
         Self {
             old_dict,
