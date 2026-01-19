@@ -673,7 +673,7 @@ impl PublicGroup {
             // add, remove, or modify the app_data_dictionary GroupContext extension. In other words,
             // when every member of the group supports the AppDataUpdate proposal, a
             // GroupContextExtensions proposal could be sent to update some other extension(s), but the
-            // app_data_dictionary GroupContext extension, if it exists, is left as it was.I
+            // app_data_dictionary GroupContext extension, if it exists, is left as it was.
             if required_capabilities_contain_app_data_update_proposal
                 && group_context_extension.extensions().app_data_dictionary()
                     != self.group_context().extensions().app_data_dictionary()

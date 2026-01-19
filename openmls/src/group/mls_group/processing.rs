@@ -26,7 +26,7 @@ use std::collections::BTreeMap;
 use super::{errors::ProcessMessageError, *};
 
 #[cfg(feature = "extensions-draft-08")]
-/// keeps the old dictionary as well as the values that are being overwritten
+/// Keeps the old dictionary as well as the values that are being overwritten
 pub struct AppDataDictionaryUpdater<'a> {
     old_dict: Option<&'a AppDataDictionary>,
     new_entries: Option<AppDataUpdates>,
@@ -62,15 +62,15 @@ impl<'a> AppDataDictionaryUpdater<'a> {
         self.old_dict?.get(&component_id)
     }
 
-    /// helper method that returns a mutable reference to the
+    /// Helper method that returns a mutable reference to the
     /// [`AppDataUpdates`], creating the struct if it does not exist.
     fn new_entries_mut(&mut self) -> &mut AppDataUpdates {
         self.new_entries
             .get_or_insert_with(|| AppDataUpdates(BTreeMap::new()))
     }
 
-    /// sets a value in the new_entries. if we already have data for that component id, overwrite
-    /// it. else add it in the right position.
+    /// Sets a value in the new_entries. if we already have data for that component id, overwrite
+    /// it. Else add it in the right position.
     pub fn set(&mut self, component_data: ComponentData) {
         let (id, data) = component_data.into_parts();
 
@@ -83,8 +83,8 @@ impl<'a> AppDataDictionaryUpdater<'a> {
     }
 
     /// Consumes the updater and returns just the changes, so we can pass them into
-    /// process_unverified_message
-    /// only returns Some if we actually called set
+    /// process_unverified_message.
+    /// Only returns Some if we actually called set.
     pub fn changes(self) -> Option<AppDataUpdates> {
         self.new_entries
     }
@@ -123,7 +123,7 @@ impl MlsGroup {
     }
 
     #[cfg(feature = "extensions-draft-08")]
-    /// returns a new helper struct for updating the app data
+    /// Returns a new helper struct for updating the app data
     pub fn app_data_dictionary_updater<'a>(&'a self) -> AppDataDictionaryUpdater<'a> {
         AppDataDictionaryUpdater::new(self.context().app_data_dict())
     }
