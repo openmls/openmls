@@ -291,7 +291,7 @@ impl ProposalQueue {
                     if let Proposal::PreSharedKey(psk_proposal) = &*proposal {
                         let psk_id = psk_proposal.clone().into_psk_id();
                         if visited_psk_ids.contains(&psk_id) {
-                            return Err(FromCommittedProposalsError::DuplicatePskId);
+                            return Err(FromCommittedProposalsError::DuplicatePskId(psk_id));
                         } else {
                             visited_psk_ids.insert(psk_id);
                         }
@@ -322,7 +322,9 @@ impl ProposalQueue {
                             {
                                 let psk_id = psk_proposal.clone().into_psk_id();
                                 if visited_psk_ids.contains(&psk_id) {
-                                    return Err(FromCommittedProposalsError::DuplicatePskId);
+                                    return Err(FromCommittedProposalsError::DuplicatePskId(
+                                        psk_id,
+                                    ));
                                 } else {
                                     visited_psk_ids.insert(psk_id);
                                 }
