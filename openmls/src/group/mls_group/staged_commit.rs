@@ -237,6 +237,7 @@ impl MlsGroup {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn stage_applied_proposal_values(
         &self,
         apply_proposals_values: ApplyProposalsValues,
