@@ -853,6 +853,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
 
     /// Creates a new [`AppDataUpdates`] based on the current state of the
     /// [`AppDataDictionary`] of the group.
+    ///
+    /// [`AppDataDictionary`]: crate::extensions::AppDataDictionary
     #[cfg(feature = "extensions-draft-08")]
     pub fn app_data_dictionary_updater(&self) -> AppDataDictionaryUpdater<'_> {
         AppDataDictionaryUpdater::new(self.group.borrow().context().app_data_dict())

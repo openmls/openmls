@@ -7,6 +7,8 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBy
 pub type ComponentId = u16;
 
 /// An entry in the [`AppDataDictionary`].
+///
+/// [`AppDataDictionary`]: crate::extensions::AppDataDictionary
 #[derive(
     PartialEq,
     Eq,

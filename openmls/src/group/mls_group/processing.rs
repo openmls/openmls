@@ -32,8 +32,9 @@ pub struct AppDataDictionaryUpdater<'a> {
     new_entries: Option<AppDataUpdates>,
 }
 
-/// A diff of update values that can be provided to [`MlsGroup::process_unverified_message()`]
-/// or [`CommitBuilder::with_app_data_dictionary_updates()`]
+/// A diff of update values that can be provided to [`MlsGroup::process_unverified_message_with_app_data_updates`] or [`CommitBuilder::with_app_data_dictionary_updates`]
+///
+/// [`CommitBuilder::with_app_data_dictionary_updates`]: crate::group::CommitBuilder::with_app_data_dictionary_updates
 #[cfg(feature = "extensions-draft-08")]
 #[derive(Default, Debug)]
 pub struct AppDataUpdates(BTreeMap<ComponentId, Option<Vec<u8>>>);

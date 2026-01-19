@@ -633,15 +633,19 @@ pub enum AppDataUpdateValidationError {
     /// [`GroupContextExtensionsProposal`](crate::messages::proposals::GroupContextExtensionProposal) directly.
     #[error("Attempted to update the AppDataDictionary in the GroupContextExtensions proposal directly.")]
     CannotUpdateDictionaryDirectly,
-    /// More than one [`AppDataUpdate]` proposal per
-    /// [`ComponentId`](crate::extensions::ComponentId) had a Remove operation.
+    /// More than one [`AppDataUpdate]` proposal per [`ComponentId`] had a Remove operation.
+    ///
+    /// [`ComponentId`]: crate::component::ComponentId
     #[error("More than one AppDataUpdate proposal per ComponentId had a Remove operation.")]
     MoreThanOneRemovePerComponentId,
-    /// Proposals for a [`ComponentId`](crate::extensions::ComponentId) had both Remove and Update operations.
+    /// Proposals for a [`ComponentId`] had both Remove and Update operations.
+    ///
+    /// [`ComponentId`]: crate::component::ComponentId
     #[error("Proposals for a ComponentId had both Remove and Update operations.")]
     CombinedRemoveAndUpdateOperations,
-    /// Proposals for a [`ComponentId`](crate::extensions::ComponentId) had a Remove for a
-    /// nonexistent component.
+    /// Proposals for a [`ComponentId`] had a Remove for a nonexistent component.
+    ///
+    /// [`ComponentId`]: crate::component::ComponentId
     #[error("Proposals for a ComponentId had a Remove for a nonexistent component.")]
     CannotRemoveNonexistentComponent,
 }
