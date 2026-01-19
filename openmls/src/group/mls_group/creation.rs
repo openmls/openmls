@@ -1,5 +1,7 @@
+use std::borrow::Borrow;
+
 use errors::NewGroupError;
-use openmls_traits::storage::StorageProvider as StorageProviderTrait;
+use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider as StorageProviderTrait};
 
 use super::{builder::MlsGroupBuilder, *};
 use crate::{
@@ -148,84 +150,26 @@ impl ProcessedWelcome {
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
-        let (resumption_psk_store, key_package_bundle) =
-            keys_for_welcome(mls_group_config, &welcome, provider)?;
-
+        let key_package_bundle = keys_for_welcome(&welcome, provider)?;
+        let group_secrets =
+            decrypt_group_secrets(provider.crypto(), &welcome, &key_package_bundle)?;
         let ciphersuite = welcome.ciphersuite();
-        let Some(egs) = welcome.find_encrypted_group_secret(
-            key_package_bundle
-                .key_package()
-                .hash_ref(provider.crypto())?,
-        ) else {
-            return Err(WelcomeError::JoinerSecretNotFound);
-        };
 
-        // This check seems to be superfluous from the perspective of the RFC, but still doesn't
-        // seem like a bad idea.
-        if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
-            let e = WelcomeError::CiphersuiteMismatch;
-            log::debug!("new_from_welcome {e:?}");
-            return Err(e);
-        }
-
-        let group_secrets = GroupSecrets::try_from_ciphertext(
-            key_package_bundle.init_private_key(),
-            egs.encrypted_group_secrets(),
-            welcome.encrypted_group_info(),
+        let resumption_psk_store =
+            ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
+        let psks = load_psks(
+            provider.storage(),
+            &resumption_psk_store,
+            &group_secrets.psks,
+        )?;
+        let (key_schedule, verifiable_group_info) = prepare_key_schedule(
+            provider.crypto(),
+            welcome,
+            &key_package_bundle,
+            &group_secrets,
             ciphersuite,
-            provider.crypto(),
+            psks,
         )?;
-
-        // Validate PSKs
-        PreSharedKeyId::validate_in_welcome(&group_secrets.psks, ciphersuite)?;
-
-        let psk_secret = {
-            let psks = load_psks(
-                provider.storage(),
-                &resumption_psk_store,
-                &group_secrets.psks,
-            )?;
-
-            PskSecret::new(provider.crypto(), ciphersuite, psks)?
-        };
-        let key_schedule = KeySchedule::init(
-            ciphersuite,
-            provider.crypto(),
-            &group_secrets.joiner_secret,
-            psk_secret,
-        )?;
-        let (welcome_key, welcome_nonce) = key_schedule
-            .welcome(provider.crypto(), ciphersuite)
-            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
-            .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
-            .map_err(LibraryError::unexpected_crypto_error)?;
-        let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
-            &welcome_key,
-            &welcome_nonce,
-            welcome.encrypted_group_info(),
-            &[],
-            provider.crypto(),
-        )?;
-        if let Some(required_capabilities) =
-            verifiable_group_info.extensions().required_capabilities()
-        {
-            // Also check that our key package actually supports the extensions.
-            // As per the spec, the sender must have checked this. But you never know.
-            key_package_bundle
-                .key_package()
-                .leaf_node()
-                .capabilities()
-                .supports_required_capabilities(required_capabilities)?;
-        }
-
-        // https://validation.openmls.tech/#valn1404
-        // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
-        // KeyPackage.
-        if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
-            let e = WelcomeError::CiphersuiteMismatch;
-            log::debug!("new_from_welcome {e:?}");
-            return Err(e);
-        }
 
         Ok(Self {
             mls_group_config: mls_group_config.clone(),
@@ -430,6 +374,84 @@ impl ProcessedWelcome {
     }
 }
 
+/// Prepare the key schedule.
+pub(super) fn prepare_key_schedule<Provider: OpenMlsCrypto, E>(
+    provider: &Provider,
+    welcome: Welcome,
+    key_package_bundle: &KeyPackageBundle,
+    group_secrets: &GroupSecrets,
+    ciphersuite: Ciphersuite,
+    psks: Vec<(impl Borrow<PreSharedKeyId>, crate::prelude::Secret)>,
+) -> Result<(KeySchedule, VerifiableGroupInfo), WelcomeError<E>> {
+    let psk_secret = PskSecret::new(provider, ciphersuite, psks)?;
+    let key_schedule = KeySchedule::init(
+        ciphersuite,
+        provider,
+        &group_secrets.joiner_secret,
+        psk_secret,
+    )?;
+
+    let (welcome_key, welcome_nonce) = key_schedule
+        .welcome(provider, ciphersuite)
+        .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
+        .derive_welcome_key_nonce(provider, ciphersuite)
+        .map_err(LibraryError::unexpected_crypto_error)?;
+
+    let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
+        &welcome_key,
+        &welcome_nonce,
+        welcome.encrypted_group_info(),
+        &[],
+        provider,
+    )?;
+
+    if let Some(required_capabilities) = verifiable_group_info.extensions().required_capabilities()
+    {
+        // Also check that our key package actually supports the extensions.
+        // As per the spec, the sender must have checked this. But you never know.
+        key_package_bundle
+            .key_package()
+            .leaf_node()
+            .capabilities()
+            .supports_required_capabilities(required_capabilities)?;
+    }
+
+    if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+        let e = WelcomeError::CiphersuiteMismatch;
+        return Err(e);
+    }
+
+    Ok((key_schedule, verifiable_group_info))
+}
+
+/// Decrypt the welcome message and get the decrypted group secrets.
+pub(super) fn decrypt_group_secrets<Provider: OpenMlsCrypto, T>(
+    provider: &Provider,
+    welcome: &Welcome,
+    key_package_bundle: &KeyPackageBundle,
+    // XXX: Fix error type
+) -> Result<GroupSecrets, WelcomeError<T>> {
+    let ciphersuite = welcome.ciphersuite();
+    let Some(egs) =
+        welcome.find_encrypted_group_secret(key_package_bundle.key_package().hash_ref(provider)?)
+    else {
+        return Err(WelcomeError::JoinerSecretNotFound);
+    };
+    if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+        let e = WelcomeError::CiphersuiteMismatch;
+        return Err(e);
+    }
+    let group_secrets = GroupSecrets::try_from_ciphertext(
+        key_package_bundle.init_private_key(),
+        egs.encrypted_group_secrets(),
+        welcome.encrypted_group_info(),
+        ciphersuite,
+        provider,
+    )?;
+    PreSharedKeyId::validate_in_welcome(&group_secrets.psks, ciphersuite)?;
+    Ok(group_secrets)
+}
+
 impl StagedWelcome {
     /// Creates a new staged welcome from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
@@ -458,7 +480,6 @@ impl StagedWelcome {
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-        // ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
         let processed_welcome =
             ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
@@ -547,15 +568,11 @@ impl StagedWelcome {
     }
 }
 
-fn keys_for_welcome<Provider: OpenMlsProvider>(
-    mls_group_config: &MlsGroupJoinConfig,
+/// Read keys for decrypting the welcome message.
+pub(super) fn keys_for_welcome<Provider: OpenMlsProvider>(
     welcome: &Welcome,
     provider: &Provider,
-) -> Result<
-    (ResumptionPskStore, KeyPackageBundle),
-    WelcomeError<<Provider as OpenMlsProvider>::StorageError>,
-> {
-    let resumption_psk_store = ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
+) -> Result<KeyPackageBundle, WelcomeError<Provider::StorageError>> {
     let key_package_bundle: KeyPackageBundle = welcome
         .secrets()
         .iter()
@@ -577,7 +594,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
     } else {
         log::debug!("Key package has last resort extension, not deleting");
     }
-    Ok((resumption_psk_store, key_package_bundle))
+    Ok(key_package_bundle)
 }
 
 /// Verify or skip the validation of leaf node lifetimes in the ratchet tree

@@ -25,10 +25,13 @@ use crate::{
         group_info::{GroupInfo, GroupInfoTBS},
         Commit, Welcome,
     },
-    prelude::{CredentialWithKey, LeafNodeParameters, LibraryError, NewSignerBundle},
+    prelude::{
+        CredentialWithKey, LeafNodeParameters, LibraryError, NewSignerBundle, PreSharedKeyProposal,
+    },
     schedule::{
-        psk::{load_psks, PskSecret},
-        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId,
+        errors::PskError,
+        psk::{load_psks, PskSecret, ResumptionPskUsage},
+        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk, ResumptionPskSecret,
     },
     storage::{OpenMlsProvider, StorageProvider},
     versions::ProtocolVersion,
@@ -94,6 +97,7 @@ pub struct LoadedPsks {
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
     psks: Vec<(PreSharedKeyId, Secret)>,
+    branch: bool,
 }
 
 /// This stage is after we validated the data, ready for staging and exporting the messages
@@ -253,6 +257,32 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             ));
         self
     }
+    /// Adds a PreSharedKey proposal for the provided [`PreSharedKeyId`]s to the
+    /// list of proposals to be committed.
+    ///
+    /// Note that this should not be used for sub-group branching, as those PSKs
+    /// are not allowed in regular proposals. Please use [`Self::branch()`] instead.
+    pub fn propose_psks(mut self, psk_ids: impl IntoIterator<Item = PreSharedKeyId>) -> Self {
+        self.stage.own_proposals.extend(
+            psk_ids
+                .into_iter()
+                .map(|psk_id| Proposal::psk(PreSharedKeyProposal::new(psk_id))),
+        );
+        self
+    }
+
+    /// Branches the group by adding a branch PreSharedKey proposals.
+    pub fn branch(mut self, psk_id: PreSharedKeyId, secret: ResumptionPskSecret) -> Self {
+        self = self.propose_psks([psk_id]);
+
+        // We clear the resumption PSK store first and then add the branching PSK.
+        self.group.borrow_mut().resumption_psk_store.clear();
+        self.group
+            .borrow_mut()
+            .resumption_psk_store
+            .add(0.into(), secret);
+        self
+    }
 
     /// Adds a proposal to the proposals to be committed. To add multiple
     /// proposals, use [`Self::add_proposals`].
@@ -337,6 +367,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         consume_proposal_store: stage.consume_proposal_store,
                         create_group_info: stage.create_group_info,
                         external_commit_info: stage.external_commit_info,
+                        branch: false,
                     },
                 )
             })
@@ -345,6 +376,27 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
 }
 
 impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
+    /// Adds a PreSharedKey proposal for the provided [`PreSharedKeyId`]s to the list of proposals
+    /// to be committed.
+    ///
+    /// Note that this should not be used for sub-group branching, as those PSKs
+    /// are not allowed in regular proposals. Please use [`Self::branch()`] instead.
+    pub fn propose_psks(mut self, psk_ids: impl IntoIterator<Item = PreSharedKeyId>) -> Self {
+        self.stage.own_proposals.extend(
+            psk_ids
+                .into_iter()
+                .map(|psk_id| Proposal::psk(PreSharedKeyProposal::new(psk_id))),
+        );
+        self
+    }
+
+    /// Branches the group by adding a branch PreSharedKey proposals.
+    pub fn branch(mut self, psk_id: PreSharedKeyId) -> Self {
+        self.stage.branch = true;
+        self = self.propose_psks([psk_id]);
+        self
+    }
+
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
@@ -411,7 +463,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .filter(|_| cur_stage.consume_proposal_store)
             .cloned();
 
-        // prepare the iterator for the proposal validation and seletion function. That function
+        // prepare the iterator for the proposal validation and selection function. That function
         // assumes that "earlier in the list" means "older", so since our own proposals are
         // newest, we have to put them last.
         let proposal_queue = group_proposal_store_queue.chain(own_proposals).filter(f);
@@ -452,9 +504,32 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         group
             .public_group
             .validate_remove_proposals(&proposal_queue)?;
-        group
-            .public_group
-            .validate_pre_shared_key_proposals(&proposal_queue)?;
+        if !cur_stage.branch {
+            group
+                .public_group
+                .validate_pre_shared_key_proposals(&proposal_queue)?;
+        } else {
+            // We only allow one branch PSK proposal when branching.
+            let proposal = proposal_queue
+                .psk_proposals()
+                .next()
+                .ok_or(CreateCommitError::PskError(PskError::KeyNotFound))?;
+            if proposal_queue.psk_proposals().count() != 1 {
+                // XXX: wrong error
+                return Err(CreateCommitError::PskError(PskError::TooManyKeys));
+            }
+
+            if let Psk::Resumption(psk) = &proposal.psk_proposal().psk_id().psk {
+                if psk.usage != ResumptionPskUsage::Branch {
+                    return Err(CreateCommitError::PskError(PskError::UsageMismatch {
+                        allowed: vec![ResumptionPskUsage::Branch],
+                        got: psk.usage,
+                    }));
+                }
+            } else {
+                return Err(CreateCommitError::PskError(PskError::KeyNotFound));
+            }
+        }
         // Validate update proposals for member commits
         // ValSem110
         // ValSem111
@@ -587,7 +662,12 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Prepare the PskSecret
-        let psk_secret = { PskSecret::new(crypto, ciphersuite, psks)? };
+        let psk_secret = {
+            // First check for resumption PSKs.
+            // let
+
+            PskSecret::new(crypto, ciphersuite, psks)?
+        };
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(ciphersuite, crypto, &joiner_secret, psk_secret)?;
