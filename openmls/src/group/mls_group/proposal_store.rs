@@ -14,6 +14,7 @@ use crate::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
         ProposalType, RemoveProposal, UpdateProposal,
     },
+    schedule::PreSharedKeyId,
     utils::vector_converter,
 };
 
@@ -216,6 +217,30 @@ impl OrderedProposalRefs {
     }
 }
 
+#[derive(Default)]
+struct PskProposalDuplicateChecker {
+    psk_proposals: HashSet<PreSharedKeyId>,
+}
+
+impl PskProposalDuplicateChecker {
+    /// Checks whether the given proposal is a duplicate Psk proposal
+    /// (https://validation.openmls.tech/#valn0307). If it is, it returns an
+    /// error.
+    ///
+    ///
+    fn check(&mut self, proposal: &Proposal) -> Result<(), FromCommittedProposalsError> {
+        if let Proposal::PreSharedKey(psk_proposal) = proposal {
+            let psk_id = psk_proposal.clone().into_psk_id();
+            if self.psk_proposals.contains(&psk_id) {
+                return Err(FromCommittedProposalsError::DuplicatePskId(psk_id));
+            } else {
+                self.psk_proposals.insert(psk_id);
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Proposal queue that helps filtering and sorting Proposals received during
 /// one epoch. The Proposals are stored in a `HashMap` which maps Proposal
 /// references to Proposals, such that, given a reference, a proposal can be
@@ -265,7 +290,7 @@ impl ProposalQueue {
         // Build the actual queue
         let mut proposal_queue = ProposalQueue::default();
 
-        let mut visited_psk_ids = HashSet::new();
+        let mut psk_proposal_duplicate_checker = PskProposalDuplicateChecker::default();
 
         // Iterate over the committed proposals and insert the proposals in the queue
         log::trace!("   committed proposals ...");
@@ -287,15 +312,8 @@ impl ProposalQueue {
                         return Err(FromCommittedProposalsError::SelfRemoval);
                     };
 
-                    // https://validation.openmls.tech/#valn0804
-                    if let Proposal::PreSharedKey(psk_proposal) = &*proposal {
-                        let psk_id = psk_proposal.clone().into_psk_id();
-                        if visited_psk_ids.contains(&psk_id) {
-                            return Err(FromCommittedProposalsError::DuplicatePskId(psk_id));
-                        } else {
-                            visited_psk_ids.insert(psk_id);
-                        }
-                    }
+                    // https://validation.openmls.tech/#valn0307
+                    psk_proposal_duplicate_checker.check(&proposal)?;
 
                     QueuedProposal::from_proposal_and_sender(
                         ciphersuite,
@@ -317,18 +335,8 @@ impl ProposalQueue {
                                 }
                             }
 
-                            // https://validation.openmls.tech/#valn0804
-                            if let Proposal::PreSharedKey(psk_proposal) = &queued_proposal.proposal
-                            {
-                                let psk_id = psk_proposal.clone().into_psk_id();
-                                if visited_psk_ids.contains(&psk_id) {
-                                    return Err(FromCommittedProposalsError::DuplicatePskId(
-                                        psk_id,
-                                    ));
-                                } else {
-                                    visited_psk_ids.insert(psk_id);
-                                }
-                            }
+                            // https://validation.openmls.tech/#valn0307
+                            psk_proposal_duplicate_checker.check(&queued_proposal.proposal)?;
 
                             queued_proposal.clone()
                         }
