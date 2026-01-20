@@ -14,7 +14,7 @@ use crate::{
     group::commit_builder::external_commits::ExternalCommitBuilderError,
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
-    schedule::errors::PskError,
+    schedule::{errors::PskError, PreSharedKeyId},
     treesync::errors::*,
 };
 
@@ -264,6 +264,9 @@ pub enum StageCommitError {
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// Duplicate PSK Proposal.
+    #[error("Duplicate PSK proposal with PSK ID {0:?}.")]
+    DuplicatePskId(PreSharedKeyId),
 }
 
 /// Create commit error
@@ -558,6 +561,9 @@ pub(crate) enum FromCommittedProposalsError {
     /// The sender of a Commit tried to remove themselves.
     #[error("The sender of a Commit tried to remove themselves.")]
     SelfRemoval,
+    /// Commit contains two PSK proposals with the same PSK ID.
+    #[error("Commit contains two PSK proposals the PSK ID {0:?}.")]
+    DuplicatePskId(PreSharedKeyId),
 }
 
 /// Create group context ext proposal error
