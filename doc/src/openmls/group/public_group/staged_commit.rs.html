@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/staged_commit.rs`."><title>staged_commit.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-77263533.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (22c74ba91 2026-01-15)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/group/public_group/</div>staged_commit.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>super::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/staged_commit.rs`."><title>staged_commit.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-77263533.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (d940e5684 2026-01-19)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/group/public_group/</div>staged_commit.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>super::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>crate::{
 <a href=#3 id=3 data-nosnippet>3</a>    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
 <a href=#4 id=4 data-nosnippet>4</a>    group::{
@@ -120,221 +120,224 @@
 <a href=#120 id=120 data-nosnippet>120</a>                FromCommittedProposalsError::LibraryError(e) =&gt; StageCommitError::LibraryError(e),
 <a href=#121 id=121 data-nosnippet>121</a>                FromCommittedProposalsError::ProposalNotFound =&gt; StageCommitError::MissingProposal,
 <a href=#122 id=122 data-nosnippet>122</a>                FromCommittedProposalsError::SelfRemoval =&gt; StageCommitError::AttemptedSelfRemoval,
-<a href=#123 id=123 data-nosnippet>123</a>            }
-<a href=#124 id=124 data-nosnippet>124</a>        })<span class="question-mark">?</span>;
-<a href=#125 id=125 data-nosnippet>125</a>
-<a href=#126 id=126 data-nosnippet>126</a>        <span class="comment">// https://validation.openmls.tech/#valn1207
-<a href=#127 id=127 data-nosnippet>127</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(update_path) = <span class="kw-2">&amp;</span>commit.path {
-<a href=#128 id=128 data-nosnippet>128</a>            <span class="self">self</span>.validate_leaf_node(update_path.leaf_node())<span class="question-mark">?</span>;
-<a href=#129 id=129 data-nosnippet>129</a>        }
-<a href=#130 id=130 data-nosnippet>130</a>
-<a href=#131 id=131 data-nosnippet>131</a>        <span class="comment">// Validate the staged proposals. This implements https://validation.openmls.tech/#valn1204.
-<a href=#132 id=132 data-nosnippet>132</a>        // This is done by doing the following checks:
+<a href=#123 id=123 data-nosnippet>123</a>                FromCommittedProposalsError::DuplicatePskId(psk_id) =&gt; {
+<a href=#124 id=124 data-nosnippet>124</a>                    StageCommitError::DuplicatePskId(psk_id)
+<a href=#125 id=125 data-nosnippet>125</a>                }
+<a href=#126 id=126 data-nosnippet>126</a>            }
+<a href=#127 id=127 data-nosnippet>127</a>        })<span class="question-mark">?</span>;
+<a href=#128 id=128 data-nosnippet>128</a>
+<a href=#129 id=129 data-nosnippet>129</a>        <span class="comment">// https://validation.openmls.tech/#valn1207
+<a href=#130 id=130 data-nosnippet>130</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(update_path) = <span class="kw-2">&amp;</span>commit.path {
+<a href=#131 id=131 data-nosnippet>131</a>            <span class="self">self</span>.validate_leaf_node(update_path.leaf_node())<span class="question-mark">?</span>;
+<a href=#132 id=132 data-nosnippet>132</a>        }
 <a href=#133 id=133 data-nosnippet>133</a>
-<a href=#134 id=134 data-nosnippet>134</a>        // ValSem101
-<a href=#135 id=135 data-nosnippet>135</a>        // ValSem102
-<a href=#136 id=136 data-nosnippet>136</a>        // ValSem103
-<a href=#137 id=137 data-nosnippet>137</a>        // ValSem104
-<a href=#138 id=138 data-nosnippet>138</a>        </span><span class="self">self</span>.validate_key_uniqueness(<span class="kw-2">&amp;</span>proposal_queue, <span class="prelude-val">Some</span>(commit))<span class="question-mark">?</span>;
-<a href=#139 id=139 data-nosnippet>139</a>        <span class="comment">// ValSem105
-<a href=#140 id=140 data-nosnippet>140</a>        </span><span class="self">self</span>.validate_add_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
-<a href=#141 id=141 data-nosnippet>141</a>        <span class="comment">// ValSem106
-<a href=#142 id=142 data-nosnippet>142</a>        // ValSem109
-<a href=#143 id=143 data-nosnippet>143</a>        </span><span class="self">self</span>.validate_capabilities(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
-<a href=#144 id=144 data-nosnippet>144</a>        <span class="comment">// ValSem107
-<a href=#145 id=145 data-nosnippet>145</a>        // ValSem108
-<a href=#146 id=146 data-nosnippet>146</a>        </span><span class="self">self</span>.validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
-<a href=#147 id=147 data-nosnippet>147</a>        <span class="comment">// ValSem113: All Proposals: The proposal type must be supported by all
-<a href=#148 id=148 data-nosnippet>148</a>        // members of the group
-<a href=#149 id=149 data-nosnippet>149</a>        </span><span class="self">self</span>.validate_proposal_type_support(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
-<a href=#150 id=150 data-nosnippet>150</a>        <span class="comment">// ValSem208
-<a href=#151 id=151 data-nosnippet>151</a>        // ValSem209
-<a href=#152 id=152 data-nosnippet>152</a>        </span><span class="self">self</span>.validate_group_context_extensions_proposal(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
-<a href=#153 id=153 data-nosnippet>153</a>        <span class="comment">// ValSem401
-<a href=#154 id=154 data-nosnippet>154</a>        // ValSem402
-<a href=#155 id=155 data-nosnippet>155</a>        // ValSem403
-<a href=#156 id=156 data-nosnippet>156</a>        </span><span class="self">self</span>.validate_pre_shared_key_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
-<a href=#157 id=157 data-nosnippet>157</a>
-<a href=#158 id=158 data-nosnippet>158</a>        <span class="kw">match </span>sender {
-<a href=#159 id=159 data-nosnippet>159</a>            Sender::Member(leaf_index) =&gt; {
-<a href=#160 id=160 data-nosnippet>160</a>                <span class="comment">// ValSem110
-<a href=#161 id=161 data-nosnippet>161</a>                // ValSem111
-<a href=#162 id=162 data-nosnippet>162</a>                // ValSem112
-<a href=#163 id=163 data-nosnippet>163</a>                </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">*</span>leaf_index)<span class="question-mark">?</span>;
-<a href=#164 id=164 data-nosnippet>164</a>
-<a href=#165 id=165 data-nosnippet>165</a>                <span class="self">self</span>.validate_no_external_init_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
-<a href=#166 id=166 data-nosnippet>166</a>            }
-<a href=#167 id=167 data-nosnippet>167</a>            Sender::External(<span class="kw">_</span>) =&gt; {
-<a href=#168 id=168 data-nosnippet>168</a>                <span class="comment">// A commit cannot be issued by a pre-configured sender.
-<a href=#169 id=169 data-nosnippet>169</a>                </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
-<a href=#170 id=170 data-nosnippet>170</a>            }
-<a href=#171 id=171 data-nosnippet>171</a>            Sender::NewMemberProposal =&gt; {
-<a href=#172 id=172 data-nosnippet>172</a>                <span class="comment">// A commit cannot be issued by a `NewMemberProposal` sender.
-<a href=#173 id=173 data-nosnippet>173</a>                </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeNewMemberProposal);
-<a href=#174 id=174 data-nosnippet>174</a>            }
-<a href=#175 id=175 data-nosnippet>175</a>            Sender::NewMemberCommit =&gt; {
-<a href=#176 id=176 data-nosnippet>176</a>                <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
-<a href=#177 id=177 data-nosnippet>177</a>                // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-<a href=#178 id=178 data-nosnippet>178</a>                // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
-<a href=#179 id=179 data-nosnippet>179</a>                </span><span class="self">self</span>.validate_external_commit(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
-<a href=#180 id=180 data-nosnippet>180</a>            }
-<a href=#181 id=181 data-nosnippet>181</a>        }
-<a href=#182 id=182 data-nosnippet>182</a>
-<a href=#183 id=183 data-nosnippet>183</a>        <span class="comment">// Now we can actually look at the public keys as they might have changed.
-<a href=#184 id=184 data-nosnippet>184</a>        </span><span class="kw">let </span>sender_index = <span class="kw">match </span>sender {
-<a href=#185 id=185 data-nosnippet>185</a>            Sender::Member(leaf_index) =&gt; <span class="kw-2">*</span>leaf_index,
-<a href=#186 id=186 data-nosnippet>186</a>            Sender::NewMemberCommit =&gt; {
-<a href=#187 id=187 data-nosnippet>187</a>                <span class="self">self</span>.leftmost_free_index(proposal_queue.queued_proposals())<span class="question-mark">?
-<a href=#188 id=188 data-nosnippet>188</a>            </span>}
-<a href=#189 id=189 data-nosnippet>189</a>            <span class="kw">_ </span>=&gt; {
-<a href=#190 id=190 data-nosnippet>190</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
-<a href=#191 id=191 data-nosnippet>191</a>            }
-<a href=#192 id=192 data-nosnippet>192</a>        };
-<a href=#193 id=193 data-nosnippet>193</a>
-<a href=#194 id=194 data-nosnippet>194</a>        <span class="prelude-val">Ok</span>((commit, proposal_queue, sender_index))
-<a href=#195 id=195 data-nosnippet>195</a>    }
+<a href=#134 id=134 data-nosnippet>134</a>        <span class="comment">// Validate the staged proposals. This implements https://validation.openmls.tech/#valn1204.
+<a href=#135 id=135 data-nosnippet>135</a>        // This is done by doing the following checks:
+<a href=#136 id=136 data-nosnippet>136</a>
+<a href=#137 id=137 data-nosnippet>137</a>        // ValSem101
+<a href=#138 id=138 data-nosnippet>138</a>        // ValSem102
+<a href=#139 id=139 data-nosnippet>139</a>        // ValSem103
+<a href=#140 id=140 data-nosnippet>140</a>        // ValSem104
+<a href=#141 id=141 data-nosnippet>141</a>        </span><span class="self">self</span>.validate_key_uniqueness(<span class="kw-2">&amp;</span>proposal_queue, <span class="prelude-val">Some</span>(commit))<span class="question-mark">?</span>;
+<a href=#142 id=142 data-nosnippet>142</a>        <span class="comment">// ValSem105
+<a href=#143 id=143 data-nosnippet>143</a>        </span><span class="self">self</span>.validate_add_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+<a href=#144 id=144 data-nosnippet>144</a>        <span class="comment">// ValSem106
+<a href=#145 id=145 data-nosnippet>145</a>        // ValSem109
+<a href=#146 id=146 data-nosnippet>146</a>        </span><span class="self">self</span>.validate_capabilities(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+<a href=#147 id=147 data-nosnippet>147</a>        <span class="comment">// ValSem107
+<a href=#148 id=148 data-nosnippet>148</a>        // ValSem108
+<a href=#149 id=149 data-nosnippet>149</a>        </span><span class="self">self</span>.validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+<a href=#150 id=150 data-nosnippet>150</a>        <span class="comment">// ValSem113: All Proposals: The proposal type must be supported by all
+<a href=#151 id=151 data-nosnippet>151</a>        // members of the group
+<a href=#152 id=152 data-nosnippet>152</a>        </span><span class="self">self</span>.validate_proposal_type_support(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+<a href=#153 id=153 data-nosnippet>153</a>        <span class="comment">// ValSem208
+<a href=#154 id=154 data-nosnippet>154</a>        // ValSem209
+<a href=#155 id=155 data-nosnippet>155</a>        </span><span class="self">self</span>.validate_group_context_extensions_proposal(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+<a href=#156 id=156 data-nosnippet>156</a>        <span class="comment">// ValSem401
+<a href=#157 id=157 data-nosnippet>157</a>        // ValSem402
+<a href=#158 id=158 data-nosnippet>158</a>        // ValSem403
+<a href=#159 id=159 data-nosnippet>159</a>        </span><span class="self">self</span>.validate_pre_shared_key_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+<a href=#160 id=160 data-nosnippet>160</a>
+<a href=#161 id=161 data-nosnippet>161</a>        <span class="kw">match </span>sender {
+<a href=#162 id=162 data-nosnippet>162</a>            Sender::Member(leaf_index) =&gt; {
+<a href=#163 id=163 data-nosnippet>163</a>                <span class="comment">// ValSem110
+<a href=#164 id=164 data-nosnippet>164</a>                // ValSem111
+<a href=#165 id=165 data-nosnippet>165</a>                // ValSem112
+<a href=#166 id=166 data-nosnippet>166</a>                </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">*</span>leaf_index)<span class="question-mark">?</span>;
+<a href=#167 id=167 data-nosnippet>167</a>
+<a href=#168 id=168 data-nosnippet>168</a>                <span class="self">self</span>.validate_no_external_init_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+<a href=#169 id=169 data-nosnippet>169</a>            }
+<a href=#170 id=170 data-nosnippet>170</a>            Sender::External(<span class="kw">_</span>) =&gt; {
+<a href=#171 id=171 data-nosnippet>171</a>                <span class="comment">// A commit cannot be issued by a pre-configured sender.
+<a href=#172 id=172 data-nosnippet>172</a>                </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
+<a href=#173 id=173 data-nosnippet>173</a>            }
+<a href=#174 id=174 data-nosnippet>174</a>            Sender::NewMemberProposal =&gt; {
+<a href=#175 id=175 data-nosnippet>175</a>                <span class="comment">// A commit cannot be issued by a `NewMemberProposal` sender.
+<a href=#176 id=176 data-nosnippet>176</a>                </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeNewMemberProposal);
+<a href=#177 id=177 data-nosnippet>177</a>            }
+<a href=#178 id=178 data-nosnippet>178</a>            Sender::NewMemberCommit =&gt; {
+<a href=#179 id=179 data-nosnippet>179</a>                <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
+<a href=#180 id=180 data-nosnippet>180</a>                // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
+<a href=#181 id=181 data-nosnippet>181</a>                // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+<a href=#182 id=182 data-nosnippet>182</a>                </span><span class="self">self</span>.validate_external_commit(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+<a href=#183 id=183 data-nosnippet>183</a>            }
+<a href=#184 id=184 data-nosnippet>184</a>        }
+<a href=#185 id=185 data-nosnippet>185</a>
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="comment">// Now we can actually look at the public keys as they might have changed.
+<a href=#187 id=187 data-nosnippet>187</a>        </span><span class="kw">let </span>sender_index = <span class="kw">match </span>sender {
+<a href=#188 id=188 data-nosnippet>188</a>            Sender::Member(leaf_index) =&gt; <span class="kw-2">*</span>leaf_index,
+<a href=#189 id=189 data-nosnippet>189</a>            Sender::NewMemberCommit =&gt; {
+<a href=#190 id=190 data-nosnippet>190</a>                <span class="self">self</span>.leftmost_free_index(proposal_queue.queued_proposals())<span class="question-mark">?
+<a href=#191 id=191 data-nosnippet>191</a>            </span>}
+<a href=#192 id=192 data-nosnippet>192</a>            <span class="kw">_ </span>=&gt; {
+<a href=#193 id=193 data-nosnippet>193</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
+<a href=#194 id=194 data-nosnippet>194</a>            }
+<a href=#195 id=195 data-nosnippet>195</a>        };
 <a href=#196 id=196 data-nosnippet>196</a>
-<a href=#197 id=197 data-nosnippet>197</a>    <span class="comment">// Check that no external init proposal occurs. Needed only for regular commits.
-<a href=#198 id=198 data-nosnippet>198</a>    // [valn0310](https://validation.openmls.tech/#valn0310)
-<a href=#199 id=199 data-nosnippet>199</a>    </span><span class="kw">fn </span>validate_no_external_init_proposals(
-<a href=#200 id=200 data-nosnippet>200</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#201 id=201 data-nosnippet>201</a>        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
-<a href=#202 id=202 data-nosnippet>202</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
-<a href=#203 id=203 data-nosnippet>203</a>        <span class="kw">for </span>proposal <span class="kw">in </span>proposal_queue.queued_proposals() {
-<a href=#204 id=204 data-nosnippet>204</a>            <span class="kw">if </span><span class="macro">matches!</span>(
-<a href=#205 id=205 data-nosnippet>205</a>                proposal.proposal().proposal_type(),
-<a href=#206 id=206 data-nosnippet>206</a>                ProposalType::ExternalInit
-<a href=#207 id=207 data-nosnippet>207</a>            ) {
-<a href=#208 id=208 data-nosnippet>208</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExternalInitProposalInRegularCommit);
-<a href=#209 id=209 data-nosnippet>209</a>            }
-<a href=#210 id=210 data-nosnippet>210</a>        }
-<a href=#211 id=211 data-nosnippet>211</a>
-<a href=#212 id=212 data-nosnippet>212</a>        <span class="prelude-val">Ok</span>(())
-<a href=#213 id=213 data-nosnippet>213</a>    }
+<a href=#197 id=197 data-nosnippet>197</a>        <span class="prelude-val">Ok</span>((commit, proposal_queue, sender_index))
+<a href=#198 id=198 data-nosnippet>198</a>    }
+<a href=#199 id=199 data-nosnippet>199</a>
+<a href=#200 id=200 data-nosnippet>200</a>    <span class="comment">// Check that no external init proposal occurs. Needed only for regular commits.
+<a href=#201 id=201 data-nosnippet>201</a>    // [valn0310](https://validation.openmls.tech/#valn0310)
+<a href=#202 id=202 data-nosnippet>202</a>    </span><span class="kw">fn </span>validate_no_external_init_proposals(
+<a href=#203 id=203 data-nosnippet>203</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#204 id=204 data-nosnippet>204</a>        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
+<a href=#205 id=205 data-nosnippet>205</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
+<a href=#206 id=206 data-nosnippet>206</a>        <span class="kw">for </span>proposal <span class="kw">in </span>proposal_queue.queued_proposals() {
+<a href=#207 id=207 data-nosnippet>207</a>            <span class="kw">if </span><span class="macro">matches!</span>(
+<a href=#208 id=208 data-nosnippet>208</a>                proposal.proposal().proposal_type(),
+<a href=#209 id=209 data-nosnippet>209</a>                ProposalType::ExternalInit
+<a href=#210 id=210 data-nosnippet>210</a>            ) {
+<a href=#211 id=211 data-nosnippet>211</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExternalInitProposalInRegularCommit);
+<a href=#212 id=212 data-nosnippet>212</a>            }
+<a href=#213 id=213 data-nosnippet>213</a>        }
 <a href=#214 id=214 data-nosnippet>214</a>
-<a href=#215 id=215 data-nosnippet>215</a>    <span class="doccomment">/// Stages a commit message that was sent by another group member.
-<a href=#216 id=216 data-nosnippet>216</a>    /// This function does the following:
-<a href=#217 id=217 data-nosnippet>217</a>    ///  - Applies the proposals covered by the commit to the tree
-<a href=#218 id=218 data-nosnippet>218</a>    ///  - Applies the (optional) update path to the tree
-<a href=#219 id=219 data-nosnippet>219</a>    ///  - Updates the [`GroupContext`]
-<a href=#220 id=220 data-nosnippet>220</a>    ///  - Decrypts and derives the path secrets
-<a href=#221 id=221 data-nosnippet>221</a>    ///  - Initializes the key schedule for epoch rollover
-<a href=#222 id=222 data-nosnippet>222</a>    ///  - Verifies the confirmation tag
-<a href=#223 id=223 data-nosnippet>223</a>    ///
-<a href=#224 id=224 data-nosnippet>224</a>    /// Returns a [`StagedCommit`] that can be inspected and later merged into
-<a href=#225 id=225 data-nosnippet>225</a>    /// the group state either with [`MlsGroup::merge_commit()`] or
-<a href=#226 id=226 data-nosnippet>226</a>    /// [`PublicGroup::merge_diff()`] This function does the following checks:
-<a href=#227 id=227 data-nosnippet>227</a>    ///  - ValSem101
-<a href=#228 id=228 data-nosnippet>228</a>    ///  - ValSem102
-<a href=#229 id=229 data-nosnippet>229</a>    ///  - ValSem104
-<a href=#230 id=230 data-nosnippet>230</a>    ///  - ValSem105
-<a href=#231 id=231 data-nosnippet>231</a>    ///  - ValSem106
-<a href=#232 id=232 data-nosnippet>232</a>    ///  - ValSem107
-<a href=#233 id=233 data-nosnippet>233</a>    ///  - ValSem108
-<a href=#234 id=234 data-nosnippet>234</a>    ///  - ValSem110
-<a href=#235 id=235 data-nosnippet>235</a>    ///  - ValSem111
-<a href=#236 id=236 data-nosnippet>236</a>    ///  - ValSem112
-<a href=#237 id=237 data-nosnippet>237</a>    ///  - ValSem200
-<a href=#238 id=238 data-nosnippet>238</a>    ///  - ValSem201
-<a href=#239 id=239 data-nosnippet>239</a>    ///  - ValSem202: Path must be the right length
-<a href=#240 id=240 data-nosnippet>240</a>    ///  - ValSem203: Path secrets must decrypt correctly
-<a href=#241 id=241 data-nosnippet>241</a>    ///  - ValSem204: Public keys from Path must be verified and match the
-<a href=#242 id=242 data-nosnippet>242</a>    ///    private keys from the direct path
-<a href=#243 id=243 data-nosnippet>243</a>    ///  - ValSem205
-<a href=#244 id=244 data-nosnippet>244</a>    ///  - ValSem240
-<a href=#245 id=245 data-nosnippet>245</a>    ///  - ValSem241
-<a href=#246 id=246 data-nosnippet>246</a>    ///  - ValSem242
-<a href=#247 id=247 data-nosnippet>247</a>    ///  - ValSem244
-<a href=#248 id=248 data-nosnippet>248</a>    ///
-<a href=#249 id=249 data-nosnippet>249</a>    /// Returns an error if the given commit was sent by the owner of this
-<a href=#250 id=250 data-nosnippet>250</a>    /// group.
-<a href=#251 id=251 data-nosnippet>251</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
-<a href=#252 id=252 data-nosnippet>252</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#253 id=253 data-nosnippet>253</a>        mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
-<a href=#254 id=254 data-nosnippet>254</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#255 id=255 data-nosnippet>255</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
-<a href=#256 id=256 data-nosnippet>256</a>        <span class="kw">let </span>(commit, proposal_queue, sender_index) = <span class="self">self</span>.validate_commit(mls_content, crypto)<span class="question-mark">?</span>;
-<a href=#257 id=257 data-nosnippet>257</a>
-<a href=#258 id=258 data-nosnippet>258</a>        <span class="kw">let </span>staged_diff = <span class="self">self</span>.stage_diff(mls_content, <span class="kw-2">&amp;</span>proposal_queue, sender_index, crypto)<span class="question-mark">?</span>;
-<a href=#259 id=259 data-nosnippet>259</a>        <span class="kw">let </span>staged_state = PublicStagedCommitState {
-<a href=#260 id=260 data-nosnippet>260</a>            staged_diff,
-<a href=#261 id=261 data-nosnippet>261</a>            update_path_leaf_node: commit.path.as_ref().map(|p| p.leaf_node().clone()),
-<a href=#262 id=262 data-nosnippet>262</a>        };
-<a href=#263 id=263 data-nosnippet>263</a>
-<a href=#264 id=264 data-nosnippet>264</a>        <span class="kw">let </span>staged_commit_state = StagedCommitState::PublicState(Box::new(staged_state));
-<a href=#265 id=265 data-nosnippet>265</a>
-<a href=#266 id=266 data-nosnippet>266</a>        <span class="prelude-val">Ok</span>(StagedCommit::new(proposal_queue, staged_commit_state))
-<a href=#267 id=267 data-nosnippet>267</a>    }
+<a href=#215 id=215 data-nosnippet>215</a>        <span class="prelude-val">Ok</span>(())
+<a href=#216 id=216 data-nosnippet>216</a>    }
+<a href=#217 id=217 data-nosnippet>217</a>
+<a href=#218 id=218 data-nosnippet>218</a>    <span class="doccomment">/// Stages a commit message that was sent by another group member.
+<a href=#219 id=219 data-nosnippet>219</a>    /// This function does the following:
+<a href=#220 id=220 data-nosnippet>220</a>    ///  - Applies the proposals covered by the commit to the tree
+<a href=#221 id=221 data-nosnippet>221</a>    ///  - Applies the (optional) update path to the tree
+<a href=#222 id=222 data-nosnippet>222</a>    ///  - Updates the [`GroupContext`]
+<a href=#223 id=223 data-nosnippet>223</a>    ///  - Decrypts and derives the path secrets
+<a href=#224 id=224 data-nosnippet>224</a>    ///  - Initializes the key schedule for epoch rollover
+<a href=#225 id=225 data-nosnippet>225</a>    ///  - Verifies the confirmation tag
+<a href=#226 id=226 data-nosnippet>226</a>    ///
+<a href=#227 id=227 data-nosnippet>227</a>    /// Returns a [`StagedCommit`] that can be inspected and later merged into
+<a href=#228 id=228 data-nosnippet>228</a>    /// the group state either with [`MlsGroup::merge_commit()`] or
+<a href=#229 id=229 data-nosnippet>229</a>    /// [`PublicGroup::merge_diff()`] This function does the following checks:
+<a href=#230 id=230 data-nosnippet>230</a>    ///  - ValSem101
+<a href=#231 id=231 data-nosnippet>231</a>    ///  - ValSem102
+<a href=#232 id=232 data-nosnippet>232</a>    ///  - ValSem104
+<a href=#233 id=233 data-nosnippet>233</a>    ///  - ValSem105
+<a href=#234 id=234 data-nosnippet>234</a>    ///  - ValSem106
+<a href=#235 id=235 data-nosnippet>235</a>    ///  - ValSem107
+<a href=#236 id=236 data-nosnippet>236</a>    ///  - ValSem108
+<a href=#237 id=237 data-nosnippet>237</a>    ///  - ValSem110
+<a href=#238 id=238 data-nosnippet>238</a>    ///  - ValSem111
+<a href=#239 id=239 data-nosnippet>239</a>    ///  - ValSem112
+<a href=#240 id=240 data-nosnippet>240</a>    ///  - ValSem200
+<a href=#241 id=241 data-nosnippet>241</a>    ///  - ValSem201
+<a href=#242 id=242 data-nosnippet>242</a>    ///  - ValSem202: Path must be the right length
+<a href=#243 id=243 data-nosnippet>243</a>    ///  - ValSem203: Path secrets must decrypt correctly
+<a href=#244 id=244 data-nosnippet>244</a>    ///  - ValSem204: Public keys from Path must be verified and match the
+<a href=#245 id=245 data-nosnippet>245</a>    ///    private keys from the direct path
+<a href=#246 id=246 data-nosnippet>246</a>    ///  - ValSem205
+<a href=#247 id=247 data-nosnippet>247</a>    ///  - ValSem240
+<a href=#248 id=248 data-nosnippet>248</a>    ///  - ValSem241
+<a href=#249 id=249 data-nosnippet>249</a>    ///  - ValSem242
+<a href=#250 id=250 data-nosnippet>250</a>    ///  - ValSem244
+<a href=#251 id=251 data-nosnippet>251</a>    ///
+<a href=#252 id=252 data-nosnippet>252</a>    /// Returns an error if the given commit was sent by the owner of this
+<a href=#253 id=253 data-nosnippet>253</a>    /// group.
+<a href=#254 id=254 data-nosnippet>254</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
+<a href=#255 id=255 data-nosnippet>255</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#256 id=256 data-nosnippet>256</a>        mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
+<a href=#257 id=257 data-nosnippet>257</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#258 id=258 data-nosnippet>258</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
+<a href=#259 id=259 data-nosnippet>259</a>        <span class="kw">let </span>(commit, proposal_queue, sender_index) = <span class="self">self</span>.validate_commit(mls_content, crypto)<span class="question-mark">?</span>;
+<a href=#260 id=260 data-nosnippet>260</a>
+<a href=#261 id=261 data-nosnippet>261</a>        <span class="kw">let </span>staged_diff = <span class="self">self</span>.stage_diff(mls_content, <span class="kw-2">&amp;</span>proposal_queue, sender_index, crypto)<span class="question-mark">?</span>;
+<a href=#262 id=262 data-nosnippet>262</a>        <span class="kw">let </span>staged_state = PublicStagedCommitState {
+<a href=#263 id=263 data-nosnippet>263</a>            staged_diff,
+<a href=#264 id=264 data-nosnippet>264</a>            update_path_leaf_node: commit.path.as_ref().map(|p| p.leaf_node().clone()),
+<a href=#265 id=265 data-nosnippet>265</a>        };
+<a href=#266 id=266 data-nosnippet>266</a>
+<a href=#267 id=267 data-nosnippet>267</a>        <span class="kw">let </span>staged_commit_state = StagedCommitState::PublicState(Box::new(staged_state));
 <a href=#268 id=268 data-nosnippet>268</a>
-<a href=#269 id=269 data-nosnippet>269</a>    <span class="kw">fn </span>stage_diff(
-<a href=#270 id=270 data-nosnippet>270</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#271 id=271 data-nosnippet>271</a>        mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
-<a href=#272 id=272 data-nosnippet>272</a>        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
-<a href=#273 id=273 data-nosnippet>273</a>        sender_index: LeafNodeIndex,
-<a href=#274 id=274 data-nosnippet>274</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#275 id=275 data-nosnippet>275</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedPublicGroupDiff, StageCommitError&gt; {
-<a href=#276 id=276 data-nosnippet>276</a>        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
-<a href=#277 id=277 data-nosnippet>277</a>        <span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.empty_diff();
-<a href=#278 id=278 data-nosnippet>278</a>
-<a href=#279 id=279 data-nosnippet>279</a>        <span class="kw">let </span>apply_proposals_values = diff.apply_proposals(proposal_queue, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
-<a href=#280 id=280 data-nosnippet>280</a>
-<a href=#281 id=281 data-nosnippet>281</a>        <span class="kw">let </span>commit = <span class="kw">match </span>mls_content.content() {
-<a href=#282 id=282 data-nosnippet>282</a>            FramedContentBody::Commit(commit) =&gt; commit,
-<a href=#283 id=283 data-nosnippet>283</a>            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::WrongPlaintextContentType),
-<a href=#284 id=284 data-nosnippet>284</a>        };
-<a href=#285 id=285 data-nosnippet>285</a>
-<a href=#286 id=286 data-nosnippet>286</a>        <span class="comment">// Determine if Commit has a path
-<a href=#287 id=287 data-nosnippet>287</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(update_path) = <span class="kw-2">&amp;</span>commit.path {
-<a href=#288 id=288 data-nosnippet>288</a>            <span class="comment">// Update the public group
-<a href=#289 id=289 data-nosnippet>289</a>            // ValSem202: Path must be the right length
-<a href=#290 id=290 data-nosnippet>290</a>            </span>diff.apply_received_update_path(crypto, ciphersuite, sender_index, update_path)<span class="question-mark">?</span>;
-<a href=#291 id=291 data-nosnippet>291</a>        } <span class="kw">else if </span>apply_proposals_values.path_required {
-<a href=#292 id=292 data-nosnippet>292</a>            <span class="comment">// ValSem201
-<a href=#293 id=293 data-nosnippet>293</a>            // https://validation.openmls.tech/#valn1206
-<a href=#294 id=294 data-nosnippet>294</a>            </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::RequiredPathNotFound);
-<a href=#295 id=295 data-nosnippet>295</a>        };
-<a href=#296 id=296 data-nosnippet>296</a>
-<a href=#297 id=297 data-nosnippet>297</a>        <span class="comment">// Update group context
-<a href=#298 id=298 data-nosnippet>298</a>        </span>diff.update_group_context(crypto, apply_proposals_values.extensions.clone())<span class="question-mark">?</span>;
+<a href=#269 id=269 data-nosnippet>269</a>        <span class="prelude-val">Ok</span>(StagedCommit::new(proposal_queue, staged_commit_state))
+<a href=#270 id=270 data-nosnippet>270</a>    }
+<a href=#271 id=271 data-nosnippet>271</a>
+<a href=#272 id=272 data-nosnippet>272</a>    <span class="kw">fn </span>stage_diff(
+<a href=#273 id=273 data-nosnippet>273</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#274 id=274 data-nosnippet>274</a>        mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
+<a href=#275 id=275 data-nosnippet>275</a>        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
+<a href=#276 id=276 data-nosnippet>276</a>        sender_index: LeafNodeIndex,
+<a href=#277 id=277 data-nosnippet>277</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#278 id=278 data-nosnippet>278</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedPublicGroupDiff, StageCommitError&gt; {
+<a href=#279 id=279 data-nosnippet>279</a>        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
+<a href=#280 id=280 data-nosnippet>280</a>        <span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.empty_diff();
+<a href=#281 id=281 data-nosnippet>281</a>
+<a href=#282 id=282 data-nosnippet>282</a>        <span class="kw">let </span>apply_proposals_values = diff.apply_proposals(proposal_queue, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+<a href=#283 id=283 data-nosnippet>283</a>
+<a href=#284 id=284 data-nosnippet>284</a>        <span class="kw">let </span>commit = <span class="kw">match </span>mls_content.content() {
+<a href=#285 id=285 data-nosnippet>285</a>            FramedContentBody::Commit(commit) =&gt; commit,
+<a href=#286 id=286 data-nosnippet>286</a>            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::WrongPlaintextContentType),
+<a href=#287 id=287 data-nosnippet>287</a>        };
+<a href=#288 id=288 data-nosnippet>288</a>
+<a href=#289 id=289 data-nosnippet>289</a>        <span class="comment">// Determine if Commit has a path
+<a href=#290 id=290 data-nosnippet>290</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(update_path) = <span class="kw-2">&amp;</span>commit.path {
+<a href=#291 id=291 data-nosnippet>291</a>            <span class="comment">// Update the public group
+<a href=#292 id=292 data-nosnippet>292</a>            // ValSem202: Path must be the right length
+<a href=#293 id=293 data-nosnippet>293</a>            </span>diff.apply_received_update_path(crypto, ciphersuite, sender_index, update_path)<span class="question-mark">?</span>;
+<a href=#294 id=294 data-nosnippet>294</a>        } <span class="kw">else if </span>apply_proposals_values.path_required {
+<a href=#295 id=295 data-nosnippet>295</a>            <span class="comment">// ValSem201
+<a href=#296 id=296 data-nosnippet>296</a>            // https://validation.openmls.tech/#valn1206
+<a href=#297 id=297 data-nosnippet>297</a>            </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::RequiredPathNotFound);
+<a href=#298 id=298 data-nosnippet>298</a>        };
 <a href=#299 id=299 data-nosnippet>299</a>
-<a href=#300 id=300 data-nosnippet>300</a>        <span class="comment">// Update the confirmed transcript hash before we compute the confirmation tag.
-<a href=#301 id=301 data-nosnippet>301</a>        </span>diff.update_confirmed_transcript_hash(crypto, mls_content)<span class="question-mark">?</span>;
+<a href=#300 id=300 data-nosnippet>300</a>        <span class="comment">// Update group context
+<a href=#301 id=301 data-nosnippet>301</a>        </span>diff.update_group_context(crypto, apply_proposals_values.extensions.clone())<span class="question-mark">?</span>;
 <a href=#302 id=302 data-nosnippet>302</a>
-<a href=#303 id=303 data-nosnippet>303</a>        <span class="kw">let </span>received_confirmation_tag = mls_content
-<a href=#304 id=304 data-nosnippet>304</a>            .confirmation_tag()
-<a href=#305 id=305 data-nosnippet>305</a>            .ok_or(StageCommitError::ConfirmationTagMissing)<span class="question-mark">?</span>;
-<a href=#306 id=306 data-nosnippet>306</a>
-<a href=#307 id=307 data-nosnippet>307</a>        <span class="comment">// If we have private key material, derive the secrets for the next
-<a href=#308 id=308 data-nosnippet>308</a>        // epoch and check the confirmation tag.
-<a href=#309 id=309 data-nosnippet>309</a>        </span>diff.update_interim_transcript_hash(
-<a href=#310 id=310 data-nosnippet>310</a>            ciphersuite,
-<a href=#311 id=311 data-nosnippet>311</a>            crypto,
-<a href=#312 id=312 data-nosnippet>312</a>            received_confirmation_tag.clone(),
-<a href=#313 id=313 data-nosnippet>313</a>        )<span class="question-mark">?</span>;
-<a href=#314 id=314 data-nosnippet>314</a>
-<a href=#315 id=315 data-nosnippet>315</a>        <span class="kw">let </span>staged_diff = diff.into_staged_diff(crypto, ciphersuite)<span class="question-mark">?</span>;
-<a href=#316 id=316 data-nosnippet>316</a>
-<a href=#317 id=317 data-nosnippet>317</a>        <span class="prelude-val">Ok</span>(staged_diff)
-<a href=#318 id=318 data-nosnippet>318</a>    }
+<a href=#303 id=303 data-nosnippet>303</a>        <span class="comment">// Update the confirmed transcript hash before we compute the confirmation tag.
+<a href=#304 id=304 data-nosnippet>304</a>        </span>diff.update_confirmed_transcript_hash(crypto, mls_content)<span class="question-mark">?</span>;
+<a href=#305 id=305 data-nosnippet>305</a>
+<a href=#306 id=306 data-nosnippet>306</a>        <span class="kw">let </span>received_confirmation_tag = mls_content
+<a href=#307 id=307 data-nosnippet>307</a>            .confirmation_tag()
+<a href=#308 id=308 data-nosnippet>308</a>            .ok_or(StageCommitError::ConfirmationTagMissing)<span class="question-mark">?</span>;
+<a href=#309 id=309 data-nosnippet>309</a>
+<a href=#310 id=310 data-nosnippet>310</a>        <span class="comment">// If we have private key material, derive the secrets for the next
+<a href=#311 id=311 data-nosnippet>311</a>        // epoch and check the confirmation tag.
+<a href=#312 id=312 data-nosnippet>312</a>        </span>diff.update_interim_transcript_hash(
+<a href=#313 id=313 data-nosnippet>313</a>            ciphersuite,
+<a href=#314 id=314 data-nosnippet>314</a>            crypto,
+<a href=#315 id=315 data-nosnippet>315</a>            received_confirmation_tag.clone(),
+<a href=#316 id=316 data-nosnippet>316</a>        )<span class="question-mark">?</span>;
+<a href=#317 id=317 data-nosnippet>317</a>
+<a href=#318 id=318 data-nosnippet>318</a>        <span class="kw">let </span>staged_diff = diff.into_staged_diff(crypto, ciphersuite)<span class="question-mark">?</span>;
 <a href=#319 id=319 data-nosnippet>319</a>
-<a href=#320 id=320 data-nosnippet>320</a>    <span class="doccomment">/// Merges a [StagedCommit] into the public group state.
-<a href=#321 id=321 data-nosnippet>321</a>    </span><span class="kw">pub fn </span>merge_commit&lt;Storage: PublicStorageProvider&gt;(
-<a href=#322 id=322 data-nosnippet>322</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#323 id=323 data-nosnippet>323</a>        storage: <span class="kw-2">&amp;</span>Storage,
-<a href=#324 id=324 data-nosnippet>324</a>        staged_commit: StagedCommit,
-<a href=#325 id=325 data-nosnippet>325</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Storage::Error&gt;&gt; {
-<a href=#326 id=326 data-nosnippet>326</a>        <span class="kw">match </span>staged_commit.into_state() {
-<a href=#327 id=327 data-nosnippet>327</a>            StagedCommitState::PublicState(staged_state) =&gt; {
-<a href=#328 id=328 data-nosnippet>328</a>                <span class="self">self</span>.merge_diff(staged_state.staged_diff);
-<a href=#329 id=329 data-nosnippet>329</a>            }
-<a href=#330 id=330 data-nosnippet>330</a>            StagedCommitState::GroupMember(<span class="kw">_</span>) =&gt; (),
-<a href=#331 id=331 data-nosnippet>331</a>        }
-<a href=#332 id=332 data-nosnippet>332</a>
-<a href=#333 id=333 data-nosnippet>333</a>        <span class="self">self</span>.proposal_store.empty();
-<a href=#334 id=334 data-nosnippet>334</a>        storage
-<a href=#335 id=335 data-nosnippet>335</a>            .clear_proposal_queue::&lt;GroupId, ProposalRef&gt;(<span class="self">self</span>.group_id())
-<a href=#336 id=336 data-nosnippet>336</a>            .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
-<a href=#337 id=337 data-nosnippet>337</a>        <span class="self">self</span>.store(storage).map_err(MergeCommitError::StorageError)
-<a href=#338 id=338 data-nosnippet>338</a>    }
-<a href=#339 id=339 data-nosnippet>339</a>}
+<a href=#320 id=320 data-nosnippet>320</a>        <span class="prelude-val">Ok</span>(staged_diff)
+<a href=#321 id=321 data-nosnippet>321</a>    }
+<a href=#322 id=322 data-nosnippet>322</a>
+<a href=#323 id=323 data-nosnippet>323</a>    <span class="doccomment">/// Merges a [StagedCommit] into the public group state.
+<a href=#324 id=324 data-nosnippet>324</a>    </span><span class="kw">pub fn </span>merge_commit&lt;Storage: PublicStorageProvider&gt;(
+<a href=#325 id=325 data-nosnippet>325</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#326 id=326 data-nosnippet>326</a>        storage: <span class="kw-2">&amp;</span>Storage,
+<a href=#327 id=327 data-nosnippet>327</a>        staged_commit: StagedCommit,
+<a href=#328 id=328 data-nosnippet>328</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;Storage::Error&gt;&gt; {
+<a href=#329 id=329 data-nosnippet>329</a>        <span class="kw">match </span>staged_commit.into_state() {
+<a href=#330 id=330 data-nosnippet>330</a>            StagedCommitState::PublicState(staged_state) =&gt; {
+<a href=#331 id=331 data-nosnippet>331</a>                <span class="self">self</span>.merge_diff(staged_state.staged_diff);
+<a href=#332 id=332 data-nosnippet>332</a>            }
+<a href=#333 id=333 data-nosnippet>333</a>            StagedCommitState::GroupMember(<span class="kw">_</span>) =&gt; (),
+<a href=#334 id=334 data-nosnippet>334</a>        }
+<a href=#335 id=335 data-nosnippet>335</a>
+<a href=#336 id=336 data-nosnippet>336</a>        <span class="self">self</span>.proposal_store.empty();
+<a href=#337 id=337 data-nosnippet>337</a>        storage
+<a href=#338 id=338 data-nosnippet>338</a>            .clear_proposal_queue::&lt;GroupId, ProposalRef&gt;(<span class="self">self</span>.group_id())
+<a href=#339 id=339 data-nosnippet>339</a>            .map_err(MergeCommitError::StorageError)<span class="question-mark">?</span>;
+<a href=#340 id=340 data-nosnippet>340</a>        <span class="self">self</span>.store(storage).map_err(MergeCommitError::StorageError)
+<a href=#341 id=341 data-nosnippet>341</a>    }
+<a href=#342 id=342 data-nosnippet>342</a>}
 </code></pre></div></section></main></body></html>
