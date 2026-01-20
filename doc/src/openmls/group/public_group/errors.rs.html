@@ -54,4 +54,19 @@
 <a href=#54 id=54 data-nosnippet>54</a>    </span><span class="attr">#[error(<span class="string">"Invalid extensions set in configuration"</span>)]
 <a href=#55 id=55 data-nosnippet>55</a>    </span>InvalidExtensions(<span class="attr">#[from] </span>InvalidExtensionError),
 <a href=#56 id=56 data-nosnippet>56</a>}
+<a href=#57 id=57 data-nosnippet>57</a>
+<a href=#58 id=58 data-nosnippet>58</a><span class="doccomment">/// The errors that may occur while applying AppDataUpdate proposals
+<a href=#59 id=59 data-nosnippet>59</a></span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#60 id=60 data-nosnippet>60</a>#[derive(Error, Debug, PartialEq, Clone)]
+<a href=#61 id=61 data-nosnippet>61</a></span><span class="kw">pub enum </span>ApplyAppDataUpdateError {
+<a href=#62 id=62 data-nosnippet>62</a>    <span class="doccomment">/// Found AppDataUpdate proposals, but was not provided the updated values
+<a href=#63 id=63 data-nosnippet>63</a>    </span><span class="attr">#[error(<span class="string">"Found AppDataUpdate proposals, but was not provided the updated values"</span>)]
+<a href=#64 id=64 data-nosnippet>64</a>    </span>MissingAppDataUpdates,
+<a href=#65 id=65 data-nosnippet>65</a>    <span class="doccomment">/// No AppDataUpdate proposals found, but was provided updated values
+<a href=#66 id=66 data-nosnippet>66</a>    </span><span class="attr">#[error(<span class="string">"No AppDataUpdate proposals found, but was provided updated values"</span>)]
+<a href=#67 id=67 data-nosnippet>67</a>    </span>SuperfluousAppDataUpdates,
+<a href=#68 id=68 data-nosnippet>68</a>    <span class="doccomment">/// See [`LibraryError`] for more details.
+<a href=#69 id=69 data-nosnippet>69</a>    </span><span class="attr">#[error(transparent)]
+<a href=#70 id=70 data-nosnippet>70</a>    </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
+<a href=#71 id=71 data-nosnippet>71</a>}
 </code></pre></div></section></main></body></html>

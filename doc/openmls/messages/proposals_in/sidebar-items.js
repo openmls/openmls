@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ProposalIn"],"struct":["AddProposalIn","UpdateProposalIn"]};
+window.SIDEBAR_ITEMS = {"enum":["ProposalIn","ProposalOrRefIn"],"struct":["AddProposalIn","UpdateProposalIn"]};

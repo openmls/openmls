@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["ComponentId"]};
+window.SIDEBAR_ITEMS = {"enum":["ComponentType"],"struct":["ComponentData","PrivateComponentId","UnknownComponentId"],"type":["ComponentId"]};
