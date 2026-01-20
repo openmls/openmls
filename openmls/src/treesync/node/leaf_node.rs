@@ -489,7 +489,7 @@ impl LeafNode {
         let invalid_extension_types = self
             .extensions()
             .iter()
-            .filter(|ext| ext.extension_type().is_valid_in_leaf_node() == Some(false))
+            .filter(|ext| !ext.extension_type().is_valid_in_leaf_node())
             .collect::<Vec<_>>();
         if !invalid_extension_types.is_empty() {
             log::error!("Invalid extension used in leaf node: {invalid_extension_types:?}");

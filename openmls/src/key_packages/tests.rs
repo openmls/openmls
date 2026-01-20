@@ -34,7 +34,7 @@ pub(crate) fn key_package(
 fn key_package_builder_leaf_node_extensions_validation() {
     // create an extension that is invalid in the leaf node
     let extension = Extension::ExternalSenders(ExternalSendersExtension::new());
-    assert!(extension.extension_type().is_valid_in_leaf_node() == Some(false));
+    assert!(!extension.extension_type().is_valid_in_leaf_node());
 
     let extensions_result: Result<Extensions<LeafNode>, _> = Extensions::single(extension);
     let err = extensions_result

@@ -132,15 +132,16 @@ impl ExtensionType {
     /// Returns None if validity can not be determined.
     /// This is the case for unknown extensions.
     //  https://validation.openmls.tech/#valn1601
-    pub(crate) fn is_valid_in_leaf_node(self) -> Option<bool> {
+    pub(crate) fn is_valid_in_leaf_node(self) -> bool {
         match self {
             ExtensionType::LastResort
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
-            | ExtensionType::ExternalSenders => Some(false),
-            ExtensionType::ApplicationId => Some(true),
-            ExtensionType::Grease(_) | ExtensionType::Unknown(_) => None,
+            | ExtensionType::ExternalSenders => false,
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) | ExtensionType::ApplicationId => {
+                true
+            }
         }
     }
 
@@ -497,16 +498,16 @@ impl ExtensionValidator for GroupContext {
     fn validate_extension_type(
         ext: &Extension,
     ) -> Result<(), ExtensionTypeNotValidInGroupContextError> {
-        matches!(
-            ext.extension_type(),
-            ExtensionType::RequiredCapabilities
-                | ExtensionType::ExternalSenders
-                | ExtensionType::Unknown(_)
-        )
-        .then_some(())
-        .ok_or(ExtensionTypeNotValidInGroupContextError(
-            ext.extension_type(),
-        ))
+        if ext.extension_type() == ExtensionType::RequiredCapabilities
+            || ext.extension_type() == ExtensionType::ExternalSenders
+            || matches!(ext.extension_type(), ExtensionType::Unknown(_))
+        {
+            Ok(())
+        } else {
+            Err(ExtensionTypeNotValidInGroupContextError(
+                ext.extension_type(),
+            ))
+        }
     }
 }
 
@@ -517,12 +518,13 @@ impl ExtensionValidator for KeyPackage {
     fn validate_extension_type(
         ext: &Extension,
     ) -> Result<(), ExtensionTypeNotValidInKeyPackageError> {
-        matches!(
-            ext.extension_type(),
-            ExtensionType::LastResort | ExtensionType::Unknown(_)
-        )
-        .then_some(())
-        .ok_or(ExtensionTypeNotValidInKeyPackageError(ext.extension_type()))
+        if ext.extension_type() == ExtensionType::LastResort
+            || matches!(ext.extension_type(), ExtensionType::Unknown(_))
+        {
+            Ok(())
+        } else {
+            Err(ExtensionTypeNotValidInKeyPackageError(ext.extension_type()))
+        }
     }
 }
 
@@ -533,11 +535,11 @@ impl ExtensionValidator for LeafNode {
     fn validate_extension_type(
         ext: &Extension,
     ) -> Result<(), ExtensionTypeNotValidInLeafNodeError> {
-        ext.extension_type()
-            .is_valid_in_leaf_node()
-            .unwrap_or(true) // allow extension types we don't know
-            .then_some(())
-            .ok_or(ExtensionTypeNotValidInLeafNodeError(ext.extension_type()))
+        if ext.extension_type().is_valid_in_leaf_node() {
+            Ok(())
+        } else {
+            Err(ExtensionTypeNotValidInLeafNodeError(ext.extension_type()))
+        }
     }
 }
 
