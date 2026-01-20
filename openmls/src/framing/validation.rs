@@ -35,6 +35,9 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals_in::ProposalOrRefIn;
+
 use super::{
     mls_auth_content::AuthenticatedContent,
     mls_auth_content_in::{AuthenticatedContentIn, VerifiableAuthenticatedContentIn},
@@ -219,7 +222,7 @@ pub(crate) enum SenderContext {
 /// The [`OpenMlsSignaturePublicKey`] is used to verify the signature of the
 /// message.
 #[derive(Debug, Clone)]
-pub(crate) struct UnverifiedMessage {
+pub struct UnverifiedMessage {
     verifiable_content: VerifiableAuthenticatedContentIn,
     credential: Credential,
     sender_pk: OpenMlsSignaturePublicKey,
@@ -261,9 +264,10 @@ impl UnverifiedMessage {
         Ok((content, self.credential))
     }
 
-    /// Get the content type of the message.
-    pub(crate) fn content_type(&self) -> ContentType {
-        self.verifiable_content.content_type()
+    /// Get the proposals of the commit, if it is one. If not, return `None`.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
+        self.verifiable_content.committed_proposals()
     }
 }
 

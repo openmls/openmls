@@ -9,6 +9,9 @@ use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
+#[cfg(feature = "extensions-draft-08")]
+use super::errors::ApplyAppDataUpdateError;
+
 use super::PublicGroup;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
