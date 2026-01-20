@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - [#1874](https://github.com/openmls/openmls/pull/1874): Changed `ProposalType`, `ExtensionType`, and `CredentialType` enums to include `Grease(u16)` variant.
 - [#1924](https://github.com/openmls/openmls/pull/1924): Exposed `JoinBuilder::new` as public API.
+- [#1928](https://github.com/openmls/openmls/pull/1928): Processing a commit now fails if it contains a duplicate PSK proposal.
+
 - [#1926](https://github.com/openmls/openmls/pull/1926):
   - Updated `getrandom` dependency in `js` feature to `0.3.4`
   - Removed `libcrux-provider-js` feature (the `libcrux-provider`,`js` features are now sufficient to enable the libcrux crypto provider with support for compiling to wasm)
