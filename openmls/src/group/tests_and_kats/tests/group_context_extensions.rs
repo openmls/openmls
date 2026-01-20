@@ -1199,14 +1199,11 @@ fn join_rejects_unsupported_group_context_extension() {
             .extensions()
             .contains(ExtensionType::Unknown(0x4141)));
 
-        assert_eq!(
-            false,
-            bob_party
-                .key_package_bundle
-                .key_package
-                .extensions()
-                .contains(ExtensionType::Unknown(0x4141))
-        );
+        assert!(!bob_party
+            .key_package_bundle
+            .key_package
+            .extensions()
+            .contains(ExtensionType::Unknown(0x4141)));
 
         assert!(staged
             .group_context()
