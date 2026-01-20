@@ -368,6 +368,21 @@ impl PublicGroup {
                 return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
 
+            // Check that the leaf node of the added key package supports all extensions in the group
+            // context.
+            // https://validation.openmls.tech/#valn0502
+            let added_leaf_supports_all_group_context_extensions =
+                self.group_context().extensions().iter().all(|extension| {
+                    add_proposal
+                        .add_proposal()
+                        .key_package
+                        .leaf_node()
+                        .supports_extension(&extension.extension_type())
+                });
+            if !added_leaf_supports_all_group_context_extensions {
+                return Err(ProposalValidationError::InsufficientCapabilities);
+            }
+
             // https://validation.openmls.tech/#valn0202
             self.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())?;
         }

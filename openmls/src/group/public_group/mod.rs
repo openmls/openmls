@@ -174,7 +174,7 @@ impl PublicGroup {
 
             // Check that no two nodes share a signature key.
             // https://validation.openmls.tech/#valn0111
-            if !encryption_keys.insert(leaf_node.signature_key()) {
+            if !signature_keys.insert(leaf_node.signature_key()) {
                 return Err(CreationFromExternalError::DuplicateSignatureKey);
             }
 

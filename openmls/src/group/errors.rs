@@ -69,8 +69,8 @@ pub enum WelcomeError<StorageError> {
     /// Could not decrypt the Welcome message.
     #[error("Could not decrypt the Welcome message.")]
     UnableToDecrypt,
-    /// Unsupported extensions found in the KeyPackage of another member.
-    #[error("Unsupported extensions found in the KeyPackage of another member.")]
+    /// Unsupported extensions found in the GroupContext or  KeyPackage of another member.
+    #[error("Unsupported extensions found in the GroupContext or KeyPackage of another member.")]
     UnsupportedExtensions,
     /// See [`PskError`] for more details.
     #[error(transparent)]

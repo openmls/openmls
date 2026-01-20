@@ -206,6 +206,7 @@ impl ProcessedWelcome {
             &[],
             provider.crypto(),
         )?;
+
         if let Some(required_capabilities) =
             verifiable_group_info.extensions().required_capabilities()
         {
@@ -293,6 +294,23 @@ impl ProcessedWelcome {
             ProposalStore::new(),
             validate_lifetimes,
         )?;
+
+        // Check that the leaf node of the added key package supports all extensions in the group
+        // context.
+        // https://validation.openmls.tech/#valn1415
+        let added_leaf_supports_all_group_context_extensions = public_group
+            .group_context()
+            .extensions()
+            .iter()
+            .all(|extension| {
+                self.key_package_bundle
+                    .key_package
+                    .leaf_node()
+                    .supports_extension(&extension.extension_type())
+            });
+        if !added_leaf_supports_all_group_context_extensions {
+            return Err(WelcomeError::UnsupportedExtensions);
+        }
 
         // Find our own leaf in the tree.
         let own_leaf_index = public_group

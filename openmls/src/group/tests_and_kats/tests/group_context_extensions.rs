@@ -1142,3 +1142,77 @@ fn proposal() {
         )
         .expect_err("expected an error building GCE proposal with bad required_capabilities");
 }
+
+// NOTE: Need to disable the check for valn0502 in group/public_group/validation.rs for this to
+//       run. Otherwise we won't be able to create an illegal commit.
+#[openmls_test]
+#[ignore]
+fn join_rejects_unsupported_group_context_extension() {
+    let alice_party = PartyState::<Provider>::generate("alice", ciphersuite);
+    let bob_party = PartyState::<Provider>::generate("bob", ciphersuite);
+
+    let gc_extensions = Extensions::single(Extension::Unknown(
+        0x4141,
+        crate::extensions::UnknownExtension(vec![0x01]),
+    ));
+
+    let alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(WireFormatPolicy::new(
+            OutgoingWireFormatPolicy::AlwaysPlaintext,
+            IncomingWireFormatPolicy::Mixed,
+        ))
+        .with_group_context_extensions(gc_extensions)
+        .expect("error setting group context extensions")
+        .build(
+            &alice_party.provider,
+            &alice_party.signer,
+            alice_party.credential_with_key.clone(),
+        )
+        .expect("error creating group using builder");
+
+    let mut alice = MemberState {
+        party: alice_party,
+        group: alice_group,
+    };
+
+    let bob_key_package = bob_party.key_package(ciphersuite, |builder| builder);
+    alice.propose_add_member(bob_key_package.key_package());
+
+    let (_, Some(welcome), _) = alice.commit_and_merge_pending() else {
+        panic!("expected receiving a welcome")
+    };
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    if let Ok(staged) = StagedWelcome::new_from_welcome(
+        &bob_party.provider,
+        alice.group.configuration(),
+        welcome,
+        Some(alice.group.export_ratchet_tree().into()),
+    ) {
+        assert!(alice
+            .group
+            .extensions()
+            .contains(ExtensionType::Unknown(0x4141)));
+
+        assert_eq!(
+            false,
+            bob_party
+                .key_package_bundle
+                .key_package
+                .extensions()
+                .contains(ExtensionType::Unknown(0x4141))
+        );
+
+        assert!(staged
+            .group_context()
+            .extensions()
+            .contains(ExtensionType::Unknown(0x4141)));
+
+        unreachable!("join should reject unsupported GroupContext extensions");
+    }
+}
