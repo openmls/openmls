@@ -3,7 +3,6 @@ mod common;
 use common::*;
 use openmls_sqlx_storage::SqliteStorageProvider;
 use openmls_traits::storage::StorageProvider;
-use sqlx::Connection as _;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn proposals() {
@@ -11,10 +10,8 @@ async fn proposals() {
     let proposals = (0..10)
         .map(|i| TestProposal(format!("TestProposal{i}").as_bytes().to_vec()))
         .collect::<Vec<_>>();
-    let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:")
-        .await
-        .unwrap();
-    let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
+    let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let mut storage = SqliteStorageProvider::<JsonCodec>::new(pool);
 
     storage.run_migrations().unwrap();
 
@@ -83,10 +80,8 @@ async fn group_data_roundtrip() {
     let leaf_a = TestBlob(b"leaf-a".to_vec());
     let leaf_b = TestBlob(b"leaf-b".to_vec());
 
-    let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:")
-        .await
-        .unwrap();
-    let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
+    let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let mut storage = SqliteStorageProvider::<JsonCodec>::new(pool);
     storage.run_migrations().unwrap();
 
     storage
@@ -211,10 +206,8 @@ async fn key_material_roundtrip() {
     let psk_bundle = TestPskBundle(b"psk-bundle".to_vec());
     let leaf_index: u32 = 7;
 
-    let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:")
-        .await
-        .unwrap();
-    let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
+    let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let mut storage = SqliteStorageProvider::<JsonCodec>::new(pool);
     storage.run_migrations().unwrap();
 
     storage

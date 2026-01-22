@@ -14,11 +14,13 @@ openmls_traits = { workspace = true }
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 sqlx = { version = "0.8.6", features = ["sqlite", "migrate", "runtime-tokio"] }
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "macros"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 futures-core = "0.3.31"
 
 [dev-dependencies]
 serde_json = { version = "1.0" }
+openmls_libcrux_crypto = { workspace = true }
+openmls = { workspace = true, features = ["test-utils"] }
 
 [features]
 extensions-draft-08 = ["openmls_traits/extensions-draft-08"]
