@@ -1,7 +1,6 @@
 use core::fmt::Debug;
 use std::mem;
 
-#[cfg(feature = "extensions-draft-08")]
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::storage::StorageProvider as _;
 use serde::{Deserialize, Serialize};
@@ -17,10 +16,12 @@ use super::{
     Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
 };
 use crate::group::diff::PublicGroupDiff;
+use crate::group::GroupEpoch;
 use crate::prelude::{Commit, LeafNodeIndex};
 #[cfg(feature = "extensions-draft-08")]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 
+use crate::treesync::RatchetTree;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     framing::mls_auth_content::AuthenticatedContent,
@@ -580,6 +581,29 @@ impl StagedCommit {
         }
     }
 
+    /// Returns the epoch that this commit moves the group into
+    pub fn epoch(&self) -> GroupEpoch {
+        self.group_context().epoch()
+    }
+
+    /// Returns the ratchet tree of the staged commit state.
+    pub fn export_ratchet_tree(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        original_tree: RatchetTree,
+    ) -> Option<RatchetTree> {
+        match &self.state {
+            StagedCommitState::PublicState(public_staged_commit_state) => None,
+            StagedCommitState::GroupMember(member_staged_commit_state) => Some(
+                member_staged_commit_state
+                    .staged_diff
+                    .export_ratchet_tree(crypto, self.group_context().ciphersuite(), original_tree)
+                    // XXX: figure out error handling
+                    .ok()?,
+            ),
+        }
+    }
+
     /// Returns the Add proposals that are covered by the Commit message as in iterator over [QueuedAddProposal].
     pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal<'_>> {
         self.staged_proposal_queue.add_proposals()
@@ -727,6 +751,45 @@ impl StagedCommit {
         let secret =
             application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
         Ok(secret.as_slice().to_vec())
+    }
+
+    /// Exports a secret from the epoch that the staged commit moves to.
+    /// Returns [`ExportSecretError::KeyLengthTooLong`] if the requested
+    /// key length is too long.
+    /// Returns [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`]
+    /// if the commit removed us from the group.
+    ///
+    /// [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`]: MlsGroupStateError::UseAfterEviction
+    pub fn export_secret<CryptoProvider: OpenMlsCrypto>(
+        &self,
+        crypto: &CryptoProvider,
+        label: &str,
+        context: &[u8],
+        key_length: usize,
+    ) -> Result<Vec<u8>, ExportSecretError> {
+        if key_length > u16::MAX as usize {
+            log::error!("Got a key that is larger than u16::MAX");
+            return Err(ExportSecretError::KeyLengthTooLong);
+        }
+
+        match &self.state {
+            StagedCommitState::PublicState(public_staged_commit_state) => Err(
+                ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction),
+            ),
+            StagedCommitState::GroupMember(member_staged_commit_state) => {
+                Ok(member_staged_commit_state
+                    .group_epoch_secrets
+                    .exporter_secret()
+                    .derive_exported_secret(
+                        self.group_context().ciphersuite(),
+                        crypto,
+                        label,
+                        context,
+                        key_length,
+                    )
+                    .map_err(LibraryError::unexpected_crypto_error)?)
+            }
+        }
     }
 }
 

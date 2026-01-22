@@ -14,7 +14,10 @@ use super::errors::ApplyAppDataUpdateError;
 
 use super::PublicGroup;
 use crate::{
-    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
+    binary_tree::{
+        array_representation::{tree::ABinaryTree, TreeSize},
+        LeafNodeIndex,
+    },
     error::LibraryError,
     extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, public_message::InterimTranscriptHashInput},
@@ -29,7 +32,7 @@ use crate::{
             parent_node::PlainUpdatePathNode,
         },
         treekem::{DecryptPathParams, UpdatePath, UpdatePathNode},
-        RatchetTree,
+        RatchetTree, TreeSync,
     },
 };
 
@@ -251,5 +254,19 @@ impl StagedPublicGroupDiff {
     /// Get the staged [`GroupContext`].
     pub(crate) fn group_context(&self) -> &GroupContext {
         &self.group_context
+    }
+
+    /// Export the staged [`RatchetTree`]
+    pub(crate) fn export_ratchet_tree(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        original_tree: RatchetTree,
+    ) -> Result<RatchetTree, ()> {
+        let original_tree_sync =
+            TreeSync::from_ratchet_tree(crypto, ciphersuite, original_tree).map_err(|_| ())?;
+        Ok(self
+            .staged_diff
+            .export_ratchet_tree(&original_tree_sync.tree()))
     }
 }
