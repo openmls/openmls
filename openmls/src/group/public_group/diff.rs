@@ -15,7 +15,7 @@ use super::errors::ApplyAppDataUpdateError;
 use super::PublicGroup;
 use crate::{
     binary_tree::{
-        array_representation::{tree::ABinaryTree, TreeSize},
+        array_representation::TreeSize,
         LeafNodeIndex,
     },
     error::LibraryError,
@@ -267,6 +267,6 @@ impl StagedPublicGroupDiff {
             TreeSync::from_ratchet_tree(crypto, ciphersuite, original_tree).map_err(|_| ())?;
         Ok(self
             .staged_diff
-            .export_ratchet_tree(&original_tree_sync.tree()))
+            .export_ratchet_tree(original_tree_sync.tree()))
     }
 }

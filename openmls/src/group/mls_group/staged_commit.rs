@@ -596,7 +596,7 @@ impl StagedCommit {
         original_tree: RatchetTree,
     ) -> Option<RatchetTree> {
         match &self.state {
-            StagedCommitState::PublicState(public_staged_commit_state) => None,
+            StagedCommitState::PublicState(_public_staged_commit_state) => None,
             StagedCommitState::GroupMember(member_staged_commit_state) => Some(
                 member_staged_commit_state
                     .staged_diff
@@ -787,7 +787,7 @@ impl StagedCommit {
         }
 
         match &self.state {
-            StagedCommitState::PublicState(public_staged_commit_state) => Err(
+            StagedCommitState::PublicState(_public_staged_commit_state) => Err(
                 ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction),
             ),
             StagedCommitState::GroupMember(member_staged_commit_state) => {
