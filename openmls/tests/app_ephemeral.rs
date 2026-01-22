@@ -1,7 +1,6 @@
 #![cfg(feature = "extensions-draft-08")]
 
-use openmls::prelude::*;
-use openmls::test_utils::single_group_test_framework::*;
+use openmls::{component::ComponentId, prelude::*, test_utils::single_group_test_framework::*};
 
 // TODO: reduce boilerplate in tests using the single_group_test_framework, once it allows
 // including Capabilities for joining members.

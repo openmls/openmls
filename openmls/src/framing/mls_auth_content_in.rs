@@ -21,6 +21,9 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals_in::ProposalOrRefIn;
+
 #[cfg(doc)]
 use super::{PrivateMessageIn, PublicMessageIn};
 
@@ -187,6 +190,13 @@ impl VerifiableAuthenticatedContentIn {
     pub(crate) fn content_type(&self) -> ContentType {
         self.tbs.content.body.content_type()
     }
+
+    /// If this message is a commit, this returns the unverified list of committed porposals.
+    /// Otherwise it returns `None`.
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
+        self.tbs.content.proposals()
+    }
 }
 
 impl Verifiable for VerifiableAuthenticatedContentIn {
@@ -223,7 +233,11 @@ impl Verifiable for VerifiableAuthenticatedContentIn {
 impl VerifiedStruct for AuthenticatedContentIn {}
 
 impl SignedStruct<FramedContentTbsIn> for AuthenticatedContentIn {
-    fn from_payload(tbs: FramedContentTbsIn, signature: Signature) -> Self {
+    fn from_payload(
+        tbs: FramedContentTbsIn,
+        signature: Signature,
+        _serialized_payload: Vec<u8>,
+    ) -> Self {
         let auth = FramedContentAuthData {
             signature,
             // Tags must always be added after the signature

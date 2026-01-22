@@ -1,8 +1,9 @@
-use super::proposal_store::{ProposalQueue, QueuedAppEphemeralProposal};
-
-use crate::extensions::ComponentId;
-
 use std::collections::BTreeSet;
+
+use crate::{
+    component::ComponentId,
+    group::proposal_store::{ProposalQueue, QueuedAppEphemeralProposal},
+};
 
 impl ProposalQueue {
     /// Return an iterator over the [`QueuedAppEphemeralProposal`]s in the proposal queue,

@@ -151,6 +151,11 @@ pub enum ProcessMessageError<StorageError> {
     /// The proposal is invalid for the Sender of type [External](crate::prelude::Sender::External)
     #[error("The proposal is invalid for the Sender of type External")]
     UnsupportedProposalType,
+
+    /// Use `_with_app_data_update` functions for handling AppDataUpdate proposals
+    #[cfg(feature = "extensions-draft-08")]
+    #[error("Use `_with_app_data_update` functions for handling AppDataUpdate proposals")]
+    FoundAppDataUpdateProposal,
 }
 
 /// Create message error
@@ -373,6 +378,9 @@ pub enum ExportGroupInfoError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// See [`InvalidExtensionError`] for more details.
+    #[error(transparent)]
+    InvalidExtensionError(#[from] InvalidExtensionError),
 }
 
 /// Export secret error

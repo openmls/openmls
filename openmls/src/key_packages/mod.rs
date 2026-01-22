@@ -175,10 +175,26 @@ impl From<KeyPackage> for KeyPackageTbs {
 }
 
 /// The key package struct.
-#[derive(Debug, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TlsSize)]
 pub struct KeyPackage {
     payload: KeyPackageTbs,
     signature: Signature,
+    #[serde(skip)]
+    #[tls_codec(skip)]
+    serialized_payload: Option<Vec<u8>>,
+}
+
+impl TlsSerializeTrait for KeyPackage {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let mut written = 0;
+        if let Some(ref bytes) = self.serialized_payload {
+            written += writer.write(bytes)?;
+        } else {
+            written += self.payload.tls_serialize(writer)?;
+        }
+        written += self.signature.tls_serialize(writer)?;
+        Ok(written)
+    }
 }
 
 impl PartialEq for KeyPackage {
@@ -190,8 +206,16 @@ impl PartialEq for KeyPackage {
 }
 
 impl SignedStruct<KeyPackageTbs> for KeyPackage {
-    fn from_payload(payload: KeyPackageTbs, signature: Signature) -> Self {
-        Self { payload, signature }
+    fn from_payload(
+        payload: KeyPackageTbs,
+        signature: Signature,
+        serialized_payload: Vec<u8>,
+    ) -> Self {
+        Self {
+            payload,
+            signature,
+            serialized_payload: Some(serialized_payload),
+        }
     }
 }
 
@@ -522,6 +546,7 @@ impl KeyPackageBuilder {
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageBundle, KeyPackageNewError> {
         self.ensure_last_resort();
+
         let KeyPackageCreationResult {
             key_package,
             encryption_keypair,

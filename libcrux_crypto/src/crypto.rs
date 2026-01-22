@@ -33,8 +33,7 @@ impl CryptoProvider {
 impl OpenMlsCrypto for CryptoProvider {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
         match ciphersuite.aead_algorithm() {
-            AeadType::ChaCha20Poly1305 => Ok(()),
-            _ => Err(CryptoError::UnsupportedCiphersuite),
+            AeadType::ChaCha20Poly1305 | AeadType::Aes128Gcm | AeadType::Aes256Gcm => Ok(()),
         }?;
 
         match ciphersuite.signature_algorithm() {
@@ -56,8 +55,11 @@ impl OpenMlsCrypto for CryptoProvider {
 
     fn supported_ciphersuites(&self) -> Vec<Ciphersuite> {
         vec![
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
+            // TODO: enable
+            //Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         ]
     }
 
@@ -68,12 +70,15 @@ impl OpenMlsCrypto for CryptoProvider {
         ikm: &[u8],
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hkdf_alg(hash_type);
-        let out = libcrux_hkdf::extract(alg, salt, ikm).map_err(|e| match e {
-            libcrux_hkdf::Error::ArgumentsTooLarge => CryptoError::InvalidLength,
-            _ => CryptoError::CryptoLibraryError,
-        })?;
 
-        Ok(out.into())
+        let mut prk = vec![0u8; alg.hash_len()];
+
+        libcrux_hkdf::extract(alg, &mut prk, salt, ikm)
+            .map_err(|e| match e {
+                libcrux_hkdf::ExtractError::ArgumentTooLong => CryptoError::InvalidLength,
+                _ => CryptoError::CryptoLibraryError,
+            })
+            .map(|_| prk.into())
     }
 
     fn hmac(
@@ -96,12 +101,17 @@ impl OpenMlsCrypto for CryptoProvider {
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hkdf_alg(hash_type);
 
-        libcrux_hkdf::expand(alg, prk, info, okm_len)
+        let mut okm = vec![0u8; okm_len];
+
+        libcrux_hkdf::expand(alg, &mut okm, prk, info)
             .map_err(|e| match e {
-                libcrux_hkdf::Error::OkmTooLarge => CryptoError::HkdfOutputLengthInvalid,
-                libcrux_hkdf::Error::ArgumentsTooLarge => CryptoError::InvalidLength,
+                libcrux_hkdf::ExpandError::OutputTooLong => CryptoError::HkdfOutputLengthInvalid,
+                libcrux_hkdf::ExpandError::ArgumentTooLong => CryptoError::InvalidLength,
+                // TODO: Potentially extend `CryptoError` with a variant for the `PrkTooShort` case
+                libcrux_hkdf::ExpandError::PrkTooShort => CryptoError::InvalidLength,
+                libcrux_hkdf::ExpandError::Unknown => CryptoError::CryptoLibraryError,
             })
-            .map(<Vec<u8> as Into<SecretVLBytes>>::into)
+            .map(|_| okm.into())
     }
 
     fn hash(&self, hash_type: HashType, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
@@ -122,20 +132,28 @@ impl OpenMlsCrypto for CryptoProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        // The only supported AeadType (as of openmls_traits v0.3.0) is ChaCha20Poly1305
-        if !matches!(alg, AeadType::ChaCha20Poly1305) {
-            return Err(CryptoError::UnsupportedAeadAlgorithm);
-        }
+        let alg = aead_alg(alg);
 
-        use libcrux_chacha20poly1305::TAG_LEN;
+        use libcrux_traits::aead::typed_refs::Aead as _;
 
-        // only fails on wrong length
-        let iv = <&[u8; 12]>::try_from(nonce).map_err(|_| CryptoError::InvalidLength)?;
+        // set up buffers for ptxt, ctxt and tag
+        let mut msg_ctxt: Vec<u8> = vec![0; data.len() + alg.tag_len()];
+        let (msg, tag) = msg_ctxt.split_at_mut(data.len());
 
-        let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
+        // set up nonce
+        let nonce = alg
+            .new_nonce(nonce)
+            .map_err(|_| CryptoError::InvalidLength)?;
 
-        let mut msg_ctxt: Vec<u8> = vec![0; data.len() + TAG_LEN];
-        libcrux_chacha20poly1305::encrypt(key, data, &mut msg_ctxt, aad, iv)
+        // set up key
+        let key = alg.new_key(key).map_err(|_| CryptoError::InvalidLength)?;
+
+        // set up tag
+        let tag = alg
+            .new_tag_mut(tag)
+            .map_err(|_| CryptoError::InvalidLength)?;
+
+        key.encrypt(msg, tag, nonce, aad, data)
             .map_err(|_| CryptoError::CryptoLibraryError)?;
 
         Ok(msg_ctxt)
@@ -149,32 +167,38 @@ impl OpenMlsCrypto for CryptoProvider {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        // The only supported AeadType (as of openmls_traits v0.4.0) is ChaCha20Poly1305
-        if !matches!(alg, AeadType::ChaCha20Poly1305) {
-            return Err(CryptoError::UnsupportedAeadAlgorithm);
-        }
-        use libcrux_chacha20poly1305::TAG_LEN;
+        let alg = aead_alg(alg);
 
-        if ct_tag.len() < TAG_LEN {
+        use libcrux_traits::aead::typed_refs::{Aead as _, DecryptError};
+
+        if ct_tag.len() < alg.tag_len() {
             return Err(CryptoError::InvalidLength);
         }
 
-        let boundary = ct_tag.len() - TAG_LEN;
+        let boundary = ct_tag.len() - alg.tag_len();
 
+        // set up buffers for ptext, ctext, and tag
         let mut ptext = vec![0; boundary];
+        let (ctext, tag) = ct_tag.split_at(boundary);
 
-        let iv = <&[u8; 12]>::try_from(nonce).map_err(|_| CryptoError::InvalidLength)?;
+        // set up nonce
+        let nonce = alg
+            .new_nonce(nonce)
+            .map_err(|_| CryptoError::InvalidLength)?;
 
-        let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
+        // set up key
+        let key = alg.new_key(key).map_err(|_| CryptoError::InvalidLength)?;
 
-        libcrux_chacha20poly1305::decrypt(key, &mut ptext, ct_tag, aad, iv).map_err(
-            |e| match e {
-                libcrux_chacha20poly1305::AeadError::InvalidCiphertext => {
-                    CryptoError::AeadDecryptionError
-                }
+        // set up tag
+        let tag = alg.new_tag(tag).map_err(|_| CryptoError::InvalidLength)?;
+
+        key.decrypt(&mut ptext, nonce, aad, ctext, tag)
+            .map_err(|e| match e {
+                DecryptError::InvalidTag => CryptoError::AeadDecryptionError,
+                DecryptError::AadTooLong => CryptoError::InvalidLength,
+
                 _ => CryptoError::CryptoLibraryError,
-            },
-        )?;
+            })?;
 
         Ok(ptext)
     }
@@ -401,6 +425,14 @@ fn hash_alg(hash_type: HashType) -> libcrux_hmac::Algorithm {
         HashType::Sha2_256 => libcrux_hmac::Algorithm::Sha256,
         HashType::Sha2_384 => libcrux_hmac::Algorithm::Sha384,
         HashType::Sha2_512 => libcrux_hmac::Algorithm::Sha512,
+    }
+}
+
+fn aead_alg(alg_type: AeadType) -> libcrux_aead::Aead {
+    match alg_type {
+        AeadType::ChaCha20Poly1305 => libcrux_aead::Aead::ChaCha20Poly1305,
+        AeadType::Aes128Gcm => libcrux_aead::Aead::AesGcm128,
+        AeadType::Aes256Gcm => libcrux_aead::Aead::AesGcm256,
     }
 }
 

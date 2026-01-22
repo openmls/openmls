@@ -30,10 +30,14 @@ jobs:
       - name: Install dependencies
         if: matrix.os == 'macos-latest'
         run: brew install protobuf
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build workspace
         run: cargo build --workspace --all-targets --exclude openmls-fuzz
       - name: Test workspace
         run: cargo test --workspace --all-targets --exclude=openmls --exclude openmls-fuzz
+      - name: Build workspace with `extensions-draft-08` feature
+        run: cargo build --workspace -F extensions-draft-08 --all-targets --exclude openmls-fuzz
+      - name: Test workspace with `extensions-draft-08` feature
+        run: cargo test --workspace -F extensions-draft-08 --all-targets --exclude=openmls --exclude openmls-fuzz

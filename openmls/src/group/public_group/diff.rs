@@ -9,6 +9,9 @@ use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
+#[cfg(feature = "extensions-draft-08")]
+use super::errors::ApplyAppDataUpdateError;
+
 use super::PublicGroup;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
@@ -120,7 +123,6 @@ impl<'a> PublicGroupDiff<'a> {
     ///
     /// ValSem203: Path secrets must decrypt correctly
     /// ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-    /// TODO #804
     pub(crate) fn decrypt_path(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -158,7 +160,6 @@ impl<'a> PublicGroupDiff<'a> {
     ///
     /// Returns an error if the `sender_leaf_index` is outside of the tree.
     /// ValSem202: Path must be the right length
-    /// TODO #804
     pub(crate) fn apply_received_update_path(
         &mut self,
         crypto: &impl OpenMlsCrypto,

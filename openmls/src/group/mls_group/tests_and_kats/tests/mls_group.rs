@@ -1565,7 +1565,36 @@ fn builder_pattern() {
     assert_eq!(lifetime, &test_lifetime);
     let own_leaf = alice_group.own_leaf_node().expect("can't find own leaf");
     let capabilities = own_leaf.capabilities();
-    assert_eq!(capabilities, &test_capabilities);
+    // Check that all non-GREASE capabilities match
+    // Filter out GREASE values for comparison since they're automatically injected
+    let filtered_ciphersuites: Vec<_> = capabilities
+        .ciphersuites()
+        .iter()
+        .filter(|cs| !cs.is_grease())
+        .copied()
+        .collect();
+    let filtered_extensions: Vec<_> = capabilities
+        .extensions()
+        .iter()
+        .filter(|ext| !ext.is_grease())
+        .copied()
+        .collect();
+    let filtered_proposals: Vec<_> = capabilities
+        .proposals()
+        .iter()
+        .filter(|prop| !prop.is_grease())
+        .copied()
+        .collect();
+    let filtered_credentials: Vec<_> = capabilities
+        .credentials()
+        .iter()
+        .filter(|cred| !cred.is_grease())
+        .copied()
+        .collect();
+    assert_eq!(filtered_ciphersuites, test_capabilities.ciphersuites());
+    assert_eq!(filtered_extensions, test_capabilities.extensions());
+    assert_eq!(filtered_proposals, test_capabilities.proposals());
+    assert_eq!(filtered_credentials, test_capabilities.credentials());
     let leaf_extensions = own_leaf.extensions();
     assert_eq!(leaf_extensions, &test_leaf_extensions);
 
@@ -2459,6 +2488,7 @@ fn failed_groupinfo_decryption() {
             confirmation_tag,
             LeafNodeIndex::new(0),
         )
+        .unwrap()
     };
 
     // Generate key and nonce for the symmetric cipher.
