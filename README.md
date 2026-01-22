@@ -57,6 +57,11 @@ are two different cryptography providers implemented right now. But consumers
 can bring their own implementation. See [traits](https://github.com/openmls/openmls/tree/main/traits) for more
 details.
 
+## Storage Providers
+
+Storage operations in OpenMLS are provided through storage providers. Consumers
+can bring their own implementation. See [storage](https://github.com/openmls/openmls/tree/main/traits#storageprovider) for more details.
+
 ## Features
 OpenMLS provides the following features
 
