@@ -29,7 +29,10 @@ use crate::{
         diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff},
         staged_commit::PublicStagedCommitState,
     },
-    schedule::{CommitSecret, EpochAuthenticator, EpochSecretsResult, InitSecret, PreSharedKeyId},
+    schedule::{
+        CommitSecret, EpochAuthenticator, EpochSecretsResult, InitSecret, PreSharedKeyId,
+        ResumptionPskSecret,
+    },
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
@@ -730,6 +733,17 @@ impl StagedCommit {
     pub fn epoch_authenticator(&self) -> Option<&EpochAuthenticator> {
         if let StagedCommitState::GroupMember(ref gm) = self.state {
             Some(gm.group_epoch_secrets.epoch_authenticator())
+        } else {
+            None
+        }
+    }
+
+    /// Returns the [`ResumptionPskSecret`] of the staged commit state if the
+    /// owner of the originating group state is a member of the group. Returns
+    /// `None` otherwise.
+    pub fn resumption_psk_secret(&self) -> Option<&ResumptionPskSecret> {
+        if let StagedCommitState::GroupMember(ref gm) = self.state {
+            Some(gm.group_epoch_secrets.resumption_psk())
         } else {
             None
         }
