@@ -513,6 +513,9 @@ pub enum ExternalCommitValidationError {
     /// External commit contains referenced proposal
     #[error("Found a referenced proposal in an External Commit.")]
     ReferencedProposal,
+    /// External committer's leaf node does not support all group context extensions.
+    #[error("External committer's leaf node does not support all group context extensions.")]
+    UnsupportedGroupContextExtensions,
 }
 
 /// Create add proposal error

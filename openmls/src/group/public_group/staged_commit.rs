@@ -71,8 +71,22 @@ impl PublicGroup {
         if sender == &Sender::NewMemberCommit {
             // External commit, there MUST be a path
             // https://validation.openmls.tech/#valn0405
-            if commit.path.is_none() {
+            let Some(path) = &commit.path else {
                 return Err(ExternalCommitValidationError::NoPath.into());
+            };
+
+            // External Commit, The capabilities of the leaf node in the path MUST support all
+            // group context extensions.
+            // https://validation.openmls.tech/#valn0502
+            let leaf_nodes_supports_group_context_extensions = path
+                .leaf_node()
+                .capabilities()
+                .contains_extensions(self.group_context().extensions());
+
+            if !leaf_nodes_supports_group_context_extensions {
+                return Err(
+                    ExternalCommitValidationError::UnsupportedGroupContextExtensions.into(),
+                );
             }
 
             // ValSem244: External Commit, There MUST NOT be any referenced proposals.
