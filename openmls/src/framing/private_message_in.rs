@@ -46,6 +46,11 @@ pub struct PrivateMessageIn {
 }
 
 impl PrivateMessageIn {
+    /// Retrieve the AAD from the [`PrivateMessageIn`]
+    pub fn aad(&self) -> &[u8] {
+        self.authenticated_data.as_slice()
+    }
+
     /// Decrypt the sender data from this [`PrivateMessageIn`].
     pub(crate) fn sender_data(
         &self,
