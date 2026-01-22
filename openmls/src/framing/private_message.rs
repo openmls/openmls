@@ -302,11 +302,6 @@ impl PrivateMessage {
     pub(crate) fn ciphertext(&self) -> &[u8] {
         self.ciphertext.as_slice()
     }
-
-    /// Retrieve the additional authenticated data (AAD) from the [`PrivateMessage`].
-    pub(crate) fn aad(&self) -> &[u8] {
-        self.authenticated_data.as_slice()
-    }
 }
 
 #[derive(TlsSerialize, TlsSize)]
