@@ -303,8 +303,8 @@ impl PrivateMessage {
         self.ciphertext.as_slice()
     }
 
-    /// Retrieve the AAD from the [`PrivateMessage`]
-    pub fn aad(&self) -> &[u8] {
+    /// Retrieve the additional authenticated data (AAD) from the [`PrivateMessage`].
+    pub(crate) fn aad(&self) -> &[u8] {
         self.authenticated_data.as_slice()
     }
 }
