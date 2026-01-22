@@ -58,9 +58,8 @@ can bring their own implementation. See [traits](https://github.com/openmls/open
 details.
 
 ## Storage Providers
-
-Storage operations in OpenMLS are provided through storage providers. Consumers
-can bring their own implementation. See [storage](https://github.com/openmls/openmls/tree/main/traits#storageprovider) for more details.
+Storage providers in OpenMLS store state associated with groups.
+See [storage](https://github.com/openmls/openmls/tree/main/traits#storageprovider) for more details.
 
 ## Features
 OpenMLS provides the following features
