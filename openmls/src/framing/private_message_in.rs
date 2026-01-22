@@ -46,7 +46,9 @@ pub struct PrivateMessageIn {
 }
 
 impl PrivateMessageIn {
-    /// Retrieve the AAD from the [`PrivateMessageIn`]
+    /// Retrieve the additional authenticated data (AAD) from the [`PrivateMessageIn`].
+    ///
+    /// NOTE: This AAD is unverified.
     pub fn aad(&self) -> &[u8] {
         self.authenticated_data.as_slice()
     }
