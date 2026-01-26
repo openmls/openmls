@@ -2,9 +2,7 @@
 
 use openmls::{
     prelude::*,
-    test_utils::single_group_test_framework::{
-        AddMemberConfig, CorePartyState, GroupState,
-    },
+    test_utils::single_group_test_framework::{AddMemberConfig, CorePartyState, GroupState},
     treesync::LeafNodeParameters,
 };
 use openmls_test::openmls_test;
@@ -32,25 +30,25 @@ fn staged_commit_next_epoch_values_match_merged_group() {
 
     // 4. Initialize group with Alice
     let group_id = GroupId::from_slice(b"test-group");
-    let mut group_state = GroupState::new_from_party(
-        group_id,
-        alice_pre_group,
-        create_config,
-    ).unwrap();
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, create_config).unwrap();
 
     // 5. Add Bob using framework
-    group_state.add_member(AddMemberConfig {
-        adder: "alice",
-        addees: vec![bob_pre_group],
-        join_config,
-        tree: None,
-    }).unwrap();
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config,
+            tree: None,
+        })
+        .unwrap();
 
     // === Manual operations to capture StagedCommit ===
 
     // 6. Bob performs self-update
     let [bob] = group_state.members_mut(&["bob"]);
-    let (commit_msg, _, _) = bob.group
+    let (commit_msg, _, _) = bob
+        .group
         .self_update(
             &bob.party.core_state.provider,
             &bob.party.signer,
@@ -60,11 +58,14 @@ fn staged_commit_next_epoch_values_match_merged_group() {
         .into_contents();
 
     // 7. Bob merges his pending commit
-    bob.group.merge_pending_commit(&bob.party.core_state.provider).unwrap();
+    bob.group
+        .merge_pending_commit(&bob.party.core_state.provider)
+        .unwrap();
 
     // 8. Alice processes the commit to capture StagedCommit
     let [alice] = group_state.members_mut(&["alice"]);
-    let processed = alice.group
+    let processed = alice
+        .group
         .process_message(
             &alice.party.core_state.provider,
             commit_msg.into_protocol_message().unwrap(),
@@ -83,7 +84,12 @@ fn staged_commit_next_epoch_values_match_merged_group() {
     let staged_auth = staged_commit.epoch_authenticator().unwrap().clone();
     let staged_psk = staged_commit.resumption_psk_secret().unwrap().clone();
     let staged_export = staged_commit
-        .export_secret(alice.party.core_state.provider.crypto(), "test-label", b"ctx", 32)
+        .export_secret(
+            alice.party.core_state.provider.crypto(),
+            "test-label",
+            b"ctx",
+            32,
+        )
         .unwrap();
     let staged_ctx = staged_commit.group_context().clone();
     let original_tree = alice.group.export_ratchet_tree();
@@ -92,7 +98,8 @@ fn staged_commit_next_epoch_values_match_merged_group() {
         .unwrap();
 
     // 9. Alice merges the staged commit
-    alice.group
+    alice
+        .group
         .merge_staged_commit(&alice.party.core_state.provider, *staged_commit)
         .unwrap();
 
@@ -108,8 +115,14 @@ fn staged_commit_next_epoch_values_match_merged_group() {
     );
     assert_eq!(
         staged_export,
-        alice.group
-            .export_secret(alice.party.core_state.provider.crypto(), "test-label", b"ctx", 32)
+        alice
+            .group
+            .export_secret(
+                alice.party.core_state.provider.crypto(),
+                "test-label",
+                b"ctx",
+                32
+            )
             .unwrap()
     );
     assert_eq!(staged_tree, alice.group.export_ratchet_tree());
@@ -141,18 +154,17 @@ fn staged_commit_self_removed_returns_none() {
 
     // 4. Initialize group with Alice and add Bob
     let group_id = GroupId::from_slice(b"test-group");
-    let mut group_state = GroupState::new_from_party(
-        group_id,
-        alice_pre_group,
-        create_config,
-    ).unwrap();
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, create_config).unwrap();
 
-    group_state.add_member(AddMemberConfig {
-        adder: "alice",
-        addees: vec![bob_pre_group],
-        join_config,
-        tree: None,
-    }).unwrap();
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config,
+            tree: None,
+        })
+        .unwrap();
 
     // === Manual operations to capture StagedCommit ===
 
@@ -162,7 +174,8 @@ fn staged_commit_self_removed_returns_none() {
 
     // 6. Alice removes Bob
     let [alice] = group_state.members_mut(&["alice"]);
-    let (remove_msg, _, _) = alice.group
+    let (remove_msg, _, _) = alice
+        .group
         .remove_members(
             &alice.party.core_state.provider,
             &alice.party.signer,
@@ -171,11 +184,15 @@ fn staged_commit_self_removed_returns_none() {
         .unwrap();
 
     // 7. Alice merges her pending commit
-    alice.group.merge_pending_commit(&alice.party.core_state.provider).unwrap();
+    alice
+        .group
+        .merge_pending_commit(&alice.party.core_state.provider)
+        .unwrap();
 
     // 8. Bob processes the removal commit to capture StagedCommit
     let [bob] = group_state.members_mut(&["bob"]);
-    let processed = bob.group
+    let processed = bob
+        .group
         .process_message(
             &bob.party.core_state.provider,
             remove_msg.into_protocol_message().unwrap(),
@@ -198,7 +215,12 @@ fn staged_commit_self_removed_returns_none() {
         .is_none());
 
     assert!(staged_commit
-        .export_secret(bob.party.core_state.provider.crypto(), "test-label", b"ctx", 32)
+        .export_secret(
+            bob.party.core_state.provider.crypto(),
+            "test-label",
+            b"ctx",
+            32
+        )
         .is_err());
 
     // group_context and epoch are still accessible (public state)

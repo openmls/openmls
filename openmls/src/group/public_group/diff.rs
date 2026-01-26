@@ -14,10 +14,7 @@ use super::errors::ApplyAppDataUpdateError;
 
 use super::PublicGroup;
 use crate::{
-    binary_tree::{
-        array_representation::TreeSize,
-        LeafNodeIndex,
-    },
+    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     error::LibraryError,
     extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, public_message::InterimTranscriptHashInput},
