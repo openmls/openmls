@@ -17,8 +17,8 @@ use crate::{
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
-        ProposalQueue, ProposalQueueError, ProposalValidationError, QueuedProposal,
-        RatchetTreeExtension, StagedCommit, WireFormatPolicy,
+        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
+        WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
@@ -31,6 +31,7 @@ use crate::{
         EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId,
     },
     storage::{OpenMlsProvider, StorageProvider},
+    treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
 };
 
@@ -548,17 +549,33 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .as_ref()
             .map(|path| path.leaf_node().clone());
 
-        // Validate the update path leaf node's capabilities against required capabilities
-        // https://validation.openmls.tech/#valn0103
+        // Validate that the update path leaf node's capabilities
         if let Some(ref leaf_node) = update_path_leaf_node {
-            let capabilities = leaf_node.capabilities();
-            // Use the diff's group context which has the potentially updated extensions
+            // Check that all extension types in the group context that are valid in leaf nodes
+            // are supported by the leaf node
+            //
+            // This is currently not required by the RFC, likely by mistake:
+            // https://mailarchive.ietf.org/arch/msg/mls/k18P4FP7dfS2cBmP0kL6Uh50-ok/
+            if !diff
+                .group_context()
+                .extensions()
+                .iter()
+                .map(Extension::extension_type)
+                .all(|ext_type| leaf_node.supports_extension(&ext_type))
+            {
+                return Err(CreateCommitError::LeafNodeValidation(
+                    LeafNodeValidationError::UnsupportedExtensions,
+                ));
+            }
+
+            // Check that the leaf node supports everything listed in the required capabilities.
+            // https://validation.openmls.tech/#valn0103
             if let Some(required_capabilities) =
                 diff.group_context().extensions().required_capabilities()
             {
-                capabilities
-                    .supports_required_capabilities(required_capabilities)
-                    .map_err(ProposalValidationError::from)?;
+                leaf_node
+                    .capabilities()
+                    .supports_required_capabilities(required_capabilities)?
             }
         }
 

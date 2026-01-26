@@ -316,6 +316,13 @@ pub enum CreateCommitError {
     /// Invalid external commit.
     #[error("Invalid external commit.")]
     InvalidExternalCommit(#[from] ExternalCommitValidationError),
+    /// See [`ApplyAppDataUpdateError`] for more details.
+    #[cfg(feature = "extensions-draft-08")]
+    #[error(transparent)]
+    ApplyAppDataUpdateError(#[from] ApplyAppDataUpdateError),
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 /// Stage commit error
