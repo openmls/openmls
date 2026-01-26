@@ -17,8 +17,8 @@ use crate::{
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
-        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
-        WireFormatPolicy,
+        ProposalQueue, ProposalQueueError, ProposalValidationError, QueuedProposal,
+        RatchetTreeExtension, StagedCommit, WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
@@ -513,6 +513,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     cur_stage.leaf_node_parameters.set_credential_with_key(
                         new_signer.credential_with_key,
                     );
+
                     diff.compute_path(
                         rand,
                         crypto,
@@ -546,6 +547,20 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .encrypted_path
             .as_ref()
             .map(|path| path.leaf_node().clone());
+
+        // Validate the update path leaf node's capabilities against required capabilities
+        // https://validation.openmls.tech/#valn0103
+        if let Some(ref leaf_node) = update_path_leaf_node {
+            let capabilities = leaf_node.capabilities();
+            // Use the diff's group context which has the potentially updated extensions
+            if let Some(required_capabilities) =
+                diff.group_context().extensions().required_capabilities()
+            {
+                capabilities
+                    .supports_required_capabilities(required_capabilities)
+                    .map_err(ProposalValidationError::from)?;
+            }
+        }
 
         // Create commit message
         let commit = Commit {
