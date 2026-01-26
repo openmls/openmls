@@ -23,7 +23,7 @@ use crate::{
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
     treesync::{
         diff::{StagedTreeSyncDiff, TreeSyncDiff},
-        errors::ApplyUpdatePathError,
+        errors::{ApplyUpdatePathError, TreeSyncFromNodesError},
         node::{
             encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
             parent_node::PlainUpdatePathNode,
@@ -259,9 +259,8 @@ impl StagedPublicGroupDiff {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         original_tree: RatchetTree,
-    ) -> Result<RatchetTree, ()> {
-        let original_tree_sync =
-            TreeSync::from_ratchet_tree(crypto, ciphersuite, original_tree).map_err(|_| ())?;
+    ) -> Result<RatchetTree, TreeSyncFromNodesError> {
+        let original_tree_sync = TreeSync::from_ratchet_tree(crypto, ciphersuite, original_tree)?;
         Ok(self
             .staged_diff
             .export_ratchet_tree(original_tree_sync.tree()))

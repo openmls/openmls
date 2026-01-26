@@ -21,6 +21,7 @@ use crate::prelude::{Commit, LeafNodeIndex};
 #[cfg(feature = "extensions-draft-08")]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 
+use crate::treesync::errors::TreeSyncFromNodesError;
 use crate::treesync::RatchetTree;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
@@ -594,16 +595,16 @@ impl StagedCommit {
         &self,
         crypto: &impl OpenMlsCrypto,
         original_tree: RatchetTree,
-    ) -> Option<RatchetTree> {
+    ) -> Result<Option<RatchetTree>, TreeSyncFromNodesError> {
         match &self.state {
-            StagedCommitState::PublicState(_public_staged_commit_state) => None,
-            StagedCommitState::GroupMember(member_staged_commit_state) => Some(
-                member_staged_commit_state
-                    .staged_diff
-                    .export_ratchet_tree(crypto, self.group_context().ciphersuite(), original_tree)
-                    // XXX: figure out error handling
-                    .ok()?,
-            ),
+            StagedCommitState::PublicState(_public_staged_commit_state) => Ok(None),
+            StagedCommitState::GroupMember(member_staged_commit_state) => Ok(Some(
+                member_staged_commit_state.staged_diff.export_ratchet_tree(
+                    crypto,
+                    self.group_context().ciphersuite(),
+                    original_tree,
+                )?,
+            )),
         }
     }
 

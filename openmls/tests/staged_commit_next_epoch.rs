@@ -95,7 +95,8 @@ fn staged_commit_next_epoch_values_match_merged_group() {
     let original_tree = alice.group.export_ratchet_tree();
     let staged_tree = staged_commit
         .export_ratchet_tree(alice.party.core_state.provider.crypto(), original_tree)
-        .unwrap();
+        .expect("unexpected error exporting the ratchet tree")
+        .expect("there was no ratchet tree");
 
     // 9. Alice merges the staged commit
     alice
@@ -212,6 +213,7 @@ fn staged_commit_self_removed_returns_none() {
     let original_tree = bob.group.export_ratchet_tree();
     assert!(staged_commit
         .export_ratchet_tree(bob.party.core_state.provider.crypto(), original_tree)
+        .expect("when no ratchet tree is there, no exporting operations can fail")
         .is_none());
 
     assert!(staged_commit
