@@ -4,6 +4,9 @@
 
 use thiserror::Error;
 
+#[cfg(feature = "extensions-draft-08")]
+use super::public_group::errors::ApplyAppDataUpdateError;
+
 pub use super::mls_group::errors::*;
 use super::public_group::errors::CreationFromExternalError;
 use crate::{
@@ -14,7 +17,7 @@ use crate::{
     group::commit_builder::external_commits::ExternalCommitBuilderError,
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
-    schedule::errors::PskError,
+    schedule::{errors::PskError, PreSharedKeyId},
     treesync::errors::*,
 };
 
@@ -261,9 +264,20 @@ pub enum StageCommitError {
     GroupContextExtensionsProposalValidationError(
         #[from] GroupContextExtensionsProposalValidationError,
     ),
+    #[cfg(feature = "extensions-draft-08")]
+    /// See [`AppDataUpdateValidationError`] for more details.
+    #[error(transparent)]
+    AppDataUpdateValidationError(#[from] AppDataUpdateValidationError),
     /// See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
+    /// See [`ApplyAppDataUpdateError`] for more details.
+    #[cfg(feature = "extensions-draft-08")]
+    #[error(transparent)]
+    ApplyAppDataUpdateError(#[from] ApplyAppDataUpdateError),
+    /// Duplicate PSK Proposal.
+    #[error("Duplicate PSK proposal with PSK ID {0:?}.")]
+    DuplicatePskId(PreSharedKeyId),
 }
 
 /// Create commit error
@@ -302,6 +316,10 @@ pub enum CreateCommitError {
     /// See [`InvalidExtensionError`] for more details.
     #[error(transparent)]
     InvalidExtensionError(#[from] InvalidExtensionError),
+    #[cfg(feature = "extensions-draft-08")]
+    /// See [`AppDataUpdateValidationError`] for more details.
+    #[error(transparent)]
+    AppDataUpdateValidationError(#[from] AppDataUpdateValidationError),
     /// See [`GroupContextExtensionsProposalValidationError`] for more details.
     #[error(transparent)]
     GroupContextExtensionsProposalValidationError(
@@ -568,6 +586,9 @@ pub(crate) enum FromCommittedProposalsError {
     /// The sender of a Commit tried to remove themselves.
     #[error("The sender of a Commit tried to remove themselves.")]
     SelfRemoval,
+    /// Commit contains two PSK proposals with the same PSK ID.
+    #[error("Commit contains two PSK proposals the PSK ID {0:?}.")]
+    DuplicatePskId(PreSharedKeyId),
 }
 
 /// Create group context ext proposal error
@@ -608,6 +629,37 @@ pub enum MergeCommitError<StorageError> {
     /// Error writing updated group to storage.
     #[error("Error writing updated group data to storage.")]
     StorageError(StorageError),
+}
+
+#[cfg(feature = "extensions-draft-08")]
+/// Error validating an AppDataUpdate proposal.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum AppDataUpdateValidationError {
+    /// [`AppDataUpdateProposal`](crate::messages::proposals::AppDataUpdateProposal)s
+    /// occur before
+    /// [`GroupContextExtensionsProposal`](crate::messages::proposals::GroupContextExtensionProposal)s.
+    #[error("AppDataUpdate proposals occur before GroupContextExtensions proposals.")]
+    IncorrectOrder,
+    /// Attempted to update the [`AppDataDictionary`](crate::extensions::AppDataDictionary)
+    /// in the
+    /// [`GroupContextExtensionsProposal`](crate::messages::proposals::GroupContextExtensionProposal) directly.
+    #[error("Attempted to update the AppDataDictionary in the GroupContextExtensions proposal directly.")]
+    CannotUpdateDictionaryDirectly,
+    /// More than one [`AppDataUpdate]` proposal per [`ComponentId`] had a Remove operation.
+    ///
+    /// [`ComponentId`]: crate::component::ComponentId
+    #[error("More than one AppDataUpdate proposal per ComponentId had a Remove operation.")]
+    MoreThanOneRemovePerComponentId,
+    /// Proposals for a [`ComponentId`] had both Remove and Update operations.
+    ///
+    /// [`ComponentId`]: crate::component::ComponentId
+    #[error("Proposals for a ComponentId had both Remove and Update operations.")]
+    CombinedRemoveAndUpdateOperations,
+    /// Proposals for a [`ComponentId`] had a Remove for a nonexistent component.
+    ///
+    /// [`ComponentId`]: crate::component::ComponentId
+    #[error("Proposals for a ComponentId had a Remove for a nonexistent component.")]
+    CannotRemoveNonexistentComponent,
 }
 
 /// Error validation a GroupContextExtensions proposal.

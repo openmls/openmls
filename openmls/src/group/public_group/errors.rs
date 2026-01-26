@@ -57,3 +57,18 @@ pub enum PublicGroupBuildError {
     #[error("Invalid extensions set in configuration")]
     InvalidExtensions(#[from] InvalidExtensionError),
 }
+
+/// The errors that may occur while applying AppDataUpdate proposals
+#[cfg(feature = "extensions-draft-08")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ApplyAppDataUpdateError {
+    /// Found AppDataUpdate proposals, but was not provided the updated values
+    #[error("Found AppDataUpdate proposals, but was not provided the updated values")]
+    MissingAppDataUpdates,
+    /// No AppDataUpdate proposals found, but was provided updated values
+    #[error("No AppDataUpdate proposals found, but was provided updated values")]
+    SuperfluousAppDataUpdates,
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+}

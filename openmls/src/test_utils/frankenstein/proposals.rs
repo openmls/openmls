@@ -1,4 +1,10 @@
+use serde::{Deserialize, Serialize};
 use tls_codec::*;
+
+#[cfg(feature = "extensions-draft-08")]
+use crate::component::ComponentId;
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals::AppDataUpdateOperation;
 
 use super::{extensions::FrankenExtension, FrankenKeyPackage, FrankenLeafNode};
 
@@ -13,6 +19,8 @@ pub enum FrankenProposalType {
     GroupContextExtensions,
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral,
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate,
     Custom(u16),
 }
 
@@ -26,6 +34,8 @@ impl From<u16> for FrankenProposalType {
             5 => FrankenProposalType::Reinit,
             6 => FrankenProposalType::ExternalInit,
             7 => FrankenProposalType::GroupContextExtensions,
+            #[cfg(feature = "extensions-draft-08")]
+            8 => FrankenProposalType::AppDataUpdate,
             #[cfg(feature = "extensions-draft-08")]
             0x0009 => FrankenProposalType::AppEphemeral,
             other => FrankenProposalType::Custom(other),
@@ -43,6 +53,8 @@ impl From<FrankenProposalType> for u16 {
             FrankenProposalType::Reinit => 5,
             FrankenProposalType::ExternalInit => 6,
             FrankenProposalType::GroupContextExtensions => 7,
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposalType::AppDataUpdate => 8,
             #[cfg(feature = "extensions-draft-08")]
             FrankenProposalType::AppEphemeral => 0x0009,
             FrankenProposalType::Custom(id) => id,
@@ -64,6 +76,8 @@ impl FrankenProposal {
             }
             #[cfg(feature = "extensions-draft-08")]
             FrankenProposal::AppEphemeral(_) => FrankenProposalType::AppEphemeral,
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposal::AppDataUpdate(_) => FrankenProposalType::AppDataUpdate,
             FrankenProposal::Custom(FrankenCustomProposal {
                 proposal_type,
                 payload: _,
@@ -84,7 +98,27 @@ pub enum FrankenProposal {
     GroupContextExtensions(Vec<FrankenExtension>),
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral(FrankenAppEphemeralProposal),
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate(FrankenAppDataUpdateProposal),
     Custom(FrankenCustomProposal),
+}
+
+#[cfg(feature = "extensions-draft-08")]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+)]
+pub struct FrankenAppDataUpdateProposal {
+    pub component_id: ComponentId,
+    pub operation: AppDataUpdateOperation,
 }
 
 #[derive(

@@ -22,8 +22,8 @@ use crate::{
     },
     group::GroupId,
     key_packages::*,
-    prelude::LeafNode,
     schedule::psk::*,
+    treesync::LeafNode,
     versions::ProtocolVersion,
 };
 
@@ -85,6 +85,8 @@ pub enum ProposalType {
     SelfRemove,
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral,
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate,
     Grease(u16),
     Custom(u16),
 }
@@ -103,7 +105,7 @@ impl ProposalType {
             | ProposalType::GroupContextExtensions => true,
             ProposalType::SelfRemove | ProposalType::Grease(_) | ProposalType::Custom(_) => false,
             #[cfg(feature = "extensions-draft-08")]
-            ProposalType::AppEphemeral => false,
+            ProposalType::AppEphemeral | ProposalType::AppDataUpdate => false,
         }
     }
 
@@ -179,6 +181,8 @@ impl From<u16> for ProposalType {
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
             #[cfg(feature = "extensions-draft-08")]
+            8 => ProposalType::AppDataUpdate,
+            #[cfg(feature = "extensions-draft-08")]
             0x0009 => ProposalType::AppEphemeral,
             0x000a => ProposalType::SelfRemove,
             other if crate::grease::is_grease_value(other) => ProposalType::Grease(other),
@@ -197,6 +201,8 @@ impl From<ProposalType> for u16 {
             ProposalType::Reinit => 5,
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalType::AppDataUpdate => 8,
             #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppEphemeral => 0x0009,
             ProposalType::SelfRemove => 0x000a,
@@ -237,6 +243,8 @@ pub enum Proposal {
     ExternalInit(Box<ExternalInitProposal>),
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
     // # Extensions
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate(Box<AppDataUpdateProposal>),
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
     #[cfg(feature = "extensions-draft-08")]
@@ -296,6 +304,8 @@ impl Proposal {
             Proposal::ReInit(_) => ProposalType::Reinit,
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppDataUpdate(_) => ProposalType::AppDataUpdate,
             Proposal::SelfRemove => ProposalType::SelfRemove,
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(_) => ProposalType::AppEphemeral,
@@ -322,7 +332,6 @@ impl Proposal {
             (Proposal::Remove(_), Proposal::Remove(_)) => true,
             // SelfRemoves have the highest priority.
             (_, Proposal::SelfRemove) => true,
-            // All other combinations are invalid
             _ => {
                 debug_assert!(false);
                 false
@@ -585,6 +594,7 @@ pub struct AppEphemeralProposal {
     /// Application data.
     data: VLBytes,
 }
+
 #[cfg(feature = "extensions-draft-08")]
 impl AppEphemeralProposal {
     /// Create a new [`AppEphemeralProposal`].
@@ -690,7 +700,7 @@ pub enum ProposalOrRefType {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 #[repr(u8)]
 #[allow(missing_docs)]
-pub(crate) enum ProposalOrRef {
+pub enum ProposalOrRef {
     #[tls_codec(discriminant = 1)]
     Proposal(Box<Proposal>),
     Reference(Box<ProposalRef>),
@@ -813,6 +823,11 @@ pub(crate) struct MessageRange {
     first_generation: u32,
     last_generation: u32,
 }
+
+#[cfg(feature = "extensions-draft-08")]
+mod app_data_update;
+#[cfg(feature = "extensions-draft-08")]
+pub use app_data_update::*;
 
 /// A custom proposal with semantics to be implemented by the application.
 #[derive(
