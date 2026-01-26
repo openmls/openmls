@@ -15,7 +15,7 @@ libcrux-ed25519 = { version = "0.0.4", features = ["rand"] }
 libcrux-hkdf = { version = "0.0.4" }
 libcrux-sha2 = { version = "0.0.4" }
 libcrux-hmac = { version = "0.0.4" }
-libcrux-traits = { version = "0.0.4" }
+libcrux-traits = { version = "0.0.5" }
 
 openmls_traits = { workspace = true }
 openmls_memory_storage = { workspace = true }
