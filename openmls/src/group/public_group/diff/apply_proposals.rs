@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::{
     binary_tree::LeafNodeIndex,
     error::LibraryError,
+    extensions::Extensions,
     framing::Sender,
     group::proposal_store::ProposalQueue,
     messages::proposals::{AddProposal, ExternalInitProposal, Proposal, ProposalType},
@@ -25,7 +26,7 @@ pub(crate) struct ApplyProposalsValues {
     pub(crate) invitation_list: Vec<(LeafNodeIndex, AddProposal)>,
     pub(crate) presharedkeys: Vec<PreSharedKeyId>,
     pub(crate) external_init_proposal_option: Option<ExternalInitProposal>,
-    pub(crate) extensions: Option<Extensions>,
+    pub(crate) extensions: Option<Extensions<GroupContext>>,
 }
 
 impl ApplyProposalsValues {
@@ -240,7 +241,7 @@ impl PublicGroupDiff<'_> {
     pub(crate) fn apply_app_data_update_proposals(
         &self,
         // group_context_extensions if updated by a GroupContextExtensions proposal
-        updated_group_context_extensions: &mut Option<Extensions>,
+        updated_group_context_extensions: &mut Option<Extensions<GroupContext>>,
         proposal_queue: &ProposalQueue,
         app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<(), ApplyAppDataUpdateError> {

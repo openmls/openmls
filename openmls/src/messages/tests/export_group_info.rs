@@ -5,7 +5,7 @@ use crate::{
     extensions::{errors::InvalidExtensionError, *},
     group::{mls_group::tests_and_kats::utils::setup_alice_group, ExportGroupInfoError},
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
-    prelude::{ExtensionType, MlsMessageBodyOut},
+    prelude::{ExtensionType, ExtensionTypeNotValidInGroupInfoError, MlsMessageBodyOut},
 };
 
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.
@@ -69,12 +69,21 @@ fn export_group_info_with_additional_extensions() {
     let external_senders_extension = Extension::ExternalSenders(vec![]);
 
     let invalid_extensions = [
-        application_id_extension,
-        required_capabilities_extension,
-        external_senders_extension,
+        (
+            application_id_extension,
+            ExtensionTypeNotValidInGroupInfoError(ExtensionType::ApplicationId),
+        ),
+        (
+            required_capabilities_extension,
+            ExtensionTypeNotValidInGroupInfoError(ExtensionType::RequiredCapabilities),
+        ),
+        (
+            external_senders_extension,
+            ExtensionTypeNotValidInGroupInfoError(ExtensionType::ExternalSenders),
+        ),
     ];
 
-    for extension in invalid_extensions {
+    for (extension, _t) in invalid_extensions {
         let err = group_alice
             .export_group_info_with_additional_extensions(
                 provider.crypto(),
@@ -86,7 +95,9 @@ fn export_group_info_with_additional_extensions() {
 
         assert!(matches!(
             err,
-            ExportGroupInfoError::InvalidExtensionError(InvalidExtensionError::IllegalInGroupInfo)
+            ExportGroupInfoError::InvalidExtensionError(
+                InvalidExtensionError::ExtensionTypeNotValidInGroupInfo(_t)
+            )
         ));
     }
 }

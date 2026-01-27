@@ -131,10 +131,13 @@ fn basic_group_setup() {
 #[openmls_test::openmls_test]
 fn wrong_group_create_config() {
     MlsGroupCreateConfig::builder()
-        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
-            0xff00,
-            UnknownExtension(b"testdata".to_vec()),
-        )))
+        .with_leaf_node_extensions(
+            Extensions::single(Extension::Unknown(
+                0xff00,
+                UnknownExtension(b"testdata".to_vec()),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
         .expect_err("leaf node extension is not in leaf node capabilities, should have failed");
 
     MlsGroupCreateConfig::builder()
@@ -143,10 +146,13 @@ fn wrong_group_create_config() {
                 .extensions(vec![ExtensionType::Unknown(0xff00)])
                 .build(),
         )
-        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
-            0xff01,
-            UnknownExtension(b"testdata".to_vec()),
-        )))
+        .with_leaf_node_extensions(
+            Extensions::single(Extension::Unknown(
+                0xff01,
+                UnknownExtension(b"testdata".to_vec()),
+            ))
+            .unwrap(),
+        )
         .expect_err("leaf node extension is not in leaf node capabilities, should have failed");
 
     MlsGroupCreateConfig::builder()
@@ -155,10 +161,13 @@ fn wrong_group_create_config() {
                 .extensions(vec![ExtensionType::Unknown(0xff00)])
                 .build(),
         )
-        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
-            0xff00,
-            UnknownExtension(b"testdata".to_vec()),
-        )))
+        .with_leaf_node_extensions(
+            Extensions::single(Extension::Unknown(
+                0xff00,
+                UnknownExtension(b"testdata".to_vec()),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
         .expect("leaf node extension is in leaf node capabilities, should have succeeded")
         .build();
 }

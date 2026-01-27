@@ -33,7 +33,7 @@ fn generate_credential(
 fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
-    extensions: Extensions,
+    extensions: Extensions<KeyPackage>,
     provider: &impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackageBundle {
@@ -167,7 +167,7 @@ fn not_join_group() {
     // Inspect ciphersuite...
     let _ciphersuite = group_context.ciphersuite();
     // Inspect extensions...
-    let extensions: &Extensions = group_context.extensions();
+    let extensions: &Extensions<GroupContext> = group_context.extensions();
 
     // Can check which extensions are enabled
     let _has_ratchet_extension = extensions.ratchet_tree().is_some();
