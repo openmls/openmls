@@ -111,6 +111,9 @@ pub enum InvalidExtensionError {
     /// info
     #[error(transparent)]
     ExtensionTypeNotValidInGroupInfo(#[from] ExtensionTypeNotValidInGroupInfoError),
+    /// The provided extension cannot be added directly to the GroupInfo
+    #[error("The provided extension cannot be added directly to the GroupInfo.")]
+    CannotAddDirectlyToGroupInfo,
 }
 
 /// The provided extension list contains an extension type that is not allowed in the group info

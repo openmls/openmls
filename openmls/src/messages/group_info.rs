@@ -15,9 +15,10 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         AeadKey, AeadNonce, Signature,
     },
-    extensions::Extensions,
+    extensions::{errors::InvalidExtensionError, Extension, Extensions},
     group::{GroupContext, GroupEpoch, GroupId},
     messages::ConfirmationTag,
+    prelude::ExtensionTypeNotValidInGroupInfoError,
 };
 
 const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";
@@ -259,13 +260,22 @@ impl GroupInfoTBS {
         extensions: Extensions<GroupInfo>,
         confirmation_tag: ConfirmationTag,
         signer: LeafNodeIndex,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, InvalidExtensionError> {
+        // validate the extensions
+        for extension_type in extensions.iter().map(Extension::extension_type) {
+            if extension_type.is_valid_in_group_info() == Some(false) {
+                return Err(InvalidExtensionError::ExtensionTypeNotValidInGroupInfo(
+                    ExtensionTypeNotValidInGroupInfoError(extension_type),
+                ));
+            }
+        }
+
+        Ok(Self {
             group_context,
             extensions,
             confirmation_tag,
             signer,
-        }
+        })
     }
 }
 

@@ -640,7 +640,7 @@ impl MlsGroup {
     }
 
     /// Returns a reference to the proposal store.
-    pub(crate) fn proposal_store(&self) -> &ProposalStore {
+    pub fn proposal_store(&self) -> &ProposalStore {
         self.public_group.proposal_store()
     }
 

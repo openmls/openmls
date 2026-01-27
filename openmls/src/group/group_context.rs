@@ -4,6 +4,8 @@ use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
 
 use super::*;
+#[cfg(feature = "extensions-draft-08")]
+use crate::extensions::AppDataDictionary;
 use crate::{
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, ConfirmedTranscriptHashInput},
@@ -80,6 +82,13 @@ impl GroupContext {
             confirmed_transcript_hash: confirmed_transcript_hash.into(),
             extensions,
         }
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn app_data_dict(&self) -> Option<&AppDataDictionary> {
+        self.extensions
+            .app_data_dictionary()
+            .map(|extension| extension.dictionary())
     }
 
     /// Create the `GroupContext` needed upon creation of a new group.

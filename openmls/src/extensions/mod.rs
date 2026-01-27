@@ -31,6 +31,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 // Private
+#[cfg(feature = "extensions-draft-08")]
+mod app_data_dict_extension;
 mod application_id_extension;
 mod codec;
 mod external_pub_extension;
@@ -44,6 +46,8 @@ use errors::*;
 pub mod errors;
 
 // Public re-exports
+#[cfg(feature = "extensions-draft-08")]
+pub use app_data_dict_extension::{AppDataDictionary, AppDataDictionaryExtension};
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
 pub use external_sender_extension::{
@@ -52,6 +56,7 @@ pub use external_sender_extension::{
 pub use last_resort::LastResortExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
+
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, DeserializeBytes, Error, Serialize as TlsSerializeTrait,
     Size, TlsDeserialize, TlsSerialize, TlsSize,
@@ -106,6 +111,10 @@ pub enum ExtensionType {
     /// scenario.
     LastResort,
 
+    #[cfg(feature = "extensions-draft-08")]
+    /// AppDataDictionary extension
+    AppDataDictionary,
+
     /// A GREASE extension type for ensuring extensibility.
     Grease(u16),
 
@@ -125,6 +134,8 @@ impl ExtensionType {
             ExtensionType::LastResort | ExtensionType::Grease(_) | ExtensionType::Unknown(_) => {
                 false
             }
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::AppDataDictionary => false,
         }
     }
 
@@ -134,14 +145,28 @@ impl ExtensionType {
     //  https://validation.openmls.tech/#valn1601
     pub(crate) fn is_valid_in_leaf_node(self) -> bool {
         match self {
-            ExtensionType::LastResort
+            ExtensionType::Grease(_)
+            | ExtensionType::LastResort
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => false,
-            ExtensionType::Grease(_) | ExtensionType::Unknown(_) | ExtensionType::ApplicationId => {
-                true
-            }
+            ExtensionType::Unknown(_) | ExtensionType::ApplicationId => true,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::AppDataDictionary => true,
+        }
+    }
+    pub(crate) fn is_valid_in_group_info(self) -> Option<bool> {
+        match self {
+            ExtensionType::Grease(_)
+            | ExtensionType::LastResort
+            | ExtensionType::RequiredCapabilities
+            | ExtensionType::ExternalSenders
+            | ExtensionType::ApplicationId => Some(false),
+            ExtensionType::RatchetTree | ExtensionType::ExternalPub => Some(true),
+            ExtensionType::Unknown(_) => None,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::AppDataDictionary => Some(true),
         }
     }
 
@@ -200,6 +225,8 @@ impl From<u16> for ExtensionType {
             3 => ExtensionType::RequiredCapabilities,
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
+            #[cfg(feature = "extensions-draft-08")]
+            6 => ExtensionType::AppDataDictionary,
             10 => ExtensionType::LastResort,
             unknown if crate::grease::is_grease_value(unknown) => ExtensionType::Grease(unknown),
             unknown => ExtensionType::Unknown(unknown),
@@ -215,6 +242,8 @@ impl From<ExtensionType> for u16 {
             ExtensionType::RequiredCapabilities => 3,
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::AppDataDictionary => 6,
             ExtensionType::LastResort => 10,
             ExtensionType::Grease(value) => value,
             ExtensionType::Unknown(unknown) => unknown,
@@ -252,6 +281,10 @@ pub enum Extension {
 
     /// An [`ExternalSendersExtension`]
     ExternalSenders(ExternalSendersExtension),
+
+    /// An [`AppDataDictionaryExtension`]
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataDictionary(AppDataDictionaryExtension),
 
     /// A [`LastResortExtension`]
     LastResort(LastResortExtension),
@@ -596,6 +629,16 @@ impl<T> Extensions<T> {
             })
     }
 
+    #[cfg(feature = "extensions-draft-08")]
+    /// Get a reference to the [`AppDataDictionaryExtension`] if there is any.
+    pub fn app_data_dictionary(&self) -> Option<&AppDataDictionaryExtension> {
+        self.find_by_type(ExtensionType::AppDataDictionary)
+            .and_then(|e| match e {
+                Extension::AppDataDictionary(e) => Some(e),
+                _ => None,
+            })
+    }
+
     /// Get a reference to the [`UnknownExtension`] with the given type id, if there is any.
     pub fn unknown(&self, extension_type_id: u16) -> Option<&UnknownExtension> {
         let extension_type: ExtensionType = extension_type_id.into();
@@ -619,6 +662,20 @@ impl Extension {
             Self::ApplicationId(e) => Ok(e),
             _ => Err(ExtensionError::InvalidExtensionType(
                 "This is not an ApplicationIdExtension".into(),
+            )),
+        }
+    }
+    #[cfg(feature = "extensions-draft-08")]
+    /// Get a reference to this extension as [`AppDataDictionaryExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
+    /// [`Extension`] that's not an [`AppDataDictionaryExtension`].
+    pub fn as_app_data_dictionary_extension(
+        &self,
+    ) -> Result<&AppDataDictionaryExtension, ExtensionError> {
+        match self {
+            Self::AppDataDictionary(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
+                "This is not an AppDataDictionaryExtension".into(),
             )),
         }
     }
@@ -684,6 +741,8 @@ impl Extension {
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
+            #[cfg(feature = "extensions-draft-08")]
+            Extension::AppDataDictionary(_) => ExtensionType::AppDataDictionary,
             Extension::LastResort(_) => ExtensionType::LastResort,
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
