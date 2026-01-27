@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-4a4a30fe.js";
+            window.path_to_searchindex_js = "../searchindex-230066a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-e31a8293.js"></script>
@@ -234,7 +234,6 @@ Should the user want to add further extensions, they can use the <code>with_grou
                 2000, // maximum_forward_distance
             ))
             .with_group_context_extensions(extensions) // NB: the builder method returns a Result
-            .expect("failed to apply group context extensions")
             .use_ratchet_tree_extension(true)
             .build(
                 alice_provider,

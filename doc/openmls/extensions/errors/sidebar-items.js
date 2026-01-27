@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CapabilitiesExtensionError","ExtensionError","InvalidExtensionError","KeyPackageIdError","ParentHashError","RatchetTreeError"]};
+window.SIDEBAR_ITEMS = {"enum":["CapabilitiesExtensionError","ExtensionError","InvalidExtensionError","KeyPackageIdError","ParentHashError","RatchetTreeError"],"struct":["ExtensionTypeNotValidInGroupContextError","ExtensionTypeNotValidInGroupInfoError","ExtensionTypeNotValidInKeyPackageError","ExtensionTypeNotValidInLeafNodeError"]};

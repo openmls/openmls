@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/proposal.rs`."><title>proposal.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-bbd8d786.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (eda76d9d1 2026-01-21)" data-channel="nightly" data-search-js="search-86d08462.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-f9617a14.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>proposal.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>, types::Ciphersuite};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/proposal.rs`."><title>proposal.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-0bd2dfd4.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (474276961 2026-01-26)" data-channel="nightly" data-search-js="search-86d08462.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-f9617a14.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>proposal.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>, types::Ciphersuite};
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>super::{
 <a href=#4 id=4 data-nosnippet>4</a>    errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError, RemoveProposalError},
@@ -12,7 +12,7 @@
 <a href=#12 id=12 data-nosnippet>12</a>    error::LibraryError,
 <a href=#13 id=13 data-nosnippet>13</a>    extensions::Extensions,
 <a href=#14 id=14 data-nosnippet>14</a>    framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut},
-<a href=#15 id=15 data-nosnippet>15</a>    group::{errors::CreateAddProposalError, GroupId, ValidationError},
+<a href=#15 id=15 data-nosnippet>15</a>    group::{errors::CreateAddProposalError, GroupContext, GroupId, ValidationError},
 <a href=#16 id=16 data-nosnippet>16</a>    key_packages::KeyPackage,
 <a href=#17 id=17 data-nosnippet>17</a>    messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
 <a href=#18 id=18 data-nosnippet>18</a>    schedule::PreSharedKeyId,
@@ -50,14 +50,14 @@
 <a href=#50 id=50 data-nosnippet>50</a>        group_id: GroupId,
 <a href=#51 id=51 data-nosnippet>51</a>        version: ProtocolVersion,
 <a href=#52 id=52 data-nosnippet>52</a>        ciphersuite: Ciphersuite,
-<a href=#53 id=53 data-nosnippet>53</a>        extensions: Extensions,
+<a href=#53 id=53 data-nosnippet>53</a>        extensions: Extensions&lt;GroupContext&gt;,
 <a href=#54 id=54 data-nosnippet>54</a>    },
 <a href=#55 id=55 data-nosnippet>55</a>
 <a href=#56 id=56 data-nosnippet>56</a>    <span class="doccomment">/// An external init proposal gets the raw bytes from the KEM output.
 <a href=#57 id=57 data-nosnippet>57</a>    </span>ExternalInit(Vec&lt;u8&gt;),
 <a href=#58 id=58 data-nosnippet>58</a>
 <a href=#59 id=59 data-nosnippet>59</a>    <span class="doccomment">/// Propose adding new group context extensions.
-<a href=#60 id=60 data-nosnippet>60</a>    </span>GroupContextExtensions(Extensions),
+<a href=#60 id=60 data-nosnippet>60</a>    </span>GroupContextExtensions(Extensions&lt;GroupContext&gt;),
 <a href=#61 id=61 data-nosnippet>61</a>
 <a href=#62 id=62 data-nosnippet>62</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
 <a href=#63 id=63 data-nosnippet>63</a>    </span><span class="doccomment">/// Propose an update to a component in the [`AppDataDictionary`]
@@ -395,7 +395,7 @@
 <a href=#395 id=395 data-nosnippet>395</a>    </span><span class="kw">pub fn </span>propose_group_context_extensions&lt;Provider: OpenMlsProvider&gt;(
 <a href=#396 id=396 data-nosnippet>396</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#397 id=397 data-nosnippet>397</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#398 id=398 data-nosnippet>398</a>        extensions: Extensions,
+<a href=#398 id=398 data-nosnippet>398</a>        extensions: Extensions&lt;GroupContext&gt;,
 <a href=#399 id=399 data-nosnippet>399</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
 <a href=#400 id=400 data-nosnippet>400</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposalError&lt;Provider::StorageError&gt;&gt; {
 <a href=#401 id=401 data-nosnippet>401</a>        <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
@@ -436,7 +436,7 @@
 <a href=#436 id=436 data-nosnippet>436</a>    </span><span class="kw">pub fn </span>update_group_context_extensions&lt;Provider: OpenMlsProvider&gt;(
 <a href=#437 id=437 data-nosnippet>437</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#438 id=438 data-nosnippet>438</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#439 id=439 data-nosnippet>439</a>        extensions: Extensions,
+<a href=#439 id=439 data-nosnippet>439</a>        extensions: Extensions&lt;GroupContext&gt;,
 <a href=#440 id=440 data-nosnippet>440</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
 <a href=#441 id=441 data-nosnippet>441</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;
 <a href=#442 id=442 data-nosnippet>442</a>        (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
@@ -447,8 +447,8 @@
 <a href=#447 id=447 data-nosnippet>447</a>        <span class="comment">// Build and stage Commit containing GroupContextExtensions proposal
 <a href=#448 id=448 data-nosnippet>448</a>        </span><span class="kw">let </span>bundle = <span class="self">self
 <a href=#449 id=449 data-nosnippet>449</a>            </span>.commit_builder()
-<a href=#450 id=450 data-nosnippet>450</a>            .propose_group_context_extensions(extensions)
-<a href=#451 id=451 data-nosnippet>451</a>            .load_psks(provider.storage())<span class="question-mark">?
+<a href=#450 id=450 data-nosnippet>450</a>            .propose_group_context_extensions(extensions)<span class="question-mark">?
+<a href=#451 id=451 data-nosnippet>451</a>            </span>.load_psks(provider.storage())<span class="question-mark">?
 <a href=#452 id=452 data-nosnippet>452</a>            </span>.build(provider.rand(), provider.crypto(), signer, |<span class="kw">_</span>| <span class="bool-val">true</span>)<span class="question-mark">?
 <a href=#453 id=453 data-nosnippet>453</a>            </span>.stage_commit(provider)<span class="question-mark">?</span>;
 <a href=#454 id=454 data-nosnippet>454</a>

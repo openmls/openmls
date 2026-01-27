@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4a4a30fe.js";
+            window.path_to_searchindex_js = "searchindex-230066a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e31a8293.js"></script>
@@ -361,13 +361,13 @@ OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_c
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
-        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(vec![
-            ExternalSender::new(
+        .with_group_context_extensions(
+            Extensions::single(Extension::ExternalSenders(vec![ExternalSender::new(
                 ds_credential_with_key.signature_key.clone(),
                 ds_credential_with_key.credential.clone(),
-            ),
-        ])))
-        .expect("error adding external senders extension to group context extensions")
+            )]))
+            .expect("failed to create single-element extensions list"),
+        )
         .ciphersuite(ciphersuite)
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
@@ -378,10 +378,13 @@ OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_c
             Some(&amp;[CredentialType::Basic]),
         ))
         // Example leaf extension
-        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
-            0xff00,
-            UnknownExtension(vec![0, 1, 2, 3]),
-        )))
+        .with_leaf_node_extensions(
+            Extensions::single(Extension::Unknown(
+                0xff00,
+                UnknownExtension(vec![0, 1, 2, 3]),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
         .expect("failed to configure leaf extensions")
         .use_ratchet_tree_extension(true)
         .build();</code></pre>
@@ -448,7 +451,6 @@ Should the user want to add further extensions, they can use the <code>with_grou
                 2000, // maximum_forward_distance
             ))
             .with_group_context_extensions(extensions) // NB: the builder method returns a Result
-            .expect("failed to apply group context extensions")
             .use_ratchet_tree_extension(true)
             .build(
                 alice_provider,
@@ -544,7 +546,7 @@ with an invalid MLS group instance.</p>
     // Inspect ciphersuite...
     let _ciphersuite = group_context.ciphersuite();
     // Inspect extensions...
-    let extensions: &amp;Extensions = group_context.extensions();
+    let extensions: &amp;Extensions&lt;GroupContext&gt; = group_context.extensions();
 
     // Can check which extensions are enabled
     let _has_ratchet_extension = extensions.ratchet_tree().is_some();
@@ -1378,8 +1380,9 @@ fn setup_group_with_app_data_support&lt;'a, Provider: OpenMlsProvider&gt;(
         .ciphersuite(ciphersuite)
         .capabilities(capabilities)
         .use_ratchet_tree_extension(true)
-        .with_group_context_extensions(Extensions::single(required_capabilities_extension))
-        .expect("valid extensions")
+        .with_group_context_extensions(
+            Extensions::single(required_capabilities_extension).expect("valid extensions"),
+        )
         .build();
 
     let join_config = create_config.join_config().clone();

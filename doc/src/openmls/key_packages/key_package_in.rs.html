@@ -1,10 +1,10 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/key_packages/key_package_in.rs`."><title>key_package_in.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-bbd8d786.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (eda76d9d1 2026-01-21)" data-channel="nightly" data-search-js="search-86d08462.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-f9617a14.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">openmls/key_packages/</div>key_package_in.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Incoming KeyPackages. This modules contains deserialization and validation
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/key_packages/key_package_in.rs`."><title>key_package_in.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-0bd2dfd4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (474276961 2026-01-26)" data-channel="nightly" data-search-js="search-86d08462.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-f9617a14.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/key_packages/</div>key_package_in.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Incoming KeyPackages. This modules contains deserialization and validation
 <a href=#2 id=2 data-nosnippet>2</a>//! of KeyPackages.
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a></span><span class="kw">use </span>crate::{
 <a href=#5 id=5 data-nosnippet>5</a>    ciphersuite::{signable::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
 <a href=#6 id=6 data-nosnippet>6</a>    credentials::<span class="kw-2">*</span>,
-<a href=#7 id=7 data-nosnippet>7</a>    extensions::Extensions,
+<a href=#7 id=7 data-nosnippet>7</a>    extensions::{AnyObject, Extensions},
 <a href=#8 id=8 data-nosnippet>8</a>    treesync::node::leaf_node::{LeafNodeIn, VerifiableLeafNode},
 <a href=#9 id=9 data-nosnippet>9</a>    versions::ProtocolVersion,
 <a href=#10 id=10 data-nosnippet>10</a>};
@@ -92,7 +92,7 @@
 <a href=#92 id=92 data-nosnippet>92</a>    ciphersuite: Ciphersuite,
 <a href=#93 id=93 data-nosnippet>93</a>    init_key: InitKey,
 <a href=#94 id=94 data-nosnippet>94</a>    leaf_node: LeafNodeIn,
-<a href=#95 id=95 data-nosnippet>95</a>    extensions: Extensions,
+<a href=#95 id=95 data-nosnippet>95</a>    extensions: Extensions&lt;AnyObject&gt;,
 <a href=#96 id=96 data-nosnippet>96</a>}
 <a href=#97 id=97 data-nosnippet>97</a>
 <a href=#98 id=98 data-nosnippet>98</a><span class="doccomment">/// The key package struct.
@@ -171,7 +171,7 @@
 <a href=#171 id=171 data-nosnippet>171</a>            ciphersuite: <span class="self">self</span>.payload.ciphersuite,
 <a href=#172 id=172 data-nosnippet>172</a>            init_key: <span class="self">self</span>.payload.init_key,
 <a href=#173 id=173 data-nosnippet>173</a>            leaf_node,
-<a href=#174 id=174 data-nosnippet>174</a>            extensions: <span class="self">self</span>.payload.extensions,
+<a href=#174 id=174 data-nosnippet>174</a>            extensions: <span class="self">self</span>.payload.extensions.try_into()<span class="question-mark">?</span>,
 <a href=#175 id=175 data-nosnippet>175</a>        };
 <a href=#176 id=176 data-nosnippet>176</a>
 <a href=#177 id=177 data-nosnippet>177</a>        <span class="comment">// Verify the KeyPackage signature
@@ -221,7 +221,7 @@
 <a href=#221 id=221 data-nosnippet>221</a>            ciphersuite: value.ciphersuite,
 <a href=#222 id=222 data-nosnippet>222</a>            init_key: value.init_key,
 <a href=#223 id=223 data-nosnippet>223</a>            leaf_node: value.leaf_node.into(),
-<a href=#224 id=224 data-nosnippet>224</a>            extensions: value.extensions,
+<a href=#224 id=224 data-nosnippet>224</a>            extensions: value.extensions.coerce(),
 <a href=#225 id=225 data-nosnippet>225</a>        }
 <a href=#226 id=226 data-nosnippet>226</a>    }
 <a href=#227 id=227 data-nosnippet>227</a>}
@@ -233,7 +233,7 @@
 <a href=#233 id=233 data-nosnippet>233</a>            ciphersuite: value.ciphersuite,
 <a href=#234 id=234 data-nosnippet>234</a>            init_key: value.init_key,
 <a href=#235 id=235 data-nosnippet>235</a>            leaf_node: value.leaf_node.into(),
-<a href=#236 id=236 data-nosnippet>236</a>            extensions: value.extensions,
+<a href=#236 id=236 data-nosnippet>236</a>            extensions: value.extensions.into(),
 <a href=#237 id=237 data-nosnippet>237</a>        }
 <a href=#238 id=238 data-nosnippet>238</a>    }
 <a href=#239 id=239 data-nosnippet>239</a>}

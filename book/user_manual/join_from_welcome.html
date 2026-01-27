@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-4a4a30fe.js";
+            window.path_to_searchindex_js = "../searchindex-230066a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-e31a8293.js"></script>
@@ -261,7 +261,7 @@ with an invalid MLS group instance.</p>
     // Inspect ciphersuite...
     let _ciphersuite = group_context.ciphersuite();
     // Inspect extensions...
-    let extensions: &amp;Extensions = group_context.extensions();
+    let extensions: &amp;Extensions&lt;GroupContext&gt; = group_context.extensions();
 
     // Can check which extensions are enabled
     let _has_ratchet_extension = extensions.ratchet_tree().is_some();
