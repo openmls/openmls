@@ -170,6 +170,17 @@ impl ExtensionType {
         }
     }
 
+    pub(crate) fn is_valid_in_group_context(self) -> bool {
+        match self {
+            ExtensionType::RequiredCapabilities
+            | ExtensionType::ExternalSenders
+            | ExtensionType::Unknown(_) => true,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::AppDataDictionary => true,
+            _ => false,
+        }
+    }
+
     /// Returns true if this is a GREASE extension type.
     ///
     /// GREASE values are used to ensure implementations properly handle unknown
@@ -513,10 +524,9 @@ impl ExtensionValidator for GroupInfo {
     fn validate_extension_type(
         ext: &Extension,
     ) -> Result<(), ExtensionTypeNotValidInGroupInfoError> {
-        if matches!(
-            ext.extension_type(),
-            ExtensionType::RatchetTree | ExtensionType::ExternalPub | ExtensionType::Unknown(_)
-        ) {
+        if ext.extension_type().is_valid_in_group_info() == Some(true)
+            || ext.extension_type().is_valid_in_group_info().is_none()
+        {
             Ok(())
         } else {
             Err(ExtensionTypeNotValidInGroupInfoError(ext.extension_type()))
@@ -531,10 +541,7 @@ impl ExtensionValidator for GroupContext {
     fn validate_extension_type(
         ext: &Extension,
     ) -> Result<(), ExtensionTypeNotValidInGroupContextError> {
-        if ext.extension_type() == ExtensionType::RequiredCapabilities
-            || ext.extension_type() == ExtensionType::ExternalSenders
-            || matches!(ext.extension_type(), ExtensionType::Unknown(_))
-        {
+        if ext.extension_type().is_valid_in_group_context() {
             Ok(())
         } else {
             Err(ExtensionTypeNotValidInGroupContextError(
