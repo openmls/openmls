@@ -74,8 +74,22 @@ impl PublicGroup {
         if sender == &Sender::NewMemberCommit {
             // External commit, there MUST be a path
             // https://validation.openmls.tech/#valn0405
-            if commit.path.is_none() {
+            let Some(path) = &commit.path else {
                 return Err(ExternalCommitValidationError::NoPath.into());
+            };
+
+            // External Commit, The capabilities of the leaf node in the path MUST support all
+            // group context extensions.
+            // https://validation.openmls.tech/#valn0502
+            let leaf_nodes_supports_group_context_extensions = path
+                .leaf_node()
+                .capabilities()
+                .contains_extensions(self.group_context().extensions());
+
+            if !leaf_nodes_supports_group_context_extensions {
+                return Err(
+                    ExternalCommitValidationError::UnsupportedGroupContextExtensions.into(),
+                );
             }
 
             // ValSem244: External Commit, There MUST NOT be any referenced proposals.
@@ -134,7 +148,10 @@ impl PublicGroup {
             self.validate_leaf_node(update_path.leaf_node())?;
         }
 
-        // Validate the staged proposals. This implements https://validation.openmls.tech/#valn1204.
+        // Validate the staged proposals. This implements
+        // - https://validation.openmls.tech/#valn0301
+        // - https://validation.openmls.tech/#valn1204
+        //
         // This is done by doing the following checks:
 
         // ValSem101
@@ -166,11 +183,11 @@ impl PublicGroup {
         self.validate_pre_shared_key_proposals(&proposal_queue)?;
 
         match sender {
-            Sender::Member(leaf_index) => {
+            Sender::Member(committer_leaf_index) => {
                 // ValSem110
                 // ValSem111
                 // ValSem112
-                self.validate_update_proposals(&proposal_queue, *leaf_index)?;
+                self.validate_update_proposals(&proposal_queue, *committer_leaf_index)?;
 
                 self.validate_no_external_init_proposals(&proposal_queue)?;
             }

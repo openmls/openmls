@@ -591,7 +591,7 @@ impl TreeSync {
     ///
     /// XXX: For performance reasons we probably want to have this in a borrowing
     ///      version as well. But it might well go away again.
-    pub(crate) fn full_leave_members(&self) -> impl Iterator<Item = Member> + '_ {
+    pub(crate) fn full_leaf_members(&self) -> impl Iterator<Item = Member> + '_ {
         self.tree
             .leaves()
             // Filter out blank nodes

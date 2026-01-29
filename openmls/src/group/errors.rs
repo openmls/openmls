@@ -73,8 +73,8 @@ pub enum WelcomeError<StorageError> {
     /// Could not decrypt the Welcome message.
     #[error("Could not decrypt the Welcome message.")]
     UnableToDecrypt,
-    /// Unsupported extensions found in the KeyPackage of another member.
-    #[error("Unsupported extensions found in the KeyPackage of another member.")]
+    /// Unsupported extensions found in the GroupContext or KeyPackage of another member.
+    #[error("Unsupported extensions found in the GroupContext or KeyPackage of another member.")]
     UnsupportedExtensions,
     /// See [`PskError`] for more details.
     #[error(transparent)]
@@ -339,6 +339,9 @@ pub enum CreateCommitError {
     #[cfg(feature = "extensions-draft-08")]
     #[error(transparent)]
     ApplyAppDataUpdateError(#[from] ApplyAppDataUpdateError),
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 /// Stage commit error
@@ -539,6 +542,9 @@ pub enum ExternalCommitValidationError {
     /// External commit contains referenced proposal
     #[error("Found a referenced proposal in an External Commit.")]
     ReferencedProposal,
+    /// External committer's leaf node does not support all group context extensions.
+    #[error("External committer's leaf node does not support all group context extensions.")]
+    UnsupportedGroupContextExtensions,
 }
 
 /// Create add proposal error

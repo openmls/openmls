@@ -42,6 +42,9 @@ pub enum CreationFromExternalError<StorageError> {
     /// The ratchet tree contains duplcate encryption keys
     #[error("The ratchet tree contains duplcate encryption keys")]
     DuplicateEncryptionKey,
+    /// The ratchet tree contains duplcate signature keys
+    #[error("The ratchet tree contains duplcate signature keys")]
+    DuplicateSignatureKey,
 }
 
 /// Public group builder error.
