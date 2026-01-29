@@ -47,7 +47,7 @@ pub struct GroupContext {
     epoch: GroupEpoch,
     tree_hash: VLBytes,
     confirmed_transcript_hash: VLBytes,
-    extensions: Extensions,
+    extensions: Extensions<Self>,
 }
 
 #[cfg(any(feature = "test-utils", test))]
@@ -71,7 +71,7 @@ impl GroupContext {
         epoch: impl Into<GroupEpoch>,
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
-        extensions: Extensions,
+        extensions: Extensions<Self>,
     ) -> Self {
         GroupContext {
             ciphersuite,
@@ -96,7 +96,7 @@ impl GroupContext {
         ciphersuite: Ciphersuite,
         group_id: GroupId,
         tree_hash: Vec<u8>,
-        extensions: Extensions,
+        extensions: Extensions<Self>,
     ) -> Self {
         // Note: Confirmed transcript hash is "The zero-length octet string."
         Self::new(ciphersuite, group_id, 0, tree_hash, vec![], extensions)
@@ -166,12 +166,12 @@ impl GroupContext {
         self.confirmed_transcript_hash.as_slice()
     }
 
-    pub(crate) fn set_extensions(&mut self, extensions: Extensions) {
+    pub(crate) fn set_extensions(&mut self, extensions: Extensions<GroupContext>) {
         self.extensions = extensions;
     }
 
     /// Return the extensions.
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<GroupContext> {
         &self.extensions
     }
 

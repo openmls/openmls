@@ -127,8 +127,9 @@ fn setup_group_with_app_data_support<'a, Provider: OpenMlsProvider>(
         .ciphersuite(ciphersuite)
         .capabilities(capabilities)
         .use_ratchet_tree_extension(true)
-        .with_group_context_extensions(Extensions::single(required_capabilities_extension))
-        .expect("valid extensions")
+        .with_group_context_extensions(
+            Extensions::single(required_capabilities_extension).expect("valid extensions"),
+        )
         .build();
 
     let join_config = create_config.join_config().clone();

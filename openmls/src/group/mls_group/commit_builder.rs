@@ -11,10 +11,11 @@ use tls_codec::Serialize as _;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{signable::Signable as _, Secret},
+    extensions::Extensions,
     framing::{FramingParameters, WireFormat},
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
-        CommitBuilderStageError, CreateCommitError, Extension, Extensions, ExternalPubExtension,
+        CommitBuilderStageError, CreateCommitError, Extension, ExternalPubExtension, GroupContext,
         ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
         WireFormatPolicy,
     },
@@ -262,13 +263,15 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
 
     /// Adds a GroupContextExtensions proposal for the provided [`Extensions`] to the list of
     /// proposals to be committed.
-    pub fn propose_group_context_extensions(mut self, extensions: Extensions) -> Self {
+    pub fn propose_group_context_extensions(
+        mut self,
+        extensions: Extensions<GroupContext>,
+    ) -> Result<Self, CreateCommitError> {
+        let proposal = GroupContextExtensionProposal::new(extensions);
         self.stage
             .own_proposals
-            .push(Proposal::group_context_extensions(
-                GroupContextExtensionProposal::new(extensions),
-            ));
-        self
+            .push(Proposal::group_context_extensions(proposal));
+        Ok(self)
     }
 
     /// Adds a proposal to the proposals to be committed. To add multiple

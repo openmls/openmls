@@ -7,11 +7,11 @@ use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     credentials::CredentialWithKey,
     error::LibraryError,
-    extensions::{errors::InvalidExtensionError, Extensions},
+    extensions::Extensions,
     group::{
-        past_secrets::MessageSecretsStore, public_group::errors::PublicGroupBuildError, GroupId,
-        MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
-        PublicGroup, WireFormatPolicy,
+        past_secrets::MessageSecretsStore, public_group::errors::PublicGroupBuildError,
+        GroupContext, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder,
+        MlsGroupState, NewGroupError, PublicGroup, WireFormatPolicy,
     },
     key_packages::Lifetime,
     schedule::{
@@ -20,7 +20,10 @@ use crate::{
     },
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::{errors::LeafNodeValidationError, node::leaf_node::Capabilities},
+    treesync::{
+        errors::LeafNodeValidationError,
+        node::leaf_node::{Capabilities, LeafNode},
+    },
 };
 
 /// Builder struct for an [`MlsGroup`].
@@ -75,8 +78,8 @@ impl MlsGroupBuilder {
             PublicGroup::builder(group_id, ciphersuite, credential_with_key)
                 .with_group_context_extensions(
                     mls_group_create_config.group_context_extensions.clone(),
-                )?
-                .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())?
+                )
+                .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())
                 .with_lifetime(*mls_group_create_config.lifetime())
                 .with_capabilities(mls_group_create_config.capabilities.clone())
                 .get_secrets(provider, signer)
@@ -258,20 +261,17 @@ impl MlsGroupBuilder {
     }
 
     /// Sets the initial group context extensions
-    pub fn with_group_context_extensions(
-        mut self,
-        extensions: Extensions,
-    ) -> Result<Self, InvalidExtensionError> {
+    pub fn with_group_context_extensions(mut self, extensions: Extensions<GroupContext>) -> Self {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
-            .with_group_context_extensions(extensions)?;
-        Ok(self)
+            .with_group_context_extensions(extensions);
+        self
     }
 
     /// Sets the initial leaf node extensions
     pub fn with_leaf_node_extensions(
         mut self,
-        extensions: Extensions,
+        extensions: Extensions<LeafNode>,
     ) -> Result<Self, LeafNodeValidationError> {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder

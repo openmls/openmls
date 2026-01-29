@@ -8,6 +8,7 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
+    extensions::Extensions,
     framing::*,
     group::{
         tests_and_kats::utils::{
@@ -358,9 +359,12 @@ fn test_valsem201() {
         }))
     };
 
+    let group_context_extensions: Extensions<GroupContext> =
+        alice_group.context().extensions().clone();
+
     let gce_proposal = || {
         queued(Proposal::group_context_extensions(
-            GroupContextExtensionProposal::new(alice_group.context().extensions().clone()),
+            GroupContextExtensionProposal::new(group_context_extensions),
         ))
     };
 

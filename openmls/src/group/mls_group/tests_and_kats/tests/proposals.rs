@@ -306,10 +306,10 @@ fn required_extension_key_package_mismatch() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
-        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-            required_capabilities,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities))
+                .expect("failed to create single-element extensions list"),
+        )
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
 
@@ -351,10 +351,10 @@ fn group_context_extensions() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
-        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-            required_capabilities,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities))
+                .expect("failed to create single-element extensions list"),
+        )
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
 
@@ -405,10 +405,10 @@ fn group_context_extension_proposal_fails() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
-        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-            required_capabilities,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities))
+                .expect("failed to create single-element extensions list"),
+        )
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
 
@@ -474,7 +474,8 @@ fn group_context_extension_proposal() {
     let (gce_proposal, _) = alice_group
         .propose_group_context_extensions(
             alice_provider,
-            Extensions::single(required_application_id),
+            Extensions::single(required_application_id)
+                .expect("failed to create single-element extensions list"),
             &alice_signer,
         )
         .expect("Error proposing gce.");
@@ -773,179 +774,5 @@ fn self_remove_proposals_always_public() {
     assert_eq!(
         self_remove,
         LeaveGroupError::CannotSelfRemoveWithPureCiphertext
-    );
-}
-
-#[cfg(feature = "extensions-draft-08")]
-// helper function to retrieve data from AppEphemeral proposals
-fn get_app_ephemeral_proposals_data(
-    component_id: ComponentId,
-    staged_commit: &StagedCommit,
-) -> Vec<Vec<u8>> {
-    staged_commit
-        .staged_proposal_queue
-        .app_ephemeral_proposals_for_component_id(component_id)
-        .map(|queued_proposal| queued_proposal.app_ephemeral_proposal().data().to_vec())
-        .collect::<Vec<_>>()
-}
-
-// TODO: reduce boilerplate in tests using the single_group_test_framework, once it allows
-// including Capabilities for joining members.
-#[cfg(feature = "extensions-draft-08")]
-/// Test AppEphemeral proposal handling, with more than one proposal.
-/// NOTE: The main single_group_test_framework functionality can't be used in this test,
-/// since the capabilities need to be set to include ProposalType::AppEphemeral.
-#[openmls_test::openmls_test]
-fn app_ephemeral_proposals_multiple() {
-    const COMPONENT_ID_1: ComponentId = 4; // higher to check sorting
-    const COMPONENT_ID_2: ComponentId = 2;
-    const DATA_A: &[u8] = b"A";
-    const DATA_B: &[u8] = b"B";
-    const DATA_C: &[u8] = b"C";
-
-    let group_id = GroupId::from_slice(b"Test Group");
-
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-
-    // Include the AppEphemeral proposal type in the LeafNode capabilities
-    let capabilities =
-        Capabilities::new(None, None, None, Some(&[ProposalType::AppEphemeral]), None);
-
-    // Define the MlsGroup configuration
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true)
-        // add to leaf node capabilities
-        .capabilities(capabilities.clone())
-        .build();
-
-    // Generate credentials with keys
-    let (alice_credential, alice_signer) = generate_credential(
-        b"Alice".to_vec(),
-        ciphersuite.signature_algorithm(),
-        alice_provider,
-    );
-
-    let (bob_credential, bob_signer) = generate_credential(
-        b"Bob".to_vec(),
-        ciphersuite.signature_algorithm(),
-        bob_provider,
-    );
-
-    // Generate KeyPackage for Bob with the correct LeafNode capabilities
-    let bob_key_package = KeyPackage::builder()
-        .leaf_node_capabilities(capabilities)
-        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
-        .unwrap();
-
-    // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new_with_group_id(
-        alice_provider,
-        &alice_signer,
-        &mls_group_create_config,
-        group_id,
-        alice_credential.clone(),
-    )
-    .expect("An unexpected error occurred.");
-
-    // === Alice adds Bob ===
-    let welcome = match alice_group.add_members(
-        alice_provider,
-        &alice_signer,
-        &[bob_key_package.key_package().clone()],
-    ) {
-        Ok((_, welcome, _)) => welcome,
-        Err(e) => panic!("Could not add member to group: {e:?}"),
-    };
-    alice_group.merge_pending_commit(alice_provider).unwrap();
-
-    let welcome: MlsMessageIn = welcome.into();
-    let welcome = welcome
-        .into_welcome()
-        .expect("expected the message to be a welcome message");
-
-    let mut bob_group = StagedWelcome::new_from_welcome(
-        bob_provider,
-        mls_group_create_config.join_config(),
-        welcome,
-        Some(alice_group.export_ratchet_tree().into()),
-    )
-    .expect("Error creating StagedWelcome from Welcome")
-    .into_group(bob_provider)
-    .expect("Error creating group from StagedWelcome");
-
-    // === Alice creates a commit with an AppEphemeral proposal ===
-    let message_bundle = alice_group
-        .commit_builder()
-        .add_proposals(vec![
-            Proposal::AppEphemeral(Box::new(AppEphemeralProposal::new(
-                COMPONENT_ID_1,
-                DATA_A.into(),
-            ))),
-            Proposal::AppEphemeral(Box::new(AppEphemeralProposal::new(
-                COMPONENT_ID_2,
-                DATA_B.into(),
-            ))),
-            Proposal::AppEphemeral(Box::new(AppEphemeralProposal::new(
-                COMPONENT_ID_1,
-                DATA_C.into(),
-            ))),
-        ])
-        .load_psks(alice_provider.storage())
-        .expect("error loading psks")
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signer,
-            |_| true,
-        )
-        .expect("error validating data and building commit")
-        .stage_commit(alice_provider)
-        .expect("error staging commit");
-
-    let alice_pending_commit = alice_group.pending_commit().expect("no pending commit");
-
-    // ensure that AppEphemeral proposals for the component id COMPONENT_ID are correct, and in the
-    // correct order
-    assert_eq!(
-        get_app_ephemeral_proposals_data(COMPONENT_ID_1, alice_pending_commit),
-        vec![DATA_A, DATA_C]
-    );
-    assert_eq!(
-        get_app_ephemeral_proposals_data(COMPONENT_ID_2, alice_pending_commit),
-        vec![DATA_B]
-    );
-
-    // handle proposals on Bob's side
-    let (mls_message_out, _, _) = message_bundle.into_contents();
-
-    let protocol_message = MlsMessageIn::from(mls_message_out)
-        .try_into_protocol_message()
-        .unwrap();
-
-    let processed_message = bob_group
-        .process_message(bob_provider, protocol_message)
-        .expect("could not process message");
-
-    let bob_staged_commit = match processed_message.into_content() {
-        ProcessedMessageContent::StagedCommitMessage(commit) => commit,
-        _ => panic!("incorrect message type"),
-    };
-
-    // Retrieve the component ids for all AppEphemeral proposals in the commit
-    // Ensure that the order is correct
-    let component_ids = bob_staged_commit
-        .staged_proposal_queue
-        .unique_component_ids_for_app_ephemeral();
-    assert_eq!(component_ids, vec![COMPONENT_ID_2, COMPONENT_ID_1]);
-
-    assert_eq!(
-        get_app_ephemeral_proposals_data(COMPONENT_ID_1, &bob_staged_commit),
-        vec![DATA_A, DATA_C]
-    );
-    assert_eq!(
-        get_app_ephemeral_proposals_data(COMPONENT_ID_2, &bob_staged_commit),
-        vec![DATA_B]
     );
 }

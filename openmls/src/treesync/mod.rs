@@ -388,7 +388,7 @@ impl TreeSync {
         credential_with_key: CredentialWithKey,
         life_time: Lifetime,
         capabilities: Capabilities,
-        extensions: Extensions,
+        extensions: Extensions<LeafNode>,
     ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LibraryError> {
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,

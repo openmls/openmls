@@ -26,7 +26,7 @@ fn setup<'a, Provider: OpenMlsProvider>(
             &[],
         ));
     let group_context_extensions = if include_required_capabilities {
-        Extensions::single(required_capabilities_extension)
+        Extensions::single(required_capabilities_extension).unwrap()
     } else {
         Extensions::default()
     };
@@ -47,7 +47,6 @@ fn setup<'a, Provider: OpenMlsProvider>(
         // using the tools in test_utils::frankenstein
         .wire_format_policy(crate::group::PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .with_group_context_extensions(group_context_extensions)
-        .unwrap()
         .build();
     let join_config = create_config.join_config().clone();
 

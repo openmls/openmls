@@ -4,9 +4,10 @@ use openmls_traits::storage::StorageProvider as StorageProviderTrait;
 use super::{builder::MlsGroupBuilder, *};
 use crate::{
     credentials::CredentialWithKey,
+    extensions::Extensions,
     group::{
         commit_builder::external_commits::ExternalCommitBuilder,
-        errors::{CreateCommitError, ExternalCommitError, WelcomeError},
+        errors::{ExternalCommitError, WelcomeError},
     },
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
@@ -100,7 +101,7 @@ impl MlsGroup {
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupJoinConfig,
         capabilities: Option<Capabilities>,
-        extensions: Option<Extensions>,
+        extensions: Option<Extensions<LeafNode>>,
         aad: &[u8],
         credential_with_key: CredentialWithKey,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError<Provider::StorageError>>
@@ -108,7 +109,6 @@ impl MlsGroup {
         let leaf_node_parameters = LeafNodeParameters::builder()
             .with_capabilities(capabilities.unwrap_or_default())
             .with_extensions(extensions.unwrap_or_default())
-            .map_err(CreateCommitError::from)?
             .build();
 
         let mut external_commit_builder = ExternalCommitBuilder::new()
