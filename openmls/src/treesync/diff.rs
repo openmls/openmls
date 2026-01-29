@@ -37,6 +37,7 @@ use super::{
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     LeafNode, TreeSync, TreeSyncParentHashError,
 };
+use crate::binary_tree::array_representation::tree::ABinaryTree;
 use crate::group::diff::compute_path::CommitType;
 use crate::group::GroupId;
 use crate::{
@@ -76,6 +77,25 @@ impl StagedTreeSyncDiff {
         Vec<u8>,
     ) {
         (self.diff, self.new_tree_hash)
+    }
+
+    /// Export the staged [`RatchetTree`]
+    pub(crate) fn export_ratchet_tree(
+        &self,
+        original_tree: &ABinaryTree<TreeSyncLeafNode, TreeSyncParentNode>,
+    ) -> RatchetTree {
+        let leaves_count = self.diff.leaves(original_tree).count();
+        let parents_count = self.diff.parents(original_tree).count();
+
+        let max_length = rightmost_full_leaf(self.diff.leaves(original_tree));
+
+        export_ratchet_tree(
+            self.diff.leaves(original_tree),
+            self.diff.parents(original_tree),
+            max_length,
+            leaves_count,
+            parents_count,
+        )
     }
 }
 
@@ -835,51 +855,19 @@ impl TreeSyncDiff<'_> {
     /// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
     pub(crate) fn export_ratchet_tree(&self) -> RatchetTree {
-        let mut nodes = Vec::new();
+        let parents_count = self.diff.parents().count();
+        let leaves_count = self.diff.leaves().count();
 
         // Determine the index of the rightmost full leaf.
-        let max_length = self.rightmost_full_leaf();
+        let max_length = rightmost_full_leaf(self.diff.leaves());
 
-        // We take all the leaves including the rightmost full leaf, blank
-        // leaves beyond that are trimmed.
-        let mut leaves = self
-            .diff
-            .leaves()
-            .map(|(_, leaf)| leaf)
-            .take(max_length.usize() + 1);
-
-        // Get the first leaf.
-        if let Some(leaf) = leaves.next() {
-            nodes.push(leaf.node().clone().map(Node::leaf_node));
-        } else {
-            // The tree was empty.
-            return RatchetTree::trimmed(vec![]);
-        }
-
-        // Blank parent node used for padding
-        let default_parent = TreeSyncParentNode::default();
-
-        // Get the parents.
-        let parents = self
-            .diff
-            .parents()
-            // Drop the index
-            .map(|(_, parent)| parent)
-            // Take the parents up to the max length
-            .take(max_length.usize())
-            // Pad the parents with blank nodes if needed
-            .chain(
-                (self.diff.parents().count()..self.diff.leaves().count() - 1)
-                    .map(|_| &default_parent),
-            );
-
-        // Interleave the leaves and parents.
-        for (leaf, parent) in leaves.zip(parents) {
-            nodes.push(parent.node().clone().map(Node::parent_node));
-            nodes.push(leaf.node().clone().map(Node::leaf_node));
-        }
-
-        RatchetTree::trimmed(nodes)
+        export_ratchet_tree(
+            self.diff.leaves(),
+            self.diff.parents(),
+            max_length,
+            leaves_count,
+            parents_count,
+        )
     }
 
     /// Returns the filtered common path two leaf nodes share. If the leaves are
@@ -938,4 +926,65 @@ impl TreeSyncDiff<'_> {
                 }),
         )
     }
+}
+
+/// Returns a vector of all nodes in the tree resulting from merging this
+/// diff.
+fn export_ratchet_tree<'a, IL, IP>(
+    leaves: IL,
+    parents: IP,
+    max_length: LeafNodeIndex,
+    leaves_count: usize,
+    parents_count: usize,
+) -> RatchetTree
+where
+    IL: Iterator<Item = (LeafNodeIndex, &'a TreeSyncLeafNode)> + 'a,
+    IP: Iterator<Item = (ParentNodeIndex, &'a TreeSyncParentNode)> + 'a,
+{
+    let mut nodes = Vec::new();
+
+    // We take all the leaves including the rightmost full leaf, blank
+    // leaves beyond that are trimmed.
+    let mut leaves = leaves.map(|(_, leaf)| leaf).take(max_length.usize() + 1);
+
+    // Get the first leaf.
+    if let Some(leaf) = leaves.next() {
+        nodes.push(leaf.node().clone().map(Node::leaf_node));
+    } else {
+        // The tree was empty.
+        return RatchetTree::trimmed(vec![]);
+    }
+
+    // Blank parent node used for padding
+    let default_parent = TreeSyncParentNode::default();
+
+    // Get the parents.
+    let parents = parents // Drop the index
+        .map(|(_, parent)| parent)
+        // Take the parents up to the max length
+        .take(max_length.usize())
+        // Pad the parents with blank nodes if needed
+        .chain((parents_count..leaves_count - 1).map(|_| &default_parent));
+
+    // Interleave the leaves and parents.
+    for (leaf, parent) in leaves.zip(parents) {
+        nodes.push(parent.node().clone().map(Node::parent_node));
+        nodes.push(leaf.node().clone().map(Node::leaf_node));
+    }
+
+    RatchetTree::trimmed(nodes)
+}
+
+/// Returns the index of the last full leaf in the tree.
+fn rightmost_full_leaf<'a, IL>(leaves: IL) -> LeafNodeIndex
+where
+    IL: Iterator<Item = (LeafNodeIndex, &'a TreeSyncLeafNode)> + 'a,
+{
+    let mut index = LeafNodeIndex::new(0);
+    for (leaf_index, leaf) in leaves {
+        if leaf.node().as_ref().is_some() {
+            index = leaf_index;
+        }
+    }
+    index
 }
