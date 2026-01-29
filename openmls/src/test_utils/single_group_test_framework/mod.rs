@@ -50,7 +50,7 @@ pub fn generate_credential(
 pub(crate) fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
-    extensions: Extensions,
+    extensions: Extensions<KeyPackage>,
     provider: &impl crate::storage::OpenMlsProvider,
     lifetime: impl Into<Option<Lifetime>>,
     signer: &impl Signer,
@@ -93,8 +93,8 @@ pub struct PreGroupPartyState<'a, Provider> {
 pub struct PreGroupPartyStateBuilder<'a, Provider: OpenMlsProvider> {
     ciphersuite: Ciphersuite,
     lifetime: Option<Lifetime>,
-    key_package_extensions: Option<Extensions>,
-    leaf_node_extensions: Option<Extensions>,
+    key_package_extensions: Option<Extensions<KeyPackage>>,
+    leaf_node_extensions: Option<Extensions<LeafNode>>,
     leaf_node_capabilities: Option<Capabilities>,
     core_state: &'a CorePartyState<Provider>,
 }
@@ -107,13 +107,16 @@ impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
     }
     pub fn with_key_package_extensions(
         mut self,
-        extensions: impl Into<Option<Extensions>>,
+        extensions: impl Into<Option<Extensions<KeyPackage>>>,
     ) -> Self {
         self.key_package_extensions = extensions.into();
 
         self
     }
-    pub fn with_leaf_node_extensions(mut self, extensions: impl Into<Option<Extensions>>) -> Self {
+    pub fn with_leaf_node_extensions(
+        mut self,
+        extensions: impl Into<Option<Extensions<LeafNode>>>,
+    ) -> Self {
         self.leaf_node_extensions = extensions.into();
 
         self
@@ -135,7 +138,6 @@ impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
         );
         let mut builder = KeyPackage::builder()
             .leaf_node_extensions(self.leaf_node_extensions.unwrap_or_default())
-            .expect("invalid leaf node extensions")
             .key_package_extensions(self.key_package_extensions.unwrap_or_default())
             .leaf_node_capabilities(self.leaf_node_capabilities.unwrap_or_default());
 

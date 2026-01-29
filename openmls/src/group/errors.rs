@@ -17,6 +17,7 @@ use crate::{
     group::commit_builder::external_commits::ExternalCommitBuilderError,
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
+    prelude::ExtensionType,
     schedule::{errors::PskError, PreSharedKeyId},
     treesync::errors::*,
 };
@@ -454,6 +455,9 @@ pub enum ValidationError {
     /// See [`ExternalCommitValidationError`] for more details.
     #[error(transparent)]
     ExternalCommitValidation(#[from] ExternalCommitValidationError),
+    /// See [`InvalidExtensionError`]
+    #[error("Invalid extension")]
+    InvalidExtension(#[from] InvalidExtensionError),
 }
 
 /// Proposal validation error
@@ -618,6 +622,9 @@ pub enum CreateGroupContextExtProposalError<StorageError> {
     /// Error writing updated group to storage.
     #[error("Error writing updated group data to storage.")]
     StorageError(StorageError),
+    /// Error validating the extensions
+    #[error(transparent)]
+    InvalidExtensionError(#[from] InvalidExtensionError),
 }
 
 /// Error merging a commit.
@@ -694,4 +701,11 @@ pub enum GroupContextExtensionsProposalValidationError {
         "An extension in the group context extensions is not listed in the required capabilties' extension types."
     )]
     ExtensionNotInRequiredCapabilities,
+
+    /// An extension with a type that is not valid in the group context
+    #[error("Expected valid `Extension` for `GroupContextExtension`, got `{wrong:?}`")]
+    InvalidExtensionTypeError {
+        /// found invalid type
+        wrong: ExtensionType,
+    },
 }

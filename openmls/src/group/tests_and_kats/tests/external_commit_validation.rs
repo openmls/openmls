@@ -297,9 +297,11 @@ fn test_valsem242() {
             }))
         };
 
+        let gce = alice_group.context().extensions().clone();
+
         let gce_proposal = {
             ProposalOrRef::proposal(Proposal::group_context_extensions(
-                GroupContextExtensionProposal::new(alice_group.context().extensions().clone()),
+                GroupContextExtensionProposal::new(gce),
             ))
         };
 

@@ -4,7 +4,10 @@
 
 use thiserror::Error;
 
-use crate::{ciphersuite::signable::SignatureError, error::LibraryError};
+use crate::{
+    ciphersuite::signable::SignatureError, error::LibraryError,
+    prelude::ExtensionTypeNotValidInKeyPackageError,
+};
 
 /// KeyPackage verify error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -36,6 +39,9 @@ pub enum KeyPackageVerifyError {
     /// The protocol version is not valid.
     #[error("The protocol version is not valid.")]
     InvalidProtocolVersion,
+    /// The provided extension is not allowed in key packages
+    #[error(transparent)]
+    ExtensionTypeNotValidInKeyPackage(#[from] ExtensionTypeNotValidInKeyPackageError),
 }
 
 /// KeyPackage extension support error

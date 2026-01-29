@@ -4,10 +4,12 @@
 
 use tls_codec::{Deserialize, DeserializeBytes, Serialize, Size};
 
+use crate::messages::proposals_in::GroupContextExtensionProposalIn;
+
 use super::{
     proposals::{
-        ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal, Proposal,
-        ProposalType, ReInitProposal, RemoveProposal,
+        ExternalInitProposal, PreSharedKeyProposal, Proposal, ProposalType, ReInitProposal,
+        RemoveProposal,
     },
     proposals_in::{AddProposalIn, ProposalIn, UpdateProposalIn},
     CustomProposal,
@@ -138,7 +140,7 @@ impl Deserialize for ProposalIn {
                 ProposalIn::ExternalInit(Box::new(ExternalInitProposal::tls_deserialize(bytes)?))
             }
             ProposalType::GroupContextExtensions => ProposalIn::GroupContextExtensions(Box::new(
-                GroupContextExtensionProposal::tls_deserialize(bytes)?,
+                GroupContextExtensionProposalIn::tls_deserialize(bytes)?,
             )),
             #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppDataUpdate => {
