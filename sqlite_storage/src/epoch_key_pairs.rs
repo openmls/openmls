@@ -31,11 +31,11 @@ impl<EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>> StorableEpochKeyPairs<Epoc
         leaf_index: u32,
     ) -> Result<Vec<EpochKeyPairs>, rusqlite::Error> {
         let mut stmt = connection.prepare(
-            "SELECT key_pairs 
-            FROM openmls_epoch_keys_pairs 
-            WHERE group_id = ?1 
-                AND epoch_id = ?2 
-                AND leaf_index = ?3 
+            "SELECT key_pairs
+            FROM openmls_epoch_keys_pairs
+            WHERE group_id = ?1
+                AND epoch_id = ?2
+                AND leaf_index = ?3
                 AND provider_version = ?4",
         )?;
         let result = stmt
@@ -71,7 +71,7 @@ impl<EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>> StorableEpochKeyPairsRef<'
         leaf_index: u32,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO openmls_epoch_keys_pairs (group_id, epoch_id, leaf_index, key_pairs, provider_version) 
+            "INSERT OR REPLACE INTO openmls_epoch_keys_pairs (group_id, epoch_id, leaf_index, key_pairs, provider_version)
                 VALUES (?1, ?2, ?3, ?4, ?5)",
             params![
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
@@ -93,10 +93,10 @@ impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
         leaf_index: u32,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "DELETE FROM openmls_epoch_keys_pairs 
-            WHERE group_id = ?1 
-                AND epoch_id = ?2 
-                AND leaf_index = ?3 
+            "DELETE FROM openmls_epoch_keys_pairs
+            WHERE group_id = ?1
+                AND epoch_id = ?2
+                AND leaf_index = ?3
                 AND provider_version = ?4",
             params![
                 KeyRefWrapper::<C, _>(self.0, PhantomData),

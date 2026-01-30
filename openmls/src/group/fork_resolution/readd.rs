@@ -213,6 +213,9 @@ mod test {
         let welcome = welcome.into_welcome().unwrap();
         let ratchet_tree = alice_group.export_ratchet_tree();
 
+        // Delete Bob's old group
+        bob_group.delete(bob_provider.storage()).unwrap();
+
         let new_bob_group = StagedWelcome::new_from_welcome(
             bob_provider,
             alice_group.configuration(),

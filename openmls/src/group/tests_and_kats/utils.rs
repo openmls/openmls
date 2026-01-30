@@ -185,16 +185,16 @@ pub(crate) fn setup(
                     .borrow_mut();
                 // Create the local group state of the new member based on the
                 // Welcome.
-                let ratchet_tree = Some(mls_group.export_ratchet_tree().into());
-                let new_group = StagedWelcome::new_from_welcome(
-                    provider,
-                    &join_config,
-                    welcome.clone(),
-                    ratchet_tree,
-                )
-                .unwrap()
-                .into_group(provider)
-                .unwrap();
+                let processed_welcome =
+                    ProcessedWelcome::new_from_welcome(provider, &join_config, welcome.clone())
+                        .unwrap();
+                let new_group = JoinBuilder::new(provider, processed_welcome)
+                    .with_ratchet_tree(mls_group.export_ratchet_tree().into())
+                    .replace_old_group()
+                    .build()
+                    .unwrap()
+                    .into_group(provider)
+                    .unwrap();
 
                 new_group_member
                     .group_states

@@ -1,6 +1,9 @@
 #![cfg(feature = "fork-resolution")]
 
-use openmls::prelude::*;
+use openmls::{
+    group::{JoinBuilder, ProcessedWelcome},
+    prelude::*,
+};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
 use openmls_traits::{signatures::Signer, types::SignatureScheme};
@@ -201,7 +204,11 @@ fn book_example_readd() {
     // Make Bob re-join the group and Alice and Charlie merge the commit that adds Bob.
     let (commit, welcome, _) = readd_messages.into_contents();
     let welcome = welcome.unwrap();
-    let bob_group = StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome, None)
+    let processed_welcome =
+        ProcessedWelcome::new_from_welcome(bob_provider, &mls_group_config, welcome).unwrap();
+    let bob_group = JoinBuilder::new(bob_provider, processed_welcome)
+        .replace_old_group()
+        .build()
         .unwrap()
         .into_group(bob_provider)
         .unwrap();

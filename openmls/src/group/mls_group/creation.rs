@@ -259,7 +259,12 @@ impl ProcessedWelcome {
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
-        self.into_staged_welcome_inner(provider, ratchet_tree, LeafNodeLifetimePolicy::Verify)
+        self.into_staged_welcome_inner(
+            provider,
+            ratchet_tree,
+            LeafNodeLifetimePolicy::Verify,
+            false,
+        )
     }
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
@@ -269,7 +274,17 @@ impl ProcessedWelcome {
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
         validate_lifetimes: LeafNodeLifetimePolicy,
+        replace_old_group: bool,
     ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+        // Check if we need to replace an old group
+        if !replace_old_group
+            && MlsGroup::load(provider.storage(), self.verifiable_group_info.group_id())
+                .map_err(WelcomeError::StorageError)?
+                .is_some()
+        {
+            return Err(WelcomeError::GroupAlreadyExists);
+        }
+
         // Build the ratchet tree and group
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -602,6 +617,7 @@ pub struct JoinBuilder<'a, Provider: OpenMlsProvider> {
     processed_welcome: ProcessedWelcome,
     ratchet_tree: Option<RatchetTreeIn>,
     validate_lifetimes: LeafNodeLifetimePolicy,
+    replace_old_group: bool,
 }
 
 impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
@@ -611,6 +627,7 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
             provider,
             processed_welcome,
             ratchet_tree: None,
+            replace_old_group: false,
             validate_lifetimes: LeafNodeLifetimePolicy::Verify,
         }
     }
@@ -618,6 +635,12 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     /// The ratchet tree to use for the new group.
     pub fn with_ratchet_tree(mut self, ratchet_tree: RatchetTreeIn) -> Self {
         self.ratchet_tree = Some(ratchet_tree);
+        self
+    }
+
+    /// Instruct the builder to replace any existing group with the same ID.
+    pub fn replace_old_group(mut self) -> Self {
+        self.replace_old_group = true;
         self
     }
 
@@ -643,6 +666,7 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
             self.provider,
             self.ratchet_tree,
             self.validate_lifetimes,
+            self.replace_old_group,
         )
     }
 }
