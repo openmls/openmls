@@ -38,7 +38,8 @@ fn application_id() {
 // in an MlsGroupCreateConfig
 #[test]
 fn application_id_in_leaf_node_extensions() {
-    let extensions = Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(&[])));
+    let extensions = Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(&[])))
+        .expect("failed to create single-element extensions list");
 
     let _create_config = MlsGroupCreateConfig::builder()
         .with_leaf_node_extensions(extensions)
@@ -213,14 +214,14 @@ fn with_group_context_extensions() {
 
     // create an extension that we can check for later
     let test_extension = Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe]));
-    let extensions = Extensions::single(test_extension.clone());
+    let extensions = Extensions::single(test_extension.clone())
+        .expect("failed to create single-element extensions list");
 
     let alice_credential_with_key_and_signer =
         generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .with_group_context_extensions(extensions)
-        .expect("failed to apply extensions at group config builder")
         .ciphersuite(ciphersuite)
         .build();
 
@@ -244,78 +245,52 @@ fn with_group_context_extensions() {
 
 #[openmls_test::openmls_test]
 fn wrong_extension_with_group_context_extensions() {
-    let provider = &Provider::default();
-
     // Extension types that are known to not be allowed here:
     // - application id
     // - external pub
     // - ratchet tree
 
-    let alice_credential_with_key_and_signer =
-        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
-
     // create an extension that we can check for later
     let test_extension = Extension::ApplicationId(ApplicationIdExtension::new(&[0xca, 0xfe]));
-    let extensions = Extensions::single(test_extension.clone());
+    let err = Extensions::<GroupContext>::single(test_extension.clone()).expect_err(
+        "should not be able to put non-group-context extension into group context extensions",
+    );
 
-    let err = MlsGroup::builder()
-        .with_group_context_extensions(extensions.clone())
-        .expect_err("builder accepted non-group-context extension");
+    assert_eq!(
+        err,
+        InvalidExtensionError::ExtensionTypeNotValidInGroupContext(
+            ExtensionTypeNotValidInGroupContextError(ExtensionType::ApplicationId)
+        )
+    );
 
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
-    let err = PublicGroup::builder(
-        GroupId::from_slice(&[0xbe, 0xef]),
-        ciphersuite,
-        alice_credential_with_key_and_signer
-            .credential_with_key
-            .clone(),
-    )
-    .with_group_context_extensions(extensions)
-    .expect_err("builder accepted non-group-context extension");
-
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
     // create an extension that we can check for later
     let test_extension =
         Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(vec![])));
-    let extensions = Extensions::single(test_extension.clone());
+    let err = Extensions::<GroupContext>::single(test_extension.clone()).expect_err(
+        "should not be able to put non-group-context extension into group context extensions",
+    );
 
-    let err = MlsGroup::builder()
-        .with_group_context_extensions(extensions.clone())
-        .expect_err("builder accepted non-group-context extension");
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
-
-    let err = PublicGroup::builder(
-        GroupId::from_slice(&[0xbe, 0xef]),
-        ciphersuite,
-        alice_credential_with_key_and_signer
-            .credential_with_key
-            .clone(),
-    )
-    .with_group_context_extensions(extensions)
-    .expect_err("builder accepted non-group-context extension");
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    assert_eq!(
+        err,
+        InvalidExtensionError::ExtensionTypeNotValidInGroupContext(
+            ExtensionTypeNotValidInGroupContextError(ExtensionType::ExternalPub)
+        )
+    );
 
     // create an extension that we can check for later
     let test_extension = Extension::RatchetTree(RatchetTreeExtension::new(
         RatchetTreeIn::from_nodes(vec![]).into(),
     ));
-    let extensions = Extensions::single(test_extension.clone());
+    let err = Extensions::<GroupContext>::single(test_extension.clone()).expect_err(
+        "should not be able to put non-group-context extension into group context extensions",
+    );
 
-    let err = MlsGroup::builder()
-        .with_group_context_extensions(extensions.clone())
-        .expect_err("builder accepted non-group-context extension");
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
-
-    let err = PublicGroup::builder(
-        GroupId::from_slice(&[0xbe, 0xef]),
-        ciphersuite,
-        alice_credential_with_key_and_signer
-            .credential_with_key
-            .clone(),
-    )
-    .with_group_context_extensions(extensions)
-    .expect_err("builder accepted non-group-context extension");
-    assert_eq!(err, InvalidExtensionError::IllegalInGroupContext);
+    assert_eq!(
+        err,
+        InvalidExtensionError::ExtensionTypeNotValidInGroupContext(
+            ExtensionTypeNotValidInGroupContextError(ExtensionType::RatchetTree)
+        )
+    );
 }
 
 #[openmls_test::openmls_test]
@@ -330,7 +305,8 @@ fn last_resort_extension() {
     let signer =
         openmls_basic_credential::SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
-    let extensions = Extensions::single(last_resort);
+    let extensions =
+        Extensions::single(last_resort).expect("failed to create single-element extensions list");
     let capabilities = Capabilities::new(
         None,
         None,
@@ -419,4 +395,75 @@ fn last_resort_extension() {
         )
         .expect("error retrieving key package")
         .expect("key package does not exist");
+}
+
+#[cfg(feature = "extensions-draft-08")]
+#[openmls_test::openmls_test]
+fn app_data_dictionary_extension() {
+    use crate::test_utils::single_group_test_framework::*;
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    let mut group_state = GroupState::new_from_party(
+        group_id,
+        alice_party.generate_pre_group(ciphersuite),
+        create_config.clone(),
+    )
+    .unwrap();
+
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let mut dictionary = AppDataDictionary::new();
+    let _ = dictionary.insert(5, vec![]);
+    let _ = dictionary.insert(0, vec![1, 2, 3]);
+
+    let extension =
+        Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary.clone()));
+    // build the commit
+    let message_bundle = alice
+        .group
+        .commit_builder()
+        .propose_adds(Some(
+            bob_party
+                .generate_pre_group(ciphersuite)
+                .key_package_bundle
+                .key_package()
+                .clone(),
+        ))
+        .load_psks(alice_party.provider.storage())
+        .unwrap()
+        .create_group_info_with_extensions(Some(extension))
+        .unwrap()
+        .build(
+            alice_party.provider.rand(),
+            alice_party.provider.crypto(),
+            &alice.party.signer,
+            |_proposal| true,
+        )
+        .unwrap()
+        .stage_commit(&alice_party.provider)
+        .unwrap();
+
+    // process the Welcome for Bob
+    let welcome = message_bundle.into_welcome().unwrap();
+    let processed_welcome = ProcessedWelcome::new_from_welcome(
+        &bob_party.provider,
+        create_config.join_config(),
+        welcome,
+    )
+    .unwrap();
+
+    // retrieve the extension
+    let extensions = processed_welcome.unverified_group_info().extensions();
+    let extension = extensions
+        .iter()
+        .find(|e| e.extension_type() == ExtensionType::AppDataDictionary)
+        .and_then(|e| e.as_app_data_dictionary_extension().ok())
+        .unwrap();
+
+    // check the dictionary
+    assert_eq!(&dictionary, extension.dictionary());
 }

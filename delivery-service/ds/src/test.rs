@@ -23,7 +23,7 @@ fn generate_credential(
 fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
-    extensions: Extensions,
+    extensions: Extensions<KeyPackage>,
     crypto_provider: &impl OpenMlsProvider,
     signer: &SignatureKeyPair,
 ) -> KeyPackageBundle {

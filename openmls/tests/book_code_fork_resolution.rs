@@ -492,7 +492,7 @@ fn generate_credential(
 fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
-    extensions: Extensions,
+    extensions: Extensions<KeyPackage>,
     provider: &impl openmls::storage::OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackageBundle {

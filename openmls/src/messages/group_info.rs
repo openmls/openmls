@@ -15,9 +15,10 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         AeadKey, AeadNonce, Signature,
     },
-    extensions::Extensions,
+    extensions::{errors::InvalidExtensionError, Extension, Extensions},
     group::{GroupContext, GroupEpoch, GroupId},
     messages::ConfirmationTag,
+    prelude::ExtensionTypeNotValidInGroupInfoError,
 };
 
 const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";
@@ -49,7 +50,7 @@ impl VerifiableGroupInfo {
     /// Create a new [`VerifiableGroupInfo`] from its contents.
     pub fn new(
         group_context: GroupContext,
-        extensions: Extensions,
+        extensions: Extensions<GroupInfo>,
         confirmation_tag: ConfirmationTag,
         signer: LeafNodeIndex,
         signature: Signature,
@@ -104,7 +105,7 @@ impl VerifiableGroupInfo {
     /// Get (unverified) extensions of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<GroupInfo> {
         &self.payload.extensions
     }
 
@@ -194,7 +195,7 @@ impl GroupInfo {
     }
 
     /// Returns the [`GroupInfo`] extensions.
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<GroupInfo> {
         &self.payload.extensions
     }
 
@@ -247,7 +248,7 @@ impl GroupInfo {
 )]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
-    extensions: Extensions,
+    extensions: Extensions<GroupInfo>,
     confirmation_tag: ConfirmationTag,
     signer: LeafNodeIndex,
 }
@@ -256,16 +257,25 @@ impl GroupInfoTBS {
     /// Create a new to-be-signed group info.
     pub(crate) fn new(
         group_context: GroupContext,
-        extensions: Extensions,
+        extensions: Extensions<GroupInfo>,
         confirmation_tag: ConfirmationTag,
         signer: LeafNodeIndex,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, InvalidExtensionError> {
+        // validate the extensions
+        for extension_type in extensions.iter().map(Extension::extension_type) {
+            if extension_type.is_valid_in_group_info() == Some(false) {
+                return Err(InvalidExtensionError::ExtensionTypeNotValidInGroupInfo(
+                    ExtensionTypeNotValidInGroupInfoError(extension_type),
+                ));
+            }
+        }
+
+        Ok(Self {
             group_context,
             extensions,
             confirmation_tag,
             signer,
-        }
+        })
     }
 }
 

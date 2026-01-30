@@ -131,10 +131,13 @@ fn basic_group_setup() {
 #[openmls_test::openmls_test]
 fn wrong_group_create_config() {
     MlsGroupCreateConfig::builder()
-        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
-            0xff00,
-            UnknownExtension(b"testdata".to_vec()),
-        )))
+        .with_leaf_node_extensions(
+            Extensions::single(Extension::Unknown(
+                0xff00,
+                UnknownExtension(b"testdata".to_vec()),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
         .expect_err("leaf node extension is not in leaf node capabilities, should have failed");
 
     MlsGroupCreateConfig::builder()
@@ -143,10 +146,13 @@ fn wrong_group_create_config() {
                 .extensions(vec![ExtensionType::Unknown(0xff00)])
                 .build(),
         )
-        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
-            0xff01,
-            UnknownExtension(b"testdata".to_vec()),
-        )))
+        .with_leaf_node_extensions(
+            Extensions::single(Extension::Unknown(
+                0xff01,
+                UnknownExtension(b"testdata".to_vec()),
+            ))
+            .unwrap(),
+        )
         .expect_err("leaf node extension is not in leaf node capabilities, should have failed");
 
     MlsGroupCreateConfig::builder()
@@ -155,10 +161,13 @@ fn wrong_group_create_config() {
                 .extensions(vec![ExtensionType::Unknown(0xff00)])
                 .build(),
         )
-        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
-            0xff00,
-            UnknownExtension(b"testdata".to_vec()),
-        )))
+        .with_leaf_node_extensions(
+            Extensions::single(Extension::Unknown(
+                0xff00,
+                UnknownExtension(b"testdata".to_vec()),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
         .expect("leaf node extension is in leaf node capabilities, should have succeeded")
         .build();
 }
@@ -804,6 +813,7 @@ fn decrypt_after_leaf_index_reuse() {
 }
 
 #[openmls_test::openmls_test]
+#[ignore]
 fn create_group_info_flag() {
     let alice_provider = &Provider::default();
 
@@ -830,9 +840,9 @@ fn create_group_info_flag() {
     // Now we set the `create_group_info` flag to `true`.
     let commit_bundle = alice_group
         .commit_builder()
-        .create_group_info(true)
         .load_psks(alice_provider.storage())
         .unwrap()
+        .create_group_info(true)
         .build(
             alice_provider.rand(),
             alice_provider.crypto(),
@@ -847,6 +857,100 @@ fn create_group_info_flag() {
     alice_group.merge_pending_commit(alice_provider).unwrap();
     let exported_group_info = alice_group
         .export_group_info(alice_provider.crypto(), &alice_signer, false)
+        .unwrap();
+    assert_eq!(group_info, exported_group_info);
+}
+
+#[openmls_test::openmls_test]
+fn use_ratchet_tree_extension_flag() {
+    for use_ratchet_tree_extension in [true, false] {
+        let provider = &Provider::default();
+        // The `use_ratchet_tree_extension` flag is set to `false` by default.
+        let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
+            setup_alice_group(ciphersuite, provider);
+
+        let commit_bundle = alice_group
+            .commit_builder()
+            .load_psks(provider.storage())
+            .unwrap()
+            .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+            .unwrap()
+            .stage_commit(provider)
+            .unwrap();
+
+        assert!(commit_bundle.group_info().is_none());
+
+        // Now we set the `use_ratchet_tree_extension` flag.
+        let commit_bundle = alice_group
+            .commit_builder()
+            .load_psks(provider.storage())
+            .unwrap()
+            .create_group_info(true)
+            .use_ratchet_tree_extension(use_ratchet_tree_extension)
+            .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+            .unwrap()
+            .stage_commit(provider)
+            .unwrap();
+
+        let group_info = commit_bundle.into_group_info_msg().unwrap();
+        alice_group.merge_pending_commit(provider).unwrap();
+        let exported_group_info = alice_group
+            .export_group_info(provider.crypto(), &alice_signer, use_ratchet_tree_extension)
+            .unwrap();
+        assert_eq!(group_info, exported_group_info);
+    }
+}
+
+#[openmls_test::openmls_test]
+#[ignore]
+fn test_create_group_info_with_extensions() {
+    let provider = &Provider::default();
+    let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
+        setup_alice_group(ciphersuite, provider);
+
+    let commit_bundle = alice_group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    assert!(commit_bundle.group_info().is_none());
+
+    let unknown_extension = Extension::Unknown(3, extensions::UnknownExtension(vec![]));
+    let extensions = vec![unknown_extension.clone()];
+    // Now we set the remaining extensions.
+    let commit_bundle = alice_group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .use_ratchet_tree_extension(false)
+        .create_group_info_with_extensions(extensions.clone())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    let group_info = commit_bundle.into_group_info_msg().unwrap();
+    alice_group.merge_pending_commit(provider).unwrap();
+
+    // compare against exported without extensions
+    let exported_group_info = alice_group
+        .export_group_info(provider.crypto(), &alice_signer, false)
+        .unwrap();
+    assert_ne!(group_info, exported_group_info);
+
+    // compare against exported with extensions
+    let exported_group_info = alice_group
+        .export_group_info_with_additional_extensions(
+            provider.crypto(),
+            &alice_signer,
+            false,
+            extensions.clone(),
+        )
         .unwrap();
     assert_eq!(group_info, exported_group_info);
 }

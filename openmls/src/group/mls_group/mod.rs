@@ -17,12 +17,13 @@ use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Signable},
     credentials::Credential,
     error::LibraryError,
+    extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{
-        CreateGroupContextExtProposalError, Extension, ExtensionType, Extensions,
-        ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
-        MlsGroupStateError, OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension,
-        RequiredCapabilitiesExtension, StagedCommit,
+        CreateGroupContextExtProposalError, Extension, ExtensionType, ExternalPubExtension,
+        GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig, MlsGroupStateError,
+        OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension, RequiredCapabilitiesExtension,
+        StagedCommit,
     },
     key_packages::KeyPackageBundle,
     messages::{
@@ -410,7 +411,7 @@ impl MlsGroup {
     }
 
     /// Get a reference to the group context [`Extensions`] of this [`MlsGroup`].
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<GroupContext> {
         self.public_group().group_context().extensions()
     }
 
@@ -573,7 +574,7 @@ impl MlsGroup {
     pub(crate) fn create_group_context_ext_proposal<Provider: OpenMlsProvider>(
         &self,
         framing_parameters: FramingParameters,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError<Provider::StorageError>>
     {
@@ -639,7 +640,7 @@ impl MlsGroup {
     }
 
     /// Returns a reference to the proposal store.
-    pub(crate) fn proposal_store(&self) -> &ProposalStore {
+    pub fn proposal_store(&self) -> &ProposalStore {
         self.public_group.proposal_store()
     }
 

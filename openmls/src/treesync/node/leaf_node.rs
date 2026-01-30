@@ -18,7 +18,7 @@ use crate::{
     },
     credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
-    extensions::{errors::InvalidExtensionError, ExtensionType, Extensions},
+    extensions::{ExtensionType, Extensions},
     group::GroupId,
     key_packages::{KeyPackage, Lifetime},
     prelude::KeyPackageBundle,
@@ -37,7 +37,7 @@ pub(crate) struct NewLeafNodeParams {
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) leaf_node_source: LeafNodeSource,
     pub(crate) capabilities: Capabilities,
-    pub(crate) extensions: Extensions,
+    pub(crate) extensions: Extensions<LeafNode>,
     pub(crate) tree_info_tbs: TreeInfoTbs,
 }
 
@@ -47,7 +47,7 @@ pub(crate) struct NewLeafNodeParams {
 pub(crate) struct UpdateLeafNodeParams {
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) capabilities: Capabilities,
-    pub(crate) extensions: Extensions,
+    pub(crate) extensions: Extensions<LeafNode>,
 }
 
 impl UpdateLeafNodeParams {
@@ -69,7 +69,7 @@ impl UpdateLeafNodeParams {
 pub struct LeafNodeParameters {
     credential_with_key: Option<CredentialWithKey>,
     capabilities: Option<Capabilities>,
-    extensions: Option<Extensions>,
+    extensions: Option<Extensions<LeafNode>>,
 }
 
 impl LeafNodeParameters {
@@ -89,7 +89,7 @@ impl LeafNodeParameters {
     }
 
     /// Returns the extensions.
-    pub fn extensions(&self) -> Option<&Extensions> {
+    pub fn extensions(&self) -> Option<&Extensions<LeafNode>> {
         self.extensions.as_ref()
     }
 
@@ -109,7 +109,7 @@ impl LeafNodeParameters {
 pub struct LeafNodeParametersBuilder {
     credential_with_key: Option<CredentialWithKey>,
     capabilities: Option<Capabilities>,
-    extensions: Option<Extensions>,
+    extensions: Option<Extensions<LeafNode>>,
 }
 
 impl LeafNodeParametersBuilder {
@@ -128,15 +128,9 @@ impl LeafNodeParametersBuilder {
     /// Set the extensions.
     ///
     /// Returns an error if one or more of the extensions is invalid in leaf nodes.
-    pub fn with_extensions(
-        mut self,
-        extensions: Extensions,
-    ) -> Result<Self, InvalidExtensionError> {
-        // https://validation.openmls.tech/#valn1601
-        extensions.validate_extension_types_for_leaf_node()?;
-
+    pub fn with_extensions(mut self, extensions: Extensions<LeafNode>) -> Self {
         self.extensions = Some(extensions);
-        Ok(self)
+        self
     }
 
     /// Build the [`LeafNodeParameters`].
@@ -249,7 +243,7 @@ impl LeafNode {
         credential_with_key: CredentialWithKey,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
-        extensions: Extensions,
+        extensions: Extensions<LeafNode>,
         tree_info_tbs: TreeInfoTbs,
         signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
@@ -313,7 +307,7 @@ impl LeafNode {
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
-        extensions: Extensions,
+        extensions: Extensions<LeafNode>,
         tree_info_tbs: TreeInfoTbs,
         provider: &Provider,
         signer: &impl Signer,
@@ -445,7 +439,7 @@ impl LeafNode {
     }
 
     /// Return a reference to the leaf node extensions.
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<LeafNode> {
         &self.payload.extensions
     }
 
@@ -495,7 +489,7 @@ impl LeafNode {
         let invalid_extension_types = self
             .extensions()
             .iter()
-            .filter(|ext| ext.extension_type().is_valid_in_leaf_node() == Some(false))
+            .filter(|ext| !ext.extension_type().is_valid_in_leaf_node())
             .collect::<Vec<_>>();
         if !invalid_extension_types.is_empty() {
             log::error!("Invalid extension used in leaf node: {invalid_extension_types:?}");
@@ -570,7 +564,7 @@ struct LeafNodePayload {
     credential: Credential,
     capabilities: Capabilities,
     leaf_node_source: LeafNodeSource,
-    extensions: Extensions,
+    extensions: Extensions<LeafNode>,
 }
 
 /// The source of the `LeafNode`.
@@ -649,7 +643,7 @@ impl LeafNodeTbs {
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         leaf_node_source: LeafNodeSource,
-        extensions: Extensions,
+        extensions: Extensions<LeafNode>,
         tree_info_tbs: TreeInfoTbs,
     ) -> Self {
         let payload = LeafNodePayload {
