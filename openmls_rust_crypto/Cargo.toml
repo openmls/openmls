@@ -13,7 +13,7 @@ readme = "README.md"
 openmls_traits = { workspace = true }
 openmls_memory_storage = { workspace = true }
 
-hpke = { version = "0.5.0", package = "hpke-rs", default-features = false, features = [
+hpke = { version = "0.5.1", package = "hpke-rs", default-features = false, features = [
     "hazmat",
     "serialization",
 ] }
