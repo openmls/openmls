@@ -19,13 +19,14 @@ use crate::{
         tests_and_kats::utils::{
             generate_credential_with_key, generate_key_package, resign_external_commit,
         },
-        Extensions, MlsGroup, MlsGroupCreateConfig, OpenMlsSignaturePublicKey,
+        CreateCommitError, Extensions, MlsGroup, MlsGroupCreateConfig, OpenMlsSignaturePublicKey,
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::{
         AddProposal, ExternalInitProposal, GroupContextExtensionProposal, Proposal, ProposalOrRef,
         ProposalType, ReInitProposal,
     },
+    treesync::errors::LeafNodeValidationError,
 };
 
 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
@@ -688,17 +689,17 @@ fn test_external_commit_unsupported_group_context_extension() {
 
     // Create group context extensions with a custom extension
     let gc_extensions =
-        Extensions::single(Extension::Unknown(0x4141, UnknownExtension(vec![0x01])));
+        Extensions::single(Extension::Unknown(0x4141, UnknownExtension(vec![0x01])))
+            .expect("unknown extensions should be considered valid in group context");
 
     // Alice creates a group with the custom group context extension
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .with_group_context_extensions(gc_extensions)
-        .unwrap()
         .build();
 
-    let mut alice_group = MlsGroup::new(
+    let alice_group = MlsGroup::new(
         alice_provider,
         &alice_credential.signer,
         &mls_group_create_config,
@@ -715,8 +716,9 @@ fn test_external_commit_unsupported_group_context_extension() {
     let tree_option = alice_group.export_ratchet_tree();
 
     // Bob attempts to join via external commit
-    // Bob's key package does NOT explicitly support extension 0x4141
-    let (_bob_group, public_message_commit) = MlsGroup::external_commit_builder()
+    // Bob's key package does NOT explicitly support extension 0x4141,
+    // therefore it fails
+    let err = MlsGroup::external_commit_builder()
         .with_config(alice_group.configuration().clone())
         .with_ratchet_tree(tree_option.into())
         .build_group(
@@ -733,32 +735,12 @@ fn test_external_commit_unsupported_group_context_extension() {
             &bob_credential.signer,
             |_| true,
         )
-        .unwrap()
-        .finalize(bob_provider)
-        .unwrap();
-
-    let public_message_commit = {
-        let serialized = public_message_commit
-            .into_commit()
-            .tls_serialize_detached()
-            .unwrap();
-        MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
-            .unwrap()
-            .into_plaintext()
-            .unwrap()
-    };
-
-    // Alice processes the external commit - should FAIL
-    let err = alice_group
-        .process_message(alice_provider, ProtocolMessage::from(public_message_commit))
-        .expect_err("Expected external commit to be rejected due to unsupported extension");
+        .expect_err("bob can't join because he doesn't have capabilities for an extension in the group context");
 
     // Verify error type
     assert!(matches!(
         err,
-        ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
-            ExternalCommitValidationError::UnsupportedGroupContextExtensions
-        ))
+        CreateCommitError::LeafNodeValidation(LeafNodeValidationError::UnsupportedExtensions)
     ));
 }
 

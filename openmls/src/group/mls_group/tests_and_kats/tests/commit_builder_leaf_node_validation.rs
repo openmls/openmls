@@ -47,12 +47,12 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_capabi
     // Create group with required capabilities
     let required_caps =
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]);
-    let gc_extensions = Extensions::single(Extension::RequiredCapabilities(required_caps));
+    let gc_extensions = Extensions::single(Extension::RequiredCapabilities(required_caps))
+        .expect("required capabilities extension should be considered valid in group context");
 
     let create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .with_group_context_extensions(gc_extensions)
-        .expect("valid extensions")
         .capabilities(supporting_caps.clone())
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .use_ratchet_tree_extension(true)
@@ -136,12 +136,12 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
 
     // Create group with the custom extension
     let custom_extension = UnknownExtension(b"any gce must be supported".to_vec());
-    let gc_extensions = Extensions::single(Extension::Unknown(0xf001, custom_extension));
+    let gc_extensions = Extensions::single(Extension::Unknown(0xf001, custom_extension))
+        .expect("unknown extensions should be considered valid in group context");
 
     let create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .with_group_context_extensions(gc_extensions)
-        .expect("valid extensions")
         .capabilities(supporting_caps.clone())
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .use_ratchet_tree_extension(true)

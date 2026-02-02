@@ -1174,7 +1174,8 @@ fn join_rejects_unsupported_group_context_extension() {
     let gc_extensions = Extensions::single(Extension::Unknown(
         0x4141,
         crate::extensions::UnknownExtension(vec![0x01]),
-    ));
+    ))
+    .expect("unknown extensions should be considered valid in group context");
 
     let alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
@@ -1183,7 +1184,6 @@ fn join_rejects_unsupported_group_context_extension() {
             IncomingWireFormatPolicy::Mixed,
         ))
         .with_group_context_extensions(gc_extensions)
-        .expect("error setting group context extensions")
         .build(
             &alice_party.provider,
             &alice_party.signer,
