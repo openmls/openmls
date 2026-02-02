@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR REPLACE INTO openmls_key_package (key_package_ref, key_package) VALUES (?1, ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "84738ba82c5f63c03941720a84bb72041fbd979c557bfb34491cc6b2bb4e3df7"
+}

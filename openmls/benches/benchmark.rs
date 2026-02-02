@@ -165,14 +165,19 @@ fn join_group(c: &mut Criterion, provider: &impl OpenMlsProvider) {
                         let welcome = welcome
                             .into_welcome()
                             .expect("expected the message to be a welcome message");
-                        let _bob_group = StagedWelcome::new_from_welcome(
+                        let processed_welcome = ProcessedWelcome::new_from_welcome(
                             provider,
                             mls_group_create_config.join_config(),
                             welcome,
-                            Some(alice_group.export_ratchet_tree().into()),
                         )
-                        .unwrap()
-                        .into_group(provider);
+                        .unwrap();
+                        let _bob_group = JoinBuilder::new(provider, processed_welcome)
+                            .with_ratchet_tree(alice_group.export_ratchet_tree().into())
+                            .replace_old_group()
+                            .build()
+                            .unwrap()
+                            .into_group(provider)
+                            .unwrap();
                     },
                 );
             },
@@ -242,15 +247,19 @@ fn create_commit(c: &mut Criterion, provider: &impl OpenMlsProvider) {
                         let welcome = welcome
                             .into_welcome()
                             .expect("expected the message to be a welcome message");
-                        let bob_group = StagedWelcome::new_from_welcome(
+                        let processed_welcome = ProcessedWelcome::new_from_welcome(
                             provider,
                             mls_group_create_config.join_config(),
                             welcome,
-                            Some(alice_group.export_ratchet_tree().into()),
                         )
-                        .unwrap()
-                        .into_group(provider)
                         .unwrap();
+                        let bob_group = JoinBuilder::new(provider, processed_welcome)
+                            .with_ratchet_tree(alice_group.export_ratchet_tree().into())
+                            .replace_old_group()
+                            .build()
+                            .unwrap()
+                            .into_group(provider)
+                            .unwrap();
 
                         (bob_group, bob_signer)
                     },

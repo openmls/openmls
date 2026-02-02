@@ -27,6 +27,9 @@ use crate::{
 #[cfg(feature = "extensions-draft-08")]
 pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
+#[cfg(doc)]
+use crate::group::GroupId;
+
 /// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum NewGroupError<StorageError> {
@@ -48,6 +51,9 @@ pub enum NewGroupError<StorageError> {
     /// Invalid extensions set in configuration
     #[error("Invalid extensions set in configuration")]
     InvalidExtensions(#[from] InvalidExtensionError),
+    /// A group with the given [`GroupId`] already exists.
+    #[error("A group with the given GroupId already exists.")]
+    GroupAlreadyExists,
 }
 
 /// EmptyInput error

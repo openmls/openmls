@@ -191,6 +191,7 @@ fn receiver_group(
     let group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_group_id(group_id)
+        .replace_old_group()
         .build(provider, &signer, credential_with_key.clone())
         .unwrap();
 
