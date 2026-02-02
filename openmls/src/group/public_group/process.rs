@@ -61,6 +61,9 @@ impl PublicGroup {
                     .leaf(leaf_node_index)
                     .map(CredentialWithKey::from)
             } else if let Some(store) = message_secrets_store_option {
+                // The message is from a past epoch, look up the member in the
+                // past secrets store based on the epoch and sender's leaf
+                // index.
                 store
                     .leaves_for_epoch(message_epoch)
                     .get(&leaf_node_index)

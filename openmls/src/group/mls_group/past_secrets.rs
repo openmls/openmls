@@ -137,7 +137,8 @@ impl MessageSecretsStore {
         None
     }
 
-    /// Return a slice with the [`Member`]s of the `group_epoch`.
+    /// Returns a `HashMap` that maps a `LeafNodeIndex` to the correct
+    /// [`Member`] in the given `group_epoch`.
     pub(crate) fn leaves_for_epoch(
         &self,
         group_epoch: impl Into<GroupEpoch>,
@@ -145,12 +146,11 @@ impl MessageSecretsStore {
         let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter() {
             if epoch_tree.epoch == epoch {
-                let res = epoch_tree
+                return epoch_tree
                     .leaves
                     .iter()
                     .map(|m| (m.index, m))
                     .collect::<HashMap<LeafNodeIndex, &Member>>();
-                return res;
             }
         }
         HashMap::new()
