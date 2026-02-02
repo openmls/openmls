@@ -148,11 +148,6 @@ impl PublicGroup {
             })
             .collect();
 
-        println!(
-            "Signature keys of removed members: {:?}",
-            signature_keys.len()
-        );
-
         // Iterate over all leaf nodes except the removed ones
         let mut leaves = self
             .treesync()
@@ -177,8 +172,6 @@ impl PublicGroup {
                 .cloned()
                 .collect();
         }
-
-        println!("Capabilities intersection: {:?}", capabilities_intersection);
 
         // Check that the types of all non-default proposals are supported by all members
         for proposal in proposal_queue.queued_proposals() {

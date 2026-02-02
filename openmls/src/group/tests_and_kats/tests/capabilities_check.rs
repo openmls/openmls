@@ -383,16 +383,6 @@ fn valn0311_removed_member_capabilities_skipped_in_check() {
         .with_leaf_node_capabilities(capabilities.clone())
         .build();
 
-    // Verify that alice and bob support the non-default proposal type
-    for member in [&alice_pre_group, &bob_pre_group] {
-        let capabilities = member
-            .key_package_bundle
-            .key_package
-            .leaf_node()
-            .capabilities();
-        assert!(capabilities.contains_proposal(non_default_proposal_type));
-    }
-
     // Charlie only supports the basic proposal types
     let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
 
@@ -427,30 +417,6 @@ fn valn0311_removed_member_capabilities_skipped_in_check() {
 
     let mut members = group_state.members_mut(&["alice"]);
     let alice_group_state = members.get_mut(0).unwrap();
-
-    println!(
-        "Number of members before removal: {}",
-        alice_group_state.group.members().count()
-    );
-
-    // Verify that Alice and Bob support the non-default proposal type
-    for member in alice_group_state.group.members() {
-        if member.index == LeafNodeIndex::new(2) {
-            continue;
-        }
-        let capabilities = alice_group_state
-            .group
-            .public_group()
-            .leaf(member.index)
-            .unwrap()
-            .capabilities();
-        if !capabilities.contains_proposal(non_default_proposal_type) {
-            println!(
-                "Member at index {:?} does not support the non-default proposal type",
-                member.index
-            )
-        };
-    }
 
     // Remove Charlie and at the same time commit to a proposal that charlie doesn't support
     let commit = alice_group_state
