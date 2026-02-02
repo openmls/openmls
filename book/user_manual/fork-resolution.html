@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-230066a7.js";
+            window.path_to_searchindex_js = "../searchindex-6a557a95.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-e31a8293.js"></script>
@@ -343,7 +343,11 @@ Notice how Alice needs to provide a new key package for Bob.</p>
     // Make Bob re-join the group and Alice and Charlie merge the commit that adds Bob.
     let (commit, welcome, _) = readd_messages.into_contents();
     let welcome = welcome.unwrap();
-    let bob_group = StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome, None)
+    let processed_welcome =
+        ProcessedWelcome::new_from_welcome(bob_provider, &amp;mls_group_config, welcome).unwrap();
+    let bob_group = JoinBuilder::new(bob_provider, processed_welcome)
+        .replace_old_group()
+        .build()
         .unwrap()
         .into_group(bob_provider)
         .unwrap();
