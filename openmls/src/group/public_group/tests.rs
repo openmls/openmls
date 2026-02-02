@@ -9,6 +9,7 @@ use crate::{
         MlsGroup, MlsGroupCreateConfig, StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::Proposal,
+    test_utils::single_group_test_framework::{AddMemberConfig, CorePartyState, GroupState},
 };
 
 use super::{super::mls_group::StagedWelcome, PublicGroup};
@@ -327,4 +328,116 @@ fn extract_staged_commit(ppm: ProcessedMessage) -> StagedCommit {
         }
         ProcessedMessageContent::StagedCommitMessage(staged_content) => *staged_content,
     }
+}
+
+#[openmls_test::openmls_test]
+fn old_messages_with_blank_leaves() {
+    let provider = &Provider::default();
+
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let charlie_party = CorePartyState::<Provider>::new("charlie");
+    let david_party = CorePartyState::<Provider>::new("david");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+    let david_pre_group = david_party.generate_pre_group(ciphersuite);
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .max_past_epochs(1)
+        .build();
+
+    // Join config
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    // Initialize the group state
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+    // Alice adds Bob, Charlie and David
+    // This should succeed, since all used credential types used are supported
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group, charlie_pre_group, david_pre_group],
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let [alice_group] = group_state.members_mut(&["alice"]);
+
+    let commit = alice_group
+        .build_commit_and_stage(|builder| builder.propose_removals(vec![LeafNodeIndex::new(1)]))
+        .unwrap();
+
+    group_state.untrack_member("bob");
+
+    group_state
+        .deliver_and_apply_if(commit.into_commit().into(), |m| {
+            m.party.core_state.name != "alice"
+        })
+        .unwrap();
+
+    let [alice_group, charlie_group, david_group] =
+        group_state.members_mut(&["alice", "charlie", "david"]);
+
+    alice_group
+        .group
+        .merge_pending_commit(&alice_group.party.core_state.provider)
+        .unwrap();
+
+    // Charlie sends an application message in the epoch that still contains the blank leaf.
+    let message_charlie = charlie_group
+        .group
+        .create_message(
+            provider,
+            &charlie_group.party.signer,
+            b"delayed application",
+        )
+        .expect("could not create application message");
+
+    // David also sends a message
+    let message_david = david_group
+        .group
+        .create_message(provider, &david_group.party.signer, b"delayed application2")
+        .expect("could not create application message");
+
+    // Advance to the next epoch so the message becomes "old" and must use the past store which stores group members in the dense vector
+    let commit = alice_group
+        .build_commit_and_stage(|builder| builder.force_self_update(true))
+        .unwrap();
+
+    alice_group
+        .group
+        .merge_pending_commit(&alice_group.party.core_state.provider)
+        .unwrap();
+
+    group_state
+        .deliver_and_apply_if(commit.into_commit().into(), |m| {
+            m.party.core_state.name != "alice"
+        })
+        .unwrap();
+
+    let [alice_group] = group_state.members_mut(&["alice"]);
+
+    // DS releases Charlie's buffered message to Alice.
+    let app_in = MlsMessageIn::from(message_charlie);
+
+    alice_group
+        .group
+        .process_message(provider, app_in.try_into_protocol_message().unwrap())
+        .expect("Alice failed to process Charlie's message after Bob was removed");
+
+    // DS releases David's buffered message to Alice.
+    let app_in = MlsMessageIn::from(message_david);
+
+    alice_group
+        .group
+        .process_message(provider, app_in.try_into_protocol_message().unwrap())
+        .expect("Alice failed to process David's message after Bob was removed");
 }
