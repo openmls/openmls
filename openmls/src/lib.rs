@@ -10,8 +10,9 @@
 //!
 //! // Define ciphersuite ...
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-//! // ... and the crypto provider to use.
-//! let provider = &OpenMlsRustCrypto::default();
+//! // ... and providers for both parties to use.
+//! let sasha_provider = &OpenMlsRustCrypto::default();
+//! let maxim_provider = &OpenMlsRustCrypto::default();
 //!
 //! // Now let's create two participants.
 //!
@@ -65,25 +66,25 @@
 //!     "Sasha".into(),
 //!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),
-//!     provider,
+//!     sasha_provider,
 //! );
 //!
 //! let (maxim_credential_with_key, maxim_signer) = generate_credential_with_key(
 //!     "Maxim".into(),
 //!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),
-//!     provider,
+//!     maxim_provider,
 //! );
 //!
 //! // Then they generate key packages to facilitate the asynchronous handshakes
 //! // in MLS
 //!
 //! // Generate KeyPackages
-//! let maxim_key_package = generate_key_package(ciphersuite, provider, &maxim_signer, maxim_credential_with_key);
+//! let maxim_key_package = generate_key_package(ciphersuite, maxim_provider, &maxim_signer, maxim_credential_with_key);
 //!
 //! // Now Sasha starts a new group ...
 //! let mut sasha_group = MlsGroup::new(
-//!     provider,
+//!     sasha_provider,
 //!     &sasha_signer,
 //!     &MlsGroupCreateConfig::default(),
 //!     sasha_credential_with_key,
@@ -94,12 +95,12 @@
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
 //! let (mls_message_out, welcome_out, group_info) = sasha_group
-//!     .add_members(provider, &sasha_signer, core::slice::from_ref(maxim_key_package.key_package()))
+//!     .add_members(sasha_provider, &sasha_signer, core::slice::from_ref(maxim_key_package.key_package()))
 //!     .expect("Could not add members.");
 //!
 //! // Sasha merges the pending commit that adds Maxim.
 //! sasha_group
-//!    .merge_pending_commit(provider)
+//!    .merge_pending_commit(sasha_provider)
 //!    .expect("error merging pending commit");
 //!
 //! // Sasha serializes the [`MlsMessageOut`] containing the [`Welcome`].
@@ -120,7 +121,7 @@
 //!
 //! // Now Maxim can build a staged join for the group in order to inspect the welcome
 //! let maxim_staged_join = StagedWelcome::new_from_welcome(
-//!     provider,
+//!     maxim_provider,
 //!     &MlsGroupJoinConfig::default(),
 //!     welcome,
 //!     // The public tree is needed and transferred out of band.
@@ -131,7 +132,7 @@
 //!
 //! // Finally, Maxim can create the group
 //! let mut maxim_group = maxim_staged_join
-//!     .into_group(provider)
+//!     .into_group(maxim_provider)
 //!     .expect("Error creating the group from the staged join");
 //! ```
 //!

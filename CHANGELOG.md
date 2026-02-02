@@ -22,17 +22,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1903](https://github.com/openmls/openmls/pull/1903): Added new error variants `MissingOwnLeaf` and `MissingCiphertext` to `ApplyUpdatePathError` for more fine-grained error handling in TreeSync.
 
 ### Fixed
+
 - [#1868](https://github.com/openmls/openmls/pull/1868): The implementation of [valn0311](https://validation.openmls.tech/#valn0311), was updated to check support for all non-default proposals, instead of only checking support for Custom proposals.
 - [#1871](https://github.com/openmls/openmls/pull/1871): Fixed a bug where the application export tree (part of the `extensions-draft-08` feature) was not stored properly after group creation.
 
 ### Changed
+
 - [#1874](https://github.com/openmls/openmls/pull/1874): Changed `ProposalType`, `ExtensionType`, and `CredentialType` enums to include `Grease(u16)` variant.
 - [#1924](https://github.com/openmls/openmls/pull/1924): Exposed `JoinBuilder::new` as public API.
+- [#1929](https://github.com/openmls/openmls/pull/1929): Change creation of new `MlsGroup`s s.t. creation fails if there is already a group with the same `GroupId` in storage. This affects both creation of fresh groups and creation of groups through a `Welcome` message. An application that wants to replace a group can either delete the group manually or call `replace_old_group` in the `JoinBuilder` or the `MlsGroupBuilder`.
 - [#1928](https://github.com/openmls/openmls/pull/1928): Processing a commit now fails if it contains a duplicate PSK proposal.
-
 - [#1926](https://github.com/openmls/openmls/pull/1926):
   - Updated `getrandom` dependency in `js` feature to `0.3.4`
   - Removed `libcrux-provider-js` feature (the `libcrux-provider`,`js` features are now sufficient to enable the libcrux crypto provider with support for compiling to wasm)
+
 
 ## 0.7.1 (2025-09-24)
 

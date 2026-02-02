@@ -23,7 +23,7 @@ use crate::{
 };
 
 #[cfg(doc)]
-use crate::treesync::LeafNodeParameters;
+use crate::{group::GroupId, treesync::LeafNodeParameters};
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -98,6 +98,9 @@ pub enum WelcomeError<StorageError> {
     /// This error indicates that an error occurred while reading or writing from/to storage.
     #[error("An error occurred when querying storage")]
     StorageError(StorageError),
+    /// A group with this [`GroupId`] already exists.
+    #[error("A group with this [`GroupId`] already exists.")]
+    GroupAlreadyExists,
 }
 
 /// External Commit error

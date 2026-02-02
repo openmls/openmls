@@ -23,8 +23,8 @@ impl<LeafNode: Entity<STORAGE_PROVIDER_VERSION>> StorableLeafNode<LeafNode> {
         group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, rusqlite::Error> {
         let mut stmt = connection.prepare(
-            "SELECT leaf_node 
-            FROM openmls_own_leaf_nodes 
+            "SELECT leaf_node
+            FROM openmls_own_leaf_nodes
             WHERE group_id = ?
                 AND provider_version = ?",
         )?;
@@ -52,7 +52,7 @@ impl<LeafNode: Entity<STORAGE_PROVIDER_VERSION>> StorableLeafNodeRef<'_, LeafNod
         group_id: &GroupId,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO openmls_own_leaf_nodes (group_id, leaf_node, provider_version) 
+            "INSERT OR REPLACE INTO openmls_own_leaf_nodes (group_id, leaf_node, provider_version)
             VALUES (?1, ?2, ?3)",
             params![
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
@@ -70,7 +70,7 @@ impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "DELETE FROM openmls_own_leaf_nodes 
+            "DELETE FROM openmls_own_leaf_nodes
             WHERE group_id = ?
                 AND provider_version = ?",
             params![
