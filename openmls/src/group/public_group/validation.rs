@@ -6,30 +6,30 @@ use std::collections::HashSet;
 use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
-use crate::extensions::RequiredCapabilitiesExtension;
-use crate::group::creation::LeafNodeLifetimePolicy;
-use crate::group::proposal_store::ProposalQueue;
-use crate::group::GroupContextExtensionsProposalValidationError;
-use crate::prelude::LibraryError;
-use crate::treesync::{errors::LeafNodeValidationError, LeafNode};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
+    extensions::RequiredCapabilitiesExtension,
     framing::{
         mls_auth_content_in::VerifiableAuthenticatedContentIn, ContentType, ProtocolMessage,
         Sender, WireFormat,
     },
     group::{
+        creation::LeafNodeLifetimePolicy,
         errors::{ExternalCommitValidationError, ProposalValidationError, ValidationError},
         past_secrets::MessageSecretsStore,
-        Member,
+        proposal_store::ProposalQueue,
+        GroupContextExtensionsProposalValidationError, Member,
     },
     messages::{
         proposals::{Proposal, ProposalOrRefType, ProposalType},
         Commit,
     },
+    prelude::LibraryError,
+    treesync::{
+        errors::{LeafNodeValidationError, LifetimeError},
+        LeafNode,
+    },
 };
-
-use crate::treesync::errors::LifetimeError;
 
 #[cfg(feature = "extensions-draft-08")]
 use crate::{
@@ -136,10 +136,32 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
-        let mut leaves = self.treesync().full_leaves();
+        // Collect signature keys of removed members s.t. we can skip them
+        // when checking capabilities.
+        let signature_keys: HashSet<_> = proposal_queue
+            .remove_proposals()
+            .filter_map(|p| {
+                let removed_index = p.remove_proposal().removed();
+                self.treesync()
+                    .leaf(removed_index)
+                    .map(|leaf_node| leaf_node.signature_key())
+            })
+            .collect();
+
+        println!(
+            "Signature keys of removed members: {:?}",
+            signature_keys.len()
+        );
+
+        // Iterate over all leaf nodes except the removed ones
+        let mut leaves = self
+            .treesync()
+            .full_leaves()
+            .filter(|leaf_node| !signature_keys.contains(leaf_node.signature_key()));
         let Some(first_leaf) = leaves.next() else {
             return Ok(());
         };
+
         // Initialize the capabilities intersection with the capabilities of the
         // first leaf node.
         let mut capabilities_intersection = first_leaf
@@ -155,6 +177,8 @@ impl PublicGroup {
                 .cloned()
                 .collect();
         }
+
+        println!("Capabilities intersection: {:?}", capabilities_intersection);
 
         // Check that the types of all non-default proposals are supported by all members
         for proposal in proposal_queue.queued_proposals() {
