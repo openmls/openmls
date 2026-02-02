@@ -71,6 +71,32 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> StagedAbDiff<L, P> 
     pub(super) fn tree_size(&self) -> TreeSize {
         self.size
     }
+
+    /// Returns an iterator over a tuple of the leaf index and a reference to a
+    /// leaf, sorted according to their position in the tree from left to right.
+    pub(crate) fn leaves<'a>(
+        &'a self,
+        original_tree: &'a ABinaryTree<L, P>,
+    ) -> impl Iterator<Item = (LeafNodeIndex, &'a L)> {
+        AbDiff::raw_leaves(
+            original_tree,
+            &self.leaf_diff,
+            self.size.leaf_count() as usize,
+        )
+    }
+
+    /// Returns an iterator over a tuple of the parent index and a reference to a
+    /// node, sorted according to their position in the tree from left to right.
+    pub(crate) fn parents<'a>(
+        &'a self,
+        original_tree: &'a ABinaryTree<L, P>,
+    ) -> impl Iterator<Item = (ParentNodeIndex, &'a P)> {
+        AbDiff::raw_parents(
+            original_tree,
+            &self.parent_diff,
+            self.size.parent_count() as usize,
+        )
+    }
 }
 
 /// The [`AbDiff`] represents a set of differences (i.e. a "Diff") for an
@@ -152,37 +178,15 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'_, L, P> {
         self.parent_diff.insert(parent_index, node);
     }
 
-    /// Returns an iterator over a tuple of the leaf index and a reference to a
-    /// leaf, sorted according to their position in the tree from left to right.
-    pub(crate) fn leaves(&self) -> impl Iterator<Item = (LeafNodeIndex, &L)> {
-        let original_leaves = self.original_tree.leaves().peekable();
-        let diff_leaves = self
-            .leaf_diff
-            .iter()
-            .map(|(index, leaf)| (*index, leaf))
-            .peekable();
-
-        // Combine the original leaves with the leaves from the diff. Since both
-        // iterators are sorted, we can just iterate over them and don't need
-        // additional sorting. If one of the iterators is exhausted, we just add
-        // the remaining leaves from the other iterator. We also make sure that
-        // we don't add leaves from the original leaves that are also in the
-        // diff.
-
-        // Harmonize the iterator types
-        let a_iter = Box::new(diff_leaves) as Box<dyn Iterator<Item = (LeafNodeIndex, &L)>>;
-        let b_iter = Box::new(original_leaves) as Box<dyn Iterator<Item = (LeafNodeIndex, &L)>>;
-
-        // We only compare indices, not the actual leaves
-        let cmp = |&(x, _): &(LeafNodeIndex, &L)| x;
-
-        sorted_iter(a_iter, b_iter, cmp, self.leaf_count() as usize)
-    }
-
-    pub(crate) fn parents(&self) -> impl Iterator<Item = (ParentNodeIndex, &P)> {
-        let original_parents = self.original_tree.parents().peekable();
-        let diff_parents = self
-            .parent_diff
+    /// Returns an iterator over a tuple of the parent index and a reference to a
+    /// node, sorted according to their position in the tree from left to right.
+    fn raw_parents<'a>(
+        original_tree: &'a ABinaryTree<L, P>,
+        parent_diff: &'a BTreeMap<ParentNodeIndex, P>,
+        parent_count: usize,
+    ) -> impl Iterator<Item = (ParentNodeIndex, &'a P)> {
+        let original_parents = original_tree.parents().peekable();
+        let diff_parents = parent_diff
             .iter()
             .map(|(index, parent)| (*index, parent))
             .peekable();
@@ -201,7 +205,57 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'_, L, P> {
         // We only compare indices, not the actual parents
         let cmp = |&(x, _): &(ParentNodeIndex, &P)| x;
 
-        sorted_iter(a_iter, b_iter, cmp, self.parent_count() as usize)
+        sorted_iter(a_iter, b_iter, cmp, parent_count)
+    }
+
+    /// Returns an iterator over a tuple of the leaf index and a reference to a
+    /// leaf, sorted according to their position in the tree from left to right.
+    fn raw_leaves<'a>(
+        original_tree: &'a ABinaryTree<L, P>,
+        leaf_diff: &'a BTreeMap<LeafNodeIndex, L>,
+        leaf_count: usize,
+    ) -> impl Iterator<Item = (LeafNodeIndex, &'a L)> {
+        let original_leaves = original_tree.leaves().peekable();
+        let diff_leaves = leaf_diff
+            .iter()
+            .map(|(index, leaf)| (*index, leaf))
+            .peekable();
+
+        // Combine the original leaves with the leaves from the diff. Since both
+        // iterators are sorted, we can just iterate over them and don't need
+        // additional sorting. If one of the iterators is exhausted, we just add
+        // the remaining leaves from the other iterator. We also make sure that
+        // we don't add leaves from the original leaves that are also in the
+        // diff.
+
+        // Harmonize the iterator types
+        let a_iter = Box::new(diff_leaves) as Box<dyn Iterator<Item = (LeafNodeIndex, &L)>>;
+        let b_iter = Box::new(original_leaves) as Box<dyn Iterator<Item = (LeafNodeIndex, &L)>>;
+
+        // We only compare indices, not the actual leaves
+        let cmp = |&(x, _): &(LeafNodeIndex, &L)| x;
+
+        sorted_iter(a_iter, b_iter, cmp, leaf_count)
+    }
+
+    /// Returns an iterator over a tuple of the leaf index and a reference to a
+    /// leaf, sorted according to their position in the tree from left to right.
+    pub(crate) fn leaves(&self) -> impl Iterator<Item = (LeafNodeIndex, &L)> {
+        Self::raw_leaves(
+            self.original_tree,
+            &self.leaf_diff,
+            self.leaf_count() as usize,
+        )
+    }
+
+    /// Returns an iterator over a tuple of the parent index and a reference to a
+    /// node, sorted according to their position in the tree from left to right.
+    pub(crate) fn parents(&self) -> impl Iterator<Item = (ParentNodeIndex, &P)> {
+        Self::raw_parents(
+            self.original_tree,
+            &self.parent_diff,
+            self.parent_count() as usize,
+        )
     }
 
     // Functions related to the direct paths of leaves

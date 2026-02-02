@@ -421,6 +421,11 @@ impl TreeSync {
         Ok((tree_sync, commit_secret, encryption_key_pair))
     }
 
+    /// Return the full tree
+    pub(crate) fn tree(&self) -> &MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode> {
+        &self.tree
+    }
+
     /// Return the tree hash of the root node of the tree.
     pub(crate) fn tree_hash(&self) -> &[u8] {
         self.tree_hash.as_slice()
