@@ -23,13 +23,13 @@ use crate::{
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
     treesync::{
         diff::{StagedTreeSyncDiff, TreeSyncDiff},
-        errors::ApplyUpdatePathError,
+        errors::{ApplyUpdatePathError, TreeSyncFromNodesError},
         node::{
             encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
             parent_node::PlainUpdatePathNode,
         },
         treekem::{DecryptPathParams, UpdatePath, UpdatePathNode},
-        RatchetTree,
+        RatchetTree, TreeSync,
     },
 };
 
@@ -251,5 +251,18 @@ impl StagedPublicGroupDiff {
     /// Get the staged [`GroupContext`].
     pub(crate) fn group_context(&self) -> &GroupContext {
         &self.group_context
+    }
+
+    /// Export the staged [`RatchetTree`]
+    pub(crate) fn export_ratchet_tree(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        original_tree: RatchetTree,
+    ) -> Result<RatchetTree, TreeSyncFromNodesError> {
+        let original_tree_sync = TreeSync::from_ratchet_tree(crypto, ciphersuite, original_tree)?;
+        Ok(self
+            .staged_diff
+            .export_ratchet_tree(original_tree_sync.tree()))
     }
 }
