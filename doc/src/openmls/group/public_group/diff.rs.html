@@ -23,13 +23,13 @@
 <a href=#23 id=23 data-nosnippet>23</a>    schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
 <a href=#24 id=24 data-nosnippet>24</a>    treesync::{
 <a href=#25 id=25 data-nosnippet>25</a>        diff::{StagedTreeSyncDiff, TreeSyncDiff},
-<a href=#26 id=26 data-nosnippet>26</a>        errors::ApplyUpdatePathError,
+<a href=#26 id=26 data-nosnippet>26</a>        errors::{ApplyUpdatePathError, TreeSyncFromNodesError},
 <a href=#27 id=27 data-nosnippet>27</a>        node::{
 <a href=#28 id=28 data-nosnippet>28</a>            encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
 <a href=#29 id=29 data-nosnippet>29</a>            parent_node::PlainUpdatePathNode,
 <a href=#30 id=30 data-nosnippet>30</a>        },
 <a href=#31 id=31 data-nosnippet>31</a>        treekem::{DecryptPathParams, UpdatePath, UpdatePathNode},
-<a href=#32 id=32 data-nosnippet>32</a>        RatchetTree,
+<a href=#32 id=32 data-nosnippet>32</a>        RatchetTree, TreeSync,
 <a href=#33 id=33 data-nosnippet>33</a>    },
 <a href=#34 id=34 data-nosnippet>34</a>};
 <a href=#35 id=35 data-nosnippet>35</a>
@@ -252,5 +252,18 @@
 <a href=#252 id=252 data-nosnippet>252</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
 <a href=#253 id=253 data-nosnippet>253</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.group_context
 <a href=#254 id=254 data-nosnippet>254</a>    }
-<a href=#255 id=255 data-nosnippet>255</a>}
+<a href=#255 id=255 data-nosnippet>255</a>
+<a href=#256 id=256 data-nosnippet>256</a>    <span class="doccomment">/// Export the staged [`RatchetTree`]
+<a href=#257 id=257 data-nosnippet>257</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_ratchet_tree(
+<a href=#258 id=258 data-nosnippet>258</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#259 id=259 data-nosnippet>259</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#260 id=260 data-nosnippet>260</a>        ciphersuite: Ciphersuite,
+<a href=#261 id=261 data-nosnippet>261</a>        original_tree: RatchetTree,
+<a href=#262 id=262 data-nosnippet>262</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;RatchetTree, TreeSyncFromNodesError&gt; {
+<a href=#263 id=263 data-nosnippet>263</a>        <span class="kw">let </span>original_tree_sync = TreeSync::from_ratchet_tree(crypto, ciphersuite, original_tree)<span class="question-mark">?</span>;
+<a href=#264 id=264 data-nosnippet>264</a>        <span class="prelude-val">Ok</span>(<span class="self">self
+<a href=#265 id=265 data-nosnippet>265</a>            </span>.staged_diff
+<a href=#266 id=266 data-nosnippet>266</a>            .export_ratchet_tree(original_tree_sync.tree()))
+<a href=#267 id=267 data-nosnippet>267</a>    }
+<a href=#268 id=268 data-nosnippet>268</a>}
 </code></pre></div></section></main></body></html>
