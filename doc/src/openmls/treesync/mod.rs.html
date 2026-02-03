@@ -596,7 +596,7 @@
 <a href=#596 id=596 data-nosnippet>596</a>    ///
 <a href=#597 id=597 data-nosnippet>597</a>    /// XXX: For performance reasons we probably want to have this in a borrowing
 <a href=#598 id=598 data-nosnippet>598</a>    ///      version as well. But it might well go away again.
-<a href=#599 id=599 data-nosnippet>599</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leave_members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">'_ </span>{
+<a href=#599 id=599 data-nosnippet>599</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leaf_members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">'_ </span>{
 <a href=#600 id=600 data-nosnippet>600</a>        <span class="self">self</span>.tree
 <a href=#601 id=601 data-nosnippet>601</a>            .leaves()
 <a href=#602 id=602 data-nosnippet>602</a>            <span class="comment">// Filter out blank nodes

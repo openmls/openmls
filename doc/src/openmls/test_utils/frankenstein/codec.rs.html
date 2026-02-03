@@ -218,7 +218,7 @@
 <a href=#218 id=218 data-nosnippet>218</a>            FrankenExtension::ExternalPub(e) =&gt; e.tls_serialized_len(),
 <a href=#219 id=219 data-nosnippet>219</a>            FrankenExtension::ExternalSenders(e) =&gt; e.tls_serialized_len(),
 <a href=#220 id=220 data-nosnippet>220</a>            FrankenExtension::LastResort =&gt; <span class="number">0</span>,
-<a href=#221 id=221 data-nosnippet>221</a>            FrankenExtension::Unknown(<span class="kw">_</span>, e) =&gt; e.tls_serialized_len(),
+<a href=#221 id=221 data-nosnippet>221</a>            FrankenExtension::Unknown(<span class="kw">_</span>, e) =&gt; e.as_slice().len(),
 <a href=#222 id=222 data-nosnippet>222</a>        };
 <a href=#223 id=223 data-nosnippet>223</a>        <span class="kw">let </span>vlbytes_len_len = vlbytes_len_len(extension_data_len);
 <a href=#224 id=224 data-nosnippet>224</a>        extension_type_length + vlbytes_len_len + extension_data_len
@@ -242,7 +242,7 @@
 <a href=#242 id=242 data-nosnippet>242</a>            FrankenExtension::LastResort =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
 <a href=#243 id=243 data-nosnippet>243</a>            FrankenExtension::Unknown(<span class="kw">_</span>, e) =&gt; extension_data
 <a href=#244 id=244 data-nosnippet>244</a>                .write_all(e.as_slice())
-<a href=#245 id=245 data-nosnippet>245</a>                .map(|<span class="kw">_</span>| e.tls_serialized_len())
+<a href=#245 id=245 data-nosnippet>245</a>                .map(|<span class="kw">_</span>| e.as_slice().len())
 <a href=#246 id=246 data-nosnippet>246</a>                .map_err(|<span class="kw">_</span>| tls_codec::Error::EndOfStream),
 <a href=#247 id=247 data-nosnippet>247</a>        }<span class="question-mark">?</span>;
 <a href=#248 id=248 data-nosnippet>248</a>
