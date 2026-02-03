@@ -303,6 +303,7 @@ impl ProposalQueue {
             let queued_proposal = match proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
+                    // https://validation.openmls.tech/#valn0303
                     if proposal
                         .as_remove()
                         .and_then(|remove_proposal| {

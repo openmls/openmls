@@ -163,19 +163,23 @@ impl PublicGroup {
         let treesync = TreeSync::from_ratchet_tree(crypto, ciphersuite, ratchet_tree)?;
 
         let mut encryption_keys = HashSet::new();
+        let mut signature_keys = HashSet::new();
 
         // Perform basic checks that the leaf nodes in the ratchet tree are valid
         // These checks only do those that don't need group context. We do the full
         // checks later, but do these here to fail early in case of funny business
+        // https://validation.openmls.tech/#valn1407
         treesync.full_leaves().try_for_each(|leaf_node| {
             leaf_node.validate_locally()?;
 
+            // Check that no two nodes share a signature key.
+            // https://validation.openmls.tech/#valn0111
+            if !signature_keys.insert(leaf_node.signature_key()) {
+                return Err(CreationFromExternalError::DuplicateSignatureKey);
+            }
+
             // Check that no two nodes share an encryption key.
-            // This is a bit stronger than what the spec requires: It requires that the encryption keys
-            // in parent nodes and unmerged leaves must be unique. Here, we check that all encryption
-            // keys (all leaf nodes, incl. unmerged and all parent nodes) are unique.
-            //
-            // https://validation.openmls.tech/#valn1410
+            // https://validation.openmls.tech/#valn0112
             if !encryption_keys.insert(leaf_node.encryption_key()) {
                 return Err(CreationFromExternalError::DuplicateEncryptionKey);
             }
@@ -376,7 +380,7 @@ impl PublicGroup {
 
     /// Get an iterator over all [`Member`]s of this [`PublicGroup`].
     pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
-        self.treesync().full_leave_members()
+        self.treesync().full_leaf_members()
     }
 
     /// Export the nodes of the public tree.

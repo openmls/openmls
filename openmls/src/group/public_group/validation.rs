@@ -220,7 +220,7 @@ impl PublicGroup {
             encryption_key,
             signature_key,
             ..
-        } in self.treesync().full_leave_members()
+        } in self.treesync().full_leaf_members()
         {
             if !remove_proposals.contains(&index) {
                 signature_key_set.insert(signature_key);
@@ -309,6 +309,7 @@ impl PublicGroup {
         //  - ValSem206
         //  - ValSem207
         //  - https://validation.openmls.tech/#valn0112
+        //  - https://validation.openmls.tech/#valn1209
         for encryption_key in encryption_keys {
             if init_key_set.contains(&encryption_key) {
                 return Err(ProposalValidationError::InitEncryptionKeyCollision);
@@ -388,6 +389,21 @@ impl PublicGroup {
                 return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
 
+            // Check that the leaf node of the added key package supports all extensions in the group
+            // context.
+            // https://validation.openmls.tech/#valn0502
+            let added_leaf_supports_all_group_context_extensions =
+                self.group_context().extensions().iter().all(|extension| {
+                    add_proposal
+                        .add_proposal()
+                        .key_package
+                        .leaf_node()
+                        .supports_extension(&extension.extension_type())
+                });
+            if !added_leaf_supports_all_group_context_extensions {
+                return Err(ProposalValidationError::InsufficientCapabilities);
+            }
+
             // https://validation.openmls.tech/#valn0202
             self.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())?;
         }
@@ -461,6 +477,7 @@ impl PublicGroup {
             // The sender of a standalone update proposal must be of type member
             if let Sender::Member(sender_index) = update_proposal.sender() {
                 // ValSem111
+                // https://validation.openmls.tech/#valn0302
                 // The sender of a full Commit must not include own update proposals
                 if committer == *sender_index {
                     return Err(ProposalValidationError::CommitterIncludedOwnUpdate);
@@ -471,6 +488,22 @@ impl PublicGroup {
 
             // https://validation.openmls.tech/#valn0601
             self.validate_leaf_node(update_proposal.update_proposal().leaf_node())?;
+
+            // Check that the leaf node in the update proposal supports all group context extensions
+            // https://validation.openmls.tech/#valn0602
+            let leaf_node_supports_group_context_extensions =
+                self.group_context().extensions().iter().all(|extension| {
+                    update_proposal
+                        .update_proposal()
+                        .leaf_node()
+                        .supports_extension(&extension.extension_type())
+                });
+
+            if !leaf_node_supports_group_context_extensions {
+                return Err(ProposalValidationError::LeafNodeValidation(
+                    LeafNodeValidationError::UnsupportedExtensions,
+                ));
+            }
         }
         Ok(())
     }
