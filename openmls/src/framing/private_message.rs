@@ -26,7 +26,9 @@ use super::*;
 ///     opaque ciphertext<V>;
 /// } PrivateMessage;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, TlsSerialize, TlsSize)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, TlsSerialize, TlsSize, serde::Serialize, serde::Deserialize,
+)]
 pub struct PrivateMessage {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
