@@ -13,9 +13,7 @@ use crate::{
     messages::group_info::GroupInfo,
     test_utils::frankenstein::{self, FrankenMlsMessage},
     treesync::{
-        errors::LeafNodeValidationError,
-        node::leaf_node::Capabilities,
-        LeafNodeParameters,
+        errors::LeafNodeValidationError, node::leaf_node::Capabilities, LeafNodeParameters,
     },
 };
 
@@ -1166,7 +1164,7 @@ fn proposal() {
 }
 
 /// Test that update proposals are rejected when the leaf node doesn't support
-/// group context extensions (valn0502).
+/// group context extensions (valn0602).
 ///
 /// This test validates that when processing an update proposal, the leaf node's
 /// capabilities must include all extension types present in the group context extensions.
@@ -1177,16 +1175,18 @@ fn proposal() {
 /// - Alice commits to the tampered proposal
 /// - Bob should reject the commit with UnsupportedExtensions error
 ///
-/// https://validation.openmls.tech/#valn0502
+/// https://validation.openmls.tech/#valn0602
 #[openmls_test]
 fn fail_insufficient_extensiontype_capabilities_update_proposal_valn0502() {
     let alice_party = PartyState::<Provider>::generate("alice", ciphersuite);
     let bob_party = PartyState::<Provider>::generate("bob", ciphersuite);
 
     // Alice creates a group with a group context extension 0xf003
-    let gc_extensions =
-        Extensions::single(Extension::Unknown(0xf003, crate::extensions::UnknownExtension(vec![0x01])))
-            .expect("unknown extensions should be considered valid in group context");
+    let gc_extensions = Extensions::single(Extension::Unknown(
+        0xf003,
+        crate::extensions::UnknownExtension(vec![0x01]),
+    ))
+    .expect("unknown extensions should be considered valid in group context");
 
     let alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
@@ -1296,8 +1296,11 @@ fn fail_insufficient_extensiontype_capabilities_update_proposal_valn0502() {
     };
 
     // Remove extension type 0xf003 from capabilities (the one in group context)
-    // This makes the update proposal invalid according to valn0502
-    bob_franken_leaf_node.capabilities.extensions.retain(|&e| e != 0xf003);
+    // This makes the update proposal invalid according to valn0602
+    bob_franken_leaf_node
+        .capabilities
+        .extensions
+        .retain(|&e| e != 0xf003);
 
     // Re-sign the leaf node so signature checks pass
     bob_franken_leaf_node.resign(
@@ -1398,7 +1401,7 @@ fn fail_insufficient_extensiontype_capabilities_update_proposal_valn0502() {
 }
 
 /// Test that commits with update paths are rejected when the leaf node in the path
-/// doesn't support group context extensions (valn0502).
+/// doesn't support group context extensions (valn1210).
 ///
 /// This test validates that when processing a commit with an update path, the leaf node
 /// in the path must support all extension types present in the group context extensions.
@@ -1410,16 +1413,18 @@ fn fail_insufficient_extensiontype_capabilities_update_proposal_valn0502() {
 /// - We tamper with the commit to remove 0xf003 from the path leaf node capabilities
 /// - Alice should reject the commit with UnsupportedExtensions error
 ///
-/// https://validation.openmls.tech/#valn0502
+/// https://validation.openmls.tech/#valn1210
 #[openmls_test]
 fn fail_insufficient_extensiontype_capabilities_commit_path_valn0502() {
     let alice_party = PartyState::<Provider>::generate("alice", ciphersuite);
     let bob_party = PartyState::<Provider>::generate("bob", ciphersuite);
 
     // Alice creates a group with a group context extension 0xf003
-    let gc_extensions =
-        Extensions::single(Extension::Unknown(0xf003, crate::extensions::UnknownExtension(vec![0x01])))
-            .expect("unknown extensions should be considered valid in group context");
+    let gc_extensions = Extensions::single(Extension::Unknown(
+        0xf003,
+        crate::extensions::UnknownExtension(vec![0x01]),
+    ))
+    .expect("unknown extensions should be considered valid in group context");
 
     let alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
@@ -1537,8 +1542,11 @@ fn fail_insufficient_extensiontype_capabilities_commit_path_valn0502() {
     };
 
     // Remove extension type 0xf003 from the leaf node capabilities in the path
-    // This makes the commit invalid according to valn0502
-    path.leaf_node.capabilities.extensions.retain(|&e| e != 0xf003);
+    // This makes the commit invalid according to valn1210
+    path.leaf_node
+        .capabilities
+        .extensions
+        .retain(|&e| e != 0xf003);
 
     // Re-sign the leaf node so signature checks pass
     path.leaf_node.resign(
@@ -1602,16 +1610,18 @@ fn fail_insufficient_extensiontype_capabilities_commit_path_valn0502() {
 /// - Bob attempts to create an update proposal with leaf node parameters that don't support 0xf003
 /// - The proposal creation should fail with UnsupportedExtensions error
 ///
-/// https://validation.openmls.tech/#valn0502
+/// https://validation.openmls.tech/#valn0602
 #[openmls_test]
 fn fail_create_update_proposal_insufficient_capabilities() {
     let alice_party = PartyState::<Provider>::generate("alice", ciphersuite);
     let bob_party = PartyState::<Provider>::generate("bob", ciphersuite);
 
     // Alice creates a group with a group context extension 0xf003
-    let gc_extensions =
-        Extensions::single(Extension::Unknown(0xf003, crate::extensions::UnknownExtension(vec![0x01])))
-            .expect("unknown extensions should be considered valid in group context");
+    let gc_extensions = Extensions::single(Extension::Unknown(
+        0xf003,
+        crate::extensions::UnknownExtension(vec![0x01]),
+    ))
+    .expect("unknown extensions should be considered valid in group context");
 
     let alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
@@ -1694,7 +1704,7 @@ fn fail_create_update_proposal_insufficient_capabilities() {
         .build();
 
     // This should fail because the leaf node doesn't support all group context extensions
-    // Once validation (valn0502) is implemented for propose_self_update, this will return an error
+    // Once validation (valn0602) is implemented for propose_self_update, this will return an error
     // Until then, this test will fail because no error is returned
     bob.group
         .propose_self_update(
@@ -1703,7 +1713,7 @@ fn fail_create_update_proposal_insufficient_capabilities() {
             bad_params,
         )
         .expect_err(
-            "proposal creation should fail with validation error due to unsupported group context extensions (valn0502)"
+            "proposal creation should fail with validation error due to unsupported group context extensions (valn0602)"
         );
 }
 

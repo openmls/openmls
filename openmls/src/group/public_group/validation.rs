@@ -488,6 +488,22 @@ impl PublicGroup {
 
             // https://validation.openmls.tech/#valn0601
             self.validate_leaf_node(update_proposal.update_proposal().leaf_node())?;
+
+            // Check that the leaf node in the update proposal supports all group context extensions
+            // https://validation.openmls.tech/#valn0602
+            let leaf_node_supports_group_context_extensions =
+                self.group_context().extensions().iter().all(|extension| {
+                    update_proposal
+                        .update_proposal()
+                        .leaf_node()
+                        .supports_extension(&extension.extension_type())
+                });
+
+            if !leaf_node_supports_group_context_extensions {
+                return Err(ProposalValidationError::LeafNodeValidation(
+                    LeafNodeValidationError::UnsupportedExtensions,
+                ));
+            }
         }
         Ok(())
     }

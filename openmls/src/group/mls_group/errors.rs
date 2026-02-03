@@ -353,6 +353,9 @@ pub enum ProposeSelfUpdateError<StorageError> {
     /// See [`LeafNodeUpdateError`] for more details.
     #[error(transparent)]
     LeafNodeUpdateError(#[from] LeafNodeUpdateError<StorageError>),
+    /// The updated leaf node does not support all group context extensions.
+    #[error("The updated leaf node does not support all group context extensions.")]
+    UnsupportedGroupContextExtensions,
 }
 
 /// Commit to pending proposals error

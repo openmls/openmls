@@ -8,6 +8,7 @@ use crate::{
         proposals::{ProposalOrRef, ProposalType},
         Commit,
     },
+    treesync::errors::LeafNodeValidationError,
 };
 
 #[cfg(feature = "extensions-draft-08")]
@@ -80,7 +81,7 @@ impl PublicGroup {
 
             // External Commit, The capabilities of the leaf node in the path MUST support all
             // group context extensions.
-            // https://validation.openmls.tech/#valn0502
+            // https://validation.openmls.tech/#valn1210
             let leaf_nodes_supports_group_context_extensions = path
                 .leaf_node()
                 .capabilities()
@@ -146,6 +147,18 @@ impl PublicGroup {
         // https://validation.openmls.tech/#valn1207
         if let Some(update_path) = &commit.path {
             self.validate_leaf_node(update_path.leaf_node())?;
+
+            // The capabilities of the leaf node in the path MUST support all
+            // group context extensions.
+            // https://validation.openmls.tech/#valn1210
+            let leaf_node_supports_group_context_extensions = update_path
+                .leaf_node()
+                .capabilities()
+                .contains_extensions(self.group_context().extensions());
+
+            if !leaf_node_supports_group_context_extensions {
+                return Err(LeafNodeValidationError::UnsupportedExtensions.into());
+            }
         }
 
         // Validate the staged proposals. This implements
