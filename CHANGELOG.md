@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.8.0 (2026-02-04)
+
 ### Added
 
 - [#1855](https://github.com/openmls/openmls/pull/1855): Added the `swap_members()` method to `MlsGroup` to replace members in a group, as well as the `WelcomeCommitMessages` and `SwapMembersError` structs.
@@ -25,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#1868](https://github.com/openmls/openmls/pull/1868): The implementation of [valn0311](https://validation.openmls.tech/#valn0311), was updated to check support for all non-default proposals, instead of only checking support for Custom proposals.
 - [#1871](https://github.com/openmls/openmls/pull/1871): Fixed a bug where the application export tree (part of the `extensions-draft-08` feature) was not stored properly after group creation.
+- [#1944](https://github.com/openmls/openmls/pull/1944): Fix a bug due to which a wrong credential could be retrieved for validation of messages from past epochs.
+- [#1943](https://github.com/openmls/openmls/pull/1943): Fix a proposal validation check that erroneously requires members that are being removed in a commit to also support all proposal types used in the commit.
 
 ### Changed
 
@@ -52,8 +56,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - [#1846](https://github.com/openmls/openmls/pull/1846): Fix persistence during message processing by properly persisting the secret tree after processing private messages and improve forward secrecy within epochs.
-- [#1944](https://github.com/openmls/openmls/pull/1944): Fix a bug due to which a wrong credential could be retrieved for validation of messages from past epochs.
-- [#1943](https://github.com/openmls/openmls/pull/1943): Fix a proposal validation check that erroneously requires members that are being removed in a commit to also support all proposal types used in the commit.
 
 ### Changed
 
