@@ -1,6 +1,6 @@
 [package]
 name = "openmls_libcrux_crypto"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 authors = ["OpenMLS Authors"]
 description = "A crypto backend for OpenMLS based on libcrux implementing openmls_traits."
