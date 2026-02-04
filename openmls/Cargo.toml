@@ -1,6 +1,6 @@
 [package]
 name = "openmls"
-version = "0.7.1"
+version = "0.8.0"
 authors = ["OpenMLS Authors"]
 edition = "2021"
 description = "A Rust implementation of the Messaging Layer Security (MLS) protocol, as defined in RFC 9420."
