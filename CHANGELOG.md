@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1871](https://github.com/openmls/openmls/pull/1871): Fixed a bug where the application export tree (part of the `extensions-draft-08` feature) was not stored properly after group creation.
 - [#1944](https://github.com/openmls/openmls/pull/1944): Fix a bug due to which a wrong credential could be retrieved for validation of messages from past epochs.
 - [#1943](https://github.com/openmls/openmls/pull/1943): Fix a proposal validation check that erroneously requires members that are being removed in a commit to also support all proposal types used in the commit.
+- [GHSA-8x3w-qj7j-gqhf](https://github.com/openmls/openmls/security/advisories/GHSA-8x3w-qj7j-gqhf): Check length when comparing tags
 
 ### Changed
 
