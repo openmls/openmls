@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - [#1944](https://github.com/openmls/openmls/pull/1944): Fix a bug due to which a wrong credential could be retrieved for validation of messages from past epochs.
+- [GHSA-8x3w-qj7j-gqhf](https://github.com/openmls/openmls/security/advisories/GHSA-8x3w-qj7j-gqhf): Check length when comparing tags
 
 ## 0.7.1 (2025-09-24)
 
