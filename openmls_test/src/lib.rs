@@ -20,7 +20,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut test_funs = Vec::new();
 
     for ciphersuite in rc_ciphersuites {
-        let val = ciphersuite as u16;
+        let val = u16::from(ciphersuite);
         let ciphersuite_name = format!("{ciphersuite:?}");
         let name = format_ident!("{}_rustcrypto_{}", fn_name, ciphersuite_name);
         let test_fun = quote! {
@@ -51,7 +51,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     {
         let rc_ciphersuites = rc.crypto().supported_ciphersuites();
         for ciphersuite in rc_ciphersuites {
-            let val = ciphersuite as u16;
+            let val = u16::from(ciphersuite);
             let ciphersuite_name = format!("{ciphersuite:?}");
             let name = format_ident!("{}_sqlite_{}", fn_name, ciphersuite_name);
             let test_fun = quote! {
@@ -139,7 +139,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         let libcrux_ciphersuites = libcrux.crypto().supported_ciphersuites();
 
         for ciphersuite in libcrux_ciphersuites {
-            let val = ciphersuite as u16;
+            let val = u16::from(ciphersuite);
             let ciphersuite_name = format!("{ciphersuite:?}");
             let name = format_ident!("{}_libcrux_{}", fn_name, ciphersuite_name);
             let test_fun = quote! {

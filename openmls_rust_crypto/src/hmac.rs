@@ -26,6 +26,7 @@ pub(crate) fn hmac(
         HashType::Sha2_256 => hmac_digest!(HmacSha256, key, message),
         HashType::Sha2_384 => hmac_digest!(HmacSha384, key, message),
         HashType::Sha2_512 => hmac_digest!(HmacSha512, key, message),
+        HashType::Custom { .. } => return Err(CryptoError::UnsupportedHashAlgorithm),
     };
     Ok(SecretVLBytes::new(digest))
 }
