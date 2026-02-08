@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6a557a95.js";
+            window.path_to_searchindex_js = "../searchindex-175104c2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-e31a8293.js"></script>
@@ -190,10 +190,20 @@ do, we provide two implementations that can be used.</p>
 <p><strong>Rust Crypto Provider</strong>
 The go-to default at the moment is an implementation using commonly used, native
 Rust crypto implementations.</p>
+<p>Supported ciphersuites</p>
+<ul>
+<li>MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</li>
+<li>MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519</li>
+<li>MLS_128_DHKEMP256_AES128GCM_SHA256_P256</li>
+</ul>
 <p><strong>Libcrux Crypto Provider</strong>
-A crypto provider backed by the high-assurance cryptography library [libcrux].
-Currently only supports relatively modern x86 and amd64 CPUs, as it requires
-AES-NI, SIMD and AVX.</p>
+A crypto provider backed by the high-assurance cryptography library [libcrux].</p>
+<p>Supported ciphersuites</p>
+<ul>
+<li>MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</li>
+<li>MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519</li>
+<li>MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519</li>
+</ul>
 <h2 id="the-traits"><a class="header" href="#the-traits">The Traits</a></h2>
 <p>There are 4 different traits defined in the <a href="https://crates.io/crates/openmls_traits">OpenMLS traits crate</a>.</p>
 <h3 id="openmlsrand"><a class="header" href="#openmlsrand">OpenMlsRand</a></h3>
