@@ -169,7 +169,7 @@ impl PublicGroup {
         // These checks only do those that don't need group context. We do the full
         // checks later, but do these here to fail early in case of funny business
         // https://validation.openmls.tech/#valn1407
-        treesync.full_leaves().try_for_each(|leaf_node| {
+        treesync.full_leaves().try_for_each(|(_, leaf_node)| {
             leaf_node.validate_locally()?;
 
             // Check that no two nodes share a signature key.
@@ -286,7 +286,7 @@ impl PublicGroup {
         public_group
             .treesync
             .full_leaves()
-            .try_for_each(|leaf_node| {
+            .try_for_each(|(_, leaf_node)| {
                 public_group.validate_leaf_node_inner(leaf_node, validate_lifetimes)
             })?;
 
