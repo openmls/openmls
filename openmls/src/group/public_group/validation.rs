@@ -152,8 +152,8 @@ impl PublicGroup {
         let mut leaves = self
             .treesync()
             .full_leaves()
-            .filter(|leaf_node| !signature_keys.contains(leaf_node.signature_key()));
-        let Some(first_leaf) = leaves.next() else {
+            .filter(|(_, leaf_node)| !signature_keys.contains(leaf_node.signature_key()));
+        let Some((_, first_leaf)) = leaves.next() else {
             return Ok(());
         };
 
@@ -165,7 +165,7 @@ impl PublicGroup {
             .iter()
             .collect::<HashSet<_>>();
         // Iterate over the remaining leaf nodes and intersect their capabilities
-        for leaf_node in leaves {
+        for (_, leaf_node) in leaves {
             let leaf_capabilities_set = leaf_node.capabilities().proposals().iter().collect();
             capabilities_intersection = capabilities_intersection
                 .intersection(&leaf_capabilities_set)
@@ -803,7 +803,7 @@ impl PublicGroup {
         }
 
         // Check that the credential type is supported by all members of the group (https://validation.openmls.tech/#valn0104).
-        if !self.treesync().full_leaves().all(|node| {
+        if !self.treesync().full_leaves().all(|(_, node)| {
             node.capabilities()
                 .contains_credential(leaf_node.credential().credential_type())
         }) {
@@ -816,7 +816,7 @@ impl PublicGroup {
         if !self
             .treesync()
             .full_leaves()
-            .all(|node| capabilities.contains_credential(node.credential().credential_type()))
+            .all(|(_, node)| capabilities.contains_credential(node.credential().credential_type()))
         {
             return Err(LeafNodeValidationError::UnsupportedCredentials);
         }
@@ -900,7 +900,7 @@ impl PublicGroup {
         &self,
         extensions: &[crate::extensions::ExtensionType],
     ) -> Result<(), LeafNodeValidationError> {
-        for leaf in self.treesync().full_leaves() {
+        for (_, leaf) in self.treesync().full_leaves() {
             leaf.check_extension_support(extensions)?;
         }
         Ok(())
