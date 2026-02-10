@@ -116,6 +116,11 @@ impl PublicMessage {
         self.content.body.content_type()
     }
 
+    /// Returns the [`GroupEpoch`] of the message.
+    pub fn epoch(&self) -> GroupEpoch {
+        self.content.epoch
+    }
+
     /// Get the sender of this message.
     pub(crate) fn sender(&self) -> &Sender {
         &self.content.sender

@@ -93,6 +93,11 @@ impl PrivateMessage {
         )
     }
 
+    /// Returns the [`GroupEpoch`] of the message.
+    pub fn epoch(&self) -> GroupEpoch {
+        self.epoch
+    }
+
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn encrypt_without_check<T>(
         crypto: &impl OpenMlsCrypto,
