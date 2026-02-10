@@ -39,7 +39,7 @@ use crate::{
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{
         node::{encryption_keys::EncryptionKeyPair, leaf_node::LeafNode},
-        RatchetTree,
+        RatchetTree, TreeSync,
     },
     versions::ProtocolVersion,
 };
