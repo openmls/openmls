@@ -581,6 +581,20 @@ impl TreeSync {
             .filter_map(|(index, tsn)| tsn.node().as_ref().map(|pn| (index, pn)))
     }
 
+    /// Returns an iterator over the [`ParentNodeIndex`]es of blank [`ParentNode`]s in the tree.
+    pub fn blank_parents<'a>(&'a self) -> impl Iterator<Item = ParentNodeIndex> + 'a {
+        self.tree
+            .parents()
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map_or(Some(index), |_| None))
+    }
+
+    /// Returns an iterator over the [`LeafNodeIndex`]es of blank [`LeafNode`]s in the tree.
+    pub fn blank_leaves<'a>(&'a self) -> impl Iterator<Item = LeafNodeIndex> + 'a {
+        self.tree
+            .leaves()
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map_or(Some(index), |_| None))
+    }
+
     /// Returns the index of the last full leaf in the tree.
     fn rightmost_full_leaf(&self) -> LeafNodeIndex {
         let mut index = LeafNodeIndex::new(0);
