@@ -50,4 +50,12 @@ fn treesync_leaf_credentials() {
 
     let bob_cred: BasicCredential = bob_leaf.credential().clone().try_into().unwrap();
     assert_eq!(bob_cred.identity(), b"bob");
+
+    // 7. Inspect the intermediate (parent) nodes.
+    // A 2-leaf binary tree has exactly 1 parent node (the root), at index 0.
+    let parents: Vec<_> = bob.group.treesync().full_parents().collect();
+    assert_eq!(parents.len(), 1);
+
+    let (root_index, _root_node) = &parents[0];
+    assert_eq!(root_index.u32(), 0);
 }
