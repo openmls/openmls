@@ -446,8 +446,8 @@ impl PublicGroup {
         self.group_context.required_capabilities()
     }
 
-    /// Get treesync.
-    fn treesync(&self) -> &TreeSync {
+    /// Returns the current tree state of the group, in the form of a [`TreeSync`].
+    pub fn treesync(&self) -> &TreeSync {
         &self.treesync
     }
 
