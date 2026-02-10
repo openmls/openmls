@@ -349,7 +349,7 @@ impl MlsGroup {
 
     /// Returns the current tree state of the group, in the form of a [`TreeSync`].
     pub fn treesync(&self) -> &TreeSync {
-        &self.public_group.treesync()
+        self.public_group.treesync()
     }
 
     /// Returns a reference to the [`StagedCommit`] of the most recently created
