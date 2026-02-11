@@ -43,7 +43,7 @@ pub use crate::key_packages::{errors::*, *};
 pub use crate::tree::sender_ratchet::SenderRatchetConfiguration;
 
 // Binary tree
-pub use crate::binary_tree::LeafNodeIndex;
+pub use crate::binary_tree::{LeafNodeIndex, ParentNodeIndex};
 
 // TreeSync
 pub use crate::treesync::{
