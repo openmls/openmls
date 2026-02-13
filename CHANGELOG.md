@@ -9,9 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.8.1 (2026-02-13)
 
+### Added
+
+- [#1955](https://github.com/openmls/openmls/pull/1955): Expose functions that allow access to (blank) leaves and parent nodes
+
 ### Changed
 
-- [#1962](https://github.com/openmls/openmls/pull/1962): update libcrux and rust_crypto provider dependencies
+- [#1964](https://github.com/openmls/openmls/pull/1964): update libcrux and rust_crypto provider dependencies
 
 ## 0.8.0 (2026-02-04)
 
