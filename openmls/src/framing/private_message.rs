@@ -9,7 +9,15 @@ use crate::{
     tree::secret_tree::SecretType,
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::tree::sender_ratchet::SenderRatchetConfiguration;
+
 use super::*;
+
+#[cfg(not(feature = "virtual-clients-draft"))]
+pub(crate) type EncryptionOutput = PrivateMessage;
+#[cfg(feature = "virtual-clients-draft")]
+pub(crate) type EncryptionOutput = (u32, PrivateMessage);
 
 /// `PrivateMessage` is the framing struct for an encrypted `PublicMessage`.
 /// This message format is meant to be sent to and received from the Delivery
@@ -75,7 +83,8 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError<T>> {
+        #[cfg(feature = "virtual-clients-draft")] configuration: SenderRatchetConfiguration,
+    ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         log::debug!("PrivateMessage::try_from_authenticated_content");
         log::trace!("  ciphersuite: {ciphersuite}");
         // Check the message has the correct wire format
@@ -90,6 +99,8 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
+            #[cfg(feature = "virtual-clients-draft")]
+            configuration,
         )
     }
 
@@ -101,7 +112,7 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError<T>> {
+    ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         Self::encrypt_content(
             crypto,
             rand,
@@ -110,6 +121,8 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
+            #[cfg(feature = "virtual-clients-draft")]
+            SenderRatchetConfiguration::default(),
         )
     }
 
@@ -122,7 +135,7 @@ impl PrivateMessage {
         header: MlsMessageHeader,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError<T>> {
+    ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         Self::encrypt_content(
             crypto,
             rand,
@@ -131,6 +144,8 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
+            #[cfg(feature = "virtual-clients-draft")]
+            SenderRatchetConfiguration::default(),
         )
     }
 
@@ -144,7 +159,8 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<PrivateMessage, MessageEncryptionError<T>> {
+        #[cfg(feature = "virtual-clients-draft")] configuration: SenderRatchetConfiguration,
+    ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         // https://validation.openmls.tech/#valn1305
         let sender_index = if let Some(index) = public_message.sender().as_member() {
             index
@@ -175,7 +191,14 @@ impl PrivateMessage {
         let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             // Even in tests we want to use the real sender index, so we have a key to encrypt.
-            .secret_for_encryption(ciphersuite, crypto, sender_index, secret_type)?;
+            .secret_for_encryption(
+                ciphersuite,
+                crypto,
+                sender_index,
+                secret_type,
+                #[cfg(feature = "virtual-clients-draft")]
+                configuration,
+            )?;
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(rand).map_err(LibraryError::unexpected_crypto_error)?;
@@ -244,14 +267,19 @@ impl PrivateMessage {
                 &sender_data_nonce,
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
-        Ok(PrivateMessage {
+        let private_message = PrivateMessage {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: public_message.content().content_type(),
             authenticated_data: public_message.authenticated_data().into(),
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
-        })
+        };
+        #[cfg(feature = "virtual-clients-draft")]
+        let output = (generation, private_message);
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        let output = private_message;
+        Ok(output)
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.

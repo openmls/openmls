@@ -207,6 +207,37 @@ impl DecryptionRatchet {
         &mut self.ratchet_head
     }
 
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn delete_secret_for_generation(&mut self, generation: Generation) {
+        let window_index = ((self.generation() - generation) as i32) - 1;
+        if window_index >= 0 {
+            let index = window_index as usize;
+            self.past_secrets.get_mut(index).take();
+        }
+    }
+
+    /// Gets a secret from the SenderRatchet. Returns an error if the generation
+    /// is out of bound.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn secret_for_encryption(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        configuration: &SenderRatchetConfiguration,
+    ) -> Result<(u32, RatchetKeyMaterial), SecretTreeError> {
+        let generation = self.ratchet_head.generation();
+        let ratchet_secrets = {
+            self.ratchet_head
+                .ratchet_forward(crypto, ciphersuite)
+                .map(|(_, key_material)| key_material)
+        }?;
+        // Add the ratchet secrets to the past secrets queue. The caller has to
+        // delete it explicitly by confirming the operation.
+        self.past_secrets.push_front(Some(ratchet_secrets.clone()));
+        self.prune_past_secrets(configuration);
+        Ok((generation, ratchet_secrets))
+    }
+
     /// Gets a secret from the SenderRatchet. Returns an error if the generation
     /// is out of bound.
     pub(crate) fn secret_for_decryption(
