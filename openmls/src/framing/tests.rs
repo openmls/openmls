@@ -139,7 +139,7 @@ fn codec_ciphertext() {
     )
     .expect("Could not encrypt PublicMessage.");
 
-    #[cfg(feature = "virtual-clients")]
+    #[cfg(feature = "virtual-clients-draft")]
     let orig = orig.1;
 
     let enc = orig
@@ -197,7 +197,7 @@ fn wire_format_checks() {
     )
     .expect("Could not encrypt PublicMessage.");
 
-    #[cfg(feature = "virtual-clients")]
+    #[cfg(feature = "virtual-clients-draft")]
     let ciphertext = ciphertext.1;
 
     let ciphertext = PrivateMessageIn::from(ciphertext);
@@ -246,7 +246,7 @@ fn wire_format_checks() {
     )
     .expect("Could not encrypt PublicMessage.");
 
-    #[cfg(feature = "virtual-clients")]
+    #[cfg(feature = "virtual-clients-draft")]
     let ciphertext = ciphertext.1;
 
     let ciphertext = PrivateMessageIn::from(ciphertext);
@@ -288,7 +288,7 @@ fn wire_format_checks() {
             ciphersuite,
             &mut message_secrets,
             0,
-            #[cfg(feature = "virtual-clients")]
+            #[cfg(feature = "virtual-clients-draft")]
             SenderRatchetConfiguration::default()
         )
         .expect_err("Could encrypt despite wrong wire format."),
@@ -503,7 +503,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
     )
     .expect("Encryption error");
 
-    #[cfg(feature = "virtual-clients")]
+    #[cfg(feature = "virtual-clients-draft")]
     let enc_message = enc_message.1;
 
     let received_message = charlie_group.process_message(

@@ -284,7 +284,7 @@ impl SecretTree {
         // `virtual-clients` feature is enabled, the own SenderRatchets are also
         // initialized as DecryptionRatchets.
         let (handshake_sender_ratchet, application_sender_ratchet) = if index == self.own_index
-            && cfg!(not(feature = "virtual-clients"))
+            && cfg!(not(feature = "virtual-clients-draft"))
         {
             let handshake_sender_ratchet = SenderRatchet::EncryptionRatchet(
                 RatchetSecret::initial_ratchet_secret(handshake_ratchet_secret),
@@ -361,7 +361,7 @@ impl SecretTree {
         crypto: &impl OpenMlsCrypto,
         index: LeafNodeIndex,
         secret_type: SecretType,
-        #[cfg(feature = "virtual-clients")] configuration: SenderRatchetConfiguration,
+        #[cfg(feature = "virtual-clients-draft")] configuration: SenderRatchetConfiguration,
     ) -> Result<(u32, RatchetKeyMaterial), SecretTreeError> {
         if self.ratchet_opt(index, secret_type)?.is_none() {
             self.initialize_sender_ratchets(ciphersuite, crypto, index)?;
@@ -370,12 +370,12 @@ impl SecretTree {
             // With the `virtual-clients` feature enabled, the own
             // SenderRatchets are also initialized as DecryptionRatchets, so we
             // can call `secret_for_encryption` on them as well.
-            #[cfg(not(feature = "virtual-clients"))]
+            #[cfg(not(feature = "virtual-clients-draft"))]
             SenderRatchet::DecryptionRatchet(_) => {
                 log::error!("Invalid ratchet type. Got decryption, expected encryption.");
                 Err(SecretTreeError::RatchetTypeError)
             }
-            #[cfg(feature = "virtual-clients")]
+            #[cfg(feature = "virtual-clients-draft")]
             SenderRatchet::DecryptionRatchet(dec_ratchet) => {
                 dec_ratchet.secret_for_encryption(ciphersuite, crypto, &configuration)
             }
@@ -385,7 +385,7 @@ impl SecretTree {
         }
     }
 
-    #[cfg(feature = "virtual-clients")]
+    #[cfg(feature = "virtual-clients-draft")]
     pub(crate) fn delete_own_secret_for_generation(
         &mut self,
         secret_type: SecretType,

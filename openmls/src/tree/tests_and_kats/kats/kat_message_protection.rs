@@ -296,7 +296,7 @@ pub fn run_test_vector(
             .encrypt(proposal_authenticated_content, provider)
             .unwrap();
 
-        #[cfg(feature = "virtual-clients")]
+        #[cfg(feature = "virtual-clients-draft")]
         let my_proposal_priv = my_proposal_priv.1;
 
         let my_proposal_priv_out = MlsMessageOut::from_private_message(
@@ -416,7 +416,7 @@ pub fn run_test_vector(
             .encrypt(commit_authenticated_content, provider)
             .unwrap();
 
-        #[cfg(feature = "virtual-clients")]
+        #[cfg(feature = "virtual-clients-draft")]
         let my_commit_pub = my_commit_pub.1;
 
         let my_commit_priv_out = MlsMessageOut::from_private_message(

@@ -109,7 +109,7 @@ impl DecryptedMessage {
         let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
         // Check if we are the sender. With the `virtual-clients` feature,
         // decrypting own messages is allowed, so we skip this check
-        #[cfg(not(feature = "virtual-clients"))]
+        #[cfg(not(feature = "virtual-clients-draft"))]
         if sender_data.leaf_index == group.own_leaf_index() {
             return Err(ValidationError::CannotDecryptOwnMessage);
         }

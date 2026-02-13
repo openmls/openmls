@@ -1,4 +1,4 @@
-#![cfg(feature = "virtual-clients")]
+#![cfg(feature = "virtual-clients-draft")]
 
 use openmls::{
     group::MlsGroup,
@@ -44,7 +44,8 @@ fn processing_own_application_message() {
         .process_message(alice_provider, ciphertext.into_protocol_message().unwrap())
         .expect_err("Expected an error when processing the same message again.");
 
-    // Alice sends another application message and confirms it. Trying to decrypt it should then fail.
+    // Alice sends another application message and confirms it. Trying to
+    // decrypt it should then fail.
     let alice_message = b"Hello, this is Alice again!";
     let (generation, ciphertext) = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
@@ -53,7 +54,7 @@ fn processing_own_application_message() {
         .confirm_message(alice_provider.storage(), generation)
         .unwrap();
 
-    let processed_message = alice_group
+    let _processed_message = alice_group
         .process_message(
             alice_provider,
             ciphertext.clone().into_protocol_message().unwrap(),

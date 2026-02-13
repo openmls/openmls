@@ -452,7 +452,7 @@ pub enum ValidationError {
         "The ciphersuite in the KeyPackage of the Add proposal does not match the group context."
     )]
     InvalidAddProposalCiphersuite,
-    #[cfg(not(feature = "virtual-clients"))]
+    #[cfg(not(feature = "virtual-clients-draft"))]
     /// Cannot decrypt own messages because the necessary key has been deleted according to the deletion schedule.
     #[error("Cannot decrypt own messages.")]
     CannotDecryptOwnMessage,

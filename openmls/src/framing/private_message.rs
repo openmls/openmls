@@ -9,14 +9,14 @@ use crate::{
     tree::secret_tree::SecretType,
 };
 
-#[cfg(feature = "virtual-clients")]
+#[cfg(feature = "virtual-clients-draft")]
 use crate::tree::sender_ratchet::SenderRatchetConfiguration;
 
 use super::*;
 
-#[cfg(not(feature = "virtual-clients"))]
+#[cfg(not(feature = "virtual-clients-draft"))]
 pub type EncryptionOutput = PrivateMessage;
-#[cfg(feature = "virtual-clients")]
+#[cfg(feature = "virtual-clients-draft")]
 pub type EncryptionOutput = (u32, PrivateMessage);
 
 /// `PrivateMessage` is the framing struct for an encrypted `PublicMessage`.
@@ -83,7 +83,7 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-        #[cfg(feature = "virtual-clients")] configuration: SenderRatchetConfiguration,
+        #[cfg(feature = "virtual-clients-draft")] configuration: SenderRatchetConfiguration,
     ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         log::debug!("PrivateMessage::try_from_authenticated_content");
         log::trace!("  ciphersuite: {ciphersuite}");
@@ -99,7 +99,7 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
-            #[cfg(feature = "virtual-clients")]
+            #[cfg(feature = "virtual-clients-draft")]
             configuration,
         )
     }
@@ -121,7 +121,7 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
-            #[cfg(feature = "virtual-clients")]
+            #[cfg(feature = "virtual-clients-draft")]
             SenderRatchetConfiguration::default(),
         )
     }
@@ -144,7 +144,7 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
-            #[cfg(feature = "virtual-clients")]
+            #[cfg(feature = "virtual-clients-draft")]
             SenderRatchetConfiguration::default(),
         )
     }
@@ -159,7 +159,7 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-        #[cfg(feature = "virtual-clients")] configuration: SenderRatchetConfiguration,
+        #[cfg(feature = "virtual-clients-draft")] configuration: SenderRatchetConfiguration,
     ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         // https://validation.openmls.tech/#valn1305
         let sender_index = if let Some(index) = public_message.sender().as_member() {
@@ -196,7 +196,7 @@ impl PrivateMessage {
                 crypto,
                 sender_index,
                 secret_type,
-                #[cfg(feature = "virtual-clients")]
+                #[cfg(feature = "virtual-clients-draft")]
                 configuration,
             )?;
         // Sample reuse guard uniformly at random.
@@ -275,9 +275,9 @@ impl PrivateMessage {
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
         };
-        #[cfg(feature = "virtual-clients")]
+        #[cfg(feature = "virtual-clients-draft")]
         let output = (generation, private_message);
-        #[cfg(not(feature = "virtual-clients"))]
+        #[cfg(not(feature = "virtual-clients-draft"))]
         let output = private_message;
         Ok(output)
     }

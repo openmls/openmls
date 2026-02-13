@@ -207,7 +207,7 @@ impl DecryptionRatchet {
         &mut self.ratchet_head
     }
 
-    #[cfg(feature = "virtual-clients")]
+    #[cfg(feature = "virtual-clients-draft")]
     pub(crate) fn delete_secret_for_generation(&mut self, generation: Generation) {
         let window_index = ((self.generation() - generation) as i32) - 1;
         if window_index >= 0 {
@@ -218,7 +218,7 @@ impl DecryptionRatchet {
 
     /// Gets a secret from the SenderRatchet. Returns an error if the generation
     /// is out of bound.
-    #[cfg(feature = "virtual-clients")]
+    #[cfg(feature = "virtual-clients-draft")]
     pub(crate) fn secret_for_encryption(
         &mut self,
         ciphersuite: Ciphersuite,
