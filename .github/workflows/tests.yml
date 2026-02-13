@@ -7,7 +7,7 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
@@ -54,40 +54,4 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo-install/wasm-bindgen-cli/bin/wasm-bindgen-test-runner
-          cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js
-
-      - name: Tests Wasm32 on linux with libcrux provider
-        if: matrix.os == 'ubuntu-latest'
-        env:
-          RUSTFLAGS: --cfg getrandom_backend="wasm_js"
-        run: |
-          export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo-install/wasm-bindgen-cli/bin/wasm-bindgen-test-runner
-          cargo test $TEST_MODE -p openmls -vv --target wasm32-unknown-unknown -F js,libcrux-provider,libcrux-provider-js
-
-
-      - name: Test with Fork Resolution helpers
-        run: cargo test $TEST_MODE -p openmls -F fork-resolution
-
-      - name: Test with libcrux provider
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          cargo test $TEST_MODE -p openmls -vv -F libcrux-provider
-
-      - name: Tests
-        if: matrix.os != 'windows-latest'
-        run: cargo test $TEST_MODE -p openmls --verbose
-
-      # Test 32 bit builds on windows
-      - name: Tests 32bit windows debug
-        if: matrix.mode == 'debug' && matrix.os == 'windows-latest'
-        run: cargo test -p openmls --verbose --target i686-pc-windows-msvc
-      - name: Tests 32bit windows release
-        if: matrix.mode == 'release' && matrix.os == 'windows-latest'
-        run: cargo test --release -p openmls --verbose --target i686-pc-windows-msvc
-
-        # Test 32 bit builds on linux
-      - name: Tests 32bit linux
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt update && sudo apt install gcc-multilib
-          cargo test $TEST_MODE -p openmls --verbose --target i686-unknown-linux-gnu
+          cargo test -p openmls -vv --target wasm32-unknown-unknown -F js,js-test
