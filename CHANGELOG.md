@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+
+## 0.7.3 (2026-02-13)
+
+### Changed
+
+- [#1964](https://github.com/openmls/openmls/pull/1964): update libcrux and rust_crypto provider dependencies
+
 ## 0.7.2 (2026-02-04)
 
 ### Fixed
+
 - [#1944](https://github.com/openmls/openmls/pull/1944): Fix a bug due to which a wrong credential could be retrieved for validation of messages from past epochs.
 - [GHSA-8x3w-qj7j-gqhf](https://github.com/openmls/openmls/security/advisories/GHSA-8x3w-qj7j-gqhf): Check length when comparing tags
 
