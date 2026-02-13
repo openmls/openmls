@@ -15,9 +15,9 @@ use crate::tree::sender_ratchet::SenderRatchetConfiguration;
 use super::*;
 
 #[cfg(not(feature = "virtual-clients-draft"))]
-pub type EncryptionOutput = PrivateMessage;
+pub(crate) type EncryptionOutput = PrivateMessage;
 #[cfg(feature = "virtual-clients-draft")]
-pub type EncryptionOutput = (u32, PrivateMessage);
+pub(crate) type EncryptionOutput = (u32, PrivateMessage);
 
 /// `PrivateMessage` is the framing struct for an encrypted `PublicMessage`.
 /// This message format is meant to be sent to and received from the Delivery

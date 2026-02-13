@@ -40,7 +40,7 @@ impl MlsGroup {
         Ok(output)
     }
 
-    pub fn create_message_internal<Provider: OpenMlsProvider>(
+    fn create_message_internal<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -78,29 +78,25 @@ impl MlsGroup {
             (ciphertext.0, ciphertext.1)
         };
 
-        let message_out = MlsMessageOut::from_private_message(ciphertext, self.version());
+        let output = MlsMessageOut::from_private_message(ciphertext, self.version());
 
         #[cfg(feature = "virtual-clients-draft")]
-        let output = (generation, message_out);
-        #[cfg(not(feature = "virtual-clients-draft"))]
-        let output = message_out;
+        let output = (generation, output);
 
         self.reset_aad();
 
         Ok(output)
     }
 
-    /// Creates an application message. Returns
-    /// `CreateMessageError::MlsGroupStateError::UseAfterEviction` if the member
-    /// is no longer part of the group. Returns
+    /// Creates an application message. Encryption secrets are only deleted
+    /// after the message has been confirmed via `confirm_message()`.
+    ///
+    /// Returns `CreateMessageError::MlsGroupStateError::UseAfterEviction` if
+    /// the member is no longer part of the group. Returns
     /// `CreateMessageError::MlsGroupStateError::PendingProposal` if pending
     /// proposals exist. In that case `.process_pending_proposals()` must be
     /// called first and incoming messages from the DS must be processed
     /// afterwards.
-    ///
-    /// When using the `virtual-clients` feature, the caller is responsible for
-    /// calling `confirm_message()` after the DS has confirmed that there is no
-    /// generation collision between emulation clients.
     #[cfg(feature = "virtual-clients-draft")]
     pub fn create_unconfirmed_message<Provider: OpenMlsProvider>(
         &mut self,
@@ -111,6 +107,8 @@ impl MlsGroup {
         self.create_message_internal(provider, signer, message, false)
     }
 
+    /// Confirms that a message has been successfully sent without a generation
+    /// collision. This deletes the encryption secrets for the given generation.
     #[cfg(feature = "virtual-clients-draft")]
     pub fn confirm_message<Storage: StorageProvider>(
         &mut self,
