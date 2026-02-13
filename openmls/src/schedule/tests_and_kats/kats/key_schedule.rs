@@ -241,7 +241,7 @@ pub fn generate_test_vector(
     }
 
     KeyScheduleTestVector {
-        cipher_suite: ciphersuite as u16,
+        cipher_suite: ciphersuite.as_u16(),
         group_id: bytes_to_hex(&group_id),
         initial_init_secret: bytes_to_hex(initial_init_secret.as_slice()),
         epochs,
