@@ -612,7 +612,9 @@ impl MlsGroup {
         &mut self,
         public_message: AuthenticatedContent,
         provider: &Provider,
-    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
+    ) -> Result<EncryptionOutput, MessageEncryptionError<Provider::StorageError>> {
+        #[cfg(feature = "virtual-clients")]
+        let sender_ratchet_config = *self.configuration().sender_ratchet_configuration();
         let padding_size = self.configuration().padding_size();
         let msg = PrivateMessage::try_from_authenticated_content(
             provider.crypto(),
@@ -621,6 +623,8 @@ impl MlsGroup {
             self.ciphersuite(),
             self.message_secrets_store.message_secrets_mut(),
             padding_size,
+            #[cfg(feature = "virtual-clients")]
+            sender_ratchet_config,
         )?;
 
         provider
@@ -768,6 +772,10 @@ impl MlsGroup {
                     .encrypt(mls_auth_content, provider)
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
+                // Decrypting own handshake messages is not supported yet with
+                // the `virtual-clients` feature.
+                #[cfg(feature = "virtual-clients")]
+                let ciphertext = ciphertext.1;
                 MlsMessageOut::from_private_message(ciphertext, self.version())
             }
         };

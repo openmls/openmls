@@ -3,6 +3,7 @@ use openmls::prelude::*;
 use openmls_test::openmls_test;
 use test_utils::new_credential;
 
+#[cfg(not(feature = "virtual-clients"))]
 #[openmls_test]
 fn own_messages_attempted_decryption() {
     let group_id = GroupId::from_slice(b"Test Group");

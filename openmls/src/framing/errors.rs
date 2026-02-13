@@ -35,7 +35,7 @@ pub enum MessageDecryptionError {
 
 /// Message encryption error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum MessageEncryptionError<StorageError> {
+pub enum MessageEncryptionError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
