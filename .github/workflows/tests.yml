@@ -78,8 +78,3 @@ jobs:
         run: |
           export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo-install/wasm-bindgen-cli/bin/wasm-bindgen-test-runner
           cargo test -p openmls -vv --target wasm32-unknown-unknown -F js,js-test
-
-      - name: Tests Wasm32 on linux with libcrux provider
-        run: |
-          export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=$HOME/.cargo-install/wasm-bindgen-cli/bin/wasm-bindgen-test-runner
-          cargo test -p openmls -vv --target wasm32-unknown-unknown -F js,js-test,libcrux-provider

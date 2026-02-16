@@ -6,7 +6,7 @@ use array_representation::{
 };
 
 // Public
-pub use array_representation::LeafNodeIndex;
+pub use array_representation::{LeafNodeIndex, ParentNodeIndex};
 
 // Crate
 pub(crate) mod array_representation;

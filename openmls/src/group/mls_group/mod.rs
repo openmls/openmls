@@ -39,7 +39,7 @@ use crate::{
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{
         node::{encryption_keys::EncryptionKeyPair, leaf_node::LeafNode},
-        RatchetTree,
+        RatchetTree, TreeSync,
     },
     versions::ProtocolVersion,
 };
@@ -345,6 +345,11 @@ impl MlsGroup {
     /// Returns an `Iterator` over pending proposals.
     pub fn pending_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.proposal_store().proposals()
+    }
+
+    /// Returns the current tree state of the group, in the form of a [`TreeSync`].
+    pub fn treesync(&self) -> &TreeSync {
+        self.public_group.treesync()
     }
 
     /// Returns a reference to the [`StagedCommit`] of the most recently created
