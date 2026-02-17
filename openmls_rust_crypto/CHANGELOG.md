@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## 0.4.3 (2026-02-13)
+## 0.4.4 (2026-02-17)
 
 ### Changed
 
 - [#1962](https://github.com/openmls/openmls/pull/1962): update hpke dependencies
+
+## 0.4.3 (2026-02-13)
 
 ## 0.4.2 (2026-02-04)
 
