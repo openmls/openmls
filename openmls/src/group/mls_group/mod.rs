@@ -220,6 +220,12 @@ pub enum MlsGroupState {
 /// incorrect, an error event will be returned with a corresponding error
 /// message and the state of the group will remain unchanged.
 ///
+/// `MlsGroup` operations write state to the storage provider, and should be
+/// performed by the application in a context that ensures atomicity, as well as
+/// exclusive access per group. See
+/// [storage](https://github.com/openmls/openmls/tree/main/traits#storageprovider)
+/// for more details.
+///
 /// An `MlsGroup` has an internal state variable determining if it is active or
 /// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
 /// more information.
