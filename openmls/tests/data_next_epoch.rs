@@ -254,6 +254,7 @@ fn staged_welcome_export_secret_matches_created_group() {
     let group_id = GroupId::from_slice(b"test-group");
     let mut group_state =
         GroupState::new_from_party(group_id, alice_pre_group, create_config).unwrap();
+
     // 5. Alice invites Bob
     let [alice] = group_state.members_mut(&["alice"]);
 
@@ -287,6 +288,21 @@ fn staged_welcome_export_secret_matches_created_group() {
         staged_export,
         bob_group
             .export_secret(bob_party.provider.crypto(), "test-label", b"ctx", 32)
+            .unwrap()
+    );
+
+    // 8. Alice merges the commit that added Bob to the group
+    alice
+        .group
+        .merge_pending_commit(&alice_party.provider)
+        .expect("error merging pending commit");
+
+    // === Verify the exported secrets match for Alice and Bob ===
+    assert_eq!(
+        staged_export,
+        alice
+            .group
+            .export_secret(alice_party.provider.crypto(), "test-label", b"ctx", 32)
             .unwrap()
     );
 }
