@@ -152,8 +152,8 @@ impl PublicGroup {
         let mut leaves = self
             .treesync()
             .full_leaves()
-            .filter(|leaf_node| !signature_keys.contains(leaf_node.signature_key()));
-        let Some(first_leaf) = leaves.next() else {
+            .filter(|(_, leaf_node)| !signature_keys.contains(leaf_node.signature_key()));
+        let Some((_, first_leaf)) = leaves.next() else {
             return Ok(());
         };
 
@@ -165,7 +165,7 @@ impl PublicGroup {
             .iter()
             .collect::<HashSet<_>>();
         // Iterate over the remaining leaf nodes and intersect their capabilities
-        for leaf_node in leaves {
+        for (_, leaf_node) in leaves {
             let leaf_capabilities_set = leaf_node.capabilities().proposals().iter().collect();
             capabilities_intersection = capabilities_intersection
                 .intersection(&leaf_capabilities_set)
@@ -220,7 +220,7 @@ impl PublicGroup {
             encryption_key,
             signature_key,
             ..
-        } in self.treesync().full_leave_members()
+        } in self.treesync().full_leaf_members()
         {
             if !remove_proposals.contains(&index) {
                 signature_key_set.insert(signature_key);
@@ -309,6 +309,7 @@ impl PublicGroup {
         //  - ValSem206
         //  - ValSem207
         //  - https://validation.openmls.tech/#valn0112
+        //  - https://validation.openmls.tech/#valn1209
         for encryption_key in encryption_keys {
             if init_key_set.contains(&encryption_key) {
                 return Err(ProposalValidationError::InitEncryptionKeyCollision);
@@ -388,6 +389,21 @@ impl PublicGroup {
                 return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
 
+            // Check that the leaf node of the added key package supports all extensions in the group
+            // context.
+            // https://validation.openmls.tech/#valn0502
+            let added_leaf_supports_all_group_context_extensions =
+                self.group_context().extensions().iter().all(|extension| {
+                    add_proposal
+                        .add_proposal()
+                        .key_package
+                        .leaf_node()
+                        .supports_extension(&extension.extension_type())
+                });
+            if !added_leaf_supports_all_group_context_extensions {
+                return Err(ProposalValidationError::InsufficientCapabilities);
+            }
+
             // https://validation.openmls.tech/#valn0202
             self.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())?;
         }
@@ -461,6 +477,7 @@ impl PublicGroup {
             // The sender of a standalone update proposal must be of type member
             if let Sender::Member(sender_index) = update_proposal.sender() {
                 // ValSem111
+                // https://validation.openmls.tech/#valn0302
                 // The sender of a full Commit must not include own update proposals
                 if committer == *sender_index {
                     return Err(ProposalValidationError::CommitterIncludedOwnUpdate);
@@ -471,6 +488,22 @@ impl PublicGroup {
 
             // https://validation.openmls.tech/#valn0601
             self.validate_leaf_node(update_proposal.update_proposal().leaf_node())?;
+
+            // Check that the leaf node in the update proposal supports all group context extensions
+            // https://validation.openmls.tech/#valn0602
+            let leaf_node_supports_group_context_extensions =
+                self.group_context().extensions().iter().all(|extension| {
+                    update_proposal
+                        .update_proposal()
+                        .leaf_node()
+                        .supports_extension(&extension.extension_type())
+                });
+
+            if !leaf_node_supports_group_context_extensions {
+                return Err(ProposalValidationError::LeafNodeValidation(
+                    LeafNodeValidationError::UnsupportedExtensions,
+                ));
+            }
         }
         Ok(())
     }
@@ -770,7 +803,7 @@ impl PublicGroup {
         }
 
         // Check that the credential type is supported by all members of the group (https://validation.openmls.tech/#valn0104).
-        if !self.treesync().full_leaves().all(|node| {
+        if !self.treesync().full_leaves().all(|(_, node)| {
             node.capabilities()
                 .contains_credential(leaf_node.credential().credential_type())
         }) {
@@ -783,7 +816,7 @@ impl PublicGroup {
         if !self
             .treesync()
             .full_leaves()
-            .all(|node| capabilities.contains_credential(node.credential().credential_type()))
+            .all(|(_, node)| capabilities.contains_credential(node.credential().credential_type()))
         {
             return Err(LeafNodeValidationError::UnsupportedCredentials);
         }
@@ -867,7 +900,7 @@ impl PublicGroup {
         &self,
         extensions: &[crate::extensions::ExtensionType],
     ) -> Result<(), LeafNodeValidationError> {
-        for leaf in self.treesync().full_leaves() {
+        for (_, leaf) in self.treesync().full_leaves() {
             leaf.check_extension_support(extensions)?;
         }
         Ok(())

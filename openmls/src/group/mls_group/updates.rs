@@ -117,6 +117,19 @@ impl MlsGroup {
             leaf_node_parmeters,
         )?;
 
+        // Validate that the updated leaf node supports all group context extensions
+        // https://validation.openmls.tech/#valn0602
+        let leaf_supports_all_extensions = self
+            .public_group()
+            .group_context()
+            .extensions()
+            .iter()
+            .all(|extension| own_leaf.supports_extension(&extension.extension_type()));
+
+        if !leaf_supports_all_extensions {
+            return Err(ProposeSelfUpdateError::UnsupportedGroupContextExtensions);
+        }
+
         let update_proposal =
             self.create_update_proposal(self.framing_parameters(), own_leaf.clone(), signer)?;
 

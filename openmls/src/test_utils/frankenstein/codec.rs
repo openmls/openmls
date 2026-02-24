@@ -218,7 +218,7 @@ impl Size for FrankenExtension {
             FrankenExtension::ExternalPub(e) => e.tls_serialized_len(),
             FrankenExtension::ExternalSenders(e) => e.tls_serialized_len(),
             FrankenExtension::LastResort => 0,
-            FrankenExtension::Unknown(_, e) => e.tls_serialized_len(),
+            FrankenExtension::Unknown(_, e) => e.as_slice().len(),
         };
         let vlbytes_len_len = vlbytes_len_len(extension_data_len);
         extension_type_length + vlbytes_len_len + extension_data_len
@@ -242,7 +242,7 @@ impl Serialize for FrankenExtension {
             FrankenExtension::LastResort => Ok(0),
             FrankenExtension::Unknown(_, e) => extension_data
                 .write_all(e.as_slice())
-                .map(|_| e.tls_serialized_len())
+                .map(|_| e.as_slice().len())
                 .map_err(|_| tls_codec::Error::EndOfStream),
         }?;
 
