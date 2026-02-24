@@ -69,6 +69,28 @@ let best = group
     .min_by_key(|&(_, size)| size);
 ```
 
+When a set of proposals is ready to be committed, use
+`project_root_unmerged_leaves` to compute what the root's unmerged list will
+look like after those proposals are applied, then feed the result into
+`hypothetical_root_resolution_size` to find the best committer:
+
+```rust
+use openmls_tree_health::{project_root_unmerged_leaves, hypothetical_root_resolution_size};
+
+let projected = project_root_unmerged_leaves(
+    group.treesync().root_unmerged_leaves(),
+    &added_leaf_indices,   // leaf slots the new members will occupy
+    &removed_leaf_indices,
+);
+
+let best = group
+    .treesync()
+    .full_leaves()
+    .filter(|(idx, _)| !removed_leaf_indices.contains(idx))
+    .map(|(idx, _)| (idx, hypothetical_root_resolution_size(idx, &projected)))
+    .min_by_key(|&(_, size)| size);
+```
+
 ## API
 
 ```rust
@@ -95,6 +117,21 @@ pub fn hypothetical_root_resolution_size(
 - **Returns** — the root resolution size under a simplified model where only
   `leaf` is removed from the unmerged list. Returns 1 when the list is empty.
   A lower value means `leaf` is a better self-update candidate.
+
+```rust
+pub fn project_root_unmerged_leaves(
+    current: &[LeafNodeIndex],
+    adds: &[LeafNodeIndex],
+    removes: &[LeafNodeIndex],
+) -> Vec<LeafNodeIndex>
+```
+
+- **`current`** — the current `root_unmerged_leaves`, from `group.treesync().root_unmerged_leaves()`.
+- **`adds`** — leaf indices that will be added by the pending proposals.
+- **`removes`** — leaf indices that will be removed by the pending proposals.
+- **Returns** — the projected unmerged-leaf list after those proposals are
+  applied. Pass this to `hypothetical_root_resolution_size` for each candidate
+  committer.
 
 ## License
 

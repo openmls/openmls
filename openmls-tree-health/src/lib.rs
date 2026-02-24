@@ -75,6 +75,49 @@ pub fn hypothetical_root_resolution_size(
     }
 }
 
+/// Project the root's unmerged-leaf list after a set of pending proposals.
+///
+/// Given the current `root_unmerged_leaves`, a slice of leaf indices that will
+/// be **added** (`adds`), and a slice of leaf indices that will be **removed**
+/// (`removes`), returns the unmerged-leaf list that the root will have once
+/// those proposals are committed.
+///
+/// The projection rules follow the simplified model used by
+/// [`hypothetical_root_resolution_size`]:
+///
+/// - Removed leaves are dropped from the current list (they leave the group).
+/// - Added leaves are appended (they become unmerged at the root because the
+///   committer's UpdatePath sets the root with the new members excluded from
+///   the HPKE ciphertexts).
+///
+/// Pass the result to [`hypothetical_root_resolution_size`] for each candidate
+/// committer to find who should issue the commit:
+///
+/// ```ignore
+/// let projected = project_root_unmerged_leaves(
+///     group.treesync().root_unmerged_leaves(),
+///     &added_leaf_indices,
+///     &removed_leaf_indices,
+/// );
+/// let best = group
+///     .treesync()
+///     .full_leaves()
+///     .map(|(idx, _)| (idx, hypothetical_root_resolution_size(idx, &projected)))
+///     .min_by_key(|&(_, size)| size);
+/// ```
+pub fn project_root_unmerged_leaves(
+    current: &[LeafNodeIndex],
+    adds: &[LeafNodeIndex],
+    removes: &[LeafNodeIndex],
+) -> Vec<LeafNodeIndex> {
+    current
+        .iter()
+        .copied()
+        .filter(|leaf| !removes.contains(leaf))
+        .chain(adds.iter().copied())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -165,5 +208,47 @@ mod tests {
     #[test]
     fn hrrs_single_element_no_match() {
         assert_eq!(hypothetical_root_resolution_size(idx(1), &[idx(0)]), 2);
+    }
+
+    // project_root_unmerged_leaves tests
+
+    // No proposals: list is unchanged.
+    #[test]
+    fn project_no_proposals() {
+        let current = [idx(1), idx(2)];
+        let result = project_root_unmerged_leaves(&current, &[], &[]);
+        assert_eq!(result, vec![idx(1), idx(2)]);
+    }
+
+    // Remove a leaf that is in the unmerged list.
+    #[test]
+    fn project_remove_unmerged() {
+        let current = [idx(1), idx(2)];
+        let result = project_root_unmerged_leaves(&current, &[], &[idx(1)]);
+        assert_eq!(result, vec![idx(2)]);
+    }
+
+    // Remove a leaf that is NOT in the unmerged list: list is unchanged.
+    #[test]
+    fn project_remove_non_unmerged() {
+        let current = [idx(1), idx(2)];
+        let result = project_root_unmerged_leaves(&current, &[], &[idx(0)]);
+        assert_eq!(result, vec![idx(1), idx(2)]);
+    }
+
+    // Add new leaves: they are appended.
+    #[test]
+    fn project_add() {
+        let current = [idx(0)];
+        let result = project_root_unmerged_leaves(&current, &[idx(3), idx(4)], &[]);
+        assert_eq!(result, vec![idx(0), idx(3), idx(4)]);
+    }
+
+    // Combined: remove one existing unmerged leaf, add two new ones.
+    #[test]
+    fn project_add_and_remove() {
+        let current = [idx(1), idx(2)];
+        let result = project_root_unmerged_leaves(&current, &[idx(5), idx(6)], &[idx(1)]);
+        assert_eq!(result, vec![idx(2), idx(5), idx(6)]);
     }
 }
