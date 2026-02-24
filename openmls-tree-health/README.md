@@ -13,12 +13,19 @@ efficiency. Any member who sends a commit with an `update_path` through that
 region restores it. The closer a leaf is to the removed slot in the tree
 topology, the more of the blanked path their `update_path` covers.
 
+When a leaf is added it is listed as unmerged on its non-blank ancestor nodes.
+The resolution of a node (RFC 9420 §4.1.1) includes all its unmerged leaves, so
+each unmerged entry adds one extra HPKE ciphertext to commits. A self-update by
+the newly added member removes it from those lists.
+
 This crate provides helpers to identify those candidates, covering two workflows:
 
 - **Proactive** — pick who should commit the Remove; their mandatory
   `update_path` re-keys the shared path in the same commit, at no extra cost.
 - **Reactive** — pick who should self-update after someone else committed the
   Remove; their follow-up commit re-keys the now-blank region.
+- **Unmerged leaves** — pick who should self-update to most reduce the root
+  resolution size after one or more Add operations.
 
 ## Usage
 
@@ -47,6 +54,21 @@ let candidates = find_update_candidates(
 The application can then ask the chosen member to commit the Remove, or — if
 the Remove was already committed by someone else — to send a self-update.
 
+To identify who should self-update to reduce unmerged-leaf overhead at the root,
+iterate over all leaves and pick those with the smallest hypothetical size:
+
+```rust
+use openmls_tree_health::hypothetical_root_resolution_size;
+
+let root_unmerged = group.treesync().root_unmerged_leaves();
+
+let best = group
+    .treesync()
+    .full_leaves()
+    .map(|(idx, _)| (idx, hypothetical_root_resolution_size(idx, root_unmerged)))
+    .min_by_key(|&(_, size)| size);
+```
+
 ## API
 
 ```rust
@@ -60,6 +82,19 @@ pub fn find_update_candidates(
 - **`leaves`** — an iterator over the indices of the current (non-blank) leaves.
 - **Returns** — the leaf indices closest to `removed`. Empty if `leaves` yields
   no elements after filtering.
+
+```rust
+pub fn hypothetical_root_resolution_size(
+    leaf: LeafNodeIndex,
+    root_unmerged_leaves: &[LeafNodeIndex],
+) -> usize
+```
+
+- **`leaf`** — the leaf considering a self-update.
+- **`root_unmerged_leaves`** — obtained from `group.treesync().root_unmerged_leaves()`.
+- **Returns** — the root resolution size under a simplified model where only
+  `leaf` is removed from the unmerged list. Returns 1 when the list is empty.
+  A lower value means `leaf` is a better self-update candidate.
 
 ## License
 
