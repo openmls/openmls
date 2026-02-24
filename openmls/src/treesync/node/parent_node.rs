@@ -184,7 +184,7 @@ impl ParentNode {
     }
 
     /// Get the list of unmerged leaves.
-    pub(crate) fn unmerged_leaves(&self) -> &[LeafNodeIndex] {
+    pub fn unmerged_leaves(&self) -> &[LeafNodeIndex] {
         self.unmerged_leaves.list()
     }
 

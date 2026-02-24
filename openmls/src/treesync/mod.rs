@@ -595,6 +595,22 @@ impl TreeSync {
             .filter_map(|(index, tsn)| tsn.node().as_ref().map_or(Some(index), |_| None))
     }
 
+    /// Returns the unmerged leaves of the root node, or an empty slice if the
+    /// root is blank (i.e. no member has yet committed an `update_path`).
+    pub fn root_unmerged_leaves(&self) -> &[LeafNodeIndex] {
+        use crate::binary_tree::array_representation::{root, TreeNodeIndex};
+        let root_index = root(self.tree_size());
+        match root_index {
+            TreeNodeIndex::Parent(parent_idx) => self
+                .tree
+                .parents()
+                .find(|(idx, _)| *idx == parent_idx)
+                .and_then(|(_, tsn)| tsn.node().as_ref().map(|pn| pn.unmerged_leaves()))
+                .unwrap_or(&[]),
+            TreeNodeIndex::Leaf(_) => &[], // 1-leaf group; root is the leaf itself
+        }
+    }
+
     /// Returns the index of the last full leaf in the tree.
     fn rightmost_full_leaf(&self) -> LeafNodeIndex {
         let mut index = LeafNodeIndex::new(0);
