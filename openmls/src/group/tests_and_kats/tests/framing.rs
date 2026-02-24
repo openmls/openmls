@@ -214,6 +214,8 @@ fn bad_padding() {
                     provider.crypto(),
                     LeafNodeIndex::new(0),
                     secret_type,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    SenderRatchetConfiguration::default(),
                 )
                 .unwrap();
 

@@ -10,6 +10,7 @@ use thiserror::Error;
 use crate::{
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
+    framing::MessageEncryptionError,
     group::{
         errors::{
             CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
@@ -166,13 +167,19 @@ pub enum ProcessMessageError<StorageError> {
 
 /// Create message error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateMessageError {
+pub enum CreateMessageError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// See [`MessageEncryptionError`] for more details.
+    #[error(transparent)]
+    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
+    /// Error writing to storage.
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
 }
 
 /// Add members error

@@ -295,6 +295,10 @@ pub fn run_test_vector(
         let my_proposal_priv = sender_group
             .encrypt(proposal_authenticated_content, provider)
             .unwrap();
+
+        #[cfg(feature = "virtual-clients-draft")]
+        let my_proposal_priv = my_proposal_priv.1;
+
         let my_proposal_priv_out = MlsMessageOut::from_private_message(
             my_proposal_priv,
             group.export_group_context().protocol_version(),
@@ -411,6 +415,10 @@ pub fn run_test_vector(
         let my_commit_pub = sender_group
             .encrypt(commit_authenticated_content, provider)
             .unwrap();
+
+        #[cfg(feature = "virtual-clients-draft")]
+        let my_commit_pub = my_commit_pub.1;
+
         let my_commit_priv_out = MlsMessageOut::from_private_message(
             my_commit_pub,
             group.export_group_context().protocol_version(),

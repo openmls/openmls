@@ -90,6 +90,8 @@ extensions-draft-08 = [
     "openmls_sqlite_storage?/extensions-draft-08",
     "openmls_libcrux_crypto?/extensions-draft-08",
 ]
+# experimental feature implementing the virtual-clients draft
+virtual-clients-draft = []
 # enable randomness source
 fork-resolution = []
 
