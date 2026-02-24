@@ -408,3 +408,262 @@ fn minimal_resolution_after_remove_when_all_self_updated() {
     assert_eq!(min_size, 1);
     assert_eq!(best_candidates, remaining_leaves);
 }
+
+/// Reproduces the ratchet tree from RFC 9420 Figure 10.
+///
+/// The figure shows a subtree of a larger group.  We map A..H to leaves 0..7
+/// and add one outside member (oscar, leaf 8) so that the node covering leaves
+/// 0..7 (tree index 7) is an *intermediate* node, not the root.
+///
+/// ```text
+///                        root (non-blank, unmerged=[B=1])
+///                       /                       \
+///                 _ (blank)                   oscar-side
+///              /           \
+///         X[B] (tree[3])    _ (blank, tree[11])
+///         /    \             /          \
+///   _ (tree[1]) _ (tree[5])  Y (tree[9])  _ (tree[13])
+///    /  \        /  \        /  \          /  \
+///   A    B      _    D      E    F        _    H
+///  (0)  (1)    (2)  (3)   (4)  (5)      (6)  (7)
+/// ```
+///
+/// Operations per RFC 9420 Appendix A:
+///
+/// 1. A (alice) creates the group with B..H and oscar.
+///
+/// 2. F (frank) sends a self-update Commit, setting Y (tree[9]) and its
+///    ancestors tree[11], tree[7], and root.
+///
+/// 3. D (dana) removes B (leaf 1) and C (leaf 2) in one Commit.
+///    - The Remove proposals blank B's and C's direct paths, including tree[7].
+///    - D's UpdatePath re-sets X (tree[3]), tree[7], and root.
+///    - tree[5] is filtered out because C's leaf is blank.
+///    - tree[1] is NOT on D's direct path and stays blank.
+///
+/// 4. Oscar removes G (grace, leaf 6).
+///    - The Remove proposal blanks G's direct path: tree[13], tree[11],
+///      tree[7], and root.
+///    - Oscar's UpdatePath covers tree[23] (oscar-side) and root — it does
+///      NOT pass through tree[7], which stays blank.
+///
+/// 5. A (alice) re-adds a new member at B's slot using a *partial* Commit
+///    (no UpdatePath).  A Commit with only Add proposals does not require a
+///    path; the builder omits the UpdatePath.
+///    - New-B is added as unmerged only at the non-blank ancestors of leaf 1:
+///      X (tree[3]) and root.  tree[1] and tree[7] are blank and skipped.
+///
+/// Final state:  root.unmerged_leaves = [B = leaf 1].
+///
+/// B is the unique best self-update candidate: its hypothetical root
+/// resolution size is 1, versus 2 for every other remaining leaf.
+#[openmls_test]
+fn figure10_unmerged_leaf_candidate() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    // Fresh party for the re-added bob: its storage has no prior group state,
+    // so deliver_and_apply_welcome won't hit GroupAlreadyExists.
+    let new_bob_party = CorePartyState::<Provider>::new("bob");
+    let charlie_party = CorePartyState::<Provider>::new("charlie");
+    let dana_party = CorePartyState::<Provider>::new("dana");
+    let eve_party = CorePartyState::<Provider>::new("eve");
+    let frank_party = CorePartyState::<Provider>::new("frank");
+    let grace_party = CorePartyState::<Provider>::new("grace");
+    let heidi_party = CorePartyState::<Provider>::new("heidi");
+    let oscar_party = CorePartyState::<Provider>::new("oscar");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+    let dana_pre_group = dana_party.generate_pre_group(ciphersuite);
+    let eve_pre_group = eve_party.generate_pre_group(ciphersuite);
+    let frank_pre_group = frank_party.generate_pre_group(ciphersuite);
+    let grace_pre_group = grace_party.generate_pre_group(ciphersuite);
+    let heidi_pre_group = heidi_party.generate_pre_group(ciphersuite);
+    let oscar_pre_group = oscar_party.generate_pre_group(ciphersuite);
+
+    let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
+    let join_config = create_config.join_config().clone();
+
+    // Step 1: alice creates the group with all others (leaves 0..8).
+    let mut group_state = GroupState::new_from_party(
+        GroupId::from_slice(b"tree-health rfc9420-figure10"),
+        alice_pre_group,
+        create_config,
+    )
+    .unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![
+                bob_pre_group,
+                charlie_pre_group,
+                dana_pre_group,
+                eve_pre_group,
+                frank_pre_group,
+                grace_pre_group,
+                heidi_pre_group,
+                oscar_pre_group,
+            ],
+            join_config: join_config.clone(),
+            tree: None,
+        })
+        .unwrap();
+
+    // Step 2: frank self-updates, setting Y (tree[9]) and its ancestors
+    // tree[11], tree[7], and root.
+    {
+        let commit = {
+            let [frank] = group_state.members_mut(&["frank"]);
+            let bundle = frank
+                .group
+                .self_update(
+                    &frank.party.core_state.provider,
+                    &frank.party.signer,
+                    LeafNodeParameters::default(),
+                )
+                .unwrap();
+            let (commit, _, _) = bundle.into_contents();
+            frank
+                .group
+                .merge_pending_commit(&frank.party.core_state.provider)
+                .unwrap();
+            commit
+        };
+        group_state
+            .deliver_and_apply_if(commit.into(), |m| m.party.core_state.name != "frank")
+            .unwrap();
+    }
+
+    // Step 3: dana removes bob (leaf 1) and charlie (leaf 2) in one Commit.
+    // The Remove proposals blank their direct paths (including tree[7] and root).
+    // Dana's UpdatePath re-sets X (tree[3]), tree[7], and root; tree[5] is
+    // filtered out because charlie's leaf (2) is blank.  tree[1] stays blank.
+    {
+        let commit = {
+            let [dana] = group_state.members_mut(&["dana"]);
+            let (commit, _, _) = dana
+                .group
+                .remove_members(
+                    &dana.party.core_state.provider,
+                    &dana.party.signer,
+                    &[LeafNodeIndex::new(1), LeafNodeIndex::new(2)],
+                )
+                .unwrap();
+            dana.group
+                .merge_pending_commit(&dana.party.core_state.provider)
+                .unwrap();
+            commit
+        };
+        group_state
+            .deliver_and_apply_if(commit.into(), |m| {
+                matches!(
+                    m.party.core_state.name,
+                    "alice" | "eve" | "frank" | "grace" | "heidi" | "oscar"
+                )
+            })
+            .unwrap();
+        group_state.untrack_member("bob");
+        group_state.untrack_member("charlie");
+    }
+
+    // Step 4: oscar removes grace (leaf 6).
+    // The Remove proposal blanks grace's direct path (tree[13], tree[11],
+    // tree[7], root).  Oscar's UpdatePath covers tree[23] and root on oscar's
+    // side of the full tree and does NOT reach tree[7], so tree[7] stays blank.
+    {
+        let commit = {
+            let [oscar] = group_state.members_mut(&["oscar"]);
+            let (commit, _, _) = oscar
+                .group
+                .remove_members(
+                    &oscar.party.core_state.provider,
+                    &oscar.party.signer,
+                    &[LeafNodeIndex::new(6)],
+                )
+                .unwrap();
+            oscar
+                .group
+                .merge_pending_commit(&oscar.party.core_state.provider)
+                .unwrap();
+            commit
+        };
+        group_state
+            .deliver_and_apply_if(commit.into(), |m| {
+                matches!(
+                    m.party.core_state.name,
+                    "alice" | "dana" | "eve" | "frank" | "heidi"
+                )
+            })
+            .unwrap();
+        group_state.untrack_member("grace");
+    }
+
+    // Step 5: alice re-adds bob using a *partial* Commit (no UpdatePath).
+    // CommitBuilder::propose_adds embeds the Add proposal by value; because
+    // there are no Remove/Update proposals, path_required is false and the
+    // builder omits the UpdatePath.
+    // New-bob (at leaf 1, the leftmost blank slot) is added as unmerged only
+    // at the non-blank ancestors of leaf 1: X (tree[3]) and root.
+    let bob_new_pre_group = new_bob_party.generate_pre_group(ciphersuite);
+    let bob_new_key_package = bob_new_pre_group.key_package_bundle.key_package().clone();
+
+    let (commit, welcome) = {
+        let [alice] = group_state.members_mut(&["alice"]);
+        let bundle = alice
+            .build_commit_and_stage(|builder| builder.propose_adds(vec![bob_new_key_package]))
+            .unwrap();
+        let (commit, welcome, _) = bundle.into_contents();
+        alice
+            .group
+            .merge_pending_commit(&alice.party.core_state.provider)
+            .unwrap();
+        (commit, welcome.unwrap())
+    };
+
+    group_state
+        .deliver_and_apply_if(commit.into(), |m| m.party.core_state.name != "alice")
+        .unwrap();
+
+    group_state
+        .deliver_and_apply_welcome(bob_new_pre_group, join_config, welcome, None)
+        .unwrap();
+
+    // Query the tree state from alice's perspective.
+    let (root_unmerged, remaining_leaves) = {
+        let [alice] = group_state.members_mut(&["alice"]);
+        let root_unmerged = alice.group.treesync().root_unmerged_leaves().to_vec();
+        let remaining_leaves: Vec<LeafNodeIndex> = alice
+            .group
+            .treesync()
+            .full_leaves()
+            .map(|(idx, _)| idx)
+            .collect();
+        (root_unmerged, remaining_leaves)
+    };
+
+    // Figure 10: root.unmerged_leaves = [B = leaf 1].
+    assert_eq!(root_unmerged, vec![LeafNodeIndex::new(1)]);
+
+    // Compute hypothetical root resolution sizes for all remaining leaves.
+    let sizes: Vec<(LeafNodeIndex, usize)> = remaining_leaves
+        .iter()
+        .map(|&leaf| {
+            (
+                leaf,
+                hypothetical_root_resolution_size(leaf, &root_unmerged),
+            )
+        })
+        .collect();
+
+    let min_size = sizes.iter().map(|(_, s)| *s).min().unwrap();
+    let best_candidates: Vec<LeafNodeIndex> = sizes
+        .iter()
+        .filter_map(|&(leaf, s)| (s == min_size).then_some(leaf))
+        .collect();
+
+    // B (leaf 1) is the unique best candidate: size 1 vs 2 for all others.
+    assert_eq!(min_size, 1);
+    assert_eq!(best_candidates, vec![LeafNodeIndex::new(1)]);
+}
