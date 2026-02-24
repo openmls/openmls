@@ -8,10 +8,17 @@ MLS groups can degrade in efficiency over time. After Add and Remove operations,
 unmerged leaves accumulate on parent nodes, growing resolution sizes. This makes
 commits more expensive (more HPKE ciphertexts).
 
-A self-update commit from a leaf that is close in the tree to a recently
-removed leaf re-keys the shared path between them, restoring efficiency for that
-subtree. This crate provides helpers that tell an application which group
-member(s) are the best candidates to perform such a self-update.
+When a leaf is removed its direct path to the root is blanked, degrading tree
+efficiency. Any member who sends a commit with an `update_path` through that
+region restores it. The closer a leaf is to the removed slot in the tree
+topology, the more of the blanked path their `update_path` covers.
+
+This crate provides helpers to identify those candidates, covering two workflows:
+
+- **Proactive** — pick who should commit the Remove; their mandatory
+  `update_path` re-keys the shared path in the same commit, at no extra cost.
+- **Reactive** — pick who should self-update after someone else committed the
+  Remove; their follow-up commit re-keys the now-blank region.
 
 ## Usage
 
@@ -22,35 +29,35 @@ Add the crate to your `Cargo.toml`:
 openmls-tree-health = "0.1.0"
 ```
 
-After processing a Remove proposal, call `find_self_update_candidates` with the
-removed leaf index and an iterator over the remaining leaves:
+Call `find_update_candidates` with the leaf to be removed and an iterator over
+the current (non-blank) leaves:
 
 ```rust
-use openmls_tree_health::find_self_update_candidates;
+use openmls_tree_health::find_update_candidates;
 
-let candidates = find_self_update_candidates(
-    removed_index,
+let candidates = find_update_candidates(
+    leaf_to_remove,
     group.treesync().full_leaves().map(|(idx, _)| idx),
 );
 
 // candidates contains the leaf index (or indices, in case of a tie) of the
-// group member(s) best placed to restore tree efficiency with a self-update.
+// member(s) whose update_path best covers the path blanked by the removal.
 ```
 
-The application can then signal the chosen member to send a commit with an
-update_path.
+The application can then ask the chosen member to commit the Remove, or — if
+the Remove was already committed by someone else — to send a self-update.
 
 ## API
 
 ```rust
-pub fn find_self_update_candidates(
+pub fn find_update_candidates(
     removed: LeafNodeIndex,
     leaves: impl Iterator<Item = LeafNodeIndex>,
 ) -> Vec<LeafNodeIndex>
 ```
 
-- **`removed`** — the index of the leaf that was just or is about to be removed.
-- **`leaves`** — an iterator over the indices of the remaining (non-blank) leaves.
+- **`removed`** — the index of the leaf being (or already) removed.
+- **`leaves`** — an iterator over the indices of the current (non-blank) leaves.
 - **Returns** — the leaf indices closest to `removed`. Empty if `leaves` yields
   no elements after filtering.
 

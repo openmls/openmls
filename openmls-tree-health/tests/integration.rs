@@ -1,9 +1,9 @@
 use openmls::{prelude::*, test_utils::single_group_test_framework::*};
 use openmls_test::openmls_test;
-use openmls_tree_health::find_self_update_candidates;
+use openmls_tree_health::find_update_candidates;
 
 /// 4-leaf group: alice=0, bob=1, charlie=2, dana=3.
-/// Remove bob (leaf 1).
+/// Best committer for removing bob (leaf 1).
 ///
 /// XOR distances from 1:
 ///   alice(0):   0 XOR 1 = 1  → leading_zeros = 31  ← closest (sibling)
@@ -43,42 +43,20 @@ fn candidate_is_sibling_of_removed() {
         })
         .unwrap();
 
-    // Remove bob (leaf 1).
-    let commit = {
+    // Identify the best committer for removing bob before the commit is issued.
+    let candidates = {
         let [alice] = group_state.members_mut(&["alice"]);
-        let (commit, _, _) = alice
-            .group
-            .remove_members(
-                &alice.party.core_state.provider,
-                &alice.party.signer,
-                &[LeafNodeIndex::new(1)],
-            )
-            .unwrap();
-        alice
-            .group
-            .merge_pending_commit(&alice.party.core_state.provider)
-            .unwrap();
-        commit
+        let leaves = alice.group.treesync().full_leaves().map(|(idx, _)| idx);
+        find_update_candidates(LeafNodeIndex::new(1), leaves)
     };
 
-    group_state
-        .deliver_and_apply_if(commit.into(), |member| {
-            matches!(member.party.core_state.name, "charlie" | "dana")
-        })
-        .unwrap();
-
-    // Ask alice's view of the tree for the remaining leaves.
-    let [alice] = group_state.members_mut(&["alice"]);
-    let remaining_leaves = alice.group.treesync().full_leaves().map(|(idx, _)| idx);
-
-    let candidates = find_self_update_candidates(LeafNodeIndex::new(1), remaining_leaves);
-
-    // Alice (leaf 0) is bob's sibling — the topologically closest member.
+    // Alice (leaf 0) is bob's sibling — her update_path re-keys the most
+    // shared path with the removed slot.
     assert_eq!(candidates, vec![LeafNodeIndex::new(0)]);
 }
 
 /// 4-leaf group: alice=0, bob=1, charlie=2, dana=3.
-/// Remove alice (leaf 0).
+/// Best committer for removing alice (leaf 0).
 ///
 /// XOR distances from 0:
 ///   bob(1):     1 XOR 0 = 1  → leading_zeros = 31  ← closest (sibling)
@@ -117,44 +95,24 @@ fn candidate_is_sibling_when_first_leaf_removed() {
         })
         .unwrap();
 
-    // Remove alice (leaf 0) — bob does the commit.
-    let commit = {
+    // Identify the best committer for removing alice before the commit is issued.
+    let candidates = {
         let [bob] = group_state.members_mut(&["bob"]);
-        let (commit, _, _) = bob
-            .group
-            .remove_members(
-                &bob.party.core_state.provider,
-                &bob.party.signer,
-                &[LeafNodeIndex::new(0)],
-            )
-            .unwrap();
-        bob.group
-            .merge_pending_commit(&bob.party.core_state.provider)
-            .unwrap();
-        commit
+        let leaves = bob.group.treesync().full_leaves().map(|(idx, _)| idx);
+        find_update_candidates(LeafNodeIndex::new(0), leaves)
     };
-
-    group_state
-        .deliver_and_apply_if(commit.into(), |member| {
-            matches!(member.party.core_state.name, "charlie" | "dana")
-        })
-        .unwrap();
-
-    let [bob] = group_state.members_mut(&["bob"]);
-    let remaining_leaves = bob.group.treesync().full_leaves().map(|(idx, _)| idx);
-
-    let candidates = find_self_update_candidates(LeafNodeIndex::new(0), remaining_leaves);
 
     // Bob (leaf 1) is alice's sibling.
     assert_eq!(candidates, vec![LeafNodeIndex::new(1)]);
 }
 
 /// 4-leaf group: alice=0, bob=1, charlie=2, dana=3.
-/// First remove bob (leaf 1), then remove alice (leaf 0).
+/// Best committer for removing alice (leaf 0) after bob (leaf 1) has already
+/// been removed — alice's sibling slot is now blank.
 ///
-/// After both removals the remaining full leaves are charlie(2) and dana(3).
-/// Bob's slot (leaf 1) — alice's sibling, the closest possible leaf — is blank,
-/// so it does not appear in the iterator.
+/// After bob is removed, the remaining full leaves are alice(0), charlie(2),
+/// dana(3). Bob's slot (leaf 1) — alice's sibling — is blank and absent from
+/// the iterator.
 ///
 /// XOR distances from alice(0) among the remaining leaves:
 ///   charlie(2): 2 XOR 0 = 2  → leading_zeros = 30
@@ -215,34 +173,13 @@ fn multiple_candidates_when_sibling_is_blank() {
         })
         .unwrap();
 
-    // Step 2: charlie removes alice (leaf 0).
-    let commit = {
+    // Step 2: identify the best committer for removing alice now that her
+    // sibling slot is blank.
+    let candidates = {
         let [charlie] = group_state.members_mut(&["charlie"]);
-        let (commit, _, _) = charlie
-            .group
-            .remove_members(
-                &charlie.party.core_state.provider,
-                &charlie.party.signer,
-                &[LeafNodeIndex::new(0)],
-            )
-            .unwrap();
-        charlie
-            .group
-            .merge_pending_commit(&charlie.party.core_state.provider)
-            .unwrap();
-        commit
+        let leaves = charlie.group.treesync().full_leaves().map(|(idx, _)| idx);
+        find_update_candidates(LeafNodeIndex::new(0), leaves)
     };
-    group_state
-        .deliver_and_apply_if(commit.into(), |member| {
-            member.party.core_state.name == "dana"
-        })
-        .unwrap();
-
-    // Ask charlie's view: remaining full leaves are charlie(2) and dana(3).
-    let [charlie] = group_state.members_mut(&["charlie"]);
-    let remaining_leaves = charlie.group.treesync().full_leaves().map(|(idx, _)| idx);
-
-    let candidates = find_self_update_candidates(LeafNodeIndex::new(0), remaining_leaves);
 
     // Both charlie(2) and dana(3) are equidistant from alice's slot.
     assert_eq!(
