@@ -1,4 +1,5 @@
-//! Tests for StagedCommit next epoch access APIs using the single group test framework
+//! Tests for StagedCommit next epoch access APIs and StagedWelcome export secret API
+//! using the single group test framework
 
 use openmls::{
     prelude::*,
@@ -228,4 +229,80 @@ fn staged_commit_self_removed_returns_none() {
     // group_context and epoch are still accessible (public state)
     let _ = staged_commit.group_context();
     let _ = staged_commit.epoch();
+}
+
+/// Test that the exported secret from the StagedWelcome matches the
+/// exported secret from the MlsGroup after creation.
+#[openmls_test]
+fn staged_welcome_export_secret_matches_created_group() {
+    // 1. Create parties
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    // 2. Generate pre-group states
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+
+    // 3. Create group config with ratchet tree extension
+    let create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let join_config = create_config.join_config().clone();
+
+    // 4. Initialize group with Alice
+    let group_id = GroupId::from_slice(b"test-group");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, create_config).unwrap();
+
+    // 5. Alice invites Bob
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let (_commit_msg, welcome_msg, _group_info) = alice
+        .group
+        .add_members(
+            &alice_party.provider,
+            &alice.party.signer,
+            std::slice::from_ref(bob_pre_group.key_package_bundle.key_package()),
+        )
+        .expect("error adding Bob");
+
+    // 6. Bob stages the Welcome
+    let welcome = welcome_msg.into_welcome().unwrap();
+    let staged_welcome =
+        StagedWelcome::new_from_welcome(&bob_party.provider, &join_config, welcome, None)
+            .expect("error staging welcome");
+
+    // === Capture values from StagedWelcome ===
+    let staged_export = staged_welcome
+        .export_secret(bob_party.provider.crypto(), "test-label", b"ctx", 32)
+        .unwrap();
+
+    // 7. Bob creates an MlsGroup from the StagedWelcome
+    let bob_group = staged_welcome
+        .into_group(&bob_party.provider)
+        .expect("error creating group");
+
+    // === Verify staged values match group values ===
+    assert_eq!(
+        staged_export,
+        bob_group
+            .export_secret(bob_party.provider.crypto(), "test-label", b"ctx", 32)
+            .unwrap()
+    );
+
+    // 8. Alice merges the commit that added Bob to the group
+    alice
+        .group
+        .merge_pending_commit(&alice_party.provider)
+        .expect("error merging pending commit");
+
+    // === Verify the exported secrets match for Alice and Bob ===
+    assert_eq!(
+        staged_export,
+        alice
+            .group
+            .export_secret(alice_party.provider.crypto(), "test-label", b"ctx", 32)
+            .unwrap()
+    );
 }
