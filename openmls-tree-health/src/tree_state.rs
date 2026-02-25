@@ -220,6 +220,99 @@ impl TreeState {
         r
     }
 
+    // ── Resolution and commit size ────────────────────────────────────────
+
+    /// Resolution size of tree-node `x`.
+    ///
+    /// The resolution of a node is the set of nodes that can decrypt a secret
+    /// encrypted to it (RFC 9420 §7.7):
+    ///
+    /// - Blank leaf → 0 (no member, nothing to encrypt to).
+    /// - Occupied leaf → 1.
+    /// - Blank parent → recursive sum over children.
+    /// - Occupied parent → 1 (the node itself) + number of unmerged leaves.
+    fn resolution_size(&self, x: usize) -> usize {
+        if x % 2 == 0 {
+            // Leaf node: tree index x = 2 * leaf_index.
+            match &self.leaves[x / 2] {
+                LeafState::Blank => 0,
+                LeafState::Occupied => 1,
+            }
+        } else {
+            // Parent node: parents[k] at tree-node index 2k+1, so k = x/2.
+            let n = self.leaves.len();
+            match &self.parents[x / 2] {
+                ParentState::Blank => {
+                    let left = Self::left_child(x);
+                    let right = Self::right_child(x, n);
+                    self.resolution_size(left) + self.resolution_size(right)
+                }
+                ParentState::Occupied { unmerged_leaves } => 1 + unmerged_leaves.len(),
+            }
+        }
+    }
+
+    /// Number of HPKE ciphertexts a commit from `leaf` would produce.
+    ///
+    /// When a leaf commits with an UpdatePath it encrypts a path secret to the
+    /// **resolution** of each node on its **co-path** — the sibling of each
+    /// node on the direct path from `leaf` up to, but not including, the root
+    /// (the root has no sibling).  The total commit size is the sum of those
+    /// resolution sizes.
+    ///
+    /// A smaller value means the commit is cheaper to produce and to process
+    /// for every other group member.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `leaf.0 >= self.num_leaves() as u32`.
+    pub fn commit_size(&self, leaf: LeafIndex) -> usize {
+        let n = self.leaves.len();
+        assert!(
+            (leaf.0 as usize) < n,
+            "leaf index {} out of range (tree has {} leaves)",
+            leaf.0,
+            n,
+        );
+        if n <= 1 {
+            return 0;
+        }
+
+        // Walk the direct path top-down from the root.  At each parent node x:
+        //   - if leaf_tree_idx < x the leaf is in the left subtree  → co-path node is the right child
+        //   - if leaf_tree_idx > x the leaf is in the right subtree → co-path node is the left child
+        // Stop once we find the direct child that equals the leaf itself.
+        //
+        // This avoids the parent() formula, which is only correct for perfect
+        // binary trees and breaks for non-power-of-2 leaf counts.
+        let leaf_tree_idx = leaf.0 as usize * 2;
+        let mut total = 0;
+        let mut x = Self::root_index(n);
+
+        loop {
+            let left = Self::left_child(x);
+            let right = Self::right_child(x, n);
+
+            if leaf_tree_idx < x {
+                // Leaf is in the left subtree; co-path node is the right child.
+                total += self.resolution_size(right);
+                if left == leaf_tree_idx {
+                    break;
+                }
+                x = left;
+            } else {
+                // Leaf is in the right subtree; co-path node is the left child.
+                total += self.resolution_size(left);
+                if right == leaf_tree_idx {
+                    break;
+                }
+                x = right;
+            }
+        }
+
+        total
+    }
+
     // ── Display helpers ────────────────────────────────────────────────────
 
     fn fmt_parent_state(state: &ParentState) -> String {
@@ -433,6 +526,111 @@ mod tests {
         assert!(s.contains("leaf[1]"), "got: {s}");
         // leaf[2] is the direct right child of the root
         assert!(s.contains("leaf[2]"), "got: {s}");
+    }
+
+    // ── commit_size ───────────────────────────────────────────────────────
+
+    /// Fully merged 4-leaf tree: every leaf sends exactly 2 ciphertexts.
+    ///
+    /// Tree topology:
+    /// ```text
+    ///         root [occ, u=[]]
+    ///         /              \
+    ///     tree[1] [occ, u=[]]   tree[5] [occ, u=[]]
+    ///     /    \               /    \
+    /// leaf[0] leaf[1]     leaf[2] leaf[3]
+    /// ```
+    /// Leaf 0 co-path: [leaf[1] (res=1), tree[5] (res=1)] → 2
+    /// Leaf 2 co-path: [leaf[3] (res=1), tree[1] (res=1)] → 2
+    #[test]
+    fn commit_size_fully_merged_4_leaves() {
+        let t = TreeState::new(
+            vec![leaf(true); 4],
+            vec![parent_occ(&[]), parent_occ(&[]), parent_occ(&[])],
+        );
+        for i in 0..4u32 {
+            assert_eq!(t.commit_size(LeafIndex(i)), 2, "leaf {i}");
+        }
+    }
+
+    /// Blank sibling: the blank leaf contributes 0 to its parent's resolution,
+    /// so when the blank parent itself is the co-path node we recurse into the
+    /// occupied children.
+    ///
+    /// Leaf[1] is blank, tree[1] is blank (no key set because leaf[1] is gone).
+    /// Leaf[2] co-path: [leaf[3] (res=1), tree[1] → recurse → leaf[0](1) + leaf[1](0) = 1] → 2
+    /// Leaf[0] co-path: [leaf[1](0), tree[5](res=1)] → 1
+    #[test]
+    fn commit_size_blank_leaf_and_parent() {
+        let t = TreeState::new(
+            vec![leaf(true), leaf(false), leaf(true), leaf(true)],
+            //   tree[1]=blank   tree[3]=root occ  tree[5]=occ
+            vec![parent_blank(), parent_occ(&[]), parent_occ(&[])],
+        );
+        assert_eq!(t.commit_size(LeafIndex(0)), 1); // co-path: leaf[1](0) + tree[5](1)
+        assert_eq!(t.commit_size(LeafIndex(2)), 2); // co-path: leaf[3](1) + tree[1]→1+0=1
+        assert_eq!(t.commit_size(LeafIndex(3)), 2); // co-path: leaf[2](1) + tree[1]→1
+    }
+
+    /// Unmerged leaves inflate the root's resolution.
+    ///
+    /// leaf[2] is unmerged at tree[5] and at the root (both have u=[2]).
+    /// Leaf[0] co-path: [leaf[1](1), tree[5](1+1=2)] → 3
+    /// Leaf[2] co-path: [leaf[3](1), tree[1](1)] → 2   (leaf[2] is NOT in tree[1]'s unmerged list)
+    #[test]
+    fn commit_size_with_unmerged_leaves() {
+        let t = TreeState::new(
+            vec![leaf(true); 4],
+            vec![
+                parent_occ(&[]),   // tree[1]: no unmerged
+                parent_occ(&[2]),  // tree[3]=root: leaf[2] unmerged
+                parent_occ(&[2]),  // tree[5]: leaf[2] unmerged
+            ],
+        );
+        // Leaf[0]: co-path = [leaf[1](1), tree[5](1+1=2)] → 3
+        assert_eq!(t.commit_size(LeafIndex(0)), 3);
+        // Leaf[1]: co-path = [leaf[0](1), tree[5](2)] → 3
+        assert_eq!(t.commit_size(LeafIndex(1)), 3);
+        // Leaf[2]: co-path = [leaf[3](1), tree[1](1+0=1)] → 2
+        assert_eq!(t.commit_size(LeafIndex(2)), 2);
+        // Leaf[3]: co-path = [leaf[2](1), tree[1](1)] → 2
+        assert_eq!(t.commit_size(LeafIndex(3)), 2);
+    }
+
+    /// Single-leaf tree: no path, no ciphertexts.
+    #[test]
+    fn commit_size_single_leaf() {
+        let t = TreeState::new(vec![leaf(true)], vec![]);
+        assert_eq!(t.commit_size(LeafIndex(0)), 0);
+    }
+
+    /// Two-leaf tree: one ciphertext in each direction.
+    #[test]
+    fn commit_size_two_leaves() {
+        let t = TreeState::new(vec![leaf(true), leaf(true)], vec![parent_occ(&[])]);
+        assert_eq!(t.commit_size(LeafIndex(0)), 1);
+        assert_eq!(t.commit_size(LeafIndex(1)), 1);
+    }
+
+    /// Non-power-of-2 tree (3 leaves, LBBT):
+    /// ```text
+    ///       root [tree[3]]
+    ///      /            \
+    ///  tree[1]         leaf[2]   ← right child of root is a leaf
+    ///  /    \
+    /// leaf[0] leaf[1]
+    /// ```
+    /// Leaf[0] co-path: [leaf[1](1), leaf[2](1)] → 2
+    /// Leaf[2] co-path: [tree[1](1)] → 1
+    #[test]
+    fn commit_size_three_leaves_lbbt() {
+        let t = TreeState::new(
+            vec![leaf(true), leaf(true), leaf(true)],
+            vec![parent_occ(&[]), parent_occ(&[])], // tree[1], tree[3]=root
+        );
+        assert_eq!(t.commit_size(LeafIndex(0)), 2);
+        assert_eq!(t.commit_size(LeafIndex(1)), 2);
+        assert_eq!(t.commit_size(LeafIndex(2)), 1);
     }
 
     // ── Accessors ─────────────────────────────────────────────────────────
