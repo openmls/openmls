@@ -100,7 +100,7 @@ pub struct CommitInfo {
 /// [`ParentState`] per parent node:
 ///
 /// ```
-/// use openmls_tree_health::tree_state::{LeafIndex, LeafState, ParentState, TreeState};
+/// use openmls_tree_health::{LeafIndex, LeafState, ParentState, TreeState};
 ///
 /// // 4-leaf tree: all occupied, tree[1] blank, leaf[2] recently added so it
 /// // is unmerged at tree[5] and at the root (every ancestor inherits the list).
@@ -180,10 +180,7 @@ impl TreeState {
 
     /// Iterator over parent states, in tree-node-index order (tree[1], tree[3], …).
     pub fn parents(&self) -> impl Iterator<Item = (usize, &ParentState)> {
-        self.parents
-            .iter()
-            .enumerate()
-            .map(|(k, s)| (2 * k + 1, s))
+        self.parents.iter().enumerate().map(|(k, s)| (2 * k + 1, s))
     }
 
     // ── Tree math (RFC 9420 §7.1) ─────────────────────────────────────────
@@ -570,7 +567,11 @@ impl TreeState {
                 LeafState::Blank => "blank",
                 LeafState::Occupied => "occ",
             };
-            writeln!(f, "{}{}leaf[{}] [{}]", prefix, connector, leaf_idx, state_str)
+            writeln!(
+                f,
+                "{}{}leaf[{}] [{}]",
+                prefix, connector, leaf_idx, state_str
+            )
         } else {
             // ── Parent node ────────────────────────────────────────────────
             let k = x / 2;
@@ -800,9 +801,9 @@ mod tests {
         let t = TreeState::new(
             vec![leaf(true); 4],
             vec![
-                parent_occ(&[]),   // tree[1]: no unmerged
-                parent_occ(&[2]),  // tree[3]=root: leaf[2] unmerged
-                parent_occ(&[2]),  // tree[5]: leaf[2] unmerged
+                parent_occ(&[]),  // tree[1]: no unmerged
+                parent_occ(&[2]), // tree[3]=root: leaf[2] unmerged
+                parent_occ(&[2]), // tree[5]: leaf[2] unmerged
             ],
         );
         // Leaf[0]: co-path = [leaf[1](1), tree[5](1+1=2)] → 3
@@ -861,9 +862,12 @@ mod tests {
         assert!(!TreeState::is_in_subtree(4, 1, 4)); // leaf[2] NOT in tree[1]
         assert!(!TreeState::is_in_subtree(6, 1, 4)); // leaf[3] NOT in tree[1]
         assert!(TreeState::is_in_subtree(1, 1, 4)); // root of subtree itself
-        // tree[3] (root) spans everything
+                                                    // tree[3] (root) spans everything
         for x in [0usize, 1, 2, 3, 4, 5, 6] {
-            assert!(TreeState::is_in_subtree(x, 3, 4), "node {x} should be in root's subtree");
+            assert!(
+                TreeState::is_in_subtree(x, 3, 4),
+                "node {x} should be in root's subtree"
+            );
         }
     }
 
@@ -999,10 +1003,7 @@ mod tests {
 
     #[test]
     fn leaf_state_accessor() {
-        let t = TreeState::new(
-            vec![leaf(true), leaf(false)],
-            vec![parent_blank()],
-        );
+        let t = TreeState::new(vec![leaf(true), leaf(false)], vec![parent_blank()]);
         assert_eq!(t.leaf_state(LeafIndex(0)), &LeafState::Occupied);
         assert_eq!(t.leaf_state(LeafIndex(1)), &LeafState::Blank);
     }
@@ -1030,10 +1031,7 @@ mod tests {
 
     #[test]
     fn parents_iterator() {
-        let t = TreeState::new(
-            vec![leaf(true), leaf(true)],
-            vec![parent_occ(&[1])],
-        );
+        let t = TreeState::new(vec![leaf(true), leaf(true)], vec![parent_occ(&[1])]);
         let pairs: Vec<_> = t.parents().collect();
         // k=0 → tree-node index 1
         assert_eq!(pairs[0].0, 1);
