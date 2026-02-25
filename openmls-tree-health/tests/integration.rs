@@ -409,6 +409,98 @@ fn minimal_resolution_after_remove_when_all_self_updated() {
     assert_eq!(best_candidates, remaining_leaves);
 }
 
+/// 4-leaf group: alice=0, bob=1, charlie=2, dana=3.
+///
+/// Alice adds all three others with a full commit (force_self_update=true).
+/// Alice's UpdatePath clears the root's unmerged_leaves per RFC §7.8.
+/// Then bob, charlie, and dana each self-update, which also doesn't change
+/// the fact the root is already fully merged.
+///
+/// After all self-updates:
+///   root.unmerged_leaves = []
+///   actual root resolution = 1
+///   hypothetical size for every leaf = 1
+#[openmls_test]
+fn actual_and_model_agree_when_fully_merged() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let charlie_party = CorePartyState::<Provider>::new("charlie");
+    let dana_party = CorePartyState::<Provider>::new("dana");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+    let dana_pre_group = dana_party.generate_pre_group(ciphersuite);
+
+    let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
+    let join_config = create_config.join_config().clone();
+
+    let mut group_state = GroupState::new_from_party(
+        GroupId::from_slice(b"tree-health actual-vs-model-merged"),
+        alice_pre_group,
+        create_config,
+    )
+    .unwrap();
+
+    // alice=0, bob=1, charlie=2, dana=3
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group, charlie_pre_group, dana_pre_group],
+            join_config,
+            tree: None,
+        })
+        .unwrap();
+
+    // Each new member self-updates, clearing the root's unmerged list.
+    for name in ["bob", "charlie", "dana"] {
+        let commit = {
+            let [member] = group_state.members_mut(&[name]);
+            let bundle = member
+                .group
+                .self_update(
+                    &member.party.core_state.provider,
+                    &member.party.signer,
+                    LeafNodeParameters::default(),
+                )
+                .unwrap();
+            let (commit, _, _) = bundle.into_contents();
+            member
+                .group
+                .merge_pending_commit(&member.party.core_state.provider)
+                .unwrap();
+            commit
+        };
+        group_state
+            .deliver_and_apply_if(commit.into(), |m| m.party.core_state.name != name)
+            .unwrap();
+    }
+
+    let (actual_size, root_unmerged, remaining_leaves) = {
+        let [alice] = group_state.members_mut(&["alice"]);
+        let actual_size = alice.group.treesync().root_resolution_size();
+        let root_unmerged = alice.group.treesync().root_unmerged_leaves().to_vec();
+        let remaining_leaves: Vec<LeafNodeIndex> = alice
+            .group
+            .treesync()
+            .full_leaves()
+            .map(|(idx, _)| idx)
+            .collect();
+        (actual_size, root_unmerged, remaining_leaves)
+    };
+
+    // Tree is fully merged: no unmerged leaves remain.
+    assert!(root_unmerged.is_empty());
+
+    // Actual root resolution is 1 (just the root itself).
+    assert_eq!(actual_size, 1);
+
+    // Every remaining leaf has hypothetical size 1 — no self-update can help.
+    for &leaf in &remaining_leaves {
+        assert_eq!(hypothetical_root_resolution_size(leaf, &root_unmerged), 1);
+    }
+}
+
 /// Reproduces the ratchet tree from RFC 9420 Figure 10.
 ///
 /// The figure shows a subtree of a larger group.  We map A..H to leaves 0..7
@@ -666,4 +758,221 @@ fn figure10_unmerged_leaf_candidate() {
     // B (leaf 1) is the unique best candidate: size 1 vs 2 for all others.
     assert_eq!(min_size, 1);
     assert_eq!(best_candidates, vec![LeafNodeIndex::new(1)]);
+}
+
+/// Same RFC 9420 Figure 10 setup as `figure10_unmerged_leaf_candidate`, but
+/// also validates the actual root resolution size (via `root_resolution_size`)
+/// against the model predictions.
+///
+/// After all five steps:
+///   root.unmerged_leaves = [B = leaf 1]
+///   actual root resolution = 2  (root + bob unmerged)
+///
+/// The tree has blank intermediate nodes (tree[1], tree[7], tree[11],
+/// tree[13]), so this also exercises the recursive RFC §4.1.1 logic reaching
+/// the same answer as the simple `1 + |unmerged_leaves|` formula.
+///
+/// Model predictions:
+///   bob(1): in unmerged list → hypothetical size = 1 (best)
+///   all others:              → hypothetical size = 2
+///   min_size = actual - 1 = 1
+#[openmls_test]
+fn actual_and_model_agree_figure10() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let new_bob_party = CorePartyState::<Provider>::new("bob");
+    let charlie_party = CorePartyState::<Provider>::new("charlie");
+    let dana_party = CorePartyState::<Provider>::new("dana");
+    let eve_party = CorePartyState::<Provider>::new("eve");
+    let frank_party = CorePartyState::<Provider>::new("frank");
+    let grace_party = CorePartyState::<Provider>::new("grace");
+    let heidi_party = CorePartyState::<Provider>::new("heidi");
+    let oscar_party = CorePartyState::<Provider>::new("oscar");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+    let dana_pre_group = dana_party.generate_pre_group(ciphersuite);
+    let eve_pre_group = eve_party.generate_pre_group(ciphersuite);
+    let frank_pre_group = frank_party.generate_pre_group(ciphersuite);
+    let grace_pre_group = grace_party.generate_pre_group(ciphersuite);
+    let heidi_pre_group = heidi_party.generate_pre_group(ciphersuite);
+    let oscar_pre_group = oscar_party.generate_pre_group(ciphersuite);
+
+    let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
+    let join_config = create_config.join_config().clone();
+
+    // Step 1: alice creates the group with all others (leaves 0..8).
+    let mut group_state = GroupState::new_from_party(
+        GroupId::from_slice(b"tree-health rfc9420-figure10-actual"),
+        alice_pre_group,
+        create_config,
+    )
+    .unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![
+                bob_pre_group,
+                charlie_pre_group,
+                dana_pre_group,
+                eve_pre_group,
+                frank_pre_group,
+                grace_pre_group,
+                heidi_pre_group,
+                oscar_pre_group,
+            ],
+            join_config: join_config.clone(),
+            tree: None,
+        })
+        .unwrap();
+
+    // Step 2: frank self-updates.
+    {
+        let commit = {
+            let [frank] = group_state.members_mut(&["frank"]);
+            let bundle = frank
+                .group
+                .self_update(
+                    &frank.party.core_state.provider,
+                    &frank.party.signer,
+                    LeafNodeParameters::default(),
+                )
+                .unwrap();
+            let (commit, _, _) = bundle.into_contents();
+            frank
+                .group
+                .merge_pending_commit(&frank.party.core_state.provider)
+                .unwrap();
+            commit
+        };
+        group_state
+            .deliver_and_apply_if(commit.into(), |m| m.party.core_state.name != "frank")
+            .unwrap();
+    }
+
+    // Step 3: dana removes bob (leaf 1) and charlie (leaf 2).
+    {
+        let commit = {
+            let [dana] = group_state.members_mut(&["dana"]);
+            let (commit, _, _) = dana
+                .group
+                .remove_members(
+                    &dana.party.core_state.provider,
+                    &dana.party.signer,
+                    &[LeafNodeIndex::new(1), LeafNodeIndex::new(2)],
+                )
+                .unwrap();
+            dana.group
+                .merge_pending_commit(&dana.party.core_state.provider)
+                .unwrap();
+            commit
+        };
+        group_state
+            .deliver_and_apply_if(commit.into(), |m| {
+                matches!(
+                    m.party.core_state.name,
+                    "alice" | "eve" | "frank" | "grace" | "heidi" | "oscar"
+                )
+            })
+            .unwrap();
+        group_state.untrack_member("bob");
+        group_state.untrack_member("charlie");
+    }
+
+    // Step 4: oscar removes grace (leaf 6).
+    {
+        let commit = {
+            let [oscar] = group_state.members_mut(&["oscar"]);
+            let (commit, _, _) = oscar
+                .group
+                .remove_members(
+                    &oscar.party.core_state.provider,
+                    &oscar.party.signer,
+                    &[LeafNodeIndex::new(6)],
+                )
+                .unwrap();
+            oscar
+                .group
+                .merge_pending_commit(&oscar.party.core_state.provider)
+                .unwrap();
+            commit
+        };
+        group_state
+            .deliver_and_apply_if(commit.into(), |m| {
+                matches!(
+                    m.party.core_state.name,
+                    "alice" | "dana" | "eve" | "frank" | "heidi"
+                )
+            })
+            .unwrap();
+        group_state.untrack_member("grace");
+    }
+
+    // Step 5: alice re-adds bob with a partial Commit (no UpdatePath).
+    let bob_new_pre_group = new_bob_party.generate_pre_group(ciphersuite);
+    let bob_new_key_package = bob_new_pre_group.key_package_bundle.key_package().clone();
+
+    let (commit, welcome) = {
+        let [alice] = group_state.members_mut(&["alice"]);
+        let bundle = alice
+            .build_commit_and_stage(|builder| builder.propose_adds(vec![bob_new_key_package]))
+            .unwrap();
+        let (commit, welcome, _) = bundle.into_contents();
+        alice
+            .group
+            .merge_pending_commit(&alice.party.core_state.provider)
+            .unwrap();
+        (commit, welcome.unwrap())
+    };
+
+    group_state
+        .deliver_and_apply_if(commit.into(), |m| m.party.core_state.name != "alice")
+        .unwrap();
+
+    group_state
+        .deliver_and_apply_welcome(bob_new_pre_group, join_config, welcome, None)
+        .unwrap();
+
+    // Query the tree state from alice's perspective.
+    let (actual_size, root_unmerged, remaining_leaves) = {
+        let [alice] = group_state.members_mut(&["alice"]);
+        let actual_size = alice.group.treesync().root_resolution_size();
+        let root_unmerged = alice.group.treesync().root_unmerged_leaves().to_vec();
+        let remaining_leaves: Vec<LeafNodeIndex> = alice
+            .group
+            .treesync()
+            .full_leaves()
+            .map(|(idx, _)| idx)
+            .collect();
+        (actual_size, root_unmerged, remaining_leaves)
+    };
+
+    // Figure 10: root.unmerged_leaves = [B = leaf 1].
+    assert_eq!(root_unmerged, vec![LeafNodeIndex::new(1)]);
+
+    // Actual root resolution = 2 (root + bob unmerged).
+    assert_eq!(actual_size, 2);
+
+    // bob(1) is the unique best candidate with hypothetical size 1.
+    assert_eq!(
+        hypothetical_root_resolution_size(LeafNodeIndex::new(1), &root_unmerged),
+        1
+    );
+
+    // All other remaining leaves have hypothetical size 2.
+    for &leaf in remaining_leaves.iter().filter(|&&l| l != LeafNodeIndex::new(1)) {
+        assert_eq!(hypothetical_root_resolution_size(leaf, &root_unmerged), 2);
+    }
+
+    // Compute min size across all remaining leaves.
+    let min_size = remaining_leaves
+        .iter()
+        .map(|&leaf| hypothetical_root_resolution_size(leaf, &root_unmerged))
+        .min()
+        .unwrap();
+
+    // The best candidate reduces the actual root resolution by exactly 1.
+    assert_eq!(min_size, actual_size - 1);
 }

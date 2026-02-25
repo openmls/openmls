@@ -611,6 +611,21 @@ impl TreeSync {
         }
     }
 
+    /// Returns the actual root resolution size following RFC 9420 §4.1.1.
+    ///
+    /// For a non-blank root this equals `1 + root_unmerged_leaves().len()`. For a
+    /// blank root (not possible in a live multi-member group) it recurses into the
+    /// children. Use this in tests to validate `hypothetical_root_resolution_size`
+    /// predictions.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn root_resolution_size(&self) -> usize {
+        use crate::binary_tree::array_representation::root;
+        use std::collections::HashSet;
+        let diff = self.empty_diff();
+        let root_idx = root(self.tree_size());
+        diff.resolution(root_idx, &HashSet::new()).len()
+    }
+
     /// Returns the index of the last full leaf in the tree.
     fn rightmost_full_leaf(&self) -> LeafNodeIndex {
         let mut index = LeafNodeIndex::new(0);
