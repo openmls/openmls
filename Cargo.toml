@@ -15,6 +15,7 @@ members = [
     "basic_credential",
     "openmls-wasm",
     "openmls_test",
+    "openmls-tree-health",
 ]
 resolver = "2"
 
@@ -33,3 +34,5 @@ openmls_libcrux_crypto = { version = "0.3.1", path = "libcrux_crypto" }
 
 openmls_memory_storage = { version = "0.5.0", path = "memory_storage" }
 openmls_sqlite_storage = { version = "0.2.0", path = "sqlite_storage" }
+
+openmls_tree_health = { version = "0.1.0", path = "openmls-tree-health" }

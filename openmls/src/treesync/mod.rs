@@ -595,6 +595,37 @@ impl TreeSync {
             .filter_map(|(index, tsn)| tsn.node().as_ref().map_or(Some(index), |_| None))
     }
 
+    /// Returns the unmerged leaves of the root node, or an empty slice if the
+    /// root is blank (i.e. no member has yet committed an `update_path`).
+    pub fn root_unmerged_leaves(&self) -> &[LeafNodeIndex] {
+        use crate::binary_tree::array_representation::{root, TreeNodeIndex};
+        let root_index = root(self.tree_size());
+        match root_index {
+            TreeNodeIndex::Parent(parent_idx) => self
+                .tree
+                .parents()
+                .find(|(idx, _)| *idx == parent_idx)
+                .and_then(|(_, tsn)| tsn.node().as_ref().map(|pn| pn.unmerged_leaves()))
+                .unwrap_or(&[]),
+            TreeNodeIndex::Leaf(_) => &[], // 1-leaf group; root is the leaf itself
+        }
+    }
+
+    /// Returns the actual root resolution size following RFC 9420 §4.1.1.
+    ///
+    /// For a non-blank root this equals `1 + root_unmerged_leaves().len()`. For a
+    /// blank root (not possible in a live multi-member group) it recurses into the
+    /// children. Use this in tests to validate `hypothetical_root_resolution_size`
+    /// predictions.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn root_resolution_size(&self) -> usize {
+        use crate::binary_tree::array_representation::root;
+        use std::collections::HashSet;
+        let diff = self.empty_diff();
+        let root_idx = root(self.tree_size());
+        diff.resolution(root_idx, &HashSet::new()).len()
+    }
+
     /// Returns the index of the last full leaf in the tree.
     fn rightmost_full_leaf(&self) -> LeafNodeIndex {
         let mut index = LeafNodeIndex::new(0);
