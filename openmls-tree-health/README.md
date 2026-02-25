@@ -18,14 +18,14 @@ The resolution of a node (RFC 9420 §4.1.1) includes all its unmerged leaves, so
 each unmerged entry adds one extra HPKE ciphertext to commits. A self-update by
 the newly added member removes it from those lists.
 
-This crate provides helpers to identify those candidates, covering two workflows:
+This crate provides two tools for managing this:
 
-- **Proactive** — pick who should commit the Remove; their mandatory
-  `update_path` re-keys the shared path in the same commit, at no extra cost.
-- **Reactive** — pick who should self-update after someone else committed the
-  Remove; their follow-up commit re-keys the now-blank region.
-- **Unmerged leaves** — pick who should self-update to most reduce the root
-  resolution size after one or more Add operations.
+- **`find_update_candidates`** — a lightweight heuristic that identifies which
+  leaf is structurally closest to a removed slot and therefore best placed to
+  re-key the blanked path.
+- **`TreeState`** — a full tree-state model that snapshots every node's
+  blank/occupied status and unmerged-leaf lists, then computes exact commit
+  costs and projects the resulting tree for every possible committer.
 
 ## Usage
 
@@ -35,6 +35,8 @@ Add the crate to your `Cargo.toml`:
 [dependencies]
 openmls-tree-health = "0.1.0"
 ```
+
+### Picking who should commit a Remove
 
 Call `find_update_candidates` with the leaf to be removed and an iterator over
 the current (non-blank) leaves:
@@ -51,150 +53,33 @@ let candidates = find_update_candidates(
 // member(s) whose update_path best covers the path blanked by the removal.
 ```
 
-The application can then ask the chosen member to commit the Remove, or — if
-the Remove was already committed by someone else — to send a self-update.
+The chosen member can commit the Remove (their mandatory `update_path` re-keys
+the shared path at no extra cost), or — if the Remove was already committed by
+someone else — send a follow-up self-update.
 
-To identify who should self-update to reduce unmerged-leaf overhead at the root,
-iterate over all leaves and pick those with the smallest hypothetical size:
+### Computing exact commit costs with TreeState
 
-```rust
-use openmls_tree_health::hypothetical_root_resolution_size;
-
-let root_unmerged = group.treesync().root_unmerged_leaves();
-
-let best = group
-    .treesync()
-    .full_leaves()
-    .map(|(idx, _)| (idx, hypothetical_root_resolution_size(idx, root_unmerged)))
-    .min_by_key(|&(_, size)| size);
-```
-
-When a set of proposals is ready to be committed, use
-`project_root_unmerged_leaves` to compute what the root's unmerged list will
-look like after those proposals are applied, then feed the result into
-`hypothetical_root_resolution_size` to find the best committer:
+`find_update_candidates` uses only leaf indices. For a precise picture —
+including how much each possible commit costs and what the tree looks like
+afterwards — build a `TreeState` snapshot and call `simulate_all_commits`:
 
 ```rust
-use openmls_tree_health::{project_root_unmerged_leaves, hypothetical_root_resolution_size};
+use openmls_tree_health::{LeafIndex, LeafState, ParentState, TreeState};
 
-let projected = project_root_unmerged_leaves(
-    group.treesync().root_unmerged_leaves(),
-    &added_leaf_indices,   // leaf slots the new members will occupy
-    &removed_leaf_indices,
-);
-
-let best = group
-    .treesync()
-    .full_leaves()
-    .filter(|(idx, _)| !removed_leaf_indices.contains(idx))
-    .map(|(idx, _)| (idx, hypothetical_root_resolution_size(idx, &projected)))
-    .min_by_key(|&(_, size)| size);
-```
-
-## API
-
-```rust
-pub fn find_update_candidates(
-    removed: LeafNodeIndex,
-    leaves: impl Iterator<Item = LeafNodeIndex>,
-) -> Vec<LeafNodeIndex>
-```
-
-- **`removed`** — the index of the leaf being (or already) removed.
-- **`leaves`** — an iterator over the indices of the current (non-blank) leaves.
-- **Returns** — the leaf indices closest to `removed`. Empty if `leaves` yields
-  no elements after filtering.
-
-```rust
-pub fn hypothetical_root_resolution_size(
-    leaf: LeafNodeIndex,
-    root_unmerged_leaves: &[LeafNodeIndex],
-) -> usize
-```
-
-- **`leaf`** — the leaf considering a self-update.
-- **`root_unmerged_leaves`** — obtained from `group.treesync().root_unmerged_leaves()`.
-- **Returns** — the root resolution size under a simplified model where only
-  `leaf` is removed from the unmerged list. Returns 1 when the list is empty.
-  A lower value means `leaf` is a better self-update candidate.
-
-```rust
-pub fn project_root_unmerged_leaves(
-    current: &[LeafNodeIndex],
-    adds: &[LeafNodeIndex],
-    removes: &[LeafNodeIndex],
-) -> Vec<LeafNodeIndex>
-```
-
-- **`current`** — the current `root_unmerged_leaves`, from `group.treesync().root_unmerged_leaves()`.
-- **`adds`** — leaf indices that will be added by the pending proposals.
-- **`removes`** — leaf indices that will be removed by the pending proposals.
-- **Returns** — the projected unmerged-leaf list after those proposals are
-  applied. Pass this to `hypothetical_root_resolution_size` for each candidate
-  committer.
-
-## Tree state model
-
-The functions above only look at the root's unmerged-leaf list. A more precise
-picture of tree health requires knowing the **co-path resolution size** for each
-potential committer — the total number of HPKE ciphertexts that committer would
-have to produce, summed over the entire path from leaf to root.
-
-The `tree_state` module provides a lightweight, OpenMLS-independent model for
-this. It captures the blank/occupied status of every node and the unmerged-leaf
-list of every occupied parent, and uses that snapshot to compute exact commit
-costs and to project the tree state after a hypothetical commit.
-
-### Key types
-
-| Type | Description |
-|------|-------------|
-| `LeafIndex(u32)` | A leaf's index in the tree (leaf `i` is at tree-node `2i`). |
-| `LeafState` | `Blank` (empty slot) or `Occupied` (member present). |
-| `ParentState` | `Blank` (no key material) or `Occupied { unmerged_leaves }`. |
-| `TreeState` | A snapshot of the full tree: one `LeafState` per leaf slot and one `ParentState` per parent node. |
-| `CommitInfo` | Output of `simulate_all_commits`: per-committer cost now and next-round costs for every remaining leaf. |
-
-`TreeState` does not depend on any OpenMLS type. To bridge from OpenMLS, convert
-`LeafNodeIndex` values with `LeafIndex(idx.u32())` and read the node states from
-`group.treesync()`.
-
-### Usage
-
-Build a `TreeState` from the current group's ratchet tree, then query it:
-
-```rust
-use openmls_tree_health::tree_state::{LeafIndex, LeafState, ParentState, TreeState};
-
-// Construct the snapshot for a 4-leaf tree.
-// parents[k] corresponds to MLS tree-node index 2k+1.
+// Construct the snapshot. parents[k] sits at MLS tree-node index 2k+1.
 let state = TreeState::new(
     vec![
         LeafState::Occupied,
         LeafState::Occupied,
-        LeafState::Occupied,
+        LeafState::Blank,    // removed member, slot kept
         LeafState::Occupied,
     ],
     vec![
         ParentState::Blank,                                             // tree[1]
         ParentState::Occupied { unmerged_leaves: vec![LeafIndex(2)] }, // tree[3] (root)
-        ParentState::Occupied { unmerged_leaves: vec![LeafIndex(2)] }, // tree[5]
+        ParentState::Occupied { unmerged_leaves: vec![] },             // tree[5]
     ],
 );
-println!("{state}"); // ASCII tree with per-node state
-```
-
-**Commit cost for one leaf:**
-
-```rust
-// Number of HPKE ciphertexts leaf[0] would produce when committing.
-let cost = state.commit_size(LeafIndex(0));
-```
-
-**Simulate all possible committers with pending proposals:**
-
-```rust
-use openmls_tree_health::tree_state::LeafIndex;
 
 let removes = vec![LeafIndex(1)];
 let adds    = vec![];
@@ -211,10 +96,21 @@ for (leaf, cost) in &best.next_commit_sizes {
 }
 ```
 
-### API
+## API
 
 ```rust
-// Build a snapshot.
+pub fn find_update_candidates(
+    removed: LeafNodeIndex,
+    leaves: impl Iterator<Item = LeafNodeIndex>,
+) -> Vec<LeafNodeIndex>
+```
+
+- **`removed`** — the index of the leaf being (or already) removed.
+- **`leaves`** — an iterator over the indices of the current (non-blank) leaves.
+- **Returns** — the leaf indices closest to `removed` by XOR distance. Empty if
+  `leaves` yields no elements after filtering.
+
+```rust
 pub fn TreeState::new(
     leaves:  Vec<LeafState>,
     parents: Vec<ParentState>,   // must have leaves.len() - 1 elements
@@ -229,7 +125,7 @@ pub fn TreeState::commit_size(leaf: LeafIndex) -> usize
 
 ```rust
 // For every eligible committer (occupied, not in removes), return:
-//   • commit_size  — cost of their commit after proposals are applied.
+//   • commit_size       — cost of their commit after proposals are applied.
 //   • next_commit_sizes — cost for each remaining leaf in the resulting tree.
 pub fn TreeState::simulate_all_commits(
     removes: &[LeafIndex],
@@ -247,6 +143,10 @@ pub struct CommitInfo {
 removing a leaf blanks its entire direct path; the committer's UpdatePath
 re-keys every node on their own direct path (clearing old unmerged leaves and
 setting them to the newly added members that fall in each node's subtree).
+
+All types (`LeafIndex`, `LeafState`, `ParentState`, `TreeState`, `CommitInfo`)
+are available directly from the crate root as well as from the `tree_state`
+submodule.
 
 ## License
 
