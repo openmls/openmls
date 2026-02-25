@@ -1,4 +1,4 @@
-pub mod tree_state;
+mod tree_state;
 
 use openmls::prelude::LeafNodeIndex;
 use std::cmp::Ordering;
@@ -53,6 +53,8 @@ pub fn find_update_candidates(
         )
         .1
 }
+
+pub use tree_state::*;
 
 #[cfg(test)]
 mod tests {

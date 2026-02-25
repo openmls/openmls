@@ -1,7 +1,8 @@
 use openmls::{prelude::*, test_utils::single_group_test_framework::*};
 use openmls_test::openmls_test;
-use openmls_tree_health::find_update_candidates;
-use openmls_tree_health::tree_state::{CommitInfo, LeafIndex, LeafState, ParentState, TreeState};
+use openmls_tree_health::{
+    find_update_candidates, CommitInfo, LeafIndex, LeafState, ParentState, TreeState,
+};
 
 /// 4-leaf group: alice=0, bob=1, charlie=2, dana=3.
 /// Best committer for removing bob (leaf 1).
