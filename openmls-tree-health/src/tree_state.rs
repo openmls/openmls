@@ -71,6 +71,21 @@ pub enum ParentState {
     },
 }
 
+// ── Commit simulation result ──────────────────────────────────────────────────
+
+/// Per-leaf cost information returned by [`TreeState::simulate_all_commits`].
+#[derive(Debug, Clone)]
+pub struct CommitInfo {
+    /// The candidate committer.
+    pub leaf: LeafIndex,
+    /// Number of HPKE ciphertexts this commit would produce.
+    pub commit_size: usize,
+    /// Commit cost for every occupied leaf in the resulting tree (in
+    /// leaf-index order), showing how expensive each next-round commit
+    /// would be after this leaf commits.
+    pub next_commit_sizes: Vec<(LeafIndex, usize)>,
+}
+
 // ── Tree state ────────────────────────────────────────────────────────────────
 
 /// A snapshot of the ratchet tree's node-level state.
@@ -311,6 +326,209 @@ impl TreeState {
         }
 
         total
+    }
+
+    // ── Subtree membership ────────────────────────────────────────────────
+
+    /// Returns `true` if `target` is a node in the subtree rooted at
+    /// `subtree_root` in a tree with `n_leaves` leaf slots.
+    ///
+    /// Walks from `subtree_root` toward `target` using the child formulas;
+    /// hits a leaf and stops when no further descent is possible.
+    fn is_in_subtree(target: usize, subtree_root: usize, n_leaves: usize) -> bool {
+        let mut x = subtree_root;
+        loop {
+            if x == target {
+                return true;
+            }
+            let level = Self::level(x);
+            if level == 0 {
+                return false; // hit a leaf that is not the target
+            }
+            let left = Self::left_child(x);
+            let right = Self::right_child(x, n_leaves);
+            x = if target < x { left } else { right };
+        }
+    }
+
+    // ── Proposal application and commit simulation ────────────────────────
+
+    /// Apply Remove and Add proposals and return the resulting tree state as
+    /// seen **before** any committer's UpdatePath.
+    ///
+    /// - Removed leaves → `Blank`.
+    /// - Any parent node whose subtree contains a removed leaf → `Blank`
+    ///   (RFC 9420 §8.4: removing a leaf blanks its entire direct path).
+    /// - Occupied parents not affected by a remove: `removes` are filtered
+    ///   from their unmerged list; `adds` that fall inside their subtree are
+    ///   appended.
+    /// - Added leaves → `Occupied`.
+    /// - Already-blank parents stay `Blank` (blank nodes have no key material
+    ///   to update, and adds do not implicitly re-key them).
+    ///
+    /// All leaf indices in `removes` and `adds` must be in `0..self.num_leaves()`.
+    fn apply_proposals(&self, removes: &[LeafIndex], adds: &[LeafIndex]) -> TreeState {
+        let n = self.leaves.len();
+
+        let new_leaves = self
+            .leaves
+            .iter()
+            .enumerate()
+            .map(|(i, s)| {
+                let idx = LeafIndex(i as u32);
+                if removes.contains(&idx) {
+                    LeafState::Blank
+                } else if adds.contains(&idx) {
+                    LeafState::Occupied
+                } else {
+                    s.clone()
+                }
+            })
+            .collect();
+
+        let new_parents = (0..n.saturating_sub(1))
+            .map(|k| {
+                let tree_idx = 2 * k + 1;
+                if removes
+                    .iter()
+                    .any(|r| Self::is_in_subtree(r.0 as usize * 2, tree_idx, n))
+                {
+                    // A removed leaf's direct path passes through this node.
+                    ParentState::Blank
+                } else {
+                    match &self.parents[k] {
+                        ParentState::Blank => ParentState::Blank,
+                        ParentState::Occupied { unmerged_leaves } => {
+                            let mut new_unmerged: Vec<LeafIndex> = unmerged_leaves
+                                .iter()
+                                .filter(|ul| !removes.contains(ul))
+                                .copied()
+                                .collect();
+                            for &a in adds {
+                                if Self::is_in_subtree(a.0 as usize * 2, tree_idx, n) {
+                                    new_unmerged.push(a);
+                                }
+                            }
+                            ParentState::Occupied {
+                                unmerged_leaves: new_unmerged,
+                            }
+                        }
+                    }
+                }
+            })
+            .collect();
+
+        TreeState {
+            leaves: new_leaves,
+            parents: new_parents,
+        }
+    }
+
+    /// Apply one committer's UpdatePath on top of an intermediate tree state
+    /// (the output of [`apply_proposals`]) and return the fully projected
+    /// post-commit tree.
+    ///
+    /// Every parent on `committer`'s direct path is set to `Occupied`; its
+    /// `unmerged_leaves` becomes the subset of `adds` that lie inside that
+    /// node's subtree.  All other nodes are taken from `intermediate` unchanged.
+    fn simulate_commit(
+        intermediate: &TreeState,
+        committer: LeafIndex,
+        adds: &[LeafIndex],
+    ) -> TreeState {
+        let n = intermediate.leaves.len();
+        if n <= 1 {
+            return intermediate.clone();
+        }
+
+        let mut new_parents = intermediate.parents.clone();
+        let root = Self::root_index(n);
+        let committer_tree_idx = committer.0 as usize * 2;
+        let mut x = root;
+
+        loop {
+            // x is a parent node on committer's direct path — re-key it.
+            let k = x / 2;
+            new_parents[k] = ParentState::Occupied {
+                unmerged_leaves: adds
+                    .iter()
+                    .filter(|&&a| Self::is_in_subtree(a.0 as usize * 2, x, n))
+                    .copied()
+                    .collect(),
+            };
+
+            let left = Self::left_child(x);
+            let right = Self::right_child(x, n);
+
+            if committer_tree_idx < x {
+                if left == committer_tree_idx {
+                    break;
+                }
+                x = left;
+            } else {
+                if right == committer_tree_idx {
+                    break;
+                }
+                x = right;
+            }
+        }
+
+        TreeState {
+            leaves: intermediate.leaves.clone(),
+            parents: new_parents,
+        }
+    }
+
+    /// Simulate a commit from every eligible leaf and return the per-leaf costs.
+    ///
+    /// An *eligible* committer is any currently-occupied leaf that is not in
+    /// `removes`.  For each eligible leaf the function returns a [`CommitInfo`]
+    /// containing:
+    ///
+    /// - Its **commit size** — the total number of HPKE ciphertexts the commit
+    ///   would produce (sum of co-path resolution sizes in the tree after
+    ///   proposals are applied but before the UpdatePath).
+    ///
+    /// - The **next-round commit sizes** — for every leaf that would be
+    ///   occupied in the resulting tree (after the commit and proposals), the
+    ///   cost of *their* commit in that resulting tree (with no further
+    ///   proposals).
+    ///
+    /// The two-level view lets you answer "who should commit now *and* what
+    /// does the tree look like for the next round?" in a single pass.
+    ///
+    /// All leaf indices in `removes` and `adds` must be in `0..self.num_leaves()`.
+    pub fn simulate_all_commits(
+        &self,
+        removes: &[LeafIndex],
+        adds: &[LeafIndex],
+    ) -> Vec<CommitInfo> {
+        // Build the shared intermediate state once: proposals applied, no
+        // UpdatePath yet.  Every candidate committer's commit_size is evaluated
+        // against this state.
+        let intermediate = self.apply_proposals(removes, adds);
+
+        self.leaves()
+            .filter(|(idx, state)| matches!(state, LeafState::Occupied) && !removes.contains(idx))
+            .map(|(leaf, _)| {
+                let commit_size = intermediate.commit_size(leaf);
+
+                // Project the full post-commit tree for this specific committer.
+                let resulting = Self::simulate_commit(&intermediate, leaf, adds);
+
+                let next_commit_sizes = resulting
+                    .leaves()
+                    .filter(|(_, state)| matches!(state, LeafState::Occupied))
+                    .map(|(next_leaf, _)| (next_leaf, resulting.commit_size(next_leaf)))
+                    .collect();
+
+                CommitInfo {
+                    leaf,
+                    commit_size,
+                    next_commit_sizes,
+                }
+            })
+            .collect()
     }
 
     // ── Display helpers ────────────────────────────────────────────────────
@@ -631,6 +849,150 @@ mod tests {
         assert_eq!(t.commit_size(LeafIndex(0)), 2);
         assert_eq!(t.commit_size(LeafIndex(1)), 2);
         assert_eq!(t.commit_size(LeafIndex(2)), 1);
+    }
+
+    // ── is_in_subtree ─────────────────────────────────────────────────────
+
+    #[test]
+    fn subtree_perfect_tree() {
+        // 4-leaf tree: tree[1] spans leaves 0-1 (tree nodes 0,1,2)
+        assert!(TreeState::is_in_subtree(0, 1, 4)); // leaf[0] in tree[1]
+        assert!(TreeState::is_in_subtree(2, 1, 4)); // leaf[1] in tree[1]
+        assert!(!TreeState::is_in_subtree(4, 1, 4)); // leaf[2] NOT in tree[1]
+        assert!(!TreeState::is_in_subtree(6, 1, 4)); // leaf[3] NOT in tree[1]
+        assert!(TreeState::is_in_subtree(1, 1, 4)); // root of subtree itself
+        // tree[3] (root) spans everything
+        for x in [0usize, 1, 2, 3, 4, 5, 6] {
+            assert!(TreeState::is_in_subtree(x, 3, 4), "node {x} should be in root's subtree");
+        }
+    }
+
+    #[test]
+    fn subtree_lbbt() {
+        // 3-leaf tree: right child of root is leaf[2] at tree index 4
+        assert!(TreeState::is_in_subtree(4, 3, 3)); // leaf[2] in root
+        assert!(!TreeState::is_in_subtree(4, 1, 3)); // leaf[2] NOT in tree[1]
+    }
+
+    // ── simulate_all_commits ──────────────────────────────────────────────
+
+    /// Fully merged 4-leaf tree, no proposals: every leaf costs 2, and after
+    /// any commit the tree remains fully merged so every next-round leaf also
+    /// costs 2.
+    #[test]
+    fn simulate_no_proposals_fully_merged() {
+        let t = TreeState::new(
+            vec![leaf(true); 4],
+            vec![parent_occ(&[]), parent_occ(&[]), parent_occ(&[])],
+        );
+        let infos = t.simulate_all_commits(&[], &[]);
+        assert_eq!(infos.len(), 4);
+        for info in &infos {
+            assert_eq!(info.commit_size, 2, "leaf {:?}", info.leaf);
+            assert_eq!(info.next_commit_sizes.len(), 4);
+            for &(_, sz) in &info.next_commit_sizes {
+                assert_eq!(sz, 2);
+            }
+        }
+    }
+
+    /// Remove leaf[1]: the sibling slot of leaf[0] goes blank.
+    ///
+    /// Leaf[0] co-path after remove: [leaf[1](res=0), tree[5](res=1)] → cost 1.
+    /// Leaf[2] and leaf[3] co-path: [sibling leaf(1), tree[1](blank→resolves
+    /// to leaf[0](1)+leaf[1](0)=1)] → cost 2.
+    ///
+    /// After leaf[0] commits it re-keys tree[1], so it is occupied again.
+    /// Next-round costs: leaf[0]=1 (sibling still blank), leaf[2]=2, leaf[3]=2.
+    ///
+    /// After leaf[2] or leaf[3] commit they re-key tree[5] but tree[1] stays
+    /// blank.  Next-round costs: leaf[0]=1, leaf[2]=2, leaf[3]=2 (unchanged).
+    #[test]
+    fn simulate_remove_sibling() {
+        let t = TreeState::new(
+            vec![leaf(true); 4],
+            vec![parent_occ(&[]), parent_occ(&[]), parent_occ(&[])],
+        );
+        let infos = t.simulate_all_commits(&[LeafIndex(1)], &[]);
+
+        // Only leaves 0, 2, 3 are eligible (leaf[1] is being removed).
+        assert_eq!(infos.len(), 3);
+        let by_leaf: std::collections::HashMap<u32, &CommitInfo> =
+            infos.iter().map(|i| (i.leaf.0, i)).collect();
+
+        assert_eq!(by_leaf[&0].commit_size, 1);
+        assert_eq!(by_leaf[&2].commit_size, 2);
+        assert_eq!(by_leaf[&3].commit_size, 2);
+
+        // After leaf[0] commits: tree[1] is re-keyed (occupied, unmerged=[]).
+        // Remaining leaves: 0, 2, 3.
+        let next0: std::collections::HashMap<u32, usize> = by_leaf[&0]
+            .next_commit_sizes
+            .iter()
+            .map(|&(l, s)| (l.0, s))
+            .collect();
+        assert_eq!(next0[&0], 1); // leaf[0]: sibling still blank, tree[5] occ → 1
+        assert_eq!(next0[&2], 2); // leaf[2]: leaf[3](1) + tree[1](1) → 2
+        assert_eq!(next0[&3], 2);
+
+        // After leaf[2] commits: tree[5] re-keyed, tree[1] still blank.
+        let next2: std::collections::HashMap<u32, usize> = by_leaf[&2]
+            .next_commit_sizes
+            .iter()
+            .map(|&(l, s)| (l.0, s))
+            .collect();
+        assert_eq!(next2[&0], 1);
+        assert_eq!(next2[&2], 2);
+        assert_eq!(next2[&3], 2);
+    }
+
+    /// Add leaf[1] to a tree where that slot is blank.
+    ///
+    /// Starting state: leaf[1]=blank, tree[1]=blank, tree[3]=occ(u=[]),
+    /// tree[5]=occ(u=[]).
+    ///
+    /// After applying add=[1]:
+    ///   leaf[1]=occ; tree[1] stays blank (was blank, adds don't un-blank);
+    ///   tree[3] gains leaf[1] in its unmerged list → occ(u=[1]);
+    ///   tree[5]: leaf[1] is NOT in tree[5]'s subtree → unchanged occ(u=[]).
+    ///
+    /// Leaf[0] commit size: co-path=[leaf[1](1), tree[5](1)] → 2.
+    /// After leaf[0] commits: tree[1] re-keyed with unmerged=[1] (leaf[1]
+    /// is in tree[1]'s subtree); tree[3] re-keyed with unmerged=[1].
+    /// Next-round costs: leaf[0]=2, leaf[1]=2, leaf[2]=3, leaf[3]=3.
+    /// (leaf[2]/leaf[3] co-path includes tree[1] which has unmerged=[1] →
+    /// resolution 2 instead of 1.)
+    ///
+    /// Leaf[2] commit size: co-path=[leaf[3](1), tree[1](blank→leaf[0](1)
+    /// +leaf[1](1)=2)] → 3.
+    #[test]
+    fn simulate_add_to_blank_slot() {
+        let t = TreeState::new(
+            vec![leaf(true), leaf(false), leaf(true), leaf(true)],
+            vec![parent_blank(), parent_occ(&[]), parent_occ(&[])],
+        );
+        let infos = t.simulate_all_commits(&[], &[LeafIndex(1)]);
+
+        // Eligible committers: leaves 0, 2, 3 (leaf[1] is being added, not yet occupied).
+        assert_eq!(infos.len(), 3);
+        let by_leaf: std::collections::HashMap<u32, &CommitInfo> =
+            infos.iter().map(|i| (i.leaf.0, i)).collect();
+
+        assert_eq!(by_leaf[&0].commit_size, 2);
+        assert_eq!(by_leaf[&2].commit_size, 3);
+        assert_eq!(by_leaf[&3].commit_size, 3);
+
+        // After leaf[0] commits with add=[1]: four occupied leaves remain.
+        let next0: std::collections::HashMap<u32, usize> = by_leaf[&0]
+            .next_commit_sizes
+            .iter()
+            .map(|&(l, s)| (l.0, s))
+            .collect();
+        assert_eq!(next0.len(), 4);
+        assert_eq!(next0[&0], 2);
+        assert_eq!(next0[&1], 2);
+        assert_eq!(next0[&2], 3); // tree[1] now has unmerged=[1] → res=2
+        assert_eq!(next0[&3], 3);
     }
 
     // ── Accessors ─────────────────────────────────────────────────────────
