@@ -1,3 +1,5 @@
+pub mod tree_state;
+
 use openmls::prelude::LeafNodeIndex;
 use std::cmp::Ordering;
 
