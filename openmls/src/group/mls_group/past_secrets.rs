@@ -12,7 +12,8 @@ struct EpochTree {
     epoch: u64,
     /// When the secrets were added to the store
     /// TODO: how to handle Nones in storage? Should a new timestamp be assigned,
-    /// and maybe something indicating that it was added based on Null?
+    /// or something indicating that it was added based on
+    /// an empty entry in the storage?
     added_at: std::time::SystemTime,
     message_secrets: MessageSecrets,
     leaves: Vec<Member>,
@@ -32,7 +33,8 @@ pub(crate) struct MessageSecretsStore {
     message_secrets: MessageSecrets,
     /// When the secrets were added to the store
     /// TODO: how to handle Nones in storage? Should a new timestamp be assigned,
-    /// and maybe something indicating that it was added based on Null?
+    /// or something indicating that it was added based on
+    /// an empty entry in the storage?
     added_at: std::time::SystemTime,
 }
 
