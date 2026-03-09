@@ -671,7 +671,7 @@ impl MlsGroup {
     }
 
     /// Returns a reference to the public group.
-    pub(crate) fn public_group(&self) -> &PublicGroup {
+    pub fn public_group(&self) -> &PublicGroup {
         &self.public_group
     }
 }
