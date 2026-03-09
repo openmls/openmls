@@ -6,7 +6,7 @@
 //! - case where max_past_epochs = isize::MAX, with time-limited cleanup:
 //!     - test_past_secrets_epoch_deletion_time_no_limit
 //!
-//! At the end, some basic tests for the message secrets store are included.
+//! At the end, some basic tests for the message secrets store are also included.
 
 use crate::{
     binary_tree::LeafNodeIndex,
