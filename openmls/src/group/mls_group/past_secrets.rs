@@ -10,6 +10,10 @@ use super::*;
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 struct EpochTree {
     epoch: u64,
+    /// When the secrets were added to the store
+    /// TODO: how to handle Nones in storage? Should a new timestamp be assigned,
+    /// and maybe something indicating that it was added based on Null?
+    added_at: std::time::SystemTime,
     message_secrets: MessageSecrets,
     leaves: Vec<Member>,
 }
@@ -26,6 +30,10 @@ pub(crate) struct MessageSecretsStore {
     past_epoch_trees: VecDeque<EpochTree>,
     // The message secrets of the current epoch.
     message_secrets: MessageSecrets,
+    /// When the secrets were added to the store
+    /// TODO: how to handle Nones in storage? Should a new timestamp be assigned,
+    /// and maybe something indicating that it was added based on Null?
+    added_at: std::time::SystemTime,
 }
 
 #[cfg(not(feature = "crypto-debug"))]
@@ -46,6 +54,7 @@ impl MessageSecretsStore {
         Self {
             max_epochs,
             past_epoch_trees: VecDeque::new(),
+            added_at: std::time::SystemTime::now(),
             message_secrets,
         }
     }
@@ -78,9 +87,14 @@ impl MessageSecretsStore {
             self.past_epoch_trees.rotate_left(1);
             self.past_epoch_trees.truncate(self.max_epochs - 1);
         }
+
+        // update the `added_at` for the current secrets
+        let added_at = std::mem::replace(&mut self.added_at, std::time::SystemTime::now());
+
         self.past_epoch_trees.push_back(EpochTree {
             epoch: group_epoch.into().as_u64(),
             message_secrets,
+            added_at,
             leaves,
         });
         debug_assert!(
@@ -178,5 +192,24 @@ impl MessageSecretsStore {
     /// Get a reference to the message secrets of the current epoch.
     pub(crate) fn message_secrets(&self) -> &MessageSecrets {
         &self.message_secrets
+    }
+
+    pub(crate) fn delete_epoch_secrets_older_than(&mut self, duration: std::time::Duration) {
+        // filter out entries that are older than the duration
+        self.past_epoch_trees.retain(|tree| {
+            let Ok(elapsed) = std::time::SystemTime::now().duration_since(tree.added_at) else {
+                // TODO: handle secrets timestamps in the future
+                // TODO: log here
+                return true;
+            };
+
+            // retain entried where elapsed is less than the provided duration
+            elapsed < duration
+        });
+    }
+
+    pub(crate) fn delete_epoch_secrets_before(&mut self, cutoff: std::time::SystemTime) {
+        // retain entries where added_at is after or equal to the cutoff
+        self.past_epoch_trees.retain(|tree| tree.added_at >= cutoff);
     }
 }

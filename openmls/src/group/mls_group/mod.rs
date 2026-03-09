@@ -644,6 +644,22 @@ impl MlsGroup {
         )
     }
 
+    /// Delete any past epoch secrets older than a provided duration.
+    ///
+    /// NOTE: whether past epoch secrets are present is configured by `max_past_epochs`.
+    pub fn delete_epoch_secrets_older_than(&mut self, duration: std::time::Duration) {
+        self.message_secrets_store
+            .delete_epoch_secrets_older_than(duration);
+    }
+
+    /// Delete any past epoch secrets added before a provided timestamp.
+    ///
+    /// NOTE: whether past epoch secrets are present is configured by `max_past_epochs`.
+    pub fn delete_epoch_secrets_before(&mut self, timestamp: std::time::SystemTime) {
+        self.message_secrets_store
+            .delete_epoch_secrets_before(timestamp);
+    }
+
     /// Returns a reference to the proposal store.
     pub fn proposal_store(&self) -> &ProposalStore {
         self.public_group.proposal_store()
