@@ -8,6 +8,7 @@ use crate::{
     treesync::LeafNodeParameters,
 };
 
+/// Basic test
 #[openmls_test::openmls_test]
 fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
@@ -41,7 +42,6 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
         );
 
         // Define the MlsGroup configuration
-
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .max_past_epochs(max_epochs / 2)
             .ciphersuite(ciphersuite)
