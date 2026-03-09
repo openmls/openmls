@@ -8,7 +8,6 @@ use crate::{
     treesync::LeafNodeParameters,
 };
 
-/// Basic test
 #[openmls_test::openmls_test]
 fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
