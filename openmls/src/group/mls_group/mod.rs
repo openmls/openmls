@@ -528,7 +528,7 @@ impl MlsGroup {
     }
 
     /// Get the message secrets. Either from the secrets store or from the group.
-    pub(crate) fn message_secrets_mut(
+    pub(crate) fn message_secrets_for_epoch_mut(
         &mut self,
         epoch: GroupEpoch,
     ) -> Result<&mut MessageSecrets, SecretTreeError> {
@@ -560,18 +560,18 @@ impl MlsGroup {
     ///
     /// Note that the leaves vector is empty for message secrets of the current
     /// epoch. The caller can use treesync in this case.
-    pub(crate) fn message_secrets_and_leaves_mut(
-        &mut self,
+    pub(crate) fn message_secrets_and_leaves(
+        &self,
         epoch: GroupEpoch,
-    ) -> Result<(&mut MessageSecrets, &[Member]), SecretTreeError> {
+    ) -> Result<(&MessageSecrets, &[Member]), SecretTreeError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
-                .secrets_and_leaves_for_epoch_mut(epoch)
+                .secrets_and_leaves_for_epoch(epoch)
                 .ok_or(SecretTreeError::TooDistantInThePast)
         } else {
             // No need for leaves here. The tree of the current epoch is
             // available to the caller.
-            Ok((self.message_secrets_store.message_secrets_mut(), &[]))
+            Ok((self.message_secrets_store.message_secrets(), &[]))
         }
     }
 
@@ -646,18 +646,32 @@ impl MlsGroup {
 
     /// Delete any past epoch secrets older than a provided duration.
     ///
-    /// NOTE: whether past epoch secrets are present is configured by `max_past_epochs`.
-    pub fn delete_epoch_secrets_older_than(&mut self, duration: std::time::Duration) {
+    /// NOTE: the `max_past_epochs` argument determines the maximum number of past
+    /// epoch secrets that will be kept. If this value is a `Some(n)`, at most
+    /// `n` elements will be kept, regardless of whether their duration
+    /// is allowed.
+    pub fn delete_epoch_secrets_older_than(
+        &mut self,
+        duration: std::time::Duration,
+        max_past_epochs: impl Into<Option<usize>>,
+    ) {
         self.message_secrets_store
-            .delete_epoch_secrets_older_than(duration);
+            .delete_epoch_secrets_older_than(duration, max_past_epochs.into());
     }
 
     /// Delete any past epoch secrets added before a provided timestamp.
     ///
-    /// NOTE: whether past epoch secrets are present is configured by `max_past_epochs`.
-    pub fn delete_epoch_secrets_before(&mut self, timestamp: std::time::SystemTime) {
+    /// NOTE: the `max_past_epochs` argument determines the maximum number of past
+    /// epoch secrets that will be kept. If this value is a `Some(n)`, at most
+    /// `n` elements will be kept, regardless of whether their duration
+    /// is allowed.
+    pub fn delete_epoch_secrets_before(
+        &mut self,
+        timestamp: std::time::SystemTime,
+        max_past_epochs: impl Into<Option<usize>>,
+    ) {
         self.message_secrets_store
-            .delete_epoch_secrets_before(timestamp);
+            .delete_epoch_secrets_before(timestamp, max_past_epochs.into());
     }
 
     /// Returns a reference to the proposal store.
