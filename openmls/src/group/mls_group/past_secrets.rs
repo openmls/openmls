@@ -4,17 +4,6 @@ use crate::schedule::message_secrets::MessageSecrets;
 
 use super::*;
 
-// Helper `From` implementation for deserialization
-impl From<MessageSecrets> for MessageSecretsWithTimestamp {
-    /// Convert without timestamp
-    fn from(message_secrets: MessageSecrets) -> Self {
-        Self {
-            added_at: None,
-            message_secrets,
-        }
-    }
-}
-
 // Internal helper struct
 /// A wrapper for all data associated with a `MessageSecrets`
 /// NOTE: this struct can be deserialized directly from data
@@ -25,6 +14,7 @@ impl From<MessageSecrets> for MessageSecretsWithTimestamp {
 pub(crate) struct MessageSecretsWithTimestamp {
     /// When the secrets were added to the store
     /// `None` if no timestamp is available
+    /// NOTE: SystemTime is not guaranteed to be monotonic.
     #[serde(default)]
     added_at: Option<std::time::SystemTime>,
     /// The message secrets
@@ -36,11 +26,11 @@ impl MessageSecrets {
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn with_timestamp(
         self,
-        timestamp: std::time::SystemTime,
+        timestamp: impl Into<Option<std::time::SystemTime>>,
     ) -> MessageSecretsWithTimestamp {
         MessageSecretsWithTimestamp {
             message_secrets: self,
-            added_at: Some(timestamp),
+            added_at: timestamp.into(),
         }
     }
 }
@@ -106,6 +96,7 @@ impl MessageSecretsStore {
     ) -> Self {
         // max or the limit of the storage size
         let max_epochs = max_epochs(policy);
+
         Self {
             max_epochs,
             past_epoch_trees: VecDeque::new(),
