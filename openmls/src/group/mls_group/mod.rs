@@ -682,7 +682,7 @@ impl MlsGroup {
     /// is allowed.
     pub fn delete_past_epoch_secrets(&mut self, min_past_epochs: impl Into<Option<usize>>) {
         self.message_secrets_store
-            .delete_past_epoch_secrets(max_past_epochs.into());
+            .delete_past_epoch_secrets(min_past_epochs.into());
     }
 
     /// Returns a reference to the proposal store.
