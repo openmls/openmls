@@ -36,6 +36,8 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+// TODO: ensure compatibility with existing storage format
+/// Configures the automatic deletion of past epoch secrets.
 #[derive(Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum PastEpochDeletionPolicy {
     /// Delete all past epoch secrets.
@@ -80,6 +82,8 @@ pub struct MlsGroupJoinConfig {
     pub(crate) padding_size: usize,
     /// Maximum number of past epochs for which application messages
     /// can be decrypted. The default is 0.
+    #[serde(alias = "max_past_epochs")]
+    // alias for backwards compatibility after renaming field
     pub(crate) past_epoch_deletion_policy: PastEpochDeletionPolicy,
     /// Number of resumption secrets to keep
     pub(crate) number_of_resumption_psks: usize,
