@@ -417,7 +417,10 @@ impl ProcessedWelcome {
             }
         }
 
-        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
+        let message_secrets_store = MessageSecretsStore::new_with_secret(
+            &PastEpochDeletionPolicy::DeleteAll,
+            message_secrets,
+        );
 
         // Extract and store the resumption PSK for the current epoch.
         let resumption_psk = group_epoch_secrets.resumption_psk();
@@ -553,6 +556,8 @@ impl StagedWelcome {
         #[cfg(feature = "extensions-draft-08")]
         let application_export_tree = ApplicationExportTree::new(self.application_export_secret);
 
+        let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();
+
         let mut mls_group = MlsGroup {
             mls_group_config: self.mls_group_config,
             own_leaf_nodes: vec![],
@@ -570,7 +575,8 @@ impl StagedWelcome {
         mls_group
             .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
             .map_err(WelcomeError::StorageError)?;
-        mls_group.set_max_past_epochs(mls_group.mls_group_config.max_past_epochs);
+        // resize the store
+        mls_group.set_max_past_epochs(&past_epoch_deletion_policy);
 
         mls_group
             .store(provider.storage())

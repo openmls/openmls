@@ -161,7 +161,9 @@ impl MlsGroupBuilder {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         let message_secrets_store = MessageSecretsStore::new_with_secret(
-            mls_group_create_config.max_past_epochs(),
+            mls_group_create_config
+                .join_config
+                .past_epoch_deletion_policy(),
             message_secrets,
         );
 
@@ -232,6 +234,24 @@ impl MlsGroupBuilder {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
             .max_past_epochs(max_past_epochs);
+        self
+    }
+
+    /// Store all past epoch secrets.
+    ///
+    /// By default, storage of past epoch secrets is disabled.
+    ///
+    /// **WARNING**
+    ///
+    /// This feature enables the storage of message secrets from past epochs.
+    /// It is a trade-off between functionality and forward secrecy and should only be enabled
+    /// if the Delivery Service cannot guarantee that application messages will be sent in
+    /// the same epoch in which they were generated. The number for `max_epochs` should be
+    /// as low as possible.
+    pub fn disable_past_epoch_secret_deletion(mut self) -> Self {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .disable_past_epoch_secret_deletion();
         self
     }
 

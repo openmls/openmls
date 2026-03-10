@@ -87,10 +87,25 @@ impl core::fmt::Debug for MessageSecretsStore {
     }
 }
 
+/// Helper function to map a policy to a maximum number of past epochs
+fn max_epochs(policy: &PastEpochDeletionPolicy) -> usize {
+    // get the `max_epochs`, or, if no maximum is set, set to `isize::MAX`, the capacity of a
+    // VecDeque
+    let max_epochs = policy.max_epochs().unwrap_or(isize::MAX as usize);
+
+    // cap at `isize::MAX`
+    max_epochs.min(isize::MAX as usize)
+}
+
 impl MessageSecretsStore {
     /// Create a new store that can hold up to `max_past_epochs` message secrets.
     /// If `max_past_epochs` is 0, only the current epoch is being stored.
-    pub(crate) fn new_with_secret(max_epochs: usize, message_secrets: MessageSecrets) -> Self {
+    pub(crate) fn new_with_secret(
+        policy: &PastEpochDeletionPolicy,
+        message_secrets: MessageSecrets,
+    ) -> Self {
+        // max or the limit of the storage size
+        let max_epochs = max_epochs(policy);
         Self {
             max_epochs,
             past_epoch_trees: VecDeque::new(),
@@ -102,7 +117,10 @@ impl MessageSecretsStore {
     }
 
     /// Resize the store.
-    pub(crate) fn resize(&mut self, max_past_epochs: usize) {
+    pub(crate) fn resize(&mut self, policy: &PastEpochDeletionPolicy) {
+        // max or the limit of the storage size
+        let max_past_epochs = max_epochs(policy);
+
         let old_size = self.max_epochs;
         self.max_epochs = max_past_epochs;
         if old_size > max_past_epochs {
@@ -248,7 +266,7 @@ impl MessageSecretsStore {
         &self.message_secrets.message_secrets
     }
 
-    pub(crate) fn delete_epoch_secrets_older_than(
+    pub(crate) fn delete_past_epoch_secrets_older_than(
         &mut self,
         duration: std::time::Duration,
         max_past_epochs: Option<usize>,
@@ -278,7 +296,7 @@ impl MessageSecretsStore {
         }
     }
 
-    pub(crate) fn delete_epoch_secrets_before(
+    pub(crate) fn delete_past_epoch_secrets_before(
         &mut self,
         cutoff: std::time::SystemTime,
         max_past_epochs: Option<usize>,
@@ -298,6 +316,19 @@ impl MessageSecretsStore {
             if let Some(i) = self.past_epoch_trees.len().checked_sub(max_past_epochs) {
                 self.past_epoch_trees.drain(0..i);
             }
+        }
+    }
+
+    pub(crate) fn delete_past_epoch_secrets(&mut self, max_past_epochs: Option<usize>) {
+        // ensure at most `max_past_epochs` entries are included
+        if let Some(max_past_epochs) = max_past_epochs {
+            if let Some(i) = self.past_epoch_trees.len().checked_sub(max_past_epochs) {
+                self.past_epoch_trees.drain(0..i);
+            } else {
+                // keep all
+            }
+        } else {
+            self.past_epoch_trees.clear();
         }
     }
 
