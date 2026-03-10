@@ -38,9 +38,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum PastEpochDeletionPolicy {
+    /// Delete all past epoch secrets.
     #[default]
     DeleteAll,
+    /// Keep at most `n` past epoch secrets.
     MaxEpochs(std::num::NonZeroUsize),
+    // TODO: add links to time-based APIs for past epoch secret deletipn
+    /// Keep all past epoch secrets.
     KeepAll,
 }
 
