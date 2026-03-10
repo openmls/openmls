@@ -185,7 +185,6 @@ fn test_past_secrets_epoch_deletion_time_no_limit<Provider: crate::storage::Open
 
     // === Test the `delete_epoch_secrets_before()` API ===
 
-    let start = std::time::SystemTime::now();
     for n in 0..4 {
         // create and stage sample commit
         // for simplicity, this is a commit that updates the GroupContextExtensions
@@ -203,27 +202,24 @@ fn test_past_secrets_epoch_deletion_time_no_limit<Provider: crate::storage::Open
         );
     }
 
-    // manually delete all before `start`, leaving at most 5 entries
-    // NOTE: all entries were inserted after `start`
-    alice_group.delete_epoch_secrets_before(start, 5);
+    // manually delete all before UNIX_EPOCH, leaving at most 5 entries
+    alice_group.delete_epoch_secrets_before(std::time::SystemTime::UNIX_EPOCH, 5);
     // assert no past secrets deleted
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
         4
     );
 
-    // manually delete all before start, leaving at most 3 entries
-    // NOTE: all entries were inserted after `start`
-    alice_group.delete_epoch_secrets_before(start, 3);
+    // manually delete all before UNIX_EPOCH, leaving at most 3 entries
+    alice_group.delete_epoch_secrets_before(std::time::SystemTime::UNIX_EPOCH, 3);
     // assert no past secrets deleted
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
         3
     );
 
-    // manually delete all before start, leaving at most 1 entry
-    // NOTE: all entries were inserted after `start`
-    alice_group.delete_epoch_secrets_before(start, 1);
+    // manually delete all before UNIX_EPOCH, leaving at most 1 entry
+    alice_group.delete_epoch_secrets_before(std::time::SystemTime::UNIX_EPOCH, 1);
     // assert one past secret was kept
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
