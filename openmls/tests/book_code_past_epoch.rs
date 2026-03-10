@@ -41,6 +41,6 @@ fn book_example_past_epoch() {
     // delete all past epoch secrets
     alice_group.delete_past_epoch_secrets(None);
 
-    // delete all past epoch secrets, leaving the latest three, at most
+    // delete all past epoch secrets, leaving the latest three, at least
     alice_group.delete_past_epoch_secrets(Some(3));
 }
