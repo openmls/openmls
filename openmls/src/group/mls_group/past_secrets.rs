@@ -13,7 +13,7 @@ pub(crate) struct MessageSecretsWithTimestamp {
     /// TODO: how to handle Nones in storage? Should a new timestamp be assigned,
     /// or something indicating that it was added based on
     /// an empty entry in the storage?
-    added_at: std::time::SystemTime,
+    added_at: Option<std::time::SystemTime>,
     message_secrets: MessageSecrets,
 }
 
@@ -25,7 +25,7 @@ impl MessageSecrets {
     ) -> MessageSecretsWithTimestamp {
         MessageSecretsWithTimestamp {
             message_secrets: self,
-            added_at: timestamp,
+            added_at: Some(timestamp),
         }
     }
 }
@@ -73,7 +73,7 @@ impl MessageSecretsStore {
             max_epochs,
             past_epoch_trees: VecDeque::new(),
             message_secrets: MessageSecretsWithTimestamp {
-                added_at: std::time::SystemTime::now(),
+                added_at: Some(std::time::SystemTime::now()),
                 message_secrets,
             },
         }
@@ -95,7 +95,7 @@ impl MessageSecretsStore {
         message_secrets: MessageSecrets,
     ) -> MessageSecretsWithTimestamp {
         let mut message_secrets = MessageSecretsWithTimestamp {
-            added_at: std::time::SystemTime::now(),
+            added_at: Some(std::time::SystemTime::now()),
             message_secrets,
         };
         std::mem::swap(&mut self.message_secrets, &mut message_secrets);
@@ -233,9 +233,12 @@ impl MessageSecretsStore {
     ) {
         // retain entries that are older than the duration.
         self.past_epoch_trees.retain(|tree| {
-            let Ok(elapsed) =
-                std::time::SystemTime::now().duration_since(tree.message_secrets.added_at)
-            else {
+            let Some(added_at) = tree.message_secrets.added_at else {
+                // TODO: handle trees with None timestamp
+                // TODO: log here
+                return true;
+            };
+            let Ok(elapsed) = std::time::SystemTime::now().duration_since(added_at) else {
                 // TODO: handle secrets timestamps in the future
                 // TODO: log here
                 return true;
@@ -259,8 +262,14 @@ impl MessageSecretsStore {
         max_past_epochs: Option<usize>,
     ) {
         // retain entries where added_at is after or equal to the cutoff.
-        self.past_epoch_trees
-            .retain(|tree| tree.message_secrets.added_at >= cutoff);
+        self.past_epoch_trees.retain(|tree| {
+            let Some(added_at) = tree.message_secrets.added_at else {
+                // TODO: handle trees with None timestamp
+                // TODO: log here
+                return true;
+            };
+            added_at >= cutoff
+        });
 
         // ensure at most `max_past_epochs` entries are included
         if let Some(max_past_epochs) = max_past_epochs {
