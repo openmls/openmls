@@ -4,16 +4,31 @@ use crate::schedule::message_secrets::MessageSecrets;
 
 use super::*;
 
+// Helper `From` implementation for deserialization
+impl From<MessageSecrets> for MessageSecretsWithTimestamp {
+    /// Convert without timestamp
+    fn from(message_secrets: MessageSecrets) -> Self {
+        Self {
+            added_at: None,
+            message_secrets,
+        }
+    }
+}
+
 // Internal helper struct
+/// A wrapper for all data associated with a `MessageSecrets`
+/// NOTE: this struct can be deserialized directly from data
+/// that was serialized from a `MessageSecrets`.
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct MessageSecretsWithTimestamp {
     /// When the secrets were added to the store
-    /// TODO: how to handle Nones in storage? Should a new timestamp be assigned,
-    /// or something indicating that it was added based on
-    /// an empty entry in the storage?
+    /// `None` if no timestamp is available
+    #[serde(default)]
     added_at: Option<std::time::SystemTime>,
+    /// The message secrets
+    #[serde(flatten)]
     message_secrets: MessageSecrets,
 }
 
@@ -30,11 +45,18 @@ impl MessageSecrets {
     }
 }
 
+impl EpochTree {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) fn timestamp(&self) -> Option<std::time::SystemTime> {
+        self.message_secrets.added_at
+    }
+}
+
 // Internal helper struct
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
-struct EpochTree {
+pub(crate) struct EpochTree {
     epoch: u64,
     leaves: Vec<Member>,
     message_secrets: MessageSecretsWithTimestamp,
@@ -280,6 +302,13 @@ impl MessageSecretsStore {
     }
 
     #[cfg(test)]
+    /// Helper function for testing, to iterate over all past epoch secrets
+    pub(crate) fn iter_past_epoch_trees(&self) -> impl Iterator<Item = &EpochTree> {
+        self.past_epoch_trees.iter()
+    }
+
+    #[cfg(test)]
+    /// Helper function for testing, to get the number of past epoch trees
     pub(crate) fn num_past_epoch_trees(&self) -> usize {
         self.past_epoch_trees.len()
     }
