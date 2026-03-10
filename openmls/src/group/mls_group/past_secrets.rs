@@ -310,10 +310,10 @@ impl MessageSecretsStore {
         }
     }
 
-    pub(crate) fn delete_past_epoch_secrets(&mut self, max_past_epochs: Option<usize>) {
-        // ensure at most `max_past_epochs` entries are included
-        if let Some(max_past_epochs) = max_past_epochs {
-            if let Some(i) = self.past_epoch_trees.len().checked_sub(max_past_epochs) {
+    pub(crate) fn delete_past_epoch_secrets(&mut self, min_past_epochs: Option<usize>) {
+        // ensure at least `min_past_epochs` entries are included
+        if let Some(min_past_epochs) = min_past_epochs {
+            if let Some(i) = self.past_epoch_trees.len().checked_sub(min_past_epochs) {
                 self.past_epoch_trees.drain(0..i);
             } else {
                 // keep all
