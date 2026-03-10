@@ -50,6 +50,32 @@ pub(crate) enum PastEpochDeletionPolicy {
     KeepAll,
 }
 
+/// Helper deserialization function to ensure that
+/// both plain `usize` and `PastEpochDeletionPolicy`
+/// are correctly deserialized.
+fn deserialize_past_epoch_deletion_policy<'de, D>(
+    deserializer: D,
+) -> Result<PastEpochDeletionPolicy, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Format {
+        Legacy(usize),
+        Policy(PastEpochDeletionPolicy),
+    }
+
+    let format = Format::deserialize(deserializer)?;
+
+    let policy = match format {
+        Format::Legacy(epochs) => epochs.into(),
+        Format::Policy(policy) => policy,
+    };
+
+    Ok(policy)
+}
+
 impl PastEpochDeletionPolicy {
     pub(crate) fn max_epochs(&self) -> Option<usize> {
         match self {
@@ -83,6 +109,7 @@ pub struct MlsGroupJoinConfig {
     /// Maximum number of past epochs for which application messages
     /// can be decrypted. The default is 0.
     #[serde(alias = "max_past_epochs")]
+    #[serde(deserialize_with = "deserialize_past_epoch_deletion_policy")]
     // alias for backwards compatibility after renaming field
     pub(crate) past_epoch_deletion_policy: PastEpochDeletionPolicy,
     /// Number of resumption secrets to keep
