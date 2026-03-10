@@ -60,8 +60,6 @@ fn test_past_secrets_epoch_deletion_limited_with_time<Provider: crate::storage::
         alice_group
             .merge_pending_commit(alice_provider)
             .expect("error merging commit");
-        // manually delete all before INTERVAL (early)
-        //alice_group.delete_past_epoch_secrets_older_than(INTERVAL, None);
         // assert nothing was deleted yet, and that the number of
         // past epoch secrets is
         assert!(alice_group.message_secrets_store().num_past_epoch_trees() <= 2);
