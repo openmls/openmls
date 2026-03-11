@@ -1,5 +1,19 @@
 # Past epoch secret deletion
+
+
+## Setting a past epoch secrets deletion policy
+
 The Delivery Service cannot guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by configuring the past epoch deletion policy on the `MlsGroupCreateConfig`.
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code_past_epoch.rs:config_max_epochs}}
+```
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code_past_epoch.rs:config_keep_all}}
+```
+
+## Deleting past epoch secrets using time-based APIs
 
 Delete all past epoch secrets before a provided timestamp:
 ```rust,no_run,noplayground

@@ -10,14 +10,12 @@ fn book_example_past_epoch() {
     let alice_party = CorePartyState::<Provider>::new("alice");
 
     // set up the group creation config
+    // ANCHOR: config_keep_all
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        // XXX: What happens if this is set as well as calling max_past_epochs as well?
         .set_past_epoch_deletion_policy(PastEpochDeletionPolicy::KeepAll)
         .ciphersuite(ciphersuite)
         .build();
-
-    // create a group
-    let group_id = GroupId::from_slice(b"Test Group");
+    // ANCHOR_END: config_keep_all
 
     let mut group_state = GroupState::new_from_party(
         group_id,
@@ -61,4 +59,25 @@ fn book_example_past_epoch() {
     // ANCHOR: delete_all
     group.delete_past_epoch_secrets(PastEpochDeletion::delete_all());
     // ANCHOR_END: delete_all
+
+    // create a group id
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    // set up the group creation config
+    // ANCHOR: config_max_epochs
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .set_past_epoch_deletion_policy(PastEpochDeletionPolicy::MaxEpochs(3))
+        .ciphersuite(ciphersuite)
+        .build();
+    // ANCHOR_END: config_max_epochs
+
+    let _group_state = GroupState::new_from_party(
+        group_id,
+        alice_party.generate_pre_group(ciphersuite),
+        mls_group_create_config,
+    )
+    .expect("error creating group");
+
+    // create a group id
+    let group_id = GroupId::from_slice(b"Test Group");
 }
