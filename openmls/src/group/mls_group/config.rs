@@ -50,6 +50,36 @@ pub(crate) enum PastEpochDeletionPolicy {
     KeepAll,
 }
 
+pub struct PastEpochDeletion {
+    // XXX: Make this an enum and only allow one of the two
+    pub(crate) duration: Option<std::time::Duration>,
+    pub(crate) timestamp: Option<std::time::SystemTime>,
+    pub(crate) max_past_epochs: Option<usize>,
+}
+
+impl PastEpochDeletion {
+    pub fn duration(duration: std::time::Duration) -> Self {
+        Self {
+            duration: Some(duration),
+            timestamp: None,
+            max_past_epochs: None,
+        }
+    }
+
+    pub fn timestamp(timestamp: std::time::SystemTime) -> Self {
+        Self {
+            duration: None,
+            timestamp: Some(timestamp),
+            max_past_epochs: None,
+        }
+    }
+
+    pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
+        self.max_past_epochs = Some(max_past_epochs);
+        self
+    }
+}
+
 /// Helper deserialization function to ensure that
 /// both plain `usize` and `PastEpochDeletionPolicy`
 /// are correctly deserialized.
@@ -382,6 +412,8 @@ impl MlsGroupCreateConfigBuilder {
     /// if the Delivery Service cannot guarantee that application messages will be sent in
     /// the same epoch in which they were generated. The number for `max_epochs` should be
     /// as low as possible.
+    /// XXX: Sending must not be in the same epoch. But close to it. That's what
+    /// max past epoch is for. Also link to `max_past_epochs`.
     pub fn disable_past_epoch_secret_deletion(mut self) -> Self {
         self.config.join_config.past_epoch_deletion_policy = PastEpochDeletionPolicy::KeepAll;
         self

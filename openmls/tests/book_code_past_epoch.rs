@@ -1,3 +1,5 @@
+use std::time::{Duration, SystemTime};
+
 use openmls::prelude::*;
 use openmls::test_utils::single_group_test_framework::*;
 use openmls_test::openmls_test;
@@ -9,6 +11,7 @@ fn book_example_past_epoch() {
 
     // set up the group creation config
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        // XXX: What happens if this is set as well as calling max_past_epochs as well?
         .disable_past_epoch_secret_deletion()
         .ciphersuite(ciphersuite)
         .build();
@@ -27,20 +30,27 @@ fn book_example_past_epoch() {
     let alice_group = &mut alice.group;
 
     // delete all past epoch secrets before a timestamp
-    alice_group.delete_past_epoch_secrets_before(std::time::SystemTime::now(), None);
+    alice_group.delete_past_epoch_secrets_before(PastEpochDeletion::timestamp(SystemTime::now()));
 
     // delete past epoch secrets before a timestamp, leaving the latest three, at most
-    alice_group.delete_past_epoch_secrets_before(std::time::SystemTime::now(), Some(3));
+    // XXX: No `Some` needed
+    alice_group.delete_past_epoch_secrets_before(
+        PastEpochDeletion::timestamp(SystemTime::now()).max_past_epochs(3),
+    );
 
     // delete all past epoch secrets older than a duration
-    alice_group.delete_past_epoch_secrets_older_than(std::time::Duration::from_hours(48), None);
+    alice_group.delete_past_epoch_secrets_older_than(PastEpochDeletion::duration(
+        Duration::from_hours(48),
+    ));
 
     // delete all past epoch secrets older than a duration, leaving the latest three, at most
-    alice_group.delete_past_epoch_secrets_older_than(std::time::Duration::from_hours(48), Some(3));
+    alice_group.delete_past_epoch_secrets_older_than(
+        PastEpochDeletion::duration(Duration::from_hours(48)).max_past_epochs(3),
+    );
 
     // delete all past epoch secrets
     alice_group.delete_past_epoch_secrets(None);
 
     // delete all past epoch secrets, leaving the latest three, at least
-    alice_group.delete_past_epoch_secrets(Some(3));
+    alice_group.delete_past_epoch_secrets(3);
 }

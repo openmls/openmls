@@ -650,13 +650,9 @@ impl MlsGroup {
     /// epoch secrets that will be kept. If this value is a `Some(n)`, at most
     /// `n` elements will be kept, regardless of whether their duration
     /// is allowed.
-    pub fn delete_past_epoch_secrets_older_than(
-        &mut self,
-        duration: std::time::Duration,
-        max_past_epochs: impl Into<Option<usize>>,
-    ) {
+    pub fn delete_past_epoch_secrets_older_than(&mut self, policy: PastEpochDeletion) {
         self.message_secrets_store
-            .delete_past_epoch_secrets_older_than(duration, max_past_epochs.into());
+            .delete_past_epoch_secrets_older_than(policy.duration.unwrap(), policy.max_past_epochs);
     }
 
     /// Delete any past epoch secrets added before a provided timestamp.
@@ -665,13 +661,9 @@ impl MlsGroup {
     /// epoch secrets that will be kept. If this value is a `Some(n)`, at most
     /// `n` elements will be kept, regardless of whether their duration
     /// is allowed.
-    pub fn delete_past_epoch_secrets_before(
-        &mut self,
-        timestamp: std::time::SystemTime,
-        max_past_epochs: impl Into<Option<usize>>,
-    ) {
+    pub fn delete_past_epoch_secrets_before(&mut self, policy: PastEpochDeletion) {
         self.message_secrets_store
-            .delete_past_epoch_secrets_before(timestamp, max_past_epochs.into());
+            .delete_past_epoch_secrets_before(policy.timestamp.unwrap(), policy.max_past_epochs);
     }
 
     /// Delete all past epoch secrets.
