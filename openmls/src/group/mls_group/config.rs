@@ -52,16 +52,16 @@ impl Default for PastEpochDeletionPolicy {
     }
 }
 
-// TODO: move to separate module
-pub(crate) enum PastEpochDeletionTimeConfig {
-    Duration(std::time::Duration),
-    Timestamp(std::time::SystemTime),
-}
-
 /// The input to [`MlsGroup::delete_past_epoch_secrets()`].
 pub struct PastEpochDeletion {
     pub(crate) before: Option<PastEpochDeletionTimeConfig>,
     pub(crate) max_past_epochs: Option<usize>,
+}
+
+/// A duration or timestamp before which to delete past epoch secrets.
+pub(crate) enum PastEpochDeletionTimeConfig {
+    Duration(std::time::Duration),
+    Timestamp(std::time::SystemTime),
 }
 
 impl PastEpochDeletion {
