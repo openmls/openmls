@@ -36,18 +36,20 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-// TODO: ensure compatibility with existing storage format
 /// Configures the automatic deletion of past epoch secrets.
-#[derive(Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) enum PastEpochDeletionPolicy {
-    /// Delete all past epoch secrets.
-    #[default]
-    DeleteAll,
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PastEpochDeletionPolicy {
     /// Keep at most `n` past epoch secrets.
-    MaxEpochs(std::num::NonZeroUsize),
+    MaxEpochs(usize),
     // TODO: add links to time-based APIs for past epoch secret deletipn
     /// Keep all past epoch secrets.
     KeepAll,
+}
+
+impl Default for PastEpochDeletionPolicy {
+    fn default() -> Self {
+        Self::MaxEpochs(0)
+    }
 }
 
 // TODO: move to separate module
@@ -108,7 +110,7 @@ where
     let format = Format::deserialize(deserializer)?;
 
     let policy = match format {
-        Format::Legacy(epochs) => epochs.into(),
+        Format::Legacy(epochs) => PastEpochDeletionPolicy::MaxEpochs(epochs),
         Format::Policy(policy) => policy,
     };
 
@@ -118,19 +120,9 @@ where
 impl PastEpochDeletionPolicy {
     pub(crate) fn max_epochs(&self) -> Option<usize> {
         match self {
-            Self::DeleteAll => Some(0),
-            Self::MaxEpochs(epochs) => Some(epochs.get()),
+            Self::MaxEpochs(epochs) => Some(*epochs),
             Self::KeepAll => None,
         }
-    }
-}
-
-impl From<usize> for PastEpochDeletionPolicy {
-    fn from(max_epochs: usize) -> Self {
-        max_epochs
-            .try_into()
-            .map(Self::MaxEpochs)
-            .unwrap_or(Self::DeleteAll)
     }
 }
 
@@ -251,11 +243,11 @@ impl MlsGroupJoinConfigBuilder {
     /// Sets the `max_past_epochs` property of the [`MlsGroupJoinConfig`].
     pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
         self.join_config.past_epoch_deletion_policy =
-            PastEpochDeletionPolicy::from(max_past_epochs);
+            PastEpochDeletionPolicy::MaxEpochs(max_past_epochs);
         self
     }
 
-    /// Store all past epoch secrets.
+    /// Set the policy for deleting past epoch secrets.
     ///
     /// By default, storage of past epoch secrets is disabled.
     ///
@@ -266,8 +258,8 @@ impl MlsGroupJoinConfigBuilder {
     /// if the Delivery Service cannot guarantee that application messages will be sent in
     /// the same epoch in which they were generated. The number for `max_epochs` should be
     /// as low as possible.
-    pub fn disable_past_epoch_secret_deletion(mut self) -> Self {
-        self.join_config.past_epoch_deletion_policy = PastEpochDeletionPolicy::KeepAll;
+    pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
+        self.join_config.past_epoch_deletion_policy = policy;
         self
     }
 
@@ -406,7 +398,7 @@ impl MlsGroupCreateConfigBuilder {
     /// as low as possible.
     pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
         self.config.join_config.past_epoch_deletion_policy =
-            PastEpochDeletionPolicy::from(max_past_epochs);
+            PastEpochDeletionPolicy::MaxEpochs(max_past_epochs);
         self
     }
 

@@ -418,7 +418,7 @@ impl ProcessedWelcome {
         }
 
         let message_secrets_store = MessageSecretsStore::new_with_secret(
-            &PastEpochDeletionPolicy::DeleteAll,
+            &PastEpochDeletionPolicy::MaxEpochs(0),
             message_secrets,
         );
 

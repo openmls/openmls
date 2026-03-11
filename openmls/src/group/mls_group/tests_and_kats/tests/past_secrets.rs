@@ -251,7 +251,7 @@ fn test_secret_tree_store() {
     let provider = &Provider::default();
     // Create a store that keeps up to 3 epochs
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
-        &PastEpochDeletionPolicy::from(3),
+        &PastEpochDeletionPolicy::MaxEpochs(3),
         MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0)),
     );
 
@@ -293,7 +293,7 @@ fn test_empty_secret_tree_store() {
     let provider = &Provider::default();
     // Create a store that keeps no epochs
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
-        &PastEpochDeletionPolicy::DeleteAll,
+        &PastEpochDeletionPolicy::MaxEpochs(0),
         MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0)),
     );
 
