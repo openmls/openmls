@@ -27,26 +27,38 @@ fn book_example_past_epoch() {
     .expect("error creating group");
 
     let [alice] = group_state.members_mut(&["alice"]);
-    let alice_group = &mut alice.group;
+    let group = &mut alice.group;
+
+    let timestamp = SystemTime::now();
 
     // delete all past epoch secrets before a timestamp
-    alice_group.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(SystemTime::now()));
+    // ANCHOR: timestamp
+    group.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(timestamp));
+    // ANCHOR_END: timestamp
 
     // delete past epoch secrets before a timestamp, leaving the latest three, at most
-    alice_group.delete_past_epoch_secrets(
-        PastEpochDeletion::before_timestamp(SystemTime::now()).max_past_epochs(3),
+    // ANCHOR: timestamp_with_max_epochs
+    group.delete_past_epoch_secrets(
+        PastEpochDeletion::before_timestamp(timestamp).max_past_epochs(3),
     );
+    // ANCHOR_END: timestamp_with_max_epochs
 
     // delete all past epoch secrets older than a duration
-    alice_group.delete_past_epoch_secrets(PastEpochDeletion::older_than_duration(
+    // ANCHOR: duration
+    group.delete_past_epoch_secrets(PastEpochDeletion::older_than_duration(
         Duration::from_hours(48),
     ));
+    // ANCHOR_END: duration
 
     // delete all past epoch secrets older than a duration, leaving the latest three, at most
-    alice_group.delete_past_epoch_secrets(
+    // ANCHOR: duration_with_max_epochs
+    group.delete_past_epoch_secrets(
         PastEpochDeletion::older_than_duration(Duration::from_hours(48)).max_past_epochs(3),
     );
+    // ANCHOR_END: duration_with_max_epochs
 
     // delete all past epoch secrets
-    alice_group.delete_past_epoch_secrets(PastEpochDeletion::delete_all());
+    // ANCHOR: delete_all
+    group.delete_past_epoch_secrets(PastEpochDeletion::delete_all());
+    // ANCHOR_END: delete_all
 }
