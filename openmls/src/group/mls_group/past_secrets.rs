@@ -303,6 +303,10 @@ impl MessageSecretsStore {
                     self.delete_past_epoch_secrets_older_than_duration(duration)
                 }
             }
+        } else {
+            // delete all
+            self.past_epoch_trees.clear();
+
         }
         // ensure at most `max_past_epochs` entries are included
         if let Some(max_past_epochs) = policy.max_past_epochs {
