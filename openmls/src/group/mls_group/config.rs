@@ -256,19 +256,12 @@ impl MlsGroupJoinConfigBuilder {
         self
     }
 
+    // TODO: Add more information about past epochs to the documentation
     /// Set the policy for deleting past epoch secrets.
     ///
     /// By default, storage of past epoch secrets is disabled.
     ///
     /// This method overrides the configuration set by [`Self::max_past_epochs()`].
-    ///
-    /// **WARNING**
-    ///
-    /// This feature enables the storage of message secrets from past epochs.
-    /// It is a trade-off between functionality and forward secrecy and should only be enabled
-    /// if the Delivery Service cannot guarantee that application messages will be sent in
-    /// the same epoch in which they were generated. The number for `max_epochs` should be
-    /// as low as possible.
     pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
         self.join_config.past_epoch_deletion_policy = policy;
         self
@@ -417,21 +410,12 @@ impl MlsGroupCreateConfigBuilder {
         self
     }
 
+    // TODO: Add more information about past epochs to the documentation
     /// Set the policy for deleting past epoch secrets.
     ///
     /// By default, storage of past epoch secrets is disabled.
     ///
     /// This method overrides the configuration set by [`Self::max_past_epochs()`].
-    ///
-    /// **WARNING**
-    ///
-    /// This feature enables the storage of message secrets from past epochs.
-    /// It is a trade-off between functionality and forward secrecy and should only be enabled
-    /// if the Delivery Service cannot guarantee that application messages will be sent in
-    /// the same epoch in which they were generated. The number for `max_epochs` should be
-    /// as low as possible.
-    /// XXX: Sending must not be in the same epoch. But close to it. That's what
-    /// max past epoch is for. Also link to `max_past_epochs`.
     pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
         self.config.join_config.past_epoch_deletion_policy = policy;
         self
