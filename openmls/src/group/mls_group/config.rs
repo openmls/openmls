@@ -50,26 +50,35 @@ pub(crate) enum PastEpochDeletionPolicy {
     KeepAll,
 }
 
+// TODO: move to separate module
+pub(crate) enum PastEpochDeletionTimeConfig {
+    Duration(std::time::Duration),
+    Timestamp(std::time::SystemTime),
+}
+
 pub struct PastEpochDeletion {
-    // XXX: Make this an enum and only allow one of the two
-    pub(crate) duration: Option<std::time::Duration>,
-    pub(crate) timestamp: Option<std::time::SystemTime>,
+    pub(crate) before: Option<PastEpochDeletionTimeConfig>,
     pub(crate) max_past_epochs: Option<usize>,
 }
 
 impl PastEpochDeletion {
-    pub fn duration(duration: std::time::Duration) -> Self {
+    pub fn older_than_duration(duration: std::time::Duration) -> Self {
         Self {
-            duration: Some(duration),
-            timestamp: None,
+            before: Some(PastEpochDeletionTimeConfig::Duration(duration)),
             max_past_epochs: None,
         }
     }
 
-    pub fn timestamp(timestamp: std::time::SystemTime) -> Self {
+    pub fn before_timestamp(timestamp: std::time::SystemTime) -> Self {
         Self {
-            duration: None,
-            timestamp: Some(timestamp),
+            before: Some(PastEpochDeletionTimeConfig::Timestamp(timestamp)),
+            max_past_epochs: None,
+        }
+    }
+
+    pub fn delete_all() -> Self {
+        Self {
+            before: None,
             max_past_epochs: None,
         }
     }

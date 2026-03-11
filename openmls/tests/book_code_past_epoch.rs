@@ -30,27 +30,23 @@ fn book_example_past_epoch() {
     let alice_group = &mut alice.group;
 
     // delete all past epoch secrets before a timestamp
-    alice_group.delete_past_epoch_secrets_before(PastEpochDeletion::timestamp(SystemTime::now()));
+    alice_group.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(SystemTime::now()));
 
     // delete past epoch secrets before a timestamp, leaving the latest three, at most
-    // XXX: No `Some` needed
-    alice_group.delete_past_epoch_secrets_before(
-        PastEpochDeletion::timestamp(SystemTime::now()).max_past_epochs(3),
+    alice_group.delete_past_epoch_secrets(
+        PastEpochDeletion::before_timestamp(SystemTime::now()).max_past_epochs(3),
     );
 
     // delete all past epoch secrets older than a duration
-    alice_group.delete_past_epoch_secrets_older_than(PastEpochDeletion::duration(
+    alice_group.delete_past_epoch_secrets(PastEpochDeletion::older_than_duration(
         Duration::from_hours(48),
     ));
 
     // delete all past epoch secrets older than a duration, leaving the latest three, at most
-    alice_group.delete_past_epoch_secrets_older_than(
-        PastEpochDeletion::duration(Duration::from_hours(48)).max_past_epochs(3),
+    alice_group.delete_past_epoch_secrets(
+        PastEpochDeletion::older_than_duration(Duration::from_hours(48)).max_past_epochs(3),
     );
 
     // delete all past epoch secrets
-    alice_group.delete_past_epoch_secrets(None);
-
-    // delete all past epoch secrets, leaving the latest three, at least
-    alice_group.delete_past_epoch_secrets(3);
+    alice_group.delete_past_epoch_secrets(PastEpochDeletion::delete_all());
 }

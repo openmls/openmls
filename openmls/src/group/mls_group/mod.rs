@@ -644,37 +644,17 @@ impl MlsGroup {
         )
     }
 
-    /// Delete any past epoch secrets older than a provided duration.
-    ///
-    /// NOTE: the past epoch deletion policy determines the maximum number of past
-    /// epoch secrets that will be kept. If this value is a `Some(n)`, at most
-    /// `n` elements will be kept, regardless of whether their duration
-    /// is allowed.
-    pub fn delete_past_epoch_secrets_older_than(&mut self, policy: PastEpochDeletion) {
-        self.message_secrets_store
-            .delete_past_epoch_secrets_older_than(policy.duration.unwrap(), policy.max_past_epochs);
-    }
-
-    /// Delete any past epoch secrets added before a provided timestamp.
-    ///
-    /// NOTE: the past epoch deletion policy determines the maximum number of past
-    /// epoch secrets that will be kept. If this value is a `Some(n)`, at most
-    /// `n` elements will be kept, regardless of whether their duration
-    /// is allowed.
-    pub fn delete_past_epoch_secrets_before(&mut self, policy: PastEpochDeletion) {
-        self.message_secrets_store
-            .delete_past_epoch_secrets_before(policy.timestamp.unwrap(), policy.max_past_epochs);
-    }
-
     /// Delete all past epoch secrets.
+    ///
+    /// For more information on the arguments to this method, see [`PastEpochDeletion`].
     ///
     /// NOTE: the past epoch deletion policy determines the minimum number of past
     /// epoch secrets that will be kept. If this value is a `Some(n)`, at least
     /// `n` elements will be kept, regardless of whether their duration
     /// is allowed.
-    pub fn delete_past_epoch_secrets(&mut self, min_past_epochs: impl Into<Option<usize>>) {
+    pub fn delete_past_epoch_secrets(&mut self, policy: PastEpochDeletion) {
         self.message_secrets_store
-            .delete_past_epoch_secrets(min_past_epochs.into());
+            .delete_past_epoch_secrets(policy);
     }
 
     /// Returns a reference to the proposal store.

@@ -257,11 +257,7 @@ impl MessageSecretsStore {
         &self.message_secrets.message_secrets
     }
 
-    pub(crate) fn delete_past_epoch_secrets_older_than(
-        &mut self,
-        duration: std::time::Duration,
-        max_past_epochs: Option<usize>,
-    ) {
+    fn delete_past_epoch_secrets_older_than_duration(&mut self, duration: std::time::Duration) {
         // retain entries that are older than the duration.
         self.past_epoch_trees.retain(|tree| {
             let Some(added_at) = tree.message_secrets.added_at else {
@@ -278,20 +274,9 @@ impl MessageSecretsStore {
             // retain entried where elapsed is less than the provided duration
             elapsed < duration
         });
-
-        // ensure at most `max_past_epochs` entries are included
-        if let Some(max_past_epochs) = max_past_epochs {
-            if let Some(i) = self.past_epoch_trees.len().checked_sub(max_past_epochs) {
-                self.past_epoch_trees.drain(0..i);
-            }
-        }
     }
 
-    pub(crate) fn delete_past_epoch_secrets_before(
-        &mut self,
-        cutoff: std::time::SystemTime,
-        max_past_epochs: Option<usize>,
-    ) {
+    fn delete_past_epoch_secrets_before_timestamp(&mut self, cutoff: std::time::SystemTime) {
         // retain entries where added_at is after or equal to the cutoff.
         self.past_epoch_trees.retain(|tree| {
             let Some(added_at) = tree.message_secrets.added_at else {
@@ -301,25 +286,25 @@ impl MessageSecretsStore {
             };
             added_at >= cutoff
         });
+    }
 
+    pub(crate) fn delete_past_epoch_secrets(&mut self, policy: PastEpochDeletion) {
+        // remove epoch secrets before a provided timestamp or duration
+        if let Some(before) = policy.before {
+            match before {
+                PastEpochDeletionTimeConfig::Timestamp(timestamp) => {
+                    self.delete_past_epoch_secrets_before_timestamp(timestamp)
+                }
+                PastEpochDeletionTimeConfig::Duration(duration) => {
+                    self.delete_past_epoch_secrets_older_than_duration(duration)
+                }
+            }
+        }
         // ensure at most `max_past_epochs` entries are included
-        if let Some(max_past_epochs) = max_past_epochs {
+        if let Some(max_past_epochs) = policy.max_past_epochs {
             if let Some(i) = self.past_epoch_trees.len().checked_sub(max_past_epochs) {
                 self.past_epoch_trees.drain(0..i);
             }
-        }
-    }
-
-    pub(crate) fn delete_past_epoch_secrets(&mut self, min_past_epochs: Option<usize>) {
-        // ensure at least `min_past_epochs` entries are included
-        if let Some(min_past_epochs) = min_past_epochs {
-            if let Some(i) = self.past_epoch_trees.len().checked_sub(min_past_epochs) {
-                self.past_epoch_trees.drain(0..i);
-            } else {
-                // keep all
-            }
-        } else {
-            self.past_epoch_trees.clear();
         }
     }
 
