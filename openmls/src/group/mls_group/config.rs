@@ -402,7 +402,7 @@ impl MlsGroupCreateConfigBuilder {
         self
     }
 
-    /// Store all past epoch secrets.
+    /// Set the policy for deleting past epoch secrets.
     ///
     /// By default, storage of past epoch secrets is disabled.
     ///
@@ -415,8 +415,8 @@ impl MlsGroupCreateConfigBuilder {
     /// as low as possible.
     /// XXX: Sending must not be in the same epoch. But close to it. That's what
     /// max past epoch is for. Also link to `max_past_epochs`.
-    pub fn disable_past_epoch_secret_deletion(mut self) -> Self {
-        self.config.join_config.past_epoch_deletion_policy = PastEpochDeletionPolicy::KeepAll;
+    pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
+        self.config.join_config.past_epoch_deletion_policy = policy;
         self
     }
 

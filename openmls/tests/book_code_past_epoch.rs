@@ -12,7 +12,7 @@ fn book_example_past_epoch() {
     // set up the group creation config
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         // XXX: What happens if this is set as well as calling max_past_epochs as well?
-        .disable_past_epoch_secret_deletion()
+        .set_past_epoch_deletion_policy(PastEpochDeletionPolicy::KeepAll)
         .ciphersuite(ciphersuite)
         .build();
 

@@ -9,9 +9,10 @@ use crate::{
     error::LibraryError,
     extensions::Extensions,
     group::{
-        past_secrets::MessageSecretsStore, public_group::errors::PublicGroupBuildError,
-        GroupContext, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder,
-        MlsGroupState, NewGroupError, PublicGroup, WireFormatPolicy,
+        config::PastEpochDeletionPolicy, past_secrets::MessageSecretsStore,
+        public_group::errors::PublicGroupBuildError, GroupContext, GroupId, MlsGroup,
+        MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
+        PublicGroup, WireFormatPolicy,
     },
     key_packages::Lifetime,
     schedule::{
@@ -237,7 +238,7 @@ impl MlsGroupBuilder {
         self
     }
 
-    /// Store all past epoch secrets.
+    /// Set the policy for deleting past epoch secrets.
     ///
     /// By default, storage of past epoch secrets is disabled.
     ///
@@ -248,10 +249,12 @@ impl MlsGroupBuilder {
     /// if the Delivery Service cannot guarantee that application messages will be sent in
     /// the same epoch in which they were generated. The number for `max_epochs` should be
     /// as low as possible.
-    pub fn disable_past_epoch_secret_deletion(mut self) -> Self {
+    /// XXX: Sending must not be in the same epoch. But close to it. That's what
+    /// max past epoch is for. Also link to `max_past_epochs`.
+    pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
-            .disable_past_epoch_secret_deletion();
+            .set_past_epoch_deletion_policy(policy);
         self
     }
 
