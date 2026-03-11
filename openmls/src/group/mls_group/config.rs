@@ -41,7 +41,6 @@ use serde::{Deserialize, Serialize};
 pub enum PastEpochDeletionPolicy {
     /// Keep at most `n` past epoch secrets.
     MaxEpochs(usize),
-    // TODO: add links to time-based APIs for past epoch secret deletipn
     /// Keep all past epoch secrets.
     KeepAll,
 }

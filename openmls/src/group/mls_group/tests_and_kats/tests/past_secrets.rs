@@ -2,10 +2,19 @@
 //!
 //! Tests for `MlsGroup::delete_past_epoch_secrets()`
 //! - `max_epochs_policy_with_duration()`
+//!     - test deletion using a duration, when the group keeps at most `n` past epoch secret
+//!     entries by default
 //! - `max_epochs_policy_with_timestamp()`
+//!     - test deletion using a timestamp, when the group keeps at most `n` past epoch secret
+//!     entries by default
 //! - `keep_all_policy_with_duration()`
-//! - `keep_all_policy_with_duration()`
-//! - `either_policy_delete_all()`
+//!     - test deletion using a duration, when the group keeps all past epoch
+//!     secrets by default
+//! - `keep_all_policy_with_timestamp()`
+//!     - test deletion using a timestamp, when the group keeps all past epoch
+//!     secrets by default
+//! - `delete_all()`:
+//!     - test deletion of past epoch secrets using `PastEpochDeletion::delete_all()`
 //!
 //! Additional tests for the message secrets store:
 //! - `test_secret_tree_store()`
@@ -250,10 +259,12 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
 
 /// This test checks the manual cleanup of all past epoch secrets.
 #[openmls_test::openmls_test]
-fn either_policy_delete_all<Provider: crate::storage::OpenMlsProvider>() {
+fn delete_all<Provider: crate::storage::OpenMlsProvider>() {
+    // test several policies
     for policy in [
         PastEpochDeletionPolicy::KeepAll,
         PastEpochDeletionPolicy::MaxEpochs(2),
+        PastEpochDeletionPolicy::MaxEpochs(0),
     ] {
         // set up a provider, signer and group
         let (alice_provider, alice_signer, mut alice_group) =
@@ -265,7 +276,7 @@ fn either_policy_delete_all<Provider: crate::storage::OpenMlsProvider>() {
         // manually delete all before start, leaving at most 3 entries
         // NOTE: all entries were inserted after `start`
         alice_group.delete_past_epoch_secrets(PastEpochDeletion::delete_all());
-        // assert no past secrets deleted
+        // assert all past secrets deleted
         assert_eq!(
             alice_group.message_secrets_store().num_past_epoch_trees(),
             0
