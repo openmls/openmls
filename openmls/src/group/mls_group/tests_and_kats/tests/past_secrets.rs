@@ -3,7 +3,7 @@
 //! Tests:
 //! - case where max_past_epochs = 2, with time-limited cleanup:
 //!     - test_past_secrets_epoch_deletion_limited_with_time
-//! - case where max_past_epochs = isize::MAX, with time-limited cleanup:
+//! - case where the past epoch deletion policy is KeepAll, with time-limited cleanup:
 //!     - test_past_secrets_epoch_deletion_time_no_limit
 //!
 //! At the end, some basic tests for the message secrets store are also included.
@@ -124,7 +124,7 @@ fn test_past_secrets_epoch_deletion_limited_with_time<Provider: crate::storage::
 }
 
 /// This test checks the case where:
-/// - max_past_epochs = isize::MAX, and time-limited cleanup
+/// - epoch deletion policy: KeepAll, and time-limited cleanup
 #[openmls_test::openmls_test]
 fn test_past_secrets_epoch_deletion_time_no_limit<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
@@ -142,7 +142,7 @@ fn test_past_secrets_epoch_deletion_time_no_limit<Provider: crate::storage::Open
     let alice_signer = &alice_credential_with_keys.signer;
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .max_past_epochs(isize::MAX as usize)
+        .set_past_epoch_deletion_policy(PastEpochDeletionPolicy::KeepAll)
         .ciphersuite(ciphersuite)
         .build();
 

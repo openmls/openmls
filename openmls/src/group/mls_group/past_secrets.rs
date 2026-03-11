@@ -77,14 +77,16 @@ impl core::fmt::Debug for MessageSecretsStore {
     }
 }
 
+const VECDEQUE_MAX_CAPACITY: usize = isize::MAX as usize;
+
+// XXX: the VecDeque capacity is not checked elsewhere in this module.
 /// Helper function to map a policy to a maximum number of past epochs
 fn max_epochs(policy: &PastEpochDeletionPolicy) -> usize {
-    // get the `max_epochs`, or, if no maximum is set, set to `isize::MAX`, the capacity of a
-    // VecDeque
-    let max_epochs = policy.max_epochs().unwrap_or(isize::MAX as usize);
+    // get the `max_epochs`, or the maximum capacity of a `VecDeque`
+    let max_epochs = policy.max_epochs().unwrap_or(VECDEQUE_MAX_CAPACITY);
 
-    // cap at `isize::MAX`
-    max_epochs.min(isize::MAX as usize)
+    // cap at max capacity
+    max_epochs.min(VECDEQUE_MAX_CAPACITY)
 }
 
 impl MessageSecretsStore {
@@ -121,6 +123,8 @@ impl MessageSecretsStore {
         }
     }
 
+    /// Set the `message_secrets` to a provided `MessageSecrets`, and return
+    /// the previous one.
     pub(crate) fn replace_current_message_secrets(
         &mut self,
         message_secrets: MessageSecrets,

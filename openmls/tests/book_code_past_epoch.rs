@@ -6,6 +6,11 @@ use openmls_test::openmls_test;
 
 #[openmls_test]
 fn book_example_past_epoch() {
+    // ---------- Example with `KeepAll` ----------
+
+    // create a group id
+    let group_id = GroupId::from_slice(b"Test Group");
+
     // Set up Alice party
     let alice_party = CorePartyState::<Provider>::new("alice");
 
@@ -60,8 +65,10 @@ fn book_example_past_epoch() {
     group.delete_past_epoch_secrets(PastEpochDeletion::delete_all());
     // ANCHOR_END: delete_all
 
+    // ---------- Additional example of group creation with `MaxEpochs(3)` ----------
+
     // create a group id
-    let group_id = GroupId::from_slice(b"Test Group");
+    let group_id = GroupId::from_slice(b"Additional test group");
 
     // set up the group creation config
     // ANCHOR: config_max_epochs
@@ -77,7 +84,4 @@ fn book_example_past_epoch() {
         mls_group_create_config,
     )
     .expect("error creating group");
-
-    // create a group id
-    let group_id = GroupId::from_slice(b"Test Group");
 }
