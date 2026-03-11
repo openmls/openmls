@@ -653,8 +653,7 @@ impl MlsGroup {
     /// `n` elements will be kept, regardless of whether their duration
     /// is allowed.
     pub fn delete_past_epoch_secrets(&mut self, policy: PastEpochDeletion) {
-        self.message_secrets_store
-            .delete_past_epoch_secrets(policy);
+        self.message_secrets_store.delete_past_epoch_secrets(policy);
     }
 
     /// Returns a reference to the proposal store.
