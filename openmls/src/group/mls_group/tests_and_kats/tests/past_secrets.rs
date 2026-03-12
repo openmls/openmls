@@ -3,16 +3,16 @@
 //! Tests for `MlsGroup::delete_past_epoch_secrets()`
 //! - `max_epochs_policy_with_duration()`
 //!     - test deletion using a duration, when the group keeps at most `n` past epoch secret
-//!     entries by default
+//!       entries by default
 //! - `max_epochs_policy_with_timestamp()`
 //!     - test deletion using a timestamp, when the group keeps at most `n` past epoch secret
-//!     entries by default
+//!       entries by default
 //! - `keep_all_policy_with_duration()`
 //!     - test deletion using a duration, when the group keeps all past epoch
-//!     secrets by default
+//!       secrets by default
 //! - `keep_all_policy_with_timestamp()`
 //!     - test deletion using a timestamp, when the group keeps all past epoch
-//!     secrets by default
+//!       secrets by default
 //! - `delete_all()`:
 //!     - test deletion of past epoch secrets using `PastEpochDeletion::delete_all()`
 //!

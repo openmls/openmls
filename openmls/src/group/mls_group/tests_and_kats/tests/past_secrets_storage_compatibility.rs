@@ -16,12 +16,12 @@ const TEST_GROUP_ID: &[u8] = b"test_group_id";
 /// with a `None` timestamp.
 /// - Sets up a provider using an in-memory Sqlite database
 /// - Loads data from a Sqlite dump using an earlier version of the MessageSecretsStore (openmls =
-/// 0.8.1)
+///   0.8.1)
 /// - Check that an MlsGroup can be loaded from the storage provider
 /// - Check that the group's MessageSecretsStore can be loaded from the storage provider
 /// - Ensure that the values were deserialized correctly into the new format
 /// - Check the serialization/deserialization of this MessageSecretsStore, both before and after
-///     making additional changes
+///   making additional changes
 #[test]
 fn test_storage_compatibility() {
     {
