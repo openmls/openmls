@@ -68,7 +68,6 @@ OpenMLS provides the following features
 <summary>Developer features</summary>
 
 - **libcrux-provider**: enable the libcrux crypto provider dependency
-- **libcrux-provider-js**: enable the libcrux crypto provider with support for compiling to wasm
 - **openmls_rust_crypto**: enable the rust crypto provider
 - **sqlite-provider**: enable the sqlite provider
 - **backtrace**: enable backtraces

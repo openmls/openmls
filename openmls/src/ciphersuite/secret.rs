@@ -37,14 +37,6 @@ impl Default for Secret {
 impl PartialEq for Secret {
     // Constant time comparison.
     fn eq(&self, other: &Secret) -> bool {
-        // These values can be considered public and checked before the actual
-        // comparison.
-        if self.value.as_slice().len() != other.value.as_slice().len() {
-            log::error!("Incompatible secrets");
-            log::trace!("  {}", self.value.as_slice().len());
-            log::trace!("  {}", other.value.as_slice().len());
-            return false;
-        }
         equal_ct(self.value.as_slice(), other.value.as_slice())
     }
 }

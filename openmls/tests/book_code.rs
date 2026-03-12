@@ -44,7 +44,7 @@ fn generate_credential(
 fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
-    extensions: Extensions,
+    extensions: Extensions<KeyPackage>,
     provider: &impl crate::storage::OpenMlsProvider,
     signer: &impl Signer,
 ) -> KeyPackageBundle {
@@ -128,13 +128,13 @@ fn book_operations() {
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
-        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(vec![
-            ExternalSender::new(
+        .with_group_context_extensions(
+            Extensions::single(Extension::ExternalSenders(vec![ExternalSender::new(
                 ds_credential_with_key.signature_key.clone(),
                 ds_credential_with_key.credential.clone(),
-            ),
-        ])))
-        .expect("error adding external senders extension to group context extensions")
+            )]))
+            .expect("failed to create single-element extensions list"),
+        )
         .ciphersuite(ciphersuite)
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
@@ -145,10 +145,13 @@ fn book_operations() {
             Some(&[CredentialType::Basic]),
         ))
         // Example leaf extension
-        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
-            0xff00,
-            UnknownExtension(vec![0, 1, 2, 3]),
-        )))
+        .with_leaf_node_extensions(
+            Extensions::single(Extension::Unknown(
+                0xff00,
+                UnknownExtension(vec![0, 1, 2, 3]),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
         .expect("failed to configure leaf extensions")
         .use_ratchet_tree_extension(true)
         .build();
@@ -197,7 +200,6 @@ fn book_operations() {
                 2000, // maximum_forward_distance
             ))
             .with_group_context_extensions(extensions) // NB: the builder method returns a Result
-            .expect("failed to apply group context extensions")
             .use_ratchet_tree_extension(true)
             .build(
                 alice_provider,
@@ -1099,15 +1101,20 @@ fn book_operations() {
         .expect("expected the message to be a welcome message");
 
     // Bob creates a new group
-    let mut bob_group = StagedWelcome::new_from_welcome(
+    let processed_welcome = ProcessedWelcome::new_from_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
         welcome,
-        Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating StagedWelcome")
-    .into_group(bob_provider)
-    .expect("Error creating group from StagedWelcome");
+    .expect("Error creating ProcessedWelcome");
+    let mut bob_group = JoinBuilder::new(bob_provider, processed_welcome)
+        // Replace bob's previous group state
+        .replace_old_group()
+        .with_ratchet_tree(alice_group.export_ratchet_tree().into())
+        .build()
+        .expect("Error creating group from ProcessedWelcome")
+        .into_group(bob_provider)
+        .expect("Error creating group from StagedWelcome");
 
     // Make sure the group contains two members
     assert_eq!(alice_group.members().count(), 2);
@@ -1315,6 +1322,9 @@ fn book_operations() {
         .expect("Could not create external Add proposal");
     // ANCHOR_END: external_join_proposal
 
+    // Delete Bob's group s.t. we can re-create it later
+    bob_group.delete(bob_provider.storage()).unwrap();
+
     // ANCHOR: decrypt_external_join_proposal
     let alice_processed_message = alice_group
         .process_message(
@@ -1461,6 +1471,9 @@ fn book_operations() {
     alice_group
         .merge_pending_commit(alice_provider)
         .expect("error merging pending commit");
+
+    // Delete Bob's group s.t. we can re-create it
+    bob_group.delete(bob_provider.storage()).unwrap();
 
     let welcome: MlsMessageIn = welcome.unwrap().into();
     let welcome = welcome
@@ -1713,13 +1726,13 @@ fn commit_builder() {
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
-        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(vec![
-            ExternalSender::new(
+        .with_group_context_extensions(
+            Extensions::single(Extension::ExternalSenders(vec![ExternalSender::new(
                 ds_credential_with_key.signature_key.clone(),
                 ds_credential_with_key.credential.clone(),
-            ),
-        ])))
-        .expect("error adding external senders extension to group context extensions")
+            )]))
+            .expect("error adding external senders extension to group context extensions"),
+        )
         .ciphersuite(ciphersuite)
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
@@ -1730,10 +1743,13 @@ fn commit_builder() {
             Some(&[CredentialType::Basic]),
         ))
         // Example leaf extension
-        .with_leaf_node_extensions(Extensions::single(Extension::Unknown(
-            0xff00,
-            UnknownExtension(vec![0, 1, 2, 3]),
-        )))
+        .with_leaf_node_extensions(
+            Extensions::single(Extension::Unknown(
+                0xff00,
+                UnknownExtension(vec![0, 1, 2, 3]),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
         .expect("failed to configure leaf extensions")
         .use_ratchet_tree_extension(true)
         .build();

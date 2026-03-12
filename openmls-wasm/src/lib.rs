@@ -248,8 +248,10 @@ impl Group {
             openmls::framing::ProcessedMessageContent::ApplicationMessage(app_msg) => {
                 Ok(app_msg.into_bytes())
             }
-            openmls::framing::ProcessedMessageContent::ProposalMessage(_)
-            | openmls::framing::ProcessedMessageContent::ExternalJoinProposalMessage(_) => {
+            openmls::framing::ProcessedMessageContent::ProposalMessage(proposal)
+            | openmls::framing::ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
+                self.mls_group
+                    .store_pending_proposal(provider.0.storage(), *proposal)?;
                 Ok(vec![])
             }
             openmls::framing::ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
@@ -341,7 +343,49 @@ impl std::error::Error for NoWelcomeError {}
 pub struct KeyPackage(OpenMlsKeyPackage);
 
 #[wasm_bindgen]
+impl KeyPackage {
+    /// Serialize this KeyPackage to bytes
+    #[wasm_bindgen]
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.tls_serialize_detached().unwrap()
+    }
+
+    /// Deserialize a KeyPackage from bytes
+    #[wasm_bindgen]
+    pub fn from_bytes(bytes: &[u8]) -> Result<KeyPackage, JsError> {
+        let mut s = bytes;
+        let kp_in = openmls::key_packages::KeyPackageIn::tls_deserialize(&mut s)
+            .map_err(|e| JsError::new(&format!("KeyPackage deserialization error: {e}")))?;
+        let kp = kp_in
+            .validate(
+                &openmls_rust_crypto::RustCrypto::default(),
+                openmls::prelude::ProtocolVersion::Mls10,
+            )
+            .map_err(|e| JsError::new(&format!("KeyPackage validation error: {e}")))?;
+        Ok(KeyPackage(kp))
+    }
+}
+
+#[wasm_bindgen]
 pub struct RatchetTree(RatchetTreeIn);
+
+#[wasm_bindgen]
+impl RatchetTree {
+    /// Serialize this RatchetTree to bytes
+    #[wasm_bindgen]
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.tls_serialize_detached().unwrap()
+    }
+
+    /// Deserialize a RatchetTree from bytes
+    #[wasm_bindgen]
+    pub fn from_bytes(bytes: &[u8]) -> Result<RatchetTree, JsError> {
+        let mut s = bytes;
+        let tree = RatchetTreeIn::tls_deserialize(&mut s)
+            .map_err(|e| JsError::new(&format!("RatchetTree deserialization error: {e}")))?;
+        Ok(RatchetTree(tree))
+    }
+}
 
 fn mls_message_to_uint8array(msg: &MlsMessageOut) -> Uint8Array {
     // see https://github.com/rustwasm/wasm-bindgen/issues/1619#issuecomment-505065294

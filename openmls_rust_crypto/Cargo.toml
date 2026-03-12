@@ -1,7 +1,7 @@
 [package]
 name = "openmls_rust_crypto"
 authors = ["OpenMLS Authors"]
-version = "0.4.1"
+version = "0.5.1"
 edition = "2021"
 description = "A crypto backend for OpenMLS implementing openmls_traits using RustCrypto primitives."
 license = "MIT"
@@ -13,7 +13,7 @@ readme = "README.md"
 openmls_traits = { workspace = true }
 openmls_memory_storage = { workspace = true }
 
-hpke = { version = "0.5.0", package = "hpke-rs", default-features = false, features = [
+hpke = { version = "0.6.0", package = "hpke-rs", default-features = false, features = [
     "hazmat",
     "serialization",
 ] }
@@ -27,8 +27,8 @@ p256 = { version = "0.13" }
 hkdf = { version = "0.12" }
 rand = "0.8"
 rand_chacha = { version = "0.3" }
-hpke-rs-crypto = { version = "0.4.0" }
-hpke-rs-rust-crypto = { version = "0.4.0" }
+hpke-rs-crypto = { version = "0.6.0" }
+hpke-rs-rust-crypto = { version = "0.6.0" }
 tls_codec = { workspace = true }
 thiserror = "2.0"
 serde = { version = "^1.0", features = ["derive"] }

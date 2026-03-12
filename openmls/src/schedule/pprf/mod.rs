@@ -207,7 +207,7 @@ mod tests {
     use openmls_test::openmls_test;
     use rand::{
         rngs::{OsRng, StdRng},
-        Rng, SeedableRng,
+        Rng, SeedableRng, TryRngCore,
     };
 
     fn random_vec(rng: &mut impl Rng, len: usize) -> Vec<u8> {
@@ -227,7 +227,7 @@ mod tests {
     #[openmls_test]
     fn evaluates_single_path() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.gen();
+        let seed: [u8; 32] = OsRng.unwrap_mut().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
@@ -243,7 +243,7 @@ mod tests {
     #[openmls_test]
     fn re_evaluation_of_same_index_returns_error() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.gen();
+        let seed: [u8; 32] = OsRng.unwrap_mut().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
@@ -262,7 +262,7 @@ mod tests {
     #[openmls_test]
     fn different_indices_produce_different_results() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.gen();
+        let seed: [u8; 32] = OsRng.unwrap_mut().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
@@ -280,7 +280,7 @@ mod tests {
     #[openmls_test]
     fn rejects_out_of_bounds_index() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.gen();
+        let seed: [u8; 32] = OsRng.unwrap_mut().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);

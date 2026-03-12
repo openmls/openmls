@@ -6,7 +6,8 @@ use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 use tls_codec::{
-    SecretVLBytes, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
+    SecretVLBytes, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSerializeBytes, TlsSize,
+    VLBytes,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
@@ -85,6 +86,7 @@ impl HashType {
     Serialize,
     Deserialize,
     TlsSerialize,
+    TlsSerializeBytes,
     TlsDeserialize,
     TlsDeserializeBytes,
     TlsSize,

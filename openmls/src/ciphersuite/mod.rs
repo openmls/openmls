@@ -52,6 +52,14 @@ pub use openmls_traits::types::HpkePrivateKey;
 /// compiler.
 #[inline(never)]
 fn equal_ct(a: &[u8], b: &[u8]) -> bool {
+    // The length values can be considered public and checked before the actual
+    // comparison.
+    if a.len() != b.len() {
+        log::error!("Incompatible values");
+        log::trace!("  {} != {}", a.len(), b.len());
+        return false;
+    }
+
     let mut diff = 0u8;
     for (l, r) in a.iter().zip(b.iter()) {
         diff |= l ^ r;

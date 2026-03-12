@@ -155,7 +155,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     /// Thin wrapper around [`MlsGroup::propose_group_context_extensions`].
     fn propose_group_context_extensions(
         &mut self,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
     ) -> (MlsMessageOut, ProposalRef) {
         self.group
             .propose_group_context_extensions(&self.party.provider, extensions, &self.party.signer)
@@ -165,7 +165,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     /// Thin wrapper around [`MlsGroup::update_group_context_extensions`].
     fn update_group_context_extensions(
         &mut self,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
     ) -> (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>) {
         self.group
             .update_group_context_extensions(&self.party.provider, extensions, &self.party.signer)
@@ -290,26 +290,31 @@ fn happy_case() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
     // make extension with type 0xf001 a required capability
-    let (commit, _, _) =
-        alice.update_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+    let (commit, _, _) = alice.update_group_context_extensions(
+        Extensions::single(Extension::RequiredCapabilities(
             RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
-        )));
+        ))
+        .expect("failed to create single-element extensions list"),
+    );
 
     alice.merge_pending_commit();
     bob.process_and_merge_commit(commit.into());
 
     // make extensions with type 0xf001 0xf002 a required capability, too;
     // this time with a separate proposal
-    let (proposal, _) = bob.propose_group_context_extensions(Extensions::single(
-        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-            &[
-                ExtensionType::Unknown(0xf001),
-                ExtensionType::Unknown(0xf002),
-            ],
-            &[],
-            &[],
-        )),
-    ));
+    let (proposal, _) = bob.propose_group_context_extensions(
+        Extensions::single(Extension::RequiredCapabilities(
+            RequiredCapabilitiesExtension::new(
+                &[
+                    ExtensionType::Unknown(0xf001),
+                    ExtensionType::Unknown(0xf002),
+                ],
+                &[],
+                &[],
+            ),
+        ))
+        .expect("failed to create single-element extensions list"),
+    );
 
     alice.process_and_store_proposal(proposal.into());
 
@@ -441,10 +446,12 @@ fn self_update_happy_case_simple() {
 fn fail_insufficient_extensiontype_capabilities_add_valn0103() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
-    let (gce_req_cap_commit, _, _) =
-        alice.update_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+    let (gce_req_cap_commit, _, _) = alice.update_group_context_extensions(
+        Extensions::single(Extension::RequiredCapabilities(
             RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf002)], &[], &[]),
-        )));
+        ))
+        .expect("failed to create single-element extensions list"),
+    );
 
     alice.merge_pending_commit();
     bob.process_and_merge_commit(gce_req_cap_commit.clone().into());
@@ -560,10 +567,12 @@ fn fail_insufficient_extensiontype_capabilities_update_valn0103() {
     let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
 
     // requires that all members need support for extension type 0xf002
-    let (gce_req_cap_commit, _, _) =
-        alice.update_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
+    let (gce_req_cap_commit, _, _) = alice.update_group_context_extensions(
+        Extensions::single(Extension::RequiredCapabilities(
             RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf002)], &[], &[]),
-        )));
+        ))
+        .expect("failed to create single-element extensions list"),
+    );
 
     alice.merge_pending_commit();
     bob.process_and_merge_commit(gce_req_cap_commit.clone().into());
@@ -842,7 +851,8 @@ fn fail_2_gce_proposals_1_commit_valn0308() {
 
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     let (proposal, _) = alice.propose_group_context_extensions(new_extensions.clone());
     bob.process_and_store_proposal(proposal.into());
@@ -868,7 +878,13 @@ fn fail_2_gce_proposals_1_commit_valn0308() {
                         frankenstein::FrankenProposal::GroupContextExtensions(vec![
                             // ideally this should be some unknown extension, but it's tricky
                             // to get the payload set up correctly so we'll just go with this
-                            frankenstein::FrankenExtension::LastResort,
+                            frankenstein::FrankenExtension::RequiredCapabilities(
+                                frankenstein::FrankenRequiredCapabilitiesExtension {
+                                    extension_types: vec![],
+                                    proposal_types: vec![],
+                                    credential_types: vec![],
+                                },
+                            ),
                         ]),
                     );
 
@@ -949,7 +965,8 @@ fn fail_unsupported_gces_add_valn1001() {
 
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     let (original_proposal, _) = bob.propose_group_context_extensions(new_extensions.clone());
 
@@ -1071,7 +1088,8 @@ fn proposal() {
 
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     let (proposal, _) = alice.propose_group_context_extensions(new_extensions.clone());
     bob.process_and_store_proposal(proposal.into());
@@ -1095,7 +1113,8 @@ fn proposal() {
     // === committing to two group context extensions should fail
     let new_extensions_2 = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::RatchetTree], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     alice
         .group
@@ -1131,7 +1150,8 @@ fn proposal() {
     // contains unsupported extension
     let new_extensions = Extensions::single(Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
-    ));
+    ))
+    .expect("failed to create single-element extensions list");
 
     alice
         .group
@@ -1141,4 +1161,629 @@ fn proposal() {
             &alice.party.signer,
         )
         .expect_err("expected an error building GCE proposal with bad required_capabilities");
+}
+
+/// Test that update proposals are rejected when the leaf node doesn't support
+/// group context extensions (valn0602).
+///
+/// This test validates that when processing an update proposal, the leaf node's
+/// capabilities must include all extension types present in the group context extensions.
+///
+/// Test structure:
+/// - Alice creates group with group context extension 0xf003
+/// - Bob proposes self-update, but we tamper with it to remove 0xf003 from capabilities
+/// - Alice commits to the tampered proposal
+/// - Bob should reject the commit with UnsupportedExtensions error
+///
+/// https://validation.openmls.tech/#valn0602
+#[openmls_test]
+fn fail_insufficient_extensiontype_capabilities_update_proposal_valn0502() {
+    let alice_party = PartyState::<Provider>::generate("alice", ciphersuite);
+    let bob_party = PartyState::<Provider>::generate("bob", ciphersuite);
+
+    // Alice creates a group with a group context extension 0xf003
+    let gc_extensions = Extensions::single(Extension::Unknown(
+        0xf003,
+        crate::extensions::UnknownExtension(vec![0x01]),
+    ))
+    .expect("unknown extensions should be considered valid in group context");
+
+    let alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(WireFormatPolicy::new(
+            OutgoingWireFormatPolicy::AlwaysPlaintext,
+            IncomingWireFormatPolicy::Mixed,
+        ))
+        .with_capabilities(
+            Capabilities::builder()
+                .extensions(vec![
+                    ExtensionType::Unknown(0xf001),
+                    ExtensionType::Unknown(0xf002),
+                    ExtensionType::Unknown(0xf003),
+                ])
+                .build(),
+        )
+        .with_group_context_extensions(gc_extensions)
+        .build(
+            &alice_party.provider,
+            &alice_party.signer,
+            alice_party.credential_with_key.clone(),
+        )
+        .expect("error creating group using builder");
+
+    let mut alice = MemberState {
+        party: alice_party,
+        group: alice_group,
+    };
+
+    // Bob joins the group with support for extension 0xf003
+    let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
+        builder.leaf_node_capabilities(
+            Capabilities::builder()
+                .extensions(vec![
+                    ExtensionType::Unknown(0xf001),
+                    ExtensionType::Unknown(0xf002),
+                    ExtensionType::Unknown(0xf003),
+                ])
+                .build(),
+        )
+    });
+
+    alice.propose_add_member(bob_key_package.key_package());
+    let (_, Some(welcome), _) = alice.commit_and_merge_pending() else {
+        panic!("expected receiving a welcome")
+    };
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let bob_group = StagedWelcome::new_from_welcome(
+        &bob_party.provider,
+        alice.group.configuration(),
+        welcome,
+        Some(alice.group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating staged join from Welcome")
+    .into_group(&bob_party.provider)
+    .expect("Error creating group from staged join");
+
+    let mut bob = MemberState {
+        party: bob_party,
+        group: bob_group,
+    };
+
+    // Bob proposes a self-update
+    let (update_prop, _) = bob
+        .group
+        .propose_self_update(
+            &bob.party.provider,
+            &bob.party.signer,
+            LeafNodeParameters::builder().build(),
+        )
+        .unwrap();
+
+    bob.group
+        .clear_pending_proposals(bob.party.provider.storage())
+        .unwrap();
+
+    // Extract the FramedContent from the proposal to tamper with it
+    let frankenstein::FrankenMlsMessage {
+        version,
+        body:
+            frankenstein::FrankenMlsMessageBody::PublicMessage(frankenstein::FrankenPublicMessage {
+                content: mut franken_proposal_content,
+                ..
+            }),
+    } = frankenstein::FrankenMlsMessage::from(update_prop.clone())
+    else {
+        unreachable!()
+    };
+
+    // Get a mutable reference to the leaf node in the update proposal
+    let frankenstein::FrankenFramedContent {
+        body:
+            frankenstein::FrankenFramedContentBody::Proposal(frankenstein::FrankenProposal::Update(
+                frankenstein::FrankenUpdateProposal {
+                    leaf_node: bob_franken_leaf_node,
+                },
+            )),
+        ..
+    } = &mut franken_proposal_content
+    else {
+        unreachable!();
+    };
+
+    // Remove extension type 0xf003 from capabilities (the one in group context)
+    // This makes the update proposal invalid according to valn0602
+    bob_franken_leaf_node
+        .capabilities
+        .extensions
+        .retain(|&e| e != 0xf003);
+
+    // Re-sign the leaf node so signature checks pass
+    bob_franken_leaf_node.resign(
+        Some(frankenstein::FrankenTreePosition {
+            group_id: bob.group.group_id().as_slice().to_vec().into(),
+            leaf_index: bob.group.own_leaf_index().u32(),
+        }),
+        &bob.party.signer,
+    );
+
+    // Prepare data needed for the proposal
+    let group_context = bob.group.export_group_context().clone();
+    let secrets = bob.group.message_secrets();
+    let membership_key = secrets.membership_key().as_slice();
+
+    // Build the tampered proposal message
+    let franken_proposal = frankenstein::FrankenMlsMessage {
+        version,
+        body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+            frankenstein::FrankenPublicMessage::auth(
+                &bob.party.provider,
+                ciphersuite,
+                &bob.party.signer,
+                franken_proposal_content.clone(),
+                Some(&group_context.into()),
+                Some(membership_key),
+                None, // proposals don't have confirmation tags
+            ),
+        ),
+    };
+
+    let fake_proposal = MlsMessageIn::tls_deserialize(
+        &mut franken_proposal
+            .tls_serialize_detached()
+            .unwrap()
+            .as_slice(),
+    )
+    .unwrap();
+
+    // Alice stores the tampered proposal
+    alice.process_and_store_proposal(fake_proposal.clone());
+
+    // Bob also stores it to get the proposal ref
+    let proposal_ref = bob.process_and_store_proposal(fake_proposal);
+
+    // Craft a commit by Alice that commits to the tampered proposal
+    let alice_sender = frankenstein::FrankenSender::Member(0);
+    let commit_content = frankenstein::FrankenFramedContent {
+        sender: alice_sender,
+        body: frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
+            proposals: vec![frankenstein::FrankenProposalOrRef::Reference(
+                proposal_ref.as_slice().to_vec().into(),
+            )],
+            path: None,
+        }),
+        ..franken_proposal_content
+    };
+
+    // Prepare data for the commit
+    let group_context = alice.group.export_group_context().clone();
+    let secrets = alice.group.message_secrets();
+    let membership_key = secrets.membership_key().as_slice();
+
+    let franken_commit = frankenstein::FrankenMlsMessage {
+        version,
+        body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+            frankenstein::FrankenPublicMessage::auth(
+                &alice.party.provider,
+                ciphersuite,
+                &alice.party.signer,
+                commit_content,
+                Some(&group_context.into()),
+                Some(membership_key),
+                Some(vec![0; 32].into()), // dummy confirmation tag
+            ),
+        ),
+    };
+
+    let fake_commit = MlsMessageIn::tls_deserialize(
+        &mut franken_commit.tls_serialize_detached().unwrap().as_slice(),
+    )
+    .unwrap();
+
+    // Bob processes the commit and should get an UnsupportedExtensions error
+    let err = bob.fail_processing(fake_commit);
+
+    assert!(
+        matches!(
+            err,
+            ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+                ProposalValidationError::LeafNodeValidation(
+                    LeafNodeValidationError::UnsupportedExtensions
+                )
+            ))
+        ),
+        "expected UnsupportedExtensions error, got: {err} ({err:#?})"
+    );
+}
+
+/// Test that commits with update paths are rejected when the leaf node in the path
+/// doesn't support group context extensions (valn1210).
+///
+/// This test validates that when processing a commit with an update path, the leaf node
+/// in the path must support all extension types present in the group context extensions.
+///
+/// Test structure:
+/// - Alice creates group with group context extension 0xf003
+/// - Bob joins the group
+/// - Bob creates a commit with an update path using force_self_update
+/// - We tamper with the commit to remove 0xf003 from the path leaf node capabilities
+/// - Alice should reject the commit with UnsupportedExtensions error
+///
+/// https://validation.openmls.tech/#valn1210
+#[openmls_test]
+fn fail_insufficient_extensiontype_capabilities_commit_path_valn0502() {
+    let alice_party = PartyState::<Provider>::generate("alice", ciphersuite);
+    let bob_party = PartyState::<Provider>::generate("bob", ciphersuite);
+
+    // Alice creates a group with a group context extension 0xf003
+    let gc_extensions = Extensions::single(Extension::Unknown(
+        0xf003,
+        crate::extensions::UnknownExtension(vec![0x01]),
+    ))
+    .expect("unknown extensions should be considered valid in group context");
+
+    let alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(WireFormatPolicy::new(
+            OutgoingWireFormatPolicy::AlwaysPlaintext,
+            IncomingWireFormatPolicy::Mixed,
+        ))
+        .with_capabilities(
+            Capabilities::builder()
+                .extensions(vec![
+                    ExtensionType::Unknown(0xf001),
+                    ExtensionType::Unknown(0xf002),
+                    ExtensionType::Unknown(0xf003),
+                ])
+                .build(),
+        )
+        .with_group_context_extensions(gc_extensions)
+        .build(
+            &alice_party.provider,
+            &alice_party.signer,
+            alice_party.credential_with_key.clone(),
+        )
+        .expect("error creating group using builder");
+
+    let mut alice = MemberState {
+        party: alice_party,
+        group: alice_group,
+    };
+
+    // Bob joins the group with support for extension 0xf003
+    let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
+        builder.leaf_node_capabilities(
+            Capabilities::builder()
+                .extensions(vec![
+                    ExtensionType::Unknown(0xf001),
+                    ExtensionType::Unknown(0xf002),
+                    ExtensionType::Unknown(0xf003),
+                ])
+                .build(),
+        )
+    });
+
+    alice.propose_add_member(bob_key_package.key_package());
+    let (_, Some(welcome), _) = alice.commit_and_merge_pending() else {
+        panic!("expected receiving a welcome")
+    };
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let bob_group = StagedWelcome::new_from_welcome(
+        &bob_party.provider,
+        alice.group.configuration(),
+        welcome,
+        Some(alice.group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating staged join from Welcome")
+    .into_group(&bob_party.provider)
+    .expect("Error creating group from staged join");
+
+    let mut bob = MemberState {
+        party: bob_party,
+        group: bob_group,
+    };
+
+    // Bob creates a commit with an update path (using force_self_update)
+    let commit_bundle = bob
+        .group
+        .commit_builder()
+        .force_self_update(true)
+        .load_psks(bob.party.provider.storage())
+        .unwrap()
+        .build(
+            bob.party.provider.rand(),
+            bob.party.provider.crypto(),
+            &bob.party.signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(&bob.party.provider)
+        .unwrap();
+
+    let commit_msg = commit_bundle.commit().clone();
+
+    bob.group
+        .clear_pending_commit(bob.party.provider.storage())
+        .unwrap();
+
+    // Extract the commit to tamper with it
+    let frankenstein::FrankenMlsMessage {
+        version,
+        body:
+            frankenstein::FrankenMlsMessageBody::PublicMessage(frankenstein::FrankenPublicMessage {
+                content: mut franken_commit_content,
+                ..
+            }),
+    } = frankenstein::FrankenMlsMessage::from(commit_msg.clone())
+    else {
+        unreachable!()
+    };
+
+    // Get a mutable reference to the update path in the commit
+    let frankenstein::FrankenFramedContent {
+        body:
+            frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
+                path: Some(ref mut path),
+                ..
+            }),
+        ..
+    } = &mut franken_commit_content
+    else {
+        unreachable!("expected commit with update path");
+    };
+
+    // Remove extension type 0xf003 from the leaf node capabilities in the path
+    // This makes the commit invalid according to valn1210
+    path.leaf_node
+        .capabilities
+        .extensions
+        .retain(|&e| e != 0xf003);
+
+    // Re-sign the leaf node so signature checks pass
+    path.leaf_node.resign(
+        Some(frankenstein::FrankenTreePosition {
+            group_id: bob.group.group_id().as_slice().to_vec().into(),
+            leaf_index: bob.group.own_leaf_index().u32(),
+        }),
+        &bob.party.signer,
+    );
+
+    // Prepare data needed for the commit
+    let group_context = bob.group.export_group_context().clone();
+    let secrets = bob.group.message_secrets();
+    let membership_key = secrets.membership_key().as_slice();
+
+    // Build the tampered commit message
+    let franken_commit = frankenstein::FrankenMlsMessage {
+        version,
+        body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+            frankenstein::FrankenPublicMessage::auth(
+                &bob.party.provider,
+                ciphersuite,
+                &bob.party.signer,
+                franken_commit_content,
+                Some(&group_context.into()),
+                Some(membership_key),
+                Some(vec![0; 32].into()), // dummy confirmation tag
+            ),
+        ),
+    };
+
+    let fake_commit = MlsMessageIn::tls_deserialize(
+        &mut franken_commit.tls_serialize_detached().unwrap().as_slice(),
+    )
+    .unwrap();
+
+    // Alice processes the commit and should get an UnsupportedExtensions error
+    let err = alice.fail_processing(fake_commit);
+
+    assert!(
+        matches!(
+            err,
+            ProcessMessageError::InvalidCommit(StageCommitError::LeafNodeValidation(
+                LeafNodeValidationError::UnsupportedExtensions
+            ))
+        ),
+        "expected UnsupportedExtensions error, got: {err} ({err:#?})"
+    );
+}
+
+/// Test that creating update proposals locally fails when the leaf node parameters
+/// don't support group context extensions (pre-validation).
+///
+/// This test validates that when creating an update proposal locally, the API should
+/// pre-validate that the leaf node parameters support all extension types present in
+/// the group context extensions, similar to how commit_builder validates with force_self_update.
+///
+/// Test structure:
+/// - Alice creates group with group context extension 0xf003
+/// - Bob joins the group
+/// - Bob attempts to create an update proposal with leaf node parameters that don't support 0xf003
+/// - The proposal creation should fail with UnsupportedExtensions error
+///
+/// https://validation.openmls.tech/#valn0602
+#[openmls_test]
+fn fail_create_update_proposal_insufficient_capabilities() {
+    let alice_party = PartyState::<Provider>::generate("alice", ciphersuite);
+    let bob_party = PartyState::<Provider>::generate("bob", ciphersuite);
+
+    // Alice creates a group with a group context extension 0xf003
+    let gc_extensions = Extensions::single(Extension::Unknown(
+        0xf003,
+        crate::extensions::UnknownExtension(vec![0x01]),
+    ))
+    .expect("unknown extensions should be considered valid in group context");
+
+    let alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(WireFormatPolicy::new(
+            OutgoingWireFormatPolicy::AlwaysPlaintext,
+            IncomingWireFormatPolicy::Mixed,
+        ))
+        .with_capabilities(
+            Capabilities::builder()
+                .extensions(vec![
+                    ExtensionType::Unknown(0xf001),
+                    ExtensionType::Unknown(0xf002),
+                    ExtensionType::Unknown(0xf003),
+                ])
+                .build(),
+        )
+        .with_group_context_extensions(gc_extensions)
+        .build(
+            &alice_party.provider,
+            &alice_party.signer,
+            alice_party.credential_with_key.clone(),
+        )
+        .expect("error creating group using builder");
+
+    let mut alice = MemberState {
+        party: alice_party,
+        group: alice_group,
+    };
+
+    // Bob joins the group with support for extension 0xf003
+    let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
+        builder.leaf_node_capabilities(
+            Capabilities::builder()
+                .extensions(vec![
+                    ExtensionType::Unknown(0xf001),
+                    ExtensionType::Unknown(0xf002),
+                    ExtensionType::Unknown(0xf003),
+                ])
+                .build(),
+        )
+    });
+
+    alice.propose_add_member(bob_key_package.key_package());
+    let (_, Some(welcome), _) = alice.commit_and_merge_pending() else {
+        panic!("expected receiving a welcome")
+    };
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    let bob_group = StagedWelcome::new_from_welcome(
+        &bob_party.provider,
+        alice.group.configuration(),
+        welcome,
+        Some(alice.group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating staged join from Welcome")
+    .into_group(&bob_party.provider)
+    .expect("Error creating group from staged join");
+
+    let mut bob = MemberState {
+        party: bob_party,
+        group: bob_group,
+    };
+
+    // Bob tries to create an update proposal with leaf node parameters
+    // that don't support extension 0xf003 (only supports 0xf001 and 0xf002)
+    let bad_params = LeafNodeParameters::builder()
+        .with_capabilities(
+            Capabilities::builder()
+                .extensions(vec![
+                    ExtensionType::Unknown(0xf001),
+                    ExtensionType::Unknown(0xf002),
+                    // Missing 0xf003!
+                ])
+                .build(),
+        )
+        .build();
+
+    // This should fail because the leaf node doesn't support all group context extensions
+    // Once validation (valn0602) is implemented for propose_self_update, this will return an error
+    // Until then, this test will fail because no error is returned
+    bob.group
+        .propose_self_update(
+            &bob.party.provider,
+            &bob.party.signer,
+            bad_params,
+        )
+        .expect_err(
+            "proposal creation should fail with validation error due to unsupported group context extensions (valn0602)"
+        );
+}
+
+// NOTE: Need to disable the check for valn0502 in group/public_group/validation.rs for this to
+//       run. Otherwise we won't be able to create an illegal commit.
+#[openmls_test]
+#[ignore]
+fn join_rejects_unsupported_group_context_extension() {
+    let alice_party = PartyState::<Provider>::generate("alice", ciphersuite);
+    let bob_party = PartyState::<Provider>::generate("bob", ciphersuite);
+
+    let gc_extensions = Extensions::single(Extension::Unknown(
+        0x4141,
+        crate::extensions::UnknownExtension(vec![0x01]),
+    ))
+    .expect("unknown extensions should be considered valid in group context");
+
+    let alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(WireFormatPolicy::new(
+            OutgoingWireFormatPolicy::AlwaysPlaintext,
+            IncomingWireFormatPolicy::Mixed,
+        ))
+        .with_group_context_extensions(gc_extensions)
+        .build(
+            &alice_party.provider,
+            &alice_party.signer,
+            alice_party.credential_with_key.clone(),
+        )
+        .expect("error creating group using builder");
+
+    let mut alice = MemberState {
+        party: alice_party,
+        group: alice_group,
+    };
+
+    let bob_key_package = bob_party.key_package(ciphersuite, |builder| builder);
+    alice.propose_add_member(bob_key_package.key_package());
+
+    let (_, Some(welcome), _) = alice.commit_and_merge_pending() else {
+        panic!("expected receiving a welcome")
+    };
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected message to be a welcome");
+
+    if let Ok(staged) = StagedWelcome::new_from_welcome(
+        &bob_party.provider,
+        alice.group.configuration(),
+        welcome,
+        Some(alice.group.export_ratchet_tree().into()),
+    ) {
+        assert!(alice
+            .group
+            .extensions()
+            .contains(ExtensionType::Unknown(0x4141)));
+
+        assert!(!bob_party
+            .key_package_bundle
+            .key_package
+            .extensions()
+            .contains(ExtensionType::Unknown(0x4141)));
+
+        assert!(staged
+            .group_context()
+            .extensions()
+            .contains(ExtensionType::Unknown(0x4141)));
+
+        unreachable!("join should reject unsupported GroupContext extensions");
+    }
 }

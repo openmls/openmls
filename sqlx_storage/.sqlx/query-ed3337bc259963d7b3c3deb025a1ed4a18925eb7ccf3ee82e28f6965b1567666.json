@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR REPLACE INTO openmls_encryption_key (public_key, key_pair) VALUES (?1, ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "ed3337bc259963d7b3c3deb025a1ed4a18925eb7ccf3ee82e28f6965b1567666"
+}

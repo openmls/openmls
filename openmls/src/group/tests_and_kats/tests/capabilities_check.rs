@@ -354,3 +354,82 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
         )
         .expect("Should succeed");
 }
+
+// Ensure that removed members are skipped in the capabilities check
+//   - Test that when removing a member from the group, their capabilities are no longer
+//     considered when using a new proposal/extension/credential.
+#[openmls_test::openmls_test]
+fn valn0311_removed_member_capabilities_skipped_in_check() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let charlie_party = CorePartyState::<Provider>::new("charlie");
+
+    let non_default_proposal_id = 0xFFFF;
+    let non_default_proposal_type = ProposalType::Custom(non_default_proposal_id);
+
+    // Capabilities that support the non default proposal in addition to the basic ones.
+    let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .proposals(vec![non_default_proposal_type])
+        .build();
+
+    // Alice and Bob support the non-default proposal type
+    let alice_pre_group = alice_party
+        .pre_group_builder(ciphersuite)
+        .with_leaf_node_capabilities(capabilities.clone())
+        .build();
+    let bob_pre_group = bob_party
+        .pre_group_builder(ciphersuite)
+        .with_leaf_node_capabilities(capabilities.clone())
+        .build();
+
+    // Charlie only supports the basic proposal types
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+
+    // Create config
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(capabilities.clone())
+        .build();
+
+    // Join config
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    // Initialize the group state
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group, charlie_pre_group],
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let non_default_proposal = Proposal::custom(CustomProposal::new(
+        non_default_proposal_id,
+        vec![0, 1, 2, 3],
+    ));
+
+    let mut members = group_state.members_mut(&["alice"]);
+    let alice_group_state = members.get_mut(0).unwrap();
+
+    // Remove Charlie and at the same time commit to a proposal that charlie doesn't support
+    let commit = alice_group_state
+        .build_commit_and_stage(|builder| {
+            builder
+                .propose_removals(vec![LeafNodeIndex::new(2)])
+                .add_proposals(vec![non_default_proposal])
+        })
+        .unwrap();
+
+    group_state
+        .deliver_and_apply_if(commit.into_commit().into(), |member| {
+            member.party.core_state.name != "alice"
+        })
+        .unwrap();
+}

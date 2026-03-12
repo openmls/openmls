@@ -253,7 +253,8 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
             &alice_provider,
             Extensions::single(Extension::RequiredCapabilities(
                 RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[]),
-            )),
+            ))
+            .unwrap(),
             &alice_signer,
         )
         .unwrap();
@@ -619,9 +620,10 @@ fn test() {
 
             assert_eq!(
                 gce_proposal.extensions(),
-                &Extensions::single(Extension::RequiredCapabilities(
+                &Extensions::<GroupContext>::single(Extension::RequiredCapabilities(
                     RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf042)], &[], &[])
                 ))
+                .unwrap()
             );
         }
         None => panic!("expected a pending commit"),

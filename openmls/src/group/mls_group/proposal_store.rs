@@ -14,11 +14,12 @@ use crate::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
         ProposalType, RemoveProposal, UpdateProposal,
     },
+    schedule::PreSharedKeyId,
     utils::vector_converter,
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::messages::proposals::AppEphemeralProposal;
+use crate::messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal};
 
 #[derive(Debug, Clone)]
 pub(crate) struct SelfRemoveInStore {
@@ -50,7 +51,11 @@ impl ProposalStore {
     pub(crate) fn add(&mut self, queued_proposal: QueuedProposal) {
         self.queued_proposals.push(queued_proposal);
     }
-    pub(crate) fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+
+    /// Returns an iterator over the stored [`Proposal`]s and [`ProposalRef`]s
+    ///
+    /// [`ProposalRef`]: crate::ciphersuite::hash_ref::ProposalRef
+    pub fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.queued_proposals.iter()
     }
     pub(crate) fn is_empty(&self) -> bool {
@@ -170,7 +175,7 @@ impl QueuedProposal {
     }
 
     /// Returns the `ProposalRef`.
-    pub(crate) fn proposal_reference_ref(&self) -> &ProposalRef {
+    pub fn proposal_reference_ref(&self) -> &ProposalRef {
         &self.proposal_reference
     }
 
@@ -213,6 +218,30 @@ impl OrderedProposalRefs {
     /// they were inserted.
     fn iter(&self) -> impl Iterator<Item = &ProposalRef> {
         self.ordered_proposal_refs.iter()
+    }
+}
+
+#[derive(Default)]
+struct PskProposalDuplicateChecker {
+    psk_proposals: HashSet<PreSharedKeyId>,
+}
+
+impl PskProposalDuplicateChecker {
+    /// Checks whether the given proposal is a duplicate Psk proposal
+    /// (https://validation.openmls.tech/#valn0307). If it is, it returns an
+    /// error.
+    ///
+    ///
+    fn check(&mut self, proposal: &Proposal) -> Result<(), FromCommittedProposalsError> {
+        if let Proposal::PreSharedKey(psk_proposal) = proposal {
+            let psk_id = psk_proposal.clone().into_psk_id();
+            if self.psk_proposals.contains(&psk_id) {
+                return Err(FromCommittedProposalsError::DuplicatePskId(psk_id));
+            } else {
+                self.psk_proposals.insert(psk_id);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -265,6 +294,8 @@ impl ProposalQueue {
         // Build the actual queue
         let mut proposal_queue = ProposalQueue::default();
 
+        let mut psk_proposal_duplicate_checker = PskProposalDuplicateChecker::default();
+
         // Iterate over the committed proposals and insert the proposals in the queue
         log::trace!("   committed proposals ...");
         for proposal_or_ref in committed_proposals.into_iter() {
@@ -272,6 +303,7 @@ impl ProposalQueue {
             let queued_proposal = match proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
+                    // https://validation.openmls.tech/#valn0303
                     if proposal
                         .as_remove()
                         .and_then(|remove_proposal| {
@@ -284,6 +316,9 @@ impl ProposalQueue {
                     {
                         return Err(FromCommittedProposalsError::SelfRemoval);
                     };
+
+                    // https://validation.openmls.tech/#valn0307
+                    psk_proposal_duplicate_checker.check(&proposal)?;
 
                     QueuedProposal::from_proposal_and_sender(
                         ciphersuite,
@@ -304,6 +339,9 @@ impl ProposalQueue {
                                     }
                                 }
                             }
+
+                            // https://validation.openmls.tech/#valn0307
+                            psk_proposal_duplicate_checker.check(&queued_proposal.proposal)?;
 
                             queued_proposal.clone()
                         }
@@ -441,6 +479,42 @@ impl ProposalQueue {
             }
         })
     }
+    #[cfg(feature = "extensions-draft-08")]
+    /// Returns an iterator over all AppDataUpdate proposals in the queue, sorted by Component ID
+    pub(crate) fn app_data_update_proposals(
+        &self,
+    ) -> impl Iterator<Item = QueuedAppDataUpdateProposal<'_>> {
+        let mut proposals: Vec<_> = self
+            .queued_proposals()
+            .filter_map(|queued_proposal| {
+                if let Proposal::AppDataUpdate(app_data_update_proposal) =
+                    queued_proposal.proposal()
+                {
+                    let sender = queued_proposal.sender();
+
+                    Some(QueuedAppDataUpdateProposal {
+                        app_data_update_proposal,
+                        sender,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        proposals.sort_by_key(|proposal| {
+            (
+                proposal.app_data_update_proposal.component_id(),
+                // This reverses the sort order and puts removes first
+                u8::MAX
+                    - (proposal
+                        .app_data_update_proposal
+                        .operation()
+                        .operation_type() as u8),
+            )
+        });
+        proposals.into_iter()
+    }
 
     /// Filters received proposals
     ///
@@ -502,6 +576,8 @@ impl ProposalQueue {
 
         // Parse proposals and build adds and member list
         for queued_proposal in iter {
+            // NOTE: identical proposals (which have the same hash reference)
+            // are automatically deduplicated by this step.
             proposal_pool.insert(
                 queued_proposal.proposal_reference(),
                 queued_proposal.clone(),
@@ -541,6 +617,10 @@ impl ProposalQueue {
                 }
                 Proposal::GroupContextExtensions(_) => {
                     valid_proposals.add(queued_proposal.proposal_reference());
+                }
+                #[cfg(feature = "extensions-draft-08")]
+                Proposal::AppDataUpdate(_) => {
+                    valid_proposals.add(queued_proposal.proposal_reference())
                 }
                 Proposal::SelfRemove => {
                     let Sender::Member(removed) = queued_proposal.sender() else {
@@ -729,12 +809,31 @@ pub struct QueuedAppEphemeralProposal<'a> {
     app_ephemeral_proposal: &'a AppEphemeralProposal,
     sender: &'a Sender,
 }
+#[cfg(feature = "extensions-draft-08")]
+/// A queued AppDataUpdate proposal
+#[derive(PartialEq, Debug)]
+pub struct QueuedAppDataUpdateProposal<'a> {
+    pub(crate) app_data_update_proposal: &'a AppDataUpdateProposal,
+    sender: &'a Sender,
+}
 
 #[cfg(feature = "extensions-draft-08")]
 impl QueuedAppEphemeralProposal<'_> {
     /// Returns a reference to the proposal
     pub fn app_ephemeral_proposal(&self) -> &AppEphemeralProposal {
         self.app_ephemeral_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+#[cfg(feature = "extensions-draft-08")]
+impl QueuedAppDataUpdateProposal<'_> {
+    /// Returns a reference to the proposal
+    pub fn app_data_update_proposal(&self) -> &AppDataUpdateProposal {
+        self.app_data_update_proposal
     }
 
     /// Returns a reference to the sender

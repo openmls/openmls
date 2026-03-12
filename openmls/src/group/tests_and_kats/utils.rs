@@ -8,7 +8,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{signatures::Signer, types::SignatureScheme};
-use rand::{rngs::OsRng, RngCore};
+use rand::{rngs::OsRng, RngCore, TryRngCore};
 use tls_codec::Serialize;
 
 use crate::{
@@ -185,16 +185,16 @@ pub(crate) fn setup(
                     .borrow_mut();
                 // Create the local group state of the new member based on the
                 // Welcome.
-                let ratchet_tree = Some(mls_group.export_ratchet_tree().into());
-                let new_group = StagedWelcome::new_from_welcome(
-                    provider,
-                    &join_config,
-                    welcome.clone(),
-                    ratchet_tree,
-                )
-                .unwrap()
-                .into_group(provider)
-                .unwrap();
+                let processed_welcome =
+                    ProcessedWelcome::new_from_welcome(provider, &join_config, welcome.clone())
+                        .unwrap();
+                let new_group = JoinBuilder::new(provider, processed_welcome)
+                    .with_ratchet_tree(mls_group.export_ratchet_tree().into())
+                    .replace_old_group()
+                    .build()
+                    .unwrap()
+                    .into_group(provider)
+                    .unwrap();
 
                 new_group_member
                     .group_states
@@ -210,13 +210,13 @@ pub(crate) fn setup(
 }
 
 pub fn random_usize() -> usize {
-    OsRng.next_u64() as usize
+    OsRng.unwrap_mut().next_u64() as usize
 }
 
 /// No crypto randomness!
 pub fn randombytes(n: usize) -> Vec<u8> {
     let mut out = vec![0u8; n];
-    OsRng.fill_bytes(&mut out);
+    OsRng.unwrap_mut().fill_bytes(&mut out);
     out
 }
 
@@ -284,7 +284,7 @@ pub(crate) fn generate_credential_with_key<Provider: OpenMlsProvider>(
 // Helper function to generate a KeyPackageBundle
 pub(crate) fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    extensions: Extensions,
+    extensions: Extensions<KeyPackage>,
     provider: &Provider,
     credential_with_keys: CredentialWithKeyAndSigner,
 ) -> KeyPackageBundle {

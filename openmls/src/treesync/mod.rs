@@ -371,7 +371,7 @@ impl fmt::Display for RatchetTree {
 /// merging a diff.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
-pub(crate) struct TreeSync {
+pub struct TreeSync {
     tree: MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode>,
     tree_hash: Vec<u8>,
 }
@@ -388,7 +388,7 @@ impl TreeSync {
         credential_with_key: CredentialWithKey,
         life_time: Lifetime,
         capabilities: Capabilities,
-        extensions: Extensions,
+        extensions: Extensions<LeafNode>,
     ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LibraryError> {
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
@@ -419,6 +419,11 @@ impl TreeSync {
         tree_sync.populate_parent_hashes(provider.crypto(), ciphersuite)?;
 
         Ok((tree_sync, commit_secret, encryption_key_pair))
+    }
+
+    /// Return the full tree
+    pub(crate) fn tree(&self) -> &MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode> {
+        &self.tree
     }
 
     /// Return the tree hash of the root node of the tree.
@@ -563,17 +568,31 @@ impl TreeSync {
     }
 
     /// Returns an iterator over the (non-blank) [`LeafNode`]s in the tree.
-    pub(crate) fn full_leaves(&self) -> impl Iterator<Item = &LeafNode> {
+    pub fn full_leaves(&self) -> impl Iterator<Item = (LeafNodeIndex, &LeafNode)> {
         self.tree
             .leaves()
-            .filter_map(|(_, tsn)| tsn.node().as_ref())
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map(|ln| (index, ln)))
     }
 
     /// Returns an iterator over the (non-blank) [`ParentNode`]s in the tree.
-    pub(crate) fn full_parents(&self) -> impl Iterator<Item = (ParentNodeIndex, &ParentNode)> {
+    pub fn full_parents(&self) -> impl Iterator<Item = (ParentNodeIndex, &ParentNode)> {
         self.tree
             .parents()
             .filter_map(|(index, tsn)| tsn.node().as_ref().map(|pn| (index, pn)))
+    }
+
+    /// Returns an iterator over the [`ParentNodeIndex`]es of blank [`ParentNode`]s in the tree.
+    pub fn blank_parents<'a>(&'a self) -> impl Iterator<Item = ParentNodeIndex> + 'a {
+        self.tree
+            .parents()
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map_or(Some(index), |_| None))
+    }
+
+    /// Returns an iterator over the [`LeafNodeIndex`]es of blank [`LeafNode`]s in the tree.
+    pub fn blank_leaves<'a>(&'a self) -> impl Iterator<Item = LeafNodeIndex> + 'a {
+        self.tree
+            .leaves()
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map_or(Some(index), |_| None))
     }
 
     /// Returns the index of the last full leaf in the tree.
@@ -591,7 +610,7 @@ impl TreeSync {
     ///
     /// XXX: For performance reasons we probably want to have this in a borrowing
     ///      version as well. But it might well go away again.
-    pub(crate) fn full_leave_members(&self) -> impl Iterator<Item = Member> + '_ {
+    pub(crate) fn full_leaf_members(&self) -> impl Iterator<Item = Member> + '_ {
         self.tree
             .leaves()
             // Filter out blank nodes

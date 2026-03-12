@@ -6,7 +6,9 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 use super::LeafNode;
 use crate::{
     credentials::CredentialType,
-    extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
+    extensions::{
+        Extension, ExtensionType, ExtensionValidator, Extensions, RequiredCapabilitiesExtension,
+    },
     messages::proposals::ProposalType,
     treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
@@ -174,8 +176,11 @@ impl Capabilities {
     }
 
     /// Check if these [`Capabilities`] contain all the extensions.
-    pub(crate) fn contains_extensions(&self, extension: &Extensions) -> bool {
-        extension
+    pub(crate) fn contains_extensions(
+        &self,
+        extensions: &Extensions<impl ExtensionValidator>,
+    ) -> bool {
+        extensions
             .iter()
             .map(Extension::extension_type)
             .all(|e| e.is_default() || self.extensions().contains(&e))

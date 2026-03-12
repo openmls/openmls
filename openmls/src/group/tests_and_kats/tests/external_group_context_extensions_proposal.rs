@@ -36,10 +36,10 @@ fn new_test_group(
                 .extensions(vec![ExtensionType::Unknown(0xf001)])
                 .build(),
         )
-        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(
-            external_senders,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::ExternalSenders(external_senders))
+                .expect("failed to create single-element extensions list"),
+        )
         .build();
 
     let group = MlsGroup::new_with_group_id(
@@ -156,12 +156,13 @@ fn external_group_context_ext_proposal_should_succeed() {
         .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_with_key.credential_with_key.credential) )));
 
     let old_extensions = alice_group.extensions().to_owned();
-    assert!(!old_extensions.contains(ExtensionType::ExternalPub));
+    assert!(!old_extensions.contains(ExtensionType::ApplicationId));
 
     // define the new group context extensions
-    let extensions = Extensions::single(Extension::ExternalPub(ExternalPubExtension::new(
-        vec![1, 2, 3].into(),
-    )));
+    let extensions = Extensions::single(Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[], &[], &[]),
+    ))
+    .expect("failed to create single-element extensions list");
 
     // Now Delivery Service wants to update the group context extensions
     let external_group_context_ext_proposal: MlsMessageIn =
@@ -204,7 +205,7 @@ fn external_group_context_ext_proposal_should_succeed() {
     assert_ne!(*alice_group.extensions(), old_extensions);
     assert!(alice_group
         .extensions()
-        .contains(ExtensionType::ExternalPub));
+        .contains(ExtensionType::RequiredCapabilities));
 }
 
 #[openmls_test]

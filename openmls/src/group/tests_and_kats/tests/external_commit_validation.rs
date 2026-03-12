@@ -7,6 +7,7 @@ use tls_codec::{Deserialize, Serialize};
 use self::utils::*;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
+    extensions::{Extension, UnknownExtension},
     framing::{
         mls_auth_content_in::AuthenticatedContentIn, ContentType, DecryptedMessage,
         FramedContentBody, MlsMessageIn, ProtocolMessage, Sender,
@@ -18,13 +19,14 @@ use crate::{
         tests_and_kats::utils::{
             generate_credential_with_key, generate_key_package, resign_external_commit,
         },
-        Extensions, MlsGroup, OpenMlsSignaturePublicKey, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
-        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        CreateCommitError, Extensions, MlsGroup, MlsGroupCreateConfig, OpenMlsSignaturePublicKey,
+        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::{
         AddProposal, ExternalInitProposal, GroupContextExtensionProposal, Proposal, ProposalOrRef,
         ProposalType, ReInitProposal,
     },
+    treesync::errors::LeafNodeValidationError,
 };
 
 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
@@ -296,9 +298,11 @@ fn test_valsem242() {
             }))
         };
 
+        let gce = alice_group.context().extensions().clone();
+
         let gce_proposal = {
             ProposalOrRef::proposal(Proposal::group_context_extensions(
-                GroupContextExtensionProposal::new(alice_group.context().extensions().clone()),
+                GroupContextExtensionProposal::new(gce),
             ))
         };
 
@@ -660,6 +664,84 @@ fn test_pure_ciphertext() {
     assert!(alice_group
         .process_message(alice_provider, public_message_commit)
         .is_ok());
+}
+
+// External Commit: The capabilities of the leaf node in the path MUST
+// support all group context extensions.
+// https://validation.openmls.tech/#valn0502
+#[openmls_test::openmls_test]
+fn test_external_commit_unsupported_group_context_extension() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    // Generate credentials
+    let alice_credential = generate_credential_with_key(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let bob_credential = generate_credential_with_key(
+        "Bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    // Create group context extensions with a custom extension
+    let gc_extensions =
+        Extensions::single(Extension::Unknown(0x4141, UnknownExtension(vec![0x01])))
+            .expect("unknown extensions should be considered valid in group context");
+
+    // Alice creates a group with the custom group context extension
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .with_group_context_extensions(gc_extensions)
+        .build();
+
+    let alice_group = MlsGroup::new(
+        alice_provider,
+        &alice_credential.signer,
+        &mls_group_create_config,
+        alice_credential.credential_with_key.clone(),
+    )
+    .unwrap();
+
+    // Export group info for Bob
+    let verifiable_group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_credential.signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+    let tree_option = alice_group.export_ratchet_tree();
+
+    // Bob attempts to join via external commit
+    // Bob's key package does NOT explicitly support extension 0x4141,
+    // therefore it fails
+    let err = MlsGroup::external_commit_builder()
+        .with_config(alice_group.configuration().clone())
+        .with_ratchet_tree(tree_option.into())
+        .build_group(
+            bob_provider,
+            verifiable_group_info,
+            bob_credential.credential_with_key.clone(),
+        )
+        .unwrap()
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_credential.signer,
+            |_| true,
+        )
+        .expect_err("bob can't join because he doesn't have capabilities for an extension in the group context");
+
+    // Verify error type
+    assert!(matches!(
+        err,
+        CreateCommitError::LeafNodeValidation(LeafNodeValidationError::UnsupportedExtensions)
+    ));
 }
 
 mod utils {

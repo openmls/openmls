@@ -110,6 +110,7 @@ pub(crate) struct PskBundle {
     TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
+    Hash,
 )]
 pub struct ResumptionPsk {
     pub(crate) usage: ResumptionPskUsage,
@@ -157,6 +158,7 @@ impl ResumptionPsk {
     TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
+    Hash,
 )]
 #[repr(u8)]
 pub enum Psk {
@@ -218,6 +220,7 @@ pub enum PskType {
     TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
+    Hash,
 )]
 pub struct PreSharedKeyId {
     pub(crate) psk: Psk,
@@ -300,7 +303,7 @@ impl PreSharedKeyId {
 
     // ----- Validation ----------------------------------------------------------------------------
 
-    pub(crate) fn validate_in_proposal(self, ciphersuite: Ciphersuite) -> Result<Self, PskError> {
+    pub(crate) fn validate_in_proposal(self, ciphersuite: Ciphersuite) -> Result<(), PskError> {
         // ValSem402
         match self.psk() {
             Psk::Resumption(resumption_psk) => {
@@ -330,7 +333,7 @@ impl PreSharedKeyId {
             }
         }
 
-        Ok(self)
+        Ok(())
     }
 
     pub(crate) fn validate_in_welcome(

@@ -15,10 +15,18 @@ do, we provide two implementations that can be used.
 The go-to default at the moment is an implementation using commonly used, native
 Rust crypto implementations.
 
+Supported ciphersuites
+- MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+- MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
+- MLS_128_DHKEMP256_AES128GCM_SHA256_P256
+
 **Libcrux Crypto Provider**
 A crypto provider backed by the high-assurance cryptography library [libcrux].
-Currently only supports relatively modern x86 and amd64 CPUs, as it requires
-AES-NI, SIMD and AVX.
+
+Supported ciphersuites
+- MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+- MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
+- MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519
 
 ## The Traits
 

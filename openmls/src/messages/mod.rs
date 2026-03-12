@@ -59,7 +59,16 @@ use self::{proposals::*, proposals_in::ProposalOrRefIn};
 /// } Welcome;
 /// ```
 #[derive(
-    Clone, Debug, Eq, PartialEq, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+    serde::Serialize,
+    serde::Deserialize,
 )]
 pub struct Welcome {
     cipher_suite: Ciphersuite,
@@ -117,7 +126,16 @@ impl Welcome {
 ///
 /// This is part of a [`Welcome`] message. It can be used to correlate the correct secrets with each new member.
 #[derive(
-    Clone, Debug, Eq, PartialEq, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+    serde::Serialize,
+    serde::Deserialize,
 )]
 pub struct EncryptedGroupSecrets {
     /// Key package reference of the new member
@@ -273,6 +291,11 @@ impl CommitIn {
             None
         };
         Ok(Commit { proposals, path })
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn proposals(&self) -> &[ProposalOrRefIn] {
+        &self.proposals
     }
 }
 

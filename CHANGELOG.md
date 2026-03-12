@@ -7,24 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.8.1 (2026-02-13)
+
 ### Added
+
+- [#1955](https://github.com/openmls/openmls/pull/1955): Expose functions that allow access to (blank) leaves and parent nodes
+
+### Changed
+
+- [#1964](https://github.com/openmls/openmls/pull/1964): update libcrux and rust_crypto provider dependencies, due to https://github.com/cryspen/libcrux/security/advisories/GHSA-435g-fcv3-8j26 and https://github.com/cryspen/hpke-rs/security/advisories/GHSA-g433-pq76-6cmf
+
+## 0.8.0 (2026-02-04)
+
+### Added
+
 - [#1855](https://github.com/openmls/openmls/pull/1855): Added the `swap_members()` method to `MlsGroup` to replace members in a group, as well as the `WelcomeCommitMessages` and `SwapMembersError` structs.
 - [#1868](https://github.com/openmls/openmls/pull/1868): Implemented AppEphemeral functionality as defined in the MLS Extensions draft and replaced the existing AppAck proposal with the AppAck object, which can now be conveyed inside an AppEphemeral proposal. These features are behind the `extensions-draft-08` feature flag.
 - [#1874](https://github.com/openmls/openmls/pull/1874): In the `openmls_libcrux_crypto` provider, added AES-GCM support.
-- Implemented GREASE (Generate Random Extensions And Sustain Extensibility) support as defined in [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5):
+- [#1900](https://github.com/openmls/openmls/pull/1900): Implemented GREASE (Generate Random Extensions And Sustain Extensibility) support as defined in [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5):
   - Added `Grease(u16)` variants to `ProposalType`, `ExtensionType`, and `CredentialType` enums
   - Added `is_grease()` methods to all GREASE-capable types including `VerifiableCiphersuite`
   - Added `Capabilities::with_grease()` and `CapabilitiesBuilder::with_grease()` convenience methods to inject random GREASE values
   - GREASE values are automatically recognized during deserialization and filtered during validation (treated the same as unknown values)
   - Added comprehensive unit and integration tests for GREASE handling
   - Added user manual documentation for GREASE support
+- [#1903](https://github.com/openmls/openmls/pull/1903): Added new error variants `MissingOwnLeaf` and `MissingCiphertext` to `ApplyUpdatePathError` for more fine-grained error handling in TreeSync.
 
 ### Fixed
+
 - [#1868](https://github.com/openmls/openmls/pull/1868): The implementation of [valn0311](https://validation.openmls.tech/#valn0311), was updated to check support for all non-default proposals, instead of only checking support for Custom proposals.
 - [#1871](https://github.com/openmls/openmls/pull/1871): Fixed a bug where the application export tree (part of the `extensions-draft-08` feature) was not stored properly after group creation.
+- [#1943](https://github.com/openmls/openmls/pull/1943): Fix a proposal validation check that erroneously requires members that are being removed in a commit to also support all proposal types used in the commit.
+- [GHSA-8x3w-qj7j-gqhf](https://github.com/openmls/openmls/security/advisories/GHSA-8x3w-qj7j-gqhf): Check length when comparing tags
 
 ### Changed
+
 - [#1874](https://github.com/openmls/openmls/pull/1874): Changed `ProposalType`, `ExtensionType`, and `CredentialType` enums to include `Grease(u16)` variant.
+- [#1924](https://github.com/openmls/openmls/pull/1924): Exposed `JoinBuilder::new` as public API.
+- [#1929](https://github.com/openmls/openmls/pull/1929): Change creation of new `MlsGroup`s s.t. creation fails if there is already a group with the same `GroupId` in storage. This affects both creation of fresh groups and creation of groups through a `Welcome` message. An application that wants to replace a group can either delete the group manually or call `replace_old_group` in the `JoinBuilder` or the `MlsGroupBuilder`.
+- [#1928](https://github.com/openmls/openmls/pull/1928): Processing a commit now fails if it contains a duplicate PSK proposal.
+- [#1926](https://github.com/openmls/openmls/pull/1926):
+  - Updated `getrandom` dependency in `js` feature to `0.3.4`
+  - Removed `libcrux-provider-js` feature (the `libcrux-provider`,`js` features are now sufficient to enable the libcrux crypto provider with support for compiling to wasm)
+
+## 0.7.2 (2026-02-04)
+
+### Fixed
+
+- [#1944](https://github.com/openmls/openmls/pull/1944): Fix a bug due to which a wrong credential could be retrieved for validation of messages from past epochs.
 
 ## 0.7.1 (2025-09-24)
 

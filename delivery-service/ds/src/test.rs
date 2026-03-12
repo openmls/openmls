@@ -23,7 +23,7 @@ fn generate_credential(
 fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
-    extensions: Extensions,
+    extensions: Extensions<KeyPackage>,
     crypto_provider: &impl OpenMlsProvider,
     signer: &SignatureKeyPair,
 ) -> KeyPackageBundle {
@@ -361,15 +361,19 @@ async fn test_group() {
         other => panic!("expected a welcome message, got {other:?}"),
     };
 
-    let mut group_on_client2 = StagedWelcome::new_from_welcome(
+    let processed_welcome = ProcessedWelcome::new_from_welcome(
         crypto,
         mls_group_create_config.join_config(),
         welcome.clone(),
-        Some(group.export_ratchet_tree().into()), // delivered out of band
     )
-    .expect("Error creating staged join from Welcome")
-    .into_group(crypto)
-    .expect("Error creating group from staged join");
+    .unwrap();
+    let mut group_on_client2 = JoinBuilder::new(crypto, processed_welcome)
+        .with_ratchet_tree(group.export_ratchet_tree().into())
+        .replace_old_group()
+        .build()
+        .unwrap()
+        .into_group(crypto)
+        .expect("Error creating group from staged join");
 
     assert_eq!(
         group.export_ratchet_tree(),
