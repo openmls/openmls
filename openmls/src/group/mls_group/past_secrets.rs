@@ -23,7 +23,7 @@ pub(crate) struct MessageSecretsWithTimestamp {
 }
 
 impl MessageSecrets {
-    #[cfg(any(test, feature = "test-utils"))]
+    #[cfg(any(test))]
     pub(crate) fn with_timestamp(
         self,
         timestamp: impl Into<Option<std::time::SystemTime>>,
@@ -36,7 +36,7 @@ impl MessageSecrets {
 }
 
 impl EpochTree {
-    #[cfg(any(test, feature = "test-utils"))]
+    #[cfg(any(test))]
     pub(crate) fn timestamp(&self) -> Option<std::time::SystemTime> {
         self.message_secrets.added_at
     }
