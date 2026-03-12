@@ -647,11 +647,6 @@ impl MlsGroup {
     /// Delete all past epoch secrets.
     ///
     /// For more information on the arguments to this method, see [`PastEpochDeletion`].
-    ///
-    /// NOTE: the past epoch deletion policy determines the minimum number of past
-    /// epoch secrets that will be kept. If this value is a `Some(n)`, at least
-    /// `n` elements will be kept, regardless of whether their duration
-    /// is allowed.
     pub fn delete_past_epoch_secrets(&mut self, policy: PastEpochDeletion) {
         self.message_secrets_store.delete_past_epoch_secrets(policy);
     }
