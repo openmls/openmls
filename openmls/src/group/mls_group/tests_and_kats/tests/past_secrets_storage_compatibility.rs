@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::prelude::{mls_group::MessageSecretsStore, past_secrets::MessageSecretsWithTimestamp};
 use crate::schedule::message_secrets::MessageSecrets;
 
-use openmls_libcrux_crypto::CryptoProvider;
+use openmls_rust_crypto::RustCrypto as CryptoProvider;
 use openmls_sqlite_storage::{Codec, Connection, SqliteStorageProvider};
 use openmls_traits::storage::StorageProvider;
 use serde::Serialize;
@@ -122,7 +122,7 @@ impl OpenMlsProvider for Provider {
 impl Provider {
     fn new(conn: Connection) -> Self {
         Self {
-            crypto: CryptoProvider::new().unwrap(),
+            crypto: CryptoProvider::default(),
             storage: SqliteStorageProvider::new(conn),
         }
     }
