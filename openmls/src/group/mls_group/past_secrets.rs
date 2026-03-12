@@ -271,7 +271,7 @@ impl MessageSecretsStore {
                 return true;
             };
 
-            // retain entried where elapsed is less than the provided duration
+            // retain entries where elapsed is less than the provided duration
             elapsed < duration
         });
     }
