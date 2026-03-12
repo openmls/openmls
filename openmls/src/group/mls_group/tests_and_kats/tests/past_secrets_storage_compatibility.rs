@@ -1,3 +1,5 @@
+#![cfg(not(target_arch = "wasm32"))]
+
 use crate::prelude::*;
 use crate::prelude::{mls_group::MessageSecretsStore, past_secrets::MessageSecretsWithTimestamp};
 use crate::schedule::message_secrets::MessageSecrets;
