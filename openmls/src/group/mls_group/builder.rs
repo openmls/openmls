@@ -235,6 +235,8 @@ impl MlsGroupBuilder {
     /// if the Delivery Service cannot guarantee that application messages will be sent in
     /// the same epoch in which they were generated. The number for `max_epochs` should be
     /// as low as possible.
+    ///
+    /// NOTE: This function will be deprecated in future releases.
     pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
