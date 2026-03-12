@@ -265,13 +265,9 @@ impl MessageSecretsStore {
         // retain entries that are older than the duration.
         self.past_epoch_trees.retain(|tree| {
             let Some(added_at) = tree.message_secrets.added_at else {
-                // TODO: handle trees with None timestamp
-                // TODO: log here
                 return true;
             };
             let Ok(elapsed) = std::time::SystemTime::now().duration_since(added_at) else {
-                // TODO: handle secrets timestamps in the future
-                // TODO: log here
                 return true;
             };
 
@@ -284,8 +280,6 @@ impl MessageSecretsStore {
         // retain entries where added_at is after or equal to the cutoff.
         self.past_epoch_trees.retain(|tree| {
             let Some(added_at) = tree.message_secrets.added_at else {
-                // TODO: handle trees with None timestamp
-                // TODO: log here
                 return true;
             };
             added_at >= cutoff
@@ -306,7 +300,6 @@ impl MessageSecretsStore {
         } else {
             // delete all
             self.past_epoch_trees.clear();
-
         }
         // ensure at most `max_past_epochs` entries are included
         if let Some(max_past_epochs) = policy.max_past_epochs {
