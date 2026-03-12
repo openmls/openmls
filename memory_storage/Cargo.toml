@@ -10,7 +10,7 @@ repository = "https://github.com/openmls/openmls/tree/main/memory_storage"
 readme = "README.md"
 
 [dependencies]
-openmls_traits = { workspace = true, features = ["sync"] }
+openmls_traits = { workspace = true }
 
 thiserror = "2.0"
 serde_json = "1.0"
@@ -23,6 +23,8 @@ base64 = { version = "0.22", optional = true }
 test-utils = ["hex", "openmls_traits/test-utils"]            # Enable test utilites
 persistence = ["base64"]
 extensions-draft-08 = ["openmls_traits/extensions-draft-08"]
+sync = ["openmls_traits/sync"]
+async = ["openmls_traits/async"]
 
 [dev-dependencies]
 openmls_memory_storage = { path = ".", features = ["test-utils"] }
