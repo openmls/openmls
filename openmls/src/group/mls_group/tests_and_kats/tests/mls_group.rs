@@ -1537,7 +1537,7 @@ fn builder_pattern() {
     );
     assert_eq!(group_config.wire_format_policy(), test_wire_format_policy);
     assert!(group_config.use_ratchet_tree_extension);
-    assert_eq!(group_config.max_past_epochs, test_max_past_epochs);
+    assert_eq!(group_config.max_past_epochs(), Some(test_max_past_epochs));
     assert_eq!(
         group_config.number_of_resumption_psks,
         test_number_of_resumption_psks

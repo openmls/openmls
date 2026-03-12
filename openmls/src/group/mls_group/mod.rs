@@ -523,12 +523,12 @@ impl MlsGroup {
     /// Sets the size of the [`MessageSecretsStore`], i.e. the number of past
     /// epochs to keep.
     /// This allows application messages from previous epochs to be decrypted.
-    pub(crate) fn set_max_past_epochs(&mut self, max_past_epochs: usize) {
-        self.message_secrets_store.resize(max_past_epochs);
+    pub(crate) fn set_max_past_epochs(&mut self, policy: &PastEpochDeletionPolicy) {
+        self.message_secrets_store.resize(policy);
     }
 
     /// Get the message secrets. Either from the secrets store or from the group.
-    pub(crate) fn message_secrets_mut(
+    pub(crate) fn message_secrets_for_epoch_mut(
         &mut self,
         epoch: GroupEpoch,
     ) -> Result<&mut MessageSecrets, SecretTreeError> {
@@ -560,18 +560,18 @@ impl MlsGroup {
     ///
     /// Note that the leaves vector is empty for message secrets of the current
     /// epoch. The caller can use treesync in this case.
-    pub(crate) fn message_secrets_and_leaves_mut(
-        &mut self,
+    pub(crate) fn message_secrets_and_leaves(
+        &self,
         epoch: GroupEpoch,
-    ) -> Result<(&mut MessageSecrets, &[Member]), SecretTreeError> {
+    ) -> Result<(&MessageSecrets, &[Member]), SecretTreeError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
-                .secrets_and_leaves_for_epoch_mut(epoch)
+                .secrets_and_leaves_for_epoch(epoch)
                 .ok_or(SecretTreeError::TooDistantInThePast)
         } else {
             // No need for leaves here. The tree of the current epoch is
             // available to the caller.
-            Ok((self.message_secrets_store.message_secrets_mut(), &[]))
+            Ok((self.message_secrets_store.message_secrets(), &[]))
         }
     }
 
@@ -642,6 +642,13 @@ impl MlsGroup {
             &self.aad,
             self.mls_group_config.wire_format_policy().outgoing(),
         )
+    }
+
+    /// Delete all past epoch secrets.
+    ///
+    /// For more information on the arguments to this method, see [`PastEpochDeletion`].
+    pub fn delete_past_epoch_secrets(&mut self, policy: PastEpochDeletion) {
+        self.message_secrets_store.delete_past_epoch_secrets(policy);
     }
 
     /// Returns a reference to the proposal store.
