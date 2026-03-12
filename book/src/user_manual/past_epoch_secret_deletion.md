@@ -3,7 +3,7 @@
 
 ## Setting a past epoch secrets deletion policy
 
-The Delivery Service cannot guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by configuring the past epoch deletion policy on the `MlsGroupCreateConfig`.
+The Delivery Service may not be able to guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by configuring the past epoch deletion policy on the `MlsGroupCreateConfig`.
 
 The `PastEpochDeletionPolicy` will be applied to the group automatically when a commit is merged.
 
