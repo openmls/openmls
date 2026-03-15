@@ -47,8 +47,10 @@ mod secret_bytes_as_vec {
     }
 
     pub fn deserialize<'de, D: serde::Deserializer<'de>>(d: D) -> Result<SecretVLBytes, D::Error> {
-        let bytes: Vec<u8> = serde::Deserialize::deserialize(d)?;
-        Ok(bytes.into())
+        let mut bytes: Vec<u8> = serde::Deserialize::deserialize(d)?;
+        let secret: SecretVLBytes = bytes.as_slice().into();
+        bytes.zeroize();
+        Ok(secret)
     }
 }
 
@@ -220,15 +222,15 @@ impl storage::traits::SignatureKeyPair<CURRENT_VERSION> for SignatureKeyPair {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tls_codec::{DeserializeBytes as TlsDeserializeBytesTrait, Serialize as TlsSerializeTrait};
 
     #[test]
     fn test_serde_roundtrip() {
         let kp = SignatureKeyPair::new(SignatureScheme::ED25519).unwrap();
         let json = serde_json::to_string(&kp).unwrap();
-        println!("Serialized: {}", json);
-        
-        // Verify it can roundtrip
+
         let kp2: SignatureKeyPair = serde_json::from_str(&json).unwrap();
+        assert_eq!(kp.private.as_slice(), kp2.private.as_slice());
         assert_eq!(kp.public(), kp2.public());
         assert_eq!(kp.signature_scheme(), kp2.signature_scheme());
     }
@@ -239,6 +241,13 @@ mod tests {
         let old_json = r#"{"private":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32],"public":[1,2,3],"signature_scheme":"ED25519"}"#;
         let kp = serde_json::from_str::<SignatureKeyPair>(old_json)
             .expect("must deserialize old format");
+        assert_eq!(
+            kp.private.as_slice(),
+            &[
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                24, 25, 26, 27, 28, 29, 30, 31, 32
+            ]
+        );
         assert_eq!(kp.public(), &[1, 2, 3]);
         assert_eq!(kp.signature_scheme(), SignatureScheme::ED25519);
 
@@ -248,5 +257,46 @@ mod tests {
             !json.contains(r#""vec""#),
             "private field must serialize as bare array, got: {json}"
         );
+    }
+
+    #[test]
+    fn test_tls_roundtrip() {
+        let kp = SignatureKeyPair::new(SignatureScheme::ED25519).unwrap();
+        let tls_bytes = kp.tls_serialize_detached().unwrap();
+
+        let (kp2, rest) = SignatureKeyPair::tls_deserialize_bytes(&tls_bytes).unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(kp.private.as_slice(), kp2.private.as_slice());
+        assert_eq!(kp.public(), kp2.public());
+        assert_eq!(kp.signature_scheme(), kp2.signature_scheme());
+    }
+
+    /// Copy of the pre-zeroize SignatureKeyPair for TLS backward compatibility testing.
+    #[derive(TlsSerialize, TlsSize)]
+    struct OldSignatureKeyPair {
+        private: Vec<u8>,
+        public: Vec<u8>,
+        signature_scheme: SignatureScheme,
+    }
+
+    #[test]
+    fn test_tls_backwards_compat() {
+        let private_bytes = vec![
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        ];
+        let public_bytes = vec![100, 101, 102];
+        let old = OldSignatureKeyPair {
+            private: private_bytes.clone(),
+            public: public_bytes.clone(),
+            signature_scheme: SignatureScheme::ED25519,
+        };
+        let tls_bytes = old.tls_serialize_detached().unwrap();
+
+        let (kp, rest) = SignatureKeyPair::tls_deserialize_bytes(&tls_bytes).unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(kp.private.as_slice(), private_bytes.as_slice());
+        assert_eq!(kp.public(), public_bytes.as_slice());
+        assert_eq!(kp.signature_scheme(), SignatureScheme::ED25519);
     }
 }
