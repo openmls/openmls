@@ -271,12 +271,29 @@ mod tests {
         assert_eq!(kp.signature_scheme(), kp2.signature_scheme());
     }
 
-    /// Copy of the pre-zeroize SignatureKeyPair for TLS backward compatibility testing.
-    #[derive(TlsSerialize, TlsSize)]
+    /// Copy of the pre-zeroize SignatureKeyPair for backward compatibility testing.
+    #[derive(TlsSerialize, TlsSize, serde::Serialize)]
     struct OldSignatureKeyPair {
         private: Vec<u8>,
         public: Vec<u8>,
         signature_scheme: SignatureScheme,
+    }
+
+    #[test]
+    fn test_serde_backwards_compat() {
+        let private_bytes: Vec<u8> = (1..=32).collect();
+        let public_bytes = vec![100, 101, 102];
+        let old = OldSignatureKeyPair {
+            private: private_bytes.clone(),
+            public: public_bytes.clone(),
+            signature_scheme: SignatureScheme::ED25519,
+        };
+        let json = serde_json::to_string(&old).unwrap();
+
+        let kp: SignatureKeyPair = serde_json::from_str(&json).unwrap();
+        assert_eq!(kp.private.as_slice(), private_bytes.as_slice());
+        assert_eq!(kp.public(), public_bytes.as_slice());
+        assert_eq!(kp.signature_scheme(), SignatureScheme::ED25519);
     }
 
     #[test]
