@@ -122,7 +122,15 @@ fn max_epochs_with_duration<Provider: crate::storage::OpenMlsProvider>(
             PastEpochDeletion::older_than_duration(INTERVAL),
         )
         .expect("error deleting past epoch secrets");
+
     // assert all past secrets deleted
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        0
+    );
+
+    // load from storage to check persistence
+    MlsGroup::load(alice_provider.storage(), alice_group.group_id()).expect("error loading group");
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
         0
@@ -185,6 +193,13 @@ fn max_epochs_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>()
         alice_group.message_secrets_store().num_past_epoch_trees(),
         0
     );
+
+    // load from storage to check persistence
+    MlsGroup::load(alice_provider.storage(), alice_group.group_id()).expect("error loading group");
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        0
+    );
 }
 
 /// This test checks the case where:
@@ -215,6 +230,13 @@ fn keep_all_policy_with_duration<Provider: crate::storage::OpenMlsProvider>(
         )
         .expect("error deleting past epoch secrets");
     // assert all past secrets deleted
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        0
+    );
+
+    // load from storage to check persistence
+    MlsGroup::load(alice_provider.storage(), alice_group.group_id()).expect("error loading group");
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
         0
@@ -291,6 +313,13 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
         alice_group.message_secrets_store().num_past_epoch_trees(),
         0
     );
+
+    // load from storage to check persistence
+    MlsGroup::load(alice_provider.storage(), alice_group.group_id()).expect("error loading group");
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        0
+    );
 }
 
 /// This test checks the manual cleanup of all past epoch secrets.
@@ -315,6 +344,13 @@ fn delete_all<Provider: crate::storage::OpenMlsProvider>() {
             .delete_past_epoch_secrets(&alice_provider, PastEpochDeletion::delete_all())
             .expect("error deleting past epoch secrets");
         // assert all past secrets deleted
+        assert_eq!(
+            alice_group.message_secrets_store().num_past_epoch_trees(),
+            0
+        );
+        // load from storage to check persistence
+        MlsGroup::load(alice_provider.storage(), alice_group.group_id())
+            .expect("error loading group");
         assert_eq!(
             alice_group.message_secrets_store().num_past_epoch_trees(),
             0
