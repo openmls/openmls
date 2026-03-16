@@ -130,9 +130,13 @@ fn max_epochs_with_duration<Provider: crate::storage::OpenMlsProvider>(
     );
 
     // load from storage to check persistence
-    MlsGroup::load(alice_provider.storage(), alice_group.group_id()).expect("error loading group");
+    let alice_group_stored = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
+        .expect("error loading group")
+        .expect("no group for id");
     assert_eq!(
-        alice_group.message_secrets_store().num_past_epoch_trees(),
+        alice_group_stored
+            .message_secrets_store()
+            .num_past_epoch_trees(),
         0
     );
 }
@@ -195,9 +199,13 @@ fn max_epochs_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>()
     );
 
     // load from storage to check persistence
-    MlsGroup::load(alice_provider.storage(), alice_group.group_id()).expect("error loading group");
+    let alice_group_stored = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
+        .expect("error loading group")
+        .expect("no group for id");
     assert_eq!(
-        alice_group.message_secrets_store().num_past_epoch_trees(),
+        alice_group_stored
+            .message_secrets_store()
+            .num_past_epoch_trees(),
         0
     );
 }
@@ -236,9 +244,13 @@ fn keep_all_policy_with_duration<Provider: crate::storage::OpenMlsProvider>(
     );
 
     // load from storage to check persistence
-    MlsGroup::load(alice_provider.storage(), alice_group.group_id()).expect("error loading group");
+    let alice_group_stored = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
+        .expect("error loading group")
+        .expect("no group for id");
     assert_eq!(
-        alice_group.message_secrets_store().num_past_epoch_trees(),
+        alice_group_stored
+            .message_secrets_store()
+            .num_past_epoch_trees(),
         0
     );
 }
@@ -315,9 +327,13 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     );
 
     // load from storage to check persistence
-    MlsGroup::load(alice_provider.storage(), alice_group.group_id()).expect("error loading group");
+    let alice_group_stored = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
+        .expect("error loading group")
+        .expect("no group for id");
     assert_eq!(
-        alice_group.message_secrets_store().num_past_epoch_trees(),
+        alice_group_stored
+            .message_secrets_store()
+            .num_past_epoch_trees(),
         0
     );
 }
@@ -349,10 +365,13 @@ fn delete_all<Provider: crate::storage::OpenMlsProvider>() {
             0
         );
         // load from storage to check persistence
-        MlsGroup::load(alice_provider.storage(), alice_group.group_id())
-            .expect("error loading group");
+        let alice_group_stored = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
+            .expect("error loading group")
+            .expect("no group for id");
         assert_eq!(
-            alice_group.message_secrets_store().num_past_epoch_trees(),
+            alice_group_stored
+                .message_secrets_store()
+                .num_past_epoch_trees(),
             0
         );
     }
