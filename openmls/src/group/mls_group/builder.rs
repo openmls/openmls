@@ -89,6 +89,7 @@ impl MlsGroupBuilder {
 
         if !self.replace_old_group
             && MlsGroup::load(provider.storage(), &group_id)
+                .await
                 .map_err(NewGroupError::StorageError)?
                 .is_some()
         {

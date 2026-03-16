@@ -252,19 +252,25 @@ impl MlsGroup {
             Propose::UpdateAppDataComponent {
                 component_id,
                 update,
-            } => self.propose_app_data_update(
-                provider,
-                signer,
-                component_id,
-                AppDataUpdateOperation::Update(update.into()),
-            ),
+            } => {
+                self.propose_app_data_update(
+                    provider,
+                    signer,
+                    component_id,
+                    AppDataUpdateOperation::Update(update.into()),
+                )
+                .await
+            }
             #[cfg(feature = "extensions-draft-08")]
-            Propose::RemoveAppDataComponent { component_id } => self.propose_app_data_update(
-                provider,
-                signer,
-                component_id,
-                AppDataUpdateOperation::Remove,
-            ),
+            Propose::RemoveAppDataComponent { component_id } => {
+                self.propose_app_data_update(
+                    provider,
+                    signer,
+                    component_id,
+                    AppDataUpdateOperation::Remove,
+                )
+                .await
+            }
 
             // custom
             Propose::Custom(custom_proposal) => match ref_or_value {
@@ -492,7 +498,8 @@ impl MlsGroup {
 
     /// Updates the AppDataDictionary
     #[cfg(feature = "extensions-draft-08")]
-    pub fn propose_app_data_update<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn propose_app_data_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -520,10 +527,11 @@ impl MlsGroup {
         provider
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &queued_proposal)
+            .await
             .map_err(ProposalError::StorageError)?;
         self.proposal_store_mut().add(queued_proposal);
 
-        let mls_message = self.content_to_mls_message(proposal, provider)?;
+        let mls_message = self.content_to_mls_message(proposal, provider).await?;
 
         self.reset_aad();
         Ok((mls_message, proposal_ref))

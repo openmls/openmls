@@ -200,10 +200,12 @@ impl MlsGroup {
             leaf_node_keypairs,
             provider,
         )
+        .await
     }
 
     #[cfg(feature = "extensions-draft-08")]
-    pub(crate) fn stage_commit_with_app_data_updates(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn stage_commit_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
@@ -243,13 +245,15 @@ impl MlsGroup {
             leaf_node_keypairs,
             provider,
         )
+        .await
     }
 
+    #[maybe_async::maybe_async]
     #[allow(clippy::too_many_arguments)]
-    fn stage_applied_proposal_values(
+    async fn stage_applied_proposal_values(
         &self,
         apply_proposals_values: ApplyProposalsValues,
-        mut diff: PublicGroupDiff,
+        mut diff: PublicGroupDiff<'_>,
         commit: &Commit,
         proposal_queue: ProposalQueue,
         sender_index: LeafNodeIndex,
@@ -313,7 +317,8 @@ impl MlsGroup {
                 // it needs to be removed from the key store separately and in
                 // addition to the removal of the keypairs of the previous
                 // epoch.
-                let new_leaf_keypair_option = if let Some(leaf) = diff.leaf(self.own_leaf_index()) {
+                let leaf_opt: Option<&LeafNode> = diff.leaf(self.own_leaf_index());
+                let new_leaf_keypair_option = if let Some(leaf) = leaf_opt {
                     leaf_node_keypairs.into_iter().find_map(|keypair| {
                         if leaf.encryption_key() == keypair.public_key() {
                             Some(keypair)
