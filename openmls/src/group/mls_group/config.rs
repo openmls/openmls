@@ -37,11 +37,23 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 /// Configures the automatic deletion of past epoch secrets.
+///
+/// **WARNING**
+///
+/// Policies other than `MaxEpochs(0)` enable the storage of message secrets from past epochs.
+/// It is a trade-off between functionality and forward secrecy and should only be enabled
+/// if the Delivery Service cannot guarantee that application messages will be sent in
+/// the same epoch in which they were generated. The number for `max_epochs` should be
+/// as low as possible.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PastEpochDeletionPolicy {
     /// Keep at most `n` past epoch secrets.
     MaxEpochs(usize),
     /// Keep all past epoch secrets.
+    ///
+    /// NOTE: The application is responsible for deleting past epoch secrets when
+    /// `KeepAll` is set. Past epoch secrets can be deleted manually using:
+    /// - [`MlsGroup::delete_past_epoch_secrets()`]
     KeepAll,
 }
 
