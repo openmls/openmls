@@ -9,9 +9,12 @@ use openmls_sqlite_storage::{Codec, Connection, SqliteStorageProvider};
 use openmls_traits::storage::StorageProvider;
 use serde::Serialize;
 
-// TODO: load from file at runtime instead
-const SQL_STATEMENTS: &str = include_str!("dump.sql");
+const SQL_STATEMENTS_PATH: &str = "src/group/mls_group/tests_and_kats/tests/dump.sql";
 const TEST_GROUP_ID: &[u8] = b"test_group_id";
+
+fn load_statements(filename: &str) -> String {
+    std::fs::read_to_string(filename).unwrap()
+}
 
 /// Test storage format compatibility with earlier storage formats
 /// serialized `MessageSecrets` should automatically be mapped to `MessageSecretsWithTimestamp`
@@ -27,9 +30,11 @@ const TEST_GROUP_ID: &[u8] = b"test_group_id";
 #[test]
 fn test_storage_compatibility() {
     {
+        // load SQL statements
+        let sql_statements = load_statements(SQL_STATEMENTS_PATH);
         // prepare the DB
         let conn = Connection::open_in_memory().expect("error opening database connection");
-        conn.execute_batch(SQL_STATEMENTS)
+        conn.execute_batch(&sql_statements)
             .expect("error executing sqlite statements");
 
         // set up a new provider using the connection
