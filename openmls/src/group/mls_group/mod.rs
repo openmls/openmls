@@ -23,7 +23,7 @@ use crate::{
         CreateGroupContextExtProposalError, DeletePastEpochSecretsError, Extension, ExtensionType,
         ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
         MlsGroupStateError, OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension,
-        RequiredCapabilitiesExtension, StagedCommit,
+        RequiredCapabilitiesExtension, SetPastEpochDeletionPolicyError, StagedCommit,
     },
     key_packages::KeyPackageBundle,
     messages::{
@@ -525,6 +525,23 @@ impl MlsGroup {
     /// This allows application messages from previous epochs to be decrypted.
     pub(crate) fn set_max_past_epochs(&mut self, policy: &PastEpochDeletionPolicy) {
         self.message_secrets_store.resize(policy);
+    }
+
+    /// Set the past epoch secret deletion policy for the group.
+    pub fn set_past_epoch_deletion_policy<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        policy: PastEpochDeletionPolicy,
+    ) -> Result<(), SetPastEpochDeletionPolicyError<Provider::StorageError>> {
+        //
+        self.set_max_past_epochs(&policy);
+
+        // update the message secrets store in storage
+        provider
+            .storage()
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+
+        Ok(())
     }
 
     /// Get the message secrets. Either from the secrets store or from the group.

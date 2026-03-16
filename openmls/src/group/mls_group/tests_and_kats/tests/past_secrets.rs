@@ -410,6 +410,119 @@ fn setup_tree_store_with_timestamps<Provider: OpenMlsProvider>(
     message_secrets_store
 }
 
+/// Test changing the past epoch deletion policy on a group.
+#[openmls_test::openmls_test]
+fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
+    // initial policy
+    let policy = PastEpochDeletionPolicy::MaxEpochs(3);
+    // set up a provider, signer and group
+    let (alice_provider, alice_signer, mut alice_group) =
+        setup::<Provider>(ciphersuite, policy.clone());
+
+    // apply and merge commits to advance the group epoch
+    apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        3
+    );
+
+    // update the policy
+    let new_policy = PastEpochDeletionPolicy::MaxEpochs(5);
+    alice_group
+        .set_past_epoch_deletion_policy(&alice_provider, new_policy.clone())
+        .expect("error updating policy");
+
+    // apply and merge additional commits to advance the group epoch
+    for _ in 0..10 {
+        alice_group
+            .update_group_context_extensions(&alice_provider, Extensions::empty(), &alice_signer)
+            .expect("error building commit");
+        alice_group
+            .merge_pending_commit(&alice_provider)
+            .expect("error merging commit");
+    }
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        5
+    );
+
+    // update the policy
+    let new_policy = PastEpochDeletionPolicy::MaxEpochs(2);
+    alice_group
+        .set_past_epoch_deletion_policy(&alice_provider, new_policy.clone())
+        .expect("error updating policy");
+    // check that the store was resized correctly
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        2
+    );
+
+    // update the policy
+    let new_policy = PastEpochDeletionPolicy::KeepAll;
+    alice_group
+        .set_past_epoch_deletion_policy(&alice_provider, new_policy.clone())
+        .expect("error updating policy");
+
+    // apply and merge additional commits to advance the group epoch
+    for _ in 0..8 {
+        alice_group
+            .update_group_context_extensions(&alice_provider, Extensions::empty(), &alice_signer)
+            .expect("error building commit");
+        alice_group
+            .merge_pending_commit(&alice_provider)
+            .expect("error merging commit");
+    }
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        10
+    );
+
+    // delete all past epoch secrets
+    alice_group
+        .delete_past_epoch_secrets(&alice_provider, PastEpochDeletion::delete_all())
+        .expect("error deleting past epoch secrets");
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        0
+    );
+
+    // apply and merge an additional commit to advance the group epoch
+    alice_group
+        .update_group_context_extensions(&alice_provider, Extensions::empty(), &alice_signer)
+        .expect("error building commit");
+    alice_group
+        .merge_pending_commit(&alice_provider)
+        .expect("error merging commit");
+    // NOTE: now, the number of past epoch secrets is less than the maximum
+    // configured by the policy that will be applied next.
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        1
+    );
+
+    // update the policy
+    let new_policy = PastEpochDeletionPolicy::MaxEpochs(2);
+    alice_group
+        .set_past_epoch_deletion_policy(&alice_provider, new_policy.clone())
+        .expect("error updating policy");
+    // check that the store was resized correctly
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        1
+    );
+
+    // load from storage to check persistence
+    let alice_group_stored = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
+        .expect("error loading group")
+        .expect("no group for id");
+    assert_eq!(
+        alice_group_stored
+            .message_secrets_store()
+            .num_past_epoch_trees(),
+        1
+    );
+}
+
 // TODO: add more test cases
 /// Test a secret tree store with a mix of legacy and current timestamps,
 /// deleting by a provided timestamp

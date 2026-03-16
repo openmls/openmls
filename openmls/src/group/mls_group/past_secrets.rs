@@ -129,7 +129,8 @@ impl MessageSecretsStore {
         self.max_epochs = max_past_epochs;
         if old_size > max_past_epochs {
             let num_epochs_out = old_size - max_past_epochs;
-            self.past_epoch_trees.rotate_left(num_epochs_out);
+            self.past_epoch_trees
+                .rotate_left(num_epochs_out.min(self.past_epoch_trees.len()));
             self.past_epoch_trees.truncate(max_past_epochs);
         }
     }

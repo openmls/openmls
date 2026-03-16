@@ -56,9 +56,16 @@ pub enum NewGroupError<StorageError> {
     GroupAlreadyExists,
 }
 
-/// An error deleting past epoch secrets.
+/// An error when deleting past epoch secrets.
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum DeletePastEpochSecretsError<StorageError> {
+    #[error(transparent)]
+    StorageError(#[from] StorageError),
+}
+
+/// An error when setting the past epoch deletion policy.
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
+pub enum SetPastEpochDeletionPolicyError<StorageError> {
     #[error(transparent)]
     StorageError(#[from] StorageError),
 }
