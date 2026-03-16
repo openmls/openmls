@@ -289,6 +289,7 @@ impl MessageSecretsStore {
     pub(crate) fn delete_past_epoch_secrets(&mut self, policy: PastEpochDeletion) {
         // remove epoch secrets before a provided timestamp or duration
         if let Some(before) = policy.before {
+            // handle timestamp or duration
             match before {
                 PastEpochDeletionTimeConfig::Timestamp(timestamp) => {
                     self.delete_past_epoch_secrets_before_timestamp(timestamp)
@@ -296,16 +297,16 @@ impl MessageSecretsStore {
                 PastEpochDeletionTimeConfig::Duration(duration) => {
                     self.delete_past_epoch_secrets_older_than_duration(duration)
                 }
+            };
+            // ensure at most `max_past_epochs` entries are included
+            if let Some(max_past_epochs) = policy.max_past_epochs {
+                if let Some(i) = self.past_epoch_trees.len().checked_sub(max_past_epochs) {
+                    self.past_epoch_trees.drain(0..i);
+                }
             }
         } else {
             // delete all
             self.past_epoch_trees.clear();
-        }
-        // ensure at most `max_past_epochs` entries are included
-        if let Some(max_past_epochs) = policy.max_past_epochs {
-            if let Some(i) = self.past_epoch_trees.len().checked_sub(max_past_epochs) {
-                self.past_epoch_trees.drain(0..i);
-            }
         }
     }
 
