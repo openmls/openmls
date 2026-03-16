@@ -224,11 +224,12 @@ impl MlsGroupBuilder {
     /// Sets the `max_past_epochs` property of the MlsGroup.
     /// This allows application messages from previous epochs to be decrypted.
     ///
-    /// **WARNING**
-    ///
     /// This method overrides the policy set by [`Self::set_past_epoch_deletion_policy()`],
     /// and is equivalent to setting the past epoch deletion policy to
     /// `PastEpochDeletionPolicy::MaxEpochs(max_past_epochs)`.
+    ///
+    /// **WARNING**
+    ///
     ///
     /// This feature enables the storage of message secrets from past epochs.
     /// It is a trade-off between functionality and forward secrecy and should only be enabled
@@ -244,12 +245,19 @@ impl MlsGroupBuilder {
         self
     }
 
-    // TODO: Add more information about past epochs to the documentation
     /// Set the policy for deleting past epoch secrets.
     ///
     /// By default, storage of past epoch secrets is disabled.
     ///
     /// This method overrides the configuration set by [`Self::max_past_epochs()`].
+    ///
+    /// **WARNING**
+    ///
+    /// This feature enables the storage of message secrets from past epochs.
+    /// It is a trade-off between functionality and forward secrecy and should only be enabled
+    /// if the Delivery Service cannot guarantee that application messages will be sent in
+    /// the same epoch in which they were generated. The number for `max_epochs` should be
+    /// as low as possible.
     pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
