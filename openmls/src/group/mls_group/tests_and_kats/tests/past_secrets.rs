@@ -116,7 +116,12 @@ fn max_epochs_with_duration<Provider: crate::storage::OpenMlsProvider>(
     // sleep for INTERVAL + elapsed time, to ensure all secrets will be removed
     std::thread::sleep(INTERVAL + start.elapsed());
     // manually delete all before INTERVAL (early)
-    alice_group.delete_past_epoch_secrets(PastEpochDeletion::older_than_duration(INTERVAL));
+    alice_group
+        .delete_past_epoch_secrets(
+            &alice_provider,
+            PastEpochDeletion::older_than_duration(INTERVAL),
+        )
+        .expect("error deleting past epoch secrets");
     // assert all past secrets deleted
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
@@ -143,7 +148,11 @@ fn max_epochs_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>()
     // manually delete all before start, leaving at most 3 entries
     // NOTE: all entries were inserted after `start`
     alice_group
-        .delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(start).max_past_epochs(3));
+        .delete_past_epoch_secrets(
+            &alice_provider,
+            PastEpochDeletion::before_timestamp(start).max_past_epochs(3),
+        )
+        .expect("error deleting past epoch secrets");
     // assert no past secrets deleted
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
@@ -153,7 +162,11 @@ fn max_epochs_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>()
     // manually delete all before start, leaving at most 1 entry
     // NOTE: all entries were inserted after `start`
     alice_group
-        .delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(start).max_past_epochs(1));
+        .delete_past_epoch_secrets(
+            &alice_provider,
+            PastEpochDeletion::before_timestamp(start).max_past_epochs(1),
+        )
+        .expect("error deleting past epoch secrets");
     // assert one past secret was kept
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
@@ -161,9 +174,12 @@ fn max_epochs_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>()
     );
 
     // manually delete all before SystemTime::now()
-    alice_group.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(
-        std::time::SystemTime::now(),
-    ));
+    alice_group
+        .delete_past_epoch_secrets(
+            &alice_provider,
+            PastEpochDeletion::before_timestamp(std::time::SystemTime::now()),
+        )
+        .expect("error deleting past epoch secrets");
     // assert all past secrets deleted
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
@@ -192,7 +208,12 @@ fn keep_all_policy_with_duration<Provider: crate::storage::OpenMlsProvider>(
     std::thread::sleep(INTERVAL + start.elapsed());
 
     // manually delete all before
-    alice_group.delete_past_epoch_secrets(PastEpochDeletion::older_than_duration(INTERVAL));
+    alice_group
+        .delete_past_epoch_secrets(
+            &alice_provider,
+            PastEpochDeletion::older_than_duration(INTERVAL),
+        )
+        .expect("error deleting past epoch secrets");
     // assert all past secrets deleted
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
@@ -217,9 +238,13 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
 
     // manually delete all before UNIX_EPOCH, leaving at most 5 entries
-    alice_group.delete_past_epoch_secrets(
-        PastEpochDeletion::before_timestamp(std::time::SystemTime::UNIX_EPOCH).max_past_epochs(5),
-    );
+    alice_group
+        .delete_past_epoch_secrets(
+            &alice_provider,
+            PastEpochDeletion::before_timestamp(std::time::SystemTime::UNIX_EPOCH)
+                .max_past_epochs(5),
+        )
+        .expect("error deleting past epoch secrets");
     // assert no past secrets deleted
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
@@ -227,9 +252,13 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     );
 
     // manually delete all before UNIX_EPOCH, leaving at most 3 entries
-    alice_group.delete_past_epoch_secrets(
-        PastEpochDeletion::before_timestamp(std::time::SystemTime::UNIX_EPOCH).max_past_epochs(3),
-    );
+    alice_group
+        .delete_past_epoch_secrets(
+            &alice_provider,
+            PastEpochDeletion::before_timestamp(std::time::SystemTime::UNIX_EPOCH)
+                .max_past_epochs(3),
+        )
+        .expect("error deleting past epoch secrets");
     // assert no past secrets deleted
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
@@ -237,9 +266,13 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     );
 
     // manually delete all before UNIX_EPOCH, leaving at most 1 entry
-    alice_group.delete_past_epoch_secrets(
-        PastEpochDeletion::before_timestamp(std::time::SystemTime::UNIX_EPOCH).max_past_epochs(1),
-    );
+    alice_group
+        .delete_past_epoch_secrets(
+            &alice_provider,
+            PastEpochDeletion::before_timestamp(std::time::SystemTime::UNIX_EPOCH)
+                .max_past_epochs(1),
+        )
+        .expect("error deleting past epoch secrets");
     // assert one past secret was kept
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
@@ -247,9 +280,12 @@ fn keep_all_policy_with_timestamp<Provider: crate::storage::OpenMlsProvider>(
     );
 
     // manually delete all before SystemTime::now()
-    alice_group.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(
-        std::time::SystemTime::now(),
-    ));
+    alice_group
+        .delete_past_epoch_secrets(
+            &alice_provider,
+            PastEpochDeletion::before_timestamp(std::time::SystemTime::now()),
+        )
+        .expect("error deleting past epoch secrets");
     // assert all past secrets deleted
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
@@ -275,7 +311,9 @@ fn delete_all<Provider: crate::storage::OpenMlsProvider>() {
 
         // manually delete all before start, leaving at most 3 entries
         // NOTE: all entries were inserted after `start`
-        alice_group.delete_past_epoch_secrets(PastEpochDeletion::delete_all());
+        alice_group
+            .delete_past_epoch_secrets(&alice_provider, PastEpochDeletion::delete_all())
+            .expect("error deleting past epoch secrets");
         // assert all past secrets deleted
         assert_eq!(
             alice_group.message_secrets_store().num_past_epoch_trees(),

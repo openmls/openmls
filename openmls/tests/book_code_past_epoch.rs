@@ -13,6 +13,7 @@ fn book_example_past_epoch() {
 
     // Set up Alice party
     let alice_party = CorePartyState::<Provider>::new("alice");
+    let provider = &alice_party.provider;
 
     // set up the group creation config
     // ANCHOR: config_keep_all
@@ -36,33 +37,46 @@ fn book_example_past_epoch() {
 
     // delete all past epoch secrets before a timestamp
     // ANCHOR: timestamp
-    group.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(timestamp));
+    group
+        .delete_past_epoch_secrets(provider, PastEpochDeletion::before_timestamp(timestamp))
+        .expect("error deleting past epoch secrets");
     // ANCHOR_END: timestamp
 
     // delete past epoch secrets before a timestamp, leaving the latest three, at most
     // ANCHOR: timestamp_with_max_epochs
-    group.delete_past_epoch_secrets(
-        PastEpochDeletion::before_timestamp(timestamp).max_past_epochs(3),
-    );
+    group
+        .delete_past_epoch_secrets(
+            provider,
+            PastEpochDeletion::before_timestamp(timestamp).max_past_epochs(3),
+        )
+        .expect("error deleting past epoch secrets");
     // ANCHOR_END: timestamp_with_max_epochs
 
     // delete all past epoch secrets older than a duration
     // ANCHOR: duration
-    group.delete_past_epoch_secrets(PastEpochDeletion::older_than_duration(
-        Duration::from_hours(48),
-    ));
+    group
+        .delete_past_epoch_secrets(
+            provider,
+            PastEpochDeletion::older_than_duration(Duration::from_hours(48)),
+        )
+        .expect("error deleting past epoch secrets");
     // ANCHOR_END: duration
 
     // delete all past epoch secrets older than a duration, leaving the latest three, at most
     // ANCHOR: duration_with_max_epochs
-    group.delete_past_epoch_secrets(
-        PastEpochDeletion::older_than_duration(Duration::from_hours(48)).max_past_epochs(3),
-    );
+    group
+        .delete_past_epoch_secrets(
+            provider,
+            PastEpochDeletion::older_than_duration(Duration::from_hours(48)).max_past_epochs(3),
+        )
+        .expect("error deleting past epoch secrets");
     // ANCHOR_END: duration_with_max_epochs
 
     // delete all past epoch secrets
     // ANCHOR: delete_all
-    group.delete_past_epoch_secrets(PastEpochDeletion::delete_all());
+    group
+        .delete_past_epoch_secrets(provider, PastEpochDeletion::delete_all())
+        .expect("error deleting past epoch secrets");
     // ANCHOR_END: delete_all
 
     // ---------- Additional example of group creation with `MaxEpochs(3)` ----------

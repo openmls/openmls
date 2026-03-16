@@ -20,10 +20,10 @@ use crate::{
     extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{
-        CreateGroupContextExtProposalError, Extension, ExtensionType, ExternalPubExtension,
-        GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig, MlsGroupStateError,
-        OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension, RequiredCapabilitiesExtension,
-        StagedCommit,
+        CreateGroupContextExtProposalError, DeletePastEpochSecretsError, Extension, ExtensionType,
+        ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
+        MlsGroupStateError, OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension,
+        RequiredCapabilitiesExtension, StagedCommit,
     },
     key_packages::KeyPackageBundle,
     messages::{
@@ -647,8 +647,19 @@ impl MlsGroup {
     /// Delete all past epoch secrets.
     ///
     /// For more information on the arguments to this method, see [`PastEpochDeletion`].
-    pub fn delete_past_epoch_secrets(&mut self, policy: PastEpochDeletion) {
+    pub fn delete_past_epoch_secrets<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        policy: PastEpochDeletion,
+    ) -> Result<(), DeletePastEpochSecretsError<Provider::StorageError>> {
+        // delete past epoch secrets in memory
         self.message_secrets_store.delete_past_epoch_secrets(policy);
+        // update the message secrets store in storage
+        provider
+            .storage()
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+
+        Ok(())
     }
 
     /// Returns a reference to the proposal store.
