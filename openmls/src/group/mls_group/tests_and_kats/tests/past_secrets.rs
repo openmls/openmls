@@ -322,6 +322,116 @@ fn delete_all<Provider: crate::storage::OpenMlsProvider>() {
     }
 }
 
+/// Helper function to create a message secrets store with mixed
+/// `Some` and `None` timestamp entries
+fn setup_tree_store_with_timestamps<Provider: OpenMlsProvider>(
+    ciphersuite: Ciphersuite,
+    provider: &Provider,
+    entries: &[Option<std::time::SystemTime>],
+) -> MessageSecretsStore {
+    // Create a store
+    let mut message_secrets_store = MessageSecretsStore::new_with_secret(
+        &PastEpochDeletionPolicy::KeepAll,
+        MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0)),
+    );
+
+    // Populate with past epoch trees
+    // use the index as the epoch
+    for (epoch, timestamp) in entries.iter().enumerate() {
+        let message_secrets = MessageSecrets::random(
+            ciphersuite,
+            provider.rand(),
+            LeafNodeIndex::new(epoch as u32),
+        );
+
+        let message_secrets = match timestamp {
+            Some(timestamp) => message_secrets.with_timestamp(*timestamp),
+            None => message_secrets.without_timestamp(),
+        };
+
+        message_secrets_store.add_past_epoch_tree(epoch as u64, message_secrets, Vec::new());
+    }
+
+    message_secrets_store
+}
+
+// TODO: add more test cases
+/// Test a secret tree store with a mix of legacy and current timestamps,
+/// deleting by a provided timestamp
+#[openmls_test::openmls_test]
+fn test_secret_tree_store_mixed_delete_by_timestamp() {
+    let provider = &Provider::default();
+
+    let timestamp_before = std::time::SystemTime::now();
+
+    // Set up a secret tree store with mixed Some and None timestamps
+    // NOTE: For completeness, this sequence of epoch tree timestamps is tested.
+    // In practice, Some and None timestamps should not occur in this pattern.
+    let mut message_secrets_store = setup_tree_store_with_timestamps(
+        ciphersuite,
+        provider,
+        &[
+            None,                                    //0
+            Some(std::time::SystemTime::UNIX_EPOCH), //1
+            None,                                    //2
+            Some(std::time::SystemTime::UNIX_EPOCH), //3
+            None,                                    //4
+            Some(std::time::SystemTime::now()),      //5
+            None,                                    //6
+        ],
+    );
+
+    // test deletion of all message secrets before the timestamp
+    message_secrets_store
+        .delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(timestamp_before));
+
+    // ensure that the past epoch secrets are now empty
+    // assert all past secrets deleted
+    // NOTE: the `None` tree at the end will not be deleted
+    assert_eq!(message_secrets_store.num_past_epoch_trees(), 3);
+    assert!(message_secrets_store.secrets_for_epoch(4).is_some());
+    assert!(message_secrets_store.secrets_for_epoch(5).is_some());
+    assert!(message_secrets_store.secrets_for_epoch(6).is_some());
+}
+
+// TODO: add more test cases
+/// Test a secret tree store with a mix of legacy and current timestamps
+/// deleting by a provided duration
+#[openmls_test::openmls_test]
+fn test_secret_tree_store_mixed_delete_by_duration() {
+    let provider = &Provider::default();
+
+    // Set up a secret tree store with mixed Some and None timestamps
+    // NOTE: For completeness, this sequence of epoch tree timestamps is tested.
+    // In practice, Some and None timestamps should not occur in this pattern.
+    let mut message_secrets_store = setup_tree_store_with_timestamps(
+        ciphersuite,
+        provider,
+        &[
+            None,                                    //0
+            Some(std::time::SystemTime::UNIX_EPOCH), //1
+            None,                                    //2
+            Some(std::time::SystemTime::UNIX_EPOCH), //3
+            None,                                    //4
+            Some(std::time::SystemTime::now()),      //5
+            None,                                    //6
+        ],
+    );
+
+    // test deletion of all message secrets before `now()`
+    message_secrets_store.delete_past_epoch_secrets(PastEpochDeletion::older_than_duration(
+        Duration::from_hours(3),
+    ));
+
+    // ensure that the past epoch secrets are now empty
+    // assert all past secrets deleted
+    // NOTE: the `None` tree at epoch 3 will not be deleted
+    assert_eq!(message_secrets_store.num_past_epoch_trees(), 3);
+    assert!(message_secrets_store.secrets_for_epoch(4).is_some());
+    assert!(message_secrets_store.secrets_for_epoch(5).is_some());
+    assert!(message_secrets_store.secrets_for_epoch(6).is_some());
+}
+
 /// Basic test for the message secrets store
 #[openmls_test::openmls_test]
 fn test_secret_tree_store() {

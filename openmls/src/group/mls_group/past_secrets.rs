@@ -33,6 +33,15 @@ impl MessageSecrets {
             added_at: timestamp.into(),
         }
     }
+
+    /// Helper function to create a `MessageSecrets` with `None` timestamp
+    #[cfg(test)]
+    pub(crate) fn without_timestamp(self) -> MessageSecretsWithTimestamp {
+        MessageSecretsWithTimestamp {
+            message_secrets: self,
+            added_at: None,
+        }
+    }
 }
 
 impl EpochTree {
@@ -52,6 +61,7 @@ pub(crate) struct EpochTree {
     message_secrets: MessageSecretsWithTimestamp,
 }
 
+// TODO: check timestamp ordering of past epoch trees on deserialization?
 /// Can store message secrets for up to `max_epochs`. The trees are added with [`self::add()`] and can be queried
 /// with [`Self::get_epoch()`].
 #[derive(Serialize, Deserialize)]
@@ -61,6 +71,7 @@ pub(crate) struct MessageSecretsStore {
     // Maximum size of the `past_epoch_trees` list.
     pub(crate) max_epochs: usize,
     // Past message secrets.
+    // NOTE: these are in order of addition (latest at end).
     past_epoch_trees: VecDeque<EpochTree>,
     // The message secrets of the current epoch.
     message_secrets: MessageSecretsWithTimestamp,
@@ -262,28 +273,53 @@ impl MessageSecretsStore {
     }
 
     fn delete_past_epoch_secrets_older_than_duration(&mut self, duration: std::time::Duration) {
-        // retain entries that are older than the duration.
-        self.past_epoch_trees.retain(|tree| {
-            let Some(added_at) = tree.message_secrets.added_at else {
-                return true;
-            };
-            let Ok(elapsed) = std::time::SystemTime::now().duration_since(added_at) else {
-                return true;
-            };
+        // find the first past epoch tree with a timestamp past the duration
+        let found = self
+            .past_epoch_trees
+            .iter()
+            .enumerate()
+            .rev()
+            .find(|(_idx, tree)| {
+                let Some(added_at) = tree.message_secrets.added_at else {
+                    return false;
+                };
 
-            // retain entries where elapsed is less than the provided duration
-            elapsed < duration
-        });
+                let Ok(elapsed) = std::time::SystemTime::now().duration_since(added_at) else {
+                    return false;
+                };
+
+                elapsed > duration
+            });
+
+        if let Some((found_idx, _)) = found {
+            // delete all before and including the index
+            self.past_epoch_trees.drain(0..found_idx + 1);
+        } else {
+            // keep all
+        }
     }
 
     fn delete_past_epoch_secrets_before_timestamp(&mut self, cutoff: std::time::SystemTime) {
-        // retain entries where added_at is after or equal to the cutoff.
-        self.past_epoch_trees.retain(|tree| {
-            let Some(added_at) = tree.message_secrets.added_at else {
-                return true;
-            };
-            added_at >= cutoff
-        });
+        // find the first past epoch tree with an earlier non-None timestamp
+        let found = self
+            .past_epoch_trees
+            .iter()
+            .enumerate()
+            .rev()
+            .find(|(_idx, tree)| {
+                let Some(added_at) = tree.message_secrets.added_at else {
+                    return false;
+                };
+
+                added_at < cutoff
+            });
+
+        if let Some((found_idx, _)) = found {
+            // delete all before and including the index
+            self.past_epoch_trees.drain(0..found_idx + 1);
+        } else {
+            // keep all
+        }
     }
 
     pub(crate) fn delete_past_epoch_secrets(&mut self, policy: PastEpochDeletion) {
