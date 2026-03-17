@@ -533,7 +533,7 @@ impl MlsGroup {
         provider: &Provider,
         policy: PastEpochDeletionPolicy,
     ) -> Result<(), SetPastEpochDeletionPolicyError<Provider::StorageError>> {
-        //
+        // apply the new policy to the store
         self.set_max_past_epochs(&policy);
 
         // update the message secrets store in storage
