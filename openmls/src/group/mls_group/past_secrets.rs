@@ -61,7 +61,6 @@ pub(crate) struct EpochTree {
     message_secrets: MessageSecretsWithTimestamp,
 }
 
-// TODO: check timestamp ordering of past epoch trees on deserialization?
 /// Can store message secrets for up to `max_epochs`. The trees are added with [`self::add()`] and can be queried
 /// with [`Self::get_epoch()`].
 #[derive(Serialize, Deserialize)]
