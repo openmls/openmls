@@ -523,7 +523,68 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
     );
 }
 
-// TODO: add more test cases
+/// Test a secret tree store with all legacy timestamps, where a timestamp is available for the
+/// current MessageSecrets
+#[openmls_test::openmls_test]
+fn test_secret_tree_store_migration_next_epoch_timestamp() {
+    let provider = &Provider::default();
+
+    // Set up a secret tree store with mixed Some and None timestamps
+    // NOTE: For completeness, this sequence of epoch tree timestamps is tested.
+    // In practice, Some and None timestamps should not occur in this pattern.
+    let mut message_secrets_store = setup_tree_store_with_timestamps(
+        ciphersuite,
+        provider,
+        &[
+            None, //0
+            None, //1
+        ],
+    );
+
+    // test deletion of all message secrets before the timestamp
+    message_secrets_store.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(
+        std::time::SystemTime::UNIX_EPOCH,
+    ));
+    assert_eq!(message_secrets_store.num_past_epoch_trees(), 2);
+
+    // test deletion of all message secrets before the timestamp
+    message_secrets_store.delete_past_epoch_secrets(PastEpochDeletion::before_timestamp(
+        std::time::SystemTime::now(),
+    ));
+    assert_eq!(message_secrets_store.num_past_epoch_trees(), 0);
+}
+
+/// Test a secret tree store with all legacy timestamps, where a timestamp is available for the
+/// current MessageSecrets
+#[openmls_test::openmls_test]
+fn test_secret_tree_store_migration_next_epoch_duration() {
+    let provider = &Provider::default();
+
+    // Set up a secret tree store with mixed Some and None timestamps
+    // NOTE: For completeness, this sequence of epoch tree timestamps is tested.
+    // In practice, Some and None timestamps should not occur in this pattern.
+    let mut message_secrets_store = setup_tree_store_with_timestamps(
+        ciphersuite,
+        provider,
+        &[
+            None, //0
+            None, //1
+        ],
+    );
+
+    // test deletion of all message secrets before a longer duration
+    message_secrets_store.delete_past_epoch_secrets(PastEpochDeletion::older_than_duration(
+        Duration::from_hours(2),
+    ));
+    assert_eq!(message_secrets_store.num_past_epoch_trees(), 2);
+
+    // test deletion of all message secrets before the timestamp
+    message_secrets_store.delete_past_epoch_secrets(PastEpochDeletion::older_than_duration(
+        Duration::from_nanos(0),
+    ));
+    assert_eq!(message_secrets_store.num_past_epoch_trees(), 0);
+}
+
 /// Test a secret tree store with a mix of legacy and current timestamps,
 /// deleting by a provided timestamp
 #[openmls_test::openmls_test]
@@ -562,7 +623,6 @@ fn test_secret_tree_store_mixed_delete_by_timestamp() {
     assert!(message_secrets_store.secrets_for_epoch(6).is_some());
 }
 
-// TODO: add more test cases
 /// Test a secret tree store with a mix of legacy and current timestamps
 /// deleting by a provided duration
 #[openmls_test::openmls_test]

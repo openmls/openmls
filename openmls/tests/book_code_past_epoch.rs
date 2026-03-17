@@ -79,6 +79,13 @@ fn book_example_past_epoch() {
         .expect("error deleting past epoch secrets");
     // ANCHOR_END: delete_all
 
+    // ANCHOR: delete_all_past_secrets_with_none_timestamps
+    // delete all past epoch secrets without timestamps
+    mls_group
+        .delete_past_epoch_secrets(provider, PastEpochDeletion::delete_all_without_timestamps())
+        .expect("error deleting past epoch secrets");
+    // ANCHOR_END: delete_all_past_secrets_with_none_timestamps
+
     // ---------- Additional example of group creation with `MaxEpochs(3)` ----------
 
     // create a group id

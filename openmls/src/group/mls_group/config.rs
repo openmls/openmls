@@ -64,22 +64,29 @@ impl Default for PastEpochDeletionPolicy {
 }
 
 /// The input to [`MlsGroup::delete_past_epoch_secrets()`].
+///
+/// NOTE: Epoch secrets that were created before upgrading to `openmls=0.8.2` will not yet include a timestamp.
+/// After migration, these may not always be deleted by applying a time-based `PastEpochDeletion`. Only if a new secret that does include a timestamp is added later, and it matches the time-based condition in the `PastEpochDeletion`, all earlier past epoch secrets without timestamps will be deleted, as well. However, otherwise, past epoch secrets without timestamps will not be affected by applying time-based [`PastEpochDeletion`]s.
+///
+/// To manually delete all past epoch secrets without timestamps, see:
+/// [`PastEpochDeletion::delete_all_without_timestamps()`]
 pub struct PastEpochDeletion {
-    pub(crate) before: Option<PastEpochDeletionTimeConfig>,
+    pub(crate) config: Option<PastEpochDeletionTimeConfig>,
     pub(crate) max_past_epochs: Option<usize>,
 }
 
 /// A duration or timestamp before which to delete past epoch secrets.
 pub(crate) enum PastEpochDeletionTimeConfig {
-    Duration(std::time::Duration),
-    Timestamp(std::time::SystemTime),
+    OlderThanDuration(std::time::Duration),
+    BeforeTimestamp(std::time::SystemTime),
+    DeleteAllWithoutTimestamp,
 }
 
 impl PastEpochDeletion {
     /// Delete all past epoch secrets older than a provided duration.
     pub fn older_than_duration(duration: std::time::Duration) -> Self {
         Self {
-            before: Some(PastEpochDeletionTimeConfig::Duration(duration)),
+            config: Some(PastEpochDeletionTimeConfig::OlderThanDuration(duration)),
             max_past_epochs: None,
         }
     }
@@ -87,7 +94,18 @@ impl PastEpochDeletion {
     /// Delete all past epoch secrets before a provided timestamp.
     pub fn before_timestamp(timestamp: std::time::SystemTime) -> Self {
         Self {
-            before: Some(PastEpochDeletionTimeConfig::Timestamp(timestamp)),
+            config: Some(PastEpochDeletionTimeConfig::BeforeTimestamp(timestamp)),
+            max_past_epochs: None,
+        }
+    }
+
+    /// Delete all past epoch secrets without timestamps.
+    ///
+    /// NOTE: This will delete all past epoch secrets having the legacy
+    /// format that does not include a timestamp.
+    pub fn delete_all_without_timestamps() -> Self {
+        Self {
+            config: Some(PastEpochDeletionTimeConfig::DeleteAllWithoutTimestamp),
             max_past_epochs: None,
         }
     }
@@ -95,7 +113,7 @@ impl PastEpochDeletion {
     /// Delete all past epoch secrets.
     pub fn delete_all() -> Self {
         Self {
-            before: None,
+            config: None,
             max_past_epochs: None,
         }
     }

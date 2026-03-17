@@ -18,18 +18,11 @@ The policy can also be updated on an existing group:
 {{#include ../../../openmls/tests/book_code_past_epoch.rs:set_policy_on_existing_group}}
 ```
 
-## Deleting past epoch secrets using time-based APIs
+## Time-based deletion schedules
 
-In some cases, it is useful to clean up past epoch secrets manually. For example, when a group is configured with `PastEpochDeletionPolicy::KeepAll`, all past epoch secrets will be kept automatically.
+It is possible to configure time-based deletion schedules for past epoch secrets. The application can periodically apply a `PastEpochDeletion` using the `MlsGroup::delete_past_epoch_secrets()` API.
 
-Delete all past epoch secrets:
-```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code_past_epoch.rs:delete_all}}
-```
-
-APIs are also provided for deleting past epoch secrets before a provided timestamp, or that are older than a provided duration. These APIs can be used with any `PastEpochDeletionPolicy` set on the group.
-
-The manual past epoch deletion APIs take a `PastEpochDeletion` as an argument.
+Generally, when time-based deletion schedules are used, it can be helpful to configure the group to use `PastEpochDeletionPolicy::KeepAll`, to ensure that automatic deletion conducted by the group is not applied early to a past epoch secret.
 
 Delete all past epoch secrets before a provided timestamp:
 ```rust,no_run,noplayground
@@ -51,3 +44,24 @@ Delete all past epoch secrets older than a provided duration, leaving at most a 
 {{#include ../../../openmls/tests/book_code_past_epoch.rs:duration_with_max_epochs}}
 ```
 
+## Migration and deleting legacy entries
+
+Epoch secrets that were created before upgrading to `openmls=0.8.2` will not yet include a timestamp.
+
+After migration, these may not always be deleted by applying a time-based `PastEpochDeletion`. Only if a new secret that does include a timestamp is added later, and it matches the time-based condition in the `PastEpochDeletion`, all earlier past epoch secrets without timestamps will be deleted, as well. However, otherwise, past epoch secrets without timestamps will not be affected by applying time-based `PastEpochDeletion`s.
+
+After migration, it is possible to manually delete all past epoch secrets without timestamps:
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code_past_epoch.rs:delete_all_past_secrets_with_none_timestamps}}
+```
+
+## Deleting all past epoch secrets
+
+All past epoch secrets can also be deleted at once:
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code_past_epoch.rs:delete_all}}
+```
+
+Setting the group's `PastEpochDeletionPolicy` to `PastEpochDeletionPolicy::MaxEpochs(0)` will also delete all past epoch secrets.

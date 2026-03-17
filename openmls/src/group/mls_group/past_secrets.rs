@@ -274,6 +274,17 @@ impl MessageSecretsStore {
     }
 
     fn delete_past_epoch_secrets_older_than_duration(&mut self, duration: std::time::Duration) {
+        // first, compare to the timestamp of the current message secrets
+        if let Some(added_at) = self.message_secrets.added_at {
+            if let Ok(elapsed) = std::time::SystemTime::now().duration_since(added_at) {
+                if elapsed > duration {
+                    // delete all
+                    self.past_epoch_trees.clear();
+                    return;
+                }
+            }
+        }
+
         // find the first past epoch tree with a timestamp past the duration
         let found = self
             .past_epoch_trees
@@ -297,11 +308,21 @@ impl MessageSecretsStore {
             // delete all before and including the index
             self.past_epoch_trees.drain(0..found_idx + 1);
         } else {
+
             // keep all
         }
     }
 
     fn delete_past_epoch_secrets_before_timestamp(&mut self, cutoff: std::time::SystemTime) {
+        // first, compare to timestamp of the current message secrets
+        if let Some(added_at) = self.message_secrets.added_at {
+            if added_at < cutoff {
+                // delete all
+                self.past_epoch_trees.clear();
+                return;
+            }
+        }
+
         // find the first past epoch tree with an earlier non-None timestamp
         let found = self
             .past_epoch_trees
@@ -326,14 +347,17 @@ impl MessageSecretsStore {
     }
 
     pub(crate) fn delete_past_epoch_secrets(&mut self, policy: PastEpochDeletion) {
-        // remove epoch secrets before a provided timestamp or duration
-        if let Some(before) = policy.before {
-            // handle timestamp or duration
-            match before {
-                PastEpochDeletionTimeConfig::Timestamp(timestamp) => {
+        // handle different types of past epoch deletion
+        if let Some(config) = policy.config {
+            match config {
+                PastEpochDeletionTimeConfig::DeleteAllWithoutTimestamp => {
+                    self.past_epoch_trees
+                        .retain(|tree| tree.message_secrets.added_at.is_some());
+                }
+                PastEpochDeletionTimeConfig::BeforeTimestamp(timestamp) => {
                     self.delete_past_epoch_secrets_before_timestamp(timestamp)
                 }
-                PastEpochDeletionTimeConfig::Duration(duration) => {
+                PastEpochDeletionTimeConfig::OlderThanDuration(duration) => {
                     self.delete_past_epoch_secrets_older_than_duration(duration)
                 }
             };
