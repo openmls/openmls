@@ -290,9 +290,10 @@ impl MessageSecretsStore {
                 };
 
                 elapsed > duration
-            });
+            })
+            .map(|(idx, _tree)| idx);
 
-        if let Some((found_idx, _)) = found {
+        if let Some(found_idx) = found {
             // delete all before and including the index
             self.past_epoch_trees.drain(0..found_idx + 1);
         } else {
@@ -313,9 +314,10 @@ impl MessageSecretsStore {
                 };
 
                 added_at < cutoff
-            });
+            })
+            .map(|(idx, _tree)| idx);
 
-        if let Some((found_idx, _)) = found {
+        if let Some(found_idx) = found {
             // delete all before and including the index
             self.past_epoch_trees.drain(0..found_idx + 1);
         } else {
