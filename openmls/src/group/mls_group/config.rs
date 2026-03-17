@@ -65,8 +65,18 @@ impl Default for PastEpochDeletionPolicy {
 
 /// The input to [`MlsGroup::delete_past_epoch_secrets()`].
 ///
-/// NOTE: Epoch secrets that were created before upgrading to `openmls=0.8.2` will not yet include a timestamp.
-/// After migration, these may not always be deleted by applying a time-based `PastEpochDeletion`. Only if a new secret that does include a timestamp is added later, and it matches the time-based condition in the `PastEpochDeletion`, all earlier past epoch secrets without timestamps will be deleted, as well. However, otherwise, past epoch secrets without timestamps will not be affected by applying time-based [`PastEpochDeletion`]s.
+/// This struct can be used for manual deletion of past epoch secrets by the application.
+///
+/// An [`MlsGroup`] also applies automatic deletion of past epoch secrets by default.
+///
+/// For more information, see [`PastEpochDeletionPolicy`] and [`MlsGroup::set_past_epoch_deletion_policy()`].
+///
+/// These methods can be used by the application to set up time-based deletion schedules:
+/// - [`PastEpochDeletion::before_timestamp()`]
+/// - [`PastEpochDeletion::older_than_duration()`]
+///
+/// **NOTE**: Epoch secrets that were created before upgrading to `openmls=0.8.2` will not yet include a timestamp.
+/// After migration, these may not always be deleted by applying a time-based [`PastEpochDeletion`]. Only if a new secret that does include a timestamp is added later, and it matches the time-based condition in the [`PastEpochDeletion`], all earlier past epoch secrets without timestamps will be deleted, as well. However, otherwise, past epoch secrets without timestamps will not be affected by applying time-based [`PastEpochDeletion`]s.
 ///
 /// To manually delete all past epoch secrets without timestamps, see:
 /// [`PastEpochDeletion::delete_all_without_timestamps()`]
