@@ -1,13 +1,13 @@
 use std::marker::PhantomData;
 
-use openmls_traits::storage::{Entity, Key, traits::ProposalRef as ProposalRefTrait};
-use rusqlite::{Connection, params};
+use openmls_traits::storage::{traits::ProposalRef as ProposalRefTrait, Entity, Key};
+use rusqlite::{params, Connection};
 
 use crate::{
-    STORAGE_PROVIDER_VERSION,
     codec::Codec,
     storage_provider::StorableGroupIdRef,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
+    STORAGE_PROVIDER_VERSION,
 };
 
 pub(crate) struct StorableProposal<

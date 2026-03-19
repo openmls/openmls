@@ -1,12 +1,12 @@
 use std::marker::PhantomData;
 
 use openmls_traits::storage::{Entity, Key};
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::{
-    STORAGE_PROVIDER_VERSION,
     codec::Codec,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
+    STORAGE_PROVIDER_VERSION,
 };
 
 pub(crate) struct StorablePskBundle<PskBundle: Entity<STORAGE_PROVIDER_VERSION>>(PskBundle);
@@ -103,10 +103,7 @@ impl<PskBundle: Entity<STORAGE_PROVIDER_VERSION>> StorablePskBundleRef<'_, PskBu
 pub(super) struct StorablePskIdRef<'a, PskId: Key<STORAGE_PROVIDER_VERSION>>(pub &'a PskId);
 
 impl<PskId: Key<STORAGE_PROVIDER_VERSION>> StorablePskIdRef<'_, PskId> {
-    pub(super) fn delete<C: Codec>(
-        &self,
-        connection: &Connection,
-    ) -> Result<(), rusqlite::Error> {
+    pub(super) fn delete<C: Codec>(&self, connection: &Connection) -> Result<(), rusqlite::Error> {
         let mut stmt = connection.prepare_cached(
             "DELETE FROM openmls_psks
             WHERE psk_id = ?1

@@ -1,12 +1,12 @@
 use std::marker::PhantomData;
 
 use openmls_traits::storage::{Entity, Key};
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::{
-    STORAGE_PROVIDER_VERSION,
     codec::Codec,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
+    STORAGE_PROVIDER_VERSION,
 };
 
 pub(crate) struct StorableKeyPackage<KeyPackage: Entity<STORAGE_PROVIDER_VERSION>>(pub KeyPackage);

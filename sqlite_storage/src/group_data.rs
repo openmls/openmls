@@ -1,13 +1,13 @@
 use std::marker::PhantomData;
 
 use openmls_traits::storage::{Entity, Key};
-use rusqlite::{Connection, OptionalExtension, ToSql, params, types::FromSql};
+use rusqlite::{params, types::FromSql, Connection, OptionalExtension, ToSql};
 
 use crate::{
-    STORAGE_PROVIDER_VERSION,
     codec::Codec,
     storage_provider::StorableGroupIdRef,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
+    STORAGE_PROVIDER_VERSION,
 };
 
 #[derive(Debug, Clone, Copy)]

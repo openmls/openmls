@@ -1,12 +1,12 @@
 use std::marker::PhantomData;
 
 use openmls_traits::storage::{Entity, Key};
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::{
-    STORAGE_PROVIDER_VERSION,
     codec::Codec,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
+    STORAGE_PROVIDER_VERSION,
 };
 
 pub(crate) struct StorableEncryptionKeyPair<EncryptionKeyPair: Entity<STORAGE_PROVIDER_VERSION>>(
@@ -105,10 +105,7 @@ pub(crate) struct StorableEncryptionPublicKeyRef<
 impl<EncryptionPublicKey: Key<STORAGE_PROVIDER_VERSION>>
     StorableEncryptionPublicKeyRef<'_, EncryptionPublicKey>
 {
-    pub(super) fn delete<C: Codec>(
-        &self,
-        connection: &Connection,
-    ) -> Result<(), rusqlite::Error> {
+    pub(super) fn delete<C: Codec>(&self, connection: &Connection) -> Result<(), rusqlite::Error> {
         let mut stmt = connection.prepare_cached(
             "DELETE FROM openmls_encryption_keys WHERE public_key = ?1 AND provider_version = ?2",
         )?;
