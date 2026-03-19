@@ -46,7 +46,7 @@ Delete all past epoch secrets older than a provided duration, leaving at most a 
 
 ## Migration and deleting legacy entries
 
-Epoch secrets that were created before upgrading to `openmls=0.8.2` will not yet include a timestamp.
+Epoch secrets that were created using `openmls=0.8.1` or earlier will not yet include a timestamp.
 
 After migration, these may not always be deleted by applying a time-based `PastEpochDeletion`. Only if a new secret that does include a timestamp is added later, and it matches the time-based condition in the `PastEpochDeletion`, all earlier past epoch secrets without timestamps will be deleted, as well. However, otherwise, past epoch secrets without timestamps will not be affected by applying time-based `PastEpochDeletion`s.
 
