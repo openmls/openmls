@@ -527,6 +527,11 @@ impl MlsGroup {
         self.message_secrets_store.resize(policy);
     }
 
+    /// Get the past epoch secret deletion policy for the group.
+    pub fn past_epoch_deletion_policy(&self) -> &PastEpochDeletionPolicy {
+        self.mls_group_config.past_epoch_deletion_policy()
+    }
+
     /// Set the past epoch secret deletion policy for the group.
     pub fn set_past_epoch_deletion_policy<Provider: OpenMlsProvider>(
         &mut self,
