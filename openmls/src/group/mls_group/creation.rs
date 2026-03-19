@@ -576,7 +576,7 @@ impl StagedWelcome {
             .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
             .map_err(WelcomeError::StorageError)?;
         // resize the store
-        mls_group.set_max_past_epochs(&past_epoch_deletion_policy);
+        mls_group.resize_message_secrets_store(&past_epoch_deletion_policy);
 
         mls_group
             .store(provider.storage())

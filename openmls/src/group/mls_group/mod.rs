@@ -523,7 +523,7 @@ impl MlsGroup {
     /// Sets the size of the [`MessageSecretsStore`], i.e. the number of past
     /// epochs to keep.
     /// This allows application messages from previous epochs to be decrypted.
-    pub(crate) fn set_max_past_epochs(&mut self, policy: &PastEpochDeletionPolicy) {
+    pub(crate) fn resize_message_secrets_store(&mut self, policy: &PastEpochDeletionPolicy) {
         self.message_secrets_store.resize(policy);
     }
 
@@ -533,8 +533,8 @@ impl MlsGroup {
         provider: &Provider,
         policy: PastEpochDeletionPolicy,
     ) -> Result<(), SetPastEpochDeletionPolicyError<Provider::StorageError>> {
-        // apply the new policy to the store
-        self.set_max_past_epochs(&policy);
+        // resize the store
+        self.resize_message_secrets_store(&policy);
 
         // update the message secrets store in storage
         provider
