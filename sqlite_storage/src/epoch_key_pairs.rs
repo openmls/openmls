@@ -1,13 +1,13 @@
 use std::marker::PhantomData;
 
 use openmls_traits::storage::{Entity, Key};
-use rusqlite::{params, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::{
+    STORAGE_PROVIDER_VERSION,
     codec::Codec,
     storage_provider::StorableGroupIdRef,
     wrappers::{EntitySliceWrapper, EntityVecWrapper, KeyRefWrapper},
-    STORAGE_PROVIDER_VERSION,
 };
 
 pub(crate) struct StorableEpochKeyPairs<EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>>(
@@ -25,12 +25,45 @@ impl<EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>> StorableEpochKeyPairs<Epoc
         GroupId: Key<STORAGE_PROVIDER_VERSION>,
         EpochKey: Key<STORAGE_PROVIDER_VERSION>,
     >(
-        connection: &rusqlite::Connection,
+        connection: &Connection,
         group_id: &GroupId,
         epoch_id: &EpochKey,
         leaf_index: u32,
     ) -> Result<Vec<EpochKeyPairs>, rusqlite::Error> {
-        let mut stmt = connection.prepare(
+        let mut stmt = connection.prepare_cached(
+            "SELECT key_pairs
+            FROM openmls_epoch_keys_pairs
+            WHERE group_id = ?1
+                AND epoch_id = ?2
+                AND leaf_index = ?3
+                AND provider_version = ?4",
+        )?;
+        let result = stmt
+            .query_row(
+                params![
+                    KeyRefWrapper::<C, _>(group_id, PhantomData),
+                    KeyRefWrapper::<C, _>(epoch_id, PhantomData),
+                    leaf_index,
+                    STORAGE_PROVIDER_VERSION
+                ],
+                |row| Self::from_row::<C>(row).map(|x| x.0),
+            )
+            .optional()?
+            .unwrap_or_default();
+        Ok(result)
+    }
+
+    pub(super) fn load_in_tx<
+        C: Codec,
+        GroupId: Key<STORAGE_PROVIDER_VERSION>,
+        EpochKey: Key<STORAGE_PROVIDER_VERSION>,
+    >(
+        tx: &rusqlite::Transaction<'_>,
+        group_id: &GroupId,
+        epoch_id: &EpochKey,
+        leaf_index: u32,
+    ) -> Result<Vec<EpochKeyPairs>, rusqlite::Error> {
+        let mut stmt = tx.prepare_cached(
             "SELECT key_pairs
             FROM openmls_epoch_keys_pairs
             WHERE group_id = ?1
@@ -65,22 +98,47 @@ impl<EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>> StorableEpochKeyPairsRef<'
         EpochKey: Key<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
-        connection: &rusqlite::Connection,
+        connection: &Connection,
         group_id: &GroupId,
         epoch_id: &EpochKey,
         leaf_index: u32,
     ) -> Result<(), rusqlite::Error> {
-        connection.execute(
+        let mut stmt = connection.prepare_cached(
             "INSERT OR REPLACE INTO openmls_epoch_keys_pairs (group_id, epoch_id, leaf_index, key_pairs, provider_version)
                 VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![
-                KeyRefWrapper::<C, _>(group_id, PhantomData),
-                KeyRefWrapper::<C, _>(epoch_id, PhantomData),
-                leaf_index,
-                EntitySliceWrapper::<'_, C, _>(self.0, PhantomData),
-                STORAGE_PROVIDER_VERSION
-            ],
         )?;
+        stmt.execute(params![
+            KeyRefWrapper::<C, _>(group_id, PhantomData),
+            KeyRefWrapper::<C, _>(epoch_id, PhantomData),
+            leaf_index,
+            EntitySliceWrapper::<'_, C, _>(self.0, PhantomData),
+            STORAGE_PROVIDER_VERSION
+        ])?;
+        Ok(())
+    }
+
+    pub(super) fn store_in_tx<
+        C: Codec,
+        GroupId: Key<STORAGE_PROVIDER_VERSION>,
+        EpochKey: Key<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        tx: &rusqlite::Transaction<'_>,
+        group_id: &GroupId,
+        epoch_id: &EpochKey,
+        leaf_index: u32,
+    ) -> Result<(), rusqlite::Error> {
+        let mut stmt = tx.prepare_cached(
+            "INSERT OR REPLACE INTO openmls_epoch_keys_pairs (group_id, epoch_id, leaf_index, key_pairs, provider_version)
+                VALUES (?1, ?2, ?3, ?4, ?5)",
+        )?;
+        stmt.execute(params![
+            KeyRefWrapper::<C, _>(group_id, PhantomData),
+            KeyRefWrapper::<C, _>(epoch_id, PhantomData),
+            leaf_index,
+            EntitySliceWrapper::<'_, C, _>(self.0, PhantomData),
+            STORAGE_PROVIDER_VERSION
+        ])?;
         Ok(())
     }
 }
@@ -88,23 +146,45 @@ impl<EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>> StorableEpochKeyPairsRef<'
 impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
     pub(super) fn delete_epoch_key_pair<C: Codec, EpochKey: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
-        connection: &rusqlite::Connection,
+        connection: &Connection,
         epoch_key: &EpochKey,
         leaf_index: u32,
     ) -> Result<(), rusqlite::Error> {
-        connection.execute(
+        let mut stmt = connection.prepare_cached(
             "DELETE FROM openmls_epoch_keys_pairs
             WHERE group_id = ?1
                 AND epoch_id = ?2
                 AND leaf_index = ?3
                 AND provider_version = ?4",
-            params![
-                KeyRefWrapper::<C, _>(self.0, PhantomData),
-                KeyRefWrapper::<C, _>(epoch_key, PhantomData),
-                leaf_index,
-                STORAGE_PROVIDER_VERSION
-            ],
         )?;
+        stmt.execute(params![
+            KeyRefWrapper::<C, _>(self.0, PhantomData),
+            KeyRefWrapper::<C, _>(epoch_key, PhantomData),
+            leaf_index,
+            STORAGE_PROVIDER_VERSION
+        ])?;
+        Ok(())
+    }
+
+    pub(super) fn delete_epoch_key_pair_in_tx<C: Codec, EpochKey: Key<STORAGE_PROVIDER_VERSION>>(
+        &self,
+        tx: &rusqlite::Transaction<'_>,
+        epoch_key: &EpochKey,
+        leaf_index: u32,
+    ) -> Result<(), rusqlite::Error> {
+        let mut stmt = tx.prepare_cached(
+            "DELETE FROM openmls_epoch_keys_pairs
+            WHERE group_id = ?1
+                AND epoch_id = ?2
+                AND leaf_index = ?3
+                AND provider_version = ?4",
+        )?;
+        stmt.execute(params![
+            KeyRefWrapper::<C, _>(self.0, PhantomData),
+            KeyRefWrapper::<C, _>(epoch_key, PhantomData),
+            leaf_index,
+            STORAGE_PROVIDER_VERSION
+        ])?;
         Ok(())
     }
 }

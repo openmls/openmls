@@ -1,13 +1,13 @@
 use std::marker::PhantomData;
 
 use openmls_traits::storage::{Entity, Key};
-use rusqlite::{params, types::FromSql, Connection, OptionalExtension, ToSql};
+use rusqlite::{Connection, OptionalExtension, ToSql, params, types::FromSql};
 
 use crate::{
+    STORAGE_PROVIDER_VERSION,
     codec::Codec,
     storage_provider::StorableGroupIdRef,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
-    STORAGE_PROVIDER_VERSION,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -82,10 +82,34 @@ impl<GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupData<GroupData> {
         group_id: &GroupId,
         data_type: GroupDataType,
     ) -> Result<Option<GroupData>, rusqlite::Error> {
-        let mut stmt = connection.prepare(
-            "SELECT group_data 
-            FROM openmls_group_data 
-            WHERE group_id = ? 
+        let mut stmt = connection.prepare_cached(
+            "SELECT group_data
+            FROM openmls_group_data
+            WHERE group_id = ?
+                AND data_type = ?
+                AND provider_version = ?",
+        )?;
+        stmt.query_row(
+            params![
+                KeyRefWrapper::<C, _>(group_id, PhantomData),
+                data_type,
+                STORAGE_PROVIDER_VERSION
+            ],
+            Self::from_row::<C>,
+        )
+        .map(|x| x.0)
+        .optional()
+    }
+
+    pub(super) fn load_in_tx<C: Codec, GroupId: Key<STORAGE_PROVIDER_VERSION>>(
+        tx: &rusqlite::Transaction<'_>,
+        group_id: &GroupId,
+        data_type: GroupDataType,
+    ) -> Result<Option<GroupData>, rusqlite::Error> {
+        let mut stmt = tx.prepare_cached(
+            "SELECT group_data
+            FROM openmls_group_data
+            WHERE group_id = ?
                 AND data_type = ?
                 AND provider_version = ?",
         )?;
@@ -113,16 +137,35 @@ impl<GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupDataRef<'_, Group
         group_id: &GroupId,
         data_type: GroupDataType,
     ) -> Result<(), rusqlite::Error> {
-        connection.execute(
-            "INSERT OR REPLACE INTO openmls_group_data (group_id, data_type, group_data, provider_version) 
+        let mut stmt = connection.prepare_cached(
+            "INSERT OR REPLACE INTO openmls_group_data (group_id, data_type, group_data, provider_version)
             VALUES (?, ?, ?, ?)",
-            params![
-                KeyRefWrapper::<C, _>(group_id, PhantomData),
-                data_type,
-                EntityRefWrapper::<C, _>(self.0, PhantomData),
-                STORAGE_PROVIDER_VERSION
-            ],
         )?;
+        stmt.execute(params![
+            KeyRefWrapper::<C, _>(group_id, PhantomData),
+            data_type,
+            EntityRefWrapper::<C, _>(self.0, PhantomData),
+            STORAGE_PROVIDER_VERSION
+        ])?;
+        Ok(())
+    }
+
+    pub(super) fn store_in_tx<C: Codec, GroupId: Key<STORAGE_PROVIDER_VERSION>>(
+        &self,
+        tx: &rusqlite::Transaction<'_>,
+        group_id: &GroupId,
+        data_type: GroupDataType,
+    ) -> Result<(), rusqlite::Error> {
+        let mut stmt = tx.prepare_cached(
+            "INSERT OR REPLACE INTO openmls_group_data (group_id, data_type, group_data, provider_version)
+            VALUES (?, ?, ?, ?)",
+        )?;
+        stmt.execute(params![
+            KeyRefWrapper::<C, _>(group_id, PhantomData),
+            data_type,
+            EntityRefWrapper::<C, _>(self.0, PhantomData),
+            STORAGE_PROVIDER_VERSION
+        ])?;
         Ok(())
     }
 }
@@ -133,17 +176,36 @@ impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
         connection: &Connection,
         data_type: GroupDataType,
     ) -> Result<(), rusqlite::Error> {
-        connection.execute(
-            "DELETE FROM openmls_group_data 
-            WHERE group_id = ? 
+        let mut stmt = connection.prepare_cached(
+            "DELETE FROM openmls_group_data
+            WHERE group_id = ?
                 AND data_type = ?
                 AND provider_version = ?",
-            params![
-                KeyRefWrapper::<C, _>(self.0, PhantomData),
-                data_type,
-                STORAGE_PROVIDER_VERSION
-            ],
         )?;
+        stmt.execute(params![
+            KeyRefWrapper::<C, _>(self.0, PhantomData),
+            data_type,
+            STORAGE_PROVIDER_VERSION
+        ])?;
+        Ok(())
+    }
+
+    pub(super) fn delete_group_data_in_tx<C: Codec>(
+        &self,
+        tx: &rusqlite::Transaction<'_>,
+        data_type: GroupDataType,
+    ) -> Result<(), rusqlite::Error> {
+        let mut stmt = tx.prepare_cached(
+            "DELETE FROM openmls_group_data
+            WHERE group_id = ?
+                AND data_type = ?
+                AND provider_version = ?",
+        )?;
+        stmt.execute(params![
+            KeyRefWrapper::<C, _>(self.0, PhantomData),
+            data_type,
+            STORAGE_PROVIDER_VERSION
+        ])?;
         Ok(())
     }
 }
