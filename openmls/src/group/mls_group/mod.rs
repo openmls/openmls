@@ -536,6 +536,14 @@ impl MlsGroup {
         // resize the store
         self.resize_message_secrets_store(&policy);
 
+        // set the policy on the join config
+        self.mls_group_config.past_epoch_deletion_policy = policy;
+
+        // persist the join config
+        provider
+            .storage()
+            .write_mls_join_config(self.group_id(), &self.mls_group_config)?;
+
         // update the message secrets store in storage
         provider
             .storage()
