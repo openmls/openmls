@@ -441,6 +441,8 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
             .merge_pending_commit(&alice_provider)
             .expect("error merging commit");
     }
+    // check that the policy was updated on the group
+    assert_eq!(alice_group.past_epoch_deletion_policy(), &new_policy);
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
         5
@@ -451,6 +453,8 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
     alice_group
         .set_past_epoch_deletion_policy(&alice_provider, new_policy.clone())
         .expect("error updating policy");
+    // check that the policy was updated on the group
+    assert_eq!(alice_group.past_epoch_deletion_policy(), &new_policy);
     // check that the store was resized correctly
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
@@ -472,6 +476,8 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
             .merge_pending_commit(&alice_provider)
             .expect("error merging commit");
     }
+    // check that the policy was updated on the group
+    assert_eq!(alice_group.past_epoch_deletion_policy(), &new_policy);
     assert_eq!(
         alice_group.message_secrets_store().num_past_epoch_trees(),
         10
@@ -521,6 +527,7 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
             .num_past_epoch_trees(),
         1
     );
+    assert_eq!(alice_group.past_epoch_deletion_policy(), &new_policy);
 }
 
 /// Test a secret tree store with all legacy timestamps, where a timestamp is available for the
