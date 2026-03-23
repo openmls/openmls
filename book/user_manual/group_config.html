@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-312dcfaf.js";
+            window.path_to_searchindex_js = "../searchindex-939744e6.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-e31a8293.js"></script>
+        <script src="../toc-b82fad9d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -185,7 +185,7 @@
 <tbody>
 <tr><td><code>wire_format_policy</code></td><td><code>WireFormatPolicy</code></td><td>Defines the wire format policy for outgoing and incoming handshake messages.</td></tr>
 <tr><td><code>padding_size</code></td><td><code>usize</code></td><td>Size of padding in bytes. The default is 0.</td></tr>
-<tr><td><code>max_past_epochs</code></td><td><code>usize</code></td><td>Maximum number of past epochs for which application messages can be decrypted. The default is 0.</td></tr>
+<tr><td><code>past_epoch_deletion_policy</code></td><td><code>PastEpochDeletionPolicy</code></td><td>Configures the number of past epochs for which application messages can be decrypted. The default is <code>MaxEpochs(0)</code>. For more information, see <a href="./past_epoch_secret_deletion.html">Past epoch secret deletion</a>.</td></tr>
 <tr><td><code>number_of_resumption_psks</code></td><td><code>usize</code></td><td>Number of resumption psks to keep. The default is 0.</td></tr>
 <tr><td><code>use_ratchet_tree_extension</code></td><td><code>bool</code></td><td>Flag indicating the Ratchet Tree Extension should be used. The default is <code>false</code>.</td></tr>
 <tr><td><code>sender_ratchet_configuration</code></td><td><code>SenderRatchetConfiguration</code></td><td>Sender ratchet configuration.</td></tr>

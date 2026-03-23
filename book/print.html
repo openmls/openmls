@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-312dcfaf.js";
+            window.path_to_searchindex_js = "searchindex-939744e6.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-e31a8293.js"></script>
+        <script src="toc-b82fad9d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -324,7 +324,7 @@ OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_c
 <tbody>
 <tr><td><code>wire_format_policy</code></td><td><code>WireFormatPolicy</code></td><td>Defines the wire format policy for outgoing and incoming handshake messages.</td></tr>
 <tr><td><code>padding_size</code></td><td><code>usize</code></td><td>Size of padding in bytes. The default is 0.</td></tr>
-<tr><td><code>max_past_epochs</code></td><td><code>usize</code></td><td>Maximum number of past epochs for which application messages can be decrypted. The default is 0.</td></tr>
+<tr><td><code>past_epoch_deletion_policy</code></td><td><code>PastEpochDeletionPolicy</code></td><td>Configures the number of past epochs for which application messages can be decrypted. The default is <code>MaxEpochs(0)</code>. For more information, see <a href="#past-epoch-secret-deletion">Past epoch secret deletion</a>.</td></tr>
 <tr><td><code>number_of_resumption_psks</code></td><td><code>usize</code></td><td>Number of resumption psks to keep. The default is 0.</td></tr>
 <tr><td><code>use_ratchet_tree_extension</code></td><td><code>bool</code></td><td>Flag indicating the Ratchet Tree Extension should be used. The default is <code>false</code>.</td></tr>
 <tr><td><code>sender_ratchet_configuration</code></td><td><code>SenderRatchetConfiguration</code></td><td>Sender ratchet configuration.</td></tr>
@@ -2941,15 +2941,84 @@ part of an update that someone else committed for them. The key material in the 
 <p>OpenMLS can address 3 scenarios:</p>
 <ul>
 <li>
-<p>The Delivery Service cannot guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by setting the <code>max_past_epochs</code> field in the <code>MlsGroupCreateConfig</code> to the desired number of epochs.</p>
+<p>The Delivery Service cannot guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by configuring the past epoch deletion policy on the <code>MlsGroupCreateConfig</code>.For more information, see <a href="#past-epoch-secret-deletion">Past epoch secret deletion</a>.</p>
 </li>
 <li>
-<p>The Delivery Service cannot guarantee that application messages will arrive in order within the same epoch. To address this, applications can configure the <code>out_of_order_tolerance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupCreateConfig</code>.</p>
+<p>The Delivery Service cannot guarantee that application messages will arrive in order within the same epoch. To address this, applications can configure the <code>out_of_order_tolerance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupCreateConfig</code></p>
 </li>
 <li>
 <p>The Delivery Service cannot guarantee that application messages won’t be dropped within the same epoch. To address this, applications can configure the <code>maximum_forward_distance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupCreateConfig</code>.</p>
 </li>
 </ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="past-epoch-secret-deletion"><a class="header" href="#past-epoch-secret-deletion">Past epoch secret deletion</a></h1>
+<p>The Delivery Service may not be able to guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by configuring the past epoch deletion policy on the <code>MlsGroupCreateConfig</code>.</p>
+<p>The <code>PastEpochDeletionPolicy</code> will be applied to the group automatically when a commit is merged.</p>
+<h2 id="setting-a-past-epoch-secrets-deletion-policy-for-a-group"><a class="header" href="#setting-a-past-epoch-secrets-deletion-policy-for-a-group">Setting a past epoch secrets deletion policy for a group</a></h2>
+<p>As part of creating a group, the <code>PastEpochDeletionPolicy</code> can be set on a group creation config:</p>
+<pre><code class="language-rust no_run noplayground">    // set up the group creation config
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        // keep at most 3 past epoch secrets
+        .set_past_epoch_deletion_policy(PastEpochDeletionPolicy::MaxEpochs(3))
+        .ciphersuite(ciphersuite)
+        .build();</code></pre>
+<p>The policy can also be updated on an existing group:</p>
+<pre><code class="language-rust no_run noplayground">    // keep all past epoch secrets by default
+    mls_group
+        .set_past_epoch_deletion_policy(provider, PastEpochDeletionPolicy::KeepAll)
+        .expect("error setting past epoch deletion policy");
+
+    // keep a maximum of 3 past epoch secrets
+    mls_group
+        .set_past_epoch_deletion_policy(provider, PastEpochDeletionPolicy::MaxEpochs(3))
+        .expect("error setting past epoch deletion policy");</code></pre>
+<h2 id="time-based-deletion-schedules"><a class="header" href="#time-based-deletion-schedules">Time-based deletion schedules</a></h2>
+<p>It is possible to configure time-based deletion schedules for past epoch secrets. The application can periodically apply a <code>PastEpochDeletion</code> using the <code>MlsGroup::delete_past_epoch_secrets()</code> API.</p>
+<p>Generally, when time-based deletion schedules are used, it can be helpful to configure the group to use <code>PastEpochDeletionPolicy::KeepAll</code>, to ensure that automatic deletion conducted by the group is not applied early to a past epoch secret.</p>
+<p>Delete all past epoch secrets before a provided timestamp:</p>
+<pre><code class="language-rust no_run noplayground">    // delete all past epoch secrets before a timestamp
+    mls_group
+        .delete_past_epoch_secrets(provider, PastEpochDeletion::before_timestamp(timestamp))
+        .expect("error deleting past epoch secrets");</code></pre>
+<p>Delete all past epoch secrets before a provided timestamp, leaving at most a provided number of epochs:</p>
+<pre><code class="language-rust no_run noplayground">    // delete past epoch secrets before a timestamp, leaving the latest three, at most
+    mls_group
+        .delete_past_epoch_secrets(
+            provider,
+            PastEpochDeletion::before_timestamp(timestamp).max_past_epochs(3),
+        )
+        .expect("error deleting past epoch secrets");</code></pre>
+<p>Delete all past epoch secrets older than a provided duration:</p>
+<pre><code class="language-rust no_run noplayground">    // delete all past epoch secrets older than a duration
+    mls_group
+        .delete_past_epoch_secrets(
+            provider,
+            PastEpochDeletion::older_than_duration(Duration::from_hours(48)),
+        )
+        .expect("error deleting past epoch secrets");</code></pre>
+<p>Delete all past epoch secrets older than a provided duration, leaving at most a provided number of epochs:</p>
+<pre><code class="language-rust no_run noplayground">    // delete all past epoch secrets older than a duration, leaving the latest three, at most
+    mls_group
+        .delete_past_epoch_secrets(
+            provider,
+            PastEpochDeletion::older_than_duration(Duration::from_hours(48)).max_past_epochs(3),
+        )
+        .expect("error deleting past epoch secrets");</code></pre>
+<h2 id="migration-and-deleting-legacy-entries"><a class="header" href="#migration-and-deleting-legacy-entries">Migration and deleting legacy entries</a></h2>
+<p>Epoch secrets that were created using <code>openmls=0.8.1</code> or earlier will not yet include a timestamp.</p>
+<p>After migration, these may not always be deleted by applying a time-based <code>PastEpochDeletion</code>. Only if a new secret that does include a timestamp is added later, and it matches the time-based condition in the <code>PastEpochDeletion</code>, all earlier past epoch secrets without timestamps will be deleted, as well. However, otherwise, past epoch secrets without timestamps will not be affected by applying time-based <code>PastEpochDeletion</code>s.</p>
+<p>After migration, it is possible to manually delete all past epoch secrets without timestamps:</p>
+<pre><code class="language-rust no_run noplayground">    // delete all past epoch secrets without timestamps
+    mls_group
+        .delete_past_epoch_secrets(provider, PastEpochDeletion::delete_all_without_timestamps())
+        .expect("error deleting past epoch secrets");</code></pre>
+<h2 id="deleting-all-past-epoch-secrets"><a class="header" href="#deleting-all-past-epoch-secrets">Deleting all past epoch secrets</a></h2>
+<p>All past epoch secrets can also be deleted at once:</p>
+<pre><code class="language-rust no_run noplayground">    // delete all past epoch secrets
+    mls_group
+        .delete_past_epoch_secrets(provider, PastEpochDeletion::delete_all())
+        .expect("error deleting past epoch secrets");</code></pre>
+<p>Setting the group’s <code>PastEpochDeletionPolicy</code> to <code>PastEpochDeletionPolicy::MaxEpochs(0)</code> will also delete all past epoch secrets.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="release-management"><a class="header" href="#release-management">Release management</a></h1>
 <p>The process for releasing a new version of OpenMLS.</p>

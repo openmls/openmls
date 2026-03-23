@@ -25,7 +25,7 @@
 <a href=#25 id=25 data-nosnippet>25</a>        <span class="kw">let </span>group_builder = MlsGroup::builder()
 <a href=#26 id=26 data-nosnippet>26</a>            .with_wire_format_policy(<span class="self">self</span>.configuration().wire_format_policy)
 <a href=#27 id=27 data-nosnippet>27</a>            .padding_size(<span class="self">self</span>.configuration().padding_size)
-<a href=#28 id=28 data-nosnippet>28</a>            .max_past_epochs(<span class="self">self</span>.configuration().max_past_epochs)
+<a href=#28 id=28 data-nosnippet>28</a>            .set_past_epoch_deletion_policy(<span class="self">self</span>.configuration().past_epoch_deletion_policy.clone())
 <a href=#29 id=29 data-nosnippet>29</a>            .number_of_resumption_psks(<span class="self">self</span>.configuration().number_of_resumption_psks)
 <a href=#30 id=30 data-nosnippet>30</a>            .use_ratchet_tree_extension(<span class="self">self</span>.configuration().use_ratchet_tree_extension)
 <a href=#31 id=31 data-nosnippet>31</a>            .sender_ratchet_configuration(<span class="self">self</span>.configuration().sender_ratchet_configuration)
