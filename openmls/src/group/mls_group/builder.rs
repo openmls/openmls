@@ -9,9 +9,10 @@ use crate::{
     error::LibraryError,
     extensions::Extensions,
     group::{
-        past_secrets::MessageSecretsStore, public_group::errors::PublicGroupBuildError,
-        GroupContext, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder,
-        MlsGroupState, NewGroupError, PublicGroup, WireFormatPolicy,
+        config::PastEpochDeletionPolicy, past_secrets::MessageSecretsStore,
+        public_group::errors::PublicGroupBuildError, GroupContext, GroupId, MlsGroup,
+        MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
+        PublicGroup, WireFormatPolicy,
     },
     key_packages::Lifetime,
     schedule::{
@@ -161,7 +162,9 @@ impl MlsGroupBuilder {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         let message_secrets_store = MessageSecretsStore::new_with_secret(
-            mls_group_create_config.max_past_epochs(),
+            mls_group_create_config
+                .join_config
+                .past_epoch_deletion_policy(),
             message_secrets,
         );
 
@@ -221,6 +224,33 @@ impl MlsGroupBuilder {
     /// Sets the `max_past_epochs` property of the MlsGroup.
     /// This allows application messages from previous epochs to be decrypted.
     ///
+    /// This method overrides the policy set by [`Self::set_past_epoch_deletion_policy()`],
+    /// and is equivalent to setting the past epoch deletion policy to
+    /// `PastEpochDeletionPolicy::MaxEpochs(max_past_epochs)`.
+    ///
+    /// **WARNING**
+    ///
+    ///
+    /// This feature enables the storage of message secrets from past epochs.
+    /// It is a trade-off between functionality and forward secrecy and should only be enabled
+    /// if the Delivery Service cannot guarantee that application messages will be sent in
+    /// the same epoch in which they were generated. The number for `max_epochs` should be
+    /// as low as possible.
+    ///
+    /// NOTE: This function will be deprecated in future releases.
+    pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .max_past_epochs(max_past_epochs);
+        self
+    }
+
+    /// Set the policy for deleting past epoch secrets.
+    ///
+    /// By default, storage of past epoch secrets is disabled.
+    ///
+    /// This method overrides the configuration set by [`Self::max_past_epochs()`].
+    ///
     /// **WARNING**
     ///
     /// This feature enables the storage of message secrets from past epochs.
@@ -228,10 +258,10 @@ impl MlsGroupBuilder {
     /// if the Delivery Service cannot guarantee that application messages will be sent in
     /// the same epoch in which they were generated. The number for `max_epochs` should be
     /// as low as possible.
-    pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
+    pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
-            .max_past_epochs(max_past_epochs);
+            .set_past_epoch_deletion_policy(policy);
         self
     }
 

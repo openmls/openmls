@@ -1,5 +1,4 @@
 use core::fmt::Debug;
-use std::mem;
 
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::storage::StorageProvider as _;
@@ -459,13 +458,14 @@ impl MlsGroup {
                 self.group_epoch_secrets = state.group_epoch_secrets;
 
                 // Replace the previous message secrets with the new ones and return the previous message secrets
-                let mut message_secrets = state.message_secrets;
-                mem::swap(
-                    &mut message_secrets,
-                    self.message_secrets_store.message_secrets_mut(),
+                let old_message_secrets = self
+                    .message_secrets_store
+                    .replace_current_message_secrets(state.message_secrets);
+                self.message_secrets_store.add_past_epoch_tree(
+                    past_epoch,
+                    old_message_secrets,
+                    leaves,
                 );
-                self.message_secrets_store
-                    .add(past_epoch, message_secrets, leaves);
 
                 // Replace the previous exporter tree with the new one.
                 #[cfg(feature = "extensions-draft-08")]

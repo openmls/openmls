@@ -201,8 +201,10 @@ impl ExternalCommitBuilder {
             // tracked in #767.
             LeafNodeIndex::new(0u32),
         );
-        let message_secrets_store =
-            MessageSecretsStore::new_with_secret(config.max_past_epochs, message_secrets);
+        let message_secrets_store = MessageSecretsStore::new_with_secret(
+            config.past_epoch_deletion_policy(),
+            message_secrets,
+        );
 
         let external_init_proposal =
             Proposal::external_init(ExternalInitProposal::from(kem_output));

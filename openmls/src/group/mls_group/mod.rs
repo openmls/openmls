@@ -20,10 +20,10 @@ use crate::{
     extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{
-        CreateGroupContextExtProposalError, Extension, ExtensionType, ExternalPubExtension,
-        GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig, MlsGroupStateError,
-        OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension, RequiredCapabilitiesExtension,
-        StagedCommit,
+        CreateGroupContextExtProposalError, DeletePastEpochSecretsError, Extension, ExtensionType,
+        ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
+        MlsGroupStateError, OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension,
+        RequiredCapabilitiesExtension, SetPastEpochDeletionPolicyError, StagedCommit,
     },
     key_packages::KeyPackageBundle,
     messages::{
@@ -523,12 +523,42 @@ impl MlsGroup {
     /// Sets the size of the [`MessageSecretsStore`], i.e. the number of past
     /// epochs to keep.
     /// This allows application messages from previous epochs to be decrypted.
-    pub(crate) fn set_max_past_epochs(&mut self, max_past_epochs: usize) {
-        self.message_secrets_store.resize(max_past_epochs);
+    pub(crate) fn resize_message_secrets_store(&mut self, policy: &PastEpochDeletionPolicy) {
+        self.message_secrets_store.resize(policy);
+    }
+
+    /// Get the past epoch secret deletion policy for the group.
+    pub fn past_epoch_deletion_policy(&self) -> &PastEpochDeletionPolicy {
+        self.mls_group_config.past_epoch_deletion_policy()
+    }
+
+    /// Set the past epoch secret deletion policy for the group.
+    pub fn set_past_epoch_deletion_policy<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        policy: PastEpochDeletionPolicy,
+    ) -> Result<(), SetPastEpochDeletionPolicyError<Provider::StorageError>> {
+        // resize the store
+        self.resize_message_secrets_store(&policy);
+
+        // set the policy on the join config
+        self.mls_group_config.past_epoch_deletion_policy = policy;
+
+        // persist the join config
+        provider
+            .storage()
+            .write_mls_join_config(self.group_id(), &self.mls_group_config)?;
+
+        // update the message secrets store in storage
+        provider
+            .storage()
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+
+        Ok(())
     }
 
     /// Get the message secrets. Either from the secrets store or from the group.
-    pub(crate) fn message_secrets_mut(
+    pub(crate) fn message_secrets_for_epoch_mut(
         &mut self,
         epoch: GroupEpoch,
     ) -> Result<&mut MessageSecrets, SecretTreeError> {
@@ -560,18 +590,18 @@ impl MlsGroup {
     ///
     /// Note that the leaves vector is empty for message secrets of the current
     /// epoch. The caller can use treesync in this case.
-    pub(crate) fn message_secrets_and_leaves_mut(
-        &mut self,
+    pub(crate) fn message_secrets_and_leaves(
+        &self,
         epoch: GroupEpoch,
-    ) -> Result<(&mut MessageSecrets, &[Member]), SecretTreeError> {
+    ) -> Result<(&MessageSecrets, &[Member]), SecretTreeError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
-                .secrets_and_leaves_for_epoch_mut(epoch)
+                .secrets_and_leaves_for_epoch(epoch)
                 .ok_or(SecretTreeError::TooDistantInThePast)
         } else {
             // No need for leaves here. The tree of the current epoch is
             // available to the caller.
-            Ok((self.message_secrets_store.message_secrets_mut(), &[]))
+            Ok((self.message_secrets_store.message_secrets(), &[]))
         }
     }
 
@@ -642,6 +672,24 @@ impl MlsGroup {
             &self.aad,
             self.mls_group_config.wire_format_policy().outgoing(),
         )
+    }
+
+    /// Delete all past epoch secrets.
+    ///
+    /// For more information on the arguments to this method, see [`PastEpochDeletion`].
+    pub fn delete_past_epoch_secrets<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        policy: PastEpochDeletion,
+    ) -> Result<(), DeletePastEpochSecretsError<Provider::StorageError>> {
+        // delete past epoch secrets in memory
+        self.message_secrets_store.delete_past_epoch_secrets(policy);
+        // update the message secrets store in storage
+        provider
+            .storage()
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+
+        Ok(())
     }
 
     /// Returns a reference to the proposal store.
