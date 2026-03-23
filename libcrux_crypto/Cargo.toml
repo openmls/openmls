@@ -10,8 +10,8 @@ repository = "https://github.com/openmls/openmls/tree/main/openmls_libcrux_crypt
 readme = "../README.md"
 
 [dependencies]
-libcrux-aead = { version = "0.0.6" }
-libcrux-ed25519 = { version = "0.0.6", features = ["rand"] }
+libcrux-aead = { version = "0.0.7" }
+libcrux-ed25519 = { version = "0.0.7", features = ["rand"] }
 libcrux-hkdf = { version = "0.0.6" }
 libcrux-sha2 = { version = "0.0.6" }
 libcrux-hmac = { version = "0.0.6" }
@@ -24,9 +24,9 @@ rand = "0.9"
 tls_codec.workspace = true
 rand_chacha = "0.9"
 
-hpke-rs = { version = "0.6.0", features = ["hazmat", "serialization"] }
-hpke-rs-crypto = { version = "0.6.0" }
-hpke-rs-libcrux = { version = "0.6.0" }
+hpke-rs = { version = "0.6.1", features = ["hazmat", "serialization"] }
+hpke-rs-crypto = { version = "0.6.1" }
+hpke-rs-libcrux = { version = "0.6.1" }
 
 [features]
 extensions-draft-08 = [
