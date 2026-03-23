@@ -410,6 +410,42 @@ fn setup_tree_store_with_timestamps<Provider: OpenMlsProvider>(
     message_secrets_store
 }
 
+/// Test persistence of an update to the past epoch deletion policy.
+#[openmls_test::openmls_test]
+fn test_update_policy_persistence<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
+    // initial policy
+    let initial_policy = PastEpochDeletionPolicy::MaxEpochs(3);
+    // set up a provider, signer and group
+    let (alice_provider, _alice_signer, mut alice_group) =
+        setup::<Provider>(ciphersuite, initial_policy.clone());
+
+    // load group from storage
+    let alice_group_stored = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
+        .expect("error loading group")
+        .expect("no group for id");
+    // check policy
+    assert_eq!(
+        alice_group_stored.past_epoch_deletion_policy(),
+        &initial_policy
+    );
+
+    for new_policy in [
+        PastEpochDeletionPolicy::KeepAll,
+        PastEpochDeletionPolicy::MaxEpochs(3),
+        PastEpochDeletionPolicy::MaxEpochs(2),
+    ] {
+        alice_group
+            .set_past_epoch_deletion_policy(&alice_provider, new_policy.clone())
+            .unwrap();
+        // load group from storage
+        let alice_group_stored = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
+            .expect("error loading group")
+            .expect("no group for id");
+        // check policy
+        assert_eq!(alice_group_stored.past_epoch_deletion_policy(), &new_policy);
+    }
+}
+
 /// Test changing the past epoch deletion policy on a group.
 #[openmls_test::openmls_test]
 fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
@@ -527,7 +563,7 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
             .num_past_epoch_trees(),
         1
     );
-    assert_eq!(alice_group.past_epoch_deletion_policy(), &new_policy);
+    assert_eq!(alice_group_stored.past_epoch_deletion_policy(), &new_policy);
 }
 
 /// Test a secret tree store with all legacy timestamps, where a timestamp is available for the
