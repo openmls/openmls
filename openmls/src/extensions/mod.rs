@@ -170,6 +170,20 @@ impl ExtensionType {
         }
     }
 
+    pub(crate) fn is_valid_in_key_package(self) -> bool {
+        match self {
+            ExtensionType::Grease(_)
+            | ExtensionType::RatchetTree
+            | ExtensionType::RequiredCapabilities
+            | ExtensionType::ExternalPub
+            | ExtensionType::ExternalSenders
+            | ExtensionType::ApplicationId => false,
+            ExtensionType::Unknown(_) | ExtensionType::LastResort => true,
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionType::AppDataDictionary => true,
+        }
+    }
+
     pub(crate) fn is_valid_in_group_context(self) -> bool {
         match self {
             ExtensionType::RequiredCapabilities
@@ -558,9 +572,7 @@ impl ExtensionValidator for KeyPackage {
     fn validate_extension_type(
         ext: &Extension,
     ) -> Result<(), ExtensionTypeNotValidInKeyPackageError> {
-        if ext.extension_type() == ExtensionType::LastResort
-            || matches!(ext.extension_type(), ExtensionType::Unknown(_))
-        {
+        if ext.extension_type().is_valid_in_key_package() {
             Ok(())
         } else {
             Err(ExtensionTypeNotValidInKeyPackageError(ext.extension_type()))

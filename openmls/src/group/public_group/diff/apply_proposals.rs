@@ -290,9 +290,11 @@ impl PublicGroupDiff<'_> {
             .get_or_insert_with(|| self.group_context.extensions().clone());
 
         // update the dictionary extension
-        extensions_to_update.add_or_replace(Extension::AppDataDictionary(
-            AppDataDictionaryExtension::new(dictionary),
-        ));
+        extensions_to_update
+            .add_or_replace(Extension::AppDataDictionary(
+                AppDataDictionaryExtension::new(dictionary),
+            ))
+            .map_err(|_| LibraryError::custom("Failed to update AppDataDictionary extension"))?;
 
         Ok(())
     }
