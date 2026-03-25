@@ -236,10 +236,20 @@ pub enum LeafNodeValidationError {
 pub enum LifetimeError {
     /// Lifetime is in the past.
     #[error("Lifetime is in the past: not_after={not_after}, now={now}.")]
-    Expired { not_after: u64, now: u64 },
+    Expired {
+        /// The not_after value of the lifetime.
+        not_after: u64,
+        /// The current time when the validation was performed.
+        now: u64,
+    },
     /// Lifetime is in the future.
     #[error("Lifetime is in the future: not_before={not_before}, now={now}.")]
-    NotValidYet { not_before: u64, now: u64 },
+    NotValidYet {
+        /// The not_before value of the lifetime.
+        not_before: u64,
+        /// The current time when the validation was performed.
+        now: u64,
+    },
     /// System time is before UNIX epoch.
     #[error("System time is before UNIX epoch.")]
     SystemTimeBeforeUnixEpoch,
