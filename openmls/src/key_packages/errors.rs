@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use crate::{
     ciphersuite::signable::SignatureError, error::LibraryError,
-    prelude::ExtensionTypeNotValidInKeyPackageError,
+    prelude::ExtensionTypeNotValidInKeyPackageError, treesync::errors::LifetimeError,
 };
 
 /// KeyPackage verify error
@@ -15,9 +15,9 @@ pub enum KeyPackageVerifyError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The lifetime of the leaf node is not valid.
-    #[error("The lifetime of the leaf node is not valid.")]
-    InvalidLifetime,
+    /// See [`LifetimeError`] for more details.
+    #[error(transparent)]
+    LifetimeError(#[from] LifetimeError),
     /// The lifetime of the leaf node is missing.
     #[error("The lifetime of the leaf node is missing.")]
     MissingLifetime,
