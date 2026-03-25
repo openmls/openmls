@@ -95,7 +95,7 @@ impl Lifetime {
             .duration_since(UNIX_EPOCH)
             .map_err(|_| LifetimeError::SystemTimeBeforeUnixEpoch)?
             .as_secs();
-        if self.not_after < duration_since_unix_epoch {
+        if self.not_after <= duration_since_unix_epoch {
             Err(LifetimeError::Expired {
                 not_after: self.not_after,
                 now: duration_since_unix_epoch,
