@@ -200,10 +200,12 @@ impl MlsGroup {
             leaf_node_keypairs,
             provider,
         )
+        .await
     }
 
     #[cfg(feature = "extensions-draft-08")]
-    pub(crate) fn stage_commit_with_app_data_updates(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn stage_commit_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
@@ -243,6 +245,7 @@ impl MlsGroup {
             leaf_node_keypairs,
             provider,
         )
+        .await
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -250,7 +253,7 @@ impl MlsGroup {
     async fn stage_applied_proposal_values(
         &self,
         apply_proposals_values: ApplyProposalsValues,
-        mut diff: PublicGroupDiff,
+        mut diff: PublicGroupDiff<'_>,
         commit: &Commit,
         proposal_queue: ProposalQueue,
         sender_index: LeafNodeIndex,

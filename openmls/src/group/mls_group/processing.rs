@@ -122,7 +122,7 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
-        let unverified_message = self.unprotect_message(provider, message)?;
+        let unverified_message = self.unprotect_message(provider, message).await?;
 
         // Check if the commit contains AppDataUpdate proposals - if so, the caller
         // must use process_unverified_message_with_app_data_updates instead
@@ -137,6 +137,7 @@ impl MlsGroup {
             }
         }
         self.process_unverified_message(provider, unverified_message)
+            .await
     }
 
     #[cfg(feature = "extensions-draft-08")]
@@ -370,7 +371,8 @@ impl MlsGroup {
     /// This function processes a message that may contain AppDataUpdate proposals.
     /// Process these first an create an AppDataUpdates, then pass that into this function.
     #[cfg(feature = "extensions-draft-08")]
-    pub fn process_unverified_message_with_app_data_updates<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn process_unverified_message_with_app_data_updates<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
@@ -385,15 +387,18 @@ impl MlsGroup {
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
         match content.sender() {
-            Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
-                .process_internal_authenticated_content_with_app_data_updates(
+            Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => {
+                self.process_internal_authenticated_content_with_app_data_updates(
                     provider,
                     content,
                     credential,
                     app_data_dict_updates,
-                ),
+                )
+                .await
+            }
             Sender::External(_) => {
                 self.process_external_authenticated_content(provider, content, credential)
+                    .await
             }
         }
     }
@@ -425,7 +430,8 @@ impl MlsGroup {
     ///  - ValSem204: Public keys from Path must be verified and match the
     ///    private keys from the direct path
     ///  - ValSem205
-    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn process_unverified_message<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
@@ -441,9 +447,11 @@ impl MlsGroup {
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => {
                 self.process_internal_authenticated_content(provider, content, credential)
+                    .await
             }
             Sender::External(_) => {
                 self.process_external_authenticated_content(provider, content, credential)
+                    .await
             }
         }
     }
@@ -472,7 +480,10 @@ impl MlsGroup {
     ///    private keys from the direct path
     ///  - ValSem205
     #[cfg(feature = "extensions-draft-08")]
-    fn process_internal_authenticated_content_with_app_data_updates<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    async fn process_internal_authenticated_content_with_app_data_updates<
+        Provider: OpenMlsProvider,
+    >(
         &self,
         provider: &Provider,
         content: AuthenticatedContent,
@@ -504,16 +515,19 @@ impl MlsGroup {
             }
             FramedContentBody::Commit(_) => {
                 // Since this is a commit, we need to load the private key material we need for decryption.
-                let (old_epoch_keypairs, leaf_node_keypairs) =
-                    self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
+                let (old_epoch_keypairs, leaf_node_keypairs) = self
+                    .read_decryption_keypairs(provider, &self.own_leaf_nodes)
+                    .await?;
 
-                let staged_commit = self.stage_commit_with_app_data_updates(
-                    &content,
-                    old_epoch_keypairs,
-                    leaf_node_keypairs,
-                    app_data_dict_updates,
-                    provider,
-                )?;
+                let staged_commit = self
+                    .stage_commit_with_app_data_updates(
+                        &content,
+                        old_epoch_keypairs,
+                        leaf_node_keypairs,
+                        app_data_dict_updates,
+                        provider,
+                    )
+                    .await?;
 
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
             }
@@ -529,7 +543,8 @@ impl MlsGroup {
         ))
     }
 
-    fn process_internal_authenticated_content<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    async fn process_internal_authenticated_content<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         content: AuthenticatedContent,
@@ -560,11 +575,13 @@ impl MlsGroup {
             }
             FramedContentBody::Commit(_) => {
                 // Since this is a commit, we need to load the private key material we need for decryption.
-                let (old_epoch_keypairs, leaf_node_keypairs) =
-                    self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
+                let (old_epoch_keypairs, leaf_node_keypairs) = self
+                    .read_decryption_keypairs(provider, &self.own_leaf_nodes)
+                    .await?;
 
-                let staged_commit =
-                    self.stage_commit(&content, old_epoch_keypairs, leaf_node_keypairs, provider)?;
+                let staged_commit = self
+                    .stage_commit(&content, old_epoch_keypairs, leaf_node_keypairs, provider)
+                    .await?;
 
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
             }

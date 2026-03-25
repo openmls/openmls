@@ -265,7 +265,8 @@ impl ProcessedWelcome {
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
-    pub fn into_staged_welcome<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn into_staged_welcome<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -276,11 +277,13 @@ impl ProcessedWelcome {
             LeafNodeLifetimePolicy::Verify,
             false,
         )
+        .await
     }
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
-    pub(crate) fn into_staged_welcome_inner<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub(crate) async fn into_staged_welcome_inner<Provider: OpenMlsProvider>(
         mut self,
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -290,6 +293,7 @@ impl ProcessedWelcome {
         // Check if we need to replace an old group
         if !replace_old_group
             && MlsGroup::load(provider.storage(), self.verifiable_group_info.group_id())
+                .await
                 .map_err(WelcomeError::StorageError)?
                 .is_some()
         {
@@ -491,7 +495,9 @@ impl StagedWelcome {
         let processed_welcome =
             ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome).await?;
 
-        processed_welcome.into_staged_welcome(provider, ratchet_tree)
+        processed_welcome
+            .into_staged_welcome(provider, ratchet_tree)
+            .await
     }
 
     /// Similar to [`StagedWelcome::new_from_welcome`] but as a builder.
@@ -726,12 +732,15 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     }
 
     /// Build the [`StagedWelcome`].
-    pub fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
-        self.processed_welcome.into_staged_welcome_inner(
-            self.provider,
-            self.ratchet_tree,
-            self.validate_lifetimes,
-            self.replace_old_group,
-        )
+    #[maybe_async::maybe_async]
+    pub async fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+        self.processed_welcome
+            .into_staged_welcome_inner(
+                self.provider,
+                self.ratchet_tree,
+                self.validate_lifetimes,
+                self.replace_old_group,
+            )
+            .await
     }
 }
