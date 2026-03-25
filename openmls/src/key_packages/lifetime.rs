@@ -137,6 +137,9 @@ impl Default for Lifetime {
 #[cfg(test)]
 mod tests {
     use core::time::Duration;
+    #[cfg(target_arch = "wasm32")]
+    use fluvio_wasm_timer::SystemTime;
+    #[cfg(not(target_arch = "wasm32"))]
     use std::time::SystemTime;
 
     use tls_codec::{Deserialize, Serialize};
