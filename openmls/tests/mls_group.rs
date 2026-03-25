@@ -23,7 +23,6 @@ fn generate_key_package<Provider: OpenMlsProvider>(
         .key_package()
         .clone()
 }
-
 /// This test checks if it is possible to bypass duplicate signature key detection in add proposals,
 /// when the same key package is used for each of the two add proposals.
 /// - Alice creates a group
@@ -1805,4 +1804,50 @@ fn group_context_extensions_proposal() {
     // TODO: we need to test that processing a commit with multiple group context extensions
     //       proposal also fails. however, we can't generate this commit, because our functions for
     //       constructing commits does not permit it. See #1476
+}
+
+/// Ensure that the signature algorithm of the provided signer matches the ciphersuite
+#[openmls_test]
+fn test_signer() {
+    const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
+        let alice_provider = &Provider::default();
+        // Generate credentials with keys
+        let (alice_credential, alice_signer) =
+            new_credential(alice_provider, b"Alice", CIPHERSUITE.signature_algorithm());
+        let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .wire_format_policy(*wire_format_policy)
+            .ciphersuite(CIPHERSUITE)
+            .build();
+
+        // === Alice creates a group ===
+        let mut alice_group = MlsGroup::new(
+            alice_provider,
+            &alice_signer,
+            &mls_group_create_config,
+            alice_credential.clone(),
+        )
+        .expect("An unexpected error occurred.");
+
+        // wrong signer
+        let wrong_signer = openmls_basic_credential::SignatureKeyPair::from_raw(
+            SignatureScheme::ECDSA_SECP256R1_SHA256,
+            alice_signer.private().to_owned(),
+            alice_signer.public().to_owned(),
+        );
+
+        assert_ne!(
+            wrong_signer.signature_scheme(),
+            alice_signer.signature_scheme()
+        );
+        assert_ne!(
+            wrong_signer.signature_scheme(),
+            alice_group.ciphersuite().signature_algorithm()
+        );
+        alice_group
+            .update_group_context_extensions(alice_provider, Extensions::empty(), &wrong_signer)
+            .unwrap();
+
+        alice_group.merge_pending_commit(alice_provider).unwrap();
+    }
 }
