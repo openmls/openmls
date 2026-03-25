@@ -1,3 +1,10 @@
+/*
+#[cfg(not(any(feature = "async", feature = "sync")))]
+compile_error! {
+    "At least one of \"sync\" or \"async\" features should be set."
+}
+*/
+
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
 use proc_macro::TokenStream;
@@ -13,6 +20,18 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let fn_name = sig.ident;
     let body = func.block.stmts;
 
+    let test_attr = if !cfg!(feature = "sync") {
+        quote! { #[tokio::test] }
+    } else {
+        quote! { #[test] }
+    };
+
+    let async_keyword = if !cfg!(feature = "sync") {
+        quote! { async }
+    } else {
+        quote! {}
+    };
+
     let rc = OpenMlsRustCrypto::default();
 
     let rc_ciphersuites = rc.crypto().supported_ciphersuites();
@@ -26,8 +45,8 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         let test_fun = quote! {
             #(#attrs)*
             #[allow(non_snake_case)]
-            #[test]
-            fn #name() {
+            #test_attr
+            #async_keyword fn #name() {
                 use openmls_rust_crypto::{OpenMlsRustCrypto, MemoryStorage};
                 use openmls_traits::{types::Ciphersuite, crypto::OpenMlsCrypto, storage::StorageProvider as StorageProviderTrait};
                 use openmls_traits::OpenMlsProvider;
@@ -57,8 +76,8 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             let test_fun = quote! {
                 #(#attrs)*
                 #[allow(non_snake_case)]
-                #[test]
-                fn #name() {
+                #test_attr
+                #async_keyword fn #name() {
                     use openmls_rust_crypto::RustCrypto;
                     use openmls_sqlite_storage::{SqliteStorageProvider, Codec, Connection};
                     use openmls_traits::OpenMlsProvider;
@@ -145,8 +164,8 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             let test_fun = quote! {
                 #(#attrs)*
                 #[allow(non_snake_case)]
-                #[test]
-                fn #name() {
+                #test_attr
+                #async_keyword fn #name() {
                     use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
                     use openmls_traits::{types::Ciphersuite, prelude::*};
 

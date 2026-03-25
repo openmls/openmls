@@ -17,6 +17,8 @@ members = [
 ]
 resolver = "2"
 
+exclude = ["test"]
+
 # Central dependency management for some crates
 [workspace.dependencies]
 tls_codec = { version = "0.4.2", features = ["derive", "serde", "mls"] }

@@ -1,0 +1,10 @@
+[package]
+name = "sync_test"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+openmls = { path = "../openmls" }
+
+[dev-dependencies]
+tokio = { version = "1.19.2" , all-features = true }

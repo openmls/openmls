@@ -66,12 +66,13 @@ impl<C: Codec, ConnectionRef: BorrowMut<Connection>> SqliteStorageProvider<C, Co
 
 pub(super) struct StorableGroupIdRef<'a, GroupId: Key<STORAGE_PROVIDER_VERSION>>(pub &'a GroupId);
 
+#[maybe_async::maybe_async(AFIT)]
 impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVIDER_VERSION>
     for SqliteStorageProvider<C, ConnectionRef>
 {
     type Error = rusqlite::Error;
 
-    fn write_mls_join_config<
+    async fn write_mls_join_config<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<STORAGE_PROVIDER_VERSION>,
     >(
@@ -86,7 +87,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn append_own_leaf_node<
+    async fn append_own_leaf_node<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         LeafNode: traits::LeafNode<STORAGE_PROVIDER_VERSION>,
     >(
@@ -97,7 +98,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableLeafNodeRef(leaf_node).store::<C, _>(self.connection.borrow(), group_id)
     }
 
-    fn queue_proposal<
+    async fn queue_proposal<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
         QueuedProposal: traits::QueuedProposal<STORAGE_PROVIDER_VERSION>,
@@ -111,7 +112,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .store::<C, _>(self.connection.borrow(), group_id)
     }
 
-    fn write_tree<
+    async fn write_tree<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         TreeSync: traits::TreeSync<STORAGE_PROVIDER_VERSION>,
     >(
@@ -126,7 +127,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn write_interim_transcript_hash<
+    async fn write_interim_transcript_hash<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         InterimTranscriptHash: traits::InterimTranscriptHash<STORAGE_PROVIDER_VERSION>,
     >(
@@ -141,7 +142,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn write_context<
+    async fn write_context<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         GroupContext: traits::GroupContext<STORAGE_PROVIDER_VERSION>,
     >(
@@ -156,7 +157,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn write_confirmation_tag<
+    async fn write_confirmation_tag<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ConfirmationTag: traits::ConfirmationTag<STORAGE_PROVIDER_VERSION>,
     >(
@@ -171,7 +172,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn write_group_state<
+    async fn write_group_state<
         GroupState: traits::GroupState<STORAGE_PROVIDER_VERSION>,
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
     >(
@@ -186,7 +187,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn write_message_secrets<
+    async fn write_message_secrets<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         MessageSecrets: traits::MessageSecrets<STORAGE_PROVIDER_VERSION>,
     >(
@@ -202,7 +203,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         Ok(())
     }
 
-    fn write_resumption_psk_store<
+    async fn write_resumption_psk_store<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ResumptionPskStore: traits::ResumptionPskStore<STORAGE_PROVIDER_VERSION>,
     >(
@@ -217,7 +218,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn write_own_leaf_index<
+    async fn write_own_leaf_index<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         LeafNodeIndex: traits::LeafNodeIndex<STORAGE_PROVIDER_VERSION>,
     >(
@@ -233,7 +234,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         Ok(())
     }
 
-    fn write_group_epoch_secrets<
+    async fn write_group_epoch_secrets<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<STORAGE_PROVIDER_VERSION>,
     >(
@@ -249,7 +250,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         Ok(())
     }
 
-    fn write_signature_key_pair<
+    async fn write_signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
@@ -261,7 +262,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .store::<C, _>(self.connection.borrow(), public_key)
     }
 
-    fn write_encryption_key_pair<
+    async fn write_encryption_key_pair<
         EncryptionKey: traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
@@ -272,7 +273,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableEncryptionKeyPairRef(key_pair).store::<C, _>(self.connection.borrow(), public_key)
     }
 
-    fn write_encryption_epoch_key_pairs<
+    async fn write_encryption_epoch_key_pairs<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         EpochKey: traits::EpochKey<STORAGE_PROVIDER_VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
@@ -291,7 +292,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn write_key_package<
+    async fn write_key_package<
         HashReference: traits::HashReference<STORAGE_PROVIDER_VERSION>,
         KeyPackage: traits::KeyPackage<STORAGE_PROVIDER_VERSION>,
     >(
@@ -302,7 +303,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableKeyPackageRef(key_package).store::<C, _>(self.connection.borrow(), hash_ref)
     }
 
-    fn write_psk<
+    async fn write_psk<
         PskId: traits::PskId<STORAGE_PROVIDER_VERSION>,
         PskBundle: traits::PskBundle<STORAGE_PROVIDER_VERSION>,
     >(
@@ -313,7 +314,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorablePskBundleRef(psk).store::<C, _>(self.connection.borrow(), psk_id)
     }
 
-    fn mls_group_join_config<
+    async fn mls_group_join_config<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<STORAGE_PROVIDER_VERSION>,
     >(
@@ -327,7 +328,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn own_leaf_nodes<
+    async fn own_leaf_nodes<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         LeafNode: traits::LeafNode<STORAGE_PROVIDER_VERSION>,
     >(
@@ -337,7 +338,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableLeafNode::load::<C, _>(self.connection.borrow(), group_id)
     }
 
-    fn queued_proposal_refs<
+    async fn queued_proposal_refs<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
@@ -347,7 +348,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableProposal::<u8, ProposalRef>::load_refs::<C, _>(self.connection.borrow(), group_id)
     }
 
-    fn queued_proposals<
+    async fn queued_proposals<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
         QueuedProposal: traits::QueuedProposal<STORAGE_PROVIDER_VERSION>,
@@ -358,7 +359,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableProposal::load::<C, _>(self.connection.borrow(), group_id)
     }
 
-    fn tree<
+    async fn tree<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         TreeSync: traits::TreeSync<STORAGE_PROVIDER_VERSION>,
     >(
@@ -368,7 +369,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableGroupData::load::<C, _>(self.connection.borrow(), group_id, GroupDataType::Tree)
     }
 
-    fn group_context<
+    async fn group_context<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         GroupContext: traits::GroupContext<STORAGE_PROVIDER_VERSION>,
     >(
@@ -378,7 +379,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableGroupData::load::<C, _>(self.connection.borrow(), group_id, GroupDataType::Context)
     }
 
-    fn interim_transcript_hash<
+    async fn interim_transcript_hash<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         InterimTranscriptHash: traits::InterimTranscriptHash<STORAGE_PROVIDER_VERSION>,
     >(
@@ -392,7 +393,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn confirmation_tag<
+    async fn confirmation_tag<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ConfirmationTag: traits::ConfirmationTag<STORAGE_PROVIDER_VERSION>,
     >(
@@ -406,7 +407,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn group_state<
+    async fn group_state<
         GroupState: traits::GroupState<STORAGE_PROVIDER_VERSION>,
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
     >(
@@ -420,7 +421,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn message_secrets<
+    async fn message_secrets<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         MessageSecrets: traits::MessageSecrets<STORAGE_PROVIDER_VERSION>,
     >(
@@ -434,7 +435,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn resumption_psk_store<
+    async fn resumption_psk_store<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ResumptionPskStore: traits::ResumptionPskStore<STORAGE_PROVIDER_VERSION>,
     >(
@@ -448,7 +449,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn own_leaf_index<
+    async fn own_leaf_index<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         LeafNodeIndex: traits::LeafNodeIndex<STORAGE_PROVIDER_VERSION>,
     >(
@@ -462,7 +463,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn group_epoch_secrets<
+    async fn group_epoch_secrets<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         GroupEpochSecrets: traits::GroupEpochSecrets<STORAGE_PROVIDER_VERSION>,
     >(
@@ -476,7 +477,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn signature_key_pair<
+    async fn signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
         SignatureKeyPair: traits::SignatureKeyPair<STORAGE_PROVIDER_VERSION>,
     >(
@@ -486,7 +487,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableSignatureKeyPairs::load::<C, _>(self.connection.borrow(), public_key)
     }
 
-    fn encryption_key_pair<
+    async fn encryption_key_pair<
         HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
         EncryptionKey: traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
     >(
@@ -496,7 +497,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableEncryptionKeyPair::load::<C, _>(self.connection.borrow(), public_key)
     }
 
-    fn encryption_epoch_key_pairs<
+    async fn encryption_epoch_key_pairs<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         EpochKey: traits::EpochKey<STORAGE_PROVIDER_VERSION>,
         HpkeKeyPair: traits::HpkeKeyPair<STORAGE_PROVIDER_VERSION>,
@@ -514,7 +515,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn key_package<
+    async fn key_package<
         KeyPackageRef: traits::HashReference<STORAGE_PROVIDER_VERSION>,
         KeyPackage: traits::KeyPackage<STORAGE_PROVIDER_VERSION>,
     >(
@@ -524,7 +525,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableKeyPackage::load::<C, _>(self.connection.borrow(), hash_ref)
     }
 
-    fn psk<
+    async fn psk<
         PskBundle: traits::PskBundle<STORAGE_PROVIDER_VERSION>,
         PskId: traits::PskId<STORAGE_PROVIDER_VERSION>,
     >(
@@ -534,7 +535,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorablePskBundle::load::<C, _>(self.connection.borrow(), psk_id)
     }
 
-    fn remove_proposal<
+    async fn remove_proposal<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
@@ -545,14 +546,14 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableGroupIdRef(group_id).delete_proposal::<C, _>(self.connection.borrow(), proposal_ref)
     }
 
-    fn delete_own_leaf_nodes<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_own_leaf_nodes<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableGroupIdRef(group_id).delete_leaf_nodes::<C>(self.connection.borrow())
     }
 
-    fn delete_group_config<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_group_config<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -560,7 +561,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::JoinGroupConfig)
     }
 
-    fn delete_tree<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_tree<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -568,7 +569,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::Tree)
     }
 
-    fn delete_confirmation_tag<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_confirmation_tag<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -576,7 +577,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::ConfirmationTag)
     }
 
-    fn delete_group_state<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_group_state<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -584,7 +585,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::GroupState)
     }
 
-    fn delete_context<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_context<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -592,7 +593,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::Context)
     }
 
-    fn delete_interim_transcript_hash<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_interim_transcript_hash<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -602,7 +603,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn delete_message_secrets<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_message_secrets<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -610,7 +611,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::MessageSecrets)
     }
 
-    fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_all_resumption_psk_secrets<
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -618,7 +621,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::ResumptionPskStore)
     }
 
-    fn delete_own_leaf_index<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_own_leaf_index<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -626,7 +629,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::OwnLeafIndex)
     }
 
-    fn delete_group_epoch_secrets<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_group_epoch_secrets<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -634,7 +637,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::GroupEpochSecrets)
     }
 
-    fn clear_proposal_queue<
+    async fn clear_proposal_queue<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ProposalRef: traits::ProposalRef<STORAGE_PROVIDER_VERSION>,
     >(
@@ -645,7 +648,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         Ok(())
     }
 
-    fn delete_signature_key_pair<
+    async fn delete_signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
@@ -654,7 +657,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableSignaturePublicKeyRef(public_key).delete::<C>(self.connection.borrow())
     }
 
-    fn delete_encryption_key_pair<
+    async fn delete_encryption_key_pair<
         EncryptionKey: traits::EncryptionKey<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
@@ -663,7 +666,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorableEncryptionPublicKeyRef(public_key).delete::<C>(self.connection.borrow())
     }
 
-    fn delete_encryption_epoch_key_pairs<
+    async fn delete_encryption_epoch_key_pairs<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         EpochKey: traits::EpochKey<STORAGE_PROVIDER_VERSION>,
     >(
@@ -679,14 +682,14 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    fn delete_key_package<KeyPackageRef: traits::HashReference<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_key_package<KeyPackageRef: traits::HashReference<STORAGE_PROVIDER_VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         StorableHashRef(hash_ref).delete_key_package::<C>(self.connection.borrow())
     }
 
-    fn delete_psk<PskKey: traits::PskId<STORAGE_PROVIDER_VERSION>>(
+    async fn delete_psk<PskKey: traits::PskId<STORAGE_PROVIDER_VERSION>>(
         &self,
         psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
@@ -694,7 +697,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     #[cfg(feature = "extensions-draft-08")]
-    fn write_application_export_tree<
+    async fn write_application_export_tree<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
     >(
@@ -710,7 +713,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     #[cfg(feature = "extensions-draft-08")]
-    fn application_export_tree<
+    async fn application_export_tree<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
     >(
@@ -725,7 +728,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     #[cfg(feature = "extensions-draft-08")]
-    fn delete_application_export_tree<
+    async fn delete_application_export_tree<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
     >(

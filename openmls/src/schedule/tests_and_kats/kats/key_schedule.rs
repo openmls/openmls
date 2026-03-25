@@ -259,6 +259,7 @@ fn write_test_vectors() {
     write("test_vectors/key-schedule-new.json", &tests);
 }
 
+#[cfg(test)]
 #[openmls_test::openmls_test]
 fn read_test_vectors_key_schedule() {
     let provider = &Provider::default();

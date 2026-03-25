@@ -51,7 +51,8 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
     /// Generate a fresh key package and return it.
     /// The first ciphersuite determines the
     /// credential used to generate the `KeyPackage`.
-    pub fn get_fresh_key_package(
+    #[maybe_async::maybe_async]
+    pub async fn get_fresh_key_package(
         &self,
         ciphersuite: Ciphersuite,
     ) -> Result<KeyPackage, ClientError<Provider::StorageError>> {
@@ -64,6 +65,7 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
             credential_with_key.signature_key.as_slice(),
             ciphersuite.signature_algorithm(),
         )
+        .await
         .unwrap();
 
         let key_package = KeyPackage::builder()
@@ -73,6 +75,7 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
                 &keys,
                 credential_with_key.clone(),
             )
+            .await
             .unwrap();
 
         Ok(key_package.key_package)
@@ -81,7 +84,8 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
     /// Create a group with the given [MlsGroupCreateConfig] and [Ciphersuite], and return the created [GroupId].
     ///
     /// Returns an error if the client doesn't support the `ciphersuite`.
-    pub fn create_group(
+    #[maybe_async::maybe_async]
+    pub async fn create_group(
         &self,
         mls_group_create_config: MlsGroupCreateConfig,
         ciphersuite: Ciphersuite,
@@ -96,6 +100,7 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
             credential_with_key.signature_key.as_slice(),
             ciphersuite.signature_algorithm(),
         )
+        .await
         .unwrap();
 
         let group_state = MlsGroup::new(
@@ -103,7 +108,8 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
             &signer,
             &mls_group_create_config,
             credential_with_key.clone(),
-        )?;
+        )
+        .await?;
         let group_id = group_state.group_id().clone();
         self.groups
             .write()
@@ -116,7 +122,8 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
     /// is created with the given `MlsGroupCreateConfig`. Throws an error if no
     /// `KeyPackage` exists matching the `Welcome`, if the client doesn't
     /// support the ciphersuite, or if an error occurs processing the `Welcome`.
-    pub fn join_group(
+    #[maybe_async::maybe_async]
+    pub async fn join_group(
         &self,
         mls_group_config: MlsGroupJoinConfig,
         welcome: Welcome,
@@ -127,8 +134,9 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
             &mls_group_config,
             welcome,
             ratchet_tree,
-        )?;
-        let new_group = staged_join.into_group(&self.provider)?;
+        )
+        .await?;
+        let new_group = staged_join.into_group(&self.provider).await?;
         self.groups
             .write()
             .expect("An unexpected error occurred.")
@@ -139,7 +147,8 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
     /// Have the client process the given messages. Returns an error if an error
     /// occurs during message processing or if no group exists for one of the
     /// messages.
-    pub fn receive_messages_for_group<AS: Fn(&Credential) -> bool>(
+    #[maybe_async::maybe_async]
+    pub async fn receive_messages_for_group<AS: Fn(&Credential) -> bool>(
         &self,
         message: &ProtocolMessage,
         sender_id: &[u8],
@@ -151,26 +160,31 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         if sender_id == self.identity && message.content_type() == ContentType::Commit {
-            group_state.merge_pending_commit(&self.provider)?
+            group_state.merge_pending_commit(&self.provider).await?
         } else {
             if message.content_type() == ContentType::Commit {
                 // Clear any potential pending commits.
-                group_state.clear_pending_commit(self.provider.storage())?;
+                group_state
+                    .clear_pending_commit(self.provider.storage())
+                    .await?;
             }
             // Process the message.
             let processed_message = group_state
                 .process_message(&self.provider, message.clone())
+                .await
                 .map_err(ClientError::ProcessMessageError)?;
 
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => {}
                 ProcessedMessageContent::ProposalMessage(staged_proposal) => {
                     group_state
-                        .store_pending_proposal(self.provider.storage(), *staged_proposal)?;
+                        .store_pending_proposal(self.provider.storage(), *staged_proposal)
+                        .await?;
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(staged_proposal) => {
                     group_state
-                        .store_pending_proposal(self.provider.storage(), *staged_proposal)?;
+                        .store_pending_proposal(self.provider.storage(), *staged_proposal)
+                        .await?;
                 }
                 ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                     for credential in staged_commit.credentials_to_verify() {
@@ -181,7 +195,9 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
                             return Err(ClientError::NoMatchingCredential);
                         }
                     }
-                    group_state.merge_staged_commit(&self.provider, *staged_commit)?;
+                    group_state
+                        .merge_staged_commit(&self.provider, *staged_commit)
+                        .await?;
                 }
             }
         }
@@ -208,7 +224,8 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
     /// update their leaf with. Returns an error if no group with the given
     /// group id can be found or if an error occurs while creating the update.
     #[allow(clippy::type_complexity)]
-    pub fn self_update(
+    #[maybe_async::maybe_async]
+    pub async fn self_update(
         &self,
         action_type: ActionType,
         group_id: &GroupId,
@@ -229,11 +246,13 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
         )
+        .await
         .unwrap();
         let (msg, welcome_option, group_info) = match action_type {
             ActionType::Commit => {
-                let bundle =
-                    group.self_update(&self.provider, &signer, LeafNodeParameters::default())?;
+                let bundle = group
+                    .self_update(&self.provider, &signer, LeafNodeParameters::default())
+                    .await?;
 
                 let welcome = bundle.to_welcome_msg();
                 let (msg, _, group_info) = bundle.into_contents();
@@ -241,8 +260,9 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
                 (msg, welcome, group_info)
             }
             ActionType::Proposal => {
-                let (msg, _) =
-                    group.propose_self_update(&self.provider, &signer, leaf_node_parameters)?;
+                let (msg, _) = group
+                    .propose_self_update(&self.provider, &signer, leaf_node_parameters)
+                    .await?;
 
                 (msg, None, None)
             }
@@ -260,7 +280,8 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
     /// given group id can be found or if an error occurs while performing the
     /// add operation.
     #[allow(clippy::type_complexity)]
-    pub fn add_members(
+    #[maybe_async::maybe_async]
+    pub async fn add_members(
         &self,
         action_type: ActionType,
         group_id: &GroupId,
@@ -281,11 +302,13 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
         )
+        .await
         .unwrap();
         let action_results = match action_type {
             ActionType::Commit => {
-                let (messages, welcome_message, group_info) =
-                    group.add_members(&self.provider, &signer, key_packages)?;
+                let (messages, welcome_message, group_info) = group
+                    .add_members(&self.provider, &signer, key_packages)
+                    .await?;
                 (
                     vec![messages],
                     Some(
@@ -301,6 +324,7 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
                 for key_package in key_packages {
                     let message = group
                         .propose_add_member(&self.provider, &signer, key_package)
+                        .await
                         .map(|(out, _)| out)?;
                     messages.push(message);
                 }
@@ -316,7 +340,8 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
     /// given group id can be found or if an error occurs while performing the
     /// remove operation.
     #[allow(clippy::type_complexity)]
-    pub fn remove_members(
+    #[maybe_async::maybe_async]
+    pub async fn remove_members(
         &self,
         action_type: ActionType,
         group_id: &GroupId,
@@ -337,11 +362,13 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
         )
+        .await
         .unwrap();
         let action_results = match action_type {
             ActionType::Commit => {
-                let (message, welcome_option, group_info) =
-                    group.remove_members(&self.provider, &signer, targets)?;
+                let (message, welcome_option, group_info) = group
+                    .remove_members(&self.provider, &signer, targets)
+                    .await?;
                 (
                     vec![message],
                     welcome_option.map(|w| w.into_welcome().expect("Unexpected message type.")),
@@ -353,6 +380,7 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
                 for target in targets {
                     let message = group
                         .propose_remove_member(&self.provider, &signer, *target)
+                        .await
                         .map(|(out, _)| out)?;
                     messages.push(message);
                 }
@@ -363,7 +391,8 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
     }
 
     /// Get the identity of this client in the given group.
-    pub fn identity(&self, group_id: &GroupId) -> Option<Vec<u8>> {
+    #[maybe_async::maybe_async]
+    pub async fn identity(&self, group_id: &GroupId) -> Option<Vec<u8>> {
         let groups = self.groups.read().unwrap();
         let group = groups.get(group_id).unwrap();
         let leaf = group.own_leaf();

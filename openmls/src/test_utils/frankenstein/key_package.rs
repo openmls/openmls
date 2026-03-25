@@ -136,6 +136,7 @@ pub struct FrankenLifetime {
     pub not_after: u64,
 }
 
+#[cfg(test)]
 #[openmls_test]
 fn test_franken_key_package() {
     let provider = &Provider::default();

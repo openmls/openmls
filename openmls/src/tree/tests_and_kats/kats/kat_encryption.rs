@@ -139,14 +139,15 @@ pub struct EncryptionTestVector {
     leaves: Vec<LeafSequence>,
 }
 
-fn generate_credential(
+#[maybe_async::maybe_async]
+async fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
     provider: &impl OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(provider.storage()).unwrap();
+    signature_keys.store(provider.storage()).await.unwrap();
 
     (
         CredentialWithKey {
@@ -158,7 +159,8 @@ fn generate_credential(
 }
 
 #[cfg(any(feature = "test-utils", test))]
-fn group(
+#[maybe_async::maybe_async]
+async fn group(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
@@ -166,18 +168,21 @@ fn group(
         "Kreator".into(),
         ciphersuite.signature_algorithm(),
         provider,
-    );
+    )
+    .await;
 
     let group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .build(provider, &signer, credential_with_key.clone())
+        .await
         .unwrap();
 
     (group, credential_with_key, signer)
 }
 
 #[cfg(any(feature = "test-utils", test))]
-fn receiver_group(
+#[maybe_async::maybe_async]
+async fn receiver_group(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
     group_id: GroupId,
@@ -186,13 +191,15 @@ fn receiver_group(
         "Receiver".into(),
         ciphersuite.signature_algorithm(),
         provider,
-    );
+    )
+    .await;
 
     let group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_group_id(group_id)
         .replace_old_group()
         .build(provider, &signer, credential_with_key.clone())
+        .await
         .unwrap();
 
     (group, credential_with_key, signer)
@@ -322,7 +329,8 @@ fn build_application_messages(
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub fn generate_test_vector(
+#[maybe_async::maybe_async]
+pub async fn generate_test_vector(
     n_generations: u32,
     n_leaves: u32,
     ciphersuite: Ciphersuite,
@@ -359,7 +367,7 @@ pub fn generate_test_vector(
         nonce: bytes_to_hex(sender_data_nonce.as_slice()),
     };
 
-    let (mut group, _, signer) = group(ciphersuite, &provider);
+    let (mut group, _, signer) = group(ciphersuite, &provider).await;
     *group.message_secrets_test_mut().sender_data_secret_mut() =
         SenderDataSecret::from_slice(sender_data_secret_bytes);
 
@@ -470,7 +478,8 @@ fn write_test_vectors() {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub fn run_test_vector(
+#[maybe_async::maybe_async]
+pub async fn run_test_vector(
     test_vector: EncryptionTestVector,
     provider: &impl OpenMlsProvider,
 ) -> Result<(), EncTestVectorError> {
@@ -597,7 +606,8 @@ pub fn run_test_vector(
                 ciphersuite,
                 provider,
                 mls_ciphertext_application.group_id().clone(),
-            );
+            )
+            .await;
             *group.message_secrets_test_mut().sender_data_secret_mut() =
                 SenderDataSecret::from_slice(
                     hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
@@ -758,7 +768,8 @@ pub fn run_test_vector(
                 ciphersuite,
                 provider,
                 mls_ciphertext_handshake.group_id().clone(),
-            );
+            )
+            .await;
             *group.message_secrets_test_mut().sender_data_secret_mut() =
                 SenderDataSecret::from_slice(&hex_to_bytes(&test_vector.sender_data_secret));
 

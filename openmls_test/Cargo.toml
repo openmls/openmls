@@ -16,8 +16,16 @@ proc-macro = true
 # This needs to be enabled explicity to allow disabling on some platforms
 libcrux-provider = ["dep:openmls_libcrux_crypto"]
 sqlite-provider = ["dep:openmls_sqlite_storage"]
+sync = [
+    "openmls_rust_crypto/sync",
+    "openmls_libcrux_crypto?/sync",
+    "openmls_traits/sync",
+    "openmls_sqlite_storage?/sync",
+]
 
 [dependencies]
+# TODO: should this be a workspace dependency?
+tokio = { version = "1.19.2", features = ["rt-multi-thread"] }
 syn = { version = "2.0", features = ["full", "visit"] }
 proc-macro2 = { version = "1.0.10", features = ["span-locations"] }
 ansi_term = "0.12.1"
@@ -26,5 +34,6 @@ rstest = { version = "0.26" }
 rstest_reuse = { version = "0.7" }
 openmls_rust_crypto = { workspace = true }
 openmls_libcrux_crypto = { workspace = true, optional = true }
-openmls_traits = { workspace = true, features = ["sync"] }
+openmls_traits = { workspace = true }
 openmls_sqlite_storage = { workspace = true, optional = true }
+

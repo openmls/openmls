@@ -22,6 +22,12 @@ serde_json = "1.0"
 sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
+[features]
+extensions-draft-08 = [
+    "openmls/extensions-draft-08",
+    "openmls_sqlx_storage/extensions-draft-08",
+    "openmls_rust_crypto/extensions-draft-08",
+]
 
 [[bin]]
 name = "openmls_async_tests"

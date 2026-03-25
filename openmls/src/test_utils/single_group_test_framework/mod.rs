@@ -28,14 +28,15 @@ type Name = &'static str;
 
 // TODO: only define this once
 /// Helper function for generating a credential.
-pub fn generate_credential(
+#[maybe_async::maybe_async]
+pub async fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
     provider: &impl crate::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(provider.storage()).unwrap();
+    signature_keys.store(provider.storage()).await.unwrap();
 
     (
         CredentialWithKey {
@@ -47,7 +48,8 @@ pub fn generate_credential(
 }
 
 // TODO: only define this once
-pub(crate) fn generate_key_package(
+#[maybe_async::maybe_async]
+pub(crate) async fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions<KeyPackage>,
@@ -63,6 +65,7 @@ pub(crate) fn generate_key_package(
 
     builder
         .build(ciphersuite, provider, signer, credential_with_key)
+        .await
         .unwrap()
 }
 
@@ -130,12 +133,14 @@ impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
         self
     }
 
-    pub fn build(self) -> PreGroupPartyState<'a, Provider> {
+    #[maybe_async::maybe_async]
+    pub async fn build(self) -> PreGroupPartyState<'a, Provider> {
         let (credential_with_key, signer) = generate_credential(
             self.core_state.name.into(),
             self.ciphersuite.signature_algorithm(),
             &self.core_state.provider,
-        );
+        )
+        .await;
         let mut builder = KeyPackage::builder()
             .leaf_node_extensions(self.leaf_node_extensions.unwrap_or_default())
             .key_package_extensions(self.key_package_extensions.unwrap_or_default())
@@ -152,6 +157,7 @@ impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
                 &signer,
                 credential_with_key.clone(),
             )
+            .await
             .unwrap();
 
         PreGroupPartyState {
@@ -180,8 +186,12 @@ impl<Provider: OpenMlsProvider> CorePartyState<Provider> {
     }
 
     /// Generates a simple pre-group state for a `CorePartyState`
-    pub fn generate_pre_group(&self, ciphersuite: Ciphersuite) -> PreGroupPartyState<'_, Provider> {
-        self.pre_group_builder(ciphersuite).build()
+    #[maybe_async::maybe_async]
+    pub async fn generate_pre_group(
+        &self,
+        ciphersuite: Ciphersuite,
+    ) -> PreGroupPartyState<'_, Provider> {
+        self.pre_group_builder(ciphersuite).build().await
     }
 }
 
@@ -193,7 +203,8 @@ pub struct MemberState<'a, Provider> {
 
 impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
     /// Get member's `SignatureKeyPair` if available
-    pub fn get_storage_signature_key_pair(&self) -> Option<SignatureKeyPair> {
+    #[maybe_async::maybe_async]
+    pub async fn get_storage_signature_key_pair(&self) -> Option<SignatureKeyPair> {
         let ciphersuite = self
             .party
             .key_package_bundle
@@ -206,30 +217,39 @@ impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
             self.party.signer.public(),
             ciphersuite,
         )
+        .await
     }
     /// Get the `GroupStorageState` for this group
-    pub fn group_storage_state(&self) -> GroupStorageState {
+    #[maybe_async::maybe_async]
+    pub async fn group_storage_state(&self) -> GroupStorageState {
         let storage_provider = self.party.core_state.provider.storage();
         let group_id = self.group.group_id();
 
-        GroupStorageState::from_storage(storage_provider, group_id)
+        GroupStorageState::from_storage(storage_provider, group_id).await
     }
     /// Deliver_and_apply a message to this member's `MlsGroup`
-    pub fn deliver_and_apply(&mut self, message: MlsMessageIn) -> Result<(), GroupError<Provider>> {
+    #[maybe_async::maybe_async]
+    pub async fn deliver_and_apply(
+        &mut self,
+        message: MlsMessageIn,
+    ) -> Result<(), GroupError<Provider>> {
         let message = message.try_into_protocol_message()?;
 
         // process message
         let processed_message = self
             .group
-            .process_message(&self.party.core_state.provider, message)?;
+            .process_message(&self.party.core_state.provider, message)
+            .await?;
 
         match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(_) => todo!(),
             ProcessedMessageContent::ProposalMessage(_) => todo!(),
             ProcessedMessageContent::ExternalJoinProposalMessage(_) => todo!(),
-            ProcessedMessageContent::StagedCommitMessage(m) => self
-                .group
-                .merge_staged_commit(&self.party.core_state.provider, *m)?,
+            ProcessedMessageContent::StagedCommitMessage(m) => {
+                self.group
+                    .merge_staged_commit(&self.party.core_state.provider, *m)
+                    .await?
+            }
         };
 
         Ok(())
@@ -241,7 +261,8 @@ where
     Provider: openmls_traits::OpenMlsProvider,
 {
     /// Build and stage a commit, using the provided closure to add proposals
-    pub fn build_commit_and_stage(
+    #[maybe_async::maybe_async]
+    pub async fn build_commit_and_stage(
         &'b mut self,
         f: impl FnOnce(
             CommitBuilder<'commit_builder, Initial>,
@@ -253,14 +274,16 @@ where
 
         // TODO: most of the steps here cannot be done via the closure (yet)
         let bundle = commit_builder
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(
                 provider.rand(),
                 provider.crypto(),
                 &self.party.signer,
                 |_| true,
             )?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         Ok(bundle)
     }
@@ -269,7 +292,8 @@ where
 impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
     /// Create a `MemberState` from a `PreGroupPartyState`. This creates a new `MlsGroup` with one
     /// member
-    pub fn create_from_pre_group(
+    #[maybe_async::maybe_async]
+    pub async fn create_from_pre_group(
         party: PreGroupPartyState<'a, Provider>,
         mls_group_create_config: MlsGroupCreateConfig,
         group_id: GroupId,
@@ -281,13 +305,15 @@ impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
             &mls_group_create_config,
             group_id,
             party.credential_with_key.clone(),
-        )?;
+        )
+        .await?;
 
         Ok(Self { party, group })
     }
     /// Create a `MemberState` from a `Welcome`, which creates a new `MlsGroup` using a `Welcome`
     /// invitation from an existing group
-    pub fn join_from_pre_group(
+    #[maybe_async::maybe_async]
+    pub async fn join_from_pre_group(
         party: PreGroupPartyState<'a, Provider>,
         mls_group_join_config: MlsGroupJoinConfig,
         welcome: Welcome,
@@ -298,9 +324,10 @@ impl<'a, Provider: OpenMlsProvider> MemberState<'a, Provider> {
             &mls_group_join_config,
             welcome,
             tree,
-        )?;
+        )
+        .await?;
 
-        let group = staged_join.into_group(&party.core_state.provider)?;
+        let group = staged_join.into_group(&party.core_state.provider).await?;
 
         Ok(Self { party, group })
     }
@@ -314,7 +341,8 @@ pub struct GroupState<'a, Provider> {
 
 impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
     /// Create a new `GroupState` from a single party
-    pub fn new_from_party(
+    #[maybe_async::maybe_async]
+    pub async fn new_from_party(
         group_id: GroupId,
         pre_group_state: PreGroupPartyState<'a, Provider>,
         mls_group_create_config: MlsGroupCreateConfig,
@@ -326,7 +354,8 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
             pre_group_state,
             mls_group_create_config,
             group_id.clone(),
-        )?;
+        )
+        .await?;
 
         members.insert(name, member_state);
 
@@ -371,25 +400,30 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
     }
 
     /// Deliver_and_apply a message to all parties
-    pub fn deliver_and_apply(&mut self, message: MlsMessageIn) -> Result<(), GroupError<Provider>> {
-        self.deliver_and_apply_if(message, |_| true)
+    #[maybe_async::maybe_async]
+    pub async fn deliver_and_apply(
+        &mut self,
+        message: MlsMessageIn,
+    ) -> Result<(), GroupError<Provider>> {
+        self.deliver_and_apply_if(message, |_| true).await
     }
     /// Deliver_and_apply a message to all parties if a provided condition is met
-    pub fn deliver_and_apply_if(
+    #[maybe_async::maybe_async]
+    pub async fn deliver_and_apply_if(
         &mut self,
         message: MlsMessageIn,
         condition: impl Fn(&MemberState<'a, Provider>) -> bool,
     ) -> Result<(), GroupError<Provider>> {
-        self.members
-            .values_mut()
-            .filter(|member| condition(member))
-            .try_for_each(|member| member.deliver_and_apply(message.clone()))?;
+        for member in self.members.values_mut().filter(|member| condition(member)) {
+            member.deliver_and_apply(message.clone()).await?;
+        }
 
         Ok(())
     }
 
     /// Deliver_and_apply a welcome to a single party, and initialize a group for that party
-    pub fn deliver_and_apply_welcome(
+    #[maybe_async::maybe_async]
+    pub async fn deliver_and_apply_welcome(
         &mut self,
         recipient: PreGroupPartyState<'a, Provider>,
         mls_group_join_config: MlsGroupJoinConfig,
@@ -400,7 +434,8 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         let name = recipient.core_state.name;
 
         let member_state =
-            MemberState::join_from_pre_group(recipient, mls_group_join_config, welcome, tree)?;
+            MemberState::join_from_pre_group(recipient, mls_group_join_config, welcome, tree)
+                .await?;
 
         // insert after success
         self.members.insert(name, member_state);
@@ -414,7 +449,8 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
         let _ = self.members.remove(&name);
     }
 
-    pub fn add_member(
+    #[maybe_async::maybe_async]
+    pub async fn add_member(
         &mut self,
         add_config: AddMemberConfig<'a, Provider>,
     ) -> Result<(), GroupError<Provider>> {
@@ -429,16 +465,20 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
             .map(|addee| addee.key_package_bundle.key_package.clone())
             .collect();
 
-        let (commit, welcome, _) = adder.group.add_members(
-            &adder.party.core_state.provider,
-            &adder.party.signer,
-            &key_packages,
-        )?;
+        let (commit, welcome, _) = adder
+            .group
+            .add_members(
+                &adder.party.core_state.provider,
+                &adder.party.signer,
+                &key_packages,
+            )
+            .await?;
 
         // Deliver_and_apply to all members but adder
         self.deliver_and_apply_if(commit.into(), |member| {
             member.party.core_state.name != add_config.adder
-        })?;
+        })
+        .await?;
 
         // Deliver_and_apply welcome to addee
         let welcome = match welcome.body() {
@@ -452,7 +492,8 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
                 add_config.join_config.clone(),
                 welcome.clone(),
                 None,
-            )?;
+            )
+            .await?;
         }
 
         let adder = self
@@ -464,7 +505,8 @@ impl<'a, Provider: OpenMlsProvider> GroupState<'a, Provider> {
 
         adder
             .group
-            .merge_staged_commit(&adder.party.core_state.provider, staged_commit)?;
+            .merge_staged_commit(&adder.party.core_state.provider, staged_commit)
+            .await?;
 
         Ok(())
     }
@@ -500,16 +542,17 @@ mod test {
     use openmls_test::openmls_test;
 
     #[openmls_test]
-    fn test_members_mut() {
+    #[maybe_async::maybe_async]
+    async fn test_members_mut() {
         let alice_party = CorePartyState::<Provider>::new("alice");
         let bob_party = CorePartyState::<Provider>::new("bob");
         let charlie_party = CorePartyState::<Provider>::new("charlie");
         let dave_party = CorePartyState::<Provider>::new("dave");
 
-        let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-        let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
-        let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
-        let dave_pre_group = dave_party.generate_pre_group(ciphersuite);
+        let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+        let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
+        let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite).await;
+        let dave_pre_group = dave_party.generate_pre_group(ciphersuite).await;
 
         // Create config
         let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -618,8 +661,8 @@ mod test {
         let alice_party = CorePartyState::<Provider>::new("alice");
         let bob_party = CorePartyState::<Provider>::new("bob");
 
-        let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-        let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+        let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+        let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
 
         // Get the key package for Bob
         // TODO: should key package be regenerated each time?
