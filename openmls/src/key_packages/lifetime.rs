@@ -90,7 +90,7 @@ impl Lifetime {
 
     /// Returns a [`LifetimeError`] if the lifetime is not valid at the given
     /// time.
-    fn validate_with_time(&self, now: SystemTime) -> Result<(), LifetimeError> {
+    pub fn validate_with_time(&self, now: SystemTime) -> Result<(), LifetimeError> {
         let duration_since_unix_epoch = now
             .duration_since(UNIX_EPOCH)
             .map_err(|_| LifetimeError::SystemTimeBeforeUnixEpoch)?
