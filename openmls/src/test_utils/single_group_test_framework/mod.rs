@@ -608,16 +608,17 @@ mod test {
         assert_eq!(charlie.party.core_state.name, "charlie");
     }
     #[openmls_test]
+    #[maybe_async::maybe_async]
     pub fn simpler_example() {
         let alice_party = CorePartyState::<Provider>::new("alice");
         let bob_party = CorePartyState::<Provider>::new("bob");
         let charlie_party = CorePartyState::<Provider>::new("charlie");
         let dave_party = CorePartyState::<Provider>::new("dave");
 
-        let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-        let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
-        let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
-        let dave_pre_group = dave_party.generate_pre_group(ciphersuite);
+        let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+        let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
+        let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite).await;
+        let dave_pre_group = dave_party.generate_pre_group(ciphersuite).await;
 
         // Create config
         let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -657,7 +658,8 @@ mod test {
     }
 
     #[openmls_test]
-    pub fn simple_example() {
+    #[maybe_async::maybe_async]
+    pub async fn simple_example() {
         let alice_party = CorePartyState::<Provider>::new("alice");
         let bob_party = CorePartyState::<Provider>::new("bob");
 

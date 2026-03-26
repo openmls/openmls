@@ -45,6 +45,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         let test_fun = quote! {
             #(#attrs)*
             #[allow(non_snake_case)]
+            #[maybe_async::maybe_async]
             #test_attr
             #async_keyword fn #name() {
                 use openmls_rust_crypto::{OpenMlsRustCrypto, MemoryStorage};
@@ -76,6 +77,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             let test_fun = quote! {
                 #(#attrs)*
                 #[allow(non_snake_case)]
+                #[maybe_async::maybe_async]
                 #test_attr
                 #async_keyword fn #name() {
                     use openmls_rust_crypto::RustCrypto;
@@ -164,6 +166,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             let test_fun = quote! {
                 #(#attrs)*
                 #[allow(non_snake_case)]
+                #[maybe_async::maybe_async]
                 #test_attr
                 #async_keyword fn #name() {
                     use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
