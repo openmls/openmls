@@ -20,13 +20,16 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let fn_name = sig.ident;
     let body = func.block.stmts;
 
-    let test_attr = if !cfg!(feature = "sync") {
+    let is_async = sig.asyncness.is_some() && !cfg!(feature = "sync");
+
+    let test_attr = if is_async {
         quote! { #[tokio::test] }
     } else {
         quote! { #[test] }
     };
+    
 
-    let async_keyword = if !cfg!(feature = "sync") {
+    let async_keyword = if is_async {
         quote! { async }
     } else {
         quote! {}

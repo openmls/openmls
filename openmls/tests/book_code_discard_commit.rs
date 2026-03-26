@@ -473,7 +473,7 @@ fn discard_commit_group_context_extensions() {
 }
 
 #[openmls_test]
-fn discard_commit_custom_proposal() {
+async fn discard_commit_custom_proposal() {
     let alice_provider = &Provider::default();
 
     let group_id = GroupId::from_slice(b"Test Group");
@@ -506,18 +506,21 @@ fn discard_commit_custom_proposal() {
 
     let (_mls_msg_out, _proposal_ref) = alice_group
         .propose_custom_proposal_by_value(alice_provider, &alice_signer, custom_proposal)
+        .await
         .expect("could not propose custom proposal");
 
     assert_eq!(alice_group.pending_proposals().count(), 1);
 
     let (_commit, _welcome, _group_info) = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_signer)
+        .await
         .unwrap();
 
     // === Delivery service rejected the commit ===
 
     alice_group
         .clear_pending_commit(alice_provider.storage())
+        .await
         .expect("Could not clear pending commit");
 
     let state_after = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
