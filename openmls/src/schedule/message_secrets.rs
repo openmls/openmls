@@ -10,6 +10,7 @@ pub(crate) struct MessageSecrets {
     sender_data_secret: SenderDataSecret,
     membership_key: MembershipKey,
     confirmation_key: ConfirmationKey,
+    #[serde(with = "serde_bytes")]
     serialized_context: Vec<u8>,
     secret_tree: SecretTree,
 }

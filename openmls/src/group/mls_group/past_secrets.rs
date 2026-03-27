@@ -12,6 +12,7 @@ use super::*;
 pub(crate) struct PastEpochMember {
     pub index: LeafNodeIndex,
     pub credential: Credential,
+    #[serde(with = "serde_bytes")]
     pub signature_key: Vec<u8>,
 }
 
