@@ -36,7 +36,11 @@ use tls_codec::{
 #[cfg(test)]
 mod tests;
 
-use crate::{ciphersuite::SignaturePublicKey, group::Member, treesync::LeafNode};
+use crate::{
+    ciphersuite::SignaturePublicKey,
+    group::{mls_group::past_secrets::PastEpochMember, Member},
+    treesync::LeafNode,
+};
 use errors::*;
 
 #[cfg(doc)]
@@ -339,6 +343,15 @@ impl From<&LeafNode> for CredentialWithKey {
 
 impl From<&Member> for CredentialWithKey {
     fn from(member: &Member) -> Self {
+        Self {
+            credential: member.credential.clone(),
+            signature_key: member.signature_key.clone().into(),
+        }
+    }
+}
+
+impl From<&PastEpochMember> for CredentialWithKey {
+    fn from(member: &PastEpochMember) -> Self {
         Self {
             credential: member.credential.clone(),
             signature_key: member.signature_key.clone().into(),

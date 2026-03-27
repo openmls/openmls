@@ -3,7 +3,7 @@
 //! This module contains [`MlsGroup`] and its submodules.
 //!
 
-use past_secrets::MessageSecretsStore;
+use past_secrets::{MessageSecretsStore, PastEpochMember};
 use proposal_store::ProposalQueue;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as _;
@@ -593,7 +593,7 @@ impl MlsGroup {
     pub(crate) fn message_secrets_and_leaves(
         &self,
         epoch: GroupEpoch,
-    ) -> Result<(&MessageSecrets, &[Member]), SecretTreeError> {
+    ) -> Result<(&MessageSecrets, &[PastEpochMember]), SecretTreeError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
                 .secrets_and_leaves_for_epoch(epoch)

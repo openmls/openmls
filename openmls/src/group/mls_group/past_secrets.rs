@@ -4,6 +4,27 @@ use crate::schedule::message_secrets::MessageSecrets;
 
 use super::*;
 
+/// A slimmed-down version of [`Member`] for past epoch storage.
+/// Only contains fields needed for past-epoch message verification:
+/// `credential` and `signature_key` (for signature verification) and `index`
+/// (for sender lookup). The `encryption_key` is not needed for past epochs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct PastEpochMember {
+    pub index: LeafNodeIndex,
+    pub credential: Credential,
+    pub signature_key: Vec<u8>,
+}
+
+impl From<Member> for PastEpochMember {
+    fn from(member: Member) -> Self {
+        Self {
+            index: member.index,
+            credential: member.credential,
+            signature_key: member.signature_key,
+        }
+    }
+}
+
 // Internal helper struct
 /// A wrapper for all data associated with a `MessageSecrets`
 /// NOTE: this struct can be deserialized directly from data
@@ -57,7 +78,7 @@ impl EpochTree {
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct EpochTree {
     epoch: u64,
-    leaves: Vec<Member>,
+    leaves: Vec<PastEpochMember>,
     message_secrets: MessageSecretsWithTimestamp,
 }
 
@@ -156,7 +177,7 @@ impl MessageSecretsStore {
         &mut self,
         group_epoch: impl Into<GroupEpoch>,
         message_secrets: MessageSecretsWithTimestamp,
-        leaves: Vec<Member>,
+        leaves: Vec<PastEpochMember>,
     ) {
         // Don't store the tree if it's not intended
         if self.max_epochs == 0 {
@@ -216,7 +237,7 @@ impl MessageSecretsStore {
     pub(crate) fn secrets_and_leaves_for_epoch(
         &self,
         group_epoch: impl Into<GroupEpoch>,
-    ) -> Option<(&MessageSecrets, &[Member])> {
+    ) -> Option<(&MessageSecrets, &[PastEpochMember])> {
         let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter() {
             if epoch_tree.epoch == epoch {
@@ -234,7 +255,7 @@ impl MessageSecretsStore {
     pub(crate) fn leaves_for_epoch(
         &self,
         group_epoch: impl Into<GroupEpoch>,
-    ) -> HashMap<LeafNodeIndex, &Member> {
+    ) -> HashMap<LeafNodeIndex, &PastEpochMember> {
         let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter() {
             if epoch_tree.epoch == epoch {
@@ -242,7 +263,7 @@ impl MessageSecretsStore {
                     .leaves
                     .iter()
                     .map(|m| (m.index, m))
-                    .collect::<HashMap<LeafNodeIndex, &Member>>();
+                    .collect::<HashMap<LeafNodeIndex, &PastEpochMember>>();
             }
         }
         HashMap::new()
@@ -258,7 +279,7 @@ impl MessageSecretsStore {
             t.epoch == group_epoch.0
                 && t.leaves
                     .iter()
-                    .any(|Member { index, .. }| *index == leaf_index)
+                    .any(|PastEpochMember { index, .. }| *index == leaf_index)
         })
     }
 

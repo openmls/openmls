@@ -9,6 +9,7 @@ use super::proposal_store::{
     QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
 };
 
+use super::past_secrets::PastEpochMember;
 use super::{
     super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
@@ -452,7 +453,11 @@ impl MlsGroup {
                 // Save the past epoch
                 let past_epoch = self.context().epoch();
                 // Get all the full leaves
-                let leaves = self.public_group().members().collect();
+                let leaves = self
+                    .public_group()
+                    .members()
+                    .map(PastEpochMember::from)
+                    .collect();
                 // Merge the staged commit into the group state and store the secret tree from the
                 // previous epoch in the message secrets store.
                 self.group_epoch_secrets = state.group_epoch_secrets;

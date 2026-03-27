@@ -163,3 +163,91 @@ impl MessageSecretsStore {
         assert_eq!(self, &deserialized);
     }
 }
+
+/// Test that old `EpochTree` payloads containing `Member` (with `encryption_key`)
+/// deserialize correctly into the new format using `PastEpochMember` (without
+/// `encryption_key`), and that the new format omits `encryption_key` on serialization.
+#[test]
+fn past_epoch_member_compat() {
+    use crate::group::mls_group::past_secrets::PastEpochMember;
+
+    // Serialize a full Member (old format with encryption_key)
+    let member = Member::new(
+        LeafNodeIndex::new(5),
+        vec![99, 99, 99],
+        vec![42, 43, 44],
+        BasicCredential::new(b"Alice".to_vec()).into(),
+    );
+    let member_json = serde_json::to_string(&member).expect("error serializing Member");
+    assert!(member_json.contains("encryption_key"));
+
+    // Deserialize as PastEpochMember — encryption_key should be silently ignored
+    let past_member: PastEpochMember = serde_json::from_str(&member_json)
+        .expect("error deserializing old Member as PastEpochMember");
+    assert_eq!(past_member.index, LeafNodeIndex::new(5));
+    assert_eq!(past_member.signature_key, vec![42, 43, 44]);
+
+    // Re-serialize — encryption_key should NOT be in the output
+    let reserialized = serde_json::to_string(&past_member).expect("error serializing");
+    assert!(
+        !reserialized.contains("encryption_key"),
+        "new format should not contain encryption_key"
+    );
+
+    // Round-trip
+    let roundtripped: PastEpochMember =
+        serde_json::from_str(&reserialized).expect("error deserializing new format");
+    assert_eq!(past_member, roundtripped);
+}
+
+/// Test that the existing SQL dump (created with old Member format including
+/// encryption_key) can be loaded, modified, and round-tripped correctly
+/// with the new PastEpochMember format.
+#[test]
+fn storage_compatibility_with_past_epoch_member() {
+    let sql_statements = load_statements(SQL_STATEMENTS_PATH);
+    let conn = Connection::open_in_memory().expect("error opening database connection");
+    conn.execute_batch(&sql_statements)
+        .expect("error executing sqlite statements");
+
+    let alice_provider = &Provider::new(conn);
+    let group_id = GroupId::from_slice(TEST_GROUP_ID);
+    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+
+    // Load the old-format store
+    let mut store: MessageSecretsStore = alice_provider
+        .storage()
+        .message_secrets(&group_id)
+        .expect("error loading message secrets")
+        .expect("no message secrets available");
+
+    // Add a new epoch with PastEpochMember leaves
+    use crate::group::mls_group::past_secrets::PastEpochMember;
+    let leaves = vec![PastEpochMember {
+        index: LeafNodeIndex::new(0),
+        credential: BasicCredential::new(b"Alice".to_vec()).into(),
+        signature_key: vec![1, 2, 3, 4],
+    }];
+    store.add_past_epoch_tree(
+        99u64,
+        MessageSecrets::random(ciphersuite, alice_provider.rand(), LeafNodeIndex::new(0))
+            .with_timestamp(std::time::SystemTime::now()),
+        leaves,
+    );
+
+    // Verify the new epoch's leaves are accessible
+    let leaves_map = store.leaves_for_epoch(GroupEpoch::from(99u64));
+    assert_eq!(leaves_map.len(), 1);
+    let member = leaves_map[&LeafNodeIndex::new(0)];
+    assert_eq!(member.signature_key, vec![1, 2, 3, 4]);
+
+    // Round-trip serialization
+    store.ensure_deserialization_matches();
+
+    // Verify encryption_key is not in the serialized output
+    let serialized = serde_json::to_string(&store).expect("error serializing");
+    assert!(
+        !serialized.contains("encryption_key"),
+        "serialized store should not contain encryption_key"
+    );
+}
