@@ -250,4 +250,198 @@ fn storage_compatibility_with_past_epoch_member() {
         !serialized.contains("encryption_key"),
         "serialized store should not contain encryption_key"
     );
+
+    // Verify the pooled format is used (member_pool field present)
+    assert!(
+        serialized.contains("member_pool"),
+        "serialized store should use pooled member format"
+    );
+    assert!(
+        serialized.contains("leaf_indices"),
+        "serialized store should use leaf_indices in epoch trees"
+    );
+}
+
+/// Test that member deduplication across epochs reduces serialized size
+/// and that the pooled format round-trips correctly.
+#[test]
+fn member_pool_deduplication() {
+    use crate::group::mls_group::past_secrets::PastEpochMember;
+
+    let provider = openmls_libcrux_crypto::Provider::default();
+    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+
+    // Create shared members (same across epochs)
+    let shared_members: Vec<PastEpochMember> = (0..10)
+        .map(|i| PastEpochMember {
+            index: LeafNodeIndex::new(i),
+            credential: BasicCredential::new(format!("Member{i}").into_bytes()).into(),
+            signature_key: vec![i as u8; 32],
+        })
+        .collect();
+
+    // Create a store with 5 past epochs, all sharing the same 10 members
+    let mut store = MessageSecretsStore::new_with_secret(
+        &PastEpochDeletionPolicy::MaxEpochs(5),
+        MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0)),
+    );
+
+    for epoch in 0..5u64 {
+        store.add_past_epoch_tree(
+            epoch,
+            MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0))
+                .with_timestamp(std::time::SystemTime::now()),
+            shared_members.clone(),
+        );
+    }
+
+    // Serialize with pooled format
+    let serialized = serde_json::to_string(&store).expect("error serializing");
+
+    // The pool should contain exactly 10 members (not 50)
+    let json_val: serde_json::Value = serde_json::from_str(&serialized).expect("error parsing");
+    let pool = json_val["member_pool"]
+        .as_array()
+        .expect("member_pool should be an array");
+    assert_eq!(pool.len(), 10, "pool should deduplicate to 10 members");
+
+    // Each epoch tree should reference the pool by index
+    let trees = json_val["past_epoch_trees"]
+        .as_array()
+        .expect("past_epoch_trees should be an array");
+    for tree in trees {
+        let indices = tree["leaf_indices"]
+            .as_array()
+            .expect("leaf_indices should be an array");
+        assert_eq!(indices.len(), 10);
+    }
+
+    // Round-trip: deserialize and verify equality
+    store.ensure_deserialization_matches();
+
+    // Verify all epoch leaves are still accessible
+    for epoch in 0..5u64 {
+        let leaves = store.leaves_for_epoch(GroupEpoch::from(epoch));
+        assert_eq!(leaves.len(), 10);
+        for i in 0..10u32 {
+            let member = leaves[&LeafNodeIndex::new(i)];
+            assert_eq!(member.signature_key, vec![i as u8; 32]);
+        }
+    }
+
+    // Now test with one member changed per epoch (partial overlap)
+    let mut store2 = MessageSecretsStore::new_with_secret(
+        &PastEpochDeletionPolicy::MaxEpochs(5),
+        MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0)),
+    );
+
+    for epoch in 0..5u64 {
+        let mut members = shared_members.clone();
+        // Change one member per epoch
+        members[0] = PastEpochMember {
+            index: LeafNodeIndex::new(0),
+            credential: BasicCredential::new(format!("Changed{epoch}").into_bytes()).into(),
+            signature_key: vec![100 + epoch as u8; 32],
+        };
+        store2.add_past_epoch_tree(
+            epoch,
+            MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0))
+                .with_timestamp(std::time::SystemTime::now()),
+            members,
+        );
+    }
+
+    let serialized2 = serde_json::to_string(&store2).expect("error serializing");
+    let json_val2: serde_json::Value = serde_json::from_str(&serialized2).expect("error parsing");
+    let pool2 = json_val2["member_pool"]
+        .as_array()
+        .expect("member_pool should be an array");
+    // 9 shared members + 5 unique members[0] = 14 total
+    assert_eq!(
+        pool2.len(),
+        14,
+        "pool should have 14 members (9 shared + 5 unique)"
+    );
+
+    store2.ensure_deserialization_matches();
+}
+
+/// Test that legacy format (without member_pool) still deserializes correctly.
+#[test]
+fn legacy_store_deserialization() {
+    use crate::group::mls_group::past_secrets::PastEpochMember;
+    use std::collections::VecDeque;
+
+    /// Mirrors the old serialization format: each epoch has inline leaves,
+    /// no member_pool.
+    #[derive(Serialize)]
+    struct LegacyStore {
+        max_epochs: usize,
+        past_epoch_trees: VecDeque<LegacyEpochTree>,
+        message_secrets: MessageSecretsWithTimestamp,
+    }
+
+    #[derive(Serialize)]
+    struct LegacyEpochTree {
+        epoch: u64,
+        leaves: Vec<PastEpochMember>,
+        message_secrets: MessageSecretsWithTimestamp,
+    }
+
+    let provider = openmls_libcrux_crypto::Provider::default();
+    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+
+    let members = vec![
+        PastEpochMember {
+            index: LeafNodeIndex::new(0),
+            credential: BasicCredential::new(b"Alice".to_vec()).into(),
+            signature_key: vec![1; 32],
+        },
+        PastEpochMember {
+            index: LeafNodeIndex::new(1),
+            credential: BasicCredential::new(b"Bob".to_vec()).into(),
+            signature_key: vec![2; 32],
+        },
+    ];
+
+    let current_secrets =
+        MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0))
+            .with_timestamp(std::time::SystemTime::now());
+    let past_secrets = MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0))
+        .with_timestamp(std::time::SystemTime::now());
+
+    // Serialize via the legacy struct (no member_pool, inline leaves)
+    let legacy = LegacyStore {
+        max_epochs: 3,
+        past_epoch_trees: VecDeque::from([LegacyEpochTree {
+            epoch: 0,
+            leaves: members.clone(),
+            message_secrets: past_secrets.clone(),
+        }]),
+        message_secrets: current_secrets.clone(),
+    };
+    let legacy_json = serde_json::to_string(&legacy).expect("error serializing legacy");
+
+    assert!(!legacy_json.contains("member_pool"));
+    assert!(!legacy_json.contains("leaf_indices"));
+    assert!(legacy_json.contains("\"leaves\""));
+
+    // Deserialize into the real MessageSecretsStore
+    let store: MessageSecretsStore =
+        serde_json::from_str(&legacy_json).expect("error deserializing legacy format");
+
+    // Verify the data came through correctly
+    let leaves_map = store.leaves_for_epoch(GroupEpoch::from(0u64));
+    assert_eq!(leaves_map.len(), 2);
+    assert_eq!(
+        leaves_map[&LeafNodeIndex::new(0)].signature_key,
+        vec![1; 32]
+    );
+    assert_eq!(
+        leaves_map[&LeafNodeIndex::new(1)].signature_key,
+        vec![2; 32]
+    );
+
+    // Round-trip through the new pooled format
+    store.ensure_deserialization_matches();
 }

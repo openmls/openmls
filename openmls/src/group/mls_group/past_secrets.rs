@@ -82,9 +82,13 @@ pub(crate) struct EpochTree {
     message_secrets: MessageSecretsWithTimestamp,
 }
 
-/// Can store message secrets for up to `max_epochs`. The trees are added with [`self::add()`] and can be queried
-/// with [`Self::get_epoch()`].
-#[derive(Serialize, Deserialize)]
+/// Can store message secrets for up to `max_epochs`. The trees are added with
+/// [`self::add()`] and can be queried with [`Self::get_epoch()`].
+///
+/// Serialization uses a deduplicated member pool: members shared across epochs
+/// are stored once in `member_pool`, and each epoch references them by index.
+/// Deserialization accepts both the new pooled format and the legacy format
+/// (where each epoch has inline `leaves`).
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct MessageSecretsStore {
@@ -95,6 +99,131 @@ pub(crate) struct MessageSecretsStore {
     past_epoch_trees: VecDeque<EpochTree>,
     // The message secrets of the current epoch.
     message_secrets: MessageSecretsWithTimestamp,
+}
+
+/// Serialization helper: epoch tree with pool indices instead of inline members.
+#[derive(Serialize)]
+struct CompactEpochTreeRef<'a> {
+    epoch: u64,
+    leaf_indices: Vec<u32>,
+    message_secrets: &'a MessageSecretsWithTimestamp,
+}
+
+/// Deserialization helper for the pooled format.
+#[derive(Deserialize)]
+struct CompactEpochTree {
+    epoch: u64,
+    leaf_indices: Vec<u32>,
+    message_secrets: MessageSecretsWithTimestamp,
+}
+
+/// Serialization format with deduplicated member pool.
+#[derive(Serialize)]
+struct PooledStoreRef<'a> {
+    max_epochs: usize,
+    member_pool: Vec<PastEpochMember>,
+    past_epoch_trees: VecDeque<CompactEpochTreeRef<'a>>,
+    message_secrets: &'a MessageSecretsWithTimestamp,
+}
+
+/// Deserialization format with deduplicated member pool.
+#[derive(Deserialize)]
+struct PooledStore {
+    max_epochs: usize,
+    member_pool: Vec<PastEpochMember>,
+    past_epoch_trees: VecDeque<CompactEpochTree>,
+    message_secrets: MessageSecretsWithTimestamp,
+}
+
+/// Legacy serialization format with inline members per epoch.
+#[derive(Deserialize)]
+struct LegacyStore {
+    max_epochs: usize,
+    past_epoch_trees: VecDeque<EpochTree>,
+    message_secrets: MessageSecretsWithTimestamp,
+}
+
+impl Serialize for MessageSecretsStore {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // Build deduplicated member pool
+        let mut pool: Vec<PastEpochMember> = Vec::new();
+        let mut compact_trees: VecDeque<CompactEpochTreeRef<'_>> =
+            VecDeque::with_capacity(self.past_epoch_trees.len());
+
+        for tree in &self.past_epoch_trees {
+            let mut leaf_indices = Vec::with_capacity(tree.leaves.len());
+            for member in &tree.leaves {
+                let idx = pool.iter().position(|m| m == member).unwrap_or_else(|| {
+                    pool.push(member.clone());
+                    pool.len() - 1
+                });
+                leaf_indices.push(idx as u32);
+            }
+            compact_trees.push_back(CompactEpochTreeRef {
+                epoch: tree.epoch,
+                leaf_indices,
+                message_secrets: &tree.message_secrets,
+            });
+        }
+
+        PooledStoreRef {
+            max_epochs: self.max_epochs,
+            member_pool: pool,
+            past_epoch_trees: compact_trees,
+            message_secrets: &self.message_secrets,
+        }
+        .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for MessageSecretsStore {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Format {
+            Pooled(PooledStore),
+            Legacy(LegacyStore),
+        }
+
+        match Format::deserialize(deserializer)? {
+            Format::Pooled(pooled) => {
+                let mut past_epoch_trees = VecDeque::with_capacity(pooled.past_epoch_trees.len());
+                for compact in pooled.past_epoch_trees {
+                    let leaves: Vec<PastEpochMember> = compact
+                        .leaf_indices
+                        .iter()
+                        .map(|&idx| {
+                            pooled
+                                .member_pool
+                                .get(idx as usize)
+                                .cloned()
+                                .ok_or_else(|| {
+                                    serde::de::Error::custom(format!(
+                                        "member pool index {idx} out of bounds (pool size: {})",
+                                        pooled.member_pool.len()
+                                    ))
+                                })
+                        })
+                        .collect::<Result<_, _>>()?;
+                    past_epoch_trees.push_back(EpochTree {
+                        epoch: compact.epoch,
+                        leaves,
+                        message_secrets: compact.message_secrets,
+                    });
+                }
+                Ok(MessageSecretsStore {
+                    max_epochs: pooled.max_epochs,
+                    past_epoch_trees,
+                    message_secrets: pooled.message_secrets,
+                })
+            }
+            Format::Legacy(legacy) => Ok(MessageSecretsStore {
+                max_epochs: legacy.max_epochs,
+                past_epoch_trees: legacy.past_epoch_trees,
+                message_secrets: legacy.message_secrets,
+            }),
+        }
+    }
 }
 
 #[cfg(not(feature = "crypto-debug"))]
