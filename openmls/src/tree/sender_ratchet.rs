@@ -177,6 +177,7 @@ impl RatchetSecret {
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 #[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
 pub struct DecryptionRatchet {
+    #[serde(default, skip_serializing_if = "VecDeque::is_empty")]
     past_secrets: VecDeque<Option<RatchetKeyMaterial>>,
     ratchet_head: RatchetSecret,
 }
