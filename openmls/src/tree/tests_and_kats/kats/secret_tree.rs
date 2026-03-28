@@ -51,6 +51,9 @@
 
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::prelude::SenderRatchetConfiguration;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SenderData {
     sender_data_secret: String,
@@ -145,6 +148,8 @@ pub fn run_test_vector<Provider: openmls::storage::OpenMlsProvider>(
                         provider.crypto(),
                         LeafNodeIndex::new(leaf_index as u32),
                         SecretType::HandshakeSecret,
+                        #[cfg(feature = "virtual-clients-draft")]
+                        SenderRatchetConfiguration::default(),
                     )
                     .unwrap();
                 let application = secret_tree
@@ -153,6 +158,8 @@ pub fn run_test_vector<Provider: openmls::storage::OpenMlsProvider>(
                         provider.crypto(),
                         LeafNodeIndex::new(leaf_index as u32),
                         SecretType::ApplicationSecret,
+                        #[cfg(feature = "virtual-clients-draft")]
+                        SenderRatchetConfiguration::default(),
                     )
                     .unwrap();
                 if handshake.0 == generation {
