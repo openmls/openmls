@@ -1,0 +1,31 @@
+[package]
+name = "openmls-tree-health"
+version = "0.1.0"
+authors = ["OpenMLS Authors"]
+edition = "2021"
+description = "Tree maintenance helpers for OpenMLS groups"
+license = "MIT"
+repository = "https://github.com/openmls/openmls/tree/main/openmls-tree-health"
+
+[dependencies]
+openmls = { workspace = true }
+
+[dev-dependencies]
+openmls_test = { workspace = true }
+openmls_traits = { workspace = true }
+openmls_rust_crypto = { workspace = true }
+pretty_env_logger = "0.5"
+
+[target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows"))))'.dev-dependencies]
+openmls = { workspace = true, features = [
+    "test-utils",
+    "sqlite-provider",
+    "libcrux-provider",
+] }
+openmls_sqlite_storage = { workspace = true }
+openmls_libcrux_crypto = { workspace = true }
+serde = { version = "^1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[target.'cfg(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows")))'.dev-dependencies]
+openmls = { workspace = true, features = ["test-utils"] }
