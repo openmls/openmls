@@ -12,7 +12,7 @@ use crate::{
 
 // External Commit in a group of 1 & 2 members and resync
 #[openmls_test::openmls_test]
-fn test_external_commit() {
+async fn test_external_commit() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     let charlie_provider = &Provider::default();
@@ -22,19 +22,19 @@ fn test_external_commit() {
         "Alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    );
+    ).await;
 
     let bob_credential = generate_credential_with_key(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    );
+    ).await;
 
     let charlie_credential = generate_credential_with_key(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    );
+    ).await;
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -49,7 +49,7 @@ fn test_external_commit() {
         &mls_group_create_config,
         alice_credential.credential_with_key.clone(),
     )
-    .unwrap();
+    .await.unwrap();
 
     // === Single member group external join ===
 
@@ -72,7 +72,7 @@ fn test_external_commit() {
         )
         .unwrap()
         .load_psks(bob_provider.storage())
-        .unwrap()
+        .await.unwrap()
         .build(
             bob_provider.rand(),
             bob_provider.crypto(),
@@ -147,7 +147,7 @@ fn test_external_commit() {
         )
         .unwrap()
         .load_psks(charlie_provider.storage())
-        .unwrap()
+        .await.unwrap()
         .build(
             charlie_provider.rand(),
             charlie_provider.crypto(),
@@ -230,7 +230,7 @@ fn test_external_commit() {
         )
         .unwrap()
         .load_psks(alice_provider.storage())
-        .unwrap()
+        .await.unwrap()
         .build(
             alice_provider.rand(),
             alice_provider.crypto(),

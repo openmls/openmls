@@ -566,7 +566,7 @@ mod test {
         // Initialize the group state
         let group_id = GroupId::from_slice(b"test");
         let mut group_state =
-            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).await.unwrap();
 
         group_state
             .add_member(AddMemberConfig {
@@ -609,7 +609,7 @@ mod test {
     }
     #[openmls_test]
     #[maybe_async::maybe_async]
-    pub fn simpler_example() {
+    pub async fn simpler_example() {
         let alice_party = CorePartyState::<Provider>::new("alice");
         let bob_party = CorePartyState::<Provider>::new("bob");
         let charlie_party = CorePartyState::<Provider>::new("charlie");
@@ -632,7 +632,7 @@ mod test {
         // Initialize the group state
         let group_id = GroupId::from_slice(b"test");
         let mut group_state =
-            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).await.unwrap();
 
         group_state
             .add_member(AddMemberConfig {
@@ -682,7 +682,7 @@ mod test {
         // Initialize the group state
         let group_id = GroupId::from_slice(b"test");
         let mut group_state =
-            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).await.unwrap();
 
         // Get a mutable reference to Alice's group representation
         let [alice] = group_state.members_mut(&["alice"]);

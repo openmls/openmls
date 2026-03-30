@@ -108,7 +108,8 @@ pub(crate) struct GroupCandidate {
 }
 
 #[cfg(test)]
-pub(crate) fn generate_group_candidate(
+#[maybe_async::maybe_async]
+pub(crate) async fn generate_group_candidate(
     identity: &[u8],
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
@@ -123,7 +124,7 @@ pub(crate) fn generate_group_candidate(
 
         // Store if there is a key store.
         if use_store {
-            signature_keypair.store(provider.storage()).unwrap();
+            signature_keypair.store(provider.storage()).await.unwrap();
         }
 
         let signature_pkey = OpenMlsSignaturePublicKey::new(
@@ -152,7 +153,7 @@ pub(crate) fn generate_group_candidate(
                     &credential_with_key_and_signer.signer,
                     credential_with_key_and_signer.credential_with_key.clone(),
                 )
-                .unwrap()
+                .await.unwrap()
         } else {
             // We don't want to store anything. So...
             let provider = OpenMlsRustCrypto::default();

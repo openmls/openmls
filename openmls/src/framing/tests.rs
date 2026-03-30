@@ -22,10 +22,10 @@ use crate::{
 
 /// This tests serializing/deserializing PublicMessage
 #[openmls_test::openmls_test]
-fn codec_plaintext() {
+async fn codec_plaintext() {
     let provider = &Provider::default();
     let (_credential, signature_keys) =
-        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
+        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm()).await;
     let sender = Sender::build_member(LeafNodeIndex::new(987543210));
     let group_context = GroupContext::new(
         ciphersuite,
@@ -75,10 +75,10 @@ fn codec_plaintext() {
 
 /// This tests serializing/deserializing PrivateMessage
 #[openmls_test::openmls_test]
-fn codec_ciphertext() {
+async fn codec_ciphertext() {
     let provider = &Provider::default();
     let (_credential, signature_keys) =
-        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
+        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm()).await;
     let sender = Sender::build_member(LeafNodeIndex::new(0));
     let group_context = GroupContext::new(
         ciphersuite,
@@ -155,7 +155,7 @@ fn wire_format_checks() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
     let (plaintext, _credential, _keys) =
-        create_content(ciphersuite, WireFormat::PrivateMessage, provider);
+        create_content(ciphersuite, WireFormat::PrivateMessage, provider).await;
 
     let mut message_secrets =
         MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0));
@@ -221,7 +221,7 @@ fn wire_format_checks() {
 
     // Create and encrypt content with the wrong wire format
     let (plaintext, _credential, signature_keys) =
-        create_content(ciphersuite, WireFormat::PublicMessage, provider);
+        create_content(ciphersuite, WireFormat::PublicMessage, provider).await;
     let pk = OpenMlsSignaturePublicKey::new(
         signature_keys.public().into(),
         ciphersuite.signature_algorithm(),
@@ -284,13 +284,14 @@ fn wire_format_checks() {
     ));
 }
 
-fn create_content(
+#[maybe_async::maybe_async]
+async fn create_content(
     ciphersuite: Ciphersuite,
     wire_format: WireFormat,
     provider: &impl OpenMlsProvider,
 ) -> (AuthenticatedContent, CredentialWithKey, SignatureKeyPair) {
     let (credential, signature_keys) =
-        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
+        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm()).await;
     let sender = Sender::build_member(LeafNodeIndex::new(0));
     let group_context = GroupContext::new(
         ciphersuite,
@@ -320,10 +321,10 @@ fn create_content(
 }
 
 #[openmls_test::openmls_test]
-fn membership_tag() {
+async fn membership_tag() {
     let provider = &Provider::default();
     let (_credential, signature_keys) =
-        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
+        test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm()).await;
     let group_context = GroupContext::new(
         ciphersuite,
         GroupId::random(provider.rand()),
@@ -387,7 +388,7 @@ fn membership_tag() {
 }
 
 #[openmls_test::openmls_test]
-fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
+async fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider: &Provider) {
     let _ = pretty_env_logger::try_init();
 
     let alice_provider = &Provider::default();
@@ -400,7 +401,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         charlie_key_package_bundle,
         _charlie_signature_keys,
         _charlie_public_signature_key,
-    ) = setup_client("Charlie", ciphersuite, charlie_provider);
+    ) = setup_client("Charlie", ciphersuite, charlie_provider).await;
 
     // Alice and Bob have separate providers
     let (
@@ -410,7 +411,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         _bob_signature_keys,
         _alice_credential,
         _bob_credential,
-    ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+    ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider).await;
 
     // Alice adds Charlie
     let (_commit, welcome, _group_info_option) = alice_group
@@ -419,11 +420,11 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
             &alice_signature_keys,
             core::slice::from_ref(charlie_key_package_bundle.key_package()),
         )
-        .expect("Could not add members.");
+        .await.expect("Could not add members.");
 
     alice_group
         .merge_pending_commit(alice_provider)
-        .expect("Could not merge commit.");
+        .await.expect("Could not merge commit.");
 
     let config = MlsGroupJoinConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
@@ -435,7 +436,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Could not create group from Welcome")
+    .await.expect("Could not create group from Welcome")
     .into_group(charlie_provider)
     .expect("Could not create group from Welcome");
 
@@ -446,11 +447,11 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
             &alice_signature_keys,
             &[LeafNodeIndex::new(1)],
         )
-        .expect("Could not remove members.");
+        .await.expect("Could not remove members.");
 
     alice_group
         .merge_pending_commit(alice_provider)
-        .expect("Could not merge commit.");
+        .await.expect("Could not merge commit.");
 
     let processed_message = charlie_group
         .process_message(charlie_provider, commit.into_protocol_message().unwrap())
@@ -505,7 +506,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
 }
 
 #[openmls_test::openmls_test]
-fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
+async fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
 
@@ -516,7 +517,7 @@ fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
         _bob_signature_keys,
         _alice_credential,
         _bob_credential,
-    ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+    ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider).await;
 
     // Alice does an update
     let (commit, _welcome_option, _group_info_option) = alice_group
@@ -525,7 +526,7 @@ fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
             &alice_signature_keys,
             LeafNodeParameters::default(),
         )
-        .expect("Could not update group.")
+        .await.expect("Could not update group.")
         .into_contents();
 
     let commit = match commit.body {
@@ -556,7 +557,7 @@ fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
 
     let err = bob_group
         .process_message(bob_provider, protocol_message)
-        .expect_err("Could not process message.");
+        .await.expect_err("Could not process message.");
 
     assert_eq!(
         err,

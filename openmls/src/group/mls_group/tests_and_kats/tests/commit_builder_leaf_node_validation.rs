@@ -24,7 +24,7 @@ use crate::{
 ///    that have capabilities NOT supporting `0xf001`
 /// 5. Alice's `build_commit_and_stage()` fails with the appropriate error
 #[openmls_test]
-fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_capabilities() {
+async fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_capabilities() {
     // Create parties
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
@@ -62,7 +62,7 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_capabi
     // Initialize group with Alice
     let group_id = GroupId::from_slice(b"test-commit-builder-validation");
     let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, create_config).unwrap();
+        GroupState::new_from_party(group_id, alice_pre_group, create_config).await.unwrap();
 
     // Add Bob to the group
     group_state
@@ -114,7 +114,7 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_capabi
 ///    that have capabilities NOT supporting `0xf001`
 /// 5. Alice's `build_commit_and_stage()` fails with the appropriate error
 #[openmls_test]
-fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
+async fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
     // Create parties
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
@@ -151,7 +151,7 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
     // Initialize group with Alice
     let group_id = GroupId::from_slice(b"test-commit-builder-validation");
     let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, create_config).unwrap();
+        GroupState::new_from_party(group_id, alice_pre_group, create_config).await.unwrap();
 
     // Add Bob to the group
     group_state

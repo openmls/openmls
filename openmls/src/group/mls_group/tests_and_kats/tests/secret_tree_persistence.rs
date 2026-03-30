@@ -8,8 +8,10 @@ use crate::{
 
 /// Test that ensures that the secret tree state is persisted correctly and that
 /// replays are not possible.
-#[test]
-fn test_secret_tree_persistence() {
+#[cfg_attr(feature = "sync", test)]
+#[cfg_attr(not(feature = "sync"), tokio::test)]
+#[maybe_async::maybe_async]
+async fn test_secret_tree_persistence() {
     let ciphersuite: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
     let group_id = GroupId::from_slice(b"Test Group");
@@ -19,10 +21,10 @@ fn test_secret_tree_persistence() {
 
     // Generate credentials with keys
     let (alice_credential, alice_signer) =
-        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
     let (bob_credential, bob_signer) =
-        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
     // Generate KeyPackage for Bob
     let bob_key_package = KeyPackage::builder()
@@ -33,7 +35,7 @@ fn test_secret_tree_persistence() {
             &bob_signer,
             bob_credential.clone(),
         )
-        .unwrap()
+        .await.unwrap()
         .key_package()
         .to_owned();
 
@@ -50,7 +52,7 @@ fn test_secret_tree_persistence() {
         group_id.clone(),
         alice_credential.clone(),
     )
-    .expect("An unexpected error occurred.");
+    .await.expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
     let welcome = match alice_group.add_members(alice_provider, &alice_signer, &[bob_key_package]) {
@@ -73,7 +75,7 @@ fn test_secret_tree_persistence() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating StagedWelcome from Welcome")
+    .await.expect("Error creating StagedWelcome from Welcome")
     .into_group(bob_provider)
     .expect("Error creating group from StagedWelcome");
 
@@ -112,7 +114,7 @@ fn test_secret_tree_persistence() {
 
     // === Reload the group from storage ===
     let mut new_group = MlsGroup::load(bob_provider.storage(), bob_group.group_id())
-        .unwrap()
+        .await.unwrap()
         .unwrap();
 
     // === Bob processes the same message second time with its newly loaded group (which should be prohibited due to forward secrecy) ===

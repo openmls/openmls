@@ -13,7 +13,7 @@ use crate::{
 fn export_group_info() {
     let provider = &Provider::default();
     // Alice creates a group
-    let (alice_group, _, signer, pk) = setup_alice_group(ciphersuite, provider);
+    let (alice_group, _, signer, pk) = setup_alice_group(ciphersuite, provider).await;
 
     let group_info_message = alice_group
         .export_group_info(provider.crypto(), &signer, true)
@@ -40,7 +40,7 @@ fn export_group_info() {
 fn external_pub_in_group_info() {
     let provider = &Provider::default();
     // Alice creates a group
-    let (alice_group, _, signer, _) = setup_alice_group(ciphersuite, provider);
+    let (alice_group, _, signer, _) = setup_alice_group(ciphersuite, provider).await;
 
     let group_info_message = alice_group
         .export_group_info(provider.crypto(), &signer, true)
@@ -59,7 +59,7 @@ fn external_pub_in_group_info() {
 fn export_group_info_with_additional_extensions() {
     let provider = &Provider::default();
     // Alice creates a group
-    let (group_alice, _, signer, _pk) = setup_alice_group(ciphersuite, provider);
+    let (group_alice, _, signer, _pk) = setup_alice_group(ciphersuite, provider).await;
 
     // The GroupInfo can't contain these extensions
     // See https://www.rfc-editor.org/rfc/rfc9420.html#section-17.3-4

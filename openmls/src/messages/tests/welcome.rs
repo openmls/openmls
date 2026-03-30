@@ -30,7 +30,7 @@ use crate::{
 /// group info, it is not possible to generate a matching encrypted group context with different
 /// parameters.
 #[openmls_test::openmls_test]
-fn test_welcome_context_mismatch() {
+async fn test_welcome_context_mismatch() {
     let alice_provider = Provider::default();
     let bob_provider = Provider::default();
 
@@ -49,9 +49,9 @@ fn test_welcome_context_mismatch() {
         .build();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
-        setup_client("Alice", ciphersuite, &alice_provider);
+        setup_client("Alice", ciphersuite, &alice_provider).await;
     let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
-        setup_client("Bob", ciphersuite, &bob_provider);
+        setup_client("Bob", ciphersuite, &bob_provider).await;
 
     let bob_kp = bob_kpb.key_package();
     let bob_private_key = bob_kpb.init_private_key();
@@ -64,7 +64,7 @@ fn test_welcome_context_mismatch() {
         group_id,
         alice_credential_with_key,
     )
-    .expect("An unexpected error occurred.");
+    .await.expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
         .add_members(&alice_provider, &alice_signer, from_ref(bob_kp))
@@ -99,7 +99,7 @@ fn test_welcome_context_mismatch() {
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(bob_provider.storage(), &resumption_psk_store, &[]).unwrap();
+        let psks = load_psks(bob_provider.storage(), &resumption_psk_store, &[]).await.unwrap();
 
         PskSecret::new(bob_provider.crypto(), ciphersuite, psks).unwrap()
     };
@@ -165,7 +165,7 @@ fn test_welcome_context_mismatch() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect_err("Created a staged join from an invalid Welcome.");
+    .await.expect_err("Created a staged join from an invalid Welcome.");
 
     assert!(matches!(
         err,
@@ -179,9 +179,9 @@ fn test_welcome_context_mismatch() {
     bob_provider
         .storage()
         .write_key_package(&bob_kp.hash_ref(bob_provider.crypto()).unwrap(), &bob_kpb)
-        .unwrap();
+        .await.unwrap();
 
-    encryption_keypair.write(bob_provider.storage()).unwrap();
+    encryption_keypair.write(bob_provider.storage()).await.unwrap();
 
     let _group = StagedWelcome::new_from_welcome(
         &bob_provider,
@@ -189,7 +189,7 @@ fn test_welcome_context_mismatch() {
         original_welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating staged join from a valid Welcome.")
+    .await.expect("Error creating staged join from a valid Welcome.")
     .into_group(&bob_provider)
     .expect("Error creating group from a valid staged join.");
 }
@@ -306,7 +306,7 @@ fn test_welcome_message() {
 /// This allows transporting information in the Welcome for retrieving the ratchet
 /// tree.
 #[openmls_test::openmls_test]
-fn test_welcome_processing() {
+async fn test_welcome_processing() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     let group_id = GroupId::random(alice_provider.rand());
@@ -315,9 +315,9 @@ fn test_welcome_processing() {
         .build();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
-        setup_client("Alice", ciphersuite, alice_provider);
+        setup_client("Alice", ciphersuite, alice_provider).await;
     let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
-        setup_client("Bob", ciphersuite, bob_provider);
+        setup_client("Bob", ciphersuite, bob_provider).await;
 
     let bob_kp = bob_kpb.key_package();
 
@@ -329,7 +329,7 @@ fn test_welcome_processing() {
         group_id,
         alice_credential_with_key,
     )
-    .expect("An unexpected error occurred.");
+    .await.expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
         .add_members(alice_provider, &alice_signer, from_ref(bob_kp))
@@ -347,7 +347,7 @@ fn test_welcome_processing() {
         mls_group_create_config.join_config(),
         welcome,
     )
-    .unwrap();
+    .await.unwrap();
 
     // Check values in processed welcome
     let unverified_group_info = processed_welcome.unverified_group_info();
@@ -375,7 +375,7 @@ fn test_welcome_processing() {
 }
 
 #[openmls_test::openmls_test]
-fn no_external_pub_in_welcome() {
+async fn no_external_pub_in_welcome() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -383,9 +383,9 @@ fn no_external_pub_in_welcome() {
         .build();
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
-        setup_client("Alice", ciphersuite, alice_provider);
+        setup_client("Alice", ciphersuite, alice_provider).await;
     let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
-        setup_client("Bob", ciphersuite, bob_provider);
+        setup_client("Bob", ciphersuite, bob_provider).await;
 
     let bob_kp = bob_kpb.key_package();
 
@@ -396,7 +396,7 @@ fn no_external_pub_in_welcome() {
         &mls_group_create_config,
         alice_credential_with_key,
     )
-    .expect("An unexpected error occurred.");
+    .await.expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
         .add_members(alice_provider, &alice_signer, from_ref(bob_kp))
@@ -410,7 +410,7 @@ fn no_external_pub_in_welcome() {
         mls_group_create_config.join_config(),
         welcome,
     )
-    .unwrap();
+    .await.unwrap();
 
     // Check values in processed welcome
     let unverified_group_info = processed_welcome.unverified_group_info();

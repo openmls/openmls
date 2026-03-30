@@ -104,7 +104,8 @@ pub struct MessageProtectionTest {
 }
 
 #[cfg(test)]
-pub fn run_test_vector(
+#[maybe_async::maybe_async]
+pub async fn run_test_vector(
     test: MessageProtectionTest,
     provider: &impl crate::storage::OpenMlsProvider,
 ) -> Result<(), String> {
@@ -153,7 +154,8 @@ pub fn run_test_vector(
     );
 
     // Make the group think it has two members.
-    fn setup_group(
+    #[maybe_async::maybe_async]
+    async fn setup_group(
         provider: &impl crate::storage::OpenMlsProvider,
         ciphersuite: Ciphersuite,
         test: &MessageProtectionTest,
@@ -191,7 +193,7 @@ pub fn run_test_vector(
                     signature_key: random_own_signature_key.into(),
                 },
             )
-            .unwrap();
+            .await.unwrap();
 
         let credential = BasicCredential::new("Fake user".into());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -203,7 +205,7 @@ pub fn run_test_vector(
                 credential: credential.into(),
                 signature_key: hex_to_bytes(&test.signature_pub).into(),
             },
-        );
+        ).await;
         let bob_key_package = bob_key_package_bundle.key_package();
         let (_commit, _welcome, _) = group
             .add_members(
@@ -253,7 +255,8 @@ pub fn run_test_vector(
         let proposal_priv =
             MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.proposal_priv)).unwrap();
 
-        fn test_proposal_pub(
+        #[maybe_async::maybe_async]
+        async fn test_proposal_pub(
             mut group: MlsGroup,
             provider: &impl crate::storage::OpenMlsProvider,
             proposal: ProposalIn,
@@ -262,7 +265,7 @@ pub fn run_test_vector(
             // check that the proposal in proposal_pub == proposal
             let processed_message = group
                 .process_message(provider, proposal_pub.into_protocol_message().unwrap())
-                .unwrap();
+                .await.unwrap();
             match processed_message.content() {
                 ProcessedMessageContent::ProposalMessage(p) => {
                     assert_eq!(proposal, p.proposal().to_owned().into())
@@ -294,7 +297,7 @@ pub fn run_test_vector(
         .unwrap();
         let my_proposal_priv = sender_group
             .encrypt(proposal_authenticated_content, provider)
-            .unwrap();
+            .await.unwrap();
         let my_proposal_priv_out = MlsMessageOut::from_private_message(
             my_proposal_priv,
             group.export_group_context().protocol_version(),
@@ -410,7 +413,7 @@ pub fn run_test_vector(
         }));
         let my_commit_pub = sender_group
             .encrypt(commit_authenticated_content, provider)
-            .unwrap();
+            .await.unwrap();
         let my_commit_priv_out = MlsMessageOut::from_private_message(
             my_commit_pub,
             group.export_group_context().protocol_version(),
@@ -467,7 +470,8 @@ pub fn run_test_vector(
         let application_priv =
             MlsMessageIn::tls_deserialize_exact(hex_to_bytes(&test.application_priv)).unwrap();
 
-        fn test_application_priv(
+        #[maybe_async::maybe_async]
+        async fn test_application_priv(
             mut group: MlsGroup,
             provider: &impl crate::storage::OpenMlsProvider,
             application: Vec<u8>,
@@ -476,7 +480,7 @@ pub fn run_test_vector(
             // check that the proposal in proposal_pub == proposal
             let processed_message = group
                 .process_message(provider, application_priv.into_protocol_message().unwrap())
-                .unwrap();
+                .await.unwrap();
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(a) => {
                     assert_eq!(application, a.into_bytes())
@@ -496,7 +500,7 @@ pub fn run_test_vector(
         let mut sender_group = setup_group(provider, ciphersuite, &test, true);
         let private_message = sender_group
             .create_message(provider, &signer, &application)
-            .unwrap();
+            .await.unwrap();
 
         test_application_priv(
             setup_group(provider, ciphersuite, &test, false),

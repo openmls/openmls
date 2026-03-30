@@ -54,7 +54,7 @@ fn create_encoding_test_setup(provider: &impl crate::storage::OpenMlsProvider) -
 
 /// This test tests encoding and decoding of application messages.
 #[openmls_test::openmls_test]
-fn test_application_message_encoding() {
+async fn test_application_message_encoding() {
     let provider = &Provider::default();
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
@@ -76,7 +76,7 @@ fn test_application_message_encoding() {
             group_state.set_aad(aad);
             let encrypted_message = group_state
                 .create_message(provider, &credential_with_key_and_signer.signer, &message)
-                .unwrap();
+                .await.unwrap();
             let encrypted_message = match encrypted_message.body {
                 MlsMessageBodyOut::PrivateMessage(pm) => pm,
                 _ => panic!("Expected a PrivateMessage"),
@@ -96,7 +96,7 @@ fn test_application_message_encoding() {
 
 /// This test tests encoding and decoding of update proposals.
 #[openmls_test::openmls_test]
-fn test_update_proposal_encoding() {
+async fn test_update_proposal_encoding() {
     let provider = &Provider::default();
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
@@ -117,7 +117,7 @@ fn test_update_proposal_encoding() {
                 &credential_with_key_and_signer.signer,
                 LeafNodeParameters::default(),
             )
-            .unwrap();
+            .await.unwrap();
         let update = match update.body {
             MlsMessageBodyOut::PublicMessage(pm) => pm,
             _ => panic!("Expected a PublicMessage"),
@@ -137,7 +137,7 @@ fn test_update_proposal_encoding() {
 
 /// This test tests encoding and decoding of add proposals.
 #[openmls_test::openmls_test]
-fn test_add_proposal_encoding() {
+async fn test_add_proposal_encoding() {
     let provider = &Provider::default();
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
@@ -157,7 +157,7 @@ fn test_add_proposal_encoding() {
             &credential_with_key_and_signer.signer,
             group_state.ciphersuite(),
             credential_with_key_and_signer.credential_with_key.clone(),
-        );
+        ).await;
 
         // Adds
         let (add, _) = group_state
@@ -166,7 +166,7 @@ fn test_add_proposal_encoding() {
                 &credential_with_key_and_signer.signer,
                 key_package_bundle.key_package(),
             )
-            .unwrap();
+            .await.unwrap();
         let add = match add.body {
             MlsMessageBodyOut::PublicMessage(pm) => pm,
             _ => panic!("Expected a PublicMessage"),
@@ -183,7 +183,7 @@ fn test_add_proposal_encoding() {
 
 /// This test tests encoding and decoding of remove proposals.
 #[openmls_test::openmls_test]
-fn test_remove_proposal_encoding() {
+async fn test_remove_proposal_encoding() {
     let provider = &Provider::default();
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
@@ -204,7 +204,7 @@ fn test_remove_proposal_encoding() {
                 &credential_with_key_and_signer.signer,
                 LeafNodeIndex::new(1),
             )
-            .unwrap();
+            .await.unwrap();
         let remove = match remove.body {
             MlsMessageBodyOut::PublicMessage(pm) => pm,
             _ => panic!("Expected a PublicMessage"),
@@ -222,7 +222,7 @@ fn test_remove_proposal_encoding() {
 
 /// This test tests encoding and decoding of commit messages.
 #[openmls_test::openmls_test]
-fn test_commit_encoding() {
+async fn test_commit_encoding() {
     let provider = &Provider::default();
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
@@ -251,7 +251,7 @@ fn test_commit_encoding() {
                 &alice_credential_with_key_and_signer.signer,
                 from_ref(&charlie_key_package),
             )
-            .expect("Could not create commit.");
+            .await.expect("Could not create commit.");
 
         let commit = match commit.body {
             MlsMessageBodyOut::PublicMessage(pm) => pm,
@@ -269,7 +269,7 @@ fn test_commit_encoding() {
 }
 
 #[openmls_test::openmls_test]
-fn test_welcome_message_encoding() {
+async fn test_welcome_message_encoding() {
     let provider = &Provider::default();
     let test_setup = create_encoding_test_setup(provider);
     let test_clients = test_setup.clients.borrow();
@@ -300,8 +300,8 @@ fn test_welcome_message_encoding() {
                 &credential_with_key_and_signer.signer,
                 from_ref(&charlie_key_package),
             )
-            .expect("Could not create commit.");
-        group_state.merge_pending_commit(provider).unwrap();
+            .await.expect("Could not create commit.");
+        group_state.merge_pending_commit(provider).await.unwrap();
         let welcome = welcome.into_welcome().unwrap();
 
         // Welcome messages
@@ -319,12 +319,12 @@ fn test_welcome_message_encoding() {
         // example the RatchetTreeExtension.
         let config = MlsGroupJoinConfig::default();
         let processed_welcome =
-            ProcessedWelcome::new_from_welcome(provider, &config, welcome.clone()).unwrap();
+            ProcessedWelcome::new_from_welcome(provider, &config, welcome.clone()).await.unwrap();
         let charlie_group = JoinBuilder::new(provider, processed_welcome)
             .replace_old_group()
             .with_ratchet_tree(group_state.export_ratchet_tree().into())
             .build()
-            .unwrap()
+            .await.unwrap()
             .into_group(provider);
         assert!(charlie_group.is_ok());
     }

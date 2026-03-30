@@ -97,23 +97,27 @@ pub struct TestEpoch {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TestProposal(#[serde(with = "hex::serde")] Vec<u8>);
 
-#[test]
-fn test_read_vectors() {
-    crate::skip_validation::checks::leaf_node_lifetime::handle().with_disabled(|| {
-        for file in TEST_VECTORS_PATH_READ {
-            let scenario: Vec<PassiveClientWelcomeTestVector> = read(file);
+#[maybe_async::maybe_async]
+#[cfg_attr(feature = "sync", test)]
+#[cfg_attr(not(feature = "sync"), tokio::test)]
+async fn test_read_vectors() {
+    let handle = crate::skip_validation::checks::leaf_node_lifetime::handle();
+    (*handle).disable_validation();
+    for file in TEST_VECTORS_PATH_READ {
+        let scenario: Vec<PassiveClientWelcomeTestVector> = read(file);
 
-            info!("# {file}");
-            for (i, test_vector) in scenario.into_iter().enumerate() {
-                info!("## {i:04} START");
-                run_test_vector(test_vector);
-                info!("## {i:04} END");
-            }
+        info!("# {file}");
+        for (i, test_vector) in scenario.into_iter().enumerate() {
+            info!("## {i:04} START");
+            run_test_vector(test_vector).await;
+            info!("## {i:04} END");
         }
-    })
+    }
+    (*handle).enable_validation();
 }
 
-pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
+#[maybe_async::maybe_async]
+pub async fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     let _ = pretty_env_logger::try_init();
 
     let provider = OpenMlsRustCrypto::default();
@@ -132,14 +136,14 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         .number_of_resumption_psks(16)
         .build();
 
-    let mut passive_client = PassiveClient::new(group_config, test_vector.external_psks.clone());
+    let mut passive_client = PassiveClient::new(group_config, test_vector.external_psks.clone()).await;
 
     passive_client.inject_key_package(
         test_vector.key_package,
         test_vector.signature_priv,
         test_vector.encryption_priv,
         test_vector.init_priv,
-    );
+    ).await;
 
     let ratchet_tree: Option<RatchetTreeIn> = test_vector
         .ratchet_tree
@@ -149,7 +153,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     passive_client.join_by_welcome(
         MlsMessageIn::tls_deserialize_exact(&test_vector.welcome).unwrap(),
         ratchet_tree,
-    );
+    ).await;
 
     debug!(
         "Group ID {}",
@@ -167,12 +171,12 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         for proposal in epoch.proposals {
             let message = MlsMessageIn::tls_deserialize_exact(&proposal.0).unwrap();
             debug!("Proposal: {message:?}");
-            passive_client.process_message(message);
+            passive_client.process_message(message).await;
         }
 
         let message = MlsMessageIn::tls_deserialize_exact(&epoch.commit).unwrap();
         debug!("Commit: {message:#?}");
-        passive_client.process_message(message);
+        passive_client.process_message(message).await;
 
         assert_eq!(
             epoch.epoch_authenticator,
@@ -181,25 +185,29 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     }
 }
 
-#[test]
-fn test_write_vectors() {
-    crate::skip_validation::checks::leaf_node_lifetime::handle().with_disabled(|| {
-        let mut tests = Vec::new();
+#[maybe_async::maybe_async]
+#[cfg_attr(feature = "sync", test)]
+#[cfg_attr(not(feature = "sync"), tokio::test)]
+async fn test_write_vectors() {
+    let handle = crate::skip_validation::checks::leaf_node_lifetime::handle();
+    (*handle).disable_validation();
 
-        for _ in 0..NUM_TESTS {
-            for &ciphersuite in OpenMlsRustCrypto::default()
-                .crypto()
-                .supported_ciphersuites()
-                .iter()
-            {
-                let test = generate_test_vector(ciphersuite);
-                tests.push(test);
-            }
+    let mut tests = Vec::new();
+
+    for _ in 0..NUM_TESTS {
+        for &ciphersuite in OpenMlsRustCrypto::default()
+            .crypto()
+            .supported_ciphersuites()
+            .iter()
+        {
+            let test = generate_test_vector(ciphersuite).await;
+            tests.push(test);
         }
+    }
 
-        // TODO(#1279)
-        write(TEST_VECTOR_PATH_WRITE[0], &tests);
-    })
+    // TODO(#1279)
+    write(TEST_VECTOR_PATH_WRITE[0], &tests);
+    (*handle).enable_validation();
 }
 
 struct PassiveClient {
@@ -209,7 +217,8 @@ struct PassiveClient {
 }
 
 impl PassiveClient {
-    fn new(group_config: MlsGroupJoinConfig, psks: Vec<ExternalPskTest>) -> Self {
+    #[maybe_async::maybe_async]
+    async fn new(group_config: MlsGroupJoinConfig, psks: Vec<ExternalPskTest>) -> Self {
         let provider = OpenMlsRustCrypto::default();
 
         // Load all PSKs into key store.
@@ -218,7 +227,7 @@ impl PassiveClient {
             // We only construct this to easily save the PSK in the keystore.
             // The nonce is not saved, so it can be empty...
             let psk_id = PreSharedKeyId::external(psk.psk_id, vec![]);
-            psk_id.store(&provider, &psk.psk).unwrap();
+            psk_id.store(&provider, &psk.psk).await.unwrap();
         }
 
         Self {
@@ -228,7 +237,8 @@ impl PassiveClient {
         }
     }
 
-    fn inject_key_package(
+    #[maybe_async::maybe_async]
+    async fn inject_key_package(
         &self,
         key_package: Vec<u8>,
         _signature_priv: Vec<u8>,
@@ -257,7 +267,7 @@ impl PassiveClient {
         self.provider
             .storage()
             .write_key_package(&hash_ref, &key_package_bundle)
-            .unwrap();
+            .await.unwrap();
 
         // Store encryption key
         let key_pair = EncryptionKeyPair::from((
@@ -265,10 +275,11 @@ impl PassiveClient {
             EncryptionPrivateKey::from(encryption_priv),
         ));
 
-        key_pair.write(self.provider.storage()).unwrap();
+        key_pair.write(self.provider.storage()).await.unwrap();
     }
 
-    fn join_by_welcome(
+    #[maybe_async::maybe_async]
+    async fn join_by_welcome(
         &mut self,
         mls_message_welcome: MlsMessageIn,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -283,21 +294,22 @@ impl PassiveClient {
             welcome,
             ratchet_tree,
         )
-        .unwrap()
+        .await.unwrap()
         .into_group(&self.provider)
         .unwrap();
 
         self.group = Some(group);
     }
 
-    fn process_message(&mut self, message: MlsMessageIn) {
+    #[maybe_async::maybe_async]
+    async fn process_message(&mut self, message: MlsMessageIn) {
         println!("{message:#?}");
         let processed_message = self
             .group
             .as_mut()
             .unwrap()
             .process_message(&self.provider, message.into_protocol_message().unwrap())
-            .unwrap();
+            .await.unwrap();
 
         match processed_message.into_content() {
             ProcessedMessageContent::ProposalMessage(queued_proposal) => {
@@ -305,14 +317,14 @@ impl PassiveClient {
                     .as_mut()
                     .unwrap()
                     .store_pending_proposal(self.provider.storage(), *queued_proposal)
-                    .unwrap();
+                    .await.unwrap();
             }
             ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 self.group
                     .as_mut()
                     .unwrap()
                     .merge_staged_commit(&self.provider, *staged_commit)
-                    .unwrap();
+                    .await.unwrap();
             }
             _ => unimplemented!(),
         }
@@ -328,7 +340,8 @@ impl PassiveClient {
     }
 }
 
-pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTestVector {
+#[maybe_async::maybe_async]
+pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTestVector {
     let group_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
@@ -337,7 +350,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
     let creator_provider = OpenMlsRustCrypto::default();
 
     let creator =
-        generate_group_candidate(b"Alice (Creator)", ciphersuite, &creator_provider, true);
+        generate_group_candidate(b"Alice (Creator)", ciphersuite, &creator_provider, true).await;
 
     let mut creator_group = MlsGroup::new(
         &creator_provider,
@@ -348,14 +361,14 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
             .credential_with_key
             .clone(),
     )
-    .unwrap();
+    .await.unwrap();
 
     let passive = generate_group_candidate(
         b"Bob (Passive Client)",
         ciphersuite,
         &OpenMlsRustCrypto::default(),
         false,
-    );
+    ).await;
 
     let (_, mls_message_welcome, _) = creator_group
         .add_members(
@@ -507,7 +520,8 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
 
 // -------------------------------------------------------------------------------------------------
 
-fn propose_add(
+#[maybe_async::maybe_async]
+async fn propose_add(
     cipher_suite: Ciphersuite,
     provider: &OpenMlsRustCrypto,
     candidate: &GroupCandidate,
@@ -519,7 +533,7 @@ fn propose_add(
         cipher_suite,
         &OpenMlsRustCrypto::default(),
         false,
-    );
+    ).await;
 
     let mls_message_out_proposal = group
         .propose_add_member(
@@ -527,13 +541,14 @@ fn propose_add(
             &candidate.signature_keypair,
             add_candidate.key_package.key_package(),
         )
-        .unwrap();
-    group.merge_pending_commit(provider).unwrap();
+        .await.unwrap();
+    group.merge_pending_commit(provider).await.unwrap();
 
     TestProposal(mls_message_out_proposal.tls_serialize_detached().unwrap())
 }
 
-fn propose_remove(
+#[maybe_async::maybe_async]
+async fn propose_remove(
     provider: &OpenMlsRustCrypto,
     candidate: &GroupCandidate,
     group: &mut MlsGroup,
@@ -547,21 +562,23 @@ fn propose_remove(
 
     let mls_message_out_proposal = group
         .propose_remove_member(provider, &candidate.signature_keypair, remove)
-        .unwrap();
+        .await.unwrap();
 
     TestProposal(mls_message_out_proposal.tls_serialize_detached().unwrap())
 }
 
-fn commit(provider: &OpenMlsRustCrypto, creator: &GroupCandidate, group: &mut MlsGroup) -> Vec<u8> {
+#[maybe_async::maybe_async]
+async fn commit(provider: &OpenMlsRustCrypto, creator: &GroupCandidate, group: &mut MlsGroup) -> Vec<u8> {
     let (mls_message_out_commit, _, _) = group
         .commit_to_pending_proposals(provider, &creator.signature_keypair)
-        .unwrap();
-    group.merge_pending_commit(provider).unwrap();
+        .await.unwrap();
+    group.merge_pending_commit(provider).await.unwrap();
 
     mls_message_out_commit.tls_serialize_detached().unwrap()
 }
 
-fn update_inline(
+#[maybe_async::maybe_async]
+async fn update_inline(
     provider: &OpenMlsRustCrypto,
     candidate: &GroupCandidate,
     group: &mut MlsGroup,
@@ -572,9 +589,9 @@ fn update_inline(
             &candidate.signature_keypair,
             LeafNodeParameters::default(),
         )
-        .unwrap()
+        .await.unwrap()
         .into_contents();
-    group.merge_pending_commit(provider).unwrap();
+    group.merge_pending_commit(provider).await.unwrap();
 
     let proposals = vec![];
 

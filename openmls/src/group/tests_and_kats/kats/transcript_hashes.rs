@@ -139,8 +139,10 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) {
 
 // -------------------------------------------------------------------------------------------------
 
-#[test]
-fn write_test_vectors() {
+#[maybe_async::maybe_async]
+#[cfg_attr(feature = "sync", test)]
+#[cfg_attr(not(feature = "sync"), tokio::test)]
+async fn write_test_vectors() {
     let mut tests = Vec::new();
 
     for &ciphersuite in OpenMlsRustCrypto::default()
@@ -149,7 +151,7 @@ fn write_test_vectors() {
         .iter()
     {
         for _ in 0..NUM_TESTS {
-            let test = generate_test_vector(ciphersuite);
+            let test = generate_test_vector(ciphersuite).await;
             tests.push(test);
         }
     }
@@ -157,7 +159,8 @@ fn write_test_vectors() {
     write(TEST_VECTOR_PATH_WRITE, &tests);
 }
 
-pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
+#[maybe_async::maybe_async]
+pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     let provider = OpenMlsRustCrypto::default();
 
     let confirmation_key = ConfirmationKey::random(ciphersuite, provider.rand());
@@ -204,7 +207,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
                 b"Alice".to_vec(),
                 ciphersuite.signature_algorithm(),
                 &provider,
-            );
+            ).await;
 
             credential_with_key_and_signer.signer
         };

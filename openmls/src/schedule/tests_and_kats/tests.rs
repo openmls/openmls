@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[openmls_test::openmls_test]
-fn test_psks() {
+async fn test_psks() {
     let provider = &Provider::default();
 
     // Create a new PSK secret from multiple PSKs.
@@ -30,13 +30,13 @@ fn test_psks() {
         .map(|_| Secret::from_slice(&prng.random_vec(55).expect("An unexpected error occurred.")))
         .zip(psk_ids.clone())
     {
-        psk_id.store(provider, secret.as_slice()).unwrap();
+        psk_id.store(provider, secret.as_slice()).await.unwrap();
     }
 
     let _psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).await.unwrap();
 
         PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };

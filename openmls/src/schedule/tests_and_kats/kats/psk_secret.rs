@@ -60,7 +60,8 @@ struct TestElement {
     psk_secret: Vec<u8>,
 }
 
-fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result<(), String> {
+#[maybe_async::maybe_async]
+async fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result<(), String> {
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
     // Skip unsupported ciphersuites.
     if !provider
@@ -81,7 +82,7 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
 
             let psk_id = PreSharedKeyId::new_with_nonce(psk_type, psk.psk_nonce.clone());
 
-            psk_id.store(provider, &psk.psk).unwrap();
+            psk_id.store(provider, &psk.psk).await.unwrap();
             psk_id
         })
         .collect::<Vec<_>>();
@@ -90,7 +91,7 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).await.unwrap();
 
         PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };

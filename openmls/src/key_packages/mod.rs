@@ -633,7 +633,7 @@ impl KeyPackageBundle {
 
 #[cfg(test)]
 impl KeyPackageBundle {
-    pub(crate) fn generate(
+    pub(crate) async fn generate(
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
@@ -641,6 +641,6 @@ impl KeyPackageBundle {
     ) -> Self {
         KeyPackage::builder()
             .build(ciphersuite, provider, signer, credential_with_key)
-            .unwrap()
+            .await.unwrap()
     }
 }

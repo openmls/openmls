@@ -148,7 +148,8 @@ fn deserialize_provider<R: std::io::Read, Provider: OpenMlsProvider + Default>(
     }
 }
 
-fn check_serialized_group_equality<R: std::io::Read, Provider: OpenMlsProvider + Default>(
+#[maybe_async::maybe_async]
+async fn check_serialized_group_equality<R: std::io::Read, Provider: OpenMlsProvider + Default>(
     r: &mut R,
     name: &str,
     group_id: &GroupId,
@@ -156,29 +157,30 @@ fn check_serialized_group_equality<R: std::io::Read, Provider: OpenMlsProvider +
 ) {
     let provider = deserialize_provider::<_, Provider>(r, name);
     let loaded_group = MlsGroup::load(provider.storage(), group_id)
-        .unwrap()
+        .await.unwrap()
         .unwrap();
 
     assert_eq!(group, &loaded_group);
 }
 
-fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
+#[maybe_async::maybe_async]
+async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
     ciphersuite: Ciphersuite,
 ) -> (GroupId, Vec<Vec<u8>>) {
     let alice_provider = StorageTestProvider::<Provider>::new("alice");
     let (alice_cwk, alice_signer) =
-        new_credential(&alice_provider, b"alice", ciphersuite.signature_algorithm());
+        new_credential(&alice_provider, b"alice", ciphersuite.signature_algorithm()).await;
 
     let bob_provider = StorageTestProvider::<Provider>::new("bob");
     let (bob_cwk, bob_signer) =
-        new_credential(&bob_provider, b"bob", ciphersuite.signature_algorithm());
+        new_credential(&bob_provider, b"bob", ciphersuite.signature_algorithm()).await;
 
     let charlie_provider = StorageTestProvider::<Provider>::new("charlie");
     let (charlie_cwk, charlie_signer) = new_credential(
         &charlie_provider,
         b"charlie",
         ciphersuite.signature_algorithm(),
-    );
+    ).await;
 
     /////// prepare a group that has some content
     let mut alice_group = MlsGroup::builder()
@@ -191,7 +193,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
             None,
         ))
         .build(&alice_provider, &alice_signer, alice_cwk)
-        .expect("error creating group using builder");
+        .await.expect("error creating group using builder");
 
     let group_id = alice_group.group_id().clone();
 
@@ -217,7 +219,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
             None,
         ))
         .build(ciphersuite, &bob_provider, &bob_signer, bob_cwk.clone())
-        .unwrap();
+        .await.unwrap();
 
     alice_group
         .add_members(
@@ -303,7 +305,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
             &charlie_signer,
             charlie_cwk.clone(),
         )
-        .unwrap();
+        .await.unwrap();
 
     alice_group
         .propose_add_member(&alice_provider, &alice_signer, charlie_kpb.key_package())
@@ -434,7 +436,7 @@ fn helper_write_kats(kat_data: Vec<(Ciphersuite, GroupId, Vec<Vec<u8>>)>) {
 }
 
 #[openmls_test]
-fn test() {
+async fn test() {
     // setup
     let base64_engine = base64::engine::GeneralPurpose::new(
         &base64::alphabet::URL_SAFE,
@@ -460,7 +462,7 @@ fn test() {
         deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
 
     let alice_group_new_group = MlsGroup::load(provider_new_group.storage(), &group_id)
-        .unwrap()
+        .await.unwrap()
         .unwrap();
 
     // alice is the sole member
@@ -491,7 +493,7 @@ fn test() {
 
     let alice_group_pending_add_commit =
         MlsGroup::load(provider_pending_add_commit.storage(), &group_id)
-            .unwrap()
+            .await.unwrap()
             .unwrap();
 
     // alice is the sole member
@@ -546,7 +548,7 @@ fn test() {
         deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
 
     let alice_group_bob_added = MlsGroup::load(provider_bob_added.storage(), &group_id)
-        .unwrap()
+        .await.unwrap()
         .unwrap();
 
     // alice and bob are members
@@ -582,7 +584,7 @@ fn test() {
 
     let alice_group_pending_gce_commit =
         MlsGroup::load(provider_pending_gce_commit.storage(), &group_id)
-            .unwrap()
+            .await.unwrap()
             .unwrap();
 
     // alice and bob are members
@@ -648,7 +650,7 @@ fn test() {
         deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
 
     let alice_group_gce_updated = MlsGroup::load(provider_gce_updated.storage(), &group_id)
-        .unwrap()
+        .await.unwrap()
         .unwrap();
 
     // alice and bob are members
@@ -679,7 +681,7 @@ fn test() {
 
     let alice_group_pending_proposal =
         MlsGroup::load(provider_pending_proposal.storage(), &group_id)
-            .unwrap()
+            .await.unwrap()
             .unwrap();
 
     // alice and bob are members

@@ -138,7 +138,7 @@ pub struct FrankenLifetime {
 
 #[cfg(test)]
 #[openmls_test]
-fn test_franken_key_package() {
+async fn test_franken_key_package() {
     let provider = &Provider::default();
 
     let config = ciphersuite;
@@ -146,7 +146,7 @@ fn test_franken_key_package() {
     let (credential, signer) = {
         let credential = BasicCredential::new(b"test identity".to_vec());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        signature_keys.store(provider.storage()).unwrap();
+        signature_keys.store(provider.storage()).await.unwrap();
 
         (credential, signature_keys)
     };
@@ -163,7 +163,7 @@ fn test_franken_key_package() {
 
     let kp = KeyPackage::builder()
         .build(config, provider, &signer, credential_with_key)
-        .unwrap();
+        .await.unwrap();
 
     let ser = kp.key_package().tls_serialize_detached().unwrap();
     let fkp = FrankenKeyPackage::tls_deserialize(&mut ser.as_slice()).unwrap();

@@ -5,7 +5,8 @@ use openmls_traits::types::HpkeCiphertext;
 
 use crate::{credentials::*, group::*, key_packages::*, test_utils::*};
 
-pub(crate) fn setup_alice_group(
+#[maybe_async::maybe_async]
+pub(crate) async fn setup_alice_group(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
 ) -> (
@@ -16,7 +17,7 @@ pub(crate) fn setup_alice_group(
 ) {
     // Create credentials and keys
     let (alice_credential_with_key, alice_signature_keys) =
-        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+        test_utils::new_credential(provider, b"Alice", ciphersuite.signature_algorithm()).await;
     let pk = OpenMlsSignaturePublicKey::new(
         alice_signature_keys.to_public_vec().into(),
         ciphersuite.signature_algorithm(),
@@ -31,7 +32,7 @@ pub(crate) fn setup_alice_group(
             &alice_signature_keys,
             alice_credential_with_key.clone(),
         )
-        .expect("Error creating group.");
+        .await.expect("Error creating group.");
 
     // Test persistence after Alice creates group
     group
@@ -51,7 +52,8 @@ pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
     ctxt.ciphertext.push(last_bits);
 }
 
-pub(crate) fn setup_alice_bob(
+#[maybe_async::maybe_async]
+pub(crate) async fn setup_alice_bob(
     ciphersuite: Ciphersuite,
     alice_provider: &impl crate::storage::OpenMlsProvider,
     bob_provider: &impl crate::storage::OpenMlsProvider,
@@ -63,9 +65,9 @@ pub(crate) fn setup_alice_bob(
 ) {
     // Create credentials and keys
     let (alice_credential_with_key, alice_signer) =
-        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
     let (bob_credential_with_key, bob_signer) =
-        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
     // Generate Bob's KeyPackage
     let bob_key_package_bundle = KeyPackageBundle::generate(
@@ -73,7 +75,7 @@ pub(crate) fn setup_alice_bob(
         &bob_signer,
         ciphersuite,
         bob_credential_with_key,
-    );
+    ).await;
 
     (
         alice_credential_with_key,
@@ -83,7 +85,8 @@ pub(crate) fn setup_alice_bob(
     )
 }
 
-pub(crate) fn setup_client(
+#[maybe_async::maybe_async]
+pub(crate) async fn setup_client(
     id: &str,
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -94,7 +97,7 @@ pub(crate) fn setup_client(
     OpenMlsSignaturePublicKey,
 ) {
     let (credential_with_key, signature_keys) =
-        test_utils::new_credential(provider, id.as_bytes(), ciphersuite.signature_algorithm());
+        test_utils::new_credential(provider, id.as_bytes(), ciphersuite.signature_algorithm()).await;
     let pk = OpenMlsSignaturePublicKey::new(
         signature_keys.to_public_vec().into(),
         ciphersuite.signature_algorithm(),
@@ -107,11 +110,12 @@ pub(crate) fn setup_client(
         &signature_keys,
         ciphersuite,
         credential_with_key.clone(),
-    );
+    ).await;
     (credential_with_key, key_package_bundle, signature_keys, pk)
 }
 
-pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
+#[maybe_async::maybe_async]
+pub(crate) async fn setup_alice_bob_group<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     alice_provider: &Provider,
     bob_provider: &Provider,
@@ -125,9 +129,9 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
 ) {
     // Create credentials and keys
     let (alice_credential, alice_signature_keys) =
-        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
     let (bob_credential, bob_signature_keys) =
-        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::generate(
@@ -135,7 +139,7 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         &bob_signature_keys,
         ciphersuite,
         bob_credential.clone(),
-    );
+    ).await;
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Alice creates a group
@@ -147,7 +151,7 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
             &alice_signature_keys,
             alice_credential.clone(),
         )
-        .expect("Error creating group.");
+        .await.expect("Error creating group.");
 
     // Test persistence after Alice creates group
     alice_group
@@ -185,7 +189,7 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .and_then(|staged_join| staged_join.into_group(bob_provider))
+    .await.and_then(|staged_join| staged_join.into_group(bob_provider))
     .expect("error creating group from welcome");
 
     // Test persistence after Bob joins group

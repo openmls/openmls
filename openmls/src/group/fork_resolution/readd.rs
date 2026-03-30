@@ -113,13 +113,13 @@ mod test {
 
         // Create group with alice and bob
         let (mut alice_group, alice_signer, mut bob_group, bob_signer, _alice_cwk, bob_cwk) =
-            setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+            setup_alice_bob_group(ciphersuite, alice_provider, bob_provider).await;
 
         let (charlie_cwk, charlie_kpb, charlie_signer, _charlie_sig_pk) =
-            setup_client("Charlie", ciphersuite, charlie_provider);
+            setup_client("Charlie", ciphersuite, charlie_provider).await;
 
         let (_dave_cwk, dave_kpb, _dave_signer, _dave_sig_pk) =
-            setup_client("Dave", ciphersuite, dave_provider);
+            setup_client("Dave", ciphersuite, dave_provider).await;
 
         let bob_cwkas = CredentialWithKeyAndSigner {
             credential_with_key: bob_cwk.clone(),
@@ -167,14 +167,14 @@ mod test {
 
         // We are forked now! Let's try to recover by rebooting. first get new key packages
         let bob_new_kpb =
-            generate_key_package(ciphersuite, Extensions::empty(), bob_provider, bob_cwkas);
+            generate_key_package(ciphersuite, Extensions::empty(), bob_provider, bob_cwkas).await;
 
         let charlie_new_kpb = generate_key_package(
             ciphersuite,
             Extensions::empty(),
             charlie_provider,
             charlie_cwkas,
-        );
+        ).await;
 
         // Now, re-add bob to the group
         let builder = alice_group

@@ -10,7 +10,7 @@ use crate::{
 
 // Tests the different variants of the RemoveOperation enum.
 #[openmls_test::openmls_test]
-fn test_add_member_with_aad() {
+async fn test_add_member_with_aad() {
     // Test over both wire format policies
     for wire_format_policy in [
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -26,19 +26,19 @@ fn test_add_member_with_aad() {
             "Alice".into(),
             ciphersuite.signature_algorithm(),
             alice_provider,
-        );
+        ).await;
 
         let bob_credential_with_key_and_signer = generate_credential_with_key(
             "Bob".into(),
             ciphersuite.signature_algorithm(),
             bob_provider,
-        );
+        ).await;
 
         let charlie_credential_with_key_and_signer = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
             charlie_provider,
-        );
+        ).await;
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -46,13 +46,13 @@ fn test_add_member_with_aad() {
             Extensions::empty(),
             bob_provider,
             bob_credential_with_key_and_signer.clone(),
-        );
+        ).await;
         let charlie_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
             charlie_provider,
             charlie_credential_with_key_and_signer,
-        );
+        ).await;
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -71,7 +71,7 @@ fn test_add_member_with_aad() {
                 .credential_with_key
                 .clone(),
         )
-        .expect("An unexpected error occurred.");
+        .await.expect("An unexpected error occurred.");
 
         let aad = b"Test AAD".to_vec();
 
@@ -104,7 +104,7 @@ fn test_add_member_with_aad() {
             welcome.clone(),
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .expect("Error creating staged join from Welcome")
+        .await.expect("Error creating staged join from Welcome")
         .into_group(bob_provider)
         .expect("Error creating group from staged join");
 

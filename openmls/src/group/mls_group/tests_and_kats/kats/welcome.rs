@@ -107,7 +107,8 @@ fn test_read_vectors() {
 //     unimplemented!()
 // }
 
-pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static str> {
+#[maybe_async::maybe_async]
+pub async fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static str> {
     let _ = pretty_env_logger::formatted_builder()
         .is_test(true)
         .try_init();
@@ -174,7 +175,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     provider
         .storage()
         .write_key_package(&hash_ref, &key_package_bundle)
-        .unwrap();
+        .await.unwrap();
 
     // Verification:
     // * Decrypt the Welcome message:
@@ -204,7 +205,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.storage(), &resumption_psk_store, &[]).unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, &[]).await.unwrap();
 
         PskSecret::new(provider.crypto(), cipher_suite, psks).unwrap()
     };

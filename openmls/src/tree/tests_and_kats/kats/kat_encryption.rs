@@ -452,8 +452,10 @@ pub async fn generate_test_vector(
     }
 }
 
-#[test]
-fn write_test_vectors() {
+#[maybe_async::maybe_async]
+#[cfg_attr(feature = "sync", test)]
+#[cfg_attr(not(feature = "sync"), tokio::test)]
+async fn write_test_vectors() {
     use openmls_traits::prelude::*;
 
     let _ = pretty_env_logger::try_init();
@@ -469,7 +471,7 @@ fn write_test_vectors() {
         .iter()
     {
         for n_leaves in 1u32..NUM_LEAVES {
-            let test = generate_test_vector(NUM_GENERATIONS, n_leaves, ciphersuite);
+            let test = generate_test_vector(NUM_GENERATIONS, n_leaves, ciphersuite).await;
             tests.push(test);
         }
     }
@@ -821,8 +823,10 @@ pub async fn run_test_vector(
     Ok(())
 }
 
-#[test]
-fn read_test_vectors_encryption() {
+#[maybe_async::maybe_async]
+#[cfg_attr(not(feature = "sync"), tokio::test)]
+#[cfg_attr(feature = "sync", test)]
+async fn read_test_vectors_encryption() {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
     // The ciphersuite is defined in here and libcrux can't do all of them yet.
@@ -832,7 +836,7 @@ fn read_test_vectors_encryption() {
         read_json!("../../../../test_vectors/kat_encryption_openmls.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, &provider) {
+        match run_test_vector(test_vector, &provider).await {
             Ok(_) => {}
             Err(e) => panic!("Error while checking encryption test vector.\n{e:?}"),
         }

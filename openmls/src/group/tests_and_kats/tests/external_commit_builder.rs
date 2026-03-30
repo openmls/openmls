@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[openmls_test]
-fn external_commit_builder() {
+async fn external_commit_builder() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     let charlie_provider = &Provider::default();
@@ -24,7 +24,7 @@ fn external_commit_builder() {
         b"alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    );
+    ).await;
 
     let CredentialWithKeyAndSigner {
         credential_with_key: bob_credential_with_key,
@@ -33,7 +33,7 @@ fn external_commit_builder() {
         b"bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    );
+    ).await;
 
     let CredentialWithKeyAndSigner {
         credential_with_key: charlie_credential_with_key,
@@ -42,7 +42,7 @@ fn external_commit_builder() {
         b"charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    );
+    ).await;
 
     // Alice creates a group.
 
@@ -61,7 +61,7 @@ fn external_commit_builder() {
         .with_wire_format_policy(POLICY)
         .with_capabilities(capabilities.clone())
         .build(alice_provider, &alice_signer, alice_credential_with_key)
-        .unwrap();
+        .await.unwrap();
 
     alice_group
         .ensure_persistence(alice_provider.storage())
@@ -103,7 +103,7 @@ fn external_commit_builder() {
         .unwrap()
         .leaf_node_parameters(leaf_node_parameters)
         .load_psks(bob_provider.storage())
-        .unwrap()
+        .await.unwrap()
         .build(
             bob_provider.rand(),
             bob_provider.crypto(),
@@ -176,8 +176,8 @@ fn external_commit_builder() {
     let psk_id = Psk::External(ExternalPsk::new(psk_id_bytes.clone()));
     let psk = PreSharedKeyId::new(ciphersuite, charlie_provider.rand(), psk_id).unwrap();
     let psk_value = vec![4, 5, 6, 7];
-    psk.store(bob_provider, &psk_value).unwrap();
-    psk.store(charlie_provider, &psk_value).unwrap();
+    psk.store(bob_provider, &psk_value).await.unwrap();
+    psk.store(charlie_provider, &psk_value).await.unwrap();
 
     let (charlie_group, commit_message_bundle) = MlsGroup::external_commit_builder()
         .with_proposals(vec![*self_remove_proposal])
@@ -190,7 +190,7 @@ fn external_commit_builder() {
         .unwrap()
         .add_psk_proposal(PreSharedKeyProposal::new(psk))
         .load_psks(charlie_provider.storage())
-        .unwrap()
+        .await.unwrap()
         .build(
             charlie_provider.rand(),
             charlie_provider.crypto(),

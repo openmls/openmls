@@ -50,7 +50,7 @@ fn application_id_in_leaf_node_extensions() {
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[openmls_test::openmls_test]
-fn ratchet_tree_extension() {
+async fn ratchet_tree_extension() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
 
@@ -58,9 +58,9 @@ fn ratchet_tree_extension() {
 
     // Create credentials and keys
     let (alice_credential_with_key, alice_signature_keys) =
-        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
     let (bob_credential_with_key, bob_signature_keys) =
-        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::generate(
@@ -68,7 +68,7 @@ fn ratchet_tree_extension() {
         &bob_signature_keys,
         ciphersuite,
         bob_credential_with_key.clone(),
-    );
+    ).await;
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group with the ratchet tree extension ===
@@ -80,7 +80,7 @@ fn ratchet_tree_extension() {
             &alice_signature_keys,
             alice_credential_with_key.clone(),
         )
-        .expect("Error creating group.");
+        .await.expect("Error creating group.");
 
     // === Alice adds Bob ===
     let (_commit, welcome, _group_info_option) = alice_group
@@ -103,7 +103,7 @@ fn ratchet_tree_extension() {
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error staging welcome")
+    .await.expect("Error staging welcome")
     .into_group(bob_provider)
     .expect("Error creating group from welcome");
 
@@ -125,7 +125,7 @@ fn ratchet_tree_extension() {
         &bob_signature_keys,
         ciphersuite,
         bob_credential_with_key,
-    );
+    ).await;
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let mut alice_group = MlsGroup::builder()
@@ -136,7 +136,7 @@ fn ratchet_tree_extension() {
             &alice_signature_keys,
             alice_credential_with_key,
         )
-        .expect("Error creating group.");
+        .await.expect("Error creating group.");
 
     // === Alice adds Bob ===
     let (_commit, welcome, _group_info_option) = alice_group
@@ -157,7 +157,7 @@ fn ratchet_tree_extension() {
         welcome.into_welcome().unwrap(),
         None,
     )
-    .and_then(|staged_join| staged_join.into_group(bob_provider))
+    .await.and_then(|staged_join| staged_join.into_group(bob_provider))
     .err();
 
     // We expect an error because the ratchet tree is missing
@@ -209,7 +209,7 @@ fn required_capabilities() {
 }
 
 #[openmls_test::openmls_test]
-fn with_group_context_extensions() {
+async fn with_group_context_extensions() {
     let provider = &Provider::default();
 
     // create an extension that we can check for later
@@ -218,7 +218,7 @@ fn with_group_context_extensions() {
         .expect("failed to create single-element extensions list");
 
     let alice_credential_with_key_and_signer =
-        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
+        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider).await;
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .with_group_context_extensions(extensions)
@@ -232,7 +232,7 @@ fn with_group_context_extensions() {
         &mls_group_create_config,
         alice_credential_with_key_and_signer.credential_with_key,
     )
-    .expect("An unexpected error occurred.");
+    .await.expect("An unexpected error occurred.");
 
     // === Group contains extension ===
     let found_test_extension = alice_group
@@ -294,7 +294,7 @@ fn wrong_extension_with_group_context_extensions() {
 }
 
 #[openmls_test::openmls_test]
-fn last_resort_extension() {
+async fn last_resort_extension() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
 
@@ -327,7 +327,7 @@ fn last_resort_extension() {
                 signature_key: signer.to_public_vec().into(),
             },
         )
-        .expect("error building key package with last resort extension");
+        .await.expect("error building key package with last resort extension");
     assert!(kp.key_package().last_resort());
     let encoded_kp = kp
         .key_package()
@@ -346,7 +346,7 @@ fn last_resort_extension() {
         "Alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    );
+    ).await;
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
@@ -359,7 +359,7 @@ fn last_resort_extension() {
         &mls_group_create_config,
         alice_credential_with_key_and_signer.credential_with_key,
     )
-    .expect("An unexpected error occurred.");
+    .await.expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
 
@@ -382,7 +382,7 @@ fn last_resort_extension() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("An unexpected error occurred.")
+    .await.expect("An unexpected error occurred.")
     .into_group(bob_provider)
     .expect("An unexpected error occurred.");
 
@@ -393,7 +393,7 @@ fn last_resort_extension() {
                 .hash_ref(bob_provider.crypto())
                 .expect("error hashing key package"),
         )
-        .expect("error retrieving key package")
+        .await.expect("error retrieving key package")
         .expect("key package does not exist");
 }
 

@@ -189,8 +189,10 @@ mod test {
     impl Key<V_TEST> for ProposalRef {}
     impl type_traits::HashReference<V_TEST> for ProposalRef {}
 
-    #[test]
-    fn key_packages_key_upgrade() {
+    #[cfg_attr(feature = "sync", test)]
+    #[cfg_attr(not(feature = "sync"), tokio::test)]
+    #[maybe_async::maybe_async]
+    async fn key_packages_key_upgrade() {
         // Store an old version
         let provider = OpenMlsRustCrypto::default();
 
@@ -198,7 +200,7 @@ mod test {
             "Alice",
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             &provider,
-        );
+        ).await;
 
         // build and store key package bundle
         let key_package_bundle = KeyPackageBuilder::new()
@@ -208,7 +210,7 @@ mod test {
                 &signer,
                 credential_with_key,
             )
-            .unwrap();
+            .await.unwrap();
 
         let key_package = key_package_bundle.key_package();
         let key_package_ref = key_package.hash_ref(provider.crypto()).unwrap();
@@ -224,7 +226,7 @@ mod test {
                 provider.storage(),
                 &key_package_ref,
             )
-            .unwrap()
+            .await.unwrap()
             .unwrap();
 
         // then, build the new data from the old data
@@ -241,7 +243,7 @@ mod test {
             &key_package_ref,
             &new_key_package_bundle,
         )
-        .unwrap();
+        .await.unwrap();
 
         // read the new value from storage
         let read_new_key_package_bundle: NewKeyPackageBundle =
@@ -249,7 +251,7 @@ mod test {
                 &new_storage_provider,
                 &key_package_ref,
             )
-            .unwrap()
+            .await.unwrap()
             .unwrap();
 
         // compare it to the old_storage

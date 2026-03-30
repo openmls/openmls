@@ -9,7 +9,8 @@ use crate::group::tests_and_kats::utils::{
 };
 
 // Creates a group with one member
-fn create_group(
+#[maybe_async::maybe_async]
+async fn create_group(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
     wire_format_policy: WireFormatPolicy,
@@ -18,7 +19,7 @@ fn create_group(
 
     // Generate credentials with keys
     let credential_with_key_and_signer =
-        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
+        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider).await;
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupCreateConfig::builder()
@@ -35,13 +36,14 @@ fn create_group(
             group_id,
             credential_with_key_and_signer.credential_with_key.clone(),
         )
-        .expect("An unexpected error occurred."),
+        .await.expect("An unexpected error occurred."),
         credential_with_key_and_signer,
     )
 }
 
 // Takes an existing group, adds a new member and sends a message from the second member to the first one, returns that message
-fn receive_message(
+#[maybe_async::maybe_async]
+async fn receive_message(
     ciphersuite: Ciphersuite,
     alice_provider: &impl crate::storage::OpenMlsProvider,
     bob_provider: &impl crate::storage::OpenMlsProvider,
@@ -53,7 +55,7 @@ fn receive_message(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    );
+    ).await;
 
     // Generate KeyPackages
     let bob_key_package = generate_key_package(
@@ -61,7 +63,7 @@ fn receive_message(
         Extensions::empty(),
         bob_provider,
         bob_credential_with_key_and_signer.clone(),
-    );
+    ).await;
 
     let (_message, welcome, _group_info) = alice_group
         .add_members(
@@ -69,11 +71,11 @@ fn receive_message(
             alice_signer,
             core::slice::from_ref(bob_key_package.key_package()),
         )
-        .expect("Could not add member.");
+        .await.expect("Could not add member.");
 
     alice_group
         .merge_pending_commit(alice_provider)
-        .expect("error merging pending commit");
+        .await.expect("error merging pending commit");
 
     let mls_group_config = MlsGroupJoinConfig::builder()
         .wire_format_policy(alice_group.configuration().wire_format_policy())
@@ -86,7 +88,7 @@ fn receive_message(
 
     let mut bob_group =
         StagedWelcome::new_from_welcome(bob_provider, &mls_group_config, welcome, None)
-            .expect("error creating bob's staged join from welcome")
+            .await.expect("error creating bob's staged join from welcome")
             .into_group(bob_provider)
             .expect("error creating bob's group from staged join");
 
@@ -103,7 +105,7 @@ fn receive_message(
 
 // Test positive cases with all valid (pure & mixed) policies
 #[openmls_test::openmls_test]
-fn test_wire_policy_positive() {
+async fn test_wire_policy_positive() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let alice_provider = &Provider::default();
         let bob_provider = &Provider::default();
@@ -118,13 +120,13 @@ fn test_wire_policy_positive() {
         );
         alice_group
             .process_message(alice_provider, message.try_into_protocol_message().unwrap())
-            .expect("An unexpected error occurred.");
+            .await.expect("An unexpected error occurred.");
     }
 }
 
 // Test negative cases with only icompatible policies
 #[openmls_test::openmls_test]
-fn test_wire_policy_negative() {
+async fn test_wire_policy_negative() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     // All combinations that are not part of WIRE_FORMAT_POLICIES
@@ -150,7 +152,7 @@ fn test_wire_policy_negative() {
         );
         let err = alice_group
             .process_message(alice_provider, message.try_into_protocol_message().unwrap())
-            .expect_err("An unexpected error occurred.");
+            .await.expect_err("An unexpected error occurred.");
         assert!(matches!(err, ProcessMessageError::IncompatibleWireFormat));
     }
 }

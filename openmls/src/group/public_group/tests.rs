@@ -15,7 +15,7 @@ use crate::{
 use super::{super::mls_group::StagedWelcome, PublicGroup};
 
 #[openmls_test::openmls_test]
-fn public_group() {
+async fn public_group() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     let charlie_provider = &Provider::default();
@@ -24,11 +24,11 @@ fn public_group() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, alice_provider);
+        setup_client("Alice", ciphersuite, alice_provider).await;
     let (_bob_credential, bob_kpb, bob_signer, _bob_pk) =
-        setup_client("Bob", ciphersuite, bob_provider);
+        setup_client("Bob", ciphersuite, bob_provider).await;
     let (_charlie_credential, charlie_kpb, charlie_signer, _charlie_pk) =
-        setup_client("Charly", ciphersuite, charlie_provider);
+        setup_client("Charly", ciphersuite, charlie_provider).await;
 
     // Define the MlsGroup configuration
     // Set plaintext wire format policy s.t. the public group can track changes.
@@ -45,7 +45,7 @@ fn public_group() {
         group_id,
         alice_credential_with_key,
     )
-    .expect("An unexpected error occurred.");
+    .await.expect("An unexpected error occurred.");
 
     // === Create a public group that tracks the changes throughout this test ===
     let verifiable_group_info = alice_group
@@ -61,7 +61,7 @@ fn public_group() {
         verifiable_group_info,
         ProposalStore::new(),
     )
-    .unwrap();
+    .await.unwrap();
 
     // === Alice adds Bob ===
     let (message, welcome, _group_info) = alice_group
@@ -112,7 +112,7 @@ fn public_group() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating staged join from Welcome")
+    .await.expect("Error creating staged join from Welcome")
     .into_group(bob_provider)
     .expect("Error creating group from staged join");
 
@@ -172,7 +172,7 @@ fn public_group() {
         welcome,
         Some(bob_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating group from Welcome")
+    .await.expect("Error creating group from Welcome")
     .into_group(charlie_provider)
     .expect("Error creating group from Welcome");
 
@@ -331,7 +331,7 @@ fn extract_staged_commit(ppm: ProcessedMessage) -> StagedCommit {
 }
 
 #[openmls_test::openmls_test]
-fn old_messages_with_blank_leaves() {
+async fn old_messages_with_blank_leaves() {
     let provider = &Provider::default();
 
     let alice_party = CorePartyState::<Provider>::new("alice");
@@ -356,7 +356,7 @@ fn old_messages_with_blank_leaves() {
     // Initialize the group state
     let group_id = GroupId::from_slice(b"test");
     let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).await.unwrap();
 
     // Alice adds Bob, Charlie and David
     // This should succeed, since all used credential types used are supported

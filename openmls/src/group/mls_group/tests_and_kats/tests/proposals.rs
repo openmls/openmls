@@ -44,13 +44,13 @@ fn proposal_queue_functions() {
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
     let (alice_credential, alice_key_package_bundle, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, alice_provider);
+        setup_client("Alice", ciphersuite, alice_provider).await;
     let (_bob_credential_with_key, bob_key_package_bundle, _bob_signer, _bob_pk) =
-        setup_client("Bob", ciphersuite, bob_provider);
+        setup_client("Bob", ciphersuite, bob_provider).await;
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle =
-        KeyPackageBundle::generate(alice_provider, &alice_signer, ciphersuite, alice_credential);
+        KeyPackageBundle::generate(alice_provider, &alice_signer, ciphersuite, alice_credential).await;
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
     assert!(kpi.validate(crypto, ProtocolVersion::Mls10).is_ok());
@@ -182,13 +182,13 @@ fn proposal_queue_order() {
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
     let (alice_credential, alice_key_package_bundle, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, alice_provider);
+        setup_client("Alice", ciphersuite, alice_provider).await;
     let (_bob_credential_with_key, bob_key_package_bundle, _bob_signer, _bob_pk) =
-        setup_client("Bob", ciphersuite, bob_provider);
+        setup_client("Bob", ciphersuite, bob_provider).await;
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle =
-        KeyPackageBundle::generate(alice_provider, &alice_signer, ciphersuite, alice_credential);
+        KeyPackageBundle::generate(alice_provider, &alice_signer, ciphersuite, alice_credential).await;
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     let kpi = KeyPackageIn::from(alice_update_key_package.clone());
     assert!(kpi
@@ -285,15 +285,15 @@ fn proposal_queue_order() {
 }
 
 #[openmls_test::openmls_test]
-fn required_extension_key_package_mismatch() {
+async fn required_extension_key_package_mismatch() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
 
     // Basic group setup.
     let (alice_credential, _, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, alice_provider);
+        setup_client("Alice", ciphersuite, alice_provider).await;
     let (_bob_credential_with_key, bob_key_package_bundle, _, _) =
-        setup_client("Bob", ciphersuite, bob_provider);
+        setup_client("Bob", ciphersuite, bob_provider).await;
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
@@ -311,7 +311,7 @@ fn required_extension_key_package_mismatch() {
                 .expect("failed to create single-element extensions list"),
         )
         .build(alice_provider, &alice_signer, alice_credential)
-        .expect("Error creating MlsGroup.");
+        .await.expect("Error creating MlsGroup.");
 
     let e = alice_group.propose_add_member(alice_provider, &alice_signer, bob_key_package)
         .expect_err("Proposal was created even though the key package didn't support the required extensions.");
@@ -325,15 +325,15 @@ fn required_extension_key_package_mismatch() {
 }
 
 #[openmls_test::openmls_test]
-fn group_context_extensions() {
+async fn group_context_extensions() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
 
     // Basic group setup.
     let (alice_credential, _, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, alice_provider);
+        setup_client("Alice", ciphersuite, alice_provider).await;
     let (_bob_credential_with_key, bob_key_package_bundle, _, _) =
-        setup_client("Bob", ciphersuite, bob_provider);
+        setup_client("Bob", ciphersuite, bob_provider).await;
 
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -356,7 +356,7 @@ fn group_context_extensions() {
                 .expect("failed to create single-element extensions list"),
         )
         .build(alice_provider, &alice_signer, alice_credential)
-        .expect("Error creating MlsGroup.");
+        .await.expect("Error creating MlsGroup.");
 
     let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
@@ -378,18 +378,18 @@ fn group_context_extensions() {
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
-    .expect("Error joining group.");
+    .await.expect("Error joining group.");
 }
 
 #[openmls_test::openmls_test]
-fn group_context_extension_proposal_fails() {
+async fn group_context_extension_proposal_fails() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     // Basic group setup.
     let (alice_credential, _, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, alice_provider);
+        setup_client("Alice", ciphersuite, alice_provider).await;
     let (_bob_credential_with_key, bob_key_package_bundle, _bob_signer, _) =
-        setup_client("Bob", ciphersuite, bob_provider);
+        setup_client("Bob", ciphersuite, bob_provider).await;
 
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -410,7 +410,7 @@ fn group_context_extension_proposal_fails() {
                 .expect("failed to create single-element extensions list"),
         )
         .build(alice_provider, &alice_signer, alice_credential)
-        .expect("Error creating MlsGroup.");
+        .await.expect("Error creating MlsGroup.");
 
     // Adding Bob
     let (_commit, welcome, _group_info_option) = alice_group
@@ -431,7 +431,7 @@ fn group_context_extension_proposal_fails() {
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
-    .and_then(|staged_join| staged_join.into_group(bob_provider))
+    .await.and_then(|staged_join| staged_join.into_group(bob_provider))
     .expect("Error joining group.");
 
     // TODO: openmls/openmls#1130 re-enable
@@ -456,13 +456,13 @@ fn group_context_extension_proposal_fails() {
 }
 
 #[openmls_test::openmls_test]
-fn group_context_extension_proposal() {
+async fn group_context_extension_proposal() {
     // Basic group setup.
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     let (mut alice_group, alice_signer, mut bob_group, bob_signer, _alice_credential, _bob_credential) =
         // TODO: don't let alice and bob share the provider
-        setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+        setup_alice_bob_group(ciphersuite, alice_provider, bob_provider).await;
 
     // Alice adds a required capability.
     let required_application_id =
@@ -478,7 +478,7 @@ fn group_context_extension_proposal() {
                 .expect("failed to create single-element extensions list"),
             &alice_signer,
         )
-        .expect("Error proposing gce.");
+        .await.expect("Error proposing gce.");
 
     let processed_message = bob_group
         .process_message(bob_provider, gce_proposal.into_protocol_message().unwrap())
@@ -488,7 +488,7 @@ fn group_context_extension_proposal() {
         ProcessedMessageContent::ProposalMessage(queued_proposal) => {
             bob_group
                 .store_pending_proposal(bob_provider.storage(), *queued_proposal)
-                .unwrap();
+                .await.unwrap();
         }
         _ => panic!("Expected a StagedCommitMessage."),
     };
@@ -496,9 +496,9 @@ fn group_context_extension_proposal() {
     // Bob commits the proposal.
     let (commit, _, _) = bob_group
         .commit_to_pending_proposals(bob_provider, &bob_signer)
-        .unwrap();
+        .await.unwrap();
 
-    bob_group.merge_pending_commit(bob_provider).unwrap();
+    bob_group.merge_pending_commit(bob_provider).await.unwrap();
 
     let processed_message = alice_group
         .process_message(alice_provider, commit.into_protocol_message().unwrap())
@@ -508,7 +508,7 @@ fn group_context_extension_proposal() {
         ProcessedMessageContent::StagedCommitMessage(commit) => {
             alice_group
                 .merge_staged_commit(alice_provider, *commit)
-                .unwrap();
+                .await.unwrap();
         }
         _ => panic!("Expected a StagedCommitMessage."),
     };
@@ -522,15 +522,15 @@ fn group_context_extension_proposal() {
 // A simple test to check that a SelfRemove proposal can be created and
 // processed.
 #[openmls_test::openmls_test]
-fn self_remove_proposals() {
+async fn self_remove_proposals() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
 
     // Create credentials and keys
     let (alice_credential, alice_signer) =
-        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
     let (bob_credential, bob_signer) =
-        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
     // Add SelfRemove to capabilities
     let capabilities = Capabilities::new(
@@ -550,7 +550,7 @@ fn self_remove_proposals() {
             &bob_signer,
             bob_credential.clone(),
         )
-        .unwrap();
+        .await.unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Alice creates a group
@@ -560,7 +560,7 @@ fn self_remove_proposals() {
         .with_capabilities(capabilities)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(alice_provider, &alice_signer, alice_credential.clone())
-        .expect("Error creating group.");
+        .await.expect("Error creating group.");
 
     // Alice adds Bob
     let (_commit, welcome, _group_info_option) = alice_group
@@ -583,7 +583,7 @@ fn self_remove_proposals() {
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .and_then(|staged_join| staged_join.into_group(bob_provider))
+    .await.and_then(|staged_join| staged_join.into_group(bob_provider))
     .expect("error creating group from welcome");
 
     // Now Bob wants to remove himself via a SelfRemove proposal
@@ -634,22 +634,22 @@ fn self_remove_proposals() {
 // Test if update proposals are properly discarded if a remove proposal is
 // present for a given leaf.
 #[openmls_test::openmls_test]
-fn remove_and_update_processing() {
+async fn remove_and_update_processing() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
 
     // Create a group with alice and bob.
     let (alice_credential, _, alice_signer, _alice_pk) =
-        setup_client("Alice", ciphersuite, alice_provider);
+        setup_client("Alice", ciphersuite, alice_provider).await;
     let (_bob_credential_with_key, bob_key_package_bundle, bob_signer, _) =
-        setup_client("Bob", ciphersuite, bob_provider);
+        setup_client("Bob", ciphersuite, bob_provider).await;
 
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .build(alice_provider, &alice_signer, alice_credential)
-        .expect("Error creating MlsGroup.");
+        .await.expect("Error creating MlsGroup.");
 
     let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
@@ -669,7 +669,7 @@ fn remove_and_update_processing() {
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
-    .expect("Error joining group.")
+    .await.expect("Error joining group.")
     .into_group(bob_provider)
     .unwrap();
 
@@ -754,17 +754,17 @@ fn remove_and_update_processing() {
 // A simple test to check that SelfRemove proposals are only ever sent as
 // PublicMessages.
 #[openmls_test::openmls_test]
-fn self_remove_proposals_always_public() {
+async fn self_remove_proposals_always_public() {
     let alice_provider = &Provider::default();
     let (alice_credential, alice_signer) =
-        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
     // Alice creates a group
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
         .build(alice_provider, &alice_signer, alice_credential.clone())
-        .expect("Error creating group.");
+        .await.expect("Error creating group.");
 
     // Now Bob wants to remove himself via a SelfRemove proposal
     let self_remove = alice_group

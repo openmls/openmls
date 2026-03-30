@@ -61,7 +61,8 @@ pub(crate) struct TestSetup {
 const KEY_PACKAGE_COUNT: usize = 10;
 
 /// The setup function creates a set of groups and clients.
-pub(crate) fn setup(
+#[maybe_async::maybe_async]
+pub(crate) async fn setup(
     config: TestSetupConfig,
     provider: &impl crate::storage::OpenMlsProvider,
 ) -> TestSetup {
@@ -80,7 +81,7 @@ pub(crate) fn setup(
                 client.name.as_bytes().to_vec(),
                 ciphersuite.signature_algorithm(),
                 provider,
-            );
+            ).await;
             // Create a number of key packages.
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
@@ -89,7 +90,7 @@ pub(crate) fn setup(
                     &credentia_with_key_and_signer.signer,
                     ciphersuite,
                     credentia_with_key_and_signer.credential_with_key.clone(),
-                );
+                ).await;
                 key_packages.push(key_package_bundle.key_package().clone());
                 key_package_bundles.push(key_package_bundle);
             }
@@ -132,7 +133,7 @@ pub(crate) fn setup(
                 &credential_with_key_and_signer.signer,
                 credential_with_key_and_signer.credential_with_key.clone(),
             )
-            .expect("Error creating group.");
+            .await.expect("Error creating group.");
         initial_group_member
             .group_states
             .borrow_mut()
@@ -166,12 +167,12 @@ pub(crate) fn setup(
                     &credential_with_key_and_signer.signer,
                     &key_packages,
                 )
-                .expect("An unexpected error occurred.");
+                .await.expect("An unexpected error occurred.");
             let welcome = welcome.into_welcome().unwrap();
 
             mls_group
                 .merge_pending_commit(provider)
-                .expect("Error merging commit.");
+                .await.expect("Error merging commit.");
 
             let join_config = MlsGroupJoinConfig::builder()
                 .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
@@ -187,12 +188,12 @@ pub(crate) fn setup(
                 // Welcome.
                 let processed_welcome =
                     ProcessedWelcome::new_from_welcome(provider, &join_config, welcome.clone())
-                        .unwrap();
+                        .await.unwrap();
                 let new_group = JoinBuilder::new(provider, processed_welcome)
                     .with_ratchet_tree(mls_group.export_ratchet_tree().into())
                     .replace_old_group()
                     .build()
-                    .unwrap()
+                    .await.unwrap()
                     .into_group(provider)
                     .unwrap();
 
@@ -257,7 +258,8 @@ pub(crate) struct CredentialWithKeyAndSigner {
 }
 
 // Helper function to generate a CredentialWithKeyAndSigner
-pub(crate) fn generate_credential_with_key<Provider: OpenMlsProvider>(
+#[maybe_async::maybe_async]
+pub(crate) async fn generate_credential_with_key<Provider: OpenMlsProvider>(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
     provider: &Provider,
@@ -265,7 +267,7 @@ pub(crate) fn generate_credential_with_key<Provider: OpenMlsProvider>(
     let (credential, signer) = {
         let credential = BasicCredential::new(identity);
         let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
-        signature_keys.store(provider.storage()).unwrap();
+        signature_keys.store(provider.storage()).await.unwrap();
 
         (credential, signature_keys)
     };
@@ -282,7 +284,8 @@ pub(crate) fn generate_credential_with_key<Provider: OpenMlsProvider>(
 }
 
 // Helper function to generate a KeyPackageBundle
-pub(crate) fn generate_key_package<Provider: OpenMlsProvider>(
+#[maybe_async::maybe_async]
+pub(crate) async fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     extensions: Extensions<KeyPackage>,
     provider: &Provider,
@@ -296,7 +299,7 @@ pub(crate) fn generate_key_package<Provider: OpenMlsProvider>(
             &credential_with_keys.signer,
             credential_with_keys.credential_with_key,
         )
-        .unwrap()
+        .await.unwrap()
 }
 
 #[cfg(test)]

@@ -6,14 +6,14 @@ use crate::{
 
 // Verifies that when we add a leaf to a tree with blank leaf nodes, the leaf will be added at the leftmost free leaf index
 #[openmls_test::openmls_test]
-fn test_free_leaf_computation() {
+async fn test_free_leaf_computation() {
     let provider = &Provider::default();
-    let (c_0, sk_0) = new_credential(provider, b"leaf0", ciphersuite.signature_algorithm());
+    let (c_0, sk_0) = new_credential(provider, b"leaf0", ciphersuite.signature_algorithm()).await;
 
-    let kpb_0 = KeyPackageBundle::generate(provider, &sk_0, ciphersuite, c_0);
+    let kpb_0 = KeyPackageBundle::generate(provider, &sk_0, ciphersuite, c_0).await;
 
-    let (c_3, sk_3) = new_credential(provider, b"leaf3", ciphersuite.signature_algorithm());
-    let kpb_3 = KeyPackageBundle::generate(provider, &sk_3, ciphersuite, c_3);
+    let (c_3, sk_3) = new_credential(provider, b"leaf3", ciphersuite.signature_algorithm()).await;
+    let kpb_3 = KeyPackageBundle::generate(provider, &sk_3, ciphersuite, c_3).await;
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
     let ratchet_tree = RatchetTree::trimmed(vec![
@@ -32,8 +32,8 @@ fn test_free_leaf_computation() {
 
     // Create and add a new leaf. It should go to leaf index 1
 
-    let (c_2, signer_2) = new_credential(provider, b"leaf2", ciphersuite.signature_algorithm());
-    let kpb_2 = KeyPackageBundle::generate(provider, &signer_2, ciphersuite, c_2);
+    let (c_2, signer_2) = new_credential(provider, b"leaf2", ciphersuite.signature_algorithm()).await;
+    let kpb_2 = KeyPackageBundle::generate(provider, &signer_2, ciphersuite, c_2).await;
 
     let mut diff = tree.empty_diff();
     let free_leaf_index = diff.free_leaf_index();

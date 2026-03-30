@@ -14,7 +14,7 @@ mod test_unmerged_leaves;
 /// Pathological example taken from ...
 ///   https://github.com/mlswg/mls-protocol/issues/690#issue-1244086547.
 #[openmls_test::openmls_test]
-fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
+async fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
@@ -29,7 +29,8 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
         provider: Provider,
     }
 
-    fn create_member<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    async fn create_member<Provider: OpenMlsProvider>(
         ciphersuite: Ciphersuite,
         provider: Provider,
         name: Vec<u8>,
@@ -38,7 +39,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             name.clone(),
             ciphersuite.signature_algorithm(),
             &provider,
-        );
+        ).await;
         let key_package = KeyPackage::builder()
             .build(
                 ciphersuite,
@@ -46,7 +47,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
                 &credential_with_key_and_signer.signer,
                 credential_with_key_and_signer.credential_with_key.clone(),
             )
-            .unwrap();
+            .await.unwrap();
 
         Member {
             id: name,
@@ -84,7 +85,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             .credential_with_key
             .clone(),
     )
-    .unwrap();
+    .await.unwrap();
     alice_group.print_ratchet_tree("Alice (after new)");
 
     let (_, welcome, _group_info) = alice_group
@@ -112,7 +113,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             welcome,
             None,
         )
-        .expect("Staging the join failed.")
+        .await.expect("Staging the join failed.")
         .into_group(&charlie.provider)
         .expect("Joining the group failed.")
     };

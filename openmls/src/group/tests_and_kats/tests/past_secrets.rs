@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[openmls_test::openmls_test]
-fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
+async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     provider: &Provider,
 ) {
@@ -25,12 +25,12 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             b"Alice".to_vec(),
             ciphersuite.signature_algorithm(),
             alice_provider,
-        );
+        ).await;
         let bob_credential_with_keys = generate_credential_with_key(
             b"Bob".to_vec(),
             ciphersuite.signature_algorithm(),
             bob_provider,
-        );
+        ).await;
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -38,7 +38,7 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             Extensions::empty(),
             bob_provider,
             bob_credential_with_keys,
-        );
+        ).await;
 
         // Define the MlsGroup configuration
 
@@ -55,7 +55,7 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             group_id.clone(),
             alice_credential_with_keys.credential_with_key.clone(),
         )
-        .expect("An unexpected error occurred.");
+        .await.expect("An unexpected error occurred.");
 
         // Alice adds Bob
         let (_message, welcome, _group_info) = alice_group
@@ -81,7 +81,7 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .expect("Error creating staged join from Welcome")
+        .await.expect("Error creating staged join from Welcome")
         .into_group(bob_provider)
         .expect("Error creating group from staged join");
 
@@ -138,7 +138,7 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
         // === Test application messages from older epochs ===
 
         let mut bob_group = MlsGroup::load(bob_provider.storage(), &group_id)
-            .expect("error re-loading bob's group")
+            .await.expect("error re-loading bob's group")
             .expect("no such group");
 
         // The first messages should fail

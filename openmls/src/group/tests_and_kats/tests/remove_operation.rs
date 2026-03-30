@@ -4,7 +4,7 @@ use crate::group::tests_and_kats::utils::{generate_credential_with_key, generate
 use crate::{framing::*, group::*};
 
 #[openmls_test::openmls_test]
-fn remove_blank() {
+async fn remove_blank() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let alice_provider = &Provider::default();
@@ -16,19 +16,19 @@ fn remove_blank() {
         "Alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    );
+    ).await;
 
     let bob_credential_with_key_and_signer = generate_credential_with_key(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    );
+    ).await;
 
     let charlie_credential_with_key_and_signer = generate_credential_with_key(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    );
+    ).await;
 
     // Generate KeyPackages
     let bob_key_package = generate_key_package(
@@ -36,13 +36,13 @@ fn remove_blank() {
         Extensions::empty(),
         bob_provider,
         bob_credential_with_key_and_signer.clone(),
-    );
+    ).await;
     let charlie_key_package = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         charlie_provider,
         charlie_credential_with_key_and_signer,
-    );
+    ).await;
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -59,7 +59,7 @@ fn remove_blank() {
             .credential_with_key
             .clone(),
     )
-    .expect("An unexpected error occurred.");
+    .await.expect("An unexpected error occurred.");
 
     // === Alice adds Bob & Charlie ===
 
@@ -88,7 +88,7 @@ fn remove_blank() {
         welcome.clone(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .expect("Error creating staged join from Welcome")
+    .await.expect("Error creating staged join from Welcome")
     .into_group(bob_provider)
     .expect("Error creating group from staged join");
 
@@ -121,7 +121,7 @@ fn remove_blank() {
 
 // Tests the different variants of the RemoveOperation enum.
 #[openmls_test::openmls_test]
-fn test_remove_operation_variants() {
+async fn test_remove_operation_variants() {
     // We define two test cases, one where the member is removed by another member
     // and one where the member leaves the group on its own
     #[derive(Debug, Clone, Copy)]
@@ -141,19 +141,19 @@ fn test_remove_operation_variants() {
             "Alice".into(),
             ciphersuite.signature_algorithm(),
             alice_provider,
-        );
+        ).await;
 
         let bob_credential_with_key_and_signer = generate_credential_with_key(
             "Bob".into(),
             ciphersuite.signature_algorithm(),
             bob_provider,
-        );
+        ).await;
 
         let charlie_credential_with_key_and_signer = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
             charlie_provider,
-        );
+        ).await;
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -161,13 +161,13 @@ fn test_remove_operation_variants() {
             Extensions::empty(),
             bob_provider,
             bob_credential_with_key_and_signer.clone(),
-        );
+        ).await;
         let charlie_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
             charlie_provider,
             charlie_credential_with_key_and_signer,
-        );
+        ).await;
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -184,7 +184,7 @@ fn test_remove_operation_variants() {
                 .credential_with_key
                 .clone(),
         )
-        .expect("An unexpected error occurred.");
+        .await.expect("An unexpected error occurred.");
 
         // === Alice adds Bob & Charlie ===
 
@@ -213,7 +213,7 @@ fn test_remove_operation_variants() {
             welcome.clone(),
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .expect("Error creating staged join from Welcome")
+        .await.expect("Error creating staged join from Welcome")
         .into_group(bob_provider)
         .expect("Error creating group from staged join");
 
@@ -223,7 +223,7 @@ fn test_remove_operation_variants() {
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .expect("Error creating staged join from Welcome")
+        .await.expect("Error creating staged join from Welcome")
         .into_group(charlie_provider)
         .expect("Error creating group from staged join");
 

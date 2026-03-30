@@ -68,14 +68,14 @@ fn padding() {
             new_config.padding_size = padding_size;
             group_state
                 .set_configuration(provider.storage(), &new_config)
-                .unwrap();
+                .await.unwrap();
             for _ in 0..10 {
                 let message = randombytes(random_usize() % 1000);
                 let aad = randombytes(random_usize() % 1000);
                 group_state.set_aad(aad);
                 let application_message = group_state
                     .create_message(provider, &credential.signer, &message)
-                    .unwrap();
+                    .await.unwrap();
                 let private_message = match application_message.body() {
                     MlsMessageBodyOut::PrivateMessage(pm) => pm,
                     _ => panic!("Unexpected match."),
@@ -99,7 +99,7 @@ fn padding() {
 
 /// Check that PrivateMessageContent's padding field is verified to be all-zero.
 #[openmls_test::openmls_test]
-fn bad_padding() {
+async fn bad_padding() {
     let provider = &Provider::default();
     let tests = {
         // { 2^i } ∪ { 2^i +- 1 }

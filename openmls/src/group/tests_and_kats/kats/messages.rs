@@ -116,14 +116,15 @@ pub struct MessagesTestVector {
     private_message: Vec<u8>,
 }
 
-pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
+#[maybe_async::maybe_async]
+pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let provider = OpenMlsRustCrypto::default();
 
     let alice_credential_with_key_and_signer = generate_credential_with_key(
         b"Alice".to_vec(),
         SignatureScheme::from(ciphersuite),
         &provider,
-    );
+    ).await;
 
     // Create a proposal to update the user's key package.
     let alice_key_package = generate_key_package(
@@ -131,7 +132,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         Extensions::default(),
         &provider,
         alice_credential_with_key_and_signer.clone(),
-    );
+    ).await;
 
     // Let's create a group
     let mut alice_group = MlsGroup::builder()
@@ -145,7 +146,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 .credential_with_key
                 .clone(),
         )
-        .unwrap();
+        .await.unwrap();
 
     let alice_ratchet_tree = alice_group.export_ratchet_tree();
 
@@ -181,7 +182,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             &provider,
             &alice_credential_with_key_and_signer.signer.clone(),
         )
-        .unwrap()
+        .await.unwrap()
     };
 
     let update_proposal = UpdateProposal {
@@ -193,14 +194,14 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         b"Bob".to_vec(),
         SignatureScheme::from(ciphersuite),
         &provider,
-    );
+    ).await;
 
     let bob_key_package_bundle = KeyPackageBundle::generate(
         &provider,
         &bob_credential_with_key_and_signer.signer,
         ciphersuite,
         bob_credential_with_key_and_signer.credential_with_key,
-    );
+    ).await;
 
     let add_proposal = AddProposal {
         key_package: bob_key_package_bundle.key_package().clone(),
@@ -313,8 +314,10 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     }
 }
 
-#[test]
-fn write_test_vectors_msg() {
+#[maybe_async::maybe_async]
+#[cfg_attr(feature = "sync", test)]
+#[cfg_attr(not(feature = "sync"), tokio::test)]
+async fn write_test_vectors_msg() {
     use openmls_traits::crypto::OpenMlsCrypto;
     let mut tests = Vec::new();
     const NUM_TESTS: usize = 100;
@@ -325,7 +328,7 @@ fn write_test_vectors_msg() {
         .iter()
     {
         for _ in 0..NUM_TESTS {
-            let test = generate_test_vector(ciphersuite);
+            let test = generate_test_vector(ciphersuite).await;
             tests.push(test);
         }
     }
