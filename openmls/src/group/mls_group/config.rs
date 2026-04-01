@@ -45,7 +45,10 @@ use serde::{Deserialize, Serialize};
 /// if the Delivery Service cannot guarantee that application messages will be sent in
 /// the same epoch in which they were generated. The number for `max_epochs` should be
 /// as low as possible.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// If the MaxEpochs policy is set to MaxEpochs(usize::MAX), if will be returned
+/// as KeepAll after deserialization due to backwards compatibility constraints.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PastEpochDeletionPolicy {
     /// Keep at most `n` past epoch secrets.
     MaxEpochs(usize),
@@ -60,6 +63,34 @@ pub enum PastEpochDeletionPolicy {
 impl Default for PastEpochDeletionPolicy {
     fn default() -> Self {
         Self::MaxEpochs(0)
+    }
+}
+
+impl Serialize for PastEpochDeletionPolicy {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let usize = match self {
+            Self::MaxEpochs(epochs) => *epochs,
+            Self::KeepAll => usize::MAX,
+        };
+        serializer.serialize_u64(usize as u64)
+    }
+}
+
+impl<'de> Deserialize<'de> for PastEpochDeletionPolicy {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let epochs = u64::deserialize(deserializer)?;
+        let epochs = usize::try_from(epochs).map_err(serde::de::Error::custom)?;
+        if epochs == usize::MAX {
+            Ok(Self::KeepAll)
+        } else {
+            Ok(Self::MaxEpochs(epochs))
+        }
     }
 }
 
@@ -135,32 +166,6 @@ impl PastEpochDeletion {
     }
 }
 
-/// Helper deserialization function to ensure that
-/// both plain `usize` and `PastEpochDeletionPolicy`
-/// are correctly deserialized.
-fn deserialize_past_epoch_deletion_policy<'de, D>(
-    deserializer: D,
-) -> Result<PastEpochDeletionPolicy, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Format {
-        Legacy(usize),
-        Policy(PastEpochDeletionPolicy),
-    }
-
-    let format = Format::deserialize(deserializer)?;
-
-    let policy = match format {
-        Format::Legacy(epochs) => PastEpochDeletionPolicy::MaxEpochs(epochs),
-        Format::Policy(policy) => policy,
-    };
-
-    Ok(policy)
-}
-
 impl PastEpochDeletionPolicy {
     pub(crate) fn max_epochs(&self) -> Option<usize> {
         match self {
@@ -184,7 +189,6 @@ pub struct MlsGroupJoinConfig {
     /// Maximum number of past epochs for which application messages
     /// can be decrypted. The default is 0.
     #[serde(alias = "max_past_epochs")]
-    #[serde(deserialize_with = "deserialize_past_epoch_deletion_policy")]
     // alias for backwards compatibility after renaming field
     pub(crate) past_epoch_deletion_policy: PastEpochDeletionPolicy,
     /// Number of resumption secrets to keep
