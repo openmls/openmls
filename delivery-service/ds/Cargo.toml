@@ -21,9 +21,13 @@ clap = "4"
 base64 = "0.22"
 time = ">=0.3.36"
 
-openmls = { path = "../../openmls", features = ["test-utils"] }
+openmls = { path = "../../openmls", features = ["test-utils", "sync"] }
 
 ds-lib = { path = "../ds-lib/" }
-openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
-openmls_traits = { path = "../../traits" }
-openmls_basic_credential = { path = "../../basic_credential" }
+openmls_basic_credential = { path = "../../basic_credential", features = [
+    "sync",
+] }
+openmls_rust_crypto = { path = "../../openmls_rust_crypto", features = [
+    "sync",
+] }
+openmls_traits = { path = "../../traits", features = ["sync"] }
