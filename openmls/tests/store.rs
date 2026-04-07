@@ -8,7 +8,7 @@ fn test_store_key_package() {
     let provider = &Provider::default();
 
     // ANCHOR: store_store
-    // First we generate a credential and key package for our user.
+    // Fibuildrate a credential and key package for our user.
     let credential = BasicCredential::new(b"User ID".to_vec());
     let signature_keys = SignatureKeyPair::new(ciphersuite.into()).unwrap();
 
@@ -24,6 +24,7 @@ fn test_store_key_package() {
                 signature_key: signature_keys.to_public_vec().into(),
             },
         )
+        .await
         .unwrap();
     // ANCHOR_END: store_store
 
@@ -41,6 +42,7 @@ fn test_store_key_package() {
     let read_key_package: Option<KeyPackageBundle> = provider
         .storage()
         .key_package(&hash_ref)
+        .await
         .expect("Error reading key package");
     assert_eq!(
         read_key_package.unwrap().key_package(),
@@ -57,6 +59,7 @@ fn test_store_key_package() {
     provider
         .storage()
         .delete_key_package(&hash_ref)
+        .await
         .expect("Error deleting key package");
     // ANCHOR_END: store_delete
 }

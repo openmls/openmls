@@ -8,10 +8,10 @@ fn swap() {
     let charlie_party = CorePartyState::<Provider>::new("charlie");
     let yuk_party = CorePartyState::<Provider>::new("yuk");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
-    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
-    let yuk_pre_group = yuk_party.generate_pre_group(ciphersuite);
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite).await;
+    let yuk_pre_group = yuk_party.generate_pre_group(ciphersuite).await;
 
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -23,6 +23,7 @@ fn swap() {
 
     let mut group_state =
         GroupState::new_from_party(group_id.clone(), alice_pre_group, group_config.clone())
+            .await
             .unwrap();
 
     // Generate KeyPackages
@@ -40,6 +41,7 @@ fn swap() {
             &alice.party.signer,
             &[bob_key_package, charlie_key_package, yuk_key_package],
         )
+        .await
         .expect("Could not add folks");
 
     let welcome: MlsMessageIn = welcome.into();
@@ -52,9 +54,11 @@ fn swap() {
         welcome.clone(),
         None,
     )
+    .await
     .expect("Error constructing staged join");
     let mut bob_group = staged_join
         .into_group(&bob_party.provider)
+        .await
         .expect("Error joining group from StagedWelcome");
 
     // Charlie
@@ -64,10 +68,12 @@ fn swap() {
         welcome.clone(),
         None,
     )
+    .await
     .expect("Error constructing staged join");
 
     let _charlie_group = staged_join
         .into_group(&charlie_party.provider)
+        .await
         .expect("Error joining group from StagedWelcome");
 
     // Yuk
@@ -77,10 +83,12 @@ fn swap() {
         welcome.clone(),
         None,
     )
+    .await
     .expect("Error constructing staged join");
 
     let mut yuk_group = staged_join
         .into_group(&yuk_party.provider)
+        .await
         .expect("Error joining group from StagedWelcome");
 
     // Bob re-adds alice and yuk
@@ -91,6 +99,7 @@ fn swap() {
             &alice.party.signer,
             alice.party.credential_with_key.clone(),
         )
+        .await
         .unwrap();
     let yuk_key_package = KeyPackage::builder()
         .build(
@@ -99,6 +108,7 @@ fn swap() {
             &yuk_pre_group.signer,
             yuk_pre_group.credential_with_key.clone(),
         )
+        .await
         .unwrap();
 
     let commit_messages = bob_group
@@ -115,27 +125,40 @@ fn swap() {
                 alice_key_package.key_package().clone(),
             ],
         )
+        .await
         .unwrap();
-    bob_group.merge_pending_commit(&bob_party.provider).unwrap();
+    bob_group
+        .merge_pending_commit(&bob_party.provider)
+        .await
+        .unwrap();
 
     let welcome: MlsMessageIn = commit_messages.welcome.into();
     let welcome = welcome.into_welcome().unwrap();
 
     // New Yuk
-    yuk_group.delete(yuk_party.provider.storage()).unwrap();
+    yuk_group
+        .delete(yuk_party.provider.storage())
+        .await
+        .unwrap();
     let staged_join = StagedWelcome::new_from_welcome(
         &yuk_party.provider,
         group_config.join_config(),
         welcome.clone(),
         None,
     )
+    .await
     .expect("Error constructing staged join");
 
     let yuk_group = staged_join
         .into_group(&yuk_party.provider)
+        .await
         .expect("Error joining group from StagedWelcome");
 
-    alice.group.delete(alice_party.provider.storage()).unwrap();
+    alice
+        .group
+        .delete(alice_party.provider.storage())
+        .await
+        .unwrap();
 
     // New Alice
     let staged_join = StagedWelcome::new_from_welcome(
@@ -144,10 +167,12 @@ fn swap() {
         welcome.clone(),
         None,
     )
+    .await
     .expect("Error constructing staged join");
 
     let alice_group = staged_join
         .into_group(&alice_party.provider)
+        .await
         .expect("Error joining group from StagedWelcome");
 
     // Yuk and Alice are back in.

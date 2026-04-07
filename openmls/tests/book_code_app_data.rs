@@ -87,7 +87,8 @@ fn process_counter_updates<'a>(
 ///
 /// This creates Alice and Bob with the required capabilities and creates
 /// a group where AppDataUpdate proposals are supported.
-fn setup_group_with_app_data_support<'a, Provider: OpenMlsProvider>(
+#[maybe_async::maybe_async]
+async fn setup_group_with_app_data_support<'a, Provider: OpenMlsProvider>(
     alice_party: &'a CorePartyState<Provider>,
     bob_party: &'a CorePartyState<Provider>,
     ciphersuite: Ciphersuite,
@@ -115,12 +116,14 @@ fn setup_group_with_app_data_support<'a, Provider: OpenMlsProvider>(
     let alice_pre_group = alice_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(capabilities.clone())
-        .build();
+        .build()
+        .await;
 
     let bob_pre_group = bob_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(capabilities.clone())
-        .build();
+        .build()
+        .await;
 
     // Configure the group with required capabilities
     let create_config = MlsGroupCreateConfig::builder()
@@ -140,6 +143,7 @@ fn setup_group_with_app_data_support<'a, Provider: OpenMlsProvider>(
         alice_pre_group,
         create_config,
     )
+    .await
     .expect("failed to create group");
 
     // Alice adds Bob
@@ -150,6 +154,7 @@ fn setup_group_with_app_data_support<'a, Provider: OpenMlsProvider>(
             join_config,
             tree: None,
         })
+        .await
         .expect("failed to add Bob");
 
     group_state
@@ -216,7 +221,8 @@ fn app_data_update_book_example() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup_group_with_app_data_support(&alice_party, &bob_party, ciphersuite);
+    let mut group_state =
+        setup_group_with_app_data_support(&alice_party, &bob_party, ciphersuite).await;
 
     let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -231,6 +237,7 @@ fn app_data_update_book_example() {
             COUNTER_COMPONENT_ID,
             AppDataUpdateOperation::Update(CounterOperation::Increment.to_bytes().into()),
         )
+        .await
         .expect("failed to create proposal");
     // ANCHOR_END: send_proposal
 
@@ -244,6 +251,7 @@ fn app_data_update_book_example() {
                 .into_protocol_message()
                 .expect("failed to convert Proposal MlsMessageOut to ProtocolMessage"),
         )
+        .await
         .expect("failed to process proposal");
 
     // Verify it's a proposal and store it
@@ -251,6 +259,7 @@ fn app_data_update_book_example() {
         ProcessedMessageContent::ProposalMessage(proposal) => {
             bob.group
                 .store_pending_proposal(bob_party.provider.storage(), *proposal)
+                .await
                 .expect("failed to store proposal");
         }
         _ => panic!("expected a proposal message"),
@@ -272,6 +281,7 @@ fn app_data_update_book_example() {
             ))),
         ])
         .load_psks(alice_party.provider.storage())
+        .await
         .expect("failed to load PSKs");
 
     // Alice must compute the resulting state before building the commit.
@@ -295,6 +305,7 @@ fn app_data_update_book_example() {
         )
         .expect("failed to build commit")
         .stage_commit(&alice_party.provider)
+        .await
         .expect("failed to stage commit");
 
     let (commit_message, _welcome, _group_info) = commit_bundle.into_contents();
@@ -313,6 +324,7 @@ fn app_data_update_book_example() {
                 .into_protocol_message()
                 .expect("not a protocol message"),
         )
+        .await
         .expect("failed to unprotect message");
 
     // Create an updater for Bob
@@ -369,6 +381,7 @@ fn app_data_update_book_example() {
             unverified_message,
             bob_updater.changes(),
         )
+        .await
         .expect("failed to process commit");
 
     // Extract and merge the staged commit
@@ -379,6 +392,7 @@ fn app_data_update_book_example() {
 
     bob.group
         .merge_staged_commit(&bob_party.provider, *staged_commit)
+        .await
         .expect("failed to merge commit");
     // ANCHOR_END: process_commit
 
@@ -386,6 +400,7 @@ fn app_data_update_book_example() {
     alice
         .group
         .merge_pending_commit(&alice_party.provider)
+        .await
         .expect("failed to merge pending commit");
 
     // ANCHOR: verify_consistency
@@ -419,7 +434,8 @@ fn app_data_update_invalid_decrement() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup_group_with_app_data_support(&alice_party, &bob_party, ciphersuite);
+    let mut group_state =
+        setup_group_with_app_data_support(&alice_party, &bob_party, ciphersuite).await;
 
     let [alice, _bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -435,6 +451,7 @@ fn app_data_update_invalid_decrement() {
             ),
         ))])
         .load_psks(alice_party.provider.storage())
+        .await
         .expect("failed to load PSKs");
 
     let mut alice_updater = commit_stage.app_data_dictionary_updater();
@@ -462,7 +479,8 @@ fn app_data_update_increment_then_decrement() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup_group_with_app_data_support(&alice_party, &bob_party, ciphersuite);
+    let mut group_state =
+        setup_group_with_app_data_support(&alice_party, &bob_party, ciphersuite).await;
 
     let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -478,6 +496,7 @@ fn app_data_update_increment_then_decrement() {
                 ),
             ))])
             .load_psks(alice_party.provider.storage())
+            .await
             .expect("failed to load PSKs");
 
         let mut alice_updater = commit_stage.app_data_dictionary_updater();
@@ -495,6 +514,7 @@ fn app_data_update_increment_then_decrement() {
             )
             .expect("failed to build")
             .stage_commit(&alice_party.provider)
+            .await
             .expect("failed to stage");
 
         let (commit_message, _, _) = commit_bundle.into_contents();
@@ -507,6 +527,7 @@ fn app_data_update_increment_then_decrement() {
                 &bob_party.provider,
                 commit_in.into_protocol_message().unwrap(),
             )
+            .await
             .unwrap();
 
         let mut bob_updater = bob.group.app_data_dictionary_updater();
@@ -537,16 +558,19 @@ fn app_data_update_increment_then_decrement() {
                 unverified,
                 bob_updater.changes(),
             )
+            .await
             .unwrap();
 
         if let ProcessedMessageContent::StagedCommitMessage(sc) = processed.into_content() {
             bob.group
                 .merge_staged_commit(&bob_party.provider, *sc)
+                .await
                 .unwrap();
         }
         alice
             .group
             .merge_pending_commit(&alice_party.provider)
+            .await
             .unwrap();
     }
 
@@ -573,6 +597,7 @@ fn app_data_update_increment_then_decrement() {
                 ),
             ))])
             .load_psks(alice_party.provider.storage())
+            .await
             .expect("failed to load PSKs");
 
         let mut alice_updater = commit_stage.app_data_dictionary_updater();
@@ -590,6 +615,7 @@ fn app_data_update_increment_then_decrement() {
             )
             .expect("failed to build")
             .stage_commit(&alice_party.provider)
+            .await
             .expect("failed to stage");
 
         let (commit_message, _, _) = commit_bundle.into_contents();
@@ -602,6 +628,7 @@ fn app_data_update_increment_then_decrement() {
                 &bob_party.provider,
                 commit_in.into_protocol_message().unwrap(),
             )
+            .await
             .unwrap();
 
         let mut bob_updater = bob.group.app_data_dictionary_updater();
@@ -632,16 +659,19 @@ fn app_data_update_increment_then_decrement() {
                 unverified,
                 bob_updater.changes(),
             )
+            .await
             .unwrap();
 
         if let ProcessedMessageContent::StagedCommitMessage(sc) = processed.into_content() {
             bob.group
                 .merge_staged_commit(&bob_party.provider, *sc)
+                .await
                 .unwrap();
         }
         alice
             .group
             .merge_pending_commit(&alice_party.provider)
+            .await
             .unwrap();
     }
 

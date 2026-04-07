@@ -34,18 +34,21 @@ fn app_ephemeral_proposals() {
         b"Alice".to_vec(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    );
+    )
+    .await;
 
     let (bob_credential, bob_signer) = generate_credential(
         b"Bob".to_vec(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    );
+    )
+    .await;
 
     // Generate KeyPackage for Bob with the correct LeafNode capabilities
     let bob_key_package = KeyPackage::builder()
         .leaf_node_capabilities(capabilities)
         .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .await
         .unwrap();
 
     // === Alice creates a group ===
@@ -56,18 +59,25 @@ fn app_ephemeral_proposals() {
         group_id,
         alice_credential.clone(),
     )
+    .await
     .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
-    let welcome = match alice_group.add_members(
-        alice_provider,
-        &alice_signer,
-        &[bob_key_package.key_package().clone()],
-    ) {
+    let welcome = match alice_group
+        .add_members(
+            alice_provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
+        .await
+    {
         Ok((_, welcome, _)) => welcome,
         Err(e) => panic!("Could not add member to group: {e:?}"),
     };
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome
@@ -80,8 +90,10 @@ fn app_ephemeral_proposals() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
+    .await
     .expect("Error creating StagedWelcome from Welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from StagedWelcome");
 
     // === Alice creates a commit with an AppEphemeral proposal ===
@@ -91,6 +103,7 @@ fn app_ephemeral_proposals() {
             AppEphemeralProposal::new(COMPONENT_ID, DATA.into()),
         ))])
         .load_psks(alice_provider.storage())
+        .await
         .expect("error loading psks")
         .build(
             alice_provider.rand(),
@@ -100,6 +113,7 @@ fn app_ephemeral_proposals() {
         )
         .expect("error validating data and building commit")
         .stage_commit(alice_provider)
+        .await
         .expect("error staging commit");
 
     let alice_pending_commit = alice_group.pending_commit().expect("no pending commit");
@@ -122,6 +136,7 @@ fn app_ephemeral_proposals() {
 
     let processed_message = bob_group
         .process_message(bob_provider, protocol_message)
+        .await
         .expect("could not process message");
 
     let bob_staged_commit = match processed_message.into_content() {

@@ -12,10 +12,10 @@ fn own_messages_attempted_decryption() {
 
     // Generate credentials with keys
     let (alice_credential, alice_signer) =
-        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
     let (bob_credential, bob_signer) =
-        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
     // Generate KeyPackage for Bob
     let bob_key_package = KeyPackage::builder()
@@ -26,6 +26,7 @@ fn own_messages_attempted_decryption() {
             &bob_signer,
             bob_credential.clone(),
         )
+        .await
         .unwrap()
         .key_package()
         .to_owned();
@@ -43,10 +44,14 @@ fn own_messages_attempted_decryption() {
         group_id.clone(),
         alice_credential.clone(),
     )
+    .await
     .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
-    let welcome = match alice_group.add_members(alice_provider, &alice_signer, &[bob_key_package]) {
+    let welcome = match alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .await
+    {
         Ok((_, welcome, _)) => welcome,
         Err(e) => panic!("Could not add member to group: {e:?}"),
     };
@@ -72,6 +77,7 @@ fn own_messages_attempted_decryption() {
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     // Check that the group now has two members
@@ -95,14 +101,17 @@ fn own_messages_attempted_decryption() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
+    .await
     .expect("Error creating StagedWelcome from Welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from StagedWelcome");
 
     // === Alice sends a message to Bob ===
     let message_alice = b"Hi, I'm Alice!";
     let queued_message = alice_group
         .create_message(alice_provider, &alice_signer, message_alice)
+        .await
         .expect("Error creating application message");
 
     let processed_message = bob_group
@@ -113,6 +122,7 @@ fn own_messages_attempted_decryption() {
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
+        .await
         .expect("Could not process message.");
     let sender = processed_message.credential().clone();
 
@@ -141,6 +151,7 @@ fn own_messages_attempted_decryption() {
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
+        .await
         .expect_err("Expected error.");
 
     assert!(matches!(

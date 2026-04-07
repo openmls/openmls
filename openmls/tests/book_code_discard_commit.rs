@@ -7,7 +7,8 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
 use openmls_traits::types::SignatureScheme;
 
-fn generate_credential(
+#[maybe_async::maybe_async]
+async fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
 ) -> (CredentialWithKey, SignatureKeyPair) {
@@ -24,19 +25,24 @@ fn generate_credential(
 }
 
 // Utility function for checking commit
-fn clear_pending_commit_and_assert_storage_state<Provider: OpenMlsProvider>(
+#[maybe_async::maybe_async]
+async fn clear_pending_commit_and_assert_storage_state<Provider: OpenMlsProvider>(
     member_state: &mut MemberState<'_, Provider>,
     state_before: GroupStorageState,
 ) {
     member_state
         .group
         .clear_pending_commit(member_state.party.core_state.provider.storage())
+        .await
         .expect("Could not clear pending commit");
 
-    member_state.assert_non_proposal_group_storage_state_matches(state_before);
+    member_state
+        .assert_non_proposal_group_storage_state_matches(state_before)
+        .await;
 }
 
-fn alice_group<Provider: OpenMlsProvider>(
+#[maybe_async::maybe_async]
+async fn alice_group<Provider: OpenMlsProvider>(
     alice_party: &CorePartyState<Provider>,
     ciphersuite: Ciphersuite,
     create_config: MlsGroupCreateConfig,
@@ -45,29 +51,32 @@ fn alice_group<Provider: OpenMlsProvider>(
 
     let group_state = GroupState::new_from_party(
         group_id,
-        alice_party.generate_pre_group(ciphersuite),
+        alice_party.generate_pre_group(ciphersuite).await,
         create_config,
     )
+    .await
     .unwrap();
     group_state
 }
 
-fn alice_bob_group<'a, Provider: OpenMlsProvider>(
+#[maybe_async::maybe_async]
+async fn alice_bob_group<'a, Provider: OpenMlsProvider>(
     alice_party: &'a CorePartyState<Provider>,
     bob_party: &'a CorePartyState<Provider>,
     ciphersuite: Ciphersuite,
     create_config: MlsGroupCreateConfig,
 ) -> GroupState<'a, Provider> {
     let join_config = create_config.join_config().clone();
-    let mut group_state = alice_group(alice_party, ciphersuite, create_config);
+    let mut group_state = alice_group(alice_party, ciphersuite, create_config).await;
 
     group_state
         .add_member(AddMemberConfig {
             adder: "alice",
-            addees: vec![bob_party.generate_pre_group(ciphersuite)],
+            addees: Vec::from([bob_party.generate_pre_group(ciphersuite).await]),
             join_config,
             tree: None,
         })
+        .await
         .expect("Could not add member");
 
     group_state
@@ -78,14 +87,14 @@ fn discard_commit_add() {
     let alice_party = CorePartyState::<Provider>::new("alice");
 
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
-    let mut group_state = alice_group(&alice_party, ciphersuite, create_config);
+    let mut group_state = alice_group(&alice_party, ciphersuite, create_config).await;
 
     let bob_party = CorePartyState::<Provider>::new("bob");
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
     let bob_key_package = bob_pre_group.key_package_bundle.key_package().clone();
 
     let [alice] = group_state.members_mut(&["alice"]);
-    let state_before = alice.group_storage_state();
+    let state_before = alice.group_storage_state().await;
     let alice_group = &mut alice.group;
     let alice_provider = &alice_party.provider;
     let alice_signer = &alice.party.signer;
@@ -93,15 +102,15 @@ fn discard_commit_add() {
     // === Alice adds Bob ===
     let (_mls_message_out, _welcome, _group_info) = alice_group
         .add_members(alice_provider, alice_signer, &[bob_key_package])
+        .await
         .expect("Could not add members.");
 
-    assert_ne!(
-        alice_provider
-            .storage()
-            .group_state(alice_group.group_id())
-            .unwrap(),
-        Some(MlsGroupState::Operational)
-    );
+    let state = alice_provider
+        .storage()
+        .group_state(alice_group.group_id())
+        .await
+        .unwrap();
+    assert_ne!(state, Some(MlsGroupState::Operational));
 
     // === Commit rejected by delivery service ===
     // Will need to clean up
@@ -111,9 +120,12 @@ fn discard_commit_add() {
     // clear pending commit and reset state
     alice_group
         .clear_pending_commit(alice_provider.storage())
+        .await
         .unwrap();
     //ANCHOR_END: discard_commit_example
-    alice.assert_non_proposal_group_storage_state_matches(state_before);
+    alice
+        .assert_non_proposal_group_storage_state_matches(state_before)
+        .await;
 }
 
 #[openmls_test]
@@ -122,7 +134,7 @@ fn discard_commit_update_with_new_signer() {
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
 
     // Set up a group with one member (Alice)
-    let mut group_state = alice_group(&alice_party, ciphersuite, create_config);
+    let mut group_state = alice_group(&alice_party, ciphersuite, create_config).await;
     let group_id = group_state.group_id();
 
     let [alice] = group_state.members_mut(&["alice"]);
@@ -151,17 +163,19 @@ fn discard_commit_update_with_new_signer() {
     let own_leaf_nodes_before: Vec<LeafNode> = alice_provider
         .storage()
         .own_leaf_nodes(&group_id)
+        .await
         .expect("could not get leaf nodes");
 
     assert_eq!(own_leaf_nodes_before.len(), 0);
 
     // save the storage state for comparison later
-    let state_before = alice.group_storage_state();
+    let state_before = alice.group_storage_state().await;
 
     let old_signer = &alice.party.signer;
 
     // check that alice signer was stored
-    assert!(alice.get_storage_signature_key_pair().is_some());
+    let key_pair = alice.get_storage_signature_key_pair().await;
+    assert!(key_pair.is_some());
 
     let alice_group = &mut alice.group;
     let alice_provider = &alice_party.provider;
@@ -181,12 +195,15 @@ fn discard_commit_update_with_new_signer() {
             signer_bundle,
             LeafNodeParameters::default(),
         )
+        .await
         .expect("failed to update own leaf node");
 
-    assert_ne!(
-        alice_provider.storage().group_state(&group_id).unwrap(),
-        Some(MlsGroupState::Operational)
-    );
+    let group_state = alice_provider
+        .storage()
+        .group_state(&group_id)
+        .await
+        .unwrap();
+    assert_ne!(group_state, Some(MlsGroupState::Operational));
 
     // Ensure own leaf node credential is still the same as before
     let own_leaf_node_after = alice_group.own_leaf_node().unwrap();
@@ -208,6 +225,7 @@ fn discard_commit_update_with_new_signer() {
     let own_leaf_nodes_after: Vec<LeafNode> = alice_provider
         .storage()
         .own_leaf_nodes(&group_id)
+        .await
         .expect("could not get leaf nodes");
     assert_eq!(own_leaf_nodes_after.len(), 0);
 
@@ -215,23 +233,26 @@ fn discard_commit_update_with_new_signer() {
     assert_eq!(own_leaf_nodes_before, own_leaf_nodes_after);
 
     // assert that the new signer is not in the StorageProvider yet
-    assert!(SignatureKeyPair::read(
+    let key_pair = SignatureKeyPair::read(
         alice_provider.storage(),
         new_signer.public(),
         ciphersuite.signature_algorithm(),
     )
-    .is_none());
+    .await;
+    assert!(key_pair.is_none());
 
     // === Commit rejected by delivery service ===
 
     // clear pending commit and reset state
     alice_group
         .clear_pending_commit(alice_provider.storage())
+        .await
         .unwrap();
 
     // check that alice signer still stored
     let alice_stored_signer = alice
         .get_storage_signature_key_pair()
+        .await
         .expect("should still be stored");
 
     // check that the stored signer's public key is the old signer's public key
@@ -240,21 +261,23 @@ fn discard_commit_update_with_new_signer() {
     assert_ne!(alice_stored_signer.public(), new_signer.public());
 
     // assert that the new signer is not in the StorageProvider (does not need to be cleaned up)
-    assert!(SignatureKeyPair::read(
+    let key_pair = SignatureKeyPair::read(
         alice_provider.storage(),
         new_signer.public(),
         ciphersuite.signature_algorithm(),
     )
-    .is_none());
+    .await;
+    assert!(key_pair.is_none());
 
     // check that own leaf node in storage does not contain wrong credential
     let own_leaf_nodes_before: Vec<LeafNode> = alice_provider
         .storage()
         .own_leaf_nodes(&group_id)
+        .await
         .expect("could not get leaf nodes");
     assert_eq!(own_leaf_nodes_before.len(), 0);
 
-    alice.assert_group_storage_state_matches(state_before);
+    alice.assert_group_storage_state_matches(state_before).await;
 }
 
 #[openmls_test]
@@ -264,12 +287,13 @@ fn discard_commit_remove() {
     let bob_party = CorePartyState::<Provider>::new("bob");
 
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
-    let mut group_state = alice_bob_group(&alice_party, &bob_party, ciphersuite, create_config);
+    let mut group_state =
+        alice_bob_group(&alice_party, &bob_party, ciphersuite, create_config).await;
 
     let [bob] = group_state.members_mut(&["bob"]);
 
     // save the storage state
-    let state_before = bob.group_storage_state();
+    let state_before = bob.group_storage_state().await;
 
     let bob_group = &mut bob.group;
     let bob_provider: &Provider = &bob.party.core_state.provider;
@@ -291,21 +315,22 @@ fn discard_commit_remove() {
     let alice_leaf_node_index = alice_member.index;
     let (_mls_message_out, _welcome, _group_info) = bob_group
         .remove_members(bob_provider, bob_signer, &[alice_leaf_node_index])
+        .await
         .expect("Could not remove Alice");
 
     // === Delivery service rejected the commit ===
 
-    clear_pending_commit_and_assert_storage_state(bob, state_before);
+    clear_pending_commit_and_assert_storage_state(bob, state_before).await;
 }
 
 #[openmls_test]
 fn discard_commit_psk() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
-    let mut group_state = alice_group(&alice_party, ciphersuite, create_config);
+    let mut group_state = alice_group(&alice_party, ciphersuite, create_config).await;
 
     let [alice] = group_state.members_mut(&["alice"]);
-    let state_before = alice.group_storage_state();
+    let state_before = alice.group_storage_state().await;
 
     let alice_group = &mut alice.group;
     let alice_provider = &alice_party.provider;
@@ -319,6 +344,7 @@ fn discard_commit_psk() {
     // TODO: is this correct?
     psk_id
         .store(alice_provider, &psk_bytes)
+        .await
         .expect("Could not store psk in storage provider");
 
     assert_eq!(alice_group.pending_proposals().count(), 0);
@@ -326,12 +352,14 @@ fn discard_commit_psk() {
     // Create commit including propose external psk
     let (_message_out, _proposal_ref) = alice_group
         .propose_external_psk(alice_provider, alice_signer, psk_id)
+        .await
         .expect("Could not propose adding an external psk");
 
     assert_eq!(alice_group.pending_proposals().count(), 1);
 
     let (_commit, _welcome, _group_info) = alice_group
         .commit_to_pending_proposals(alice_provider, alice_signer)
+        .await
         .unwrap();
 
     // === Delivery service rejected the commit ===
@@ -341,28 +369,32 @@ fn discard_commit_psk() {
     alice_provider
         .storage()
         .delete_psk(&psk)
+        .await
         .expect("Could not delete stored psk");
 
     // clear pending commit and reset state
     alice_group
         .clear_pending_commit(alice_provider.storage())
+        .await
         .expect("Could not clear pending commit");
     //ANCHOR_END: discard_commit_psk
 
-    alice.assert_non_proposal_group_storage_state_matches(state_before);
+    alice
+        .assert_non_proposal_group_storage_state_matches(state_before)
+        .await;
 }
 
 #[openmls_test]
 fn discard_commit_external_join() {
     let bob_provider = &Provider::default();
     let (bob_credential, bob_signer) =
-        generate_credential("bob".into(), ciphersuite.signature_algorithm());
+        generate_credential("bob".into(), ciphersuite.signature_algorithm()).await;
 
     let group_id = GroupId::from_slice(b"Test Group");
 
     let alice_party = CorePartyState::<Provider>::new("alice");
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
-    let mut group_state = alice_group(&alice_party, ciphersuite, create_config);
+    let mut group_state = alice_group(&alice_party, ciphersuite, create_config).await;
 
     let [alice] = group_state.members_mut(&["alice"]);
 
@@ -386,7 +418,7 @@ fn discard_commit_external_join() {
     };
 
     // save the storage state
-    let bob_state_before = GroupStorageState::from_storage(bob_provider.storage(), &group_id);
+    let bob_state_before = GroupStorageState::from_storage(bob_provider.storage(), &group_id).await;
 
     let aad = vec![0; 32];
 
@@ -395,6 +427,7 @@ fn discard_commit_external_join() {
         .build_group(bob_provider, verifiable_group_info, bob_credential)
         .unwrap()
         .load_psks(bob_provider.storage())
+        .await
         .unwrap()
         .build(
             bob_provider.rand(),
@@ -404,6 +437,7 @@ fn discard_commit_external_join() {
         )
         .unwrap()
         .finalize(bob_provider)
+        .await
         .unwrap();
 
     // === Delivery service rejected the commit ===
@@ -412,10 +446,11 @@ fn discard_commit_external_join() {
     // delete the `MlsGroup`
     bob_group
         .delete(bob_provider.storage())
+        .await
         .expect("Could not delete the group");
     //ANCHOR_END: discard_commit_external_join
 
-    let bob_state_after = GroupStorageState::from_storage(bob_provider.storage(), &group_id);
+    let bob_state_after = GroupStorageState::from_storage(bob_provider.storage(), &group_id).await;
     assert!(bob_state_before == bob_state_after);
 }
 
@@ -439,11 +474,11 @@ fn discard_commit_group_context_extensions() {
     // set up group with one member
 
     let alice_party = CorePartyState::<Provider>::new("alice");
-    let mut group_state = alice_group(&alice_party, ciphersuite, mls_group_create_config);
+    let mut group_state = alice_group(&alice_party, ciphersuite, mls_group_create_config).await;
 
     let [alice] = group_state.members_mut(&["alice"]);
     // save the storage state
-    let state_before = alice.group_storage_state();
+    let state_before = alice.group_storage_state().await;
 
     let alice_group = &mut alice.group;
     let alice_provider = &alice_party.provider;
@@ -461,15 +496,17 @@ fn discard_commit_group_context_extensions() {
 
     let (_message, _proposal_ref) = alice_group
         .propose_group_context_extensions(alice_provider, extensions, alice_signer)
+        .await
         .expect("Could not propose group context extensions");
 
     let (_commit, _welcome, _group_info) = alice_group
         .commit_to_pending_proposals(alice_provider, alice_signer)
+        .await
         .unwrap();
 
     // === Delivery service rejected the commit ===
 
-    clear_pending_commit_and_assert_storage_state(alice, state_before);
+    clear_pending_commit_and_assert_storage_state(alice, state_before).await;
 }
 
 #[openmls_test]
@@ -479,7 +516,7 @@ async fn discard_commit_custom_proposal() {
     let group_id = GroupId::from_slice(b"Test Group");
     // Generate credentials with keys
     let (alice_credential, alice_signer) =
-        generate_credential("alice".into(), ciphersuite.signature_algorithm());
+        generate_credential("alice".into(), ciphersuite.signature_algorithm()).await;
 
     let custom_proposal_type = 0;
 
@@ -496,10 +533,11 @@ async fn discard_commit_custom_proposal() {
         .with_capabilities(capabilities.clone())
         .ciphersuite(ciphersuite)
         .build(alice_provider, &alice_signer, alice_credential.clone())
+        .await
         .expect("An unexpected error occurred.");
 
     // save the storage state
-    let state_before = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
+    let state_before = GroupStorageState::from_storage(alice_provider.storage(), &group_id).await;
 
     let payload = vec![0; 100];
     let custom_proposal = CustomProposal::new(custom_proposal_type, payload);
@@ -523,6 +561,6 @@ async fn discard_commit_custom_proposal() {
         .await
         .expect("Could not clear pending commit");
 
-    let state_after = GroupStorageState::from_storage(alice_provider.storage(), &group_id);
+    let state_after = GroupStorageState::from_storage(alice_provider.storage(), &group_id).await;
     assert!(state_before == state_after);
 }

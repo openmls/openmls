@@ -20,19 +20,22 @@ fn opaque_extension() {
         "Alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    );
+    )
+    .await;
 
     let (bob_credential, bob_signature_keys) = generate_credential(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    );
+    )
+    .await;
 
     let (charlie_credential, charlie_signature_keys) = generate_credential(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    );
+    )
+    .await;
 
     // Generate key packages for Bob and Charlie so they can be added later.
     // Note that `generate_key_package` also sets the capability for our custom extension type.
@@ -42,7 +45,8 @@ fn opaque_extension() {
         Extensions::default(),
         bob_provider,
         &bob_signature_keys,
-    );
+    )
+    .await;
 
     let charlie_key_package = generate_key_package(
         ciphersuite,
@@ -50,7 +54,8 @@ fn opaque_extension() {
         Extensions::default(),
         charlie_provider,
         &charlie_signature_keys,
-    );
+    )
+    .await;
 
     // ## Next, start setting up the group
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -94,6 +99,7 @@ fn opaque_extension() {
         &mls_group_create_config,
         alice_credential.clone(),
     )
+    .await
     .expect("An unexpected error occurred.");
 
     // ## Build the commit where we add bob:
@@ -118,6 +124,7 @@ fn opaque_extension() {
         )
         .expect("error creating commit")
         .load_psks(alice_provider.storage())
+        .await
         .expect("error loading psks")
         .build(
             alice_provider.rand(),
@@ -127,9 +134,13 @@ fn opaque_extension() {
         )
         .expect("error building commit")
         .stage_commit(alice_provider)
+        .await
         .expect("error staging commit");
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     // ## Let bob build the group
     // Get the info needed to build the group - would be part of welcome and group info in the real
@@ -144,6 +155,7 @@ fn opaque_extension() {
         add_bob_bundle.welcome().unwrap().to_owned(),
         Some(tree.into()),
     )
+    .await
     .inspect(|staged_welcome| {
         let extension = staged_welcome
             .group_context()
@@ -158,6 +170,7 @@ fn opaque_extension() {
     })
     .unwrap()
     .into_group(bob_provider)
+    .await
     .unwrap();
 
     // ## Let Alice add Charlie, so we can see how Bob processes that message
@@ -181,6 +194,7 @@ fn opaque_extension() {
         )
         .expect("error creating commit")
         .load_psks(alice_provider.storage())
+        .await
         .expect("error loading psks")
         .build(
             alice_provider.rand(),
@@ -190,9 +204,13 @@ fn opaque_extension() {
         )
         .expect("error building commit")
         .stage_commit(alice_provider)
+        .await
         .expect("error staging commit");
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     let processed_message = bob_group
         .process_message(
@@ -203,6 +221,7 @@ fn opaque_extension() {
                 .into_protocol_message()
                 .unwrap(),
         )
+        .await
         .unwrap();
 
     match processed_message.into_content() {
@@ -219,7 +238,7 @@ fn opaque_extension() {
             assert!(users.contains(&"charlie"));
             assert!(users.len() == 3);
 
-            bob_group.merge_pending_commit(bob_provider).unwrap();
+            bob_group.merge_pending_commit(bob_provider).await.unwrap();
         }
         _ => unreachable!("we know this is a commit"),
     }
@@ -228,7 +247,8 @@ fn opaque_extension() {
     // exactly like adding bob, so there is nothing interesting here.
 }
 
-fn generate_key_package(
+#[maybe_async::maybe_async]
+async fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions<KeyPackage>,
@@ -245,17 +265,19 @@ fn generate_key_package(
         )
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
+        .await
         .unwrap()
 }
 
-fn generate_credential(
+#[maybe_async::maybe_async]
+async fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
     provider: &impl crate::storage::OpenMlsProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = BasicCredential::new(identity);
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(provider.storage()).unwrap();
+    signature_keys.store(provider.storage()).await.unwrap();
 
     (
         CredentialWithKey {

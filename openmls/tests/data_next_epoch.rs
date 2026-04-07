@@ -19,8 +19,8 @@ fn staged_commit_next_epoch_values_match_merged_group() {
     let bob_party = CorePartyState::<Provider>::new("bob");
 
     // 2. Generate pre-group states
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
 
     // 3. Create group config with ratchet tree extension
     let create_config = MlsGroupCreateConfig::builder()
@@ -31,8 +31,9 @@ fn staged_commit_next_epoch_values_match_merged_group() {
 
     // 4. Initialize group with Alice
     let group_id = GroupId::from_slice(b"test-group");
-    let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, create_config).unwrap();
+    let mut group_state = GroupState::new_from_party(group_id, alice_pre_group, create_config)
+        .await
+        .unwrap();
 
     // 5. Add Bob using framework
     group_state
@@ -42,6 +43,7 @@ fn staged_commit_next_epoch_values_match_merged_group() {
             join_config,
             tree: None,
         })
+        .await
         .unwrap();
 
     // === Manual operations to capture StagedCommit ===
@@ -55,12 +57,14 @@ fn staged_commit_next_epoch_values_match_merged_group() {
             &bob.party.signer,
             LeafNodeParameters::default(),
         )
+        .await
         .unwrap()
         .into_contents();
 
     // 7. Bob merges his pending commit
     bob.group
         .merge_pending_commit(&bob.party.core_state.provider)
+        .await
         .unwrap();
 
     // 8. Alice processes the commit to capture StagedCommit
@@ -71,6 +75,7 @@ fn staged_commit_next_epoch_values_match_merged_group() {
             &alice.party.core_state.provider,
             commit_msg.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
     let staged_commit = match processed.into_content() {
@@ -103,6 +108,7 @@ fn staged_commit_next_epoch_values_match_merged_group() {
     alice
         .group
         .merge_staged_commit(&alice.party.core_state.provider, *staged_commit)
+        .await
         .unwrap();
 
     // === Verify staged values match merged group values ===
@@ -144,8 +150,8 @@ fn staged_commit_self_removed_returns_none() {
     let bob_party = CorePartyState::<Provider>::new("bob");
 
     // 2. Generate pre-group states
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
 
     // 3. Create group config
     let create_config = MlsGroupCreateConfig::builder()
@@ -156,8 +162,9 @@ fn staged_commit_self_removed_returns_none() {
 
     // 4. Initialize group with Alice and add Bob
     let group_id = GroupId::from_slice(b"test-group");
-    let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, create_config).unwrap();
+    let mut group_state = GroupState::new_from_party(group_id, alice_pre_group, create_config)
+        .await
+        .unwrap();
 
     group_state
         .add_member(AddMemberConfig {
@@ -166,6 +173,7 @@ fn staged_commit_self_removed_returns_none() {
             join_config,
             tree: None,
         })
+        .await
         .unwrap();
 
     // === Manual operations to capture StagedCommit ===
@@ -183,12 +191,14 @@ fn staged_commit_self_removed_returns_none() {
             &alice.party.signer,
             &[bob_leaf_index],
         )
+        .await
         .unwrap();
 
     // 7. Alice merges her pending commit
     alice
         .group
         .merge_pending_commit(&alice.party.core_state.provider)
+        .await
         .unwrap();
 
     // 8. Bob processes the removal commit to capture StagedCommit
@@ -199,6 +209,7 @@ fn staged_commit_self_removed_returns_none() {
             &bob.party.core_state.provider,
             remove_msg.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
     let staged_commit = match processed.into_content() {
@@ -240,8 +251,8 @@ fn staged_welcome_export_secret_matches_created_group() {
     let bob_party = CorePartyState::<Provider>::new("bob");
 
     // 2. Generate pre-group states
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
 
     // 3. Create group config with ratchet tree extension
     let create_config = MlsGroupCreateConfig::builder()
@@ -252,8 +263,9 @@ fn staged_welcome_export_secret_matches_created_group() {
 
     // 4. Initialize group with Alice
     let group_id = GroupId::from_slice(b"test-group");
-    let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, create_config).unwrap();
+    let mut group_state = GroupState::new_from_party(group_id, alice_pre_group, create_config)
+        .await
+        .unwrap();
 
     // 5. Alice invites Bob
     let [alice] = group_state.members_mut(&["alice"]);
@@ -265,12 +277,14 @@ fn staged_welcome_export_secret_matches_created_group() {
             &alice.party.signer,
             std::slice::from_ref(bob_pre_group.key_package_bundle.key_package()),
         )
+        .await
         .expect("error adding Bob");
 
     // 6. Bob stages the Welcome
     let welcome = welcome_msg.into_welcome().unwrap();
     let staged_welcome =
         StagedWelcome::new_from_welcome(&bob_party.provider, &join_config, welcome, None)
+            .await
             .expect("error staging welcome");
 
     // === Capture values from StagedWelcome ===
@@ -281,6 +295,7 @@ fn staged_welcome_export_secret_matches_created_group() {
     // 7. Bob creates an MlsGroup from the StagedWelcome
     let bob_group = staged_welcome
         .into_group(&bob_party.provider)
+        .await
         .expect("error creating group");
 
     // === Verify staged values match group values ===
@@ -295,6 +310,7 @@ fn staged_welcome_export_secret_matches_created_group() {
     alice
         .group
         .merge_pending_commit(&alice_party.provider)
+        .await
         .expect("error merging pending commit");
 
     // === Verify the exported secrets match for Alice and Bob ===

@@ -7,7 +7,8 @@ use openmls_test::openmls_test;
 use openmls_traits::{signatures::Signer, types::SignatureScheme};
 
 #[allow(dead_code)]
-fn generate_credential(
+#[maybe_async::maybe_async]
+async fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
     provider: &impl crate::storage::OpenMlsProvider,
@@ -17,7 +18,7 @@ fn generate_credential(
     // ANCHOR_END: create_basic_credential
     // ANCHOR: create_credential_keys
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(provider.storage()).unwrap();
+    signature_keys.store(provider.storage()).await.unwrap();
     // ANCHOR_END: create_credential_keys
 
     (
@@ -30,7 +31,8 @@ fn generate_credential(
 }
 
 #[allow(dead_code)]
-fn generate_key_package(
+#[maybe_async::maybe_async]
+async fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions<KeyPackage>,
@@ -42,18 +44,19 @@ fn generate_key_package(
     KeyPackage::builder()
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
+        .await
         .unwrap()
     // ANCHOR_END: create_key_package
 }
 
 #[openmls_test]
-fn not_join_group() {
+async fn not_join_group() {
     // Set up Alice group
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
 
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -65,6 +68,7 @@ fn not_join_group() {
 
     let mut group_state =
         GroupState::new_from_party(group_id.clone(), alice_pre_group, mls_group_create_config)
+            .await
             .unwrap();
     // Generate KeyPackages
     let bob_key_package = bob_pre_group.key_package_bundle.key_package().clone();
@@ -79,20 +83,27 @@ fn not_join_group() {
             &alice.party.signer,
             &[bob_key_package],
         )
+        .await
         .expect("Could not add Bob");
 
     let welcome: MlsMessageIn = welcome.into();
 
     let bob_provider = &bob_party.provider;
 
-    let group_context: Option<GroupContext> =
-        bob_provider.storage().group_context(&group_id).unwrap();
+    let group_context: Option<GroupContext> = bob_provider
+        .storage()
+        .group_context(&group_id)
+        .await
+        .unwrap();
     assert!(group_context.is_none());
-    let confirmation_tag: Option<ConfirmationTag> =
-        bob_provider.storage().confirmation_tag(&group_id).unwrap();
+    let confirmation_tag: Option<ConfirmationTag> = bob_provider
+        .storage()
+        .confirmation_tag(&group_id)
+        .await
+        .unwrap();
     assert!(confirmation_tag.is_none());
 
-    let state_before = GroupStorageState::from_storage(bob_provider.storage(), &group_id);
+    let state_before = GroupStorageState::from_storage(bob_provider.storage(), &group_id).await;
     //ANCHOR: not_join_group_welcome
     let welcome = match welcome.extract() {
         MlsMessageBodyIn::Welcome(welcome) => welcome,
@@ -105,6 +116,7 @@ fn not_join_group() {
     // This deletes the keys used to decrypt the welcome, except if it is a last resort key
     // package.
     let processed_welcome = ProcessedWelcome::new_from_welcome(bob_provider, &join_config, welcome)
+        .await
         .expect("Error constructing processed welcome");
     //ANCHOR_END: not_join_group_processed_welcome
 
@@ -135,15 +147,23 @@ fn not_join_group() {
     //ANCHOR: not_join_group_staged_welcome
     let staged_welcome: StagedWelcome = processed_welcome
         .into_staged_welcome(bob_provider, None)
+        .await
         .expect("Error constructing staged welcome");
     //ANCHOR_END: not_join_group_staged_welcome
 
     // check storage state after staging welcome
-    let own_leaf_nodes: Vec<LeafNode> = bob_provider.storage().own_leaf_nodes(&group_id).unwrap();
+    let own_leaf_nodes: Vec<LeafNode> = bob_provider
+        .storage()
+        .own_leaf_nodes(&group_id)
+        .await
+        .unwrap();
     assert!(own_leaf_nodes.is_empty());
 
-    let own_leaf_index: Option<LeafNodeIndex> =
-        bob_provider.storage().own_leaf_index(&group_id).unwrap();
+    let own_leaf_index: Option<LeafNodeIndex> = bob_provider
+        .storage()
+        .own_leaf_index(&group_id)
+        .await
+        .unwrap();
 
     assert!(own_leaf_index.is_none());
 
@@ -203,6 +223,6 @@ fn not_join_group() {
     }
     //ANCHOR_END: not_join_group_members
 
-    let state_after = GroupStorageState::from_storage(bob_provider.storage(), &group_id);
+    let state_after = GroupStorageState::from_storage(bob_provider.storage(), &group_id).await;
     assert!(state_before == state_after);
 }

@@ -27,8 +27,8 @@ fn create_credential(identity: &[u8]) -> (CredentialWithKey, SignatureKeyPair) {
     )
 }
 
-#[test]
-fn test_grease_proposals_in_capabilities() {
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn test_grease_proposals_in_capabilities() {
     // Test that GREASE proposal types in capabilities don't break validation
 
     let provider = OpenMlsRustCrypto::default();
@@ -50,6 +50,7 @@ fn test_grease_proposals_in_capabilities() {
         .with_group_id(GroupId::from_slice(b"test_group"))
         .with_capabilities(alice_capabilities)
         .build(&provider, &alice_signer, alice_credential.clone())
+        .await
         .expect("Failed to create group");
 
     // Create Bob's KeyPackage with GREASE proposals
@@ -70,6 +71,7 @@ fn test_grease_proposals_in_capabilities() {
             &bob_signer,
             bob_credential,
         )
+        .await
         .expect("Failed to create KeyPackage");
 
     // Add Bob to the group - should succeed despite different GREASE values
@@ -80,15 +82,17 @@ fn test_grease_proposals_in_capabilities() {
             &alice_signer,
             &[bob_key_package.key_package().clone()],
         )
+        .await
         .expect("Failed to add Bob to group");
 
     alice_group
         .merge_pending_commit(&provider)
+        .await
         .expect("Failed to merge commit");
 }
 
-#[test]
-fn test_grease_extensions_in_capabilities() {
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn test_grease_extensions_in_capabilities() {
     // Test that GREASE extension types in capabilities don't break validation
 
     let provider = OpenMlsRustCrypto::default();
@@ -108,11 +112,12 @@ fn test_grease_extensions_in_capabilities() {
         .with_group_id(GroupId::from_slice(b"test_group"))
         .with_capabilities(alice_capabilities)
         .build(&provider, &alice_signer, alice_credential)
+        .await
         .expect("Failed to create group with GREASE extensions");
 }
 
-#[test]
-fn test_grease_credentials_in_capabilities() {
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn test_grease_credentials_in_capabilities() {
     // Test that GREASE credential types in capabilities don't break validation
 
     let provider = OpenMlsRustCrypto::default();
@@ -132,6 +137,7 @@ fn test_grease_credentials_in_capabilities() {
         .with_group_id(GroupId::from_slice(b"test_group"))
         .with_capabilities(alice_capabilities)
         .build(&provider, &alice_signer, alice_credential)
+        .await
         .expect("Failed to create group with GREASE credentials");
 }
 
@@ -147,8 +153,8 @@ fn test_grease_ciphersuites_in_capabilities() {
 }
 */
 
-#[test]
-fn test_multiple_grease_values_filtered() {
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn test_multiple_grease_values_filtered() {
     // Test that multiple GREASE values in the same capability list are all filtered
 
     let provider = OpenMlsRustCrypto::default();
@@ -181,6 +187,7 @@ fn test_multiple_grease_values_filtered() {
         .with_group_id(GroupId::from_slice(b"test_group"))
         .with_capabilities(alice_capabilities)
         .build(&provider, &alice_signer, alice_credential)
+        .await
         .expect("Failed to create group");
 
     // Create Bob with completely different GREASE values
@@ -209,6 +216,7 @@ fn test_multiple_grease_values_filtered() {
             &bob_signer,
             bob_credential,
         )
+        .await
         .expect("Failed to create KeyPackage");
 
     // Add Bob - should succeed despite completely different GREASE values
@@ -219,10 +227,12 @@ fn test_multiple_grease_values_filtered() {
             &alice_signer,
             &[bob_key_package.key_package().clone()],
         )
+        .await
         .expect("Failed to add Bob with different GREASE values");
 
     alice_group
         .merge_pending_commit(&provider)
+        .await
         .expect("Failed to merge commit");
 }
 
@@ -284,8 +294,8 @@ fn test_grease_type_detection() {
     .is_grease());
 }
 
-#[test]
-fn test_grease_not_automatically_injected_in_key_packages() {
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn test_grease_not_automatically_injected_in_key_packages() {
     // Test that KeyPackages do NOT automatically include GREASE values
     // (library users must opt-in via with_grease())
 
@@ -300,6 +310,7 @@ fn test_grease_not_automatically_injected_in_key_packages() {
             &signer,
             credential,
         )
+        .await
         .expect("Failed to create KeyPackage");
 
     let capabilities = key_package.key_package().leaf_node().capabilities();
@@ -331,8 +342,8 @@ fn test_grease_not_automatically_injected_in_key_packages() {
     );
 }
 
-#[test]
-fn test_grease_injection_via_with_grease() {
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn test_grease_injection_via_with_grease() {
     // Test that with_grease() correctly adds GREASE values to capabilities
 
     let provider = OpenMlsRustCrypto::default();
@@ -350,6 +361,7 @@ fn test_grease_injection_via_with_grease() {
             &signer,
             credential,
         )
+        .await
         .expect("Failed to create KeyPackage");
 
     let capabilities = key_package.key_package().leaf_node().capabilities();
@@ -381,8 +393,8 @@ fn test_grease_injection_via_with_grease() {
     );
 }
 
-#[test]
-fn test_grease_not_automatically_injected_in_groups() {
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn test_grease_not_automatically_injected_in_groups() {
     // Test that MlsGroups do NOT automatically include GREASE values
     // (library users must opt-in via with_grease())
 
@@ -393,6 +405,7 @@ fn test_grease_not_automatically_injected_in_groups() {
     let alice_group = MlsGroup::builder()
         .with_group_id(GroupId::from_slice(b"test_group"))
         .build(&provider, &signer, credential)
+        .await
         .expect("Failed to create group");
 
     let capabilities = alice_group
@@ -427,8 +440,8 @@ fn test_grease_not_automatically_injected_in_groups() {
     );
 }
 
-#[test]
-fn test_grease_injection_in_groups_via_with_grease() {
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn test_grease_injection_in_groups_via_with_grease() {
     // Test that with_grease() correctly adds GREASE values to MlsGroup capabilities
 
     let provider = OpenMlsRustCrypto::default();
@@ -442,6 +455,7 @@ fn test_grease_injection_in_groups_via_with_grease() {
         .with_group_id(GroupId::from_slice(b"test_group"))
         .with_capabilities(capabilities)
         .build(&provider, &signer, credential)
+        .await
         .expect("Failed to create group");
 
     let capabilities = alice_group

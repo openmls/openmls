@@ -7,8 +7,8 @@ fn treesync_leaf_credentials() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
 
     // 2. Alice creates a group
     let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
@@ -19,6 +19,7 @@ fn treesync_leaf_credentials() {
         alice_pre_group,
         create_config,
     )
+    .await
     .unwrap();
 
     // 3. Alice adds Bob
@@ -29,6 +30,7 @@ fn treesync_leaf_credentials() {
             join_config,
             tree: None,
         })
+        .await
         .unwrap();
 
     // 4. Bob inspects the tree
@@ -68,10 +70,10 @@ fn treesync_blanks_after_remove() {
     let charlie_party = CorePartyState::<Provider>::new("charlie");
     let dana_party = CorePartyState::<Provider>::new("dana");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
-    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
-    let dana_pre_group = dana_party.generate_pre_group(ciphersuite);
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite).await;
+    let dana_pre_group = dana_party.generate_pre_group(ciphersuite).await;
 
     // 2. Alice creates the group and adds bob, charlie, dana in one commit.
     //    Leaf indices will be: alice=0, bob=1, charlie=2, dana=3.
@@ -83,6 +85,7 @@ fn treesync_blanks_after_remove() {
         alice_pre_group,
         create_config,
     )
+    .await
     .unwrap();
 
     group_state
@@ -92,6 +95,7 @@ fn treesync_blanks_after_remove() {
             join_config,
             tree: None,
         })
+        .await
         .unwrap();
 
     // 3. Alice removes Bob (leaf index 1) with an update_path.
@@ -105,10 +109,12 @@ fn treesync_blanks_after_remove() {
                 &alice.party.signer,
                 &[LeafNodeIndex::new(1)],
             )
+            .await
             .unwrap();
         alice
             .group
             .merge_pending_commit(&alice.party.core_state.provider)
+            .await
             .unwrap();
         commit
     };
@@ -118,6 +124,7 @@ fn treesync_blanks_after_remove() {
         .deliver_and_apply_if(commit.into(), |member| {
             matches!(member.party.core_state.name, "charlie" | "dana")
         })
+        .await
         .unwrap();
 
     // 4. Charlie inspects the tree.

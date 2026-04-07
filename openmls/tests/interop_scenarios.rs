@@ -10,7 +10,7 @@ use openmls_test::openmls_test;
 // The following tests correspond to the interop test scenarios detailed here:
 // https://github.com/mlswg/mls-implementations/blob/master/test-scenarios.md
 // The tests are conducted for every available ciphersuite, but currently only
-// using BasicCredentials. We can change the test setup once #134 is fixed.
+// using BasicCredentials. We can change the tenewonce #134 is fixed.
 
 // # 1:1 join
 // A:    Create group
@@ -25,11 +25,13 @@ fn one_to_one_join() {
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
-    );
+    )
+    .await;
 
     // Create a group with a random creator.
     let group_id = setup
         .create_group(ciphersuite)
+        .await
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -54,10 +56,13 @@ fn one_to_one_join() {
             bob_id,
             &noop_authentication_service,
         )
+        .await
         .expect("Error adding Bob");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group, noop_authentication_service);
+    setup
+        .check_group_states(group, noop_authentication_service)
+        .await;
 }
 
 // # 3-party join
@@ -77,11 +82,13 @@ fn three_party_join() {
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
-    );
+    )
+    .await;
 
     // Create a group with a random creator.
     let group_id = setup
         .create_group(ciphersuite)
+        .await
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -107,6 +114,7 @@ fn three_party_join() {
             bob_id,
             &noop_authentication_service,
         )
+        .await
         .expect("Error adding Bob");
 
     // A vector including Charly's id.
@@ -122,10 +130,13 @@ fn three_party_join() {
             charly_id,
             &noop_authentication_service,
         )
+        .await
         .expect("Error adding Charly");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group, noop_authentication_service);
+    setup
+        .check_group_states(group, noop_authentication_service)
+        .await;
 }
 
 // # Multiple joins at once
@@ -144,11 +155,13 @@ fn multiple_joins() {
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
-    );
+    )
+    .await;
 
     // Create a group with a random creator.
     let group_id = setup
         .create_group(ciphersuite)
+        .await
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -174,10 +187,13 @@ fn multiple_joins() {
             bob_charly_id,
             &noop_authentication_service,
         )
+        .await
         .expect("Error adding Bob and Charly");
 
-    // Check that group members agree on a group state.
-    setup.check_group_states(group, noop_authentication_service);
+    // Check that group members agree on a grounew
+    setup
+        .check_group_states(group, noop_authentication_service)
+        .await;
 }
 
 // # Update
@@ -195,11 +211,13 @@ fn update() {
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
-    );
+    )
+    .await;
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
         .create_random_group(2, ciphersuite, noop_authentication_service)
+        .await
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -220,10 +238,13 @@ fn update() {
             LeafNodeParameters::default(),
             &noop_authentication_service,
         )
+        .await
         .expect("Error self-updating.");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group, noop_authentication_service);
+    setup
+        .check_group_states(group, noop_authentication_service)
+        .await;
 }
 
 // # Remove
@@ -243,11 +264,13 @@ fn remove() {
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
-    );
+    )
+    .await;
 
     // Create a group with two members. Includes the process of adding Bob.
     let group_id = setup
         .create_random_group(2, ciphersuite, noop_authentication_service)
+        .await
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -272,10 +295,13 @@ fn remove() {
             &[LeafNodeIndex::new(bob_index)],
             noop_authentication_service,
         )
+        .await
         .expect("Error removing Bob from the group.");
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group, noop_authentication_service);
+    setup
+        .check_group_states(group, noop_authentication_service)
+        .await;
 }
 
 // # Large Group, Full Lifecycle
@@ -296,13 +322,15 @@ fn large_group_lifecycle() {
         MlsGroupCreateConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
-    );
+    )
+    .await;
 
     // Create a group with all available clients. The process includes creating
     // a one-person group and then adding new members in bunches of up to 5,
     // each bunch by a random group member.
     let group_id = setup
         .create_random_group(number_of_clients, ciphersuite, noop_authentication_service)
+        .await
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -322,6 +350,7 @@ fn large_group_lifecycle() {
                 LeafNodeParameters::default(),
                 &noop_authentication_service,
             )
+            .await
             .expect("Error while updating group.")
     }
 
@@ -340,11 +369,16 @@ fn large_group_lifecycle() {
                 &[LeafNodeIndex::new(target_id.0)],
                 noop_authentication_service,
             )
+            .await
             .expect("Error while removing group member.");
         group_members = group.members().collect::<Vec<(u32, Vec<u8>)>>();
-        setup.check_group_states(group, noop_authentication_service);
+        setup
+            .check_group_states(group, noop_authentication_service)
+            .await;
     }
 
     // Check that group members agree on a group state.
-    setup.check_group_states(group, noop_authentication_service);
+    setup
+        .check_group_states(group, noop_authentication_service)
+        .await;
 }

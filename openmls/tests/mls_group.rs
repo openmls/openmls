@@ -9,7 +9,8 @@ use openmls::{
 use openmls_test::openmls_test;
 use openmls_traits::signatures::Signer;
 
-fn generate_key_package<Provider: OpenMlsProvider>(
+#[maybe_async::maybe_async]
+async fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     extensions: Extensions<KeyPackage>,
     provider: &Provider,
@@ -19,6 +20,7 @@ fn generate_key_package<Provider: OpenMlsProvider>(
     KeyPackage::builder()
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
+        .await
         .unwrap()
         .key_package()
         .clone()
@@ -42,10 +44,10 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
 
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
-            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
         let (bob_credential, bob_signer) =
-            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
         // Generate KeyPackage for Bob
         let bob_key_package = generate_key_package(
@@ -54,7 +56,8 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
             bob_provider,
             bob_credential.clone(),
             &bob_signer,
-        );
+        )
+        .await;
 
         // Define the MlsGroup configuration
 
@@ -71,14 +74,17 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
             group_id.clone(),
             alice_credential.clone(),
         )
+        .await
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let welcome =
-            match alice_group.add_members(alice_provider, &alice_signer, &[bob_key_package]) {
-                Ok((_, welcome, _)) => welcome,
-                Err(e) => panic!("Could not add member to group: {e:?}"),
-            };
+        let welcome = match alice_group
+            .add_members(alice_provider, &alice_signer, &[bob_key_package])
+            .await
+        {
+            Ok((_, welcome, _)) => welcome,
+            Err(e) => panic!("Could not add member to group: {e:?}"),
+        };
 
         // Check that we received the correct proposals
         if let Some(staged_commit) = alice_group.pending_commit() {
@@ -102,6 +108,7 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
         // ===Alice commits===
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         let welcome: MlsMessageIn = welcome.into();
@@ -115,8 +122,10 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
+        .await
         .expect("Error creating StagedWelcome from Welcome")
         .into_group(bob_provider)
+        .await
         .expect("Error creating group from StagedWelcome");
 
         // Ensure that the state is correct
@@ -135,8 +144,9 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
 
         // === Alice creates three proposals: Remove Bob, Add Bob, and Add Bob ===
         let bob_leaf_node_index = bob_group.own_leaf_index();
-        if let Err(e) =
-            alice_group.propose_remove_member(alice_provider, &alice_signer, bob_leaf_node_index)
+        if let Err(e) = alice_group
+            .propose_remove_member(alice_provider, &alice_signer, bob_leaf_node_index)
+            .await
         {
             panic!("Could not add member from group: {e:?}");
         };
@@ -148,12 +158,14 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
             bob_provider,
             bob_credential.clone(),
             &bob_signer,
-        );
+        )
+        .await;
 
         // Add Bob twice, with same key package...
         for _ in 0..2 {
-            if let Err(e) =
-                alice_group.propose_add_member(alice_provider, &alice_signer, &bob_key_package_2)
+            if let Err(e) = alice_group
+                .propose_add_member(alice_provider, &alice_signer, &bob_key_package_2)
+                .await
             {
                 panic!("Could not add member to group: {e:?}");
             }
@@ -163,7 +175,10 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
         assert_eq!(alice_group.pending_proposals().count(), 3);
 
         // Create commit
-        if let Err(e) = alice_group.commit_to_pending_proposals(alice_provider, &alice_signer) {
+        if let Err(e) = alice_group
+            .commit_to_pending_proposals(alice_provider, &alice_signer)
+            .await
+        {
             panic!("Could not commit proposals: {e:?}");
         }
 
@@ -181,6 +196,7 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
         // ... and merge commit
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         // Ensure that the state is correct
@@ -214,10 +230,10 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
 
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
-            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
         let (bob_credential, bob_signer) =
-            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -226,7 +242,8 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
             bob_provider,
             bob_credential.clone(),
             &bob_signer,
-        );
+        )
+        .await;
 
         // Define the MlsGroup configuration
 
@@ -243,14 +260,14 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
             group_id.clone(),
             alice_credential.clone(),
         )
+        .await
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let welcome = match alice_group.add_members(
-            alice_provider,
-            &alice_signer,
-            from_ref(&bob_key_package),
-        ) {
+        let welcome = match alice_group
+            .add_members(alice_provider, &alice_signer, from_ref(&bob_key_package))
+            .await
+        {
             Ok((_, welcome, _)) => welcome,
             Err(e) => panic!("Could not add member to group: {e:?}"),
         };
@@ -277,6 +294,7 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
         // ===Alice commits===
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         let welcome: MlsMessageIn = welcome.into();
@@ -290,8 +308,10 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
+        .await
         .expect("Error creating StagedWelcome from Welcome")
         .into_group(bob_provider)
+        .await
         .expect("Error creating group from StagedWelcome");
 
         // Ensure that the state is correct
@@ -312,6 +332,7 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
         let bob_leaf_node_index = bob_group.own_leaf_index();
         alice_group
             .propose_remove_member(alice_provider, &alice_signer, bob_leaf_node_index)
+            .await
             .expect("Could not add member from group: {e:?}");
 
         // Add Bob twice, with different key packages
@@ -322,10 +343,12 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
                 bob_provider,
                 bob_credential.clone(),
                 &bob_signer,
-            );
+            )
+            .await;
 
-            if let Err(e) =
-                alice_group.propose_add_member(alice_provider, &alice_signer, &bob_key_package)
+            if let Err(e) = alice_group
+                .propose_add_member(alice_provider, &alice_signer, &bob_key_package)
+                .await
             {
                 panic!("Could not add member to group: {e:?}");
             }
@@ -340,7 +363,10 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
         };
 
         // Check we receive the correct error when creating commit
-        match alice_group.commit_to_pending_proposals(alice_provider, &alice_signer) {
+        match alice_group
+            .commit_to_pending_proposals(alice_provider, &alice_signer)
+            .await
+        {
             // correct case
             Err(CommitToPendingProposalsError::CreateCommitError(
                 CreateCommitError::ProposalValidationError(
@@ -379,16 +405,17 @@ fn mls_group_operations() {
 
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
-            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
         let (bob_credential, bob_signer) =
-            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
         let (charlie_credential, charlie_signer) = new_credential(
             charlie_provider,
             b"Charlie",
             ciphersuite.signature_algorithm(),
-        );
+        )
+        .await;
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -397,7 +424,8 @@ fn mls_group_operations() {
             bob_provider,
             bob_credential.clone(),
             &bob_signer,
-        );
+        )
+        .await;
 
         // Define the MlsGroup configuration
 
@@ -414,14 +442,17 @@ fn mls_group_operations() {
             group_id.clone(),
             alice_credential.clone(),
         )
+        .await
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let welcome =
-            match alice_group.add_members(alice_provider, &alice_signer, &[bob_key_package]) {
-                Ok((_, welcome, _)) => welcome,
-                Err(e) => panic!("Could not add member to group: {e:?}"),
-            };
+        let welcome = match alice_group
+            .add_members(alice_provider, &alice_signer, &[bob_key_package])
+            .await
+        {
+            Ok((_, welcome, _)) => welcome,
+            Err(e) => panic!("Could not add member to group: {e:?}"),
+        };
 
         // Check that we received the correct proposals
         if let Some(staged_commit) = alice_group.pending_commit() {
@@ -444,6 +475,7 @@ fn mls_group_operations() {
 
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         // Check that the group now has two members
@@ -467,8 +499,10 @@ fn mls_group_operations() {
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
+        .await
         .expect("Error creating StagedWelcome from Welcome")
         .into_group(bob_provider)
+        .await
         .expect("Error creating group from StagedWelcome");
 
         // Make sure that both groups have the same members
@@ -484,6 +518,7 @@ fn mls_group_operations() {
         let message_alice = b"Hi, I'm Alice!";
         let queued_message = alice_group
             .create_message(alice_provider, &alice_signer, message_alice)
+            .await
             .expect("Error creating application message");
 
         let processed_message = bob_group
@@ -494,6 +529,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
         let sender = processed_message.credential().clone();
 
@@ -517,6 +553,7 @@ fn mls_group_operations() {
         // === Bob updates and commits ===
         let (queued_message, welcome_option, _group_info) = bob_group
             .self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
+            .await
             .unwrap()
             .into_contents();
 
@@ -528,6 +565,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
 
         // Check that we received the correct message
@@ -537,6 +575,7 @@ fn mls_group_operations() {
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(alice_provider, *staged_commit)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -544,6 +583,7 @@ fn mls_group_operations() {
 
         bob_group
             .merge_pending_commit(bob_provider)
+            .await
             .expect("error merging pending commit");
 
         // Check we didn't receive a Welcome message
@@ -568,6 +608,7 @@ fn mls_group_operations() {
         // === Alice updates and commits ===
         let (queued_message, _) = alice_group
             .propose_self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+            .await
             .unwrap();
 
         let bob_processed_message = bob_group
@@ -578,6 +619,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
 
         // Check that we received the correct proposals
@@ -593,6 +635,7 @@ fn mls_group_operations() {
                 // Store proposal
                 alice_group
                     .store_pending_proposal(alice_provider.storage(), *staged_proposal.clone())
+                    .await
                     .unwrap();
             } else {
                 unreachable!("Expected a Proposal.");
@@ -606,6 +649,7 @@ fn mls_group_operations() {
 
             bob_group
                 .store_pending_proposal(bob_provider.storage(), *staged_proposal)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a QueuedProposal.");
@@ -613,6 +657,7 @@ fn mls_group_operations() {
 
         let (queued_message, _welcome_option, _group_info) = alice_group
             .commit_to_pending_proposals(alice_provider, &alice_signer)
+            .await
             .unwrap();
 
         let bob_processed_message = bob_group
@@ -623,6 +668,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
 
         // Check that we received the correct message
@@ -631,6 +677,7 @@ fn mls_group_operations() {
         {
             bob_group
                 .merge_staged_commit(bob_provider, *staged_commit)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -638,6 +685,7 @@ fn mls_group_operations() {
 
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         // Check that both groups have the same state
@@ -663,10 +711,12 @@ fn mls_group_operations() {
             charlie_provider,
             charlie_credential,
             &charlie_signer,
-        );
+        )
+        .await;
 
         let (queued_message, welcome, _group_info) = bob_group
             .add_members(bob_provider, &bob_signer, &[charlie_key_package])
+            .await
             .unwrap();
 
         let alice_processed_message = alice_group
@@ -677,9 +727,11 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
         bob_group
             .merge_pending_commit(bob_provider)
+            .await
             .expect("error merging pending commit");
 
         // Merge Commit
@@ -688,6 +740,7 @@ fn mls_group_operations() {
         {
             alice_group
                 .merge_staged_commit(alice_provider, *staged_commit)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -704,8 +757,10 @@ fn mls_group_operations() {
             welcome,
             Some(bob_group.export_ratchet_tree().into()),
         )
+        .await
         .expect("Error creating staged join from Welcome")
         .into_group(charlie_provider)
+        .await
         .expect("Error creating group from staged join");
 
         // Make sure that all groups have the same public tree
@@ -731,6 +786,7 @@ fn mls_group_operations() {
         let message_charlie = b"Hi, I'm Charlie!";
         let queued_message = charlie_group
             .create_message(charlie_provider, &charlie_signer, message_charlie)
+            .await
             .expect("Error creating application message");
 
         let _alice_processed_message = alice_group
@@ -741,6 +797,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
         let _bob_processed_message = bob_group
             .process_message(
@@ -750,6 +807,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
 
         // === Charlie updates and commits ===
@@ -759,6 +817,7 @@ fn mls_group_operations() {
                 &charlie_signer,
                 LeafNodeParameters::default(),
             )
+            .await
             .unwrap()
             .into_contents();
 
@@ -770,6 +829,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
         let bob_processed_message = bob_group
             .process_message(
@@ -779,9 +839,11 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
         charlie_group
             .merge_pending_commit(charlie_provider)
+            .await
             .expect("error merging pending commit");
 
         // Merge Commit
@@ -790,6 +852,7 @@ fn mls_group_operations() {
         {
             alice_group
                 .merge_staged_commit(alice_provider, *staged_commit)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -801,6 +864,7 @@ fn mls_group_operations() {
         {
             bob_group
                 .merge_staged_commit(bob_provider, *staged_commit)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -845,6 +909,7 @@ fn mls_group_operations() {
                 &charlie_signer,
                 &[bob_group.own_leaf_index()],
             )
+            .await
             .expect("Could not remove member from group.");
 
         // Check that Bob's group is still active
@@ -858,6 +923,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
         let bob_processed_message = bob_group
             .process_message(
@@ -867,9 +933,11 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
         charlie_group
             .merge_pending_commit(charlie_provider)
+            .await
             .expect("error merging pending commit");
 
         // Check that we receive the correct proposal for Alice
@@ -890,6 +958,7 @@ fn mls_group_operations() {
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(alice_provider, *staged_commit)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -913,6 +982,7 @@ fn mls_group_operations() {
             // Merge staged Commit
             bob_group
                 .merge_staged_commit(bob_provider, *staged_commit)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -941,9 +1011,10 @@ fn mls_group_operations() {
         assert_eq!(credential1, b"Charlie");
 
         // Check that Bob can no longer send messages
-        assert!(bob_group
+        bob_group
             .create_message(bob_provider, &bob_signer, b"Should not go through")
-            .is_err());
+            .await
+            .unwrap_err();
 
         // === Alice removes Charlie and re-adds Bob ===
 
@@ -954,7 +1025,8 @@ fn mls_group_operations() {
             bob_provider,
             bob_credential.clone(),
             &bob_signer,
-        );
+        )
+        .await;
 
         // Create RemoveProposal and process it
         let (queued_message, _) = alice_group
@@ -963,6 +1035,7 @@ fn mls_group_operations() {
                 &alice_signer,
                 charlie_group.own_leaf_index(),
             )
+            .await
             .expect("Could not create proposal to remove Charlie");
 
         let charlie_processed_message = charlie_group
@@ -973,6 +1046,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
 
         // Check that we received the correct proposals
@@ -985,6 +1059,7 @@ fn mls_group_operations() {
                 // Store proposal
                 charlie_group
                     .store_pending_proposal(charlie_provider.storage(), *staged_proposal.clone())
+                    .await
                     .unwrap();
             } else {
                 unreachable!("Expected a Proposal.");
@@ -1002,6 +1077,7 @@ fn mls_group_operations() {
         // Create AddProposal and process it
         let (queued_message, _) = alice_group
             .propose_add_member(alice_provider, &alice_signer, &bob_key_package)
+            .await
             .expect("Could not create proposal to add Bob");
 
         let charlie_processed_message = charlie_group
@@ -1012,6 +1088,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
 
         // Check that we received the correct proposals
@@ -1036,6 +1113,7 @@ fn mls_group_operations() {
             // Store proposal
             charlie_group
                 .store_pending_proposal(charlie_provider.storage(), *staged_proposal)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a QueuedProposal.");
@@ -1044,6 +1122,7 @@ fn mls_group_operations() {
         // Commit to the proposals and process it
         let (queued_message, welcome_option, _group_info) = alice_group
             .commit_to_pending_proposals(alice_provider, &alice_signer)
+            .await
             .expect("Could not flush proposals");
 
         let charlie_processed_message = charlie_group
@@ -1054,11 +1133,13 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
 
         // Merge Commit
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         // Merge Commit
@@ -1067,6 +1148,7 @@ fn mls_group_operations() {
         {
             charlie_group
                 .merge_staged_commit(charlie_provider, *staged_commit)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -1088,15 +1170,17 @@ fn mls_group_operations() {
             .expect("expected the message to be a welcome message");
 
         // Bob creates a new group
-        bob_group.delete(bob_provider.storage()).unwrap();
+        bob_group.delete(bob_provider.storage()).await.unwrap();
         let mut bob_group = StagedWelcome::new_from_welcome(
             bob_provider,
             mls_group_create_config.join_config(),
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
+        .await
         .expect("Error creating staged join from Welcome")
         .into_group(bob_provider)
+        .await
         .expect("Error creating group from staged join");
 
         // Make sure the group contains two members
@@ -1123,6 +1207,7 @@ fn mls_group_operations() {
         let message_alice = b"Hi, I'm Alice!";
         let queued_message = alice_group
             .create_message(alice_provider, &alice_signer, message_alice)
+            .await
             .expect("Error creating application message");
 
         let bob_processed_message = bob_group
@@ -1133,6 +1218,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
         let sender = bob_processed_message.credential().clone();
 
@@ -1155,6 +1241,7 @@ fn mls_group_operations() {
 
         let queued_message = bob_group
             .leave_group(bob_provider, &bob_signer)
+            .await
             .expect("Could not leave group");
 
         let alice_processed_message = alice_group
@@ -1165,6 +1252,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
 
         // Store proposal
@@ -1174,14 +1262,18 @@ fn mls_group_operations() {
             // Store proposal
             alice_group
                 .store_pending_proposal(alice_provider.storage(), *staged_proposal)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a QueuedProposal.");
         }
 
         // Should fail because you cannot remove yourself from a group
+        let result = bob_group
+            .commit_to_pending_proposals(bob_provider, &bob_signer)
+            .await;
         assert!(matches!(
-            bob_group.commit_to_pending_proposals(bob_provider, &bob_signer),
+            result,
             Err(CommitToPendingProposalsError::CreateCommitError(
                 CreateCommitError::CannotRemoveSelf
             ))
@@ -1189,6 +1281,7 @@ fn mls_group_operations() {
 
         let (queued_message, _welcome_option, _group_info) = alice_group
             .commit_to_pending_proposals(alice_provider, &alice_signer)
+            .await
             .expect("Could not commit to proposals.");
 
         // Check that Bob's group is still active
@@ -1213,6 +1306,7 @@ fn mls_group_operations() {
 
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("Could not merge Commit.");
 
         let bob_processed_message = bob_group
@@ -1223,6 +1317,7 @@ fn mls_group_operations() {
                     .into_protocol_message()
                     .expect("Unexpected message type"),
             )
+            .await
             .expect("Could not process message.");
 
         // Check that we received the correct proposals
@@ -1242,6 +1337,7 @@ fn mls_group_operations() {
             // Merge staged Commit
             bob_group
                 .merge_staged_commit(bob_provider, *staged_commit)
+                .await
                 .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -1267,20 +1363,24 @@ fn mls_group_operations() {
             bob_provider,
             bob_credential,
             &bob_signer,
-        );
+        )
+        .await;
 
         // Add Bob to the group
         let (_queued_message, welcome, _group_info) = alice_group
             .add_members(alice_provider, &alice_signer, &[bob_key_package])
+            .await
             .expect("Could not add Bob");
 
         let _test_group = MlsGroup::load(alice_provider.storage(), &group_id)
+            .await
             .expect("Could not load the group state due to an error.")
             .expect("Could not load the group state because the group does not exist.");
 
         // Merge Commit
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         let welcome: MlsMessageIn = welcome.into();
@@ -1289,15 +1389,17 @@ fn mls_group_operations() {
             .expect("expected the message to be a welcome message");
 
         // Delete Bob's old group before loading the new state
-        bob_group.delete(bob_provider.storage()).unwrap();
+        bob_group.delete(bob_provider.storage()).await.unwrap();
         let mut bob_group = StagedWelcome::new_from_welcome(
             bob_provider,
             mls_group_create_config.join_config(),
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
+        .await
         .expect("Could not create staged join from Welcome")
         .into_group(bob_provider)
+        .await
         .expect("Could not create group from staged join");
 
         assert_eq!(
@@ -1310,6 +1412,7 @@ fn mls_group_operations() {
         );
 
         bob_group = MlsGroup::load(bob_provider.storage(), &group_id)
+            .await
             .expect("Could not load group from file because of an error")
             .expect("Could not load group from file because there is no group with given id");
 
@@ -1335,16 +1438,17 @@ fn addition_order() {
         let group_id = GroupId::random(alice_provider.rand());
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
-            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
         let (bob_credential, bob_signer) =
-            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
         let (charlie_credential, charlie_signer) = new_credential(
             charlie_provider,
             b"Charlie",
             ciphersuite.signature_algorithm(),
-        );
+        )
+        .await;
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -1353,14 +1457,16 @@ fn addition_order() {
             bob_provider,
             bob_credential.clone(),
             &bob_signer,
-        );
+        )
+        .await;
         let charlie_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
             charlie_provider,
             charlie_credential.clone(),
             &charlie_signer,
-        );
+        )
+        .await;
 
         // Define the MlsGroup configuration
 
@@ -1377,14 +1483,18 @@ fn addition_order() {
             group_id.clone(),
             alice_credential.clone(),
         )
+        .await
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let _welcome = match alice_group.add_members(
-            alice_provider,
-            &alice_signer,
-            &[bob_key_package, charlie_key_package],
-        ) {
+        let _welcome = match alice_group
+            .add_members(
+                alice_provider,
+                &alice_signer,
+                &[bob_key_package, charlie_key_package],
+            )
+            .await
+        {
             Ok((_, welcome, _)) => welcome,
             Err(e) => panic!("Could not add member to group: {e:?}"),
         };
@@ -1418,6 +1528,7 @@ fn addition_order() {
 
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         // Check that the members got added in the same order as the KeyPackages
@@ -1446,11 +1557,12 @@ fn more_remove_than_add_proposals_in_commit() {
 
     // choose group size, remove proposal count and add proposal count, s.t. M > K, and M and K each
     // pass a tree shrink/grow threshold, i.e., a power of 2.
-    more_remove_than_add_proposals_in_commit_inner::<6, 2, 1>(provider, ciphersuite);
-    more_remove_than_add_proposals_in_commit_inner::<10, 2, 1>(provider, ciphersuite);
-    more_remove_than_add_proposals_in_commit_inner::<22, 6, 5>(provider, ciphersuite);
+    more_remove_than_add_proposals_in_commit_inner::<6, 2, 1>(provider, ciphersuite).await;
+    more_remove_than_add_proposals_in_commit_inner::<10, 2, 1>(provider, ciphersuite).await;
+    more_remove_than_add_proposals_in_commit_inner::<22, 6, 5>(provider, ciphersuite).await;
 
-    fn more_remove_than_add_proposals_in_commit_inner<
+    #[maybe_async::maybe_async]
+    async fn more_remove_than_add_proposals_in_commit_inner<
         const INITIAL_GROUP_SIZE: usize,
         const REMOVE_PROPOSALS_COUNT: usize,
         const ADD_PROPOSALS_COUNT: usize,
@@ -1467,10 +1579,13 @@ fn more_remove_than_add_proposals_in_commit() {
                 .collect::<Vec<_>>();
 
             // Generate credentials with keys
-            let (credentials, signers): (Vec<_>, Vec<_>) = ids
-                .iter()
-                .map(|id| new_credential(provider, id, ciphersuite.signature_algorithm()))
-                .unzip();
+            let (mut credentials, mut signers) = (vec![], vec![]);
+            for id in ids.iter() {
+                let (credential, signer) =
+                    new_credential(provider, id, ciphersuite.signature_algorithm()).await;
+                credentials.push(credential);
+                signers.push(signer);
+            }
 
             // Define the MlsGroup configuration
             let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -1488,22 +1603,23 @@ fn more_remove_than_add_proposals_in_commit() {
                 group_id.clone(),
                 credentials[0].clone(),
             )
+            .await
             .expect("could not create group");
 
             // Key packages for eveeryone except alice
-            let key_packages = credentials[1..]
-                .iter()
-                .zip(signers[1..].iter())
-                .map(|(credential, signer)| {
-                    generate_key_package(
-                        ciphersuite,
-                        Extensions::empty(),
-                        provider,
-                        credential.clone(),
-                        signer,
-                    )
-                })
-                .collect::<Vec<_>>();
+            let mut key_packages = vec![];
+            for (credential, signer) in credentials[1..].iter().zip(signers[1..].iter()) {
+                let key_package = generate_key_package(
+                    ciphersuite,
+                    Extensions::empty(),
+                    provider,
+                    credential.clone(),
+                    signer,
+                )
+                .await;
+
+                key_packages.push(key_package);
+            }
 
             // === Alice adds everyone except the members to add later... ===
             alice_group
@@ -1513,10 +1629,12 @@ fn more_remove_than_add_proposals_in_commit() {
                     // -1 because alice is already in the group
                     &key_packages[..INITIAL_GROUP_SIZE - 1],
                 )
+                .await
                 .expect("Could not add initial members to group");
 
             alice_group
                 .merge_pending_commit(provider)
+                .await
                 .expect("error merging pending commit");
 
             // Setup finished, we have reached the initial group size
@@ -1529,6 +1647,7 @@ fn more_remove_than_add_proposals_in_commit() {
             for index in removed_indices {
                 alice_group
                     .propose_remove_member_by_value(provider, &signers[0], index)
+                    .await
                     .expect("could not propose removing member");
             }
 
@@ -1539,10 +1658,12 @@ fn more_remove_than_add_proposals_in_commit() {
                     &signers[0],
                     &key_packages[INITIAL_GROUP_SIZE - 1..],
                 )
+                .await
                 .expect("Could not add member to group");
 
             alice_group
                 .merge_pending_commit(provider)
+                .await
                 .expect("error merging pending commit");
 
             // Check that the group now has the expected member count
@@ -1561,7 +1682,7 @@ fn test_empty_input_errors() {
 
     // Generate credentials with keys
     let (alice_credential, alice_signer) =
-        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
     // Define the MlsGroupCreateConfig
     let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
@@ -1574,20 +1695,25 @@ fn test_empty_input_errors() {
         group_id,
         alice_credential,
     )
+    .await
     .expect("An unexpected error occurred.");
 
+    let err = alice_group
+        .add_members(alice_provider, &alice_signer, &[])
+        .await
+        .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`.");
+
     assert!(matches!(
-        alice_group
-            .add_members(alice_provider, &alice_signer, &[])
-            .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`."),
+        err,
         AddMembersError::EmptyInput(EmptyInputError::AddMembers)
     ));
+
+    let err = alice_group
+        .remove_members(alice_provider, &alice_signer, &[])
+        .await
+        .expect_err("No EmptyInputError when trying to pass an empty slice to `remove_members`.");
     assert!(matches!(
-        alice_group
-            .remove_members(alice_provider, &alice_signer, &[])
-            .expect_err(
-                "No EmptyInputError when trying to pass an empty slice to `remove_members`."
-            ),
+        err,
         RemoveMembersError::EmptyInput(EmptyInputError::RemoveMembers)
     ));
 }
@@ -1603,10 +1729,10 @@ fn mls_group_ratchet_tree_extension() {
 
         // Generate credentials
         let (alice_credential, alice_signer) =
-            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
         let (bob_credential, bob_signer) =
-            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -1615,7 +1741,8 @@ fn mls_group_ratchet_tree_extension() {
             bob_provider,
             bob_credential,
             &bob_signer,
-        );
+        )
+        .await;
 
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
@@ -1632,11 +1759,13 @@ fn mls_group_ratchet_tree_extension() {
             group_id,
             alice_credential.clone(),
         )
+        .await
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
         let (_queued_message, welcome, _group_info) = alice_group
             .add_members(alice_provider, &alice_signer, from_ref(&bob_key_package))
+            .await
             .unwrap();
 
         let welcome: MlsMessageIn = welcome.into();
@@ -1651,18 +1780,20 @@ fn mls_group_ratchet_tree_extension() {
             welcome,
             None,
         )
+        .await
         .expect("Error creating staged join from Welcome")
         .into_group(bob_provider)
+        .await
         .expect("Error creating group from staged join");
 
         // === Negative case: not using the ratchet tree extension ===
 
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
-            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+            new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
         let (bob_credential, bob_signer) =
-            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -1671,7 +1802,8 @@ fn mls_group_ratchet_tree_extension() {
             bob_provider,
             bob_credential,
             &bob_signer,
-        );
+        )
+        .await;
 
         let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
 
@@ -1684,11 +1816,13 @@ fn mls_group_ratchet_tree_extension() {
             group_id,
             alice_credential.clone(),
         )
+        .await
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
         let (_queued_message, welcome, _group_info) = alice_group
             .add_members(alice_provider, &alice_signer, &[bob_key_package])
+            .await
             .unwrap();
 
         let welcome: MlsMessageIn = welcome.into();
@@ -1703,6 +1837,7 @@ fn mls_group_ratchet_tree_extension() {
             welcome,
             None,
         )
+        .await
         .expect_err("Could join a group without a ratchet tree");
 
         assert!(matches!(error, WelcomeError::MissingRatchetTree));
@@ -1715,12 +1850,13 @@ fn group_context_extensions_proposal() {
     let alice_provider = &Provider::default();
 
     let (alice_credential_with_key, alice_signer) =
-        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .build(alice_provider, &alice_signer, alice_credential_with_key)
+        .await
         .expect("error creating group using builder");
 
     // No required capabilities, so no specifically required extensions.
@@ -1742,12 +1878,14 @@ fn group_context_extensions_proposal() {
 
     alice_group
         .propose_group_context_extensions(alice_provider, new_extensions.clone(), &alice_signer)
+        .await
         .expect("failed to build group context extensions proposal");
 
     assert_eq!(alice_group.pending_proposals().count(), 1);
 
     alice_group
         .commit_to_pending_proposals(alice_provider, &alice_signer)
+        .await
         .expect("failed to commit to pending proposals");
 
     // The staged commit has the new group context extensions.
@@ -1760,6 +1898,7 @@ fn group_context_extensions_proposal() {
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     let required_capabilities = alice_group
@@ -1774,17 +1913,20 @@ fn group_context_extensions_proposal() {
 
     alice_group
         .propose_group_context_extensions(alice_provider, new_extensions, &alice_signer)
+        .await
         .expect("failed to build group context extensions proposal");
 
     // the proposals need to be different or they will be deduplicated
     alice_group
         .propose_group_context_extensions(alice_provider, new_extensions_2, &alice_signer)
+        .await
         .expect("failed to build group context extensions proposal");
 
     assert_eq!(alice_group.pending_proposals().count(), 2);
 
     alice_group
         .commit_to_pending_proposals(alice_provider, &alice_signer)
+        .await
         .expect_err(
             "expected error when committing to multiple group context extensions proposals",
         );
@@ -1800,6 +1942,7 @@ fn group_context_extensions_proposal() {
 
     alice_group
         .propose_group_context_extensions(alice_provider, new_extensions, &alice_signer)
+        .await
         .expect_err("expected an error building GCE proposal with bad required_capabilities");
 
     // TODO: we need to test that processing a commit with multiple group context extensions

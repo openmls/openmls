@@ -6,7 +6,8 @@ use openmls::prelude::*;
 use openmls::test_utils::single_group_test_framework::*;
 use openmls_test::openmls_test;
 
-fn setup<'a, Provider: OpenMlsProvider>(
+#[maybe_async::maybe_async]
+async fn setup<'a, Provider: OpenMlsProvider>(
     alice_party: &'a CorePartyState<Provider>,
     bob_party: &'a CorePartyState<Provider>,
     ciphersuite: Ciphersuite,
@@ -34,11 +35,12 @@ fn setup<'a, Provider: OpenMlsProvider>(
     };
 
     // Set up the PreGroups with the required Capabilities
-    let alice_pre_group = alice_party.pre_group_builder(ciphersuite).build();
+    let alice_pre_group = alice_party.pre_group_builder(ciphersuite).build().await;
     let bob_pre_group = bob_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(capabilities.clone())
-        .build();
+        .build()
+        .await;
 
     // Define the MlsGroup configuration
     let create_config = MlsGroupCreateConfig::builder()
@@ -57,6 +59,7 @@ fn setup<'a, Provider: OpenMlsProvider>(
         alice_pre_group,
         create_config,
     )
+    .await
     .unwrap();
 
     group_state
@@ -66,6 +69,7 @@ fn setup<'a, Provider: OpenMlsProvider>(
             join_config,
             tree: None,
         })
+        .await
         .expect("Could not add member");
 
     group_state
@@ -78,7 +82,7 @@ fn test_app_data_update_simple() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -93,6 +97,7 @@ fn test_app_data_update_simple() {
             Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::update(16, b"value"))),
         ])
         .load_psks(alice_party.provider.storage())
+        .await
         .unwrap();
 
     let mut app_data_updater = stage.app_data_dictionary_updater();
@@ -125,6 +130,7 @@ fn test_app_data_update_simple() {
         )
         .unwrap()
         .stage_commit(&alice_party.provider)
+        .await
         .unwrap();
 
     let (commit, _, _) = commit_bundle.into_contents();
@@ -138,6 +144,7 @@ fn test_app_data_update_simple() {
             &bob_party.provider,
             message_in.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
     // create the AppDataUpdater for Bob
@@ -195,6 +202,7 @@ fn test_app_data_update_simple() {
             unverified_message,
             app_data_updater.changes(),
         )
+        .await
         .expect("error processing commit");
 
     let staged_commit = match processed_message.into_content() {
@@ -204,11 +212,13 @@ fn test_app_data_update_simple() {
 
     bob.group
         .merge_staged_commit(&bob_party.provider, *staged_commit)
+        .await
         .unwrap();
 
     alice
         .group
         .merge_pending_commit(&alice_party.provider)
+        .await
         .unwrap();
 
     // ensure that the dictionaries match
@@ -240,9 +250,10 @@ fn test_app_data_update_with_welcome() {
             Some(&[ProposalType::AppDataUpdate]),
             None,
         ))
-        .build();
+        .build()
+        .await;
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -259,6 +270,7 @@ fn test_app_data_update_with_welcome() {
             charlie_pre_group.key_package_bundle.key_package().clone(),
         ))
         .load_psks(alice_party.provider.storage())
+        .await
         .unwrap();
 
     // retrieve the update helper struct for the stage
@@ -292,6 +304,7 @@ fn test_app_data_update_with_welcome() {
         )
         .unwrap()
         .stage_commit(&alice_party.provider)
+        .await
         .unwrap();
 
     let (commit, welcome, _) = commit_bundle.into_contents();
@@ -305,6 +318,7 @@ fn test_app_data_update_with_welcome() {
             &bob_party.provider,
             message_in.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
     // create the AppDataUpdater for Bob
@@ -362,6 +376,7 @@ fn test_app_data_update_with_welcome() {
             unverified_message,
             app_data_updater.changes(),
         )
+        .await
         .expect("error processing commit");
 
     let staged_commit = match processed_message.into_content() {
@@ -371,11 +386,13 @@ fn test_app_data_update_with_welcome() {
 
     bob.group
         .merge_staged_commit(&bob_party.provider, *staged_commit)
+        .await
         .unwrap();
 
     alice
         .group
         .merge_pending_commit(&alice_party.provider)
+        .await
         .unwrap();
 
     // ensure that the dictionaries match
@@ -396,8 +413,10 @@ fn test_app_data_update_with_welcome() {
         welcome.unwrap(),
         None,
     )
+    .await
     .unwrap()
     .into_group(&charlie_party.provider)
+    .await
     .unwrap();
 
     // ensure that the dictionaries match

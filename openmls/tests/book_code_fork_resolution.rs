@@ -19,19 +19,22 @@ fn book_example_readd() {
         "Alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    );
+    )
+    .await;
 
     let (bob_credential, bob_signature_keys) = generate_credential(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    );
+    )
+    .await;
 
     let (charlie_credential, charlie_signature_keys) = generate_credential(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    );
+    )
+    .await;
 
     let bob_kpb = generate_key_package(
         ciphersuite,
@@ -39,7 +42,8 @@ fn book_example_readd() {
         Extensions::empty(),
         bob_provider,
         &bob_signature_keys,
-    );
+    )
+    .await;
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .padding_size(100)
@@ -61,6 +65,7 @@ fn book_example_readd() {
         &mls_group_create_config,
         alice_credential.clone(),
     )
+    .await
     .unwrap();
 
     // Alice adds Bob and merges the commit
@@ -68,6 +73,7 @@ fn book_example_readd() {
         .commit_builder()
         .propose_adds(vec![bob_kpb.key_package().clone()])
         .load_psks(alice_provider.storage())
+        .await
         .unwrap()
         .build(
             alice_provider.rand(),
@@ -77,16 +83,22 @@ fn book_example_readd() {
         )
         .unwrap()
         .stage_commit(alice_provider)
+        .await
         .unwrap();
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     // Bob joins from the welcome
     let welcome = add_bob_messages.into_welcome().unwrap();
     let mut bob_group =
         StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome.clone(), None)
+            .await
             .unwrap()
             .into_group(bob_provider)
+            .await
             .unwrap();
 
     // Now Alice and Bob both add Charlie and merge their own commit.
@@ -97,12 +109,14 @@ fn book_example_readd() {
         Extensions::empty(),
         charlie_provider,
         &charlie_signature_keys,
-    );
+    )
+    .await;
 
     let add_charlie_messages = alice_group
         .commit_builder()
         .propose_adds(vec![charlie_kpb.key_package().clone()])
         .load_psks(alice_provider.storage())
+        .await
         .unwrap()
         .build(
             alice_provider.rand(),
@@ -112,12 +126,14 @@ fn book_example_readd() {
         )
         .unwrap()
         .stage_commit(alice_provider)
+        .await
         .unwrap();
 
     bob_group
         .commit_builder()
         .propose_adds(vec![charlie_kpb.key_package().clone()])
         .load_psks(bob_provider.storage())
+        .await
         .unwrap()
         .build(
             bob_provider.rand(),
@@ -127,17 +143,23 @@ fn book_example_readd() {
         )
         .unwrap()
         .stage_commit(bob_provider)
+        .await
         .unwrap();
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
-    bob_group.merge_pending_commit(bob_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
+    bob_group.merge_pending_commit(bob_provider).await.unwrap();
 
     // Charlie joins using Alice's invite
     let welcome = add_charlie_messages.into_welcome().unwrap();
     let mut charlie_group =
         StagedWelcome::new_from_welcome(charlie_provider, mls_group_config, welcome, None)
+            .await
             .unwrap()
             .into_group(charlie_provider)
+            .await
             .unwrap();
 
     // We should be forked now, double-check
@@ -163,7 +185,8 @@ fn book_example_readd() {
         Extensions::empty(),
         bob_provider,
         &bob_signature_keys,
-    );
+    )
+    .await;
 
     // Alice and Charlie are in the same partition
     let our_partition = &[alice_group.own_leaf_index(), charlie_group.own_leaf_index()];
@@ -190,6 +213,7 @@ fn book_example_readd() {
     let readd_messages = builder
         .provide_key_packages(readded_key_packages)
         .load_psks(alice_provider.storage())
+        .await
         .unwrap()
         .build(
             alice_provider.rand(),
@@ -199,29 +223,39 @@ fn book_example_readd() {
         )
         .unwrap()
         .stage_commit(alice_provider)
+        .await
         .unwrap();
 
     // Make Bob re-join the group and Alice and Charlie merge the commit that adds Bob.
     let (commit, welcome, _) = readd_messages.into_contents();
     let welcome = welcome.unwrap();
     let processed_welcome =
-        ProcessedWelcome::new_from_welcome(bob_provider, &mls_group_config, welcome).unwrap();
+        ProcessedWelcome::new_from_welcome(bob_provider, &mls_group_config, welcome)
+            .await
+            .unwrap();
     let bob_group = JoinBuilder::new(bob_provider, processed_welcome)
         .replace_old_group()
         .build()
+        .await
         .unwrap()
         .into_group(bob_provider)
+        .await
         .unwrap();
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) = charlie_group
         .process_message(charlie_provider, commit.into_protocol_message().unwrap())
+        .await
         .unwrap()
         .into_content()
     {
         charlie_group
             .merge_staged_commit(charlie_provider, *staged_commit)
+            .await
             .unwrap()
     } else {
         panic!("expected a commit")
@@ -251,19 +285,22 @@ fn book_example_reboot() {
         "Alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    );
+    )
+    .await;
 
     let (bob_credential, bob_signature_keys) = generate_credential(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    );
+    )
+    .await;
 
     let (charlie_credential, charlie_signature_keys) = generate_credential(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    );
+    )
+    .await;
 
     let bob_kpb = generate_key_package(
         ciphersuite,
@@ -271,7 +308,8 @@ fn book_example_reboot() {
         Extensions::empty(),
         bob_provider,
         &bob_signature_keys,
-    );
+    )
+    .await;
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .padding_size(100)
@@ -293,6 +331,7 @@ fn book_example_reboot() {
         &mls_group_create_config,
         alice_credential.clone(),
     )
+    .await
     .unwrap();
 
     // Alice adds Bob and merges the commit
@@ -300,6 +339,7 @@ fn book_example_reboot() {
         .commit_builder()
         .propose_adds(vec![bob_kpb.key_package().clone()])
         .load_psks(alice_provider.storage())
+        .await
         .unwrap()
         .build(
             alice_provider.rand(),
@@ -309,16 +349,22 @@ fn book_example_reboot() {
         )
         .unwrap()
         .stage_commit(alice_provider)
+        .await
         .unwrap();
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     // Bob joins from the welcome
     let welcome = add_bob_messages.into_welcome().unwrap();
     let mut bob_group =
         StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome, None)
+            .await
             .unwrap()
             .into_group(bob_provider)
+            .await
             .unwrap();
 
     // Now Alice and Bob both add Charlie and merge their own commit.
@@ -329,12 +375,14 @@ fn book_example_reboot() {
         Extensions::empty(),
         charlie_provider,
         &charlie_signature_keys,
-    );
+    )
+    .await;
 
     let add_charlie_messages = alice_group
         .commit_builder()
         .propose_adds(vec![charlie_kpb.key_package().clone()])
         .load_psks(alice_provider.storage())
+        .await
         .unwrap()
         .build(
             alice_provider.rand(),
@@ -344,12 +392,14 @@ fn book_example_reboot() {
         )
         .unwrap()
         .stage_commit(alice_provider)
+        .await
         .unwrap();
 
     bob_group
         .commit_builder()
         .propose_adds(vec![charlie_kpb.key_package().clone()])
         .load_psks(bob_provider.storage())
+        .await
         .unwrap()
         .build(
             bob_provider.rand(),
@@ -359,17 +409,23 @@ fn book_example_reboot() {
         )
         .unwrap()
         .stage_commit(bob_provider)
+        .await
         .unwrap();
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
-    bob_group.merge_pending_commit(bob_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
+    bob_group.merge_pending_commit(bob_provider).await.unwrap();
 
     // Charlie joins using Alice's invite
     let welcome = add_charlie_messages.into_welcome().unwrap();
     let charlie_group =
         StagedWelcome::new_from_welcome(charlie_provider, mls_group_config, welcome, None)
+            .await
             .unwrap()
             .into_group(charlie_provider)
+            .await
             .unwrap();
 
     // We shoulkd be forked now, double-check
@@ -395,7 +451,8 @@ fn book_example_reboot() {
         Extensions::empty(),
         bob_provider,
         &bob_signature_keys,
-    );
+    )
+    .await;
 
     let charlie_new_kpb = generate_key_package(
         ciphersuite,
@@ -403,7 +460,8 @@ fn book_example_reboot() {
         Extensions::empty(),
         charlie_provider,
         &charlie_signature_keys,
-    );
+    )
+    .await;
 
     let new_group_id: GroupId = GroupId::from_slice(
         alice_group
@@ -432,23 +490,31 @@ fn book_example_reboot() {
             &alice_signature_keys,
             alice_credential,
         )
+        .await
         .unwrap();
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     // Bob and Charlie join the new group
     let welcome = reboot_messages.into_welcome().unwrap();
     let bob_group =
         StagedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome.clone(), None)
+            .await
             .unwrap()
             .into_group(bob_provider)
+            .await
             .unwrap();
     assert_eq!(bob_group.own_leaf_index(), LeafNodeIndex::new(1));
 
     let charlie_group =
         StagedWelcome::new_from_welcome(charlie_provider, mls_group_config, welcome, None)
+            .await
             .unwrap()
             .into_group(charlie_provider)
+            .await
             .unwrap();
     assert_eq!(charlie_group.own_leaf_index(), LeafNodeIndex::new(2));
 
@@ -466,8 +532,8 @@ fn book_example_reboot() {
 }
 
 // Everythiong below is copied from book_code.rs
-
-fn generate_credential(
+#[maybe_async::maybe_async]
+async fn generate_credential(
     identity: Vec<u8>,
     signature_algorithm: SignatureScheme,
     provider: &impl openmls::storage::OpenMlsProvider,
@@ -477,7 +543,7 @@ fn generate_credential(
     // ANCHOR_END: create_basic_credential
     // ANCHOR: create_credential_keys
     let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
-    signature_keys.store(provider.storage()).unwrap();
+    signature_keys.store(provider.storage()).await.unwrap();
     // ANCHOR_END: create_credential_keys
 
     (
@@ -489,7 +555,8 @@ fn generate_credential(
     )
 }
 
-fn generate_key_package(
+#[maybe_async::maybe_async]
+async fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
     extensions: Extensions<KeyPackage>,
@@ -501,6 +568,7 @@ fn generate_key_package(
     KeyPackage::builder()
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
+        .await
         .unwrap()
     // ANCHOR_END: create_key_package
 }

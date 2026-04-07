@@ -7,7 +7,8 @@ use openmls::{
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
 
-fn create_alice_group(
+#[maybe_async::maybe_async]
+async fn create_alice_group(
     ciphersuite: Ciphersuite,
     provider: &impl openmls::storage::OpenMlsProvider,
     use_ratchet_tree_extension: bool,
@@ -18,7 +19,7 @@ fn create_alice_group(
         .build();
 
     let (credential_with_key, signature_keys) =
-        new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+        new_credential(provider, b"Alice", ciphersuite.signature_algorithm()).await;
 
     let group = MlsGroup::new(
         provider,
@@ -26,6 +27,7 @@ fn create_alice_group(
         &group_config,
         credential_with_key.clone(),
     )
+    .await
     .expect("An unexpected error occurred.");
 
     (group, credential_with_key, signature_keys)
@@ -36,7 +38,8 @@ fn test_external_commit() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     // Alice creates a new group ...
-    let (alice_group, _, alice_signer) = create_alice_group(ciphersuite, alice_provider, false);
+    let (alice_group, _, alice_signer) =
+        create_alice_group(ciphersuite, alice_provider, false).await;
 
     // ... and exports a group info (with ratchet_tree).
     let verifiable_group_info = {
@@ -78,12 +81,13 @@ fn test_external_commit() {
     // Now, Bob wants to join Alice' group by an external commit. (Positive case.)
     {
         let (bob_credential, bob_signature_keys) =
-            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
         let (_bob_group, _) = MlsGroup::external_commit_builder()
             .build_group(bob_provider, verifiable_group_info, bob_credential)
             .unwrap()
             .load_psks(bob_provider.storage())
+            .await
             .unwrap()
             .build(
                 bob_provider.rand(),
@@ -93,13 +97,14 @@ fn test_external_commit() {
             )
             .unwrap()
             .finalize(bob_provider)
+            .await
             .unwrap();
     }
 
     // Now, Bob wants to join Alice' group by an external commit. (Negative case, broken signature.)
     {
         let (bob_credential, _bob_signature_keys) =
-            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+            new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
         let got_error = MlsGroup::external_commit_builder()
             .build_group(bob_provider, verifiable_group_info_broken, bob_credential)
@@ -119,18 +124,23 @@ fn test_group_info() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     // Alice creates a new group ...
-    let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, alice_provider, true);
+    let (mut alice_group, _, alice_signer) =
+        create_alice_group(ciphersuite, alice_provider, true).await;
 
     // Self update Alice's to get a group info from a commit
     let group_info = alice_group
         .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .await
         .unwrap()
         .into_group_info();
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     // Bob wants to join
     let (bob_credential, bob_signature_keys) =
-        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
     let verifiable_group_info = {
         let serialized_group_info = group_info.unwrap().tls_serialize_detached().unwrap();
@@ -146,6 +156,7 @@ fn test_group_info() {
         .build_group(bob_provider, verifiable_group_info, bob_credential)
         .unwrap()
         .load_psks(bob_provider.storage())
+        .await
         .unwrap()
         .build(
             bob_provider.rand(),
@@ -155,6 +166,7 @@ fn test_group_info() {
         )
         .unwrap()
         .finalize(bob_provider)
+        .await
         .unwrap();
     let (msg, _, group_info) = bundle.into_contents();
     let msg = MlsMessageIn::from(msg);
@@ -162,12 +174,14 @@ fn test_group_info() {
     // let alice process bob's new client
     let msg = alice_group
         .process_message(alice_provider, msg.try_into_protocol_message().unwrap())
+        .await
         .unwrap()
         .into_content();
     match msg {
         ProcessedMessageContent::StagedCommitMessage(commit) => {
             alice_group
                 .merge_staged_commit(alice_provider, *commit)
+                .await
                 .unwrap();
         }
         _ => panic!("Unexpected message type"),
@@ -176,11 +190,13 @@ fn test_group_info() {
     // bob sends a message to alice
     let message: MlsMessageIn = bob_group
         .create_message(bob_provider, &bob_signature_keys, b"Hello Alice")
+        .await
         .unwrap()
         .into();
 
     let msg = alice_group
         .process_message(alice_provider, message.try_into_protocol_message().unwrap())
+        .await
         .unwrap();
     let decrypted = match msg.into_content() {
         ProcessedMessageContent::ApplicationMessage(msg) => msg.into_bytes(),
@@ -191,7 +207,7 @@ fn test_group_info() {
     // check that the returned group info from the external join is valid
     // Bob wants to join with another client
     let (bob_credential, bob_signature_keys) =
-        new_credential(bob_provider, b"Bob 2", ciphersuite.signature_algorithm());
+        new_credential(bob_provider, b"Bob 2", ciphersuite.signature_algorithm()).await;
     let verifiable_group_info = {
         let serialized_group_info = group_info.unwrap().tls_serialize_detached().unwrap();
 
@@ -201,6 +217,7 @@ fn test_group_info() {
         .build_group(bob_provider, verifiable_group_info, bob_credential)
         .unwrap()
         .load_psks(bob_provider.storage())
+        .await
         .unwrap()
         .build(
             bob_provider.rand(),
@@ -210,6 +227,7 @@ fn test_group_info() {
         )
         .unwrap()
         .finalize(bob_provider)
+        .await
         .unwrap();
 }
 
@@ -217,14 +235,15 @@ fn test_group_info() {
 fn test_not_present_group_info() {
     let provider = &Provider::default();
     // Alice creates a new group ...
-    let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false);
+    let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, provider, false).await;
 
     // Self update Alice's to get a group info from a commit
     let group_info = alice_group
         .self_update(provider, &alice_signer, LeafNodeParameters::default())
+        .await
         .unwrap()
         .into_group_info();
-    alice_group.merge_pending_commit(provider).unwrap();
+    alice_group.merge_pending_commit(provider).await.unwrap();
 
     assert!(group_info.is_none());
 }
