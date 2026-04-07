@@ -1,10 +1,3 @@
-/*
-#[cfg(not(any(feature = "async", feature = "sync")))]
-compile_error! {
-    "At least one of \"sync\" or \"async\" features should be set."
-}
-*/
-
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
 use proc_macro::TokenStream;
@@ -20,22 +13,6 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let fn_name = sig.ident;
     let body = func.block.stmts;
 
-    // sig.asyncness.is_some() && 
-    let is_async = !cfg!(feature = "sync");
-
-    let test_attr = if is_async {
-        quote! { #[tokio::test] }
-    } else {
-        quote! { #[test] }
-    };
-    
-
-    // let async_keyword = if is_async {
-    //     quote! { async }
-    // } else {
-    //     quote! {}
-    // };
-
     let rc = OpenMlsRustCrypto::default();
 
     let rc_ciphersuites = rc.crypto().supported_ciphersuites();
@@ -49,8 +26,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         let test_fun = quote! {
             #(#attrs)*
             #[allow(non_snake_case)]
-            #[maybe_async::maybe_async]
-            #test_attr
+            #[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
             async fn #name() {
                 use openmls_rust_crypto::{OpenMlsRustCrypto, MemoryStorage};
                 use openmls_traits::{types::Ciphersuite, crypto::OpenMlsCrypto, storage::StorageProvider as StorageProviderTrait};
@@ -71,133 +47,131 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         test_funs.push(test_fun);
     }
 
-    // #[cfg(all(feature = "sqlite-provider", not(target_arch = "wasm32",)))]
-    // {
-    //     let rc_ciphersuites = rc.crypto().supported_ciphersuites();
-    //     for ciphersuite in rc_ciphersuites {
-    //         let val = ciphersuite as u16;
-    //         let ciphersuite_name = format!("{ciphersuite:?}");
-    //         let name = format_ident!("{}_sqlite_{}", fn_name, ciphersuite_name);
-    //         let test_fun = quote! {
-    //             #(#attrs)*
-    //             #[allow(non_snake_case)]
-    //             #[maybe_async::maybe_async]
-    //             #test_attr
-    //             #async_keyword fn #name() {
-    //                 use openmls_rust_crypto::RustCrypto;
-    //                 use openmls_sqlite_storage::{SqliteStorageProvider, Codec, Connection};
-    //                 use openmls_traits::OpenMlsProvider;
-    //                 use openmls_traits::{types::Ciphersuite, crypto::OpenMlsCrypto, storage::StorageProvider as StorageProviderTrait};
+    #[cfg(all(feature = "sqlite-provider", not(target_arch = "wasm32",)))]
+    {
+        let rc_ciphersuites = rc.crypto().supported_ciphersuites();
+        for ciphersuite in rc_ciphersuites {
+            let val = ciphersuite as u16;
+            let ciphersuite_name = format!("{ciphersuite:?}");
+            let name = format_ident!("{}_sqlite_{}", fn_name, ciphersuite_name);
+            let test_fun = quote! {
+                #(#attrs)*
+                #[allow(non_snake_case)]
+                #[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+                async fn #name() {
+                    use openmls_rust_crypto::RustCrypto;
+                    use openmls_sqlite_storage::{SqliteStorageProvider, Codec, Connection};
+                    use openmls_traits::OpenMlsProvider;
+                    use openmls_traits::{types::Ciphersuite, crypto::OpenMlsCrypto, storage::StorageProvider as StorageProviderTrait};
 
-    //                 #[derive(Default)]
-    //                 pub struct JsonCodec;
+                    #[derive(Default)]
+                    pub struct JsonCodec;
 
-    //                 impl Codec for JsonCodec {
-    //                     type Error = serde_json::Error;
+                    impl Codec for JsonCodec {
+                        type Error = serde_json::Error;
 
-    //                     fn to_vec<T: serde::Serialize>(value: &T) -> Result<Vec<u8>, Self::Error> {
-    //                         serde_json::to_vec(value)
-    //                     }
+                        fn to_vec<T: serde::Serialize>(value: &T) -> Result<Vec<u8>, Self::Error> {
+                            serde_json::to_vec(value)
+                        }
 
-    //                     fn from_slice<T: serde::de::DeserializeOwned>(slice: &[u8]) -> Result<T, Self::Error> {
-    //                         serde_json::from_slice(slice)
-    //                     }
-    //                 }
+                        fn from_slice<T: serde::de::DeserializeOwned>(slice: &[u8]) -> Result<T, Self::Error> {
+                            serde_json::from_slice(slice)
+                        }
+                    }
 
-    //                 struct OpenMlsSqliteTestProvider {
-    //                     crypto: RustCrypto,
-    //                     storage: SqliteStorageProvider<JsonCodec, Connection>,
-    //                 }
+                    struct OpenMlsSqliteTestProvider {
+                        crypto: RustCrypto,
+                        storage: SqliteStorageProvider<JsonCodec, Connection>,
+                    }
 
-    //                 impl Default for OpenMlsSqliteTestProvider {
-    //                     fn default() -> Self {
-    //                         let connection = Connection::open_in_memory().unwrap();
-    //                         let mut storage = SqliteStorageProvider::new(connection);
-    //                         storage.run_migrations().unwrap();
-    //                         Self {
-    //                             crypto: RustCrypto::default(),
-    //                             storage,
-    //                         }
-    //                     }
-    //                 }
+                    impl Default for OpenMlsSqliteTestProvider {
+                        fn default() -> Self {
+                            let connection = Connection::open_in_memory().unwrap();
+                            let mut storage = SqliteStorageProvider::new(connection);
+                            storage.run_migrations().unwrap();
+                            Self {
+                                crypto: RustCrypto::default(),
+                                storage,
+                            }
+                        }
+                    }
 
-    //                 impl OpenMlsProvider for OpenMlsSqliteTestProvider {
-    //                     type CryptoProvider = RustCrypto;
-    //                     type RandProvider = RustCrypto;
-    //                     type StorageProvider = SqliteStorageProvider<JsonCodec, Connection>;
+                    impl OpenMlsProvider for OpenMlsSqliteTestProvider {
+                        type CryptoProvider = RustCrypto;
+                        type RandProvider = RustCrypto;
+                        type StorageProvider = SqliteStorageProvider<JsonCodec, Connection>;
 
-    //                     fn storage(&self) -> &Self::StorageProvider {
-    //                         &self.storage
-    //                     }
+                        fn storage(&self) -> &Self::StorageProvider {
+                            &self.storage
+                        }
 
-    //                     fn crypto(&self) -> &Self::CryptoProvider {
-    //                         &self.crypto
-    //                     }
+                        fn crypto(&self) -> &Self::CryptoProvider {
+                            &self.crypto
+                        }
 
-    //                     fn rand(&self) -> &Self::RandProvider {
-    //                         &self.crypto
-    //                     }
-    //                 }
+                        fn rand(&self) -> &Self::RandProvider {
+                            &self.crypto
+                        }
+                    }
 
-    //                 type Provider = OpenMlsSqliteTestProvider;
-    //                 type StorageProvider = <Provider as openmls_traits::OpenMlsProvider>::StorageProvider;
-    //                 type StorageError = <StorageProvider as StorageProviderTrait<{openmls_traits::storage::CURRENT_VERSION}>>::Error;
+                    type Provider = OpenMlsSqliteTestProvider;
+                    type StorageProvider = <Provider as openmls_traits::OpenMlsProvider>::StorageProvider;
+                    type StorageError = <StorageProvider as StorageProviderTrait<{openmls_traits::storage::CURRENT_VERSION}>>::Error;
 
-    //                 let _ = pretty_env_logger::try_init();
+                    let _ = pretty_env_logger::try_init();
 
-    //                 let ciphersuite = Ciphersuite::try_from(#val).unwrap();
+                    let ciphersuite = Ciphersuite::try_from(#val).unwrap();
 
-    //                 #(#body)*
-    //             }
-    //         };
+                    #(#body)*
+                }
+            };
 
-    //         test_funs.push(test_fun);
-    //     }
-    // }
+            test_funs.push(test_fun);
+        }
+    }
 
-    // #[cfg(all(
-    //     feature = "libcrux-provider",
-    //     not(all(target_arch = "x86", target_os = "windows"))
-    // ))]
-    // {
-    //     let libcrux = openmls_libcrux_crypto::Provider::default();
-    //     let libcrux_ciphersuites = libcrux.crypto().supported_ciphersuites();
+    #[cfg(all(
+        feature = "libcrux-provider",
+        not(all(target_arch = "x86", target_os = "windows"))
+    ))]
+    {
+        let libcrux = openmls_libcrux_crypto::Provider::default();
+        let libcrux_ciphersuites = libcrux.crypto().supported_ciphersuites();
 
-    //     for ciphersuite in libcrux_ciphersuites {
-    //         let val = ciphersuite as u16;
-    //         let ciphersuite_name = format!("{ciphersuite:?}");
-    //         let name = format_ident!("{}_libcrux_{}", fn_name, ciphersuite_name);
-    //         let test_fun = quote! {
-    //             #(#attrs)*
-    //             #[allow(non_snake_case)]
-    //             #[maybe_async::maybe_async]
-    //             #test_attr
-    //             #async_keyword fn #name() {
-    //                 use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
-    //                 use openmls_traits::{types::Ciphersuite, prelude::*};
+        for ciphersuite in libcrux_ciphersuites {
+            let val = ciphersuite as u16;
+            let ciphersuite_name = format!("{ciphersuite:?}");
+            let name = format_ident!("{}_libcrux_{}", fn_name, ciphersuite_name);
+            let test_fun = quote! {
+                #(#attrs)*
+                #[allow(non_snake_case)]
+                #[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+                async fn #name() {
+                    use openmls_libcrux_crypto::Provider as OpenMlsLibcrux;
+                    use openmls_traits::{types::Ciphersuite, prelude::*};
 
-    //                 type Provider = OpenMlsLibcrux;
-    //                 type StorageProvider = <Provider as openmls_traits::OpenMlsProvider>::StorageProvider;
-    //                 type StorageError = <StorageProvider as openmls_traits::storage::StorageProvider<{openmls_traits::storage::CURRENT_VERSION}>>::Error;
+                    type Provider = OpenMlsLibcrux;
+                    type StorageProvider = <Provider as openmls_traits::OpenMlsProvider>::StorageProvider;
+                    type StorageError = <StorageProvider as openmls_traits::storage::StorageProvider<{openmls_traits::storage::CURRENT_VERSION}>>::Error;
 
-    //                 let _ = pretty_env_logger::try_init();
+                    let _ = pretty_env_logger::try_init();
 
-    //                 let ciphersuite = Ciphersuite::try_from(#val).unwrap();
+                    let ciphersuite = Ciphersuite::try_from(#val).unwrap();
 
-    //                 // When cross-compiling the supported ciphersuites may be wrong.
-    //                 // They are set at compile-time.
-    //                 if OpenMlsLibcrux::default().crypto().supports(ciphersuite).is_err() {
-    //                     eprintln!("Skipping unsupported ciphersuite {ciphersuite:?}.");
-    //                     return;
-    //                 }
+                    // When cross-compiling the supported ciphersuites may be wrong.
+                    // They are set at compile-time.
+                    if OpenMlsLibcrux::default().crypto().supports(ciphersuite).is_err() {
+                        eprintln!("Skipping unsupported ciphersuite {ciphersuite:?}.");
+                        return;
+                    }
 
-    //                 #(#body)*
-    //             }
-    //         };
+                    #(#body)*
+                }
+            };
 
-    //         test_funs.push(test_fun);
-    //     }
-    // }
+            test_funs.push(test_fun);
+        }
+    }
 
     let out = quote! {
         #(#test_funs)*
