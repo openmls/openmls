@@ -25,7 +25,8 @@ pub(crate) async fn key_package(
                 signature_key: signer.to_public_vec().into(),
             },
         )
-        .await.expect("An unexpected error occurred.");
+        .await
+        .expect("An unexpected error occurred.");
 
     (key_package, credential.into(), signer)
 }
@@ -52,7 +53,7 @@ fn key_package_builder_leaf_node_extensions_validation() {
 #[openmls_test::openmls_test]
 fn generate_key_package() {
     let provider = &Provider::default();
-    let (key_package, _credential, _signature_keys) = key_package(ciphersuite, provider);
+    let (key_package, _credential, _signature_keys) = key_package(ciphersuite, provider).await;
 
     let kpi = KeyPackageIn::from(key_package.key_package().clone());
     assert!(kpi
@@ -63,7 +64,7 @@ fn generate_key_package() {
 #[openmls_test::openmls_test]
 fn serialization() {
     let provider = &Provider::default();
-    let (key_package, _, _) = key_package(ciphersuite, provider);
+    let (key_package, _, _) = key_package(ciphersuite, provider).await;
 
     let encoded = key_package
         .key_package()
@@ -99,7 +100,8 @@ async fn application_id_extension() {
                 credential: credential.into(),
             },
         )
-        .await.expect("An unexpected error occurred.");
+        .await
+        .expect("An unexpected error occurred.");
 
     let kpi = KeyPackageIn::from(key_package.key_package().clone());
     assert!(kpi
@@ -124,7 +126,7 @@ async fn application_id_extension() {
 #[openmls_test::openmls_test]
 fn key_package_validation() {
     let provider = &Provider::default();
-    let (key_package_orig, _, _) = key_package(ciphersuite, provider);
+    let (key_package_orig, _, _) = key_package(ciphersuite, provider).await;
 
     // === Protocol version ===
 
@@ -179,7 +181,8 @@ async fn last_resort_key_package() {
                 credential: credential.clone(),
             },
         )
-        .await.expect("An unexpected error occurred.");
+        .await
+        .expect("An unexpected error occurred.");
     assert!(key_package.key_package().last_resort());
 
     // build with empty extensions
@@ -195,7 +198,8 @@ async fn last_resort_key_package() {
                 credential: credential.clone(),
             },
         )
-        .await.expect("An unexpected error occurred.");
+        .await
+        .expect("An unexpected error occurred.");
     assert!(key_package.key_package().last_resort());
 
     // build with extension
@@ -214,6 +218,7 @@ async fn last_resort_key_package() {
                 credential,
             },
         )
-        .await.expect("An unexpected error occurred.");
+        .await
+        .expect("An unexpected error occurred.");
     assert!(key_package.key_package().last_resort());
 }
