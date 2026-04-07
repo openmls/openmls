@@ -124,23 +124,53 @@ pub(crate) mod checks {
 }
 
 #[cfg(test)]
-impl SkipValidationHandle {
-    /// Disables validation for the check controlled by this handle
-    pub fn disable_validation(self) {
-        self.flag.store(true, core::sync::atomic::Ordering::Relaxed);
+mod skip_validation_test_helpers {
+    use super::*;
+
+    #[maybe_async::maybe_async(AFIT)]
+    pub trait Callback<R> {
+        async fn call(self) -> R;
     }
 
-    /// Enables validation for the check controlled by this handle
-    pub fn enable_validation(self) {
-        self.flag
-            .store(false, core::sync::atomic::Ordering::Relaxed);
+    #[cfg(not(feature = "sync"))]
+    impl<R, F> Callback<R> for F
+    where
+        F: AsyncFnOnce() -> R,
+    {
+        async fn call(self) -> R {
+            self().await
+        }
     }
 
-    /// Runs function `f` with validation disabled
-    pub fn with_disabled<R, F: FnMut() -> R>(self, mut f: F) -> R {
-        self.disable_validation();
-        let r = f();
-        self.enable_validation();
-        r
+    #[cfg(feature = "sync")]
+    impl<R, F> Callback<R> for F
+    where
+        F: FnOnce() -> R,
+    {
+        fn call(self) -> R {
+            self()
+        }
+    }
+
+    #[maybe_async::maybe_async]
+    impl SkipValidationHandle {
+        /// Disables validation for the check controlled by this handle
+        pub fn disable_validation(self) {
+            self.flag.store(true, core::sync::atomic::Ordering::Relaxed);
+        }
+
+        /// Enables validation for the check controlled by this handle
+        pub fn enable_validation(self) {
+            self.flag
+                .store(false, core::sync::atomic::Ordering::Relaxed);
+        }
+
+        /// Runs function `f` with validation disabled
+        pub async fn with_disabled<R, F: Callback<R>>(self, f: F) -> R {
+            self.disable_validation();
+            let r = f.call().await;
+            self.enable_validation();
+            r
+        }
     }
 }
