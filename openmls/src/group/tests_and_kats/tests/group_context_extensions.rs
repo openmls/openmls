@@ -34,9 +34,9 @@ struct PartyState<Provider> {
     name: &'static str,
 }
 
-#[maybe_async::maybe_async]
 impl<Provider: crate::storage::OpenMlsProvider + Default> PartyState<Provider> {
     /// Generate the PartyState for a new identity.
+    #[maybe_async::maybe_async]
     async fn generate(name: &'static str, ciphersuite: Ciphersuite) -> Self {
         let provider = Provider::default();
         let (credential_with_key, key_package_bundle, signer, sig_pk) =
@@ -53,6 +53,7 @@ impl<Provider: crate::storage::OpenMlsProvider + Default> PartyState<Provider> {
     }
 
     /// Generate a new [`KeyPackage`] for the party.
+    #[maybe_async::maybe_async]
     async fn key_package<F: FnOnce(KeyPackageBuilder) -> KeyPackageBuilder>(
         &self,
         ciphersuite: Ciphersuite,
@@ -82,7 +83,7 @@ struct TestState<Provider> {
 async fn setup<Provider: crate::storage::OpenMlsProvider + Default>(
     ciphersuite: Ciphersuite,
 ) -> TestState<Provider> {
-    let alice_party = PartyState::generate("alice", ciphersuite).await.await;
+    let alice_party = PartyState::generate("alice", ciphersuite).await;
     let bob_party = PartyState::generate("bob", ciphersuite).await;
 
     // === Alice creates a group ===
@@ -114,20 +115,24 @@ async fn setup<Provider: crate::storage::OpenMlsProvider + Default>(
     };
 
     // === Alice adds Bob ===
-    let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
-        builder.leaf_node_capabilities(
-            Capabilities::builder()
-                .extensions(vec![
-                    ExtensionType::Unknown(0xf001),
-                    ExtensionType::Unknown(0xf002),
-                    ExtensionType::Unknown(0xf003),
-                ])
-                .build(),
-        )
-    });
+    let bob_key_package = bob_party
+        .key_package(ciphersuite, |builder| {
+            builder.leaf_node_capabilities(
+                Capabilities::builder()
+                    .extensions(vec![
+                        ExtensionType::Unknown(0xf001),
+                        ExtensionType::Unknown(0xf002),
+                        ExtensionType::Unknown(0xf003),
+                    ])
+                    .build(),
+            )
+        })
+        .await;
 
-    alice.propose_add_member(bob_key_package.key_package());
-    let (_, Some(welcome), _) = alice.commit_and_merge_pending() else {
+    alice
+        .propose_add_member(bob_key_package.key_package())
+        .await;
+    let (_, Some(welcome), _) = alice.commit_and_merge_pending().await else {
         panic!("expected receiving a welcome")
     };
 
@@ -145,6 +150,7 @@ async fn setup<Provider: crate::storage::OpenMlsProvider + Default>(
     .await
     .expect("Error creating staged join from Welcome")
     .into_group(&bob_party.provider)
+    .await
     .expect("Error creating group from staged join");
 
     TestState {
@@ -159,6 +165,7 @@ async fn setup<Provider: crate::storage::OpenMlsProvider + Default>(
 #[maybe_async::maybe_async]
 impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     /// Thin wrapper around [`MlsGroup::propose_group_context_extensions`].
+    #[maybe_async::maybe_async]
     async fn propose_group_context_extensions(
         &mut self,
         extensions: Extensions<GroupContext>,
@@ -170,6 +177,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     }
 
     /// Thin wrapper around [`MlsGroup::update_group_context_extensions`].
+    #[maybe_async::maybe_async]
     async fn update_group_context_extensions(
         &mut self,
         extensions: Extensions<GroupContext>,
@@ -181,6 +189,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     }
 
     /// Thin wrapper around [`MlsGroup::propose_add_member`].
+    #[maybe_async::maybe_async]
     async fn propose_add_member(
         &mut self,
         key_package: &KeyPackage,
@@ -192,6 +201,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     }
 
     /// Wrapper around [`MlsGroup::process_message`], asserting it's a commit and [`MlsGroup::merge_staged_commit`].
+    #[maybe_async::maybe_async]
     async fn process_and_merge_commit(&mut self, msg: MlsMessageIn) {
         let msg = msg.into_protocol_message().unwrap();
 
@@ -220,6 +230,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     }
 
     /// Wrapper around [`MlsGroup::process_message`], asserting it's a proposal and [`MlsGroup::store_pending_proposal`].
+    #[maybe_async::maybe_async]
     async fn process_and_store_proposal(&mut self, msg: MlsMessageIn) -> ProposalRef {
         let msg = msg.into_protocol_message().unwrap();
 
@@ -252,6 +263,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     }
 
     /// This wrapper that expects [`MlsGroup::process_message`] to return an error.
+    #[maybe_async::maybe_async]
     async fn fail_processing(
         &mut self,
         msg: MlsMessageIn,
@@ -269,6 +281,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     }
 
     /// This wrapper around [`MlsGroup::commit_to_pending_proposals`]
+    #[maybe_async::maybe_async]
     async fn commit_to_pending_proposals(
         &mut self,
     ) -> (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>) {
@@ -284,6 +297,7 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     }
 
     /// This wrapper around [`MlsGroup::merge_pending_commit`]
+    #[maybe_async::maybe_async]
     async fn merge_pending_commit(&mut self) {
         self.group
             .merge_pending_commit(&self.party.provider)
@@ -292,11 +306,12 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
     }
 
     /// Wrapper around [`MlsGroup::commit_to_pending_proposals`] and [`MlsGroup::merge_pending_commit`].
+    #[maybe_async::maybe_async]
     async fn commit_and_merge_pending(
         &mut self,
     ) -> (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>) {
         let commit_out = self.commit_to_pending_proposals().await;
-        self.merge_pending_commit();
+        self.merge_pending_commit().await;
         commit_out
     }
 }
@@ -306,44 +321,48 @@ impl<Provider: crate::storage::OpenMlsProvider> MemberState<Provider> {
 /// 2. alice sets gce, commits
 #[openmls_test]
 fn happy_case() {
-    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
+    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite).await;
 
     // make extension with type 0xf001 a required capability
-    let (commit, _, _) = alice.update_group_context_extensions(
-        Extensions::single(Extension::RequiredCapabilities(
-            RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
-        ))
-        .expect("failed to create single-element extensions list"),
-    );
+    let (commit, _, _) = alice
+        .update_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf001)], &[], &[]),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
+        .await;
 
-    alice.merge_pending_commit();
-    bob.process_and_merge_commit(commit.into());
+    alice.merge_pending_commit().await;
+    bob.process_and_merge_commit(commit.into()).await;
 
     // make extensions with type 0xf001 0xf002 a required capability, too;
     // this time with a separate proposal
-    let (proposal, _) = bob.propose_group_context_extensions(
-        Extensions::single(Extension::RequiredCapabilities(
-            RequiredCapabilitiesExtension::new(
-                &[
-                    ExtensionType::Unknown(0xf001),
-                    ExtensionType::Unknown(0xf002),
-                ],
-                &[],
-                &[],
-            ),
-        ))
-        .expect("failed to create single-element extensions list"),
-    );
+    let (proposal, _) = bob
+        .propose_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::new(
+                    &[
+                        ExtensionType::Unknown(0xf001),
+                        ExtensionType::Unknown(0xf002),
+                    ],
+                    &[],
+                    &[],
+                ),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
+        .await;
 
-    alice.process_and_store_proposal(proposal.into());
+    alice.process_and_store_proposal(proposal.into()).await;
 
-    let (commit, _, _) = alice.commit_and_merge_pending();
-    bob.process_and_merge_commit(commit.into());
+    let (commit, _, _) = alice.commit_and_merge_pending().await;
+    bob.process_and_merge_commit(commit.into()).await;
 }
 
 #[openmls_test]
 async fn self_update_happy_case() {
-    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
+    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite).await;
 
     let (update_prop, _) = bob
         .group
@@ -354,9 +373,9 @@ async fn self_update_happy_case() {
         )
         .await
         .unwrap();
-    alice.process_and_store_proposal(update_prop.into());
-    let (commit, _, _) = alice.commit_and_merge_pending();
-    bob.process_and_merge_commit(commit.into())
+    alice.process_and_store_proposal(update_prop.into()).await;
+    let (commit, _, _) = alice.commit_and_merge_pending().await;
+    bob.process_and_merge_commit(commit.into()).await
 }
 
 /// This test does the same as self_update_happy_case, but does not use MemberState, so we can
@@ -382,7 +401,7 @@ async fn self_update_happy_case_simple() {
         .expect("error creating group using builder");
 
     // === Alice adds Bob ===
-    let bob_key_package = bob_party.key_package(ciphersuite, |builder| builder);
+    let bob_key_package = bob_party.key_package(ciphersuite, |builder| builder).await;
 
     alice_group
         .propose_add_member(
@@ -390,10 +409,12 @@ async fn self_update_happy_case_simple() {
             &alice_party.signer,
             bob_key_package.key_package(),
         )
+        .await
         .unwrap();
 
     let (_, Some(welcome), _) = alice_group
         .commit_to_pending_proposals(&alice_party.provider, &alice_party.signer)
+        .await
         .unwrap()
     else {
         panic!("expected receiving a welcome")
@@ -401,6 +422,7 @@ async fn self_update_happy_case_simple() {
 
     alice_group
         .merge_pending_commit(&alice_party.provider)
+        .await
         .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
@@ -417,6 +439,7 @@ async fn self_update_happy_case_simple() {
     .await
     .expect("Error creating staged join from Welcome")
     .into_group(&bob_party.provider)
+    .await
     .expect("Error creating group from staged join");
 
     let (update_proposal_msg, _) = bob_group
@@ -425,6 +448,7 @@ async fn self_update_happy_case_simple() {
             &bob_party.signer,
             LeafNodeParameters::builder().build(),
         )
+        .await
         .unwrap();
 
     let ProcessedMessageContent::ProposalMessage(update_proposal) = alice_group
@@ -432,6 +456,7 @@ async fn self_update_happy_case_simple() {
             &alice_party.provider,
             update_proposal_msg.clone().into_protocol_message().unwrap(),
         )
+        .await
         .unwrap()
         .into_content()
     else {
@@ -439,10 +464,12 @@ async fn self_update_happy_case_simple() {
     };
     alice_group
         .store_pending_proposal(alice_party.provider.storage(), *update_proposal)
+        .await
         .unwrap();
 
     let (commit_msg, _, _) = alice_group
         .commit_to_pending_proposals(&alice_party.provider, &alice_party.signer)
+        .await
         .unwrap();
 
     bob_group
@@ -450,9 +477,13 @@ async fn self_update_happy_case_simple() {
             &bob_party.provider,
             commit_msg.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
-    bob_group.merge_pending_commit(&bob_party.provider).unwrap()
+    bob_group
+        .merge_pending_commit(&bob_party.provider)
+        .await
+        .unwrap()
 }
 
 /// This tests makes sure that validation check 103 is performed:
@@ -466,17 +497,20 @@ async fn self_update_happy_case_simple() {
 /// https://validation.openmls.tech/#valn0103
 #[openmls_test]
 fn fail_insufficient_extensiontype_capabilities_add_valn0103() {
-    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
+    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite).await;
 
-    let (gce_req_cap_commit, _, _) = alice.update_group_context_extensions(
-        Extensions::single(Extension::RequiredCapabilities(
-            RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf002)], &[], &[]),
-        ))
-        .expect("failed to create single-element extensions list"),
-    );
+    let (gce_req_cap_commit, _, _) = alice
+        .update_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf002)], &[], &[]),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
+        .await;
 
-    alice.merge_pending_commit();
-    bob.process_and_merge_commit(gce_req_cap_commit.clone().into());
+    alice.merge_pending_commit().await;
+    bob.process_and_merge_commit(gce_req_cap_commit.clone().into())
+        .await;
 
     // extract values we need later
     let frankenstein::FrankenMlsMessage {
@@ -499,13 +533,15 @@ fn fail_insufficient_extensiontype_capabilities_add_valn0103() {
     };
 
     let charlie = PartyState::<Provider>::generate("charlie", ciphersuite).await;
-    let charlie_kpb = charlie.key_package(ciphersuite, |builder| {
-        builder.leaf_node_capabilities(
-            Capabilities::builder()
-                .extensions(vec![ExtensionType::Unknown(0xf001)])
-                .build(),
-        )
-    });
+    let charlie_kpb = charlie
+        .key_package(ciphersuite, |builder| {
+            builder.leaf_node_capabilities(
+                Capabilities::builder()
+                    .extensions(vec![ExtensionType::Unknown(0xf001)])
+                    .build(),
+            )
+        })
+        .await;
 
     let commit_content = frankenstein::FrankenFramedContent {
         body: frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
@@ -557,7 +593,7 @@ fn fail_insufficient_extensiontype_capabilities_add_valn0103() {
     // Note: If this starts failing, the order in which validation is checked may have changed and we
     // fail on the fact that the confirmation tag is wrong. in that case, either the check has to be
     // disabled, or the frankenstein framework needs code to properly compute it.
-    let err = bob.fail_processing(fake_commit);
+    let err = bob.fail_processing(fake_commit).await;
     assert!(
         matches!(
             err,
@@ -586,18 +622,21 @@ fn fail_insufficient_extensiontype_capabilities_add_valn0103() {
 // https://validation.openmls.tech/#valn0103
 #[openmls_test]
 async fn fail_insufficient_extensiontype_capabilities_update_valn0103() {
-    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
+    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite).await;
 
     // requires that all members need support for extension type 0xf002
-    let (gce_req_cap_commit, _, _) = alice.update_group_context_extensions(
-        Extensions::single(Extension::RequiredCapabilities(
-            RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf002)], &[], &[]),
-        ))
-        .expect("failed to create single-element extensions list"),
-    );
+    let (gce_req_cap_commit, _, _) = alice
+        .update_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::new(&[ExtensionType::Unknown(0xf002)], &[], &[]),
+            ))
+            .expect("failed to create single-element extensions list"),
+        )
+        .await;
 
-    alice.merge_pending_commit();
-    bob.process_and_merge_commit(gce_req_cap_commit.clone().into());
+    alice.merge_pending_commit().await;
+    bob.process_and_merge_commit(gce_req_cap_commit.clone().into())
+        .await;
 
     // let bob propose an update to their leaf node.
     // we immediately discard it, because we want to tamper with it.
@@ -689,11 +728,13 @@ async fn fail_insufficient_extensiontype_capabilities_update_valn0103() {
     .unwrap();
 
     // alice stores the proposal.
-    alice.process_and_store_proposal(fake_proposal.clone());
+    alice
+        .process_and_store_proposal(fake_proposal.clone())
+        .await;
 
     // Now we'll craft a commit to the proposal signed by alice.
     // For that we need a few values, let's fetch and build them.
-    let proposal_ref = bob.process_and_store_proposal(fake_proposal);
+    let proposal_ref = bob.process_and_store_proposal(fake_proposal).await;
     let alice_sender = frankenstein::FrankenSender::Member(0);
 
     // This is a commit, claimed to be from alice, that commits to the proposal ref of the invalid proposal
@@ -735,7 +776,7 @@ async fn fail_insufficient_extensiontype_capabilities_update_valn0103() {
 
     // when bob processes the commit, it should fail because the leaf node's capabilties do not
     // satisfy those required by the group.
-    let err = bob.fail_processing(fake_commit);
+    let err = bob.fail_processing(fake_commit).await;
 
     // Note: If this starts failing, the order in which validation is checked may have changed and we
     // fail on the fact that the confirmation tag is wrong. in that case, either the check has to be
@@ -759,13 +800,13 @@ async fn fail_insufficient_extensiontype_capabilities_update_valn0103() {
 // https://validation.openmls.tech/#valn0201
 #[openmls_test]
 async fn fail_key_package_version_valn0201() {
-    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
+    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite).await;
 
     let charlie = PartyState::<Provider>::generate("charlie", ciphersuite).await;
-    let charlie_key_package_bundle = charlie.key_package(ciphersuite, |b| b);
+    let charlie_key_package_bundle = charlie.key_package(ciphersuite, |b| b).await;
     let charlie_key_package = charlie_key_package_bundle.key_package();
 
-    let (original_proposal, _) = alice.propose_add_member(charlie_key_package);
+    let (original_proposal, _) = alice.propose_add_member(charlie_key_package).await;
 
     alice
         .group
@@ -849,7 +890,14 @@ async fn fail_key_package_version_valn0201() {
 
     let err = {
         let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
-        validation_skip_handle.with_disabled(|| bob.fail_processing(fake_commit_message.clone()))
+        validation_skip_handle
+            .with_disabled(
+                #[cfg(feature = "sync")]
+                || bob.fail_processing(fake_commit_message.clone()),
+                #[cfg(not(feature = "sync"))]
+                async || bob.fail_processing(fake_commit_message.clone()).await,
+            )
+            .await
     };
 
     assert!(matches!(
@@ -864,7 +912,7 @@ async fn fail_key_package_version_valn0201() {
 // https://validation.openmls.tech/#valn0308
 #[openmls_test]
 fn fail_2_gce_proposals_1_commit_valn0308() {
-    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite);
+    let TestState { mut alice, mut bob } = setup::<Provider>(ciphersuite).await;
 
     // No required capabilities, so no specifically required extensions.
     assert!(alice
@@ -879,12 +927,14 @@ fn fail_2_gce_proposals_1_commit_valn0308() {
     ))
     .expect("failed to create single-element extensions list");
 
-    let (proposal, _) = alice.propose_group_context_extensions(new_extensions.clone());
-    bob.process_and_store_proposal(proposal.into());
+    let (proposal, _) = alice
+        .propose_group_context_extensions(new_extensions.clone())
+        .await;
+    bob.process_and_store_proposal(proposal.into()).await;
 
     assert_eq!(alice.group.pending_proposals().count(), 1);
 
-    let (commit, _, _) = alice.commit_to_pending_proposals();
+    let (commit, _, _) = alice.commit_to_pending_proposals().await;
 
     // we'll change the commit we feed to bob to include two GCE proposals
     let mut franken_commit = FrankenMlsMessage::tls_deserialize(
@@ -950,7 +1000,14 @@ fn fail_2_gce_proposals_1_commit_valn0308() {
 
     let err = {
         let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
-        validation_skip_handle.with_disabled(|| bob.fail_processing(fake_commit.clone()))
+        validation_skip_handle
+            .with_disabled(
+                #[cfg(feature = "sync")]
+                || bob.fail_processing(fake_commit.clone()),
+                #[cfg(not(feature = "sync"))]
+                async || bob.fail_processing(fake_commit.clone()).await,
+            )
+            .await
     };
 
     assert!(matches!(
@@ -978,7 +1035,7 @@ fn fail_2_gce_proposals_1_commit_valn0308() {
 // https://validation.openmls.tech/#valn1001
 #[openmls_test]
 async fn fail_unsupported_gces_add_valn1001() {
-    let TestState { mut alice, mut bob }: TestState<Provider> = setup(ciphersuite);
+    let TestState { mut alice, mut bob }: TestState<Provider> = setup(ciphersuite).await;
 
     // No required capabilities, so no specifically required extensions.
     assert!(alice
@@ -993,7 +1050,9 @@ async fn fail_unsupported_gces_add_valn1001() {
     ))
     .expect("failed to create single-element extensions list");
 
-    let (original_proposal, _) = bob.propose_group_context_extensions(new_extensions.clone());
+    let (original_proposal, _) = bob
+        .propose_group_context_extensions(new_extensions.clone())
+        .await;
 
     assert_eq!(bob.group.pending_proposals().count(), 1);
     bob.group
@@ -1083,7 +1142,14 @@ async fn fail_unsupported_gces_add_valn1001() {
 
     let err = {
         let validation_skip_handle = crate::skip_validation::checks::confirmation_tag::handle();
-        validation_skip_handle.with_disabled(|| alice.fail_processing(fake_commit.clone()))
+        validation_skip_handle
+            .with_disabled(
+                #[cfg(feature = "sync")]
+                || alice.fail_processing(fake_commit.clone()),
+                #[cfg(not(feature = "sync"))]
+                async || alice.fail_processing(fake_commit.clone()).await,
+            )
+            .await
     };
 
     assert!(
@@ -1102,7 +1168,7 @@ async fn fail_unsupported_gces_add_valn1001() {
 // Test that the builder pattern accurately configures the new group.
 #[openmls_test]
 async fn proposal() {
-    let TestState { mut alice, mut bob }: TestState<Provider> = setup(ciphersuite);
+    let TestState { mut alice, mut bob }: TestState<Provider> = setup(ciphersuite).await;
 
     // No required capabilities, so no specifically required extensions.
     assert!(alice
@@ -1117,13 +1183,15 @@ async fn proposal() {
     ))
     .expect("failed to create single-element extensions list");
 
-    let (proposal, _) = alice.propose_group_context_extensions(new_extensions.clone());
-    bob.process_and_store_proposal(proposal.into());
+    let (proposal, _) = alice
+        .propose_group_context_extensions(new_extensions.clone())
+        .await;
+    bob.process_and_store_proposal(proposal.into()).await;
 
     assert_eq!(alice.group.pending_proposals().count(), 1);
 
-    let (commit, _, _) = alice.commit_and_merge_pending();
-    bob.process_and_merge_commit(commit.into());
+    let (commit, _, _) = alice.commit_and_merge_pending().await;
+    bob.process_and_merge_commit(commit.into()).await;
     assert_eq!(alice.group.pending_proposals().count(), 0);
 
     let required_capabilities = alice
@@ -1248,20 +1316,24 @@ async fn fail_insufficient_extensiontype_capabilities_update_proposal_valn0502()
     };
 
     // Bob joins the group with support for extension 0xf003
-    let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
-        builder.leaf_node_capabilities(
-            Capabilities::builder()
-                .extensions(vec![
-                    ExtensionType::Unknown(0xf001),
-                    ExtensionType::Unknown(0xf002),
-                    ExtensionType::Unknown(0xf003),
-                ])
-                .build(),
-        )
-    });
+    let bob_key_package = bob_party
+        .key_package(ciphersuite, |builder| {
+            builder.leaf_node_capabilities(
+                Capabilities::builder()
+                    .extensions(vec![
+                        ExtensionType::Unknown(0xf001),
+                        ExtensionType::Unknown(0xf002),
+                        ExtensionType::Unknown(0xf003),
+                    ])
+                    .build(),
+            )
+        })
+        .await;
 
-    alice.propose_add_member(bob_key_package.key_package());
-    let (_, Some(welcome), _) = alice.commit_and_merge_pending() else {
+    alice
+        .propose_add_member(bob_key_package.key_package())
+        .await;
+    let (_, Some(welcome), _) = alice.commit_and_merge_pending().await else {
         panic!("expected receiving a welcome")
     };
 
@@ -1279,6 +1351,7 @@ async fn fail_insufficient_extensiontype_capabilities_update_proposal_valn0502()
     .await
     .expect("Error creating staged join from Welcome")
     .into_group(&bob_party.provider)
+    .await
     .expect("Error creating group from staged join");
 
     let mut bob = MemberState {
@@ -1375,10 +1448,12 @@ async fn fail_insufficient_extensiontype_capabilities_update_proposal_valn0502()
     .unwrap();
 
     // Alice stores the tampered proposal
-    alice.process_and_store_proposal(fake_proposal.clone());
+    alice
+        .process_and_store_proposal(fake_proposal.clone())
+        .await;
 
     // Bob also stores it to get the proposal ref
-    let proposal_ref = bob.process_and_store_proposal(fake_proposal);
+    let proposal_ref = bob.process_and_store_proposal(fake_proposal).await;
 
     // Craft a commit by Alice that commits to the tampered proposal
     let alice_sender = frankenstein::FrankenSender::Member(0);
@@ -1419,7 +1494,7 @@ async fn fail_insufficient_extensiontype_capabilities_update_proposal_valn0502()
     .unwrap();
 
     // Bob processes the commit and should get an UnsupportedExtensions error
-    let err = bob.fail_processing(fake_commit);
+    let err = bob.fail_processing(fake_commit).await;
 
     assert!(
         matches!(
@@ -1490,20 +1565,24 @@ async fn fail_insufficient_extensiontype_capabilities_commit_path_valn0502() {
     };
 
     // Bob joins the group with support for extension 0xf003
-    let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
-        builder.leaf_node_capabilities(
-            Capabilities::builder()
-                .extensions(vec![
-                    ExtensionType::Unknown(0xf001),
-                    ExtensionType::Unknown(0xf002),
-                    ExtensionType::Unknown(0xf003),
-                ])
-                .build(),
-        )
-    });
+    let bob_key_package = bob_party
+        .key_package(ciphersuite, |builder| {
+            builder.leaf_node_capabilities(
+                Capabilities::builder()
+                    .extensions(vec![
+                        ExtensionType::Unknown(0xf001),
+                        ExtensionType::Unknown(0xf002),
+                        ExtensionType::Unknown(0xf003),
+                    ])
+                    .build(),
+            )
+        })
+        .await;
 
-    alice.propose_add_member(bob_key_package.key_package());
-    let (_, Some(welcome), _) = alice.commit_and_merge_pending() else {
+    alice
+        .propose_add_member(bob_key_package.key_package())
+        .await;
+    let (_, Some(welcome), _) = alice.commit_and_merge_pending().await else {
         panic!("expected receiving a welcome")
     };
 
@@ -1521,6 +1600,7 @@ async fn fail_insufficient_extensiontype_capabilities_commit_path_valn0502() {
     .await
     .expect("Error creating staged join from Welcome")
     .into_group(&bob_party.provider)
+    .await
     .expect("Error creating group from staged join");
 
     let mut bob = MemberState {
@@ -1544,6 +1624,7 @@ async fn fail_insufficient_extensiontype_capabilities_commit_path_valn0502() {
         )
         .unwrap()
         .stage_commit(&bob.party.provider)
+        .await
         .unwrap();
 
     let commit_msg = commit_bundle.commit().clone();
@@ -1622,7 +1703,7 @@ async fn fail_insufficient_extensiontype_capabilities_commit_path_valn0502() {
     .unwrap();
 
     // Alice processes the commit and should get an UnsupportedExtensions error
-    let err = alice.fail_processing(fake_commit);
+    let err = alice.fail_processing(fake_commit).await;
 
     assert!(
         matches!(
@@ -1691,20 +1772,24 @@ async fn fail_create_update_proposal_insufficient_capabilities() {
     };
 
     // Bob joins the group with support for extension 0xf003
-    let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
-        builder.leaf_node_capabilities(
-            Capabilities::builder()
-                .extensions(vec![
-                    ExtensionType::Unknown(0xf001),
-                    ExtensionType::Unknown(0xf002),
-                    ExtensionType::Unknown(0xf003),
-                ])
-                .build(),
-        )
-    });
+    let bob_key_package = bob_party
+        .key_package(ciphersuite, |builder| {
+            builder.leaf_node_capabilities(
+                Capabilities::builder()
+                    .extensions(vec![
+                        ExtensionType::Unknown(0xf001),
+                        ExtensionType::Unknown(0xf002),
+                        ExtensionType::Unknown(0xf003),
+                    ])
+                    .build(),
+            )
+        })
+        .await;
 
-    alice.propose_add_member(bob_key_package.key_package());
-    let (_, Some(welcome), _) = alice.commit_and_merge_pending() else {
+    alice
+        .propose_add_member(bob_key_package.key_package())
+        .await;
+    let (_, Some(welcome), _) = alice.commit_and_merge_pending().await else {
         panic!("expected receiving a welcome")
     };
 
@@ -1722,6 +1807,7 @@ async fn fail_create_update_proposal_insufficient_capabilities() {
     .await
     .expect("Error creating staged join from Welcome")
     .into_group(&bob_party.provider)
+    .await
     .expect("Error creating group from staged join");
 
     let mut bob = MemberState {
@@ -1751,8 +1837,8 @@ async fn fail_create_update_proposal_insufficient_capabilities() {
             &bob.party.provider,
             &bob.party.signer,
             bad_params,
-        )
-        .await.expect_err(
+        ).await
+        .expect_err(
             "proposal creation should fail with validation error due to unsupported group context extensions (valn0602)"
         );
 }
@@ -1791,10 +1877,12 @@ async fn join_rejects_unsupported_group_context_extension() {
         group: alice_group,
     };
 
-    let bob_key_package = bob_party.key_package(ciphersuite, |builder| builder);
-    alice.propose_add_member(bob_key_package.key_package());
+    let bob_key_package = bob_party.key_package(ciphersuite, |builder| builder).await;
+    alice
+        .propose_add_member(bob_key_package.key_package())
+        .await;
 
-    let (_, Some(welcome), _) = alice.commit_and_merge_pending() else {
+    let (_, Some(welcome), _) = alice.commit_and_merge_pending().await else {
         panic!("expected receiving a welcome")
     };
 

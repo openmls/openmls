@@ -48,7 +48,7 @@ fn padding() {
     };
 
     // Initialize the test setup according to config.
-    let test_setup = setup(test_setup_config, provider);
+    let test_setup = setup(test_setup_config, provider).await;
 
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -68,14 +68,16 @@ fn padding() {
             new_config.padding_size = padding_size;
             group_state
                 .set_configuration(provider.storage(), &new_config)
-                .await.unwrap();
+                .await
+                .unwrap();
             for _ in 0..10 {
                 let message = randombytes(random_usize() % 1000);
                 let aad = randombytes(random_usize() % 1000);
                 group_state.set_aad(aad);
                 let application_message = group_state
                     .create_message(provider, &credential.signer, &message)
-                    .await.unwrap();
+                    .await
+                    .unwrap();
                 let private_message = match application_message.body() {
                     MlsMessageBodyOut::PrivateMessage(pm) => pm,
                     _ => panic!("Unexpected match."),
@@ -122,7 +124,8 @@ async fn bad_padding() {
             b"Alice".to_vec(),
             ciphersuite.signature_algorithm(),
             provider,
-        );
+        )
+        .await;
 
         let sender = Sender::build_member(LeafNodeIndex::new(654));
 

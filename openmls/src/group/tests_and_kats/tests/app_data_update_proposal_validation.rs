@@ -4,7 +4,8 @@ use crate::prelude::*;
 use crate::test_utils::{frankenstein::*, single_group_test_framework::*};
 use openmls_test::openmls_test;
 
-fn setup<'a, Provider: OpenMlsProvider>(
+#[maybe_async::maybe_async]
+async fn setup<'a, Provider: OpenMlsProvider>(
     alice_party: &'a CorePartyState<Provider>,
     bob_party: &'a CorePartyState<Provider>,
     ciphersuite: Ciphersuite,
@@ -32,11 +33,12 @@ fn setup<'a, Provider: OpenMlsProvider>(
     };
 
     // Set up the PreGroups with the required Capabilities
-    let alice_pre_group = alice_party.pre_group_builder(ciphersuite).build();
+    let alice_pre_group = alice_party.pre_group_builder(ciphersuite).build().await;
     let bob_pre_group = bob_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(capabilities.clone())
-        .build();
+        .build()
+        .await;
 
     // Define the MlsGroup configuration
     let create_config = MlsGroupCreateConfig::builder()
@@ -55,6 +57,7 @@ fn setup<'a, Provider: OpenMlsProvider>(
         alice_pre_group,
         create_config,
     )
+    .await
     .unwrap();
 
     group_state
@@ -64,6 +67,7 @@ fn setup<'a, Provider: OpenMlsProvider>(
             join_config,
             tree: None,
         })
+        .await
         .expect("Could not add member");
 
     group_state
@@ -78,7 +82,7 @@ fn test_group_context_update_wrong_order() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice] = group_state.members_mut(&["alice"]);
 
@@ -91,6 +95,7 @@ fn test_group_context_update_wrong_order() {
             16,
             AppDataUpdateOperation::Update(b"ignored".into()),
         )
+        .await
         .unwrap();
 
     let required_capabilities_extension =
@@ -107,11 +112,13 @@ fn test_group_context_update_wrong_order() {
             Extensions::from_vec(vec![required_capabilities_extension]).unwrap(),
             &alice.party.signer,
         )
+        .await
         .unwrap();
 
     let err = alice
         .group
         .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+        .await
         .unwrap_err();
 
     assert_eq!(
@@ -131,7 +138,7 @@ fn test_group_context_update_dictionary() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice] = group_state.members_mut(&["alice"]);
 
@@ -152,6 +159,7 @@ fn test_group_context_update_dictionary() {
                 .unwrap(),
             &alice.party.signer,
         )
+        .await
         .unwrap();
 
     // Alice sends a commit containing an AppDataUpdate proposal
@@ -163,11 +171,13 @@ fn test_group_context_update_dictionary() {
             16,
             AppDataUpdateOperation::Update(b"ignored".into()),
         )
+        .await
         .unwrap();
 
     let err = alice
         .group
         .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+        .await
         .unwrap_err();
 
     assert_eq!(
@@ -189,7 +199,7 @@ fn test_group_context_update_dictionary_after_deactivating() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice] = group_state.members_mut(&["alice"]);
 
@@ -206,11 +216,13 @@ fn test_group_context_update_dictionary_after_deactivating() {
                 .unwrap(),
             &alice.party.signer,
         )
+        .await
         .unwrap();
 
     let err = alice
         .group
         .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+        .await
         .unwrap_err();
 
     assert_eq!(
@@ -227,7 +239,7 @@ fn test_group_context_update_dictionary_after_deactivating() {
 /// Test the invalid case where there are multiple Remove AppDataUpdate proposals
 /// for a single ComponentId.
 ///
-/// NOTE: A valid commit is produced by `MlsGroup::commit_to_pending_proposals()`,
+/// NOTE: A valid commit is produced by `MlsGroup::commit_to_pending_proposals().await`,
 /// since the duplicate Remove AppDataUpdate proposals are filtered out automatically.
 #[openmls_test]
 fn test_app_data_update_multi_remove_validate_outgoing() {
@@ -235,7 +247,7 @@ fn test_app_data_update_multi_remove_validate_outgoing() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice] = group_state.members_mut(&["alice"]);
 
@@ -248,6 +260,7 @@ fn test_app_data_update_multi_remove_validate_outgoing() {
             Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::remove(16))),
         ])
         .load_psks(alice_party.provider.storage())
+        .await
         .unwrap();
 
     let mut app_data_updater = stage.app_data_dictionary_updater();
@@ -275,6 +288,7 @@ fn test_app_data_update_multi_remove_validate_outgoing() {
         )
         .unwrap()
         .stage_commit(&alice_party.provider)
+        .await
         .unwrap();
 
     let (commit, _, _) = commit_bundle.into_contents();
@@ -313,7 +327,7 @@ fn test_process_message_with_app_data_update_returns_error() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -325,6 +339,7 @@ fn test_process_message_with_app_data_update_returns_error() {
             AppDataUpdateProposal::update(0xf042, b"test_value"),
         ))])
         .load_psks(alice_party.provider.storage())
+        .await
         .unwrap();
 
     // Alice computes the app data updates properly
@@ -348,6 +363,7 @@ fn test_process_message_with_app_data_update_returns_error() {
         )
         .unwrap()
         .stage_commit(&alice_party.provider)
+        .await
         .unwrap();
 
     let (commit_message, _, _) = commit_bundle.into_contents();
@@ -362,6 +378,7 @@ fn test_process_message_with_app_data_update_returns_error() {
                 .into_protocol_message()
                 .expect("not a protocol message"),
         )
+        .await
         .expect_err(
             "process_message should have failed when processing a commit with \
                  AppDataUpdate proposals, but it succeeded. This is a bug - the \
@@ -406,7 +423,7 @@ fn test_process_message_returns_found_app_data_update_proposal_error() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -418,6 +435,7 @@ fn test_process_message_returns_found_app_data_update_proposal_error() {
             AppDataUpdateProposal::update(0xf042, b"test_value"),
         ))])
         .load_psks(alice_party.provider.storage())
+        .await
         .unwrap();
 
     let mut alice_updater = stage.app_data_dictionary_updater();
@@ -440,6 +458,7 @@ fn test_process_message_returns_found_app_data_update_proposal_error() {
         )
         .unwrap()
         .stage_commit(&alice_party.provider)
+        .await
         .unwrap();
 
     let (commit_message, _, _) = commit_bundle.into_contents();
@@ -449,7 +468,7 @@ fn test_process_message_returns_found_app_data_update_proposal_error() {
         commit_message
             .into_protocol_message()
             .expect("not a protocol message"),
-    ).expect_err( "Expected ProcessMessageError::FoundAppDataUpdateProposal, but function returned success");
+    ).await.expect_err( "Expected ProcessMessageError::FoundAppDataUpdateProposal, but function returned success");
 
     if !matches!(err, ProcessMessageError::FoundAppDataUpdateProposal) {
         panic!(
@@ -474,7 +493,7 @@ fn test_commit_with_app_data_update_without_providing_updates_fails() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice, _bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -487,6 +506,7 @@ fn test_commit_with_app_data_update_without_providing_updates_fails() {
             AppDataUpdateProposal::update(0xf042, b"test_value"),
         ))])
         .load_psks(alice_party.provider.storage())
+        .await
         .unwrap();
 
     // INTENTIONALLY skip processing app data updates and providing them to the builder
@@ -532,7 +552,7 @@ fn test_commit_with_superfluous_app_data_updates_fails() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice, _bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -542,6 +562,7 @@ fn test_commit_with_superfluous_app_data_updates_fails() {
         .commit_builder()
         // No AppDataUpdate proposals added
         .load_psks(alice_party.provider.storage())
+        .await
         .unwrap();
 
     // But she provides app data updates anyway (this is a bug in the caller's code)
@@ -588,7 +609,7 @@ fn test_process_unverified_message_without_updates_returns_clear_error() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -600,6 +621,7 @@ fn test_process_unverified_message_without_updates_returns_clear_error() {
             AppDataUpdateProposal::update(0xf042, b"test_value"),
         ))])
         .load_psks(alice_party.provider.storage())
+        .await
         .unwrap();
 
     let mut alice_updater = stage.app_data_dictionary_updater();
@@ -622,6 +644,7 @@ fn test_process_unverified_message_without_updates_returns_clear_error() {
         )
         .unwrap()
         .stage_commit(&alice_party.provider)
+        .await
         .unwrap();
 
     let (commit_message, _, _) = commit_bundle.into_contents();
@@ -634,6 +657,7 @@ fn test_process_unverified_message_without_updates_returns_clear_error() {
             &bob_party.provider,
             commit_in.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
     // Bob tries to process WITHOUT providing app data updates (using None)
@@ -644,6 +668,7 @@ fn test_process_unverified_message_without_updates_returns_clear_error() {
             unverified_message,
             None, // Intentionally not providing the updates
         )
+        .await
         .expect_err(
             "Processing should have failed when AppDataUpdate proposals are present \
                  but no updates were provided.",
@@ -671,7 +696,7 @@ fn test_process_with_wrong_app_data_updates() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -683,6 +708,7 @@ fn test_process_with_wrong_app_data_updates() {
             AppDataUpdateProposal::update(0xf042, b"correct_value"),
         ))])
         .load_psks(alice_party.provider.storage())
+        .await
         .unwrap();
 
     let mut alice_updater = stage.app_data_dictionary_updater();
@@ -705,6 +731,7 @@ fn test_process_with_wrong_app_data_updates() {
         )
         .unwrap()
         .stage_commit(&alice_party.provider)
+        .await
         .unwrap();
 
     let (commit_message, _, _) = commit_bundle.into_contents();
@@ -717,6 +744,7 @@ fn test_process_with_wrong_app_data_updates() {
             &bob_party.provider,
             commit_in.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
     // Bob provides updates for the WRONG component ID
@@ -728,11 +756,14 @@ fn test_process_with_wrong_app_data_updates() {
     ));
 
     // Process with the wrong updates
-    let result = bob.group.process_unverified_message_with_app_data_updates(
-        &bob_party.provider,
-        unverified_message,
-        bob_updater.changes(),
-    );
+    let result = bob
+        .group
+        .process_unverified_message_with_app_data_updates(
+            &bob_party.provider,
+            unverified_message,
+            bob_updater.changes(),
+        )
+        .await;
 
     // This should succeed (the API doesn't validate that updates match proposals),
     // but the resulting state will be different from Alice's.
@@ -745,12 +776,14 @@ fn test_process_with_wrong_app_data_updates() {
             {
                 bob.group
                     .merge_staged_commit(&bob_party.provider, *staged_commit)
+                    .await
                     .unwrap();
 
                 // Merge Alice's commit too
                 alice
                     .group
                     .merge_pending_commit(&alice_party.provider)
+                    .await
                     .unwrap();
 
                 // The dictionaries should NOT match because Bob provided wrong updates
@@ -786,7 +819,7 @@ fn test_standalone_app_data_update_proposal_processes_normally() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -799,6 +832,7 @@ fn test_standalone_app_data_update_proposal_processes_normally() {
             0xf042,
             AppDataUpdateOperation::Update(b"proposal_value".to_vec().into()),
         )
+        .await
         .expect("failed to create proposal");
 
     // Bob processes the standalone proposal using the regular process_message
@@ -810,7 +844,7 @@ fn test_standalone_app_data_update_proposal_processes_normally() {
             proposal_message
                 .into_protocol_message()
                 .expect("not a protocol message"),
-        )
+        ).await
         .expect(
             "Standalone AppDataUpdate proposals should be processable with regular process_message.",
         );
@@ -821,6 +855,7 @@ fn test_standalone_app_data_update_proposal_processes_normally() {
             // Store it for later
             bob.group
                 .store_pending_proposal(bob_party.provider.storage(), *proposal)
+                .await
                 .expect("failed to store proposal");
         }
         other => {
@@ -840,7 +875,7 @@ fn test_commit_by_reference_requires_app_data_updates() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true).await;
 
     let [alice, _bob] = group_state.members_mut(&["alice", "bob"]);
 
@@ -853,12 +888,14 @@ fn test_commit_by_reference_requires_app_data_updates() {
             0xf042,
             AppDataUpdateOperation::Update(b"proposal_value".to_vec().into()),
         )
+        .await
         .expect("failed to create proposal");
 
     // Now Alice tries to commit to pending proposals WITHOUT providing app data updates
     let err = alice
         .group
         .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+        .await
         .expect_err(
             "commit_to_pending_proposals should fail when there are AppDataUpdate \
                  proposals in the queue, as it doesn't support app data update handling.",

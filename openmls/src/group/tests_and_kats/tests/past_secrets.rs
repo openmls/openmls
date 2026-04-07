@@ -25,12 +25,14 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             b"Alice".to_vec(),
             ciphersuite.signature_algorithm(),
             alice_provider,
-        ).await;
+        )
+        .await;
         let bob_credential_with_keys = generate_credential_with_key(
             b"Bob".to_vec(),
             ciphersuite.signature_algorithm(),
             bob_provider,
-        ).await;
+        )
+        .await;
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -38,7 +40,8 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             Extensions::empty(),
             bob_provider,
             bob_credential_with_keys,
-        ).await;
+        )
+        .await;
 
         // Define the MlsGroup configuration
 
@@ -55,7 +58,8 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             group_id.clone(),
             alice_credential_with_keys.credential_with_key.clone(),
         )
-        .await.expect("An unexpected error occurred.");
+        .await
+        .expect("An unexpected error occurred.");
 
         // Alice adds Bob
         let (_message, welcome, _group_info) = alice_group
@@ -64,10 +68,12 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
                 &alice_credential_with_keys.signer,
                 core::slice::from_ref(bob_key_package.key_package()),
             )
+            .await
             .expect("An unexpected error occurred.");
 
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         let welcome: MlsMessageIn = welcome.into();
@@ -81,8 +87,10 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .await.expect("Error creating staged join from Welcome")
+        .await
+        .expect("Error creating staged join from Welcome")
         .into_group(bob_provider)
+        .await
         .expect("Error creating group from staged join");
 
         // Generate application message for different epochs
@@ -97,6 +105,7 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
                     &alice_credential_with_keys.signer,
                     &[1, 2, 3],
                 )
+                .await
                 .expect("An unexpected error occurred.");
 
             application_messages.push(application_message.into_protocol_message().unwrap());
@@ -107,6 +116,7 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
                     &alice_credential_with_keys.signer,
                     LeafNodeParameters::default(),
                 )
+                .await
                 .expect("An unexpected error occurred.")
                 .into_contents();
 
@@ -114,6 +124,7 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
 
             alice_group
                 .merge_pending_commit(alice_provider)
+                .await
                 .expect("error merging pending commit");
         }
 
@@ -122,6 +133,7 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
         for update_commit in update_commits {
             let bob_processed_message = bob_group
                 .process_message(bob_provider, update_commit.into_protocol_message().unwrap())
+                .await
                 .expect("An unexpected error occurred.");
 
             if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
@@ -129,6 +141,7 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
             {
                 bob_group
                     .merge_staged_commit(bob_provider, *staged_commit)
+                    .await
                     .expect("Error merging commit.");
             } else {
                 unreachable!("Expected a StagedCommit.");
@@ -138,13 +151,15 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
         // === Test application messages from older epochs ===
 
         let mut bob_group = MlsGroup::load(bob_provider.storage(), &group_id)
-            .await.expect("error re-loading bob's group")
+            .await
+            .expect("error re-loading bob's group")
             .expect("no such group");
 
         // The first messages should fail
         for application_message in application_messages.iter().take(max_epochs / 2) {
             let err = bob_group
                 .process_message(bob_provider, application_message.clone())
+                .await
                 .expect_err("An unexpected error occurred.");
             assert!(matches!(
                 err,
@@ -158,6 +173,7 @@ async fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
         for application_message in application_messages.iter().skip(max_epochs / 2) {
             let bob_processed_message = bob_group
                 .process_message(bob_provider, application_message.clone())
+                .await
                 .expect("An unexpected error occurred.");
 
             if let ProcessedMessageContent::ApplicationMessage(application_message) =

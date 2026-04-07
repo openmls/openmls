@@ -22,7 +22,6 @@ fn expect_valn0104_error<Provider: OpenMlsProvider>(error: Result<(), GroupError
         ))
     );
 }
-
 impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
     // add a member to the GroupState with the specified credential capabilities
     #[maybe_async::maybe_async]
@@ -42,8 +41,8 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
 
         // update the credential type of the credential
         pre_group
-            .await
-            .update_credential_capabilities(credential_types, ciphersuite);
+            .update_credential_capabilities(credential_types, ciphersuite)
+            .await;
 
         let add_member_config: AddMemberConfig<'_, Provider> = AddMemberConfig {
             adder: adder_name,
@@ -52,7 +51,7 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
             tree: None,
         };
 
-        self.add_member(add_member_config)
+        self.add_member(add_member_config).await
     }
 
     // add a member to the GroupState with the specified credential type
@@ -69,11 +68,10 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
             .build();
 
         // Initialize party and pre-group
-        let mut pre_group = new_party.generate_pre_group(ciphersuite);
+        let mut pre_group = new_party.generate_pre_group(ciphersuite).await;
 
         // update the credential type of the credential
         pre_group
-            .await
             .update_credential_type(credential_type, ciphersuite)
             .await;
 
@@ -84,7 +82,7 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
             tree: None,
         };
 
-        self.add_member(add_member_config)
+        self.add_member(add_member_config).await
     }
 }
 
@@ -231,29 +229,38 @@ async fn test_valn0104_new_member_unsupported_credential_type() {
             join_config: mls_group_join_config.clone(),
             tree: None,
         })
+        .await
         .expect("Could not add member");
-
     // Should fail with CredentialType::X509
     // Alice adds Dave
-    expect_valn0104_error::<Provider>(group_state.add_member_with_credential_type(
-        &dave_party,
-        "alice",
-        ciphersuite,
-        CredentialType::X509,
-    ));
+    expect_valn0104_error::<Provider>(
+        group_state
+            .add_member_with_credential_type(
+                &dave_party,
+                "alice",
+                ciphersuite,
+                CredentialType::X509,
+            )
+            .await,
+    );
 
     // Should fail with CredentialType::Other(3)
     // Alice adds Dave
-    expect_valn0104_error::<Provider>(group_state.add_member_with_credential_type(
-        &dave_party,
-        "alice",
-        ciphersuite,
-        CredentialType::Other(3),
-    ));
+    expect_valn0104_error::<Provider>(
+        group_state
+            .add_member_with_credential_type(
+                &dave_party,
+                "alice",
+                ciphersuite,
+                CredentialType::Other(3),
+            )
+            .await,
+    );
     // Should succeed with CredentialType::Basic
     // Alice adds Dave
     group_state
         .add_member_with_credential_type(&dave_party, "alice", ciphersuite, CredentialType::Basic)
+        .await
         .expect("Should succeed");
 }
 
@@ -267,36 +274,36 @@ async fn test_valn0104_new_member_capabilities_not_support_all_credential_types(
     let alice_party = CorePartyState::<Provider>::new("alice");
     let mut alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
     let alice_capabilities = alice_pre_group
-        .await
         .update_credential_capabilities(
             vec![CredentialType::Basic, CredentialType::Other(3)],
             ciphersuite,
         )
         .await;
     alice_pre_group
-        .await
-        .update_credential_type(CredentialType::Other(3), ciphersuite);
-
+        .update_credential_type(CredentialType::Other(3), ciphersuite)
+        .await;
     // Set up Bob with multiple credential capabilities and BasicCredential
     let bob_party = CorePartyState::<Provider>::new("bob");
     let mut bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
-    bob_pre_group.await.update_credential_capabilities(
-        vec![CredentialType::Basic, CredentialType::Other(3)],
-        ciphersuite,
-    );
-
+    bob_pre_group
+        .update_credential_capabilities(
+            vec![CredentialType::Basic, CredentialType::Other(3)],
+            ciphersuite,
+        )
+        .await;
     // Set up Charlie with multiple credential capabilities and BasicCredential
     let charlie_party = CorePartyState::<Provider>::new("charlie");
     let mut charlie_pre_group = charlie_party.generate_pre_group(ciphersuite).await;
-    charlie_pre_group.await.update_credential_capabilities(
-        vec![
-            CredentialType::Basic,
-            CredentialType::Other(3),
-            CredentialType::Other(4),
-        ],
-        ciphersuite,
-    );
-
+    charlie_pre_group
+        .update_credential_capabilities(
+            vec![
+                CredentialType::Basic,
+                CredentialType::Other(3),
+                CredentialType::Other(4),
+            ],
+            ciphersuite,
+        )
+        .await;
     let dave_party = CorePartyState::<Provider>::new("dave");
     let eve_party = CorePartyState::<Provider>::new("eve");
 
@@ -326,27 +333,31 @@ async fn test_valn0104_new_member_capabilities_not_support_all_credential_types(
             join_config: mls_group_join_config.clone(),
             tree: None,
         })
+        .await
         .expect("Could not add member");
 
     // Case with no credential capabilities; should fail
     // Alice adds Dave
-    expect_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
-        &dave_party,
-        "alice",
-        ciphersuite,
-        Vec::new(),
-    ));
+    expect_valn0104_error::<Provider>(
+        group_state
+            .add_member_with_credential_capabilities(&dave_party, "alice", ciphersuite, Vec::new())
+            .await,
+    );
 
     // Case with wrong capabilities; should fail
     // This is because Dave needs to support all the credential types currently in use by other
     // members, which are `Other(3)` (Alice) and `Basic` (Bob, Charlie), but he is missing support for `Other(3)`.
     // Alice adds Dave
-    expect_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
-        &dave_party,
-        "alice",
-        ciphersuite,
-        vec![CredentialType::Basic, CredentialType::Other(2)],
-    ));
+    expect_valn0104_error::<Provider>(
+        group_state
+            .add_member_with_credential_capabilities(
+                &dave_party,
+                "alice",
+                ciphersuite,
+                vec![CredentialType::Basic, CredentialType::Other(2)],
+            )
+            .await,
+    );
 
     // Case with right capabilities; should succeed
     // Alice adds Dave
@@ -357,6 +368,7 @@ async fn test_valn0104_new_member_capabilities_not_support_all_credential_types(
             ciphersuite,
             vec![CredentialType::Basic, CredentialType::Other(3)],
         )
+        .await
         .expect("Should succeed");
 
     // Case with right capabilities plus more; should succeed
@@ -372,6 +384,7 @@ async fn test_valn0104_new_member_capabilities_not_support_all_credential_types(
                 CredentialType::Other(5),
             ],
         )
+        .await
         .expect("Should succeed");
 }
 
@@ -432,6 +445,7 @@ async fn valn0311_removed_member_capabilities_skipped_in_check() {
             join_config: mls_group_join_config.clone(),
             tree: None,
         })
+        .await
         .expect("Could not add member");
 
     let non_default_proposal = Proposal::custom(CustomProposal::new(
@@ -449,11 +463,13 @@ async fn valn0311_removed_member_capabilities_skipped_in_check() {
                 .propose_removals(vec![LeafNodeIndex::new(2)])
                 .add_proposals(vec![non_default_proposal])
         })
+        .await
         .unwrap();
 
     group_state
         .deliver_and_apply_if(commit.into_commit().into(), |member| {
             member.party.core_state.name != "alice"
         })
+        .await
         .unwrap();
 }

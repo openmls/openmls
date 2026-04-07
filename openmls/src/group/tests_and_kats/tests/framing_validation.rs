@@ -37,13 +37,15 @@ async fn validation_test_setup(
         "Alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    ).await;
+    )
+    .await;
 
     let bob_credential = generate_credential_with_key(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     // Generate KeyPackages
     let alice_key_package = generate_key_package(
@@ -51,14 +53,16 @@ async fn validation_test_setup(
         Extensions::empty(),
         alice_provider,
         alice_credential.clone(),
-    ).await;
+    )
+    .await;
 
     let bob_key_package = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         bob_provider,
         bob_credential.clone(),
-    ).await;
+    )
+    .await;
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -74,7 +78,8 @@ async fn validation_test_setup(
         group_id,
         alice_credential.credential_with_key.clone(),
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // === Alice adds Bob & Bob joins ===
     let (_message, welcome, _group_info) = alice_group
@@ -83,10 +88,12 @@ async fn validation_test_setup(
             &alice_credential.signer,
             core::slice::from_ref(bob_key_package.key_package()),
         )
+        .await
         .expect("Could not add member.");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     let welcome: MlsMessageIn = welcome.into();
@@ -100,8 +107,10 @@ async fn validation_test_setup(
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("error creating bob's group from welcome")
+    .await
+    .expect("error creating bob's group from welcome")
     .into_group(bob_provider)
+    .await
     .expect("error creating bob's group from welcome");
 
     ValidationTestSetup {
@@ -132,7 +141,8 @@ async fn test_valsem002() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     let (message, _welcome, _group_info) = alice_group
         .self_update(
@@ -140,7 +150,8 @@ async fn test_valsem002() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Could not self-update.")
+        .await
+        .expect("Could not self-update.")
         .into_contents();
 
     let serialized_message = message
@@ -160,7 +171,8 @@ async fn test_valsem002() {
 
     let err = bob_group
         .process_message(bob_provider, message_in)
-        .await.expect_err("Could parse message despite wrong group ID.");
+        .await
+        .expect_err("Could parse message despite wrong group ID.");
 
     assert!(matches!(
         err,
@@ -170,7 +182,8 @@ async fn test_valsem002() {
     // Positive case
     bob_group
         .process_message(bob_provider, ProtocolMessage::from(original_message))
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 // ValSem003 Epoch
@@ -191,7 +204,8 @@ async fn test_valsem003() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome, _group_info) = alice_group
@@ -200,16 +214,22 @@ async fn test_valsem003() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Could not self update.")
+        .await
+        .expect("Could not self update.")
         .into_contents();
-    alice_group.merge_pending_commit(alice_provider).await.unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     alice_group
         .merge_pending_commit(alice_provider)
-        .await.expect("Could not merge commit.");
+        .await
+        .expect("Could not merge commit.");
 
     let processed_message = bob_group
         .process_message(bob_provider, message.into_protocol_message().unwrap())
+        .await
         .expect("Could not process message.");
 
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
@@ -217,7 +237,8 @@ async fn test_valsem003() {
     {
         bob_group
             .merge_staged_commit(bob_provider, *staged_commit)
-            .await.expect("Error merging commit.");
+            .await
+            .expect("Error merging commit.");
     } else {
         unreachable!("Expected StagedCommit.");
     }
@@ -229,7 +250,8 @@ async fn test_valsem003() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Could not add member.")
+        .await
+        .expect("Could not add member.")
         .into_contents();
 
     let current_epoch = alice_group.epoch();
@@ -246,7 +268,8 @@ async fn test_valsem003() {
     plaintext.set_epoch(current_epoch.as_u64() + 1);
     let err = bob_group
         .process_message(bob_provider, plaintext.clone())
-        .await.expect_err("Could parse message despite wrong epoch.");
+        .await
+        .expect_err("Could parse message despite wrong epoch.");
     assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
@@ -256,7 +279,8 @@ async fn test_valsem003() {
     plaintext.set_epoch(current_epoch.as_u64() - 1);
     let err = bob_group
         .process_message(bob_provider, plaintext)
-        .await.expect_err("Could parse message despite wrong epoch.");
+        .await
+        .expect_err("Could parse message despite wrong epoch.");
     assert!(matches!(
         err,
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
@@ -265,22 +289,26 @@ async fn test_valsem003() {
     // Positive case
     let processed_msg = bob_group
         .process_message(bob_provider, original_message.clone())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         processed_msg.into_content()
     {
         bob_group
             .merge_staged_commit(bob_provider, *staged_commit)
-            .await.unwrap();
+            .await
+            .unwrap();
     } else {
         unreachable!();
     }
 
     // Processing a commit twice should fail i.e. an epoch can only be used once in a commit message
-    let process_twice = bob_group.process_message(bob_provider, original_message);
+    let process_twice = bob_group
+        .process_message(bob_provider, original_message)
+        .await;
     assert!(matches!(
-        process_twice.await.unwrap_err(),
+        process_twice.unwrap_err(),
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
     ));
 }
@@ -303,7 +331,8 @@ async fn test_valsem004() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     let (message, _welcome, _group_info) = alice_group
         .self_update(
@@ -311,7 +340,8 @@ async fn test_valsem004() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Could not self-update.")
+        .await
+        .expect("Could not self-update.")
         .into_contents();
 
     let serialized_message = message
@@ -342,7 +372,8 @@ async fn test_valsem004() {
 
     let err = bob_group
         .process_message(bob_provider, message_in)
-        .await.expect_err("Could parse message despite wrong sender.");
+        .await
+        .expect_err("Could parse message despite wrong sender.");
 
     assert!(matches!(
         err,
@@ -352,7 +383,8 @@ async fn test_valsem004() {
     // Positive case
     bob_group
         .process_message(bob_provider, ProtocolMessage::from(original_message))
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 // ValSem005 Application messages must use ciphertext
@@ -373,7 +405,8 @@ async fn test_valsem005() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     let (message, _welcome, _group_info) = alice_group
         .self_update(
@@ -381,7 +414,8 @@ async fn test_valsem005() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Could not self-update.")
+        .await
+        .expect("Could not self-update.")
         .into_contents();
 
     let serialized_message = message
@@ -411,7 +445,8 @@ async fn test_valsem005() {
 
     let err = bob_group
         .process_message(bob_provider, message_in)
-        .await.expect_err("Could parse message despite unencrypted application message.");
+        .await
+        .expect_err("Could parse message despite unencrypted application message.");
 
     assert!(matches!(
         err,
@@ -421,7 +456,8 @@ async fn test_valsem005() {
     // Positive case
     bob_group
         .process_message(bob_provider, ProtocolMessage::from(original_message))
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 // ValSem006 Ciphertext: decryption needs to work
@@ -442,11 +478,13 @@ async fn test_valsem006() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     let message = alice_group
         .create_message(alice_provider, &_alice_credential.signer, &[1, 2, 3])
-        .await.expect("An unexpected error occurred.");
+        .await
+        .expect("An unexpected error occurred.");
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -465,7 +503,8 @@ async fn test_valsem006() {
 
     let err = bob_group
         .process_message(bob_provider, message_in)
-        .await.expect_err("Could parse message despite garbled ciphertext.");
+        .await
+        .expect_err("Could parse message despite garbled ciphertext.");
 
     assert!(matches!(
         err,
@@ -477,7 +516,8 @@ async fn test_valsem006() {
     // Positive case
     bob_group
         .process_message(bob_provider, ProtocolMessage::from(original_message))
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 // ValSem007 Membership tag presence
@@ -498,7 +538,8 @@ async fn test_valsem007() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     let (message, _welcome, _group_info) = alice_group
         .self_update(
@@ -506,7 +547,8 @@ async fn test_valsem007() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Could not self-update.")
+        .await
+        .expect("Could not self-update.")
         .into_contents();
 
     let serialized_message = message
@@ -526,7 +568,8 @@ async fn test_valsem007() {
 
     let err = bob_group
         .process_message(bob_provider, message_in)
-        .await.expect_err("Could parse message despite missing membership tag.");
+        .await
+        .expect_err("Could parse message despite missing membership tag.");
 
     assert!(matches!(
         err,
@@ -536,7 +579,8 @@ async fn test_valsem007() {
     // Positive case
     bob_group
         .process_message(bob_provider, ProtocolMessage::from(original_message))
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 // ValSem008 Membership tag verification
@@ -557,7 +601,8 @@ async fn test_valsem008() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome, _group_info) = alice_group
@@ -566,7 +611,8 @@ async fn test_valsem008() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Could not self-update.")
+        .await
+        .expect("Could not self-update.")
         .into_contents();
 
     let serialized_message = message
@@ -594,7 +640,8 @@ async fn test_valsem008() {
 
     let err = bob_group
         .process_message(bob_provider, message_in)
-        .await.expect_err("Could process message despite wrong membership tag.");
+        .await
+        .expect_err("Could process message despite wrong membership tag.");
 
     assert!(matches!(
         err,
@@ -604,7 +651,8 @@ async fn test_valsem008() {
     // Positive case
     bob_group
         .process_message(bob_provider, ProtocolMessage::from(original_message))
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 // ValSem009 Confirmation tag presence
@@ -625,7 +673,8 @@ async fn test_valsem009() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     let (message, _welcome, _group_info) = alice_group
         .self_update(
@@ -633,7 +682,8 @@ async fn test_valsem009() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Could not self-update.")
+        .await
+        .expect("Could not self-update.")
         .into_contents();
 
     let serialized_message = message
@@ -663,7 +713,8 @@ async fn test_valsem009() {
 
     let err = bob_group
         .process_message(bob_provider, message_in)
-        .await.expect_err("Could parse message despite missing confirmation tag.");
+        .await
+        .expect_err("Could parse message despite missing confirmation tag.");
 
     assert!(matches!(
         err,
@@ -673,7 +724,8 @@ async fn test_valsem009() {
     // Positive case
     bob_group
         .process_message(bob_provider, ProtocolMessage::from(original_message))
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 // ValSem010 Signature verification
@@ -694,7 +746,8 @@ async fn test_valsem010() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome, _group_info) = alice_group
@@ -703,7 +756,8 @@ async fn test_valsem010() {
             &_alice_credential.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Could not self update.")
+        .await
+        .expect("Could not self update.")
         .into_contents();
 
     let serialized_message = message
@@ -734,7 +788,8 @@ async fn test_valsem010() {
 
     let err = bob_group
         .process_message(bob_provider, message_in)
-        .await.expect_err("Could process message despite wrong signature.");
+        .await
+        .expect_err("Could process message despite wrong signature.");
 
     assert!(matches!(
         err,
@@ -744,5 +799,6 @@ async fn test_valsem010() {
     // Positive case
     bob_group
         .process_message(bob_provider, ProtocolMessage::from(original_message))
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }

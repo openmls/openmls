@@ -19,7 +19,8 @@ async fn new_test_group(
 
     // Generate credentials with keys
     let credential_with_keys =
-        generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider).await;
+        generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider)
+            .await;
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupCreateConfig::builder()
@@ -39,7 +40,8 @@ async fn new_test_group(
             group_id,
             credential_with_keys.credential_with_key.clone(),
         )
-        .await.unwrap(),
+        .await
+        .unwrap(),
         credential_with_keys,
     )
 }
@@ -60,20 +62,23 @@ async fn validation_test_setup(
         ciphersuite,
         alice_provider,
         external_senders,
-    );
+    )
+    .await;
 
     let bob_credential_with_key = generate_credential_with_key(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     let bob_key_package = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         bob_provider,
         bob_credential_with_key,
-    ).await;
+    )
+    .await;
 
     alice_group
         .add_members(
@@ -81,11 +86,13 @@ async fn validation_test_setup(
             &alice_signer_when_keys.signer,
             core::slice::from_ref(bob_key_package.key_package()),
         )
-        .await.expect("error adding Bob to group");
+        .await
+        .expect("error adding Bob to group");
 
     alice_group
         .merge_pending_commit(alice_provider)
-        .await.expect("error merging pending commit");
+        .await
+        .expect("error merging pending commit");
     assert_eq!(alice_group.members().count(), 2);
 
     (alice_group, alice_signer_when_keys)
@@ -102,7 +109,8 @@ async fn external_remove_proposal_should_remove_member() {
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     let (mut alice_group, alice_credential) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -119,7 +127,8 @@ async fn external_remove_proposal_should_remove_member() {
                 .credential
                 .clone(),
         )],
-    );
+    )
+    .await;
 
     // DS is an allowed external sender of the group
     assert!(alice_group
@@ -157,7 +166,8 @@ async fn external_remove_proposal_should_remove_member() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
     // commit the proposal
     let ProcessedMessageContent::ProposalMessage(remove_proposal) =
         processed_message.into_content()
@@ -166,11 +176,16 @@ async fn external_remove_proposal_should_remove_member() {
     };
     alice_group
         .store_pending_proposal(alice_provider.storage(), *remove_proposal)
-        .await.unwrap();
+        .await
+        .unwrap();
     alice_group
         .commit_to_pending_proposals(alice_provider, &alice_credential.signer)
-        .await.unwrap();
-    alice_group.merge_pending_commit(alice_provider).await.unwrap();
+        .await
+        .unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     // Trying to do an external remove proposal of Bob now should fail as he no longer is in the group
     let invalid_bob_external_remove_proposal: MlsMessageIn =
@@ -191,7 +206,8 @@ async fn external_remove_proposal_should_remove_member() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
     // commit the proposal
     let ProcessedMessageContent::ProposalMessage(remove_proposal) =
         processed_message.into_content()
@@ -200,11 +216,15 @@ async fn external_remove_proposal_should_remove_member() {
     };
     alice_group
         .store_pending_proposal(alice_provider.storage(), *remove_proposal)
-        .await.unwrap();
+        .await
+        .unwrap();
+
+    let err = alice_group
+        .commit_to_pending_proposals(alice_provider, &alice_credential.signer)
+        .await
+        .unwrap_err();
     assert!(matches!(
-        alice_group
-            .commit_to_pending_proposals(alice_provider, &alice_credential.signer)
-            .await.unwrap_err(),
+        err,
         CommitToPendingProposalsError::CreateCommitError(
             CreateCommitError::ProposalValidationError(
                 ProposalValidationError::UnknownMemberRemoval
@@ -224,7 +244,8 @@ async fn external_remove_proposal_should_fail_when_invalid_external_senders_inde
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     let (mut alice_group, _alice_credential) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -241,7 +262,8 @@ async fn external_remove_proposal_should_fail_when_invalid_external_senders_inde
                 .credential
                 .clone(),
         )],
-    );
+    )
+    .await;
 
     // get Bob's index
     let bob_index = alice_group
@@ -268,7 +290,8 @@ async fn external_remove_proposal_should_fail_when_invalid_external_senders_inde
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap_err();
+        .await
+        .unwrap_err();
     assert!(matches!(
         error,
         ProcessMessageError::ValidationError(ValidationError::UnauthorizedExternalSender)
@@ -286,7 +309,8 @@ async fn external_remove_proposal_should_fail_when_invalid_signature() {
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     let (mut alice_group, _alice_credential) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -300,13 +324,15 @@ async fn external_remove_proposal_should_fail_when_invalid_signature() {
                 .clone(),
             ds_credential_with_key.credential_with_key.credential,
         )],
-    );
+    )
+    .await;
 
     let ds_invalid_credential_with_key = generate_credential_with_key(
         "delivery-service-invalid".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     // get Bob's index
     let bob_index = alice_group
@@ -333,7 +359,8 @@ async fn external_remove_proposal_should_fail_when_invalid_signature() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap_err();
+        .await
+        .unwrap_err();
     assert!(matches!(
         error,
         ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
@@ -352,13 +379,15 @@ async fn external_remove_proposal_should_fail_when_no_external_senders() {
         alice_provider,
         bob_provider,
         vec![],
-    );
+    )
+    .await;
     // delivery service credentials. DS will craft an external remove proposal
     let ds_credential_with_key = generate_credential_with_key(
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     // get Bob's index
     let bob_index = alice_group
@@ -385,7 +414,8 @@ async fn external_remove_proposal_should_fail_when_no_external_senders() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap_err();
+        .await
+        .unwrap_err();
     assert!(matches!(
         error,
         ProcessMessageError::ValidationError(ValidationError::UnauthorizedExternalSender)

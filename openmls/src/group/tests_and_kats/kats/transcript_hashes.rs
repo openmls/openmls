@@ -139,9 +139,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) {
 
 // -------------------------------------------------------------------------------------------------
 
-#[maybe_async::maybe_async]
-#[cfg_attr(feature = "sync", test)]
-#[cfg_attr(not(feature = "sync"), tokio::test)]
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
 async fn write_test_vectors() {
     let mut tests = Vec::new();
 
@@ -207,7 +205,8 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVec
                 b"Alice".to_vec(),
                 ciphersuite.signature_algorithm(),
                 &provider,
-            ).await;
+            )
+            .await;
 
             credential_with_key_and_signer.signer
         };

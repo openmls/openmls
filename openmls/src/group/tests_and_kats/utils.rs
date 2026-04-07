@@ -81,7 +81,8 @@ pub(crate) async fn setup(
                 client.name.as_bytes().to_vec(),
                 ciphersuite.signature_algorithm(),
                 provider,
-            ).await;
+            )
+            .await;
             // Create a number of key packages.
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
@@ -90,7 +91,8 @@ pub(crate) async fn setup(
                     &credentia_with_key_and_signer.signer,
                     ciphersuite,
                     credentia_with_key_and_signer.credential_with_key.clone(),
-                ).await;
+                )
+                .await;
                 key_packages.push(key_package_bundle.key_package().clone());
                 key_package_bundles.push(key_package_bundle);
             }
@@ -133,7 +135,8 @@ pub(crate) async fn setup(
                 &credential_with_key_and_signer.signer,
                 credential_with_key_and_signer.credential_with_key.clone(),
             )
-            .await.expect("Error creating group.");
+            .await
+            .expect("Error creating group.");
         initial_group_member
             .group_states
             .borrow_mut()
@@ -167,12 +170,14 @@ pub(crate) async fn setup(
                     &credential_with_key_and_signer.signer,
                     &key_packages,
                 )
-                .await.expect("An unexpected error occurred.");
+                .await
+                .expect("An unexpected error occurred.");
             let welcome = welcome.into_welcome().unwrap();
 
             mls_group
                 .merge_pending_commit(provider)
-                .await.expect("Error merging commit.");
+                .await
+                .expect("Error merging commit.");
 
             let join_config = MlsGroupJoinConfig::builder()
                 .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
@@ -188,13 +193,16 @@ pub(crate) async fn setup(
                 // Welcome.
                 let processed_welcome =
                     ProcessedWelcome::new_from_welcome(provider, &join_config, welcome.clone())
-                        .await.unwrap();
+                        .await
+                        .unwrap();
                 let new_group = JoinBuilder::new(provider, processed_welcome)
                     .with_ratchet_tree(mls_group.export_ratchet_tree().into())
                     .replace_old_group()
                     .build()
-                    .await.unwrap()
+                    .await
+                    .unwrap()
                     .into_group(provider)
+                    .await
                     .unwrap();
 
                 new_group_member
@@ -248,7 +256,7 @@ fn test_setup() {
         clients: vec![test_client_config_a, test_client_config_b],
         groups: vec![test_group_config],
     };
-    let _test_setup = setup(test_setup_config, provider);
+    let _test_setup = setup(test_setup_config, provider).await;
 }
 
 #[derive(Clone)]
@@ -299,7 +307,8 @@ pub(crate) async fn generate_key_package<Provider: OpenMlsProvider>(
             &credential_with_keys.signer,
             credential_with_keys.credential_with_key,
         )
-        .await.unwrap()
+        .await
+        .unwrap()
 }
 
 #[cfg(test)]

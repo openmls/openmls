@@ -34,7 +34,8 @@ async fn new_test_group(
 
     // Generate credentials with keys
     let credential_with_keys =
-        generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider).await;
+        generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider)
+            .await;
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -50,7 +51,8 @@ async fn new_test_group(
             group_id,
             credential_with_keys.credential_with_key.clone(),
         )
-        .await.unwrap(),
+        .await
+        .unwrap(),
         credential_with_keys,
     )
 }
@@ -65,20 +67,22 @@ async fn validation_test_setup(
 ) -> ProposalValidationTestSetup {
     // === Alice creates a group ===
     let (mut alice_group, alice_signer_with_keys) =
-        new_test_group("Alice", wire_format_policy, ciphersuite, alice_provider);
+        new_test_group("Alice", wire_format_policy, ciphersuite, alice_provider).await;
 
     let bob_credential_with_key = generate_credential_with_key(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     let bob_key_package = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         bob_provider,
         bob_credential_with_key.clone(),
-    ).await;
+    )
+    .await;
 
     let (_message, welcome, _group_info) = alice_group
         .add_members(
@@ -86,11 +90,13 @@ async fn validation_test_setup(
             &alice_signer_with_keys.signer,
             core::slice::from_ref(bob_key_package.key_package()),
         )
-        .await.expect("error adding Bob to group");
+        .await
+        .expect("error adding Bob to group");
 
     alice_group
         .merge_pending_commit(alice_provider)
-        .await.expect("error merging pending commit");
+        .await
+        .expect("error merging pending commit");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupJoinConfig::builder()
@@ -108,8 +114,10 @@ async fn validation_test_setup(
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("error creating group from welcome")
+    .await
+    .expect("error creating group from welcome")
     .into_group(bob_provider)
+    .await
     .expect("error creating group from welcome");
 
     ProposalValidationTestSetup {
@@ -127,7 +135,7 @@ async fn external_join_add_proposal_should_succeed() {
         let ProposalValidationTestSetup {
             alice_group,
             bob_group,
-        } = validation_test_setup(policy, ciphersuite, alice_provider, bob_provider);
+        } = validation_test_setup(policy, ciphersuite, alice_provider, bob_provider).await;
         let (mut alice_group, alice_signer) = alice_group;
         let (mut bob_group, _bob_signer) = bob_group;
 
@@ -140,14 +148,16 @@ async fn external_join_add_proposal_should_succeed() {
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
             charlie_provider,
-        ).await;
+        )
+        .await;
 
         let charlie_kp = generate_key_package(
             ciphersuite,
             Extensions::empty(),
             charlie_provider,
             charlie_credential.clone(),
-        ).await;
+        )
+        .await;
 
         let proposal =
             JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
@@ -173,7 +183,8 @@ async fn external_join_add_proposal_should_succeed() {
                 alice_provider,
                 proposal.clone().into_protocol_message().unwrap(),
             )
-            .await.unwrap();
+            .await
+            .unwrap();
 
         match msg.into_content() {
             ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
@@ -185,37 +196,46 @@ async fn external_join_add_proposal_should_succeed() {
                 assert!(add_proposal.key_package() == charlie_kp.key_package());
                 alice_group
                     .store_pending_proposal(alice_provider.storage(), *proposal)
-                    .await.unwrap()
+                    .await
+                    .unwrap()
             }
             _ => unreachable!(),
         }
 
         let msg = bob_group
             .process_message(bob_provider, proposal.into_protocol_message().unwrap())
-            .await.unwrap();
+            .await
+            .unwrap();
 
         match msg.into_content() {
             ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => bob_group
                 .store_pending_proposal(bob_provider.storage(), *proposal)
-                .await.unwrap(),
+                .await
+                .unwrap(),
             _ => unreachable!(),
         }
 
         // and Alice will commit it
         let (commit, welcome, _group_info) = alice_group
             .commit_to_pending_proposals(alice_provider, &alice_signer)
-            .await.unwrap();
-        alice_group.merge_pending_commit(alice_provider).await.unwrap();
+            .await
+            .unwrap();
+        alice_group
+            .merge_pending_commit(alice_provider)
+            .await
+            .unwrap();
         assert_eq!(alice_group.members().count(), 3);
 
         // Bob will also process the commit
         let msg = bob_group
             .process_message(bob_provider, commit.into_protocol_message().unwrap())
+            .await
             .unwrap();
         match msg.into_content() {
             ProcessedMessageContent::StagedCommitMessage(commit) => bob_group
                 .merge_staged_commit(bob_provider, *commit)
-                .await.unwrap(),
+                .await
+                .unwrap(),
             _ => unreachable!(),
         }
         assert_eq!(bob_group.members().count(), 3);
@@ -235,8 +255,10 @@ async fn external_join_add_proposal_should_succeed() {
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .await.unwrap()
+        .await
+        .unwrap()
         .into_group(charlie_provider)
+        .await
         .unwrap();
         assert_eq!(charlie_group.members().count(), 3);
     }
@@ -254,28 +276,32 @@ async fn external_join_add_proposal_should_be_signed_by_key_package_it_reference
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
     let (mut alice_group, _alice_signer) = alice_group;
 
     let attacker_credential = generate_credential_with_key(
         "Attacker".into(),
         ciphersuite.signature_algorithm(),
         attacker_provider,
-    ).await;
+    )
+    .await;
 
     // A new client, Charlie, will now ask joining with an external Add proposal
     let charlie_credential = generate_credential_with_key(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    ).await;
+    )
+    .await;
 
     let charlie_kp = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         charlie_provider,
         attacker_credential,
-    ).await;
+    )
+    .await;
 
     let invalid_proposal =
         JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
@@ -287,13 +313,16 @@ async fn external_join_add_proposal_should_be_signed_by_key_package_it_reference
         .unwrap();
 
     // fails because the message was not signed by the same credential as the one in the Add proposal
+
+    let err = alice_group
+        .process_message(
+            alice_provider,
+            invalid_proposal.into_protocol_message().unwrap(),
+        )
+        .await
+        .unwrap_err();
     assert!(matches!(
-        alice_group
-            .process_message(
-                alice_provider,
-                invalid_proposal.into_protocol_message().unwrap()
-            )
-            .await.unwrap_err(),
+        err,
         ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
     ));
 }
@@ -310,7 +339,7 @@ async fn test_valn1504() {
         let ProposalValidationTestSetup {
             alice_group,
             bob_group,
-        } = validation_test_setup(policy, ciphersuite, alice_provider, bob_provider);
+        } = validation_test_setup(policy, ciphersuite, alice_provider, bob_provider).await;
         let (mut alice_group, _alice_signer) = alice_group;
         let (bob_group, _bob_signer) = bob_group;
 
@@ -323,14 +352,16 @@ async fn test_valn1504() {
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
             charlie_provider,
-        ).await;
+        )
+        .await;
 
         let charlie_kp = generate_key_package(
             ciphersuite,
             Extensions::empty(),
             charlie_provider,
             charlie_credential.clone(),
-        ).await;
+        )
+        .await;
 
         let proposal =
             JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
@@ -359,7 +390,8 @@ async fn test_valn1504() {
                 alice_provider,
                 proposal.clone().into_protocol_message().unwrap(),
             )
-            .await.expect_err("Should return an error");
+            .await
+            .expect_err("Should return an error");
         assert_eq!(
             err,
             ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal,)
@@ -382,7 +414,8 @@ async fn new_member_proposal_sender_should_be_reserved_for_join_proposals() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
     let (mut alice_group, alice_signer) = alice_group;
     let (mut bob_group, _bob_signer) = bob_group;
 
@@ -391,14 +424,16 @@ async fn new_member_proposal_sender_should_be_reserved_for_join_proposals() {
         "Any".into(),
         ciphersuite.signature_algorithm(),
         any_provider,
-    ).await;
+    )
+    .await;
 
     let any_kp = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         any_provider,
         any_credential.clone(),
-    ).await;
+    )
+    .await;
 
     let join_proposal =
         JoinProposal::new::<<Provider as openmls_traits::OpenMlsProvider>::StorageProvider>(
@@ -420,27 +455,32 @@ async fn new_member_proposal_sender_should_be_reserved_for_join_proposals() {
         assert!(matches!(plaintext.sender(), Sender::NewMemberProposal));
 
         // Finally check that the message can be processed without errors
-        assert!(bob_group
+        bob_group
             .process_message(bob_provider, join_proposal.into_protocol_message().unwrap())
-            .await.is_ok());
+            .await
+            .unwrap();
     } else {
         panic!()
     };
     alice_group
         .clear_pending_proposals(alice_provider.storage())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // Remove proposal cannot have a 'new_member_proposal' sender
     let remove_proposal = alice_group
         .propose_remove_member(alice_provider, &alice_signer, LeafNodeIndex::new(1))
-        .await.map(|(out, _)| MlsMessageIn::from(out))
+        .await
+        .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
     if let MlsMessageBodyIn::PublicMessage(mut plaintext) = remove_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
+        let err = bob_group
+            .process_message(bob_provider, plaintext)
+            .await
+            .unwrap_err();
         assert!(matches!(
-            bob_group
-                .process_message(bob_provider, plaintext)
-                .await.unwrap_err(),
+            err,
             ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
         ));
     } else {
@@ -448,19 +488,23 @@ async fn new_member_proposal_sender_should_be_reserved_for_join_proposals() {
     };
     alice_group
         .clear_pending_proposals(alice_provider.storage())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // Update proposal cannot have a 'new_member_proposal' sender
     let update_proposal = alice_group
         .propose_self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
-        .await.map(|(out, _)| MlsMessageIn::from(out))
+        .await
+        .map(|(out, _)| MlsMessageIn::from(out))
         .unwrap();
     if let MlsMessageBodyIn::PublicMessage(mut plaintext) = update_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
+        let err = bob_group
+            .process_message(bob_provider, plaintext)
+            .await
+            .unwrap_err();
         assert!(matches!(
-            bob_group
-                .process_message(bob_provider, plaintext)
-                .await.unwrap_err(),
+            err,
             ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
         ));
     } else {
@@ -468,5 +512,6 @@ async fn new_member_proposal_sender_should_be_reserved_for_join_proposals() {
     };
     alice_group
         .clear_pending_proposals(alice_provider.storage())
-        .await.unwrap();
+        .await
+        .unwrap();
 }

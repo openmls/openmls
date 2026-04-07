@@ -26,19 +26,22 @@ async fn test_add_member_with_aad() {
             "Alice".into(),
             ciphersuite.signature_algorithm(),
             alice_provider,
-        ).await;
+        )
+        .await;
 
         let bob_credential_with_key_and_signer = generate_credential_with_key(
             "Bob".into(),
             ciphersuite.signature_algorithm(),
             bob_provider,
-        ).await;
+        )
+        .await;
 
         let charlie_credential_with_key_and_signer = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
             charlie_provider,
-        ).await;
+        )
+        .await;
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -46,13 +49,15 @@ async fn test_add_member_with_aad() {
             Extensions::empty(),
             bob_provider,
             bob_credential_with_key_and_signer.clone(),
-        ).await;
+        )
+        .await;
         let charlie_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
             charlie_provider,
             charlie_credential_with_key_and_signer,
-        ).await;
+        )
+        .await;
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -71,7 +76,8 @@ async fn test_add_member_with_aad() {
                 .credential_with_key
                 .clone(),
         )
-        .await.expect("An unexpected error occurred.");
+        .await
+        .expect("An unexpected error occurred.");
 
         let aad = b"Test AAD".to_vec();
 
@@ -88,9 +94,11 @@ async fn test_add_member_with_aad() {
                 &alice_credential_with_key_and_signer.signer,
                 core::slice::from_ref(bob_key_package.key_package()),
             )
+            .await
             .expect("An unexpected error occurred.");
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         let welcome: MlsMessageIn = welcome.into();
@@ -104,8 +112,10 @@ async fn test_add_member_with_aad() {
             welcome.clone(),
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .await.expect("Error creating staged join from Welcome")
+        .await
+        .expect("Error creating staged join from Welcome")
         .into_group(bob_provider)
+        .await
         .expect("Error creating group from staged join");
 
         // === Alice sends a message to Bob ===
@@ -118,6 +128,7 @@ async fn test_add_member_with_aad() {
                 &alice_credential_with_key_and_signer.signer,
                 &message,
             )
+            .await
             .expect("Error creating message")
             .into();
 
@@ -129,6 +140,7 @@ async fn test_add_member_with_aad() {
                 bob_provider,
                 alice_message.clone().into_protocol_message().unwrap(),
             )
+            .await
             .expect("Error handling message");
 
         // Test the AAD was set correctly
@@ -143,9 +155,11 @@ async fn test_add_member_with_aad() {
                 &alice_credential_with_key_and_signer.signer,
                 core::slice::from_ref(charlie_key_package.key_package()),
             )
+            .await
             .expect("An unexpected error occurred.");
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         // Test the AAD was reset
@@ -156,12 +170,14 @@ async fn test_add_member_with_aad() {
                 bob_provider,
                 commit.clone().into_protocol_message().unwrap(),
             )
+            .await
             .expect("Error handling message");
 
         match bob_processed_message.into_content() {
             ProcessedMessageContent::StagedCommitMessage(bob_staged_commit) => {
                 bob_group
                     .merge_staged_commit(bob_provider, *bob_staged_commit)
+                    .await
                     .unwrap();
             }
             _ => panic!("Expected a StagedCommitMessage"),
@@ -179,9 +195,11 @@ async fn test_add_member_with_aad() {
                 &alice_credential_with_key_and_signer.signer,
                 &[LeafNodeIndex::new(2)],
             )
+            .await
             .expect("An unexpected error occurred.");
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         // Test the AAD was reset
@@ -192,6 +210,7 @@ async fn test_add_member_with_aad() {
                 bob_provider,
                 commit.clone().into_protocol_message().unwrap(),
             )
+            .await
             .expect("Error handling message");
 
         // Test the AAD was set correctly

@@ -24,7 +24,8 @@ async fn external_commit_builder() {
         b"alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    ).await;
+    )
+    .await;
 
     let CredentialWithKeyAndSigner {
         credential_with_key: bob_credential_with_key,
@@ -33,7 +34,8 @@ async fn external_commit_builder() {
         b"bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     let CredentialWithKeyAndSigner {
         credential_with_key: charlie_credential_with_key,
@@ -42,7 +44,8 @@ async fn external_commit_builder() {
         b"charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    ).await;
+    )
+    .await;
 
     // Alice creates a group.
 
@@ -61,10 +64,12 @@ async fn external_commit_builder() {
         .with_wire_format_policy(POLICY)
         .with_capabilities(capabilities.clone())
         .build(alice_provider, &alice_signer, alice_credential_with_key)
-        .await.unwrap();
+        .await
+        .unwrap();
 
     alice_group
         .ensure_persistence(alice_provider.storage())
+        .await
         .unwrap();
 
     // Bob joins the group externally.
@@ -103,7 +108,8 @@ async fn external_commit_builder() {
         .unwrap()
         .leaf_node_parameters(leaf_node_parameters)
         .load_psks(bob_provider.storage())
-        .await.unwrap()
+        .await
+        .unwrap()
         .build(
             bob_provider.rand(),
             bob_provider.crypto(),
@@ -112,10 +118,12 @@ async fn external_commit_builder() {
         )
         .unwrap()
         .finalize(bob_provider)
+        .await
         .unwrap();
 
     bob_group
         .ensure_persistence(bob_provider.storage())
+        .await
         .unwrap();
 
     // Check that the padding was set correctly.
@@ -129,6 +137,7 @@ async fn external_commit_builder() {
     alice_group.set_aad(AAD.to_vec());
     let processed_message = alice_group
         .process_message(alice_provider, plaintext)
+        .await
         .unwrap();
 
     let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
@@ -138,11 +147,13 @@ async fn external_commit_builder() {
     };
     alice_group
         .merge_staged_commit(alice_provider, *staged_commit)
+        .await
         .unwrap();
 
     // Alice issues a self-remove proposal.
     let msg_out = alice_group
         .leave_group_via_self_remove(alice_provider, &alice_signer)
+        .await
         .unwrap();
 
     let ProtocolMessage::PublicMessage(self_remove_proposal) =
@@ -154,6 +165,7 @@ async fn external_commit_builder() {
     // Bob processes the self-remove proposal.
     let bob_processed_message = bob_group
         .process_message(bob_provider, *self_remove_proposal.clone())
+        .await
         .unwrap();
 
     let ProcessedMessageContent::ProposalMessage(proposal) = bob_processed_message.into_content()
@@ -163,6 +175,7 @@ async fn external_commit_builder() {
 
     bob_group
         .store_pending_proposal(bob_provider.storage(), *proposal)
+        .await
         .unwrap();
 
     let verifiable_group_info = bob_group
@@ -190,7 +203,8 @@ async fn external_commit_builder() {
         .unwrap()
         .add_psk_proposal(PreSharedKeyProposal::new(psk))
         .load_psks(charlie_provider.storage())
-        .await.unwrap()
+        .await
+        .unwrap()
         .build(
             charlie_provider.rand(),
             charlie_provider.crypto(),
@@ -199,6 +213,7 @@ async fn external_commit_builder() {
         )
         .unwrap()
         .finalize(charlie_provider)
+        .await
         .unwrap();
 
     // Bob processes Charlie's Commit.
@@ -207,7 +222,10 @@ async fn external_commit_builder() {
         .into_protocol_message()
         .unwrap();
 
-    let bob_processed_message = bob_group.process_message(bob_provider, plaintext).unwrap();
+    let bob_processed_message = bob_group
+        .process_message(bob_provider, plaintext)
+        .await
+        .unwrap();
     let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         bob_processed_message.into_content()
     else {
@@ -215,6 +233,7 @@ async fn external_commit_builder() {
     };
     bob_group
         .merge_staged_commit(bob_provider, *staged_commit)
+        .await
         .unwrap();
 
     // Check that only Bob and Charlie are in the group.

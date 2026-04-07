@@ -26,7 +26,8 @@ async fn new_test_group(
 
     // Generate credentials with keys
     let credential_with_keys =
-        generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider).await;
+        generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider)
+            .await;
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupCreateConfig::builder()
@@ -50,7 +51,8 @@ async fn new_test_group(
         group_id,
         credential_with_keys.credential_with_key.clone(),
     )
-    .await.unwrap();
+    .await
+    .unwrap();
 
     assert!(group
         .own_leaf_node()
@@ -81,13 +83,15 @@ async fn validation_test_setup(
         ciphersuite,
         alice_provider,
         external_senders,
-    );
+    )
+    .await;
 
     let bob_credential_with_key = generate_credential_with_key(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     let bob_key_package = KeyPackage::builder()
         .key_package_extensions(Extensions::empty())
@@ -102,7 +106,8 @@ async fn validation_test_setup(
             &bob_credential_with_key.signer,
             bob_credential_with_key.credential_with_key,
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
     alice_group
         .add_members(
@@ -110,11 +115,13 @@ async fn validation_test_setup(
             &alice_signer_when_keys.signer,
             core::slice::from_ref(bob_key_package.key_package()),
         )
-        .await.expect("error adding Bob to group");
+        .await
+        .expect("error adding Bob to group");
 
     alice_group
         .merge_pending_commit(alice_provider)
-        .await.expect("error merging pending commit");
+        .await
+        .expect("error merging pending commit");
     assert_eq!(alice_group.members().count(), 2);
 
     (alice_group, alice_signer_when_keys)
@@ -131,7 +138,8 @@ async fn external_group_context_ext_proposal_should_succeed() {
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     let (mut alice_group, alice_credential) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -148,7 +156,8 @@ async fn external_group_context_ext_proposal_should_succeed() {
                 .credential
                 .clone(),
         )],
-    );
+    )
+    .await;
 
     // DS is an allowed external sender of the group
     assert!(alice_group
@@ -186,7 +195,8 @@ async fn external_group_context_ext_proposal_should_succeed() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // commit the proposal
     let ProcessedMessageContent::ProposalMessage(proposal) = processed_message.into_content()
@@ -198,11 +208,16 @@ async fn external_group_context_ext_proposal_should_succeed() {
     }
     alice_group
         .store_pending_proposal(alice_provider.storage(), *proposal)
-        .await.unwrap();
+        .await
+        .unwrap();
     let (_, _, _) = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_credential.signer)
-        .await.unwrap();
-    alice_group.merge_pending_commit(alice_provider).await.unwrap();
+        .await
+        .unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     assert_ne!(*alice_group.extensions(), old_extensions);
     assert!(alice_group
@@ -221,7 +236,8 @@ async fn external_group_context_ext_proposal_should_succeed_unknown_extension() 
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     let (mut alice_group, alice_credential) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -238,7 +254,8 @@ async fn external_group_context_ext_proposal_should_succeed_unknown_extension() 
                 .credential
                 .clone(),
         )],
-    );
+    )
+    .await;
 
     // DS is an allowed external sender of the group
     assert!(alice_group
@@ -281,7 +298,8 @@ async fn external_group_context_ext_proposal_should_succeed_unknown_extension() 
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // commit the proposal
     let ProcessedMessageContent::ProposalMessage(proposal) = processed_message.into_content()
@@ -293,11 +311,16 @@ async fn external_group_context_ext_proposal_should_succeed_unknown_extension() 
     }
     alice_group
         .store_pending_proposal(alice_provider.storage(), *proposal)
-        .await.unwrap();
+        .await
+        .unwrap();
     let (_, _, _) = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_credential.signer)
-        .await.unwrap();
-    alice_group.merge_pending_commit(alice_provider).await.unwrap();
+        .await
+        .unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     assert_ne!(*alice_group.extensions(), old_extensions);
     assert!(alice_group
@@ -326,7 +349,8 @@ async fn external_group_context_ext_proposal_should_fail_when_invalid_external_s
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     let (mut alice_group, _alice_credential) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -343,7 +367,8 @@ async fn external_group_context_ext_proposal_should_fail_when_invalid_external_s
                 .credential
                 .clone(),
         )],
-    );
+    )
+    .await;
 
     // Now Delivery Service wants to make group context extensions proposal,
     // with invalid sender index
@@ -366,7 +391,8 @@ async fn external_group_context_ext_proposal_should_fail_when_invalid_external_s
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap_err();
+        .await
+        .unwrap_err();
     assert!(matches!(
         error,
         ProcessMessageError::ValidationError(ValidationError::UnauthorizedExternalSender)
@@ -394,7 +420,8 @@ async fn external_group_context_ext_proposal_should_fail_when_invalid_signature(
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     let (mut alice_group, _alice_credential) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -408,13 +435,15 @@ async fn external_group_context_ext_proposal_should_fail_when_invalid_signature(
                 .clone(),
             ds_credential_with_key.credential_with_key.credential,
         )],
-    );
+    )
+    .await;
 
     let ds_invalid_credential_with_key = generate_credential_with_key(
         "delivery-service-invalid".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     // Now Delivery Service wants to make group context extensions proposal
     let external_group_context_ext_proposal: MlsMessageIn =
@@ -436,7 +465,8 @@ async fn external_group_context_ext_proposal_should_fail_when_invalid_signature(
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap_err();
+        .await
+        .unwrap_err();
     assert!(matches!(
         error,
         ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
@@ -466,14 +496,16 @@ async fn external_group_context_ext_proposal_should_fail_when_no_external_sender
         alice_provider,
         bob_provider,
         vec![],
-    );
+    )
+    .await;
 
     // delivery service credentials. DS will craft a proposal
     let ds_credential_with_key = generate_credential_with_key(
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     // Now Delivery Service wants to make group context extensions proposal
     let external_group_context_ext_proposal: MlsMessageIn =
@@ -495,7 +527,8 @@ async fn external_group_context_ext_proposal_should_fail_when_no_external_sender
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap_err();
+        .await
+        .unwrap_err();
     assert!(matches!(
         error,
         ProcessMessageError::ValidationError(ValidationError::UnauthorizedExternalSender)

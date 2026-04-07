@@ -124,7 +124,8 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVecto
         b"Alice".to_vec(),
         SignatureScheme::from(ciphersuite),
         &provider,
-    ).await;
+    )
+    .await;
 
     // Create a proposal to update the user's key package.
     let alice_key_package = generate_key_package(
@@ -132,7 +133,8 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVecto
         Extensions::default(),
         &provider,
         alice_credential_with_key_and_signer.clone(),
-    ).await;
+    )
+    .await;
 
     // Let's create a group
     let mut alice_group = MlsGroup::builder()
@@ -146,7 +148,8 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVecto
                 .credential_with_key
                 .clone(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
     let alice_ratchet_tree = alice_group.export_ratchet_tree();
 
@@ -182,7 +185,8 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVecto
             &provider,
             &alice_credential_with_key_and_signer.signer.clone(),
         )
-        .await.unwrap()
+        .await
+        .unwrap()
     };
 
     let update_proposal = UpdateProposal {
@@ -194,14 +198,16 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVecto
         b"Bob".to_vec(),
         SignatureScheme::from(ciphersuite),
         &provider,
-    ).await;
+    )
+    .await;
 
     let bob_key_package_bundle = KeyPackageBundle::generate(
         &provider,
         &bob_credential_with_key_and_signer.signer,
         ciphersuite,
         bob_credential_with_key_and_signer.credential_with_key,
-    ).await;
+    )
+    .await;
 
     let add_proposal = AddProposal {
         key_package: bob_key_package_bundle.key_package().clone(),
@@ -249,15 +255,17 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVecto
             &alice_credential_with_key_and_signer.signer,
             bob_key_package_bundle.key_package(),
         )
+        .await
         .unwrap();
 
     let (commit_pt, welcome, _) = alice_group
         .commit_to_pending_proposals(&provider, &alice_credential_with_key_and_signer.signer)
+        .await
         .unwrap();
 
     let welcome = welcome.unwrap();
 
-    alice_group.merge_pending_commit(&provider).unwrap();
+    alice_group.merge_pending_commit(&provider).await.unwrap();
 
     let commit_pm = match commit_pt.clone().body {
         MlsMessageBodyOut::PublicMessage(pm) => pm,
@@ -276,6 +284,7 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVecto
             &alice_credential_with_key_and_signer.signer,
             b"test",
         )
+        .await
         .unwrap();
 
     // Craft a fake public application message from the valid commit.
@@ -314,9 +323,7 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVecto
     }
 }
 
-#[maybe_async::maybe_async]
-#[cfg_attr(feature = "sync", test)]
-#[cfg_attr(not(feature = "sync"), tokio::test)]
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
 async fn write_test_vectors_msg() {
     use openmls_traits::crypto::OpenMlsCrypto;
     let mut tests = Vec::new();

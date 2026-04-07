@@ -16,19 +16,22 @@ async fn remove_blank() {
         "Alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    ).await;
+    )
+    .await;
 
     let bob_credential_with_key_and_signer = generate_credential_with_key(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     let charlie_credential_with_key_and_signer = generate_credential_with_key(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    ).await;
+    )
+    .await;
 
     // Generate KeyPackages
     let bob_key_package = generate_key_package(
@@ -36,13 +39,15 @@ async fn remove_blank() {
         Extensions::empty(),
         bob_provider,
         bob_credential_with_key_and_signer.clone(),
-    ).await;
+    )
+    .await;
     let charlie_key_package = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         charlie_provider,
         charlie_credential_with_key_and_signer,
-    ).await;
+    )
+    .await;
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -59,7 +64,8 @@ async fn remove_blank() {
             .credential_with_key
             .clone(),
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // === Alice adds Bob & Charlie ===
 
@@ -72,9 +78,11 @@ async fn remove_blank() {
                 charlie_key_package.key_package().clone(),
             ],
         )
+        .await
         .expect("An unexpected error occurred.");
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     let welcome: MlsMessageIn = welcome.into();
@@ -88,8 +96,10 @@ async fn remove_blank() {
         welcome.clone(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating staged join from Welcome")
+    .await
+    .expect("Error creating staged join from Welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from staged join");
 
     // === Remove operation ===
@@ -102,9 +112,13 @@ async fn remove_blank() {
             &alice_credential_with_key_and_signer.signer,
             &[bob_index],
         )
+        .await
         .expect("error removing member the first time");
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     // try removing bob a second time
     alice_group
@@ -113,6 +127,7 @@ async fn remove_blank() {
             &alice_credential_with_key_and_signer.signer,
             &[bob_index],
         )
+        .await
         .expect_err("using API to re-remove someone should fail");
 
     // TODO: craft another remove commit that removes bob's (blank) index and check that merging
@@ -141,19 +156,22 @@ async fn test_remove_operation_variants() {
             "Alice".into(),
             ciphersuite.signature_algorithm(),
             alice_provider,
-        ).await;
+        )
+        .await;
 
         let bob_credential_with_key_and_signer = generate_credential_with_key(
             "Bob".into(),
             ciphersuite.signature_algorithm(),
             bob_provider,
-        ).await;
+        )
+        .await;
 
         let charlie_credential_with_key_and_signer = generate_credential_with_key(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
             charlie_provider,
-        ).await;
+        )
+        .await;
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
@@ -161,13 +179,15 @@ async fn test_remove_operation_variants() {
             Extensions::empty(),
             bob_provider,
             bob_credential_with_key_and_signer.clone(),
-        ).await;
+        )
+        .await;
         let charlie_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
             charlie_provider,
             charlie_credential_with_key_and_signer,
-        ).await;
+        )
+        .await;
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -184,7 +204,8 @@ async fn test_remove_operation_variants() {
                 .credential_with_key
                 .clone(),
         )
-        .await.expect("An unexpected error occurred.");
+        .await
+        .expect("An unexpected error occurred.");
 
         // === Alice adds Bob & Charlie ===
 
@@ -197,9 +218,11 @@ async fn test_remove_operation_variants() {
                     charlie_key_package.key_package().clone(),
                 ],
             )
+            .await
             .expect("An unexpected error occurred.");
         alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .expect("error merging pending commit");
 
         let welcome: MlsMessageIn = welcome.into();
@@ -213,8 +236,10 @@ async fn test_remove_operation_variants() {
             welcome.clone(),
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .await.expect("Error creating staged join from Welcome")
+        .await
+        .expect("Error creating staged join from Welcome")
         .into_group(bob_provider)
+        .await
         .expect("Error creating group from staged join");
 
         let mut charlie_group = StagedWelcome::new_from_welcome(
@@ -223,8 +248,10 @@ async fn test_remove_operation_variants() {
             welcome,
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .await.expect("Error creating staged join from Welcome")
+        .await
+        .expect("Error creating staged join from Welcome")
         .into_group(charlie_provider)
+        .await
         .expect("Error creating group from staged join");
 
         // === Remove operation ===
@@ -241,12 +268,14 @@ async fn test_remove_operation_variants() {
                     &alice_credential_with_key_and_signer.signer,
                     &[bob_index],
                 )
+                .await
                 .expect("Could not remove members."),
             // Bob leaves
             TestCase::Leave => {
                 // Bob leaves the group
                 let message = bob_group
                     .leave_group(bob_provider, &bob_credential_with_key_and_signer.signer)
+                    .await
                     .expect("Could not leave group.");
 
                 // Alice & Charlie store the pending proposal
@@ -256,12 +285,14 @@ async fn test_remove_operation_variants() {
                 ] {
                     let processed_message = group
                         .process_message(provider, message.clone().into_protocol_message().unwrap())
+                        .await
                         .expect("Could not process message.");
 
                     match processed_message.into_content() {
                         ProcessedMessageContent::ProposalMessage(proposal) => {
                             group
                                 .store_pending_proposal(provider.storage(), *proposal)
+                                .await
                                 .unwrap();
                         }
                         _ => unreachable!(),
@@ -274,6 +305,7 @@ async fn test_remove_operation_variants() {
                         alice_provider,
                         &alice_credential_with_key_and_signer.signer,
                     )
+                    .await
                     .expect("An unexpected error occurred.")
             }
         };
@@ -320,6 +352,7 @@ async fn test_remove_operation_variants() {
                 bob_provider,
                 message.clone().into_protocol_message().unwrap(),
             )
+            .await
             .expect("Could not process message.");
 
         match bob_processed_message.into_content() {
@@ -373,6 +406,7 @@ async fn test_remove_operation_variants() {
 
         let charlie_processed_message = charlie_group
             .process_message(charlie_provider, protocol_message)
+            .await
             .expect("Could not process message.");
 
         match charlie_processed_message.into_content() {

@@ -1,7 +1,7 @@
 //! This module tests the validation of commits as defined in
 //! https://book.openmls.tech/message_validation.html#commit-message-validation
 
-use openmls_traits::{prelude::*, signatures::Signer, types::Ciphersuite};
+use openmls_traits::{prelude::*, signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use proposal_store::QueuedProposal;
 use tls_codec::{Deserialize, Serialize};
 
@@ -109,10 +109,12 @@ async fn validation_test_setup(
                 charlie_key_package.key_package().clone(),
             ],
         )
+        .await
         .expect("error adding Bob to group");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     let welcome: MlsMessageIn = welcome.into();
@@ -129,6 +131,7 @@ async fn validation_test_setup(
     .await
     .expect("error creating staged join from welcome")
     .into_group(bob_provider)
+    .await
     .expect("error creating group from staged join");
 
     let charlie_group = StagedWelcome::new_from_welcome(
@@ -140,6 +143,7 @@ async fn validation_test_setup(
     .await
     .expect("error creating staged join from welcome")
     .into_group(charlie_provider)
+    .await
     .expect("error creating group from staged join");
 
     CommitValidationTestSetup {
@@ -169,7 +173,8 @@ async fn test_valsem200() {
         alice_provider,
         bob_provider,
         charlie_provider,
-    );
+    )
+    .await;
 
     // Since Alice won't commit to her own removal directly, we have to create
     // proposal and commit independently and then insert the proposal into the
@@ -312,9 +317,15 @@ async fn test_valsem201() {
         alice_provider,
         bob_provider,
         charlie_provider,
-    );
+    )
+    .await;
 
-    fn queued(proposal: Proposal, alice_provider: &&_, alice_group: &MlsGroup) -> QueuedProposal {
+    fn queued<Provider: OpenMlsProvider>(
+        proposal: Proposal,
+        alice_provider: &Provider,
+        alice_group: &MlsGroup,
+        ciphersuite: Ciphersuite,
+    ) -> QueuedProposal {
         QueuedProposal::from_proposal_and_sender(
             ciphersuite,
             alice_provider.crypto(),
@@ -324,7 +335,12 @@ async fn test_valsem201() {
         .unwrap()
     }
 
-    async fn add_proposal(ciphersuite: Ciphersuite) -> QueuedProposal {
+    #[maybe_async::maybe_async]
+    async fn add_proposal(
+        ciphersuite: Ciphersuite,
+        alice_provider: &Provider,
+        alice_group: &MlsGroup,
+    ) -> QueuedProposal {
         let dave_provider = &Provider::default();
         let dave_credential = generate_credential_with_key(
             "Dave".into(),
@@ -340,10 +356,15 @@ async fn test_valsem201() {
         )
         .await;
 
-        queued(Proposal::add(AddProposal {
-            key_package: dave_key_package.key_package().clone(),
-        }))
-    };
+        queued(
+            Proposal::add(AddProposal {
+                key_package: dave_key_package.key_package().clone(),
+            }),
+            alice_provider,
+            alice_group,
+            ciphersuite,
+        )
+    }
 
     let update_proposal = queued(
         Proposal::update(UpdateProposal {
@@ -352,8 +373,9 @@ async fn test_valsem201() {
                 .expect("Unable to get own leaf")
                 .clone(),
         }),
-        &alice_provider,
+        alice_provider,
         &alice_group,
+        ciphersuite,
     );
 
     let remove_proposal = || {
@@ -361,8 +383,9 @@ async fn test_valsem201() {
             Proposal::remove(RemoveProposal {
                 removed: charlie_group.own_leaf_index(),
             }),
-            &alice_provider,
+            alice_provider,
             &alice_group,
+            ciphersuite,
         )
     };
 
@@ -374,8 +397,9 @@ async fn test_valsem201() {
             Proposal::group_context_extensions(GroupContextExtensionProposal::new(
                 group_context_extensions,
             )),
-            &alice_provider,
+            alice_provider,
             &alice_group,
+            ciphersuite,
         )
     };
 
@@ -385,10 +409,20 @@ async fn test_valsem201() {
     // TODO: #751 when ReInit proposal validation are implemented (path not required). Currently one
     // cannot distinguish when the commit has a single ReInit proposal from the commit without proposals
     // in [MlsGroup::apply_proposals()]
-    let cases = vec![
-        (vec![add_proposal(ciphersuite).await], false),
+    let cases = Vec::from([
         (
-            vec![psk_proposals(ciphersuite, alice_provider, bob_provider, queued).await],
+            Vec::from([add_proposal(ciphersuite, alice_provider, &alice_group).await]),
+            false,
+        ),
+        (
+            Vec::from([psk_proposals(
+                ciphersuite,
+                alice_provider,
+                bob_provider,
+                &alice_group,
+                queued,
+            )
+            .await]),
             false,
         ),
         (vec![update_proposal.clone()], true),
@@ -396,31 +430,41 @@ async fn test_valsem201() {
         (vec![gce_proposal()], true),
         // !path_required + !path_required = !path_required
         (
-            vec![
-                add_proposal(ciphersuite).await,
-                psk_proposals(ciphersuite, alice_provider, bob_provider, queued).await,
-            ],
+            Vec::from([
+                add_proposal(ciphersuite, alice_provider, &alice_group).await,
+                psk_proposals(
+                    ciphersuite,
+                    alice_provider,
+                    bob_provider,
+                    &alice_group,
+                    queued,
+                )
+                .await,
+            ]),
             false,
         ),
         // path_required + !path_required = path_required
         (
-            vec![remove_proposal(), add_proposal(ciphersuite).await],
+            Vec::from([
+                remove_proposal(),
+                add_proposal(ciphersuite, alice_provider, &alice_group).await,
+            ]),
             true,
         ),
         // path_required + path_required = path_required
-        (vec![update_proposal, remove_proposal()], true),
+        (Vec::from([update_proposal, remove_proposal()]), true),
         // TODO: #566 this should work if GCE proposals validation were implemented
         // (vec![add_proposal(), gce_proposal()], true),
-    ];
+    ]);
 
     for (proposal, is_path_required) in cases {
         // create a commit containing the proposals
-        proposal.into_iter().for_each(|p| {
+        for p in proposal {
             alice_group
                 .store_pending_proposal(alice_provider.storage(), p.clone())
                 .await
                 .unwrap();
-        });
+        }
 
         let commit = alice_group
             .commit_builder()
@@ -464,15 +508,17 @@ async fn test_valsem201() {
                 &alice_group,
                 &alice_credential.signer,
             );
-            let processed_msg = bob_group.process_message(bob_provider, commit_wo_path);
+            let processed_msg = bob_group
+                .process_message(bob_provider, commit_wo_path)
+                .await;
             assert!(matches!(
-                processed_msg.await.unwrap_err(),
+                processed_msg.unwrap_err(),
                 ProcessMessageError::InvalidCommit(StageCommitError::RequiredPathNotFound)
             ));
         }
 
         // Positive case
-        let process_message_result = bob_group.process_message(bob_provider, commit);
+        let process_message_result = bob_group.process_message(bob_provider, commit).await;
         assert!(process_message_result.is_ok(), "{process_message_result:?}");
 
         // cleanup & restore for next iteration
@@ -491,11 +537,13 @@ async fn test_valsem201() {
     }
 }
 
-async fn psk_proposals(
+#[maybe_async::maybe_async]
+async fn psk_proposals<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
-    alice_provider: &_,
-    bob_provider: &_,
-    queued: impl Fn(Proposal) -> QueuedProposal,
+    alice_provider: &Provider,
+    bob_provider: &Provider,
+    alice_group: &MlsGroup,
+    queued: impl Fn(Proposal, &Provider, &MlsGroup, Ciphersuite) -> QueuedProposal,
 ) -> QueuedProposal {
     let secret = Secret::random(ciphersuite, alice_provider.rand()).unwrap();
     let rand = alice_provider
@@ -513,7 +561,12 @@ async fn psk_proposals(
         .await
         .unwrap();
     psk_id.store(bob_provider, secret.as_slice()).await.unwrap();
-    queued(Proposal::psk(PreSharedKeyProposal::new(psk_id)))
+    queued(
+        Proposal::psk(PreSharedKeyProposal::new(psk_id)),
+        alice_provider,
+        alice_group,
+        ciphersuite,
+    )
 }
 
 fn erase_path(
@@ -566,7 +619,8 @@ async fn test_valsem202() {
         alice_provider,
         bob_provider,
         charlie_provider,
-    );
+    )
+    .await;
 
     // Have Alice generate a self-updating commit, remove a node from the path,
     // re-sign and have Bob process it.
@@ -661,7 +715,8 @@ async fn test_valsem203() {
         alice_provider,
         bob_provider,
         charlie_provider,
-    );
+    )
+    .await;
 
     // Set up test framework
 
@@ -760,7 +815,8 @@ async fn test_valsem204() {
         alice_provider,
         bob_provider,
         charlie_provider,
-    );
+    )
+    .await;
 
     // Have Alice generate a self-updating commit, flip the last byte of one of
     // the public keys in the path and have Bob process the commit.
@@ -904,7 +960,8 @@ async fn test_valsem205() {
         alice_provider,
         bob_provider,
         charlie_provider,
-    );
+    )
+    .await;
 
     // Have Alice generate a self-updating commit, flip the last bit of the
     // confirmation tag and have Bob process the commit.
@@ -989,7 +1046,8 @@ async fn test_partial_proposal_commit() {
         alice_provider,
         bob_provider,
         charlie_provider,
-    );
+    )
+    .await;
 
     let charlie_index = alice_group
         .members()
@@ -1008,6 +1066,7 @@ async fn test_partial_proposal_commit() {
             bob_provider,
             proposal_1.try_into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
     match proposal_1.into_content() {
         ProcessedMessageContent::ProposalMessage(p) => bob_group
@@ -1032,6 +1091,7 @@ async fn test_partial_proposal_commit() {
             bob_provider,
             proposal_2.try_into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
     match proposal_2.into_content() {
         ProcessedMessageContent::ProposalMessage(p) => bob_group
@@ -1063,6 +1123,7 @@ async fn test_partial_proposal_commit() {
     // Bob should be able to process the commit
     bob_group
         .process_message(bob_provider, commit.into_protocol_message().unwrap())
+        .await
         .expect("Commits with partial proposals are not supported");
     bob_group
         .merge_pending_commit(bob_provider)

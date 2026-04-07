@@ -19,7 +19,8 @@ async fn new_test_group(
 
     // Generate credentials with keys
     let credential_with_keys =
-        generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider).await;
+        generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider)
+            .await;
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupCreateConfig::builder()
@@ -39,7 +40,8 @@ async fn new_test_group(
             group_id,
             credential_with_keys.credential_with_key.clone(),
         )
-        .await.unwrap(),
+        .await
+        .unwrap(),
         credential_with_keys,
     )
 }
@@ -60,20 +62,23 @@ async fn validation_test_setup(
         ciphersuite,
         alice_provider,
         external_senders,
-    );
+    )
+    .await;
 
     let bob_credential_with_key = generate_credential_with_key(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     let bob_key_package = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         bob_provider,
         bob_credential_with_key,
-    ).await;
+    )
+    .await;
 
     alice_group
         .add_members(
@@ -81,11 +86,13 @@ async fn validation_test_setup(
             &alice_signer_when_keys.signer,
             core::slice::from_ref(bob_key_package.key_package()),
         )
-        .await.expect("error adding Bob to group");
+        .await
+        .expect("error adding Bob to group");
 
     alice_group
         .merge_pending_commit(alice_provider)
-        .await.expect("error merging pending commit");
+        .await
+        .expect("error merging pending commit");
     assert_eq!(alice_group.members().count(), 2);
 
     (alice_group, alice_signer_when_keys)
@@ -101,7 +108,8 @@ async fn external_add_proposal_should_suceeed() {
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    ).await;
+    )
+    .await;
 
     let (mut alice_group, alice_credential) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -118,7 +126,8 @@ async fn external_add_proposal_should_suceeed() {
                 .credential
                 .clone(),
         )],
-    );
+    )
+    .await;
 
     // DS is an allowed external sender of the group
     assert!(alice_group
@@ -133,14 +142,16 @@ async fn external_add_proposal_should_suceeed() {
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    ).await;
+    )
+    .await;
 
     let charlie_kp = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         charlie_provider,
         charlie_credential.clone(),
-    ).await;
+    )
+    .await;
 
     // Now Delivery Service wants to add Charlie
     let charlie_external_add_proposal: MlsMessageIn = ExternalProposal::new_add::<Provider>(
@@ -161,7 +172,8 @@ async fn external_add_proposal_should_suceeed() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // commit the proposal
     let ProcessedMessageContent::ProposalMessage(add_proposal) = processed_message.into_content()
@@ -170,11 +182,16 @@ async fn external_add_proposal_should_suceeed() {
     };
     alice_group
         .store_pending_proposal(alice_provider.storage(), *add_proposal)
-        .await.unwrap();
+        .await
+        .unwrap();
     let (_, welcome, _) = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_credential.signer)
-        .await.unwrap();
-    alice_group.merge_pending_commit(alice_provider).await.unwrap();
+        .await
+        .unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
     assert_eq!(alice_group.members().count(), 3);
 
     let welcome: MlsMessageIn = welcome.expect("expected a welcome").into();
@@ -192,8 +209,10 @@ async fn external_add_proposal_should_suceeed() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.unwrap()
+    .await
+    .unwrap()
     .into_group(charlie_provider)
+    .await
     .unwrap();
     assert_eq!(charlie_group.members().count(), 3);
 }
@@ -211,7 +230,8 @@ async fn external_add_proposal_should_fail_when_invalid_external_senders_index<
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     let (mut alice_group, _alice_credential) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -228,7 +248,8 @@ async fn external_add_proposal_should_fail_when_invalid_external_senders_index<
                 .credential
                 .clone(),
         )],
-    );
+    )
+    .await;
 
     // A new client, Charlie, wants to be in the group
     let charlie_provider = &Provider::default();
@@ -236,14 +257,16 @@ async fn external_add_proposal_should_fail_when_invalid_external_senders_index<
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    ).await;
+    )
+    .await;
 
     let charlie_kp = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         charlie_provider,
         charlie_credential.clone(),
-    ).await;
+    )
+    .await;
 
     // Now Delivery Service wants to add Charlie with invalid sender index
     let charlie_external_add_proposal: MlsMessageIn = ExternalProposal::new_add::<Provider>(
@@ -264,7 +287,8 @@ async fn external_add_proposal_should_fail_when_invalid_external_senders_index<
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap_err();
+        .await
+        .unwrap_err();
     assert!(matches!(
         error,
         ProcessMessageError::ValidationError(ValidationError::UnauthorizedExternalSender)
@@ -282,7 +306,8 @@ async fn external_add_proposal_should_fail_when_invalid_signature() {
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     let (mut alice_group, _alice_credential) = validation_test_setup(
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -296,13 +321,15 @@ async fn external_add_proposal_should_fail_when_invalid_signature() {
                 .clone(),
             ds_credential_with_key.credential_with_key.credential,
         )],
-    );
+    )
+    .await;
 
     let ds_invalid_credential_with_key = generate_credential_with_key(
         "delivery-service-invalid".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     // A new client, Charlie, wants to be in the group
     let charlie_provider = &Provider::default();
@@ -310,14 +337,16 @@ async fn external_add_proposal_should_fail_when_invalid_signature() {
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    ).await;
+    )
+    .await;
 
     let charlie_kp = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         charlie_provider,
         charlie_credential.clone(),
-    ).await;
+    )
+    .await;
 
     // Now Delivery Service wants to add Charlie with invalid sender signature
     let charlie_external_add_proposal: MlsMessageIn = ExternalProposal::new_add::<Provider>(
@@ -338,7 +367,8 @@ async fn external_add_proposal_should_fail_when_invalid_signature() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap_err();
+        .await
+        .unwrap_err();
     assert!(matches!(
         error,
         ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
@@ -357,14 +387,16 @@ async fn external_add_proposal_should_fail_when_no_external_senders() {
         alice_provider,
         bob_provider,
         vec![],
-    );
+    )
+    .await;
 
     // delivery service credentials. DS will craft an external add proposal
     let ds_credential_with_key = generate_credential_with_key(
         "delivery-service".into(),
         ciphersuite.signature_algorithm(),
         ds_provider,
-    ).await;
+    )
+    .await;
 
     // A new client, Charlie, wants to be in the group
     let charlie_provider = &Provider::default();
@@ -372,14 +404,16 @@ async fn external_add_proposal_should_fail_when_no_external_senders() {
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    ).await;
+    )
+    .await;
 
     let charlie_kp = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         charlie_provider,
         charlie_credential.clone(),
-    ).await;
+    )
+    .await;
 
     // Now Delivery Service wants to add Charlie with invalid sender index but there's no extension
     let charlie_external_add_proposal: MlsMessageIn = ExternalProposal::new_add::<Provider>(
@@ -400,7 +434,8 @@ async fn external_add_proposal_should_fail_when_no_external_senders() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.unwrap_err();
+        .await
+        .unwrap_err();
     assert!(matches!(
         error,
         ProcessMessageError::ValidationError(ValidationError::UnauthorizedExternalSender)

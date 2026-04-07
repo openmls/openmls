@@ -19,7 +19,8 @@ async fn create_group(
 
     // Generate credentials with keys
     let credential_with_key_and_signer =
-        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider).await;
+        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider)
+            .await;
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupCreateConfig::builder()
@@ -36,7 +37,8 @@ async fn create_group(
             group_id,
             credential_with_key_and_signer.credential_with_key.clone(),
         )
-        .await.expect("An unexpected error occurred."),
+        .await
+        .expect("An unexpected error occurred."),
         credential_with_key_and_signer,
     )
 }
@@ -55,7 +57,8 @@ async fn receive_message(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     // Generate KeyPackages
     let bob_key_package = generate_key_package(
@@ -63,7 +66,8 @@ async fn receive_message(
         Extensions::empty(),
         bob_provider,
         bob_credential_with_key_and_signer.clone(),
-    ).await;
+    )
+    .await;
 
     let (_message, welcome, _group_info) = alice_group
         .add_members(
@@ -71,11 +75,13 @@ async fn receive_message(
             alice_signer,
             core::slice::from_ref(bob_key_package.key_package()),
         )
-        .await.expect("Could not add member.");
+        .await
+        .expect("Could not add member.");
 
     alice_group
         .merge_pending_commit(alice_provider)
-        .await.expect("error merging pending commit");
+        .await
+        .expect("error merging pending commit");
 
     let mls_group_config = MlsGroupJoinConfig::builder()
         .wire_format_policy(alice_group.configuration().wire_format_policy())
@@ -88,8 +94,10 @@ async fn receive_message(
 
     let mut bob_group =
         StagedWelcome::new_from_welcome(bob_provider, &mls_group_config, welcome, None)
-            .await.expect("error creating bob's staged join from welcome")
+            .await
+            .expect("error creating bob's staged join from welcome")
             .into_group(bob_provider)
+            .await
             .expect("error creating bob's group from staged join");
 
     let (message, _welcome, _group_info) = bob_group
@@ -98,6 +106,7 @@ async fn receive_message(
             &bob_credential_with_key_and_signer.signer,
             LeafNodeParameters::default(),
         )
+        .await
         .expect("An unexpected error occurred.")
         .into_contents();
     message.into()
@@ -110,17 +119,19 @@ async fn test_wire_policy_positive() {
         let alice_provider = &Provider::default();
         let bob_provider = &Provider::default();
         let (mut alice_group, alice_credential_with_key_and_signer) =
-            create_group(ciphersuite, alice_provider, *wire_format_policy);
+            create_group(ciphersuite, alice_provider, *wire_format_policy).await;
         let message = receive_message(
             ciphersuite,
             alice_provider,
             bob_provider,
             &mut alice_group,
             &alice_credential_with_key_and_signer.signer,
-        );
+        )
+        .await;
         alice_group
             .process_message(alice_provider, message.try_into_protocol_message().unwrap())
-            .await.expect("An unexpected error occurred.");
+            .await
+            .expect("An unexpected error occurred.");
     }
 }
 
@@ -142,17 +153,19 @@ async fn test_wire_policy_negative() {
     ];
     for wire_format_policy in incompatible_policies.into_iter() {
         let (mut alice_group, alice_credential_with_key_and_signer) =
-            create_group(ciphersuite, alice_provider, wire_format_policy);
+            create_group(ciphersuite, alice_provider, wire_format_policy).await;
         let message = receive_message(
             ciphersuite,
             alice_provider,
             bob_provider,
             &mut alice_group,
             &alice_credential_with_key_and_signer.signer,
-        );
+        )
+        .await;
         let err = alice_group
             .process_message(alice_provider, message.try_into_protocol_message().unwrap())
-            .await.expect_err("An unexpected error occurred.");
+            .await
+            .expect_err("An unexpected error occurred.");
         assert!(matches!(err, ProcessMessageError::IncompatibleWireFormat));
     }
 }

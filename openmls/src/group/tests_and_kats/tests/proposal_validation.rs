@@ -53,7 +53,8 @@ async fn generate_credential_with_key_and_key_package(
         Extensions::empty(),
         provider,
         credential_with_key_and_signer.clone(),
-    ).await;
+    )
+    .await;
 
     (credential_with_key_and_signer, key_package)
 }
@@ -77,7 +78,8 @@ async fn create_group_with_members<Provider: OpenMlsProvider>(
             .credential_with_key
             .clone(),
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     alice_group
         .add_members(
@@ -85,6 +87,7 @@ async fn create_group_with_members<Provider: OpenMlsProvider>(
             &alice_credential_with_key_and_signer.signer,
             member_key_packages,
         )
+        .await
         .map(|(msg, welcome, _group_info)| {
             (
                 msg.into(),
@@ -112,7 +115,8 @@ async fn new_test_group(
 
     // Generate credentials with keys
     let credential_with_key_and_signer =
-        generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider).await;
+        generate_credential_with_key(identity.into(), ciphersuite.signature_algorithm(), provider)
+            .await;
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -128,7 +132,8 @@ async fn new_test_group(
             group_id,
             credential_with_key_and_signer.credential_with_key.clone(),
         )
-        .await.unwrap(),
+        .await
+        .unwrap(),
         credential_with_key_and_signer,
     )
 }
@@ -143,20 +148,22 @@ async fn validation_test_setup(
 ) -> ProposalValidationTestSetup {
     // === Alice creates a group ===
     let (mut alice_group, alice_credential_with_key_and_signer) =
-        new_test_group("Alice", wire_format_policy, ciphersuite, alice_provider);
+        new_test_group("Alice", wire_format_policy, ciphersuite, alice_provider).await;
 
     let bob_credential_with_key_and_signer = generate_credential_with_key(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     let bob_key_package = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         bob_provider,
         bob_credential_with_key_and_signer.clone(),
-    ).await;
+    )
+    .await;
 
     let (_message, welcome, _group_info) = alice_group
         .add_members(
@@ -164,9 +171,13 @@ async fn validation_test_setup(
             &alice_credential_with_key_and_signer.signer,
             from_ref(bob_key_package.key_package()),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
-    alice_group.merge_pending_commit(alice_provider).await.unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupJoinConfig::builder()
@@ -184,8 +195,10 @@ async fn validation_test_setup(
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.unwrap()
+    .await
+    .unwrap()
     .into_group(bob_provider)
+    .await
     .unwrap();
 
     ProposalValidationTestSetup {
@@ -265,19 +278,22 @@ async fn test_valsem101a() {
             "Alice".into(),
             ciphersuite,
             alice_provider,
-        ).await;
+        )
+        .await;
 
         // 1. Initialize Bob and Charlie
         let bob_credential_with_keys = generate_credential_with_key(
             b"Bob".to_vec(),
             ciphersuite.signature_algorithm(),
             bob_provider,
-        ).await;
+        )
+        .await;
         let mut charlie_credential_with_keys = generate_credential_with_key(
             b"Charlie".to_vec(),
             ciphersuite.signature_algorithm(),
             charlie_provider,
-        ).await;
+        )
+        .await;
 
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
@@ -302,13 +318,15 @@ async fn test_valsem101a() {
             Extensions::empty(),
             bob_provider,
             bob_credential_with_keys.clone(),
-        ).await;
+        )
+        .await;
         let charlie_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
             charlie_provider,
             charlie_credential_with_keys.clone(),
-        ).await;
+        )
+        .await;
 
         // 1. Alice creates a group and tries to add Bob and Charlie to it
         let res = create_group_with_members(
@@ -319,7 +337,8 @@ async fn test_valsem101a() {
                 charlie_key_package.key_package().clone(),
             ],
             alice_provider,
-        );
+        )
+        .await;
 
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
@@ -351,7 +370,8 @@ async fn test_valsem101a() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // We now have alice create a commit with an add proposal. Then we
     // artificially add another add proposal with a different identity,
@@ -361,7 +381,8 @@ async fn test_valsem101a() {
             "Charlie".into(),
             ciphersuite,
             charlie_provider,
-        ).await;
+        )
+        .await;
 
     // Create the Commit with Add proposal.
     let serialized_update = alice_group
@@ -370,7 +391,8 @@ async fn test_valsem101a() {
             &alice_credential_with_key_and_signer.signer,
             from_ref(charlie_key_package.key_package()),
         )
-        .await.expect("Error creating self-update")
+        .await
+        .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -396,7 +418,8 @@ async fn test_valsem101a() {
                     .signature_key,
             },
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
     let second_add_proposal = Proposal::add(AddProposal {
         key_package: dave_key_package.key_package().clone(),
@@ -417,7 +440,8 @@ async fn test_valsem101a() {
     // Have bob process the resulting plaintext
     let err = bob_group
         .process_message(bob_provider, update_message_in)
-        .await.expect_err("Could process message despite modified public key in path.");
+        .await
+        .expect_err("Could process message despite modified public key in path.");
 
     assert!(matches!(
         err,
@@ -438,7 +462,8 @@ async fn test_valsem101a() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 /// ValSem102:
@@ -459,15 +484,18 @@ async fn test_valsem102() {
             "Alice".into(),
             ciphersuite,
             alice_provider,
-        ).await;
+        )
+        .await;
         let (bob_credential_with_key, mut bob_key_package) =
-            generate_credential_with_key_and_key_package("Bob".into(), ciphersuite, bob_provider).await;
+            generate_credential_with_key_and_key_package("Bob".into(), ciphersuite, bob_provider)
+                .await;
         let (_charlie_credential_with_key, charlie_key_package) =
             generate_credential_with_key_and_key_package(
                 "Charlie".into(),
                 ciphersuite,
                 charlie_provider,
-            ).await;
+            )
+            .await;
 
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
@@ -506,7 +534,8 @@ async fn test_valsem102() {
                 charlie_key_package.key_package().clone(),
             ],
             alice_provider,
-        );
+        )
+        .await;
 
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
@@ -538,7 +567,8 @@ async fn test_valsem102() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // We now have alice create a commit with an add proposal. Then we
     // artificially add another add proposal with a different identity,
@@ -548,7 +578,8 @@ async fn test_valsem102() {
             "Charlie".into(),
             ciphersuite,
             charlie_provider,
-        ).await;
+        )
+        .await;
 
     // Create the Commit with Add proposal.
     let serialized_update = alice_group
@@ -557,7 +588,8 @@ async fn test_valsem102() {
             &alice_credential_with_key_and_signer.signer,
             from_ref(charlie_key_package.key_package()),
         )
-        .await.expect("Error creating self-update")
+        .await
+        .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
@@ -574,7 +606,8 @@ async fn test_valsem102() {
     // key.
     let dave_provider = &Provider::default();
     let (dave_credential_with_key_and_signer, dave_key_package) =
-        generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, dave_provider).await;
+        generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, dave_provider)
+            .await;
     // Change the init key and re-sign.
     let mut franken_key_package = FrankenKeyPackage::from(dave_key_package);
     franken_key_package.init_key = charlie_key_package
@@ -605,7 +638,8 @@ async fn test_valsem102() {
     // Have bob process the resulting plaintext
     let err = bob_group
         .process_message(bob_provider, update_message_in)
-        .await.expect_err("Could process message despite modified encryption key in path.");
+        .await
+        .expect_err("Could process message despite modified encryption key in path.");
 
     assert!(matches!(
         err,
@@ -626,7 +660,8 @@ async fn test_valsem102() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 /// ValSem101:
@@ -680,14 +715,16 @@ async fn test_valsem101b() {
             Extensions::empty(),
             bob_provider,
             bob_credential_with_key.clone(),
-        ).await;
+        )
+        .await;
         let target_provider = &Provider::default();
         let target_key_package = generate_key_package(
             ciphersuite,
             Extensions::empty(),
             target_provider,
             target_credential_with_key.clone(),
-        ).await;
+        )
+        .await;
 
         // 1. Alice creates a group and tries to add Bob to it
         let mut alice_group = MlsGroup::new_with_group_id(
@@ -699,7 +736,8 @@ async fn test_valsem101b() {
             GroupId::random(alice_provider.rand()),
             alice_credential_with_key.credential_with_key.clone(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
         match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
@@ -712,6 +750,7 @@ async fn test_valsem101b() {
                             target_key_package.key_package().clone(),
                         ],
                     )
+                    .await
                     .expect_err("was able to add user with same signature key as a group member!");
                 assert!(matches!(
                     err,
@@ -730,6 +769,7 @@ async fn test_valsem101b() {
                             target_key_package.key_package().clone(),
                         ],
                     )
+                    .await
                     .expect("failed to add user with different signature keypair!");
             }
             KeyUniqueness::PositiveSameKeyWithRemove => {
@@ -739,8 +779,12 @@ async fn test_valsem101b() {
                         &alice_credential_with_key.signer,
                         from_ref(bob_key_package.key_package()),
                     )
+                    .await
                     .unwrap();
-                alice_group.merge_pending_commit(alice_provider).unwrap();
+                alice_group
+                    .merge_pending_commit(alice_provider)
+                    .await
+                    .unwrap();
                 let bob_index = alice_group
                     .members()
                     .find_map(|member| {
@@ -757,9 +801,10 @@ async fn test_valsem101b() {
                         &alice_credential_with_key.signer,
                         bob_index,
                     )
+                    .await
                     .unwrap();
                 alice_group
-                    .add_members(alice_provider, &alice_credential_with_key.signer, from_ref(target_key_package.key_package()))
+                    .add_members(alice_provider, &alice_credential_with_key.signer, from_ref(target_key_package.key_package())).await
                     .expect(
                     "failed to add a user with the same identity as someone in the group (with a remove proposal)!",
                 );
@@ -836,7 +881,7 @@ async fn test_valsem101b() {
                 let bob_index = alice_group
                     .members()
                     .find_map(|member| {
-                        if member.credential.identity() == b"Bob" {
+                        if member.credential.identity().await == b"Bob" {
                             Some(member.index)
                         } else {
                             None
@@ -864,7 +909,7 @@ async fn test_valsem101b() {
             KeyUniqueness::NegativeSameKey => {
                 // Have bob process the resulting plaintext
                 let err = bob_group
-                    .process_message(provider, verifiable_plaintext)
+                    .process_message(provider, verifiable_plaintext).await
                     .expect_err("Could process message despite modified public key in path.");
 
                 assert_eq!(
@@ -876,7 +921,7 @@ async fn test_valsem101b() {
             }
             KeyUniqueness::PositiveSameKeyWithRemove => {
                 bob_group
-                    .process_message(provider, verifiable_plaintext)
+                    .process_message(provider, verifiable_plaintext).await
                     .expect(
                         "Could not process message despite having a remove proposal in the commit",
                     );
@@ -890,7 +935,7 @@ async fn test_valsem101b() {
 
         // Positive case
         bob_group
-            .process_message(provider, original_update_plaintext)
+            .process_message(provider, original_update_plaintext).await
             .expect("Unexpected error.");
     } */
 }
@@ -913,9 +958,11 @@ async fn test_valsem103_valsem104() {
             "Alice".into(),
             ciphersuite,
             alice_provider,
-        ).await;
+        )
+        .await;
         let (bob_credential_with_key, bob_key_package) =
-            generate_credential_with_key_and_key_package("Bob".into(), ciphersuite, bob_provider).await;
+            generate_credential_with_key_and_key_package("Bob".into(), ciphersuite, bob_provider)
+                .await;
 
         let bob_key_package = match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
@@ -939,7 +986,8 @@ async fn test_valsem103_valsem104() {
             &alice_credential_with_key,
             &[bob_key_package],
             alice_provider,
-        );
+        )
+        .await;
 
         match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
@@ -971,7 +1019,8 @@ async fn test_valsem103_valsem104() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // We now have alice create a commit. Then we artificially add an Add
     // proposal with a leaf that has the same encryption key as an existing leaf.
@@ -983,7 +1032,8 @@ async fn test_valsem103_valsem104() {
             &alice_credential_with_key_and_signer.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Error creating self-update")
+        .await
+        .expect("Error creating self-update")
         .into_contents()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -1006,7 +1056,8 @@ async fn test_valsem103_valsem104() {
     // Generate fresh key material for Dave.
     let dave_provider = &Provider::default();
     let (dave_credential_with_key, dave_key_package) =
-        generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, dave_provider).await;
+        generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, dave_provider)
+            .await;
 
     // Insert Bob's public key into Dave's KPB and resign.
     let mut franken_key_package = FrankenKeyPackage::from(dave_key_package);
@@ -1036,7 +1087,8 @@ async fn test_valsem103_valsem104() {
     // Have bob process the resulting plaintext
     let err = bob_group
         .process_message(bob_provider, update_message_in)
-        .await.expect_err("Could process message despite modified public key in path.");
+        .await
+        .expect_err("Could process message despite modified public key in path.");
 
     assert!(matches!(
         err,
@@ -1057,7 +1109,8 @@ async fn test_valsem103_valsem104() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 #[derive(Debug)]
@@ -1131,14 +1184,16 @@ async fn test_valsem105() {
             ciphersuite,
             alice_provider,
             bob_provider,
-        );
+        )
+        .await;
 
         let (charlie_credential_with_key, charlie_key_package) =
             generate_credential_with_key_and_key_package(
                 "Charlie".into(),
                 ciphersuite,
                 charlie_provider,
-            ).await;
+            )
+            .await;
 
         let mut franken_key_package = FrankenKeyPackage::from(charlie_key_package.clone());
 
@@ -1179,7 +1234,8 @@ async fn test_valsem105() {
                     "Charlie".into(),
                     ciphersuite,
                     charlie_provider,
-                ).await;
+                )
+                .await;
 
             let mut franken_key_package = FrankenKeyPackage::from(charlie_key_package.clone());
 
@@ -1221,39 +1277,44 @@ async fn test_valsem105() {
                             &alice_credential_with_key_and_signer.signer,
                             &test_kp,
                         )
-                        .await.unwrap();
+                        .await
+                        .unwrap();
 
-                    let result = alice_group.commit_to_pending_proposals(
-                        alice_provider,
-                        &alice_credential_with_key_and_signer.signer,
-                    );
+                    let result = alice_group
+                        .commit_to_pending_proposals(
+                            alice_provider,
+                            &alice_credential_with_key_and_signer.signer,
+                        )
+                        .await;
 
                     // The error types differ, so we have to check the error inside the `match`.
                     match key_package_version {
                         KeyPackageTestVersion::ValidTestCase => {
-                            result.await.unwrap();
+                            result.unwrap();
                         }
                         _ => {
                             matches!(
-                                result.await.unwrap_err(),
+                                result.unwrap_err(),
                                 CommitToPendingProposalsError::CreateCommitError(_)
                             );
                         }
                     }
                 }
                 ProposalInclusion::ByValue => {
-                    let result = alice_group.add_members(
-                        alice_provider,
-                        &alice_credential_with_key_and_signer.signer,
-                        from_ref(&test_kp_2),
-                    );
+                    let result = alice_group
+                        .add_members(
+                            alice_provider,
+                            &alice_credential_with_key_and_signer.signer,
+                            from_ref(&test_kp_2),
+                        )
+                        .await;
 
                     match key_package_version {
                         KeyPackageTestVersion::ValidTestCase => {
-                            result.await.unwrap();
+                            result.unwrap();
                         }
                         _ => {
-                            matches!(result.await.unwrap_err(), AddMembersError::CreateCommitError(_));
+                            matches!(result.unwrap_err(), AddMembersError::CreateCommitError(_));
                         }
                     }
                 }
@@ -1261,12 +1322,14 @@ async fn test_valsem105() {
             // Reset alice's group state for the next test case.
             alice_group
                 .clear_pending_commit(alice_provider.storage())
-                .await.unwrap();
+                .await
+                .unwrap();
         }
         // Now we create a valid commit and add the proposal afterwards. Once by value, once by reference.
         alice_group
             .clear_pending_proposals(alice_provider.storage())
-            .await.unwrap();
+            .await
+            .unwrap();
 
         // Create the Commit.
         let serialized_update = alice_group
@@ -1275,7 +1338,8 @@ async fn test_valsem105() {
                 &alice_credential_with_key_and_signer.signer,
                 LeafNodeParameters::default(),
             )
-            .await.unwrap()
+            .await
+            .unwrap()
             .into_messages()
             .tls_serialize_detached()
             .unwrap();
@@ -1332,13 +1396,15 @@ async fn test_valsem105() {
                         )
                         .unwrap(),
                     )
-                    .await.unwrap()
+                    .await
+                    .unwrap()
             }
 
             // Have bob process the resulting plaintext
             let err = bob_group
                 .process_message(bob_provider, update_message_in)
-                .await.expect_err("Could process message despite injected add proposal.");
+                .await
+                .expect_err("Could process message despite injected add proposal.");
 
             match key_package_version {
                 // We get an error even if the key package is valid. This is
@@ -1455,12 +1521,14 @@ async fn test_valsem105() {
                         .try_into_protocol_message()
                         .unwrap(),
                 )
-                .await.unwrap();
+                .await
+                .unwrap();
         }
 
         alice_group
             .clear_pending_commit(alice_provider.storage())
-            .await.unwrap();
+            .await
+            .unwrap();
     }
 }
 
@@ -1504,7 +1572,8 @@ async fn test_valsem107() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // We first try to make Alice create a commit with two remove proposals for
     // Bob.
@@ -1524,7 +1593,8 @@ async fn test_valsem107() {
                 &alice_credential_with_key_and_signer.signer,
                 bob_leaf_index,
             )
-            .await.unwrap();
+            .await
+            .unwrap();
 
         let (ref_propose2, _) = alice_group
             .propose_remove_member(
@@ -1532,7 +1602,8 @@ async fn test_valsem107() {
                 &alice_credential_with_key_and_signer.signer,
                 bob_leaf_index,
             )
-            .await.unwrap();
+            .await
+            .unwrap();
 
         assert_eq!(ref_propose1, ref_propose2);
 
@@ -1543,12 +1614,14 @@ async fn test_valsem107() {
     // that contains only one remove proposal.
     let (commit_ref_remove, _welcome, _group_info) = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_credential_with_key_and_signer.signer)
-        .await.expect("error while trying to commit to colliding remove proposals");
+        .await
+        .expect("error while trying to commit to colliding remove proposals");
 
     // Clear commit to try another way of committing two identical removes.
     alice_group
         .clear_pending_commit(alice_provider.storage())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // Now let's verify that both commits only contain one proposal.
     let (commit_inline_remove, _welcome, _group_info) = alice_group
@@ -1557,7 +1630,8 @@ async fn test_valsem107() {
             &alice_credential_with_key_and_signer.signer,
             &[bob_leaf_index, bob_leaf_index],
         )
-        .await.expect("error while trying to remove the same member twice");
+        .await
+        .expect("error while trying to remove the same member twice");
 
     // Check commit with referenced remove proposals.
     {
@@ -1641,7 +1715,8 @@ async fn test_valsem108() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // We first try to make Alice create a commit with a proposal targeting a
     // non-existing group member.
@@ -1658,14 +1733,17 @@ async fn test_valsem108() {
             &alice_credential_with_key_and_signer.signer,
             fake_leaf_index,
         )
-        .await.expect_err("Successfully created remove proposal for leaf not in the tree");
+        .await
+        .expect_err("Successfully created remove proposal for leaf not in the tree");
     let _ = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_credential_with_key_and_signer.signer)
-        .await.expect("No error while committing empty proposals");
+        .await
+        .expect("No error while committing empty proposals");
     // FIXME: #1098 This shouldn't be necessary. Something is broken in the state logic.
     alice_group
         .clear_pending_commit(alice_provider.storage())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // Creating the proposal should fail already because the member is not known.
     let err = alice_group
@@ -1674,17 +1752,20 @@ async fn test_valsem108() {
             &alice_credential_with_key_and_signer.signer,
             fake_leaf_index,
         )
-        .await.expect_err("Successfully created remove proposal for unknown member");
+        .await
+        .expect_err("Successfully created remove proposal for unknown member");
 
     assert!(matches!(err, ProposeRemoveMemberError::UnknownMember));
 
     // Clear commit to try another way of committing a remove of a non-member.
     alice_group
         .clear_pending_commit(alice_provider.storage())
-        .await.unwrap();
+        .await
+        .unwrap();
     alice_group
         .clear_pending_proposals(alice_provider.storage())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     let err = alice_group
         .remove_members(
@@ -1692,7 +1773,8 @@ async fn test_valsem108() {
             &alice_credential_with_key_and_signer.signer,
             &[fake_leaf_index],
         )
-        .await.expect_err("no error while trying to remove non-group-member");
+        .await
+        .expect_err("no error while trying to remove non-group-member");
 
     assert!(matches!(
         err,
@@ -1711,7 +1793,8 @@ async fn test_valsem108() {
             &alice_credential_with_key_and_signer.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Error creating self-update")
+        .await
+        .expect("Error creating self-update")
         .into_messages()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -1746,7 +1829,8 @@ async fn test_valsem108() {
     // Have bob process the resulting plaintext
     let err = bob_group
         .process_message(bob_provider, update_message_in)
-        .await.expect_err("Could process message despite modified public key in path.");
+        .await
+        .expect_err("Could process message despite modified public key in path.");
 
     assert!(matches!(
         err,
@@ -1767,7 +1851,8 @@ async fn test_valsem108() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 /// ValSem110
@@ -1790,7 +1875,8 @@ async fn test_valsem110() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // We can't test this by having Alice propose an update herself, so we have
     // to have Bob propose the update. This is due to the commit logic filtering
@@ -1818,7 +1904,8 @@ async fn test_valsem110() {
             &bob_credential_with_key_and_signer.signer,
             LeafNodeParameters::default(),
         )
-        .await.map(|(out, _)| MlsMessageIn::from(out))
+        .await
+        .map(|(out, _)| MlsMessageIn::from(out))
         .expect("error while creating remove proposal");
 
     // Prepare the modified update proposal:
@@ -1874,12 +1961,14 @@ async fn test_valsem110() {
     // Have Alice process this proposal.
     if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
         .process_message(alice_provider, protocol_message)
-        .await.expect("error processing proposal")
+        .await
+        .expect("error processing proposal")
         .into_content()
     {
         alice_group
             .store_pending_proposal(alice_provider.storage(), *proposal)
-            .await.unwrap()
+            .await
+            .unwrap()
     } else {
         panic!("Unexpected message type");
     };
@@ -1887,7 +1976,8 @@ async fn test_valsem110() {
     // This should fail, since the hpke keys collide.
     let err = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_credential_with_key_and_signer.signer)
-        .await.expect_err("no error while trying to commit to update proposal with differing identity");
+        .await
+        .expect_err("no error while trying to commit to update proposal with differing identity");
 
     assert!(matches!(
         err,
@@ -1902,10 +1992,12 @@ async fn test_valsem110() {
     // keys.
     alice_group
         .clear_pending_commit(alice_provider.storage())
-        .await.unwrap();
+        .await
+        .unwrap();
     alice_group
         .clear_pending_proposals(alice_provider.storage())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // We now have Alice create a commit. Then we artificially add an
     // update proposal with a colliding encryption key.
@@ -1917,7 +2009,8 @@ async fn test_valsem110() {
             &alice_credential_with_key_and_signer.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Error creating self-update")
+        .await
+        .expect("Error creating self-update")
         .into_contents()
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -1950,16 +2043,18 @@ async fn test_valsem110() {
     // process the commit.
     let leaf_keypair = alice_group
         .read_epoch_keypairs(alice_provider.storage())
-        .await.unwrap()
+        .await
+        .unwrap()
         .into_iter()
         .find(|keypair| keypair.public_key() == &alice_encryption_key)
         .unwrap();
-    leaf_keypair.write(alice_provider.storage()).unwrap();
+    leaf_keypair.write(alice_provider.storage()).await.unwrap();
 
     // Have bob process the resulting plaintext
     let err = bob_group
         .process_message(bob_provider, update_message_in)
-        .await.expect_err("Could process message despite modified public key in path.");
+        .await
+        .expect_err("Could process message despite modified public key in path.");
 
     assert!(matches!(
         err,
@@ -1987,7 +2082,8 @@ async fn test_valsem111() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // We can't test this by having Alice propose an update herself. This is due
     // to the commit logic filtering out own proposals and just including a path
@@ -2003,7 +2099,8 @@ async fn test_valsem111() {
         Extensions::empty(),
         alice_provider,
         alice_credential_with_key_and_signer.clone(),
-    ).await;
+    )
+    .await;
 
     let update_proposal = Proposal::update(UpdateProposal {
         leaf_node: update_kp.key_package().leaf_node().clone(),
@@ -2017,7 +2114,8 @@ async fn test_valsem111() {
             &alice_credential_with_key_and_signer.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Error creating self-update");
+        .await
+        .expect("Error creating self-update");
 
     // Check that there's no proposal in it.
     let (msg, welcome, group_info) = commit_bundle.contents();
@@ -2068,7 +2166,8 @@ async fn test_valsem111() {
     // Have bob process the resulting plaintext
     let err = bob_group
         .process_message(bob_provider, update_message_in)
-        .await.expect_err("Could process message despite modified public key in path.");
+        .await
+        .expect_err("Could process message despite modified public key in path.");
 
     assert!(matches!(
         err,
@@ -2088,7 +2187,8 @@ async fn test_valsem111() {
             )
             .expect("error creating queued proposal"),
         )
-        .await.expect("error writing to storage");
+        .await
+        .expect("error writing to storage");
 
     // Now we can have Alice create a new commit and insert the proposal by
     // reference.
@@ -2096,7 +2196,8 @@ async fn test_valsem111() {
     // Wipe any pending commit first.
     alice_group
         .clear_pending_commit(alice_provider.storage())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     let commit = alice_group
         .self_update(
@@ -2104,7 +2205,8 @@ async fn test_valsem111() {
             &alice_credential_with_key_and_signer.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Error creating self-update");
+        .await
+        .expect("Error creating self-update");
 
     let serialized_update = commit
         .into_contents()
@@ -2139,7 +2241,8 @@ async fn test_valsem111() {
     // Have bob process the resulting plaintext
     let err = bob_group
         .process_message(bob_provider, update_message_in)
-        .await.expect_err("Could process message despite modified public key in path.");
+        .await
+        .expect_err("Could process message despite modified public key in path.");
 
     assert!(matches!(
         err,
@@ -2160,7 +2263,8 @@ async fn test_valsem111() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 /// ValSem112
@@ -2183,7 +2287,8 @@ async fn test_valsem112() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // This can really only be tested by the receiver, as there is no way to
     // make a client create a proposal with a different sender type than
@@ -2197,7 +2302,8 @@ async fn test_valsem112() {
             &alice_credential_with_key_and_signer.signer,
             LeafNodeParameters::default(),
         )
-        .await.expect("Error creating self-update");
+        .await
+        .expect("Error creating self-update");
 
     // Check that the sender type is indeed `member`.
     let serialized_update = commit
@@ -2222,7 +2328,8 @@ async fn test_valsem112() {
     // Have bob process the resulting plaintext
     let err = bob_group
         .process_message(bob_provider, update_message_in)
-        .await.expect_err("Could parse message despite modified public key in path.");
+        .await
+        .expect_err("Could parse message despite modified public key in path.");
 
     assert!(matches!(
         err,
@@ -2236,7 +2343,8 @@ async fn test_valsem112() {
     // Positive case
     bob_group
         .process_message(bob_provider, ProtocolMessage::from(original_plaintext))
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 /// ValSem113
@@ -2273,13 +2381,15 @@ async fn valsem113() {
         b"alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    ).await;
+    )
+    .await;
 
     let bob_credential_with_keys = generate_credential_with_key(
         b"bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     for test_mode in [TestMode::Unsupported, TestMode::Supported] {
         // Before we can test creation or reception of a commit with an
@@ -2297,7 +2407,8 @@ async fn valsem113() {
             &bob_credential_with_keys.signer,
             bob_credential_with_keys.credential_with_key.clone(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
         // Create a group with the defined capabilities
         let mut alice_group = if matches!(test_mode, TestMode::Unsupported) {
@@ -2311,7 +2422,8 @@ async fn valsem113() {
             &alice_credential_with_keys.signer,
             alice_credential_with_keys.credential_with_key.clone(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
         // Add Bob
         let (_mls_message, welcome, _group_info) = alice_group
@@ -2320,9 +2432,13 @@ async fn valsem113() {
                 &alice_credential_with_keys.signer,
                 from_ref(bob_key_package.key_package()),
             )
+            .await
             .unwrap();
 
-        alice_group.merge_pending_commit(alice_provider).unwrap();
+        alice_group
+            .merge_pending_commit(alice_provider)
+            .await
+            .unwrap();
 
         let staged_welcome = StagedWelcome::new_from_welcome(
             bob_provider,
@@ -2330,9 +2446,10 @@ async fn valsem113() {
             welcome.into_welcome().unwrap(),
             Some(alice_group.export_ratchet_tree().into()),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
-        let mut bob_group = staged_welcome.into_group(bob_provider).unwrap();
+        let mut bob_group = staged_welcome.into_group(bob_provider).await.unwrap();
 
         // Have alice create a commit with a custom proposal.
         let (custom_proposal_message, _proposal_ref) = alice_group
@@ -2341,10 +2458,12 @@ async fn valsem113() {
                 &alice_credential_with_keys.signer,
                 custom_proposal.clone(),
             )
+            .await
             .unwrap();
 
         let result = alice_group
-            .commit_to_pending_proposals(alice_provider, &alice_credential_with_keys.signer);
+            .commit_to_pending_proposals(alice_provider, &alice_credential_with_keys.signer)
+            .await;
 
         // If the proposal is unsupported, we expect an error here.
         let (commit, _, _) = if matches!(test_mode, TestMode::Unsupported) {
@@ -2367,19 +2486,22 @@ async fn valsem113() {
                 bob_provider,
                 custom_proposal_message.into_protocol_message().unwrap(),
             )
+            .await
             .unwrap();
 
         if let ProcessedMessageContent::ProposalMessage(proposal) = processed_message.into_content()
         {
             bob_group
                 .store_pending_proposal(bob_provider.storage(), *proposal)
+                .await
                 .unwrap();
         } else {
             panic!("Unexpected message type");
         }
 
-        let result =
-            bob_group.process_message(bob_provider, commit.into_protocol_message().unwrap());
+        let result = bob_group
+            .process_message(bob_provider, commit.into_protocol_message().unwrap())
+            .await;
 
         // If the proposal is unsupported, we expect an error here.
         let _processed_message = if matches!(test_mode, TestMode::Unsupported) {
@@ -2501,7 +2623,7 @@ fn test_valsem401_valsem402() {
                      &alice_provider,
                      &alice_credential_with_key_and_signer.signer,
                      psk_id,
-                 )
+                 ).await
                  .unwrap();
 
             proposals.push(psk_proposal);
@@ -2523,13 +2645,13 @@ fn test_valsem401_valsem402() {
 
         for psk_proposal in proposals.into_iter() {
              let processed_message = bob_group
-                 .process_message(&bob_provider, psk_proposal.into_protocol_message().unwrap())
+                 .process_message(&bob_provider, psk_proposal.into_protocol_message().unwrap()).await
                  .unwrap();
 
             match processed_message.into_content() {
                  ProcessedMessageContent::ProposalMessage(queued_proposal) => {
                      bob_group
-                         .store_pending_proposal(provider.storage(), *queued_proposal)
+                         .store_pending_proposal(provider.storage(), *queued_proposal).await
                          .unwrap();
                  }
                  _ => unreachable!(),
@@ -2539,7 +2661,7 @@ fn test_valsem401_valsem402() {
         assert_eq!(
              expected_error,
              bob_group
-                 .process_message(&bob_provider, commit.into_protocol_message().unwrap())
+                 .process_message(&bob_provider, commit.into_protocol_message().unwrap()).await
                  .unwrap_err(),
          );
 

@@ -45,7 +45,8 @@ async fn test_valsem240() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // Setup
     let public_message_commit_bad = {
@@ -92,7 +93,8 @@ async fn test_valsem240() {
             alice_provider,
             ProtocolMessage::from(public_message_commit_bad),
         )
-        .await.expect_err("Could process message despite missing external init proposal.");
+        .await
+        .expect_err("Could process message despite missing external init proposal.");
 
     println!("Got the error: {:?}", err);
 
@@ -106,7 +108,8 @@ async fn test_valsem240() {
     // Positive case
     alice_group
         .process_message(alice_provider, ProtocolMessage::from(public_message_commit))
-        .await.unwrap();
+        .await
+        .unwrap();
 }
 
 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
@@ -127,7 +130,8 @@ async fn test_valsem241() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // Setup
     let public_message_commit_bad = {
@@ -169,7 +173,8 @@ async fn test_valsem241() {
             alice_provider,
             ProtocolMessage::from(public_message_commit_bad),
         )
-        .await.expect_err("Could process message despite second ext. init proposal in commit.");
+        .await
+        .expect_err("Could process message despite second ext. init proposal in commit.");
 
     assert!(matches!(
         err,
@@ -181,7 +186,8 @@ async fn test_valsem241() {
     // Positive case
     alice_group
         .process_message(alice_provider, ProtocolMessage::from(public_message_commit))
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
@@ -201,7 +207,8 @@ async fn test_valsem242() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // Alice has to add Bob first, so that in the external commit, we can have
     // an Update proposal that comes from a leaf that's actually inside of the
@@ -212,7 +219,8 @@ async fn test_valsem242() {
         Extensions::empty(),
         alice_provider,
         bob_credential.clone(),
-    ).await;
+    )
+    .await;
 
     alice_group
         .add_members(
@@ -220,8 +228,12 @@ async fn test_valsem242() {
             &alice_credential.signer,
             core::slice::from_ref(bob_key_package.key_package()),
         )
-        .await.unwrap();
-    alice_group.merge_pending_commit(alice_provider).await.unwrap();
+        .await
+        .unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     let verifiable_group_info = alice_group
         .export_group_info(alice_provider.crypto(), &alice_credential.signer, true)
@@ -238,7 +250,8 @@ async fn test_valsem242() {
         )
         .unwrap()
         .load_psks(bob_provider.storage())
-        .await.unwrap()
+        .await
+        .unwrap()
         .build(
             bob_provider.rand(),
             bob_provider.crypto(),
@@ -247,6 +260,7 @@ async fn test_valsem242() {
         )
         .unwrap()
         .finalize(bob_provider)
+        .await
         .unwrap();
 
     let public_message_commit = {
@@ -276,13 +290,15 @@ async fn test_valsem242() {
                 "Charlie".into(),
                 ciphersuite.signature_algorithm(),
                 charlie_provider,
-            ).await;
+            )
+            .await;
             let charlie_key_package = generate_key_package(
                 ciphersuite,
                 Extensions::empty(),
                 charlie_provider,
                 charlie_credential,
-            ).await;
+            )
+            .await;
 
             ProposalOrRef::proposal(Proposal::add(AddProposal {
                 key_package: charlie_key_package.key_package().clone(),
@@ -341,7 +357,8 @@ async fn test_valsem242() {
         // Negative case
         let err = alice_group
             .process_message(alice_provider, public_message_commit_bad)
-            .await.unwrap_err();
+            .await
+            .unwrap_err();
 
         assert!(matches!(
             err,
@@ -353,7 +370,8 @@ async fn test_valsem242() {
         // Positive case
         alice_group
             .process_message(alice_provider, public_message_commit.clone())
-            .await.unwrap();
+            .await
+            .unwrap();
     }
 }
 
@@ -374,7 +392,8 @@ async fn test_valsem244() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // Setup
     let public_message_commit_bad = {
@@ -391,7 +410,8 @@ async fn test_valsem244() {
             Extensions::empty(),
             bob_provider,
             bob_credential.clone(),
-        ).await;
+        )
+        .await;
 
         let add_proposal = Proposal::add(AddProposal {
             key_package: bob_key_package.key_package().clone(),
@@ -431,7 +451,8 @@ async fn test_valsem244() {
             alice_provider,
             ProtocolMessage::from(public_message_commit_bad),
         )
-        .await.unwrap_err();
+        .await
+        .unwrap_err();
 
     assert!(matches!(
         err,
@@ -443,7 +464,8 @@ async fn test_valsem244() {
     // Positive case
     alice_group
         .process_message(alice_provider, ProtocolMessage::from(public_message_commit))
-        .await.unwrap();
+        .await
+        .unwrap();
 }
 
 // ValSem245: External Commit: MUST contain a path.
@@ -463,7 +485,8 @@ async fn test_valsem245() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // Setup
     let public_message_commit_bad = {
@@ -500,7 +523,8 @@ async fn test_valsem245() {
             alice_provider,
             ProtocolMessage::from(public_message_commit_bad),
         )
-        .await.expect_err("Could process message despite missing path.");
+        .await
+        .expect_err("Could process message despite missing path.");
 
     assert!(matches!(
         err,
@@ -510,7 +534,8 @@ async fn test_valsem245() {
     // Positive case
     alice_group
         .process_message(alice_provider, ProtocolMessage::from(public_message_commit))
-        .await.unwrap();
+        .await
+        .unwrap();
 }
 
 // ValSem246: External Commit: The signature of the PublicMessage MUST be verified with the credential of the KeyPackage in the included `path`.
@@ -530,7 +555,8 @@ async fn test_valsem246() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // Setup
     let public_message_commit_bad = {
@@ -548,7 +574,8 @@ async fn test_valsem246() {
             "Bob".into(),
             ciphersuite.signature_algorithm(),
             bob_provider,
-        ).await;
+        )
+        .await;
 
         // Generate KeyPackage
         let bob_new_key_package = generate_key_package(
@@ -556,7 +583,8 @@ async fn test_valsem246() {
             Extensions::empty(),
             bob_provider,
             bob_new_credential,
-        ).await;
+        )
+        .await;
 
         if let Some(ref mut path) = commit_bad.path {
             path.set_leaf_node(bob_new_key_package.key_package().leaf_node().clone())
@@ -585,7 +613,8 @@ async fn test_valsem246() {
             alice_provider,
             ProtocolMessage::from(public_message_commit_bad),
         )
-        .await.expect_err("Could process message despite wrong signature.");
+        .await
+        .expect_err("Could process message despite wrong signature.");
 
     // This shows that signature verification fails if the signature is not done
     // using the credential in the path.
@@ -636,7 +665,8 @@ async fn test_valsem246() {
     // correct (which it only is, if alice is using the credential in the path).
     alice_group
         .process_message(alice_provider, ProtocolMessage::from(public_message_commit))
-        .await.expect("Unexpected error.");
+        .await
+        .expect("Unexpected error.");
 }
 
 // External Commit should work when group use ciphertext WireFormat
@@ -658,12 +688,14 @@ async fn test_pure_ciphertext() {
         ciphersuite,
         alice_provider,
         bob_provider,
-    );
+    )
+    .await;
 
     // Would fail if handshake message processing did not distinguish external messages
-    assert!(alice_group
+    alice_group
         .process_message(alice_provider, public_message_commit)
-        .await.is_ok());
+        .await
+        .unwrap();
 }
 
 // External Commit: The capabilities of the leaf node in the path MUST
@@ -679,13 +711,15 @@ async fn test_external_commit_unsupported_group_context_extension() {
         "Alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    ).await;
+    )
+    .await;
 
     let bob_credential = generate_credential_with_key(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     // Create group context extensions with a custom extension
     let gc_extensions =
@@ -705,7 +739,8 @@ async fn test_external_commit_unsupported_group_context_extension() {
         &mls_group_create_config,
         alice_credential.credential_with_key.clone(),
     )
-    .await.unwrap();
+    .await
+    .unwrap();
 
     // Export group info for Bob
     let verifiable_group_info = alice_group
@@ -727,8 +762,8 @@ async fn test_external_commit_unsupported_group_context_extension() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
-        .load_psks(bob_provider.storage())
-        .await.unwrap()
+        .load_psks(bob_provider.storage()).await
+        .unwrap()
         .build(
             bob_provider.rand(),
             bob_provider.crypto(),
@@ -777,13 +812,15 @@ mod utils {
             "Alice".into(),
             ciphersuite.signature_algorithm(),
             alice_provider,
-        ).await;
+        )
+        .await;
 
         let bob_credential = generate_credential_with_key(
             "Bob".into(),
             ciphersuite.signature_algorithm(),
             bob_provider,
-        ).await;
+        )
+        .await;
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -798,7 +835,8 @@ mod utils {
             &mls_group_create_config,
             alice_credential.credential_with_key.clone(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
         // Bob wants to commit externally.
 
@@ -820,7 +858,8 @@ mod utils {
             )
             .unwrap()
             .load_psks(bob_provider.storage())
-            .await.unwrap()
+            .await
+            .unwrap()
             .build(
                 bob_provider.rand(),
                 bob_provider.crypto(),
@@ -829,6 +868,7 @@ mod utils {
             )
             .unwrap()
             .finalize(bob_provider)
+            .await
             .unwrap();
 
         let mls_message = MlsMessageIn::from(commit_bundle.into_commit());

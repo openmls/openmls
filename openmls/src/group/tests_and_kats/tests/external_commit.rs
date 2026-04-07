@@ -22,19 +22,22 @@ async fn test_external_commit() {
         "Alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    ).await;
+    )
+    .await;
 
     let bob_credential = generate_credential_with_key(
         "Bob".into(),
         ciphersuite.signature_algorithm(),
         bob_provider,
-    ).await;
+    )
+    .await;
 
     let charlie_credential = generate_credential_with_key(
         "Charlie".into(),
         ciphersuite.signature_algorithm(),
         charlie_provider,
-    ).await;
+    )
+    .await;
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -49,7 +52,8 @@ async fn test_external_commit() {
         &mls_group_create_config,
         alice_credential.credential_with_key.clone(),
     )
-    .await.unwrap();
+    .await
+    .unwrap();
 
     // === Single member group external join ===
 
@@ -72,7 +76,8 @@ async fn test_external_commit() {
         )
         .unwrap()
         .load_psks(bob_provider.storage())
-        .await.unwrap()
+        .await
+        .unwrap()
         .build(
             bob_provider.rand(),
             bob_provider.crypto(),
@@ -81,6 +86,7 @@ async fn test_external_commit() {
         )
         .unwrap()
         .finalize(bob_provider)
+        .await
         .unwrap();
 
     let public_message_commit = {
@@ -104,12 +110,14 @@ async fn test_external_commit() {
 
     let processed_message = alice_group
         .process_message(alice_provider, public_message_commit)
+        .await
         .unwrap();
 
     match processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             alice_group
                 .merge_staged_commit(alice_provider, *staged_commit)
+                .await
                 .unwrap();
         }
         _ => panic!("Expected Commit message"),
@@ -147,7 +155,8 @@ async fn test_external_commit() {
         )
         .unwrap()
         .load_psks(charlie_provider.storage())
-        .await.unwrap()
+        .await
+        .unwrap()
         .build(
             charlie_provider.rand(),
             charlie_provider.crypto(),
@@ -156,6 +165,7 @@ async fn test_external_commit() {
         )
         .unwrap()
         .finalize(charlie_provider)
+        .await
         .unwrap();
 
     // Alice & Bob process Charlie's Commit
@@ -166,12 +176,14 @@ async fn test_external_commit() {
 
     let alice_processed_message = alice_group
         .process_message(alice_provider, charlie_commit.clone())
+        .await
         .unwrap();
 
     match alice_processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             alice_group
                 .merge_staged_commit(alice_provider, *staged_commit)
+                .await
                 .unwrap();
         }
         _ => panic!("Expected Commit message"),
@@ -179,12 +191,14 @@ async fn test_external_commit() {
 
     let bob_processed_message = bob_group
         .process_message(bob_provider, charlie_commit)
+        .await
         .unwrap();
 
     match bob_processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             bob_group
                 .merge_staged_commit(bob_provider, *staged_commit)
+                .await
                 .unwrap();
         }
         _ => panic!("Expected Commit message"),
@@ -230,7 +244,8 @@ async fn test_external_commit() {
         )
         .unwrap()
         .load_psks(alice_provider.storage())
-        .await.unwrap()
+        .await
+        .unwrap()
         .build(
             alice_provider.rand(),
             alice_provider.crypto(),
@@ -239,6 +254,7 @@ async fn test_external_commit() {
         )
         .unwrap()
         .finalize(alice_provider)
+        .await
         .unwrap();
 
     // Bob & Charlie process Alice's Commit
@@ -249,6 +265,7 @@ async fn test_external_commit() {
 
     let bob_processed_message = bob_group
         .process_message(bob_provider, alice_commit.clone())
+        .await
         .unwrap();
 
     match bob_processed_message.into_content() {
@@ -260,6 +277,7 @@ async fn test_external_commit() {
             assert_eq!(remove_proposal.remove_proposal().removed().u32(), 0);
             bob_group
                 .merge_staged_commit(bob_provider, *staged_commit)
+                .await
                 .unwrap();
         }
         _ => panic!("Expected Commit message"),
@@ -267,12 +285,14 @@ async fn test_external_commit() {
 
     let charlie_processed_message = charlie_group
         .process_message(charlie_provider, alice_commit)
+        .await
         .unwrap();
 
     match charlie_processed_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             charlie_group
                 .merge_staged_commit(charlie_provider, *staged_commit)
+                .await
                 .unwrap();
         }
         _ => panic!("Expected Commit message"),
