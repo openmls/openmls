@@ -688,7 +688,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         run_task(task).await
     }
 
-    async fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>>(
+    async fn delete_encryption_key_pair<
+        EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>,
+    >(
         &self,
         public_key: &EncryptionKey,
     ) -> Result<(), Self::Error> {

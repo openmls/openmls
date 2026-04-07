@@ -102,7 +102,8 @@ async fn group_data_roundtrip() {
     let join_read: Option<TestBlob> = storage.mls_group_join_config(&group_id).await.unwrap();
     assert_eq!(Some(join_config.clone()), join_read);
     storage.delete_group_config(&group_id).await.unwrap();
-    let join_after_delete: Option<TestBlob> = storage.mls_group_join_config(&group_id).await.unwrap();
+    let join_after_delete: Option<TestBlob> =
+        storage.mls_group_join_config(&group_id).await.unwrap();
     assert!(join_after_delete.is_none());
 
     storage.write_tree(&group_id, &tree).await.unwrap();
@@ -112,7 +113,10 @@ async fn group_data_roundtrip() {
     let tree_after_delete: Option<TestBlob> = storage.tree(&group_id).await.unwrap();
     assert!(tree_after_delete.is_none());
 
-    storage.write_context(&group_id, &group_context).await.unwrap();
+    storage
+        .write_context(&group_id, &group_context)
+        .await
+        .unwrap();
     let context_read: Option<TestBlob> = storage.group_context(&group_id).await.unwrap();
     assert_eq!(Some(group_context.clone()), context_read);
     storage.delete_context(&group_id).await.unwrap();
@@ -125,7 +129,10 @@ async fn group_data_roundtrip() {
         .unwrap();
     let interim_read: Option<TestBlob> = storage.interim_transcript_hash(&group_id).await.unwrap();
     assert_eq!(Some(interim.clone()), interim_read);
-    storage.delete_interim_transcript_hash(&group_id).await.unwrap();
+    storage
+        .delete_interim_transcript_hash(&group_id)
+        .await
+        .unwrap();
     let interim_after_delete: Option<TestBlob> =
         storage.interim_transcript_hash(&group_id).await.unwrap();
     assert!(interim_after_delete.is_none());
@@ -137,10 +144,14 @@ async fn group_data_roundtrip() {
     let confirmation_read: Option<TestBlob> = storage.confirmation_tag(&group_id).await.unwrap();
     assert_eq!(Some(confirmation.clone()), confirmation_read);
     storage.delete_confirmation_tag(&group_id).await.unwrap();
-    let confirmation_after_delete: Option<TestBlob> = storage.confirmation_tag(&group_id).await.unwrap();
+    let confirmation_after_delete: Option<TestBlob> =
+        storage.confirmation_tag(&group_id).await.unwrap();
     assert!(confirmation_after_delete.is_none());
 
-    storage.write_group_state(&group_id, &group_state).await.unwrap();
+    storage
+        .write_group_state(&group_id, &group_state)
+        .await
+        .unwrap();
     let group_state_read: Option<TestBlob> = storage.group_state(&group_id).await.unwrap();
     assert_eq!(Some(group_state.clone()), group_state_read);
     storage.delete_group_state(&group_id).await.unwrap();
@@ -176,7 +187,8 @@ async fn group_data_roundtrip() {
         .write_group_epoch_secrets(&group_id, &epoch_secrets)
         .await
         .unwrap();
-    let epoch_secrets_read: Option<TestBlob> = storage.group_epoch_secrets(&group_id).await.unwrap();
+    let epoch_secrets_read: Option<TestBlob> =
+        storage.group_epoch_secrets(&group_id).await.unwrap();
     assert_eq!(Some(epoch_secrets.clone()), epoch_secrets_read);
     storage.delete_group_epoch_secrets(&group_id).await.unwrap();
     let epoch_secrets_after_delete: Option<TestBlob> =
@@ -190,15 +202,22 @@ async fn group_data_roundtrip() {
     let own_index_read: Option<TestLeafIndex> = storage.own_leaf_index(&group_id).await.unwrap();
     assert_eq!(Some(own_leaf_index.clone()), own_index_read);
     storage.delete_own_leaf_index(&group_id).await.unwrap();
-    let own_index_after_delete: Option<TestLeafIndex> = storage.own_leaf_index(&group_id).await.unwrap();
+    let own_index_after_delete: Option<TestLeafIndex> =
+        storage.own_leaf_index(&group_id).await.unwrap();
     assert!(own_index_after_delete.is_none());
 
-    storage.append_own_leaf_node(&group_id, &leaf_a).await.unwrap();
+    storage
+        .append_own_leaf_node(&group_id, &leaf_a)
+        .await
+        .unwrap();
     let leaf_nodes_read: Vec<TestBlob> = storage.own_leaf_nodes(&group_id).await.unwrap();
     assert_eq!(vec![leaf_a.clone()], leaf_nodes_read);
 
     storage.delete_own_leaf_nodes(&group_id).await.unwrap();
-    storage.append_own_leaf_node(&group_id, &leaf_b).await.unwrap();
+    storage
+        .append_own_leaf_node(&group_id, &leaf_b)
+        .await
+        .unwrap();
     let leaf_nodes_replaced: Vec<TestBlob> = storage.own_leaf_nodes(&group_id).await.unwrap();
     assert_eq!(vec![leaf_b.clone()], leaf_nodes_replaced);
 
@@ -235,15 +254,19 @@ async fn key_material_roundtrip() {
         .write_signature_key_pair(&signature_public_key, &signature_key_pair)
         .await
         .unwrap();
-    let signature_pair_read: Option<TestSignatureKeyPair> =
-        storage.signature_key_pair(&signature_public_key).await.unwrap();
+    let signature_pair_read: Option<TestSignatureKeyPair> = storage
+        .signature_key_pair(&signature_public_key)
+        .await
+        .unwrap();
     assert_eq!(Some(signature_key_pair.clone()), signature_pair_read);
     storage
         .delete_signature_key_pair(&signature_public_key)
         .await
         .unwrap();
-    let signature_pair_after_delete: Option<TestSignatureKeyPair> =
-        storage.signature_key_pair(&signature_public_key).await.unwrap();
+    let signature_pair_after_delete: Option<TestSignatureKeyPair> = storage
+        .signature_key_pair(&signature_public_key)
+        .await
+        .unwrap();
     assert!(signature_pair_after_delete.is_none());
 
     storage
@@ -253,7 +276,10 @@ async fn key_material_roundtrip() {
     let encryption_pair_read: Option<TestHpkeKeyPair> =
         storage.encryption_key_pair(&encryption_key).await.unwrap();
     assert_eq!(Some(encryption_pair.clone()), encryption_pair_read);
-    storage.delete_encryption_key_pair(&encryption_key).await.unwrap();
+    storage
+        .delete_encryption_key_pair(&encryption_key)
+        .await
+        .unwrap();
     let encryption_pair_after_delete: Option<TestHpkeKeyPair> =
         storage.encryption_key_pair(&encryption_key).await.unwrap();
     assert!(encryption_pair_after_delete.is_none());
@@ -277,7 +303,10 @@ async fn key_material_roundtrip() {
         .unwrap();
     assert!(epoch_pairs_after_delete.is_empty());
 
-    storage.write_key_package(&hash_ref, &key_package).await.unwrap();
+    storage
+        .write_key_package(&hash_ref, &key_package)
+        .await
+        .unwrap();
     let key_package_read: Option<TestKeyPackage> = storage.key_package(&hash_ref).await.unwrap();
     assert_eq!(Some(key_package.clone()), key_package_read);
     storage.delete_key_package(&hash_ref).await.unwrap();
