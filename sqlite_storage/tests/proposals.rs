@@ -39,8 +39,8 @@ impl traits::QueuedProposal<1> for Proposal {}
 impl Entity<1> for Proposal {}
 
 /// Write and read some proposals
-#[test]
-fn read_write_delete() {
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn read_write_delete() {
     let group_id = TestGroupId(b"TestGroupId".to_vec());
     let proposals = (0..10)
         .map(|i| Proposal(format!("TestProposal{i}").as_bytes().to_vec()))
@@ -55,31 +55,39 @@ fn read_write_delete() {
     for (i, proposal) in proposals.iter().enumerate() {
         storage
             .queue_proposal(&group_id, &ProposalRef(i), proposal)
+            .await
             .unwrap();
     }
 
     // Read proposal refs
-    let proposal_refs_read: Vec<ProposalRef> = storage.queued_proposal_refs(&group_id).unwrap();
+    let proposal_refs_read: Vec<ProposalRef> =
+        storage.queued_proposal_refs(&group_id).await.unwrap();
     assert_eq!(
         (0..10).map(ProposalRef).collect::<Vec<_>>(),
         proposal_refs_read
     );
 
     // Read proposals
-    let proposals_read: Vec<(ProposalRef, Proposal)> = storage.queued_proposals(&group_id).unwrap();
+    let proposals_read: Vec<(ProposalRef, Proposal)> =
+        storage.queued_proposals(&group_id).await.unwrap();
     let proposals_expected: Vec<(ProposalRef, Proposal)> =
         (0..10).map(ProposalRef).zip(proposals.clone()).collect();
     assert_eq!(proposals_expected, proposals_read);
 
     // Remove proposal 5
-    storage.remove_proposal(&group_id, &ProposalRef(5)).unwrap();
+    storage
+        .remove_proposal(&group_id, &ProposalRef(5))
+        .await
+        .unwrap();
 
-    let proposal_refs_read: Vec<ProposalRef> = storage.queued_proposal_refs(&group_id).unwrap();
+    let proposal_refs_read: Vec<ProposalRef> =
+        storage.queued_proposal_refs(&group_id).await.unwrap();
     let mut expected = (0..10).map(ProposalRef).collect::<Vec<_>>();
     expected.remove(5);
     assert_eq!(expected, proposal_refs_read);
 
-    let proposals_read: Vec<(ProposalRef, Proposal)> = storage.queued_proposals(&group_id).unwrap();
+    let proposals_read: Vec<(ProposalRef, Proposal)> =
+        storage.queued_proposals(&group_id).await.unwrap();
     let mut proposals_expected: Vec<(ProposalRef, Proposal)> =
         (0..10).map(ProposalRef).zip(proposals.clone()).collect();
     proposals_expected.remove(5);
@@ -88,10 +96,13 @@ fn read_write_delete() {
     // Clear all proposals
     storage
         .clear_proposal_queue::<TestGroupId, ProposalRef>(&group_id)
+        .await
         .unwrap();
-    let proposal_refs_read: Vec<ProposalRef> = storage.queued_proposal_refs(&group_id).unwrap();
+    let proposal_refs_read: Vec<ProposalRef> =
+        storage.queued_proposal_refs(&group_id).await.unwrap();
     assert!(proposal_refs_read.is_empty());
 
-    let proposals_read: Vec<(ProposalRef, Proposal)> = storage.queued_proposals(&group_id).unwrap();
+    let proposals_read: Vec<(ProposalRef, Proposal)> =
+        storage.queued_proposals(&group_id).await.unwrap();
     assert!(proposals_read.is_empty());
 }

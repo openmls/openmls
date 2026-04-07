@@ -20,6 +20,7 @@ maybe-async = { workspace = true }
 
 [dev-dependencies]
 serde_json = { version = "1.0" }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 [features]
 extensions-draft-08 = ["openmls_traits/extensions-draft-08"]
