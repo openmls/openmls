@@ -163,7 +163,8 @@ async fn test_franken_key_package() {
 
     let kp = KeyPackage::builder()
         .build(config, provider, &signer, credential_with_key)
-        .await.unwrap();
+        .await
+        .unwrap();
 
     let ser = kp.key_package().tls_serialize_detached().unwrap();
     let fkp = FrankenKeyPackage::tls_deserialize(&mut ser.as_slice()).unwrap();

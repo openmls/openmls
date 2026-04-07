@@ -153,7 +153,8 @@ pub(crate) async fn generate_group_candidate(
                     &credential_with_key_and_signer.signer,
                     credential_with_key_and_signer.credential_with_key.clone(),
                 )
-                .await.unwrap()
+                .await
+                .unwrap()
         } else {
             // We don't want to store anything. So...
             let provider = OpenMlsRustCrypto::default();

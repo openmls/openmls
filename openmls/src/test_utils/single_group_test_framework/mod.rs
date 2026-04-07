@@ -566,7 +566,9 @@ mod test {
         // Initialize the group state
         let group_id = GroupId::from_slice(b"test");
         let mut group_state =
-            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).await.unwrap();
+            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config)
+                .await
+                .unwrap();
 
         group_state
             .add_member(AddMemberConfig {
@@ -575,6 +577,7 @@ mod test {
                 join_config: mls_group_join_config.clone(),
                 tree: None,
             })
+            .await
             .expect("Could not add member");
 
         // test different orderings
@@ -632,7 +635,9 @@ mod test {
         // Initialize the group state
         let group_id = GroupId::from_slice(b"test");
         let mut group_state =
-            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).await.unwrap();
+            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config)
+                .await
+                .unwrap();
 
         group_state
             .add_member(AddMemberConfig {
@@ -641,6 +646,7 @@ mod test {
                 join_config: mls_group_join_config.clone(),
                 tree: None,
             })
+            .await
             .expect("Could not add member");
 
         group_state.assert_membership();
@@ -652,6 +658,7 @@ mod test {
                 join_config: mls_group_join_config,
                 tree: None,
             })
+            .await
             .expect("Could not add member");
 
         group_state.assert_membership();
@@ -682,7 +689,9 @@ mod test {
         // Initialize the group state
         let group_id = GroupId::from_slice(b"test");
         let mut group_state =
-            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).await.unwrap();
+            GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config)
+                .await
+                .unwrap();
 
         // Get a mutable reference to Alice's group representation
         let [alice] = group_state.members_mut(&["alice"]);
@@ -700,12 +709,14 @@ mod test {
                     .consume_proposal_store(false)
                     .add_proposal(add_proposal)
             })
+            .await
             .expect("Could not stage commit");
 
         // Deliver and apply welcome to Bob
         let welcome = bundle.welcome().unwrap().clone();
         group_state
             .deliver_and_apply_welcome(bob_pre_group, mls_group_join_config, welcome, None)
+            .await
             .expect("Error delivering and applying welcome");
 
         let [alice] = group_state.members_mut(&["alice"]);
@@ -715,6 +726,7 @@ mod test {
         alice
             .group
             .merge_staged_commit(&alice.party.core_state.provider, staged_commit)
+            .await
             .expect("Error merging staged commit");
 
         group_state.assert_membership();
