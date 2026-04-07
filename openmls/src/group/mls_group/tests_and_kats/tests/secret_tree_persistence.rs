@@ -8,9 +8,7 @@ use crate::{
 
 /// Test that ensures that the secret tree state is persisted correctly and that
 /// replays are not possible.
-#[cfg_attr(feature = "sync", test)]
-#[cfg_attr(not(feature = "sync"), tokio::test)]
-#[maybe_async::maybe_async]
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
 async fn test_secret_tree_persistence() {
     let ciphersuite: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
@@ -35,7 +33,8 @@ async fn test_secret_tree_persistence() {
             &bob_signer,
             bob_credential.clone(),
         )
-        .await.unwrap()
+        .await
+        .unwrap()
         .key_package()
         .to_owned();
 
@@ -52,16 +51,21 @@ async fn test_secret_tree_persistence() {
         group_id.clone(),
         alice_credential.clone(),
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
-    let welcome = match alice_group.add_members(alice_provider, &alice_signer, &[bob_key_package]) {
+    let welcome = match alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .await
+    {
         Ok((_, welcome, _)) => welcome,
         Err(e) => panic!("Could not add member to group: {e:?}"),
     };
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     let welcome: MlsMessageIn = welcome.into();
@@ -75,14 +79,17 @@ async fn test_secret_tree_persistence() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating StagedWelcome from Welcome")
+    .await
+    .expect("Error creating StagedWelcome from Welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from StagedWelcome");
 
     // === Alice sends a message to Bob ===
     let message_alice = b"Hi, I'm Alice!";
     let queued_message = alice_group
         .create_message(alice_provider, &alice_signer, message_alice)
+        .await
         .expect("Error creating application message");
 
     // === Bob process the message first time ===
@@ -94,11 +101,13 @@ async fn test_secret_tree_persistence() {
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
+        .await
         .expect("Could not process message.");
 
     // === Test persistence after processing message ===
     bob_group
         .ensure_persistence(bob_provider.storage())
+        .await
         .expect("Persistence check failed after first message processing");
 
     // === Bob processes the message second time (should fail) ===
@@ -110,11 +119,13 @@ async fn test_secret_tree_persistence() {
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
+        .await
         .expect_err("This message should not be processed again to ensure forward secrecy.");
 
     // === Reload the group from storage ===
     let mut new_group = MlsGroup::load(bob_provider.storage(), bob_group.group_id())
-        .await.unwrap()
+        .await
+        .unwrap()
         .unwrap();
 
     // === Bob processes the same message second time with its newly loaded group (which should be prohibited due to forward secrecy) ===
@@ -126,6 +137,7 @@ async fn test_secret_tree_persistence() {
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
+        .await
         .expect_err("This message should not be processed again to ensure forward secrecy.");
 
     // Verify that we get the correct SecretReuseError

@@ -70,13 +70,13 @@ pub struct WelcomeTestVector {
     welcome: Vec<u8>,
 }
 
-#[test]
-fn test_read_vectors() {
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn test_read_vectors() {
     let test_vectors: Vec<WelcomeTestVector> = read(TEST_VECTOR_PATH_READ);
 
     for (i, test_vector) in test_vectors.into_iter().enumerate() {
         println!("# {i:04}");
-        match run_test_vector(test_vector) {
+        match run_test_vector(test_vector).await {
             Ok(_) => {}
             Err(e) => panic!("Error while checking messages test vector.\n{e:?}"),
         }
@@ -175,7 +175,8 @@ pub async fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'sta
     provider
         .storage()
         .write_key_package(&hash_ref, &key_package_bundle)
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // Verification:
     // * Decrypt the Welcome message:
@@ -205,7 +206,9 @@ pub async fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'sta
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.storage(), &resumption_psk_store, &[]).await.unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, &[])
+            .await
+            .unwrap();
 
         PskSecret::new(provider.crypto(), cipher_suite, psks).unwrap()
     };

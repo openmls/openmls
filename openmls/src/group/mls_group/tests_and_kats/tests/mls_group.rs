@@ -20,7 +20,8 @@ use crate::{
         group_info::GroupInfoTBS, proposals::*, EncryptedGroupSecrets, GroupSecretsError, Welcome,
     },
     prelude::{
-        ConfirmationTag, ExtensionTypeNotValidInLeafNodeError, InvalidExtensionError, LeafNode,
+        hash_ref::HashReference, ConfirmationTag, ExtensionTypeNotValidInLeafNodeError,
+        InvalidExtensionError, LeafNode,
     },
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     test_utils::{
@@ -56,10 +57,12 @@ async fn test_mls_group_persistence<Provider: OpenMlsProvider>() {
         group_id.clone(),
         alice_credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     let alice_group_deserialized = MlsGroup::load(alice_provider.storage(), &group_id)
-        .await.expect("Could not deserialize MlsGroup: error")
+        .await
+        .expect("Could not deserialize MlsGroup: error")
         .expect("Could not deserialize MlsGroup: doesn't exist");
 
     assert_eq!(
@@ -109,11 +112,13 @@ async fn remover() {
         group_id,
         alice_credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // Test persistence after Alice creates group
     alice_group
         .ensure_persistence(alice_provider.storage())
+        .await
         .unwrap();
 
     // === Alice adds Bob ===
@@ -123,20 +128,24 @@ async fn remover() {
             &alice_signer,
             from_ref(bob_kpb.key_package()),
         )
+        .await
         .expect("Could not add member to group.");
 
     // Test persistence after Alice adds Bob
     alice_group
         .ensure_persistence(alice_provider.storage())
+        .await
         .unwrap();
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     // Test persistence after Alice merges commit
     alice_group
         .ensure_persistence(alice_provider.storage())
+        .await
         .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
@@ -148,13 +157,16 @@ async fn remover() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating staged join from Welcome")
+    .await
+    .expect("Error creating staged join from Welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from staged join");
 
     // Test persistence after Bob joins group
     bob_group
         .ensure_persistence(bob_provider.storage())
+        .await
         .unwrap();
 
     // === Bob adds Charlie ===
@@ -164,11 +176,13 @@ async fn remover() {
             &bob_signer,
             from_ref(charlie_kpb.key_package()),
         )
+        .await
         .unwrap();
 
     // Test persistence after Bob adds Charlie
     bob_group
         .ensure_persistence(bob_provider.storage())
+        .await
         .unwrap();
 
     let alice_processed_message = alice_group
@@ -178,17 +192,20 @@ async fn remover() {
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
+        .await
         .expect("Could not process messages.");
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         alice_processed_message.into_content()
     {
         alice_group
             .merge_staged_commit(alice_provider, *staged_commit)
+            .await
             .expect("Error merging commit.");
 
         // Test persistence after Alice merges Bob's staged commit
         alice_group
             .ensure_persistence(alice_provider.storage())
+            .await
             .unwrap();
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -196,11 +213,13 @@ async fn remover() {
 
     bob_group
         .merge_pending_commit(bob_provider)
+        .await
         .expect("error merging pending commit");
 
     // Test persistence after Bob merges pending commit
     bob_group
         .ensure_persistence(bob_provider.storage())
+        .await
         .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
@@ -212,24 +231,29 @@ async fn remover() {
         welcome,
         Some(bob_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating group from Welcome")
+    .await
+    .expect("Error creating group from Welcome")
     .into_group(charlie_provider)
+    .await
     .expect("Error creating group from Welcome");
 
     // Test persistence after Charlie joins group
     charlie_group
         .ensure_persistence(charlie_provider.storage())
+        .await
         .unwrap();
 
     // === Alice removes Bob & Charlie commits ===
 
     let (queued_messages, _) = alice_group
         .propose_remove_member(alice_provider, &alice_signer, LeafNodeIndex::new(1))
+        .await
         .expect("Could not propose removal");
 
     // Test persistence after Alice proposes removal
     alice_group
         .ensure_persistence(alice_provider.storage())
+        .await
         .unwrap();
 
     let charlie_processed_message = charlie_group
@@ -239,6 +263,7 @@ async fn remover() {
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
+        .await
         .expect("Could not process messages.");
 
     // Check that we received the correct proposals
@@ -251,11 +276,13 @@ async fn remover() {
             // Store proposal
             charlie_group
                 .store_pending_proposal(charlie_provider.storage(), *staged_proposal.clone())
+                .await
                 .unwrap();
 
             // Test persistence after Charlie stores pending proposal
             charlie_group
                 .ensure_persistence(charlie_provider.storage())
+                .await
                 .unwrap();
         }
 
@@ -271,11 +298,13 @@ async fn remover() {
     // Charlie commits
     let (_queued_messages, _welcome, _group_info) = charlie_group
         .commit_to_pending_proposals(charlie_provider, &charlie_signer)
+        .await
         .expect("Could not commit proposal");
 
     // Test persistence after Charlie commits pending proposals
     charlie_group
         .ensure_persistence(charlie_provider.storage())
+        .await
         .unwrap();
 
     // Check that we receive the correct proposal
@@ -294,6 +323,7 @@ async fn remover() {
 
     charlie_group
         .merge_pending_commit(charlie_provider)
+        .await
         .expect("error merging pending commit");
 }
 
@@ -316,7 +346,8 @@ async fn export_secret() {
         group_id,
         alice_credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     assert!(
         alice_group
@@ -364,8 +395,8 @@ fn safe_export_secret() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
 
     // Create config
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -379,7 +410,9 @@ fn safe_export_secret() {
     // Initialize the group state
     let group_id = GroupId::from_slice(b"test");
     let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config)
+            .await
+            .unwrap();
 
     group_state
         .add_member(AddMemberConfig {
@@ -388,6 +421,7 @@ fn safe_export_secret() {
             join_config: mls_group_join_config.clone(),
             tree: None,
         })
+        .await
         .expect("Could not add member");
 
     let [alice_group_state, bob_group_state] = group_state.members_mut(&["alice", "bob"]);
@@ -400,6 +434,7 @@ fn safe_export_secret() {
             &alice_group_state.party.signer,
             LeafNodeParameters::default(),
         )
+        .await
         .expect("Could not create self update");
     // Safely export from the pending commit
     let alice_application_secret = alice_group_state
@@ -409,11 +444,13 @@ fn safe_export_secret() {
             alice_group_state.party.core_state.provider.storage(),
             0x8000,
         )
+        .await
         .expect("Could not export secret");
 
     alice_group_state
         .group
         .merge_pending_commit(&alice_group_state.party.core_state.provider)
+        .await
         .unwrap();
     let component_id = 0x8000;
 
@@ -426,6 +463,7 @@ fn safe_export_secret() {
                 .into_protocol_message()
                 .unwrap(),
         )
+        .await
         .unwrap();
 
     let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
@@ -437,6 +475,7 @@ fn safe_export_secret() {
     bob_group_state
         .group
         .merge_staged_commit(&bob_group_state.party.core_state.provider, *staged_commit)
+        .await
         .unwrap();
 
     let bob_application_secret = bob_group_state
@@ -446,6 +485,7 @@ fn safe_export_secret() {
             bob_group_state.party.core_state.provider.storage(),
             component_id,
         )
+        .await
         .unwrap();
 
     assert_eq!(alice_application_secret, bob_application_secret);
@@ -459,6 +499,7 @@ fn safe_export_secret() {
             alice_group_state.party.core_state.provider.storage(),
             differing_component_id,
         )
+        .await
         .unwrap();
     assert_ne!(alice_application_secret, alice_differing_application_secret);
 
@@ -470,6 +511,7 @@ fn safe_export_secret() {
             alice_group_state.party.core_state.provider.storage(),
             component_id,
         )
+        .await
         .expect_err("Expected an error when exporting the same component ID twice");
     assert!(matches!(
         error,
@@ -499,7 +541,8 @@ async fn staged_join() {
         group_id,
         alice_credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
         .add_members(
@@ -507,10 +550,12 @@ async fn staged_join() {
             &alice_signer,
             from_ref(bob_kpb.key_package()),
         )
+        .await
         .expect("Could not add member to group.");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("couldn't merge commit that adds bob");
 
     let join_config = mls_group_create_config.join_config();
@@ -524,7 +569,8 @@ async fn staged_join() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("error creating staged mls group");
+    .await
+    .expect("error creating staged mls group");
 
     let welcome_sender = staged_bob_group
         .welcome_sender()
@@ -537,6 +583,7 @@ async fn staged_join() {
 
     let bob_group = staged_bob_group
         .into_group(bob_provider)
+        .await
         .expect("error turning StagedWelcome into MlsGroup");
 
     assert_eq!(
@@ -569,10 +616,12 @@ async fn test_invalid_plaintext() {
         mls_group_create_config,
         number_of_clients,
         CodecUse::StructMessages,
-    );
+    )
+    .await;
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.
     let group_id = setup
-        .await.create_random_group(10, ciphersuite, noop_authentication_service)
+        .create_random_group(10, ciphersuite, noop_authentication_service)
+        .await
         .expect("An unexpected error occurred.");
     let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
@@ -593,6 +642,7 @@ async fn test_invalid_plaintext() {
 
     let (mls_message, _welcome_option, _group_info) = client
         .self_update(Commit, &group_id, LeafNodeParameters::default())
+        .await
         .expect("error creating self update");
 
     // Store the context and membership key so that we can re-compute the membership tag later.
@@ -633,12 +683,13 @@ async fn test_invalid_plaintext() {
     let error = setup
         // We're the "no_client" id to prevent the original sender from treating
         // this message as his own and merging the pending commit.
-        .await.distribute_to_members(
+        .distribute_to_members(
             "no_client".as_bytes(),
             group,
             &msg_invalid_signature.into(),
             &noop_authentication_service,
         )
+        .await
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
@@ -651,12 +702,13 @@ async fn test_invalid_plaintext() {
     let error = setup
         // We're the "no_client" id to prevent the original sender from treating
         // this message as his own and merging the pending commit.
-        .await.distribute_to_members(
+        .distribute_to_members(
             "no_client".as_bytes(),
             group,
             &msg_invalid_sender.into(),
             &noop_authentication_service,
         )
+        .await
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
@@ -689,7 +741,8 @@ async fn test_verify_staged_commit_credentials() {
         group_id,
         alice_credential_with_key.clone(),
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // There should be no pending commit after group creation.
     assert!(alice_group.pending_commit().is_none());
@@ -699,10 +752,12 @@ async fn test_verify_staged_commit_credentials() {
     // === Alice adds Bob to the group ===
     let (proposal, _) = alice_group
         .propose_add_member(alice_provider, &alice_signer, bob_key_package)
+        .await
         .expect("error creating self-update proposal");
 
     let alice_processed_message = alice_group
         .process_message(alice_provider, proposal.into_protocol_message().unwrap())
+        .await
         .expect("Could not process messages.");
     assert!(alice_group.pending_commit().is_none());
 
@@ -711,6 +766,7 @@ async fn test_verify_staged_commit_credentials() {
     {
         alice_group
             .store_pending_proposal(alice_provider.storage(), *staged_proposal)
+            .await
             .unwrap();
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -718,6 +774,7 @@ async fn test_verify_staged_commit_credentials() {
 
     let (_msg, welcome_option, _group_info) = alice_group
         .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .await
         .expect("error creating self-update commit")
         .into_messages();
 
@@ -725,6 +782,7 @@ async fn test_verify_staged_commit_credentials() {
     // end up in the same state as bob.
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
     assert!(alice_group.pending_commit().is_none());
     assert!(alice_group.pending_proposals().next().is_none());
@@ -740,8 +798,10 @@ async fn test_verify_staged_commit_credentials() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("error creating group from welcome")
+    .await
+    .expect("error creating group from welcome")
     .into_group(bob_provider)
+    .await
     .expect("error creating group from welcome");
 
     assert_eq!(
@@ -771,6 +831,7 @@ async fn test_verify_staged_commit_credentials() {
     // === Make a new, empty commit and check that the leaf node credentials match ===
     let (commit_msg, _welcome_option, _group_info) = alice_group
         .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .await
         .expect("error creating self-update commit")
         .into_contents();
 
@@ -791,6 +852,7 @@ async fn test_verify_staged_commit_credentials() {
     // great, they match! now commit
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("alice failed to merge the pending empty commit");
 
     // === transfer message to bob and process it ===
@@ -814,6 +876,7 @@ async fn test_verify_staged_commit_credentials() {
     // further process the deserialized message
     let processed_message = bob_group
         .process_message(bob_provider, msg_in.try_into_protocol_message().unwrap())
+        .await
         .expect("bob failed processing alice's message");
 
     // the processed message must be a staged commit message
@@ -833,6 +896,7 @@ async fn test_verify_staged_commit_credentials() {
         // bob merges alice's message
         bob_group
             .merge_staged_commit(bob_provider, *staged_commit)
+            .await
             .expect("bob failed merging alice's empty commit (staged)");
 
         // finally, the state should match
@@ -890,7 +954,8 @@ async fn test_commit_with_update_path_leaf_node() {
         group_id,
         alice_credential_with_key.clone(),
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // There should be no pending commit after group creation.
     assert!(alice_group.pending_commit().is_none());
@@ -900,10 +965,12 @@ async fn test_commit_with_update_path_leaf_node() {
     // === Alice adds Bob to the group ===
     let (proposal, _) = alice_group
         .propose_add_member(alice_provider, &alice_signer, bob_key_package)
+        .await
         .expect("error creating self-update proposal");
 
     let alice_processed_message = alice_group
         .process_message(alice_provider, proposal.into_protocol_message().unwrap())
+        .await
         .expect("Could not process messages.");
     assert!(alice_group.pending_commit().is_none());
 
@@ -912,6 +979,7 @@ async fn test_commit_with_update_path_leaf_node() {
     {
         alice_group
             .store_pending_proposal(alice_provider.storage(), *staged_proposal)
+            .await
             .unwrap();
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -920,6 +988,7 @@ async fn test_commit_with_update_path_leaf_node() {
     println!("\nCreating commit with add proposal.");
     let (_msg, welcome_option, _group_info) = alice_group
         .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .await
         .expect("error creating self-update commit")
         .into_messages();
     println!("Done creating commit.");
@@ -928,6 +997,7 @@ async fn test_commit_with_update_path_leaf_node() {
     // end up in the same state as bob.
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
     assert!(alice_group.pending_commit().is_none());
     assert!(alice_group.pending_proposals().next().is_none());
@@ -943,8 +1013,10 @@ async fn test_commit_with_update_path_leaf_node() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("error creating group from welcome")
+    .await
+    .expect("error creating group from welcome")
     .into_group(bob_provider)
+    .await
     .expect("error creating group from welcome");
 
     assert_eq!(
@@ -976,6 +1048,7 @@ async fn test_commit_with_update_path_leaf_node() {
     println!("\nCreating self-update commit.");
     let (commit_msg, _welcome_option, _group_info) = alice_group
         .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .await
         .expect("error creating self-update commit")
         .into_messages();
     println!("Done creating commit.");
@@ -1002,6 +1075,7 @@ async fn test_commit_with_update_path_leaf_node() {
     // great, they match! now commit
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("alice failed to merge the pending empty commit");
 
     // === transfer message to bob and process it ===
@@ -1025,6 +1099,7 @@ async fn test_commit_with_update_path_leaf_node() {
     // further process the deserialized message
     let processed_message = bob_group
         .process_message(bob_provider, msg_in.try_into_protocol_message().unwrap())
+        .await
         .expect("bob failed processing alice's message");
 
     // the processed message must be a staged commit message
@@ -1048,6 +1123,7 @@ async fn test_commit_with_update_path_leaf_node() {
         // bob merges alice's message
         bob_group
             .merge_staged_commit(bob_provider, *staged_commit)
+            .await
             .expect("bob failed merging alice's empty commit (staged)");
 
         // finally, the state should match
@@ -1104,7 +1180,8 @@ async fn test_pending_commit_logic() {
         group_id,
         alice_credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // There should be no pending commit after group creation.
     assert!(alice_group.pending_commit().is_none());
@@ -1114,10 +1191,12 @@ async fn test_pending_commit_logic() {
     // Let's add bob
     let (proposal, _) = alice_group
         .propose_add_member(bob_provider, &alice_signer, bob_key_package)
+        .await
         .expect("error creating add-bob proposal");
 
     let alice_processed_message = alice_group
         .process_message(bob_provider, proposal.into_protocol_message().unwrap())
+        .await
         .expect("Could not process messages.");
     assert!(alice_group.pending_commit().is_none());
 
@@ -1126,6 +1205,7 @@ async fn test_pending_commit_logic() {
     {
         alice_group
             .store_pending_proposal(alice_provider.storage(), *staged_proposal)
+            .await
             .unwrap();
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -1137,6 +1217,7 @@ async fn test_pending_commit_logic() {
     println!("\nCreating commit with add proposal.");
     let (_msg, _welcome_option, _group_info) = alice_group
         .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .await
         .expect("error creating self-update commit")
         .into_messages();
     println!("Done creating commit.");
@@ -1148,6 +1229,7 @@ async fn test_pending_commit_logic() {
     // should fail.
     let error = alice_group
         .add_members(alice_provider, &alice_signer, from_ref(bob_key_package))
+        .await
         .expect_err("no error committing while a commit is pending");
     assert!(matches!(
         error,
@@ -1155,6 +1237,7 @@ async fn test_pending_commit_logic() {
     ));
     let error = alice_group
         .propose_add_member(alice_provider, &alice_signer, bob_key_package)
+        .await
         .expect_err("no error creating a proposal while a commit is pending");
     assert!(matches!(
         error,
@@ -1162,6 +1245,7 @@ async fn test_pending_commit_logic() {
     ));
     let error = alice_group
         .remove_members(alice_provider, &alice_signer, &[LeafNodeIndex::new(1)])
+        .await
         .expect_err("no error committing while a commit is pending");
     assert!(matches!(
         error,
@@ -1169,6 +1253,7 @@ async fn test_pending_commit_logic() {
     ));
     let error = alice_group
         .propose_remove_member(alice_provider, &alice_signer, LeafNodeIndex::new(1))
+        .await
         .expect_err("no error creating a proposal while a commit is pending");
     assert!(matches!(
         error,
@@ -1176,6 +1261,7 @@ async fn test_pending_commit_logic() {
     ));
     let error = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_signer)
+        .await
         .expect_err("no error committing while a commit is pending");
     assert!(matches!(
         error,
@@ -1183,6 +1269,7 @@ async fn test_pending_commit_logic() {
     ));
     let error = alice_group
         .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .await
         .expect_err("no error committing while a commit is pending");
     assert!(matches!(
         error,
@@ -1190,6 +1277,7 @@ async fn test_pending_commit_logic() {
     ));
     let error = alice_group
         .propose_self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .await
         .expect_err("no error creating a proposal while a commit is pending");
     assert!(matches!(
         error,
@@ -1199,12 +1287,14 @@ async fn test_pending_commit_logic() {
     // Clearing the pending commit should actually clear it.
     alice_group
         .clear_pending_commit(alice_provider.storage())
+        .await
         .unwrap();
     assert!(alice_group.pending_commit().is_none());
 
     // Creating a new commit should commit the same proposals.
     let (_msg, welcome_option, _group_info) = alice_group
         .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .await
         .expect("error creating self-update commit")
         .into_messages();
 
@@ -1212,6 +1302,7 @@ async fn test_pending_commit_logic() {
     // end up in the same state as bob.
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
     assert!(alice_group.pending_commit().is_none());
 
@@ -1226,8 +1317,10 @@ async fn test_pending_commit_logic() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("error creating group from welcome")
+    .await
+    .expect("error creating group from welcome")
     .into_group(bob_provider)
+    .await
     .expect("error creating group from welcome");
 
     assert_eq!(
@@ -1256,16 +1349,19 @@ async fn test_pending_commit_logic() {
     // While a commit is pending, merging Bob's commit should clear the pending commit.
     let (_msg, _welcome_option, _group_info) = alice_group
         .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .await
         .expect("error creating self-update commit")
         .into_messages();
 
     let (msg, _welcome_option, _group_info) = bob_group
         .self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
+        .await
         .expect("error creating self-update commit")
         .into_messages();
 
     let alice_processed_message = alice_group
         .process_message(alice_provider, msg.into_protocol_message().unwrap())
+        .await
         .expect("Could not process messages.");
     assert!(alice_group.pending_commit().is_some());
 
@@ -1274,6 +1370,7 @@ async fn test_pending_commit_logic() {
     {
         alice_group
             .merge_staged_commit(alice_provider, *staged_commit)
+            .await
             .expect("Error merging commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -1308,14 +1405,19 @@ async fn key_package_deletion() {
         group_id,
         alice_credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
     let (_queued_message, welcome, _group_info) = alice_group
         .add_members(alice_provider, &alice_signer, from_ref(bob_key_package))
+        .await
         .unwrap();
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome
@@ -1329,15 +1431,20 @@ async fn key_package_deletion() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating staged join from Welcome")
+    .await
+    .expect("Error creating staged join from Welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from staged join");
 
     // TEST: The key package must be gone from the key store.
     let result: Option<KeyPackageBundle> = bob_provider
         .storage()
-        .key_package(&bob_key_package.hash_ref(bob_provider.crypto()).unwrap())
-        .await.unwrap();
+        .key_package::<HashReference, KeyPackageBundle>(
+            &bob_key_package.hash_ref(bob_provider.crypto()).unwrap(),
+        )
+        .await
+        .unwrap();
     assert!(
         result.is_none(),
         "The key package is still in the key store after creating a new group from it."
@@ -1374,13 +1481,18 @@ async fn remove_prosposal_by_ref() {
         group_id,
         alice_credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // alice adds bob and bob processes the welcome
     let (_, welcome, _) = alice_group
         .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .await
         .unwrap();
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome
@@ -1393,30 +1505,36 @@ async fn remove_prosposal_by_ref() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.unwrap()
+    .await
+    .unwrap()
     .into_group(bob_provider)
+    .await
     .unwrap();
     // alice proposes to add charlie
     let (_, reference) = alice_group
         .propose_add_member(alice_provider, &alice_signer, charlie_key_package)
+        .await
         .unwrap();
 
     assert_eq!(alice_group.proposal_store().proposals().count(), 1);
     // clearing the proposal by reference
     alice_group
         .remove_pending_proposal(alice_provider.storage(), &reference)
+        .await
         .unwrap();
     assert!(alice_group.proposal_store().is_empty());
 
     // the proposal should not be stored anymore
     let err = alice_group
         .remove_pending_proposal(alice_provider.storage(), &reference)
+        .await
         .unwrap_err();
     assert!(matches!(err, RemoveProposalError::ProposalNotFound));
 
     // the commit should have no proposal
     let (commit, _, _) = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_signer)
+        .await
         .unwrap();
     let msg = bob_group
         .process_message(
@@ -1425,6 +1543,7 @@ async fn remove_prosposal_by_ref() {
                 .try_into_protocol_message()
                 .unwrap(),
         )
+        .await
         .unwrap();
     match msg.into_content() {
         ProcessedMessageContent::StagedCommitMessage(commit) => {
@@ -1457,7 +1576,8 @@ async fn max_past_epochs_join_config() {
         &create_config,
         alice_credential_with_key,
     )
-    .await.expect("failed to create group");
+    .await
+    .expect("failed to create group");
 
     assert_eq!(
         alice_group.message_secrets_store.max_epochs,
@@ -1524,7 +1644,8 @@ async fn builder_pattern() {
         .with_leaf_node_extensions(test_leaf_extensions.clone())
         .expect("error adding leaf node extension to builder")
         .build(alice_provider, &alice_signer, alice_credential_with_key)
-        .await.expect("error creating group using builder");
+        .await
+        .expect("error creating group using builder");
 
     // Check that the group was created with the correct configuration
 
@@ -1651,7 +1772,8 @@ async fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider +
         &mls_group_create_config,
         alice_credential_with_key,
     )
-    .await.expect("error creating group");
+    .await
+    .expect("error creating group");
 
     // === Verify the initial group context extension data is correct ===
     let group_context_extensions = alice_group.context().extensions();
@@ -1680,7 +1802,8 @@ async fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider +
             &bob_signer,
             bob_credential_with_key,
         )
-        .await.expect("error building key package");
+        .await
+        .expect("error building key package");
 
     let (_, welcome, _) = alice_group
         .add_members(
@@ -1688,8 +1811,12 @@ async fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider +
             &alice_signer,
             from_ref(bob_key_package.key_package()),
         )
+        .await
         .unwrap();
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome
@@ -1702,8 +1829,10 @@ async fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider +
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating staged join from Welcome")
+    .await
+    .expect("Error creating staged join from Welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from staged join");
 
     // === Verify Bob's initial group context extension data is correct ===
@@ -1733,6 +1862,7 @@ async fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider +
         .expect("updated extension should be valid here");
     let (update_proposal, _) = alice_group
         .propose_group_context_extensions(alice_provider, updated_extensions, &alice_signer)
+        .await
         .expect("failed to propose group context extensions with unknown extension");
 
     assert_eq!(
@@ -1744,10 +1874,12 @@ async fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider +
     // === Commit to the proposed group context extension ===
     let (update_commit, _, _) = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_signer)
+        .await
         .expect("failed to commit to pending group context extensions");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     // === let bob process the updates  ===
@@ -1762,12 +1894,14 @@ async fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider +
             bob_provider,
             update_proposal.into_protocol_message().unwrap(),
         )
+        .await
         .expect("bob failed processing the update");
 
     match processed_update_message.into_content() {
         ProcessedMessageContent::ProposalMessage(msg) => {
             bob_group
                 .store_pending_proposal(bob_provider.storage(), *msg)
+                .await
                 .unwrap();
         }
         other => panic!("expected proposal, got {other:?}"),
@@ -1781,11 +1915,13 @@ async fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider +
 
     let processed_commit_message = bob_group
         .process_message(bob_provider, update_commit.into_protocol_message().unwrap())
+        .await
         .expect("bob failed processing the update");
 
     match processed_commit_message.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => bob_group
             .merge_staged_commit(bob_provider, *staged_commit)
+            .await
             .expect("error merging group context update commit"),
         other => panic!("expected commit, got {other:?}"),
     };
@@ -1806,7 +1942,8 @@ async fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider +
 
     // === Verify Bob sees the group context extension updated ===
     let bob_group_loaded = MlsGroup::load(bob_provider.storage(), bob_group.group_id())
-        .await.expect("error loading group")
+        .await
+        .expect("error loading group")
         .expect("no such group");
     let group_context_extensions_2 = bob_group_loaded.export_group_context().extensions();
     let mut extracted_data_2 = None;
@@ -1839,7 +1976,8 @@ async fn update_proposal_bob() {
         &mls_group_create_config,
         alice_credential_with_key,
     )
-    .await.expect("error creating group");
+    .await
+    .expect("error creating group");
 
     // === Alice adds Bob ===
     let bob_provider = &Provider::default();
@@ -1853,7 +1991,8 @@ async fn update_proposal_bob() {
             &bob_signer,
             bob_credential_with_key,
         )
-        .await.expect("error building key package");
+        .await
+        .expect("error building key package");
 
     let (_, welcome, _) = alice_group
         .add_members(
@@ -1861,8 +2000,12 @@ async fn update_proposal_bob() {
             &alice_signer,
             from_ref(bob_key_package.key_package()),
         )
+        .await
         .unwrap();
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome
@@ -1875,8 +2018,10 @@ async fn update_proposal_bob() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating staged join from Welcome")
+    .await
+    .expect("Error creating staged join from Welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from staged join");
 
     // === Bob proposes an update ===
@@ -1886,6 +2031,7 @@ async fn update_proposal_bob() {
             &bob_signer,
             LeafNodeParameters::builder().build(),
         )
+        .await
         .unwrap();
 
     // === Alice processes the update proposal from Bob ===
@@ -1894,6 +2040,7 @@ async fn update_proposal_bob() {
             alice_provider,
             update_proposal.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
     let ProcessedMessageContent::ProposalMessage(proposal_msg) = processed_message.into_content()
@@ -1902,20 +2049,24 @@ async fn update_proposal_bob() {
     };
     bob_group
         .store_pending_proposal(bob_provider.storage(), *proposal_msg)
+        .await
         .unwrap();
 
     // === Alice commits to the proposal ===
     let (commit, _, _) = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_signer)
+        .await
         .expect("failed to commit to pending group context extensions");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     // === Bob processes the commit  ===
     let processed_message = bob_group
         .process_message(bob_provider, commit.into_protocol_message().unwrap())
+        .await
         .expect("bob failed processing the update");
 
     let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
@@ -1925,6 +2076,7 @@ async fn update_proposal_bob() {
     };
     bob_group
         .merge_staged_commit(bob_provider, *staged_commit)
+        .await
         .expect("error merging commit to own update proposal");
 }
 
@@ -1945,7 +2097,8 @@ async fn update_proposal_alice() {
         &mls_group_create_config,
         alice_credential_with_key,
     )
-    .await.expect("error creating group");
+    .await
+    .expect("error creating group");
 
     // === Alice adds Bob ===
     let bob_provider = &Provider::default();
@@ -1959,7 +2112,8 @@ async fn update_proposal_alice() {
             &bob_signer,
             bob_credential_with_key,
         )
-        .await.expect("error building key package");
+        .await
+        .expect("error building key package");
 
     let (_, welcome, _) = alice_group
         .add_members(
@@ -1967,8 +2121,12 @@ async fn update_proposal_alice() {
             &alice_signer,
             from_ref(bob_key_package.key_package()),
         )
+        .await
         .unwrap();
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome
@@ -1981,8 +2139,10 @@ async fn update_proposal_alice() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating staged join from Welcome")
+    .await
+    .expect("Error creating staged join from Welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from staged join");
 
     // === Alice proposes an update ===
@@ -1992,6 +2152,7 @@ async fn update_proposal_alice() {
             &alice_signer,
             LeafNodeParameters::builder().build(),
         )
+        .await
         .unwrap();
 
     // === Bob processes the update proposal from Alice ===
@@ -2000,6 +2161,7 @@ async fn update_proposal_alice() {
             bob_provider,
             update_proposal.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
     let ProcessedMessageContent::ProposalMessage(proposal_msg) = processed_message.into_content()
@@ -2008,20 +2170,24 @@ async fn update_proposal_alice() {
     };
     bob_group
         .store_pending_proposal(bob_provider.storage(), *proposal_msg)
+        .await
         .unwrap();
 
     // === Bob commits to the proposal ===
     let (commit, _, _) = bob_group
         .commit_to_pending_proposals(bob_provider, &bob_signer)
+        .await
         .expect("failed to commit to pending group context extensions");
 
     bob_group
         .merge_pending_commit(bob_provider)
+        .await
         .expect("error merging pending commit");
 
     // === Alice processes the commit  ===
     let processed_message = alice_group
         .process_message(alice_provider, commit.into_protocol_message().unwrap())
+        .await
         .expect("bob failed processing the update");
 
     let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
@@ -2031,6 +2197,7 @@ async fn update_proposal_alice() {
     };
     alice_group
         .merge_staged_commit(alice_provider, *staged_commit)
+        .await
         .expect("error merging commit to own update proposal");
 
     assert_eq!(
@@ -2077,7 +2244,8 @@ async fn test_update_group_context_with_unknown_extension_using_update_function<
         &mls_group_create_config,
         alice_credential_with_key,
     )
-    .await.expect("error creating group");
+    .await
+    .expect("error creating group");
 
     // === Verify the initial group context extension data is correct ===
     let group_context_extensions = alice_group.context().extensions();
@@ -2105,11 +2273,9 @@ async fn test_update_group_context_with_unknown_extension_using_update_function<
         .add_or_replace(updated_unknown_gc_extension)
         .expect("updated extension should be valid here");
 
-    let update_result = alice_group.update_group_context_extensions(
-        alice_provider,
-        updated_extensions,
-        &alice_signer,
-    );
+    let update_result = alice_group
+        .update_group_context_extensions(alice_provider, updated_extensions, &alice_signer)
+        .await;
     assert!(
         update_result.is_ok(),
         "Failed to update group context extensions: {:?}",
@@ -2119,6 +2285,7 @@ async fn test_update_group_context_with_unknown_extension_using_update_function<
     // === Test clearing staged commit before merge, verify context shows expected data ===
     alice_group
         .clear_pending_commit(alice_provider.storage())
+        .await
         .unwrap();
     let group_context_extensions = alice_group.context().extensions();
     let mut extracted_data = None;
@@ -2144,11 +2311,9 @@ async fn test_update_group_context_with_unknown_extension_using_update_function<
     updated_extensions
         .add_or_replace(updated_unknown_gc_extension)
         .expect("updated extension should be valid here");
-    let update_result = alice_group.update_group_context_extensions(
-        alice_provider,
-        updated_extensions,
-        &alice_signer,
-    );
+    let update_result = alice_group
+        .update_group_context_extensions(alice_provider, updated_extensions, &alice_signer)
+        .await;
     assert!(
         update_result.is_ok(),
         "Failed to update group context extensions: {:?}",
@@ -2156,7 +2321,10 @@ async fn test_update_group_context_with_unknown_extension_using_update_function<
     );
 
     // === Merge Pending Commit ===
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     // === Verify the group context extension was updated ===
     let group_context_extensions = alice_group.context().extensions();
@@ -2211,7 +2379,8 @@ async fn unknown_extensions() {
         .expect("error adding unknown leaf extension to builder")
         .with_group_context_extensions(test_gc_extensions.clone())
         .build(alice_provider, &alice_signer, alice_credential_with_key)
-        .await.expect("error creating group using builder");
+        .await
+        .expect("error creating group using builder");
 
     // Check that everything was added successfully
     let group_context_extensions = alice_group.export_group_context().extensions();
@@ -2239,7 +2408,8 @@ async fn unknown_extensions() {
             &bob_signer,
             bob_credential_with_key,
         )
-        .await.expect("error building key package");
+        .await
+        .expect("error building key package");
 
     assert_eq!(
         bob_key_package.key_package().extensions(),
@@ -2255,8 +2425,12 @@ async fn unknown_extensions() {
             &alice_signer,
             from_ref(bob_key_package.key_package()),
         )
+        .await
         .unwrap();
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome
@@ -2269,8 +2443,10 @@ async fn unknown_extensions() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating staged join from Welcome")
+    .await
+    .expect("Error creating staged join from Welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from staged join");
 }
 
@@ -2295,13 +2471,15 @@ async fn join_multiple_groups_last_resort_extension() {
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build(alice_provider, &alice_signer, alice_credential_with_key)
-        .await.expect("error creating group for alice using builder");
+        .await
+        .expect("error creating group for alice using builder");
     // bob creates MlsGroup
     let mut bob_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build(bob_provider, &bob_signer, bob_credential_with_key)
-        .await.expect("error creating group for bob using builder");
+        .await
+        .expect("error creating group for bob using builder");
     // charlie creates KeyPackage
     let charlie_keypkg = KeyPackage::builder()
         .leaf_node_capabilities(leaf_capabilities)
@@ -2312,7 +2490,8 @@ async fn join_multiple_groups_last_resort_extension() {
             &charlie_signer,
             charlie_credential_with_key,
         )
-        .await.expect("error building key package for charlie");
+        .await
+        .expect("error building key package for charlie");
     // alice calls add_members(...) with charlie's KeyPackage; produces Commit and Welcome messages
     let (_, alice_welcome, _) = alice_group
         .add_members(
@@ -2320,9 +2499,11 @@ async fn join_multiple_groups_last_resort_extension() {
             &alice_signer,
             from_ref(charlie_keypkg.key_package()),
         )
+        .await
         .expect("error adding charlie to alice's group");
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging commit for alice's group");
 
     // charlie calls new_from_welcome(...) with alice's Welcome message; SHOULD SUCCEED
@@ -2337,8 +2518,10 @@ async fn join_multiple_groups_last_resort_extension() {
         alice_welcome,
         None,
     )
-    .await.expect("error creating staged join from welcome")
+    .await
+    .expect("error creating staged join from welcome")
     .into_group(charlie_provider)
+    .await
     .expect("error creating group from staged join");
 
     // bob calls add_members(...) with charlie's KeyPackage; produces Commit and Welcome messages
@@ -2348,9 +2531,11 @@ async fn join_multiple_groups_last_resort_extension() {
             &bob_signer,
             from_ref(charlie_keypkg.key_package()),
         )
+        .await
         .expect("error adding charlie to bob's group");
     bob_group
         .merge_pending_commit(bob_provider)
+        .await
         .expect("error merging commit for bob's group");
 
     // charlie calls new_from_welcome(...) with bob's Welcome message; SHOULD SUCCEED
@@ -2364,8 +2549,10 @@ async fn join_multiple_groups_last_resort_extension() {
         bob_welcome,
         None,
     )
-    .await.expect("error creating staged join from welcome")
+    .await
+    .expect("error creating staged join from welcome")
     .into_group(charlie_provider)
+    .await
     .expect("error creating group from staged join");
     // done :-)
 }
@@ -2394,59 +2581,74 @@ async fn deletion() {
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build(alice_provider, &alice_signer, alice_credential_with_key)
-        .await.expect("error creating group for alice using builder");
+        .await
+        .expect("error creating group for alice using builder");
 
     SignatureKeyPair::delete(
         alice_provider.storage(),
         alice_pk.as_slice(),
         ciphersuite.signature_algorithm(),
     )
-    .await.unwrap();
+    .await
+    .unwrap();
 
     // alice deletes the group
-    alice_group.delete(alice_provider.storage()).unwrap();
+    alice_group.delete(alice_provider.storage()).await.unwrap();
 
     let storage = alice_provider.storage();
     let group_id = alice_group.group_id();
     let current_epoch = alice_group.epoch();
     let own_leaf_index = alice_group.own_leaf_index();
 
-    let all_gone = storage.tree::<_, TreeSync>(group_id).await.unwrap().is_none()
+    let all_gone = storage
+        .tree::<_, TreeSync>(group_id)
+        .await
+        .unwrap()
+        .is_none()
         && storage
             .confirmation_tag::<_, ConfirmationTag>(group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .is_none()
         && storage
             .group_context::<_, GroupContext>(group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .is_none()
         && storage
             .interim_transcript_hash::<_, InterimTranscriptHash>(group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .is_none()
         && storage
             .own_leaf_index::<_, LeafNodeIndex>(group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .is_none()
         && storage
             .group_epoch_secrets::<_, GroupEpochSecrets>(group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .is_none()
         && storage
             .message_secrets::<_, MessageSecretsStore>(group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .is_none()
         && storage
             .mls_group_join_config::<_, MlsGroupJoinConfig>(group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .is_none()
         && storage
             .own_leaf_nodes::<_, LeafNode>(group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .is_empty()
         && storage
             .group_state::<MlsGroupState, _>(group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .is_none()
         && storage
             .encryption_epoch_key_pairs::<_, _, EncryptionKeyPair>(
@@ -2454,7 +2656,8 @@ async fn deletion() {
                 &current_epoch,
                 own_leaf_index.u32(),
             )
-            .await.unwrap()
+            .await
+            .unwrap()
             .is_empty()
         && alice_group.proposal_store().is_empty();
 
@@ -2485,7 +2688,8 @@ async fn failed_groupinfo_decryption() {
         &alice_signature_keys,
         ciphersuite,
         alice_credential_with_key,
-    ).await;
+    )
+    .await;
 
     let group_info_tbs = {
         let group_context = GroupContext::new(
@@ -2568,7 +2772,7 @@ async fn failed_groupinfo_decryption() {
         broken_welcome,
         None,
     )
-    .await.and_then(|staged_join| staged_join.into_group(provider))
+    .await
     .expect_err("Creation of mls group from a broken Welcome was successful.");
 
     assert!(matches!(
@@ -2606,7 +2810,8 @@ async fn update_path() {
             bob_group.own_leaf_index(),
             LeafNodeParameters::default(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
     let (update_bob, _welcome_option, _group_info_option) = bob_group
         .self_update(
@@ -2614,7 +2819,8 @@ async fn update_path() {
             &bob_signature_keys,
             LeafNodeParameters::default(),
         )
-        .await.expect("Could not create proposal.")
+        .await
+        .expect("Could not create proposal.")
         .into_contents();
 
     // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
@@ -2658,9 +2864,11 @@ async fn update_path() {
 
     let protocol_message = ProtocolMessage::from(PublicMessage::from(broken_message));
 
-    let result = alice_group.process_message(alice_provider, protocol_message);
+    let result = alice_group
+        .process_message(alice_provider, protocol_message)
+        .await;
     assert_eq!(
-        result.await.expect_err("Successful processing of a broken commit."),
+        result.expect_err("Successful processing of a broken commit."),
         ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
             ApplyUpdatePathError::UnableToDecrypt
         ))
@@ -2695,10 +2903,12 @@ async fn psks() {
     .expect("An unexpected error occured.");
     preshared_key_id
         .store(alice_provider, secret.as_slice())
-        .await.unwrap();
+        .await
+        .unwrap();
     preshared_key_id
         .store(bob_provider, secret.as_slice())
-        .await.unwrap();
+        .await
+        .unwrap();
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
@@ -2707,12 +2917,14 @@ async fn psks() {
             &alice_signature_keys,
             alice_credential_with_key,
         )
-        .await.expect("Error creating group.");
+        .await
+        .expect("Error creating group.");
 
     // === Alice creates a PSK proposal ===
     log::info!(" >>> Creating psk proposal ...");
     let (_psk_proposal, _proposal_ref) = alice_group
         .propose_external_psk(alice_provider, &alice_signature_keys, preshared_key_id)
+        .await
         .expect("Could not create PSK proposal");
 
     // === Alice adds Bob (and commits to PSK proposal) ===
@@ -2722,12 +2934,14 @@ async fn psks() {
             &alice_signature_keys,
             from_ref(bob_key_package_bundle.key_package()),
         )
+        .await
         .expect("Could not create commit");
 
     log::info!(" >>> Merging commit ...");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("Could not merge commit");
 
     let ratchet_tree = alice_group.export_ratchet_tree();
@@ -2738,8 +2952,10 @@ async fn psks() {
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
-    .await.expect("Could not stage welcome")
+    .await
+    .expect("Could not stage welcome")
     .into_group(bob_provider)
+    .await
     .expect("Could not create group from welcome");
 
     // === Bob updates and commits ===
@@ -2749,6 +2965,7 @@ async fn psks() {
             &bob_signature_keys,
             LeafNodeParameters::default(),
         )
+        .await
         .expect("An unexpected error occurred.")
         .into_contents();
 }
@@ -2771,7 +2988,8 @@ async fn staged_commit_creation() {
             &alice_signature_keys,
             alice_credential_with_key,
         )
-        .await.expect("Error creating group.");
+        .await
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let (_commit, welcome, _group_info_option) = alice_group
@@ -2780,10 +2998,12 @@ async fn staged_commit_creation() {
             &alice_signature_keys,
             from_ref(bob_key_package_bundle.key_package()),
         )
+        .await
         .expect("Could not create commit");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("Could not merge commit");
 
     let ratchet_tree = alice_group.export_ratchet_tree();
@@ -2794,8 +3014,10 @@ async fn staged_commit_creation() {
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
-    .await.expect("Could not stage welcome")
+    .await
+    .expect("Could not stage welcome")
     .into_group(bob_provider)
+    .await
     .expect("Could not create group from welcome");
 
     // Let's make sure we end up in the same group state.
@@ -2826,7 +3048,8 @@ async fn own_commit_processing() {
             &alice_signature_keys,
             alice_credential_with_key,
         )
-        .await.expect("Error creating group.");
+        .await
+        .expect("Error creating group.");
 
     // Alice creates a commit
     let (commit_out, _welcome_option, _group_info_option) = alice_group
@@ -2835,6 +3058,7 @@ async fn own_commit_processing() {
             &alice_signature_keys,
             LeafNodeParameters::default(),
         )
+        .await
         .expect("Could not create commit")
         .into_contents();
 
@@ -2843,6 +3067,7 @@ async fn own_commit_processing() {
     // Alice attempts to process her own commit
     let error = alice_group
         .process_message(alice_provider, commit_in.into_protocol_message().unwrap())
+        .await
         .expect_err("no error while processing own commit");
     assert_eq!(
         error,
@@ -2880,7 +3105,8 @@ async fn proposal_application_after_self_was_removed() {
             &alice_signature_keys,
             alice_credential_with_key,
         )
-        .await.expect("Error creating group.");
+        .await
+        .expect("Error creating group.");
 
     let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
@@ -2888,10 +3114,12 @@ async fn proposal_application_after_self_was_removed() {
             &alice_signature_keys,
             from_ref(bob_kpb.key_package()),
         )
+        .await
         .expect("Could not create commit");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("Could not merge commit");
 
     let ratchet_tree = alice_group.export_ratchet_tree();
@@ -2902,8 +3130,10 @@ async fn proposal_application_after_self_was_removed() {
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
-    .await.expect("Could not stage welcome")
+    .await
+    .expect("Could not stage welcome")
     .into_group(bob_provider)
+    .await
     .expect("Could not create group from welcome");
 
     // Alice adds Charlie and removes Bob in the same commit.
@@ -2924,6 +3154,7 @@ async fn proposal_application_after_self_was_removed() {
 
     let (bob_remove_proposal, _bob_remove_proposal_ref) = alice_group
         .propose_remove_member(alice_provider, &alice_signature_keys, bob_index)
+        .await
         .expect("Could not create proposal");
 
     // Bob processes the proposal
@@ -2932,6 +3163,7 @@ async fn proposal_application_after_self_was_removed() {
             bob_provider,
             bob_remove_proposal.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
     let staged_proposal = match processed_message.into_content() {
@@ -2941,6 +3173,7 @@ async fn proposal_application_after_self_was_removed() {
 
     bob_group
         .store_pending_proposal(bob_provider.storage(), staged_proposal)
+        .await
         .expect("Error storing proposal");
 
     // Alice then commit to the proposal and at the same time adds Charlie
@@ -2950,17 +3183,20 @@ async fn proposal_application_after_self_was_removed() {
             &alice_signature_keys,
             from_ref(charlie_kpb.key_package()),
         )
+        .await
         .expect("Could not create commit");
 
     // Alice merges her own commit
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("Could not merge commit");
 
     // Bob processes the commit
     println!("Bob processes the commit");
     let processed_message = bob_group
         .process_message(bob_provider, commit.into_protocol_message().unwrap())
+        .await
         .unwrap();
 
     let staged_commit = match processed_message.into_content() {
@@ -2970,6 +3206,7 @@ async fn proposal_application_after_self_was_removed() {
 
     bob_group
         .merge_staged_commit(bob_provider, staged_commit)
+        .await
         .expect("Error merging commit.");
 
     // Charlie processes the welcome
@@ -2982,8 +3219,10 @@ async fn proposal_application_after_self_was_removed() {
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
-    .await.expect("Error staging welcome.")
+    .await
+    .expect("Error staging welcome.")
     .into_group(charlie_provider)
+    .await
     .expect("Error creating group from welcome.");
 
     // We can now check that Bob correctly processed his commit and applied the changes
@@ -3054,7 +3293,8 @@ async fn proposal_application_after_self_was_removed_ref() {
             &alice_signature_keys,
             alice_credential_with_key,
         )
-        .await.expect("Error creating group.");
+        .await
+        .expect("Error creating group.");
 
     let (_commit, welcome, _group_info_option) = alice_group
         .add_members(
@@ -3062,10 +3302,12 @@ async fn proposal_application_after_self_was_removed_ref() {
             &alice_signature_keys,
             from_ref(bob_kpb.key_package()),
         )
+        .await
         .expect("Could not create commit");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("Could not merge commit");
 
     let ratchet_tree = alice_group.export_ratchet_tree();
@@ -3076,8 +3318,10 @@ async fn proposal_application_after_self_was_removed_ref() {
         welcome.into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
-    .await.expect("Could not stage welcome")
+    .await
+    .expect("Could not stage welcome")
     .into_group(bob_provider)
+    .await
     .expect("Could not create group from welcome");
 
     // Alice adds Charlie and removes Bob in the same commit.
@@ -3098,6 +3342,7 @@ async fn proposal_application_after_self_was_removed_ref() {
 
     let (bob_remove_proposal, _bob_remove_proposal_ref) = alice_group
         .propose_remove_member(alice_provider, &alice_signature_keys, bob_index)
+        .await
         .expect("Could not create proposal");
 
     let (charlie_add_proposal, _charlie_add_proposal_ref) = alice_group
@@ -3106,6 +3351,7 @@ async fn proposal_application_after_self_was_removed_ref() {
             &alice_signature_keys,
             charlie_kpb.key_package(),
         )
+        .await
         .expect("Could not create proposal");
 
     // Bob processes the proposals
@@ -3114,6 +3360,7 @@ async fn proposal_application_after_self_was_removed_ref() {
             bob_provider,
             bob_remove_proposal.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
     let staged_proposal = match processed_message.into_content() {
@@ -3123,6 +3370,7 @@ async fn proposal_application_after_self_was_removed_ref() {
 
     bob_group
         .store_pending_proposal(bob_provider.storage(), staged_proposal)
+        .await
         .expect("Error storing proposal");
 
     let processed_message = bob_group
@@ -3130,6 +3378,7 @@ async fn proposal_application_after_self_was_removed_ref() {
             bob_provider,
             charlie_add_proposal.into_protocol_message().unwrap(),
         )
+        .await
         .unwrap();
 
     let staged_proposal = match processed_message.into_content() {
@@ -3139,6 +3388,7 @@ async fn proposal_application_after_self_was_removed_ref() {
 
     bob_group
         .store_pending_proposal(bob_provider.storage(), staged_proposal)
+        .await
         .expect("Error storing proposal");
 
     // Alice then commits to the proposal and at the same time adds Charlie
@@ -3146,11 +3396,13 @@ async fn proposal_application_after_self_was_removed_ref() {
     let alice_rt_before = alice_group.export_ratchet_tree();
     let (commit, welcome, _group_info_option) = alice_group
         .commit_to_pending_proposals(alice_provider, &alice_signature_keys)
+        .await
         .expect("Could not create commit");
 
     // Alice merges her own commit
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("Could not merge commit");
     alice_group.print_ratchet_tree("Alice's tree after commit\n");
 
@@ -3161,6 +3413,7 @@ async fn proposal_application_after_self_was_removed_ref() {
     assert_eq!(alice_rt_before, bob_rt_before);
     let processed_message = bob_group
         .process_message(bob_provider, commit.into_protocol_message().unwrap())
+        .await
         .unwrap();
     println!("Bob finished processesing the commit");
 
@@ -3171,6 +3424,7 @@ async fn proposal_application_after_self_was_removed_ref() {
 
     bob_group
         .merge_staged_commit(bob_provider, staged_commit)
+        .await
         .expect("Error merging commit.");
 
     // Charlie processes the welcome
@@ -3183,8 +3437,10 @@ async fn proposal_application_after_self_was_removed_ref() {
         welcome.unwrap().into_welcome().unwrap(),
         Some(ratchet_tree.into()),
     )
-    .await.expect("Error staging welcome.")
+    .await
+    .expect("Error staging welcome.")
     .into_group(charlie_provider)
+    .await
     .expect("Error creating group from welcome.");
 
     // We can now check that Bob correctly processed his and applied the changes
@@ -3231,9 +3487,9 @@ async fn signature_key_rotation() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
     let old_credential_with_key = alice_pre_group.credential_with_key.clone();
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
 
     // Create config
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -3247,7 +3503,9 @@ async fn signature_key_rotation() {
     // Initialize the group state
     let group_id = GroupId::from_slice(b"test");
     let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).await.unwrap();
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config)
+            .await
+            .unwrap();
 
     group_state
         .add_member(AddMemberConfig {
@@ -3256,10 +3514,11 @@ async fn signature_key_rotation() {
             join_config: mls_group_join_config.clone(),
             tree: None,
         })
+        .await
         .expect("Could not add member");
 
     // Generate a new signer for Alice
-    let new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
+    let new_pre_group_state = alice_party.generate_pre_group(ciphersuite).await;
 
     // Create a commit that updates Alice's signer
     let [alice_group_state] = group_state.members_mut(&["alice"]);
@@ -3293,6 +3552,7 @@ async fn signature_key_rotation() {
             new_signer.clone(),
             leaf_node_parameters,
         )
+        .await
         .unwrap_err();
 
     assert_eq!(
@@ -3309,17 +3569,20 @@ async fn signature_key_rotation() {
             new_signer,
             LeafNodeParameters::default(),
         )
+        .await
         .unwrap();
 
     alice_group_state
         .group
         .merge_pending_commit(&alice_group_state.party.core_state.provider)
+        .await
         .unwrap();
 
     group_state
         .deliver_and_apply_if(bundle.into_commit().into(), |state| {
             state.party.core_state.name != "alice"
         })
+        .await
         .unwrap();
 
     // Check that the signature key was rotated
@@ -3342,12 +3605,14 @@ async fn signature_key_rotation() {
             &new_pre_group_state.signer,
             LeafNodeParameters::default(),
         )
+        .await
         .unwrap();
 
     group_state
         .deliver_and_apply_if(bundle.into_commit().into(), |state| {
             state.party.core_state.name != "alice"
         })
+        .await
         .unwrap();
 }
 
@@ -3357,26 +3622,28 @@ async fn group_replacement() {
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
 
     let alice_credential_with_key = alice_pre_group.credential_with_key.clone();
     let alice_signer = alice_pre_group.signer.clone();
 
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
 
     let bob_kpb = KeyPackageBundle::generate(
         &bob_party.provider,
         &bob_pre_group.signer,
         ciphersuite,
         bob_pre_group.credential_with_key.clone(),
-    ).await;
+    )
+    .await;
 
     let bob_kpb2 = KeyPackageBundle::generate(
         &bob_party.provider,
         &bob_pre_group.signer,
         ciphersuite,
         bob_pre_group.credential_with_key.clone(),
-    ).await;
+    )
+    .await;
 
     // Create config
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -3391,7 +3658,8 @@ async fn group_replacement() {
     let group_id = GroupId::from_slice(b"test");
     let mut group_state =
         GroupState::new_from_party(group_id.clone(), alice_pre_group, mls_group_create_config)
-            .await.unwrap();
+            .await
+            .unwrap();
 
     group_state
         .add_member(AddMemberConfig {
@@ -3400,6 +3668,7 @@ async fn group_replacement() {
             join_config: mls_group_join_config.clone(),
             tree: None,
         })
+        .await
         .expect("Could not add member");
 
     // Creating a new group with the same ID should fail
@@ -3412,7 +3681,8 @@ async fn group_replacement() {
             &alice_signer,
             alice_credential_with_key.clone(),
         )
-        .await.expect_err("Creating a group with an existing ID succeeded unexpectedly.");
+        .await
+        .expect_err("Creating a group with an existing ID succeeded unexpectedly.");
     assert_eq!(err, NewGroupError::GroupAlreadyExists);
 
     let mut alice_group = MlsGroup::builder()
@@ -3425,7 +3695,8 @@ async fn group_replacement() {
             &alice_signer,
             alice_credential_with_key.clone(),
         )
-        .await.expect("Group creation failed despite replace flag");
+        .await
+        .expect("Group creation failed despite replace flag");
 
     // Alice invites Bob to the new group
     let (_commit, welcome, _group_info_option) = alice_group
@@ -3434,6 +3705,7 @@ async fn group_replacement() {
             &alice_signer,
             &[bob_kpb.key_package().clone()],
         )
+        .await
         .unwrap();
 
     let welcome = welcome.into_welcome().unwrap();
@@ -3442,10 +3714,12 @@ async fn group_replacement() {
         &mls_group_join_config,
         welcome.clone(),
     )
-    .await.unwrap();
+    .await
+    .unwrap();
     let err = JoinBuilder::new(&bob_party.provider, processed_welcome)
         .build()
-        .await.expect_err("Bob joined the new group unexpectedly.");
+        .await
+        .expect_err("Bob joined the new group unexpectedly.");
     assert_eq!(err, WelcomeError::GroupAlreadyExists);
 
     let mut alice_group = MlsGroup::builder()
@@ -3458,7 +3732,8 @@ async fn group_replacement() {
             &alice_signer,
             alice_credential_with_key,
         )
-        .await.expect("Group creation failed despite replace flag");
+        .await
+        .expect("Group creation failed despite replace flag");
 
     // Alice invites Bob to the new group
     let (_commit, welcome, _group_info_option) = alice_group
@@ -3467,6 +3742,7 @@ async fn group_replacement() {
             &alice_signer,
             &[bob_kpb2.key_package().clone()],
         )
+        .await
         .unwrap();
 
     let welcome = welcome.into_welcome().unwrap();
@@ -3476,10 +3752,12 @@ async fn group_replacement() {
         &mls_group_join_config,
         welcome.clone(),
     )
-    .await.unwrap();
+    .await
+    .unwrap();
 
     let _ = JoinBuilder::new(&bob_party.provider, processed_welcome)
         .replace_old_group()
         .build()
-        .await.expect("Bob failed to join the new group despite replace flag.");
+        .await
+        .expect("Bob failed to join the new group despite replace flag.");
 }

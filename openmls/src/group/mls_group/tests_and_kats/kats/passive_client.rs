@@ -97,9 +97,7 @@ pub struct TestEpoch {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TestProposal(#[serde(with = "hex::serde")] Vec<u8>);
 
-#[maybe_async::maybe_async]
-#[cfg_attr(feature = "sync", test)]
-#[cfg_attr(not(feature = "sync"), tokio::test)]
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
 async fn test_read_vectors() {
     let handle = crate::skip_validation::checks::leaf_node_lifetime::handle();
     (*handle).disable_validation();
@@ -136,24 +134,29 @@ pub async fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         .number_of_resumption_psks(16)
         .build();
 
-    let mut passive_client = PassiveClient::new(group_config, test_vector.external_psks.clone()).await;
+    let mut passive_client =
+        PassiveClient::new(group_config, test_vector.external_psks.clone()).await;
 
-    passive_client.inject_key_package(
-        test_vector.key_package,
-        test_vector.signature_priv,
-        test_vector.encryption_priv,
-        test_vector.init_priv,
-    ).await;
+    passive_client
+        .inject_key_package(
+            test_vector.key_package,
+            test_vector.signature_priv,
+            test_vector.encryption_priv,
+            test_vector.init_priv,
+        )
+        .await;
 
     let ratchet_tree: Option<RatchetTreeIn> = test_vector
         .ratchet_tree
         .as_ref()
         .map(|bytes| RatchetTreeIn::tls_deserialize_exact(bytes.0.as_slice()).unwrap());
 
-    passive_client.join_by_welcome(
-        MlsMessageIn::tls_deserialize_exact(&test_vector.welcome).unwrap(),
-        ratchet_tree,
-    ).await;
+    passive_client
+        .join_by_welcome(
+            MlsMessageIn::tls_deserialize_exact(&test_vector.welcome).unwrap(),
+            ratchet_tree,
+        )
+        .await;
 
     debug!(
         "Group ID {}",
@@ -185,9 +188,7 @@ pub async fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     }
 }
 
-#[maybe_async::maybe_async]
-#[cfg_attr(feature = "sync", test)]
-#[cfg_attr(not(feature = "sync"), tokio::test)]
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
 async fn test_write_vectors() {
     let handle = crate::skip_validation::checks::leaf_node_lifetime::handle();
     (*handle).disable_validation();
@@ -267,7 +268,8 @@ impl PassiveClient {
         self.provider
             .storage()
             .write_key_package(&hash_ref, &key_package_bundle)
-            .await.unwrap();
+            .await
+            .unwrap();
 
         // Store encryption key
         let key_pair = EncryptionKeyPair::from((
@@ -294,8 +296,10 @@ impl PassiveClient {
             welcome,
             ratchet_tree,
         )
-        .await.unwrap()
+        .await
+        .unwrap()
         .into_group(&self.provider)
+        .await
         .unwrap();
 
         self.group = Some(group);
@@ -309,7 +313,8 @@ impl PassiveClient {
             .as_mut()
             .unwrap()
             .process_message(&self.provider, message.into_protocol_message().unwrap())
-            .await.unwrap();
+            .await
+            .unwrap();
 
         match processed_message.into_content() {
             ProcessedMessageContent::ProposalMessage(queued_proposal) => {
@@ -317,14 +322,16 @@ impl PassiveClient {
                     .as_mut()
                     .unwrap()
                     .store_pending_proposal(self.provider.storage(), *queued_proposal)
-                    .await.unwrap();
+                    .await
+                    .unwrap();
             }
             ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 self.group
                     .as_mut()
                     .unwrap()
                     .merge_staged_commit(&self.provider, *staged_commit)
-                    .await.unwrap();
+                    .await
+                    .unwrap();
             }
             _ => unimplemented!(),
         }
@@ -361,14 +368,16 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelc
             .credential_with_key
             .clone(),
     )
-    .await.unwrap();
+    .await
+    .unwrap();
 
     let passive = generate_group_candidate(
         b"Bob (Passive Client)",
         ciphersuite,
         &OpenMlsRustCrypto::default(),
         false,
-    ).await;
+    )
+    .await;
 
     let (_, mls_message_welcome, _) = creator_group
         .add_members(
@@ -376,26 +385,29 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelc
             &creator.signature_keypair,
             core::slice::from_ref(passive.key_package.key_package()),
         )
+        .await
         .unwrap();
 
     creator_group
         .merge_pending_commit(&creator_provider)
+        .await
         .unwrap();
 
     let initial_epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
-    let epoch1 = update_inline(&creator_provider, &creator, &mut creator_group);
+    let epoch1 = update_inline(&creator_provider, &creator, &mut creator_group).await;
 
     let epoch2 = {
-        let proposals = vec![propose_add(
+        let proposals = Vec::from([propose_add(
             ciphersuite,
             &creator_provider,
             &creator,
             &mut creator_group,
             b"Charlie",
-        )];
+        )
+        .await]);
 
-        let commit = commit(&creator_provider, &creator, &mut creator_group);
+        let commit = commit(&creator_provider, &creator, &mut creator_group).await;
 
         let epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
@@ -407,14 +419,15 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelc
     };
 
     let epoch3 = {
-        let proposals = vec![propose_remove(
+        let proposals = Vec::from([propose_remove(
             &creator_provider,
             &creator,
             &mut creator_group,
             b"Charlie",
-        )];
+        )
+        .await]);
 
-        let commit = commit(&creator_provider, &creator, &mut creator_group);
+        let commit = commit(&creator_provider, &creator, &mut creator_group).await;
 
         let epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
@@ -426,24 +439,26 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelc
     };
 
     let epoch4 = {
-        let proposals = vec![
+        let proposals = Vec::from([
             propose_add(
                 ciphersuite,
                 &creator_provider,
                 &creator,
                 &mut creator_group,
                 b"Daniel",
-            ),
+            )
+            .await,
             propose_add(
                 ciphersuite,
                 &creator_provider,
                 &creator,
                 &mut creator_group,
                 b"Evelin",
-            ),
-        ];
+            )
+            .await,
+        ]);
 
-        let commit = commit(&creator_provider, &creator, &mut creator_group);
+        let commit = commit(&creator_provider, &creator, &mut creator_group).await;
 
         let epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
@@ -455,18 +470,19 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelc
     };
 
     let epoch5 = {
-        let proposals = vec![
-            propose_remove(&creator_provider, &creator, &mut creator_group, b"Daniel"),
+        let proposals = Vec::from([
+            propose_remove(&creator_provider, &creator, &mut creator_group, b"Daniel").await,
             propose_add(
                 ciphersuite,
                 &creator_provider,
                 &creator,
                 &mut creator_group,
                 b"Fardi",
-            ),
-        ];
+            )
+            .await,
+        ]);
 
-        let commit = commit(&creator_provider, &creator, &mut creator_group);
+        let commit = commit(&creator_provider, &creator, &mut creator_group).await;
 
         let epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
@@ -478,12 +494,12 @@ pub async fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelc
     };
 
     let epoch6 = {
-        let proposals = vec![
-            propose_remove(&creator_provider, &creator, &mut creator_group, b"Fardi"),
-            propose_remove(&creator_provider, &creator, &mut creator_group, b"Evelin"),
-        ];
+        let proposals = Vec::from([
+            propose_remove(&creator_provider, &creator, &mut creator_group, b"Fardi").await,
+            propose_remove(&creator_provider, &creator, &mut creator_group, b"Evelin").await,
+        ]);
 
-        let commit = commit(&creator_provider, &creator, &mut creator_group);
+        let commit = commit(&creator_provider, &creator, &mut creator_group).await;
 
         let epoch_authenticator = creator_group.epoch_authenticator().as_slice().to_vec();
 
@@ -533,7 +549,8 @@ async fn propose_add(
         cipher_suite,
         &OpenMlsRustCrypto::default(),
         false,
-    ).await;
+    )
+    .await;
 
     let mls_message_out_proposal = group
         .propose_add_member(
@@ -541,7 +558,8 @@ async fn propose_add(
             &candidate.signature_keypair,
             add_candidate.key_package.key_package(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
     group.merge_pending_commit(provider).await.unwrap();
 
     TestProposal(mls_message_out_proposal.tls_serialize_detached().unwrap())
@@ -562,16 +580,22 @@ async fn propose_remove(
 
     let mls_message_out_proposal = group
         .propose_remove_member(provider, &candidate.signature_keypair, remove)
-        .await.unwrap();
+        .await
+        .unwrap();
 
     TestProposal(mls_message_out_proposal.tls_serialize_detached().unwrap())
 }
 
 #[maybe_async::maybe_async]
-async fn commit(provider: &OpenMlsRustCrypto, creator: &GroupCandidate, group: &mut MlsGroup) -> Vec<u8> {
+async fn commit(
+    provider: &OpenMlsRustCrypto,
+    creator: &GroupCandidate,
+    group: &mut MlsGroup,
+) -> Vec<u8> {
     let (mls_message_out_commit, _, _) = group
         .commit_to_pending_proposals(provider, &creator.signature_keypair)
-        .await.unwrap();
+        .await
+        .unwrap();
     group.merge_pending_commit(provider).await.unwrap();
 
     mls_message_out_commit.tls_serialize_detached().unwrap()
@@ -589,7 +613,8 @@ async fn update_inline(
             &candidate.signature_keypair,
             LeafNodeParameters::default(),
         )
-        .await.unwrap()
+        .await
+        .unwrap()
         .into_contents();
     group.merge_pending_commit(provider).await.unwrap();
 

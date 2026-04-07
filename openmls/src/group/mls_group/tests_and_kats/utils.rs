@@ -32,11 +32,13 @@ pub(crate) async fn setup_alice_group(
             &alice_signature_keys,
             alice_credential_with_key.clone(),
         )
-        .await.expect("Error creating group.");
+        .await
+        .expect("Error creating group.");
 
     // Test persistence after Alice creates group
     group
         .ensure_persistence(provider.storage())
+        .await
         .expect("Alice group persistence check failed after creation");
 
     (group, alice_credential_with_key, alice_signature_keys, pk)
@@ -65,7 +67,8 @@ pub(crate) async fn setup_alice_bob(
 ) {
     // Create credentials and keys
     let (alice_credential_with_key, alice_signer) =
-        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm())
+            .await;
     let (bob_credential_with_key, bob_signer) =
         test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
@@ -75,7 +78,8 @@ pub(crate) async fn setup_alice_bob(
         &bob_signer,
         ciphersuite,
         bob_credential_with_key,
-    ).await;
+    )
+    .await;
 
     (
         alice_credential_with_key,
@@ -97,7 +101,8 @@ pub(crate) async fn setup_client(
     OpenMlsSignaturePublicKey,
 ) {
     let (credential_with_key, signature_keys) =
-        test_utils::new_credential(provider, id.as_bytes(), ciphersuite.signature_algorithm()).await;
+        test_utils::new_credential(provider, id.as_bytes(), ciphersuite.signature_algorithm())
+            .await;
     let pk = OpenMlsSignaturePublicKey::new(
         signature_keys.to_public_vec().into(),
         ciphersuite.signature_algorithm(),
@@ -110,7 +115,8 @@ pub(crate) async fn setup_client(
         &signature_keys,
         ciphersuite,
         credential_with_key.clone(),
-    ).await;
+    )
+    .await;
     (credential_with_key, key_package_bundle, signature_keys, pk)
 }
 
@@ -129,7 +135,8 @@ pub(crate) async fn setup_alice_bob_group<Provider: OpenMlsProvider>(
 ) {
     // Create credentials and keys
     let (alice_credential, alice_signature_keys) =
-        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm())
+            .await;
     let (bob_credential, bob_signature_keys) =
         test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
@@ -139,7 +146,9 @@ pub(crate) async fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         &bob_signature_keys,
         ciphersuite,
         bob_credential.clone(),
-    ).await;
+    )
+    .await;
+
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Alice creates a group
@@ -151,11 +160,13 @@ pub(crate) async fn setup_alice_bob_group<Provider: OpenMlsProvider>(
             &alice_signature_keys,
             alice_credential.clone(),
         )
-        .await.expect("Error creating group.");
+        .await
+        .expect("Error creating group.");
 
     // Test persistence after Alice creates group
     alice_group
         .ensure_persistence(alice_provider.storage())
+        .await
         .expect("Alice group persistence check failed after creation");
 
     // Alice adds Bob
@@ -165,20 +176,24 @@ pub(crate) async fn setup_alice_bob_group<Provider: OpenMlsProvider>(
             &alice_signature_keys,
             core::slice::from_ref(bob_key_package),
         )
+        .await
         .expect("Could not create proposal.");
 
     // Test persistence after Alice adds Bob
     alice_group
         .ensure_persistence(alice_provider.storage())
+        .await
         .expect("Alice group persistence check failed after adding Bob");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     // Test persistence after Alice merges commit
     alice_group
         .ensure_persistence(alice_provider.storage())
+        .await
         .expect("Alice group persistence check failed after merging commit");
 
     let bob_group = StagedWelcome::new_from_welcome(
@@ -189,12 +204,16 @@ pub(crate) async fn setup_alice_bob_group<Provider: OpenMlsProvider>(
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.and_then(|staged_join| staged_join.into_group(bob_provider))
+    .await
+    .expect("error staging welcome")
+    .into_group(bob_provider)
+    .await
     .expect("error creating group from welcome");
 
     // Test persistence after Bob joins group
     bob_group
         .ensure_persistence(bob_provider.storage())
+        .await
         .expect("Bob group persistence check failed after joining");
 
     (

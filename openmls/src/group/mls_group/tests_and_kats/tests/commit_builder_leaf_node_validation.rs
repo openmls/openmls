@@ -38,11 +38,13 @@ async fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_
     let alice_pre_group = alice_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(supporting_caps.clone())
-        .build();
+        .build()
+        .await;
     let bob_pre_group = bob_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(supporting_caps.clone())
-        .build();
+        .build()
+        .await;
 
     // Create group with required capabilities
     let required_caps =
@@ -61,8 +63,9 @@ async fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_
 
     // Initialize group with Alice
     let group_id = GroupId::from_slice(b"test-commit-builder-validation");
-    let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, create_config).await.unwrap();
+    let mut group_state = GroupState::new_from_party(group_id, alice_pre_group, create_config)
+        .await
+        .unwrap();
 
     // Add Bob to the group
     group_state
@@ -72,6 +75,7 @@ async fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_
             join_config,
             tree: None,
         })
+        .await
         .expect("Could not add member");
 
     // Create bad capabilities (without the required extension)
@@ -88,6 +92,7 @@ async fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_
                 .force_self_update(true)
                 .leaf_node_parameters(bad_params)
         })
+        .await
         .expect_err("build should fail due to unsupported capabilities");
 
     // Match the correct error type
@@ -128,11 +133,13 @@ async fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
     let alice_pre_group = alice_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(supporting_caps.clone())
-        .build();
+        .build()
+        .await;
     let bob_pre_group = bob_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(supporting_caps.clone())
-        .build();
+        .build()
+        .await;
 
     // Create group with the custom extension
     let custom_extension = UnknownExtension(b"any gce must be supported".to_vec());
@@ -150,8 +157,9 @@ async fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
 
     // Initialize group with Alice
     let group_id = GroupId::from_slice(b"test-commit-builder-validation");
-    let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, create_config).await.unwrap();
+    let mut group_state = GroupState::new_from_party(group_id, alice_pre_group, create_config)
+        .await
+        .unwrap();
 
     // Add Bob to the group
     group_state
@@ -161,6 +169,7 @@ async fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
             join_config,
             tree: None,
         })
+        .await
         .expect("Could not add member");
 
     // Create bad capabilities (without the required extension)
@@ -177,6 +186,7 @@ async fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
                 .force_self_update(true)
                 .leaf_node_parameters(bad_params)
         })
+        .await
         .expect_err("build should fail due to unsupported capabilities");
 
     // Match the correct error type
