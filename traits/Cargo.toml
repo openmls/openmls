@@ -15,7 +15,6 @@ path = "src/traits.rs"
 [features]
 default = []
 sync = ["maybe-async/is_sync"]
-async = []
 test-utils = []
 extensions-draft-08 = []
 
