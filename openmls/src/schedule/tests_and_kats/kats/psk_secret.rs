@@ -73,25 +73,25 @@ async fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> 
         return Ok(());
     }
 
-    let psk_ids = test
-        .psks
-        .iter()
-        .map(|psk| {
-            let external_psk = ExternalPsk::new(psk.psk_id.clone());
-            let psk_type = Psk::External(external_psk);
+    let mut psk_ids = vec![];
 
-            let psk_id = PreSharedKeyId::new_with_nonce(psk_type, psk.psk_nonce.clone());
+    for psk in test.psks.iter() {
+        let external_psk = ExternalPsk::new(psk.psk_id.clone());
+        let psk_type = Psk::External(external_psk);
 
-            psk_id.store(provider, &psk.psk).await.unwrap();
-            psk_id
-        })
-        .collect::<Vec<_>>();
+        let psk_id = PreSharedKeyId::new_with_nonce(psk_type, psk.psk_nonce.clone());
+
+        psk_id.store(provider, &psk.psk).await.unwrap();
+        psk_ids.push(psk_id);
+    }
 
     // Prepare the PskSecret
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).await.unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids)
+            .await
+            .unwrap();
 
         PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };
@@ -113,7 +113,7 @@ fn read_test_vectors_ps() {
     let tests: Vec<TestElement> = read_json!("../../../../test_vectors/psk_secret.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, provider) {
+        match run_test_vector(test_vector, provider).await {
             Ok(_) => {}
             Err(e) => panic!("Error while checking PSK secret test vector.\n{e:?}"),
         }

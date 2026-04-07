@@ -420,11 +420,13 @@ async fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, pro
             &alice_signature_keys,
             core::slice::from_ref(charlie_key_package_bundle.key_package()),
         )
-        .await.expect("Could not add members.");
+        .await
+        .expect("Could not add members.");
 
     alice_group
         .merge_pending_commit(alice_provider)
-        .await.expect("Could not merge commit.");
+        .await
+        .expect("Could not merge commit.");
 
     let config = MlsGroupJoinConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
@@ -436,8 +438,10 @@ async fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, pro
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Could not create group from Welcome")
+    .await
+    .expect("Could not create group from Welcome")
     .into_group(charlie_provider)
+    .await
     .expect("Could not create group from Welcome");
 
     // Alice removes Bob
@@ -447,14 +451,17 @@ async fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, pro
             &alice_signature_keys,
             &[LeafNodeIndex::new(1)],
         )
-        .await.expect("Could not remove members.");
+        .await
+        .expect("Could not remove members.");
 
     alice_group
         .merge_pending_commit(alice_provider)
-        .await.expect("Could not merge commit.");
+        .await
+        .expect("Could not merge commit.");
 
     let processed_message = charlie_group
         .process_message(charlie_provider, commit.into_protocol_message().unwrap())
+        .await
         .expect("Could not process message.");
 
     let staged_commit = match processed_message.into_content() {
@@ -464,6 +471,7 @@ async fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, pro
 
     charlie_group
         .merge_staged_commit(charlie_provider, staged_commit)
+        .await
         .expect("Could not merge commit.");
 
     // Alice sends a message with a sender that is outside of the group
@@ -492,10 +500,12 @@ async fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, pro
     )
     .expect("Encryption error");
 
-    let received_message = charlie_group.process_message(
-        charlie_provider,
-        ProtocolMessage::from(PrivateMessageIn::from(enc_message)),
-    );
+    let received_message = charlie_group
+        .process_message(
+            charlie_provider,
+            ProtocolMessage::from(PrivateMessageIn::from(enc_message)),
+        )
+        .await;
 
     assert_eq!(
         received_message.unwrap_err(),
@@ -526,7 +536,8 @@ async fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
             &alice_signature_keys,
             LeafNodeParameters::default(),
         )
-        .await.expect("Could not update group.")
+        .await
+        .expect("Could not update group.")
         .into_contents();
 
     let commit = match commit.body {
@@ -557,7 +568,8 @@ async fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
 
     let err = bob_group
         .process_message(bob_provider, protocol_message)
-        .await.expect_err("Could not process message.");
+        .await
+        .expect_err("Could not process message.");
 
     assert_eq!(
         err,
@@ -569,7 +581,7 @@ async fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
 #[openmls_test::openmls_test]
 fn key_package_version() {
     let provider = &Provider::default();
-    let (key_package, _, _) = key_package(ciphersuite, provider);
+    let (key_package, _, _) = key_package(ciphersuite, provider).await;
 
     let mut franken_key_package = FrankenKeyPackage::from(key_package);
 

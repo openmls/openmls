@@ -64,14 +64,17 @@ async fn test_welcome_context_mismatch() {
         group_id,
         alice_credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
         .add_members(&alice_provider, &alice_signer, from_ref(bob_kp))
+        .await
         .expect("Could not add member to group.");
 
     alice_group
         .merge_pending_commit(&alice_provider)
+        .await
         .expect("error merging pending commit");
 
     let mut welcome = welcome.into_welcome().expect("Unexpected message type.");
@@ -99,7 +102,9 @@ async fn test_welcome_context_mismatch() {
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(bob_provider.storage(), &resumption_psk_store, &[]).await.unwrap();
+        let psks = load_psks(bob_provider.storage(), &resumption_psk_store, &[])
+            .await
+            .unwrap();
 
         PskSecret::new(bob_provider.crypto(), ciphersuite, psks).unwrap()
     };
@@ -165,7 +170,8 @@ async fn test_welcome_context_mismatch() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect_err("Created a staged join from an invalid Welcome.");
+    .await
+    .expect_err("Created a staged join from an invalid Welcome.");
 
     assert!(matches!(
         err,
@@ -179,9 +185,13 @@ async fn test_welcome_context_mismatch() {
     bob_provider
         .storage()
         .write_key_package(&bob_kp.hash_ref(bob_provider.crypto()).unwrap(), &bob_kpb)
-        .await.unwrap();
+        .await
+        .unwrap();
 
-    encryption_keypair.write(bob_provider.storage()).await.unwrap();
+    encryption_keypair
+        .write(bob_provider.storage())
+        .await
+        .unwrap();
 
     let _group = StagedWelcome::new_from_welcome(
         &bob_provider,
@@ -189,8 +199,10 @@ async fn test_welcome_context_mismatch() {
         original_welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating staged join from a valid Welcome.")
+    .await
+    .expect("Error creating staged join from a valid Welcome.")
     .into_group(&bob_provider)
+    .await
     .expect("Error creating group from a valid staged join.");
 }
 
@@ -329,14 +341,17 @@ async fn test_welcome_processing() {
         group_id,
         alice_credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
         .add_members(alice_provider, &alice_signer, from_ref(bob_kp))
+        .await
         .expect("Could not add member to group.");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     let welcome = welcome.into_welcome().expect("Unexpected message type.");
@@ -347,7 +362,8 @@ async fn test_welcome_processing() {
         mls_group_create_config.join_config(),
         welcome,
     )
-    .await.unwrap();
+    .await
+    .unwrap();
 
     // Check values in processed welcome
     let unverified_group_info = processed_welcome.unverified_group_info();
@@ -368,9 +384,11 @@ async fn test_welcome_processing() {
     // Stage the welcome
     let staged_welcome = processed_welcome
         .into_staged_welcome(bob_provider, Some(alice_group.export_ratchet_tree().into()))
+        .await
         .unwrap();
     let _group = staged_welcome
         .into_group(bob_provider)
+        .await
         .expect("Error creating group from a valid staged join.");
 }
 
@@ -396,10 +414,12 @@ async fn no_external_pub_in_welcome() {
         &mls_group_create_config,
         alice_credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
         .add_members(alice_provider, &alice_signer, from_ref(bob_kp))
+        .await
         .expect("Could not add member to group.");
 
     let welcome = welcome.into_welcome().expect("Unexpected message type.");
@@ -410,7 +430,8 @@ async fn no_external_pub_in_welcome() {
         mls_group_create_config.join_config(),
         welcome,
     )
-    .await.unwrap();
+    .await
+    .unwrap();
 
     // Check values in processed welcome
     let unverified_group_info = processed_welcome.unverified_group_info();

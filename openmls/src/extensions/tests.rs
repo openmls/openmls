@@ -13,7 +13,7 @@ use crate::{
     group::{errors::*, tests_and_kats::utils::generate_credential_with_key, *},
     key_packages::*,
     messages::proposals::ProposalType,
-    prelude::{Capabilities, RatchetTreeIn},
+    prelude::{hash_ref::HashReference, Capabilities, RatchetTreeIn},
     prelude_test::HpkePublicKey,
     versions::ProtocolVersion,
 };
@@ -58,7 +58,8 @@ async fn ratchet_tree_extension() {
 
     // Create credentials and keys
     let (alice_credential_with_key, alice_signature_keys) =
-        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm()).await;
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm())
+            .await;
     let (bob_credential_with_key, bob_signature_keys) =
         test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm()).await;
 
@@ -68,7 +69,8 @@ async fn ratchet_tree_extension() {
         &bob_signature_keys,
         ciphersuite,
         bob_credential_with_key.clone(),
-    ).await;
+    )
+    .await;
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group with the ratchet tree extension ===
@@ -80,7 +82,8 @@ async fn ratchet_tree_extension() {
             &alice_signature_keys,
             alice_credential_with_key.clone(),
         )
-        .await.expect("Error creating group.");
+        .await
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let (_commit, welcome, _group_info_option) = alice_group
@@ -89,9 +92,13 @@ async fn ratchet_tree_extension() {
             &alice_signature_keys,
             from_ref(bob_key_package),
         )
+        .await
         .expect("An unexpected error occurred.");
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     let config = MlsGroupJoinConfig::builder()
         .use_ratchet_tree_extension(true)
@@ -103,8 +110,10 @@ async fn ratchet_tree_extension() {
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error staging welcome")
+    .await
+    .expect("Error staging welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from welcome");
 
     // Make sure the group state is the same
@@ -125,7 +134,8 @@ async fn ratchet_tree_extension() {
         &bob_signature_keys,
         ciphersuite,
         bob_credential_with_key,
-    ).await;
+    )
+    .await;
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let mut alice_group = MlsGroup::builder()
@@ -136,7 +146,8 @@ async fn ratchet_tree_extension() {
             &alice_signature_keys,
             alice_credential_with_key,
         )
-        .await.expect("Error creating group.");
+        .await
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let (_commit, welcome, _group_info_option) = alice_group
@@ -145,6 +156,7 @@ async fn ratchet_tree_extension() {
             &alice_signature_keys,
             from_ref(bob_key_package),
         )
+        .await
         .expect("An unexpected error occurred.");
 
     let config = MlsGroupJoinConfig::builder()
@@ -157,8 +169,11 @@ async fn ratchet_tree_extension() {
         welcome.into_welcome().unwrap(),
         None,
     )
-    .await.and_then(|staged_join| staged_join.into_group(bob_provider))
+    .await
     .err();
+    // TODO: determine if the lines below are needed
+    // .and_then(|staged_join| staged_join.into_group(bob_provider).await)
+    // .err();
 
     // We expect an error because the ratchet tree is missing
     assert!(matches!(
@@ -218,7 +233,8 @@ async fn with_group_context_extensions() {
         .expect("failed to create single-element extensions list");
 
     let alice_credential_with_key_and_signer =
-        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider).await;
+        generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider)
+            .await;
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .with_group_context_extensions(extensions)
@@ -232,7 +248,8 @@ async fn with_group_context_extensions() {
         &mls_group_create_config,
         alice_credential_with_key_and_signer.credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // === Group contains extension ===
     let found_test_extension = alice_group
@@ -327,7 +344,8 @@ async fn last_resort_extension() {
                 signature_key: signer.to_public_vec().into(),
             },
         )
-        .await.expect("error building key package with last resort extension");
+        .await
+        .expect("error building key package with last resort extension");
     assert!(kp.key_package().last_resort());
     let encoded_kp = kp
         .key_package()
@@ -346,7 +364,8 @@ async fn last_resort_extension() {
         "Alice".into(),
         ciphersuite.signature_algorithm(),
         alice_provider,
-    ).await;
+    )
+    .await;
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
@@ -359,7 +378,8 @@ async fn last_resort_extension() {
         &mls_group_create_config,
         alice_credential_with_key_and_signer.credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
 
@@ -369,9 +389,13 @@ async fn last_resort_extension() {
             &alice_credential_with_key_and_signer.signer,
             from_ref(kp.key_package()),
         )
+        .await
         .expect("An unexpected error occurred.");
 
-    alice_group.merge_pending_commit(alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .await
+        .unwrap();
 
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome.into_welcome().expect("expected a welcome");
@@ -382,18 +406,21 @@ async fn last_resort_extension() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("An unexpected error occurred.")
+    .await
+    .expect("An unexpected error occurred.")
     .into_group(bob_provider)
+    .await
     .expect("An unexpected error occurred.");
 
     let _: KeyPackageBundle = bob_provider
         .storage()
-        .key_package(
+        .key_package::<HashReference, KeyPackageBundle>(
             &kp.key_package()
                 .hash_ref(bob_provider.crypto())
                 .expect("error hashing key package"),
         )
-        .await.expect("error retrieving key package")
+        .await
+        .expect("error retrieving key package")
         .expect("key package does not exist");
 }
 
@@ -409,9 +436,10 @@ fn app_data_dictionary_extension() {
 
     let mut group_state = GroupState::new_from_party(
         group_id,
-        alice_party.generate_pre_group(ciphersuite),
+        alice_party.generate_pre_group(ciphersuite).await,
         create_config.clone(),
     )
+    .await
     .unwrap();
 
     let [alice] = group_state.members_mut(&["alice"]);
@@ -429,11 +457,13 @@ fn app_data_dictionary_extension() {
         .propose_adds(Some(
             bob_party
                 .generate_pre_group(ciphersuite)
+                .await
                 .key_package_bundle
                 .key_package()
                 .clone(),
         ))
         .load_psks(alice_party.provider.storage())
+        .await
         .unwrap()
         .create_group_info_with_extensions(Some(extension))
         .unwrap()
@@ -445,6 +475,7 @@ fn app_data_dictionary_extension() {
         )
         .unwrap()
         .stage_commit(&alice_party.provider)
+        .await
         .unwrap();
 
     // process the Welcome for Bob
@@ -454,6 +485,7 @@ fn app_data_dictionary_extension() {
         create_config.join_config(),
         welcome,
     )
+    .await
     .unwrap();
 
     // retrieve the extension

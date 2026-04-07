@@ -36,7 +36,9 @@ async fn test_psks() {
     let _psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).await.unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids)
+            .await
+            .unwrap();
 
         PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };
