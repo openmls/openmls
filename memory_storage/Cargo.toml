@@ -28,3 +28,4 @@ sync = ["openmls_traits/sync", "maybe-async/is_sync"]
 
 [dev-dependencies]
 openmls_memory_storage = { path = ".", features = ["test-utils"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

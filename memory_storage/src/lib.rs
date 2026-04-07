@@ -586,10 +586,10 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     async fn delete_signature_key_pair<
-        SignaturePublicKeuy: traits::SignaturePublicKey<CURRENT_VERSION>,
+        SignaturePublicKey: traits::SignaturePublicKey<CURRENT_VERSION>,
     >(
         &self,
-        public_key: &SignaturePublicKeuy,
+        public_key: &SignaturePublicKey,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
             SIGNATURE_KEY_PAIR_LABEL,

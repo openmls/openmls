@@ -241,9 +241,9 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    async fn delete_signature_key_pair<SignaturePublicKeuy: traits::SignaturePublicKey<V_TEST>>(
+    async fn delete_signature_key_pair<SignaturePublicKey: traits::SignaturePublicKey<V_TEST>>(
         &self,
-        _public_key: &SignaturePublicKeuy,
+        _public_key: &SignaturePublicKey,
     ) -> Result<(), Self::Error> {
         todo!()
     }
