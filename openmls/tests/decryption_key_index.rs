@@ -11,7 +11,7 @@ use openmls_test::openmls_test;
 fn decryption_key_index_computation() {
     println!("Testing ciphersuite {ciphersuite:?}");
 
-    // Some basic setup functions for the MlsGrnew
+    // Some basic setup functions for the MlsGroup.
     let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
     let number_of_clients = 20;
     let setup = MlsGroupTestSetup::<Provider>::new(

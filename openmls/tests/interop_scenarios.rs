@@ -10,7 +10,7 @@ use openmls_test::openmls_test;
 // The following tests correspond to the interop test scenarios detailed here:
 // https://github.com/mlswg/mls-implementations/blob/master/test-scenarios.md
 // The tests are conducted for every available ciphersuite, but currently only
-// using BasicCredentials. We can change the tenewonce #134 is fixed.
+// using BasicCredentials. We can change the test setup once #134 is fixed.
 
 // # 1:1 join
 // A:    Create group
@@ -190,7 +190,7 @@ fn multiple_joins() {
         .await
         .expect("Error adding Bob and Charly");
 
-    // Check that group members agree on a grounew
+    // Check that group members agree on a group state
     setup
         .check_group_states(group, noop_authentication_service)
         .await;
