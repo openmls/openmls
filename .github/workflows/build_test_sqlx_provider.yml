@@ -1,0 +1,44 @@
+name: Build & test sqlx storage provider crate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            sqlx_storage -> target
+      - name: Build openmls_sqlx_storage
+        run: |
+          cargo build --manifest-path sqlx_storage/Cargo.toml
+      - name: Test openmls_sqlx_storage
+        run: |
+          cargo test --manifest-path sqlx_storage/Cargo.toml
+      - name: Build openmls_sqlx_storage with `extensions-draft-08` feature
+        run: |
+          cargo build -F extensions-draft-08 --manifest-path sqlx_storage/Cargo.toml
+      - name: Test openmls_sqlx_storage with `extensions-draft-08` feature
+        run: |
+          cargo test -F extensions-draft-08 --manifest-path sqlx_storage/Cargo.toml
