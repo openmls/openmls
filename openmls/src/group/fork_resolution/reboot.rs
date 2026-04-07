@@ -173,6 +173,7 @@ mod test {
             .commit_builder()
             .propose_adds(Some(charlie_kpb.key_package().clone()))
             .load_psks(alice_provider.storage())
+            .await
             .unwrap()
             .build(
                 alice_provider.rand(),
@@ -182,12 +183,14 @@ mod test {
             )
             .unwrap()
             .stage_commit(alice_provider)
+            .await
             .unwrap();
 
         bob_group
             .commit_builder()
             .propose_adds(Some(dave_kpb.key_package().clone()))
             .load_psks(bob_provider.storage())
+            .await
             .unwrap()
             .build(
                 bob_provider.rand(),
@@ -197,10 +200,14 @@ mod test {
             )
             .unwrap()
             .stage_commit(bob_provider)
+            .await
             .unwrap();
 
-        alice_group.merge_pending_commit(alice_provider).unwrap();
-        bob_group.merge_pending_commit(bob_provider).unwrap();
+        alice_group
+            .merge_pending_commit(alice_provider)
+            .await
+            .unwrap();
+        bob_group.merge_pending_commit(bob_provider).await.unwrap();
 
         // We are forked now! Let's try to recover by rebooting. first get new key packages
         let bob_new_kpb =
@@ -211,7 +218,8 @@ mod test {
             Extensions::empty(),
             charlie_provider,
             charlie_cwkas,
-        ).await;
+        )
+        .await;
 
         // Now, reboot the group
         let (mut new_alice_group, message_bundle) = alice_group
@@ -227,11 +235,13 @@ mod test {
                 &alice_signer,
                 alice_cwk.clone(),
             )
+            .await
             .unwrap();
 
         let (_commit, welcome, _group_info) = message_bundle.into_messages();
         new_alice_group
             .merge_pending_commit(alice_provider)
+            .await
             .unwrap();
 
         // Invite everyone
@@ -246,8 +256,10 @@ mod test {
             welcome.clone(),
             Some(ratchet_tree.clone().into()),
         )
+        .await
         .unwrap()
         .into_group(bob_provider)
+        .await
         .unwrap();
 
         let new_group_charlie = StagedWelcome::new_from_welcome(
@@ -256,8 +268,10 @@ mod test {
             welcome.clone(),
             Some(ratchet_tree.clone().into()),
         )
+        .await
         .unwrap()
         .into_group(bob_provider)
+        .await
         .unwrap();
 
         let alice_comparison = new_alice_group
