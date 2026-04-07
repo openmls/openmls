@@ -5,7 +5,6 @@ use crate::{
     },
     key_packages::KeyPackage,
     prelude::*,
-    storage::OpenMlsProvider,
 };
 
 mod test_diff;
@@ -39,7 +38,8 @@ async fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             name.clone(),
             ciphersuite.signature_algorithm(),
             &provider,
-        ).await;
+        )
+        .await;
         let key_package = KeyPackage::builder()
             .build(
                 ciphersuite,
@@ -47,7 +47,8 @@ async fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
                 &credential_with_key_and_signer.signer,
                 credential_with_key_and_signer.credential_with_key.clone(),
             )
-            .await.unwrap();
+            .await
+            .unwrap();
 
         Member {
             id: name,
@@ -70,10 +71,10 @@ async fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             .unwrap()
     }
 
-    let alice = create_member(ciphersuite, Provider::default(), "alice".into());
-    let bob = create_member(ciphersuite, Provider::default(), "bob".into());
-    let charlie = create_member(ciphersuite, Provider::default(), "charlie".into());
-    let dave = create_member(ciphersuite, Provider::default(), "dave".into());
+    let alice = create_member(ciphersuite, Provider::default(), "alice".into()).await;
+    let bob = create_member(ciphersuite, Provider::default(), "bob".into()).await;
+    let charlie = create_member(ciphersuite, Provider::default(), "charlie".into()).await;
+    let dave = create_member(ciphersuite, Provider::default(), "dave".into()).await;
 
     // `A` creates a group with `B`, `C`, and `D` ...
     let mut alice_group = MlsGroup::new(
@@ -85,7 +86,8 @@ async fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             .credential_with_key
             .clone(),
     )
-    .await.unwrap();
+    .await
+    .unwrap();
     alice_group.print_ratchet_tree("Alice (after new)");
 
     let (_, welcome, _group_info) = alice_group
@@ -94,13 +96,17 @@ async fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             &alice.credential_with_key_and_signer.signer,
             &[bob.key_package, charlie.key_package, dave.key_package],
         )
+        .await
         .expect("Adding members failed.");
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome
         .into_welcome()
         .expect("expected message to be a welcome");
 
-    alice_group.merge_pending_commit(&alice.provider).unwrap();
+    alice_group
+        .merge_pending_commit(&alice.provider)
+        .await
+        .unwrap();
     alice_group.print_ratchet_tree("Alice (after add_members)");
 
     // ---------------------------------------------------------------------------------------------
@@ -113,8 +119,10 @@ async fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             welcome,
             None,
         )
-        .await.expect("Staging the join failed.")
+        .await
+        .expect("Staging the join failed.")
         .into_group(&charlie.provider)
+        .await
         .expect("Joining the group failed.")
     };
     charlie_group.print_ratchet_tree("Charlie (after new)");
@@ -127,10 +135,12 @@ async fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             &charlie.credential_with_key_and_signer.signer,
             &[alice, bob],
         )
+        .await
         .expect("Removal of members failed.");
 
     charlie_group
         .merge_pending_commit(&charlie.provider)
+        .await
         .unwrap();
     charlie_group.print_ratchet_tree("Charlie (after remove)");
 
@@ -154,6 +164,7 @@ async fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             &charlie.credential_with_key_and_signer.signer,
             b"Hello, World!".as_slice(),
         )
+        .await
         .unwrap();
 }
 

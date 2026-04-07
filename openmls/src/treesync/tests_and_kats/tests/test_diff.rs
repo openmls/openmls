@@ -32,7 +32,8 @@ async fn test_free_leaf_computation() {
 
     // Create and add a new leaf. It should go to leaf index 1
 
-    let (c_2, signer_2) = new_credential(provider, b"leaf2", ciphersuite.signature_algorithm()).await;
+    let (c_2, signer_2) =
+        new_credential(provider, b"leaf2", ciphersuite.signature_algorithm()).await;
     let kpb_2 = KeyPackageBundle::generate(provider, &signer_2, ciphersuite, c_2).await;
 
     let mut diff = tree.empty_diff();
