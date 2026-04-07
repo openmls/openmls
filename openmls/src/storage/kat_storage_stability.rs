@@ -157,7 +157,8 @@ async fn check_serialized_group_equality<R: std::io::Read, Provider: OpenMlsProv
 ) {
     let provider = deserialize_provider::<_, Provider>(r, name);
     let loaded_group = MlsGroup::load(provider.storage(), group_id)
-        .await.unwrap()
+        .await
+        .unwrap()
         .unwrap();
 
     assert_eq!(group, &loaded_group);
@@ -180,7 +181,8 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
         &charlie_provider,
         b"charlie",
         ciphersuite.signature_algorithm(),
-    ).await;
+    )
+    .await;
 
     /////// prepare a group that has some content
     let mut alice_group = MlsGroup::builder()
@@ -193,7 +195,8 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
             None,
         ))
         .build(&alice_provider, &alice_signer, alice_cwk)
-        .await.expect("error creating group using builder");
+        .await
+        .expect("error creating group using builder");
 
     let group_id = alice_group.group_id().clone();
 
@@ -208,7 +211,8 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
         "alice",
         &group_id,
         &alice_group,
-    );
+    )
+    .await;
 
     let bob_kpb = KeyPackageBuilder::new()
         .leaf_node_capabilities(Capabilities::new(
@@ -219,7 +223,8 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
             None,
         ))
         .build(ciphersuite, &bob_provider, &bob_signer, bob_cwk.clone())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     alice_group
         .add_members(
@@ -227,6 +232,7 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
             &alice_signer,
             &[bob_kpb.key_package().to_owned()],
         )
+        .await
         .unwrap();
 
     let mut testdata_pending_add_commit = vec![];
@@ -240,9 +246,13 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
         "alice",
         &group_id,
         &alice_group,
-    );
+    )
+    .await;
 
-    alice_group.merge_pending_commit(&alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(&alice_provider)
+        .await
+        .unwrap();
 
     let mut testdata_bob_added = vec![];
     alice_provider
@@ -259,6 +269,7 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
             .unwrap(),
             &alice_signer,
         )
+        .await
         .unwrap();
 
     let mut testdata_pending_gce_commit = vec![];
@@ -272,9 +283,13 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
         "alice",
         &group_id,
         &alice_group,
-    );
+    )
+    .await;
 
-    alice_group.merge_pending_commit(&alice_provider).unwrap();
+    alice_group
+        .merge_pending_commit(&alice_provider)
+        .await
+        .unwrap();
 
     let mut testdata_gce_updated = vec![];
     alice_provider
@@ -287,7 +302,8 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
         "alice",
         &group_id,
         &alice_group,
-    );
+    )
+    .await;
 
     //// also serialize with a pending proposal
 
@@ -305,10 +321,12 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
             &charlie_signer,
             charlie_cwk.clone(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
     alice_group
         .propose_add_member(&alice_provider, &alice_signer, charlie_kpb.key_package())
+        .await
         .unwrap();
 
     let mut testdata_pending_proposal = vec![];
@@ -322,7 +340,8 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
         "alice",
         &group_id,
         &alice_group,
-    );
+    )
+    .await;
 
     (
         group_id,
@@ -339,7 +358,7 @@ async fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
 
 #[openmls_test]
 fn generate_kats() {
-    helper_generate_kat::<Provider>(ciphersuite);
+    helper_generate_kat::<Provider>(ciphersuite).await;
 }
 
 #[test]
@@ -373,8 +392,6 @@ fn write_kats() {
     helper_write_kats(kat_data);
 }
 
-#[test]
-#[ignore]
 #[cfg(all(
     feature = "libcrux-provider",
     not(any(
@@ -382,7 +399,9 @@ fn write_kats() {
         all(target_arch = "x86", target_os = "windows")
     ))
 ))]
-fn write_kats() {
+#[ignore]
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn write_kats() {
     // setup
     let libcrux_provider = openmls_libcrux_crypto::Provider::default();
     let rustcrypto_provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
@@ -396,18 +415,16 @@ fn write_kats() {
     }
 
     // generate the kat data
-    let kat_data = ciphersuites
-        .into_iter()
-        .map(|ciphersuite| {
-            let (group_id, storages) = if libcrux_provider.crypto().supports(ciphersuite).is_ok() {
-                helper_generate_kat::<openmls_libcrux_crypto::Provider>(ciphersuite)
-            } else {
-                helper_generate_kat::<openmls_rust_crypto::OpenMlsRustCrypto>(ciphersuite)
-            };
+    let mut kat_data = vec![];
+    for ciphersuite in ciphersuites {
+        let (group_id, storages) = if libcrux_provider.crypto().supports(ciphersuite).is_ok() {
+            helper_generate_kat::<openmls_libcrux_crypto::Provider>(ciphersuite).await
+        } else {
+            helper_generate_kat::<openmls_rust_crypto::OpenMlsRustCrypto>(ciphersuite).await
+        };
 
-            (ciphersuite, group_id, storages)
-        })
-        .collect();
+        kat_data.push((ciphersuite, group_id, storages));
+    }
 
     // encode and write to disk
     helper_write_kats(kat_data);
@@ -462,7 +479,8 @@ async fn test() {
         deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
 
     let alice_group_new_group = MlsGroup::load(provider_new_group.storage(), &group_id)
-        .await.unwrap()
+        .await
+        .unwrap()
         .unwrap();
 
     // alice is the sole member
@@ -493,7 +511,8 @@ async fn test() {
 
     let alice_group_pending_add_commit =
         MlsGroup::load(provider_pending_add_commit.storage(), &group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .unwrap();
 
     // alice is the sole member
@@ -548,7 +567,8 @@ async fn test() {
         deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
 
     let alice_group_bob_added = MlsGroup::load(provider_bob_added.storage(), &group_id)
-        .await.unwrap()
+        .await
+        .unwrap()
         .unwrap();
 
     // alice and bob are members
@@ -584,7 +604,8 @@ async fn test() {
 
     let alice_group_pending_gce_commit =
         MlsGroup::load(provider_pending_gce_commit.storage(), &group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .unwrap();
 
     // alice and bob are members
@@ -650,7 +671,8 @@ async fn test() {
         deserialize_provider::<_, Provider>(&mut storages.next().unwrap().as_slice(), "alice");
 
     let alice_group_gce_updated = MlsGroup::load(provider_gce_updated.storage(), &group_id)
-        .await.unwrap()
+        .await
+        .unwrap()
         .unwrap();
 
     // alice and bob are members
@@ -681,7 +703,8 @@ async fn test() {
 
     let alice_group_pending_proposal =
         MlsGroup::load(provider_pending_proposal.storage(), &group_id)
-            .await.unwrap()
+            .await
+            .unwrap()
             .unwrap();
 
     // alice and bob are members
