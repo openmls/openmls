@@ -45,7 +45,8 @@ async fn public_group() {
         group_id,
         alice_credential_with_key,
     )
-    .await.expect("An unexpected error occurred.");
+    .await
+    .expect("An unexpected error occurred.");
 
     // === Create a public group that tracks the changes throughout this test ===
     let verifiable_group_info = alice_group
@@ -61,7 +62,8 @@ async fn public_group() {
         verifiable_group_info,
         ProposalStore::new(),
     )
-    .await.unwrap();
+    .await
+    .unwrap();
 
     // === Alice adds Bob ===
     let (message, welcome, _group_info) = alice_group
@@ -70,10 +72,12 @@ async fn public_group() {
             &alice_signer,
             core::slice::from_ref(bob_kpb.key_package()),
         )
+        .await
         .expect("Could not add member to group.");
 
     alice_group
         .merge_pending_commit(alice_provider)
+        .await
         .expect("error merging pending commit");
 
     let public_message = match message.into_protocol_message().unwrap() {
@@ -95,6 +99,7 @@ async fn public_group() {
             // Merge the diff
             public_group
                 .merge_commit(public_provider.storage(), *staged_commit)
+                .await
                 .unwrap()
         }
     };
@@ -112,8 +117,10 @@ async fn public_group() {
         welcome,
         Some(alice_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating staged join from Welcome")
+    .await
+    .expect("Error creating staged join from Welcome")
     .into_group(bob_provider)
+    .await
     .expect("Error creating group from staged join");
 
     // === Bob adds Charlie ===
@@ -123,6 +130,7 @@ async fn public_group() {
             &bob_signer,
             core::slice::from_ref(charlie_kpb.key_package()),
         )
+        .await
         .unwrap();
 
     // Alice processes
@@ -134,12 +142,14 @@ async fn public_group() {
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
+        .await
         .expect("Could not process messages.");
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         alice_processed_message.into_content()
     {
         alice_group
             .merge_staged_commit(alice_provider, *staged_commit)
+            .await
             .expect("Error merging commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -154,11 +164,13 @@ async fn public_group() {
         .unwrap();
     public_group
         .merge_commit(public_provider.storage(), extract_staged_commit(ppm))
+        .await
         .unwrap();
 
     // Bob merges
     bob_group
         .merge_pending_commit(bob_provider)
+        .await
         .expect("error merging pending commit");
 
     let welcome: MlsMessageIn = welcome.into();
@@ -172,14 +184,17 @@ async fn public_group() {
         welcome,
         Some(bob_group.export_ratchet_tree().into()),
     )
-    .await.expect("Error creating group from Welcome")
+    .await
+    .expect("Error creating group from Welcome")
     .into_group(charlie_provider)
+    .await
     .expect("Error creating group from Welcome");
 
     // === Alice removes Bob & Charlie commits ===
 
     let (queued_messages, _) = alice_group
         .propose_remove_member(alice_provider, &alice_signer, LeafNodeIndex::new(1))
+        .await
         .expect("Could not propose removal");
 
     let charlie_processed_message = charlie_group
@@ -190,6 +205,7 @@ async fn public_group() {
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
+        .await
         .expect("Could not process messages.");
 
     // The public group processes
@@ -211,6 +227,7 @@ async fn public_group() {
             }
             public_group
                 .add_proposal(public_provider.storage(), *p)
+                .await
                 .unwrap();
         }
     }
@@ -225,6 +242,7 @@ async fn public_group() {
             // Store proposal
             charlie_group
                 .store_pending_proposal(charlie_provider.storage(), *staged_proposal.clone())
+                .await
                 .expect("error writing to storage");
         } else {
             unreachable!("Expected a Proposal.");
@@ -242,6 +260,7 @@ async fn public_group() {
     // Charlie commits
     let (queued_messages, _welcome, _group_info) = charlie_group
         .commit_to_pending_proposals(charlie_provider, &charlie_signer)
+        .await
         .expect("Could not commit proposal");
 
     // The public group processes
@@ -253,6 +272,7 @@ async fn public_group() {
         .unwrap();
     public_group
         .merge_commit(public_provider.storage(), extract_staged_commit(ppm))
+        .await
         .unwrap();
 
     // Check that we receive the correct proposal
@@ -271,6 +291,7 @@ async fn public_group() {
 
     charlie_group
         .merge_pending_commit(charlie_provider)
+        .await
         .expect("error merging pending commit");
 
     // Alice processes
@@ -281,12 +302,14 @@ async fn public_group() {
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
+        .await
         .expect("Could not process messages.");
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         alice_processed_message.into_content()
     {
         alice_group
             .merge_staged_commit(alice_provider, *staged_commit)
+            .await
             .expect("Error merging commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -339,10 +362,10 @@ async fn old_messages_with_blank_leaves() {
     let charlie_party = CorePartyState::<Provider>::new("charlie");
     let david_party = CorePartyState::<Provider>::new("david");
 
-    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
-    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
-    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
-    let david_pre_group = david_party.generate_pre_group(ciphersuite);
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite).await;
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite).await;
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite).await;
+    let david_pre_group = david_party.generate_pre_group(ciphersuite).await;
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
@@ -356,7 +379,9 @@ async fn old_messages_with_blank_leaves() {
     // Initialize the group state
     let group_id = GroupId::from_slice(b"test");
     let mut group_state =
-        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).await.unwrap();
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config)
+            .await
+            .unwrap();
 
     // Alice adds Bob, Charlie and David
     // This should succeed, since all used credential types used are supported
@@ -367,12 +392,14 @@ async fn old_messages_with_blank_leaves() {
             join_config: mls_group_join_config.clone(),
             tree: None,
         })
+        .await
         .expect("Could not add member");
 
     let [alice_group] = group_state.members_mut(&["alice"]);
 
     let commit = alice_group
         .build_commit_and_stage(|builder| builder.propose_removals(vec![LeafNodeIndex::new(1)]))
+        .await
         .unwrap();
 
     group_state.untrack_member("bob");
@@ -381,6 +408,7 @@ async fn old_messages_with_blank_leaves() {
         .deliver_and_apply_if(commit.into_commit().into(), |m| {
             m.party.core_state.name != "alice"
         })
+        .await
         .unwrap();
 
     let [alice_group, charlie_group, david_group] =
@@ -389,6 +417,7 @@ async fn old_messages_with_blank_leaves() {
     alice_group
         .group
         .merge_pending_commit(&alice_group.party.core_state.provider)
+        .await
         .unwrap();
 
     // Charlie sends an application message in the epoch that still contains the blank leaf.
@@ -399,28 +428,33 @@ async fn old_messages_with_blank_leaves() {
             &charlie_group.party.signer,
             b"delayed application",
         )
+        .await
         .expect("could not create application message");
 
     // David also sends a message
     let message_david = david_group
         .group
         .create_message(provider, &david_group.party.signer, b"delayed application2")
+        .await
         .expect("could not create application message");
 
     // Advance to the next epoch so the message becomes "old" and must use the past store which stores group members in the dense vector
     let commit = alice_group
         .build_commit_and_stage(|builder| builder.force_self_update(true))
+        .await
         .unwrap();
 
     alice_group
         .group
         .merge_pending_commit(&alice_group.party.core_state.provider)
+        .await
         .unwrap();
 
     group_state
         .deliver_and_apply_if(commit.into_commit().into(), |m| {
             m.party.core_state.name != "alice"
         })
+        .await
         .unwrap();
 
     let [alice_group] = group_state.members_mut(&["alice"]);
@@ -431,6 +465,7 @@ async fn old_messages_with_blank_leaves() {
     alice_group
         .group
         .process_message(provider, app_in.try_into_protocol_message().unwrap())
+        .await
         .expect("Alice failed to process Charlie's message after Bob was removed");
 
     // DS releases David's buffered message to Alice.
@@ -439,5 +474,6 @@ async fn old_messages_with_blank_leaves() {
     alice_group
         .group
         .process_message(provider, app_in.try_into_protocol_message().unwrap())
+        .await
         .expect("Alice failed to process David's message after Bob was removed");
 }
