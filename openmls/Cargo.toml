@@ -50,7 +50,6 @@ sync = [
     "maybe-async/is_sync",
     "openmls_traits/sync",
     "openmls_basic_credential?/sync",
-    "openmls_test?/sync",
     "openmls_sqlite_storage?/sync",
     "openmls_memory_storage?/sync",
     "openmls_libcrux_crypto?/sync",
@@ -117,8 +116,7 @@ clap = { version = "4", features = ["derive"] }
 base64 = "0.22.1"
 flate2 = "1.0"
 indicatif = "0.18.3"
-# TODO: should this be a workspace dependency?
-tokio = { version = "1.19.2", features = ["rt-multi-thread", "macros"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 # Disable for wasm32 and Win32
 [target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows"))))'.dev-dependencies]
@@ -134,6 +132,10 @@ openmls = { path = ".", features = ["test-utils"] }
 [[bench]]
 name = "benchmark"
 harness = false
+
+[[example]]
+name = "large-groups"
+required-features = ["sync"]
 
 [package.metadata.docs.rs]
 all-features = true
