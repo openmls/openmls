@@ -193,7 +193,8 @@ pub async fn run_test_vector(
                     signature_key: random_own_signature_key.into(),
                 },
             )
-            .await.unwrap();
+            .await
+            .unwrap();
 
         let credential = BasicCredential::new("Fake user".into());
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
@@ -205,7 +206,8 @@ pub async fn run_test_vector(
                 credential: credential.into(),
                 signature_key: hex_to_bytes(&test.signature_pub).into(),
             },
-        ).await;
+        )
+        .await;
         let bob_key_package = bob_key_package_bundle.key_package();
         let (_commit, _welcome, _) = group
             .add_members(
@@ -213,8 +215,9 @@ pub async fn run_test_vector(
                 &signature_keys,
                 core::slice::from_ref(bob_key_package),
             )
+            .await
             .unwrap();
-        group.merge_pending_commit(provider).unwrap();
+        group.merge_pending_commit(provider).await.unwrap();
 
         // Inject the test values into the group
 
@@ -265,7 +268,8 @@ pub async fn run_test_vector(
             // check that the proposal in proposal_pub == proposal
             let processed_message = group
                 .process_message(provider, proposal_pub.into_protocol_message().unwrap())
-                .await.unwrap();
+                .await
+                .unwrap();
             match processed_message.content() {
                 ProcessedMessageContent::ProposalMessage(p) => {
                     assert_eq!(proposal, p.proposal().to_owned().into())
@@ -275,18 +279,19 @@ pub async fn run_test_vector(
         }
 
         test_proposal_pub(
-            setup_group(provider, ciphersuite, &test, false),
+            setup_group(provider, ciphersuite, &test, false).await,
             provider,
             proposal.clone(),
             proposal_pub,
-        );
+        )
+        .await;
 
-        let group = setup_group(provider, ciphersuite, &test, false);
-        test_proposal_pub(group, provider, proposal.clone(), proposal_priv);
+        let group = setup_group(provider, ciphersuite, &test, false).await;
+        test_proposal_pub(group, provider, proposal.clone(), proposal_priv).await;
 
         // Wrap `proposal` into a `PrivateMessage`.
-        let group = setup_group(provider, ciphersuite, &test, false);
-        let mut sender_group = setup_group(provider, ciphersuite, &test, true);
+        let group = setup_group(provider, ciphersuite, &test, false).await;
+        let mut sender_group = setup_group(provider, ciphersuite, &test, true).await;
         let proposal_authenticated_content = AuthenticatedContent::member_proposal(
             FramingParameters::new(&[], WireFormat::PrivateMessage),
             sender_index,
@@ -297,7 +302,8 @@ pub async fn run_test_vector(
         .unwrap();
         let my_proposal_priv = sender_group
             .encrypt(proposal_authenticated_content, provider)
-            .await.unwrap();
+            .await
+            .unwrap();
         let my_proposal_priv_out = MlsMessageOut::from_private_message(
             my_proposal_priv,
             group.export_group_context().protocol_version(),
@@ -308,11 +314,12 @@ pub async fn run_test_vector(
             provider,
             proposal.clone(),
             my_proposal_priv_out.into(),
-        );
+        )
+        .await;
 
         // Wrap `proposal` into a `PublicMessage`.
-        let group = setup_group(provider, ciphersuite, &test, false);
-        let mut sender_group = setup_group(provider, ciphersuite, &test, true);
+        let group = setup_group(provider, ciphersuite, &test, false).await;
+        let mut sender_group = setup_group(provider, ciphersuite, &test, true).await;
         let proposal_authenticated_content = AuthenticatedContent::member_proposal(
             FramingParameters::new(&[], WireFormat::PublicMessage),
             sender_index,
@@ -335,7 +342,7 @@ pub async fn run_test_vector(
             .expect("error setting membership tag");
         let my_proposal_pub_out: MlsMessageOut = my_proposal_pub.into();
 
-        test_proposal_pub(group, provider, proposal, my_proposal_pub_out.into());
+        test_proposal_pub(group, provider, proposal, my_proposal_pub_out.into()).await;
     }
 
     // Commit
@@ -382,7 +389,7 @@ pub async fn run_test_vector(
         }
 
         test_commit_pub(
-            setup_group(provider, ciphersuite, &test, false),
+            setup_group(provider, ciphersuite, &test, false).await,
             provider,
             ciphersuite,
             commit.clone(),
@@ -390,7 +397,7 @@ pub async fn run_test_vector(
         );
 
         test_commit_pub(
-            setup_group(provider, ciphersuite, &test, false),
+            setup_group(provider, ciphersuite, &test, false).await,
             provider,
             ciphersuite,
             commit.clone(),
@@ -398,8 +405,8 @@ pub async fn run_test_vector(
         );
 
         // Wrap `commit` into a `PrivateMessage`.
-        let group = setup_group(provider, ciphersuite, &test, false);
-        let mut sender_group = setup_group(provider, ciphersuite, &test, true);
+        let group = setup_group(provider, ciphersuite, &test, false).await;
+        let mut sender_group = setup_group(provider, ciphersuite, &test, true).await;
         let mut commit_authenticated_content = AuthenticatedContent::commit(
             FramingParameters::new(&[], WireFormat::PrivateMessage),
             Sender::Member(sender_index),
@@ -413,7 +420,8 @@ pub async fn run_test_vector(
         }));
         let my_commit_pub = sender_group
             .encrypt(commit_authenticated_content, provider)
-            .await.unwrap();
+            .await
+            .unwrap();
         let my_commit_priv_out = MlsMessageOut::from_private_message(
             my_commit_pub,
             group.export_group_context().protocol_version(),
@@ -428,8 +436,8 @@ pub async fn run_test_vector(
         );
 
         // Wrap `commit` into a `PublicMessage`.
-        let group = setup_group(provider, ciphersuite, &test, false);
-        let mut sender_group = setup_group(provider, ciphersuite, &test, true);
+        let group = setup_group(provider, ciphersuite, &test, false).await;
+        let mut sender_group = setup_group(provider, ciphersuite, &test, true).await;
         let mut commit_authenticated_content = AuthenticatedContent::commit(
             FramingParameters::new(&[], WireFormat::PublicMessage),
             Sender::Member(sender_index),
@@ -480,7 +488,8 @@ pub async fn run_test_vector(
             // check that the proposal in proposal_pub == proposal
             let processed_message = group
                 .process_message(provider, application_priv.into_protocol_message().unwrap())
-                .await.unwrap();
+                .await
+                .unwrap();
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(a) => {
                     assert_eq!(application, a.into_bytes())
@@ -490,24 +499,27 @@ pub async fn run_test_vector(
         }
 
         test_application_priv(
-            setup_group(provider, ciphersuite, &test, false),
+            setup_group(provider, ciphersuite, &test, false).await,
             provider,
             application.clone(),
             application_priv,
-        );
+        )
+        .await;
 
         // Wrap `application` into a `PrivateMessage`.
-        let mut sender_group = setup_group(provider, ciphersuite, &test, true);
+        let mut sender_group = setup_group(provider, ciphersuite, &test, true).await;
         let private_message = sender_group
             .create_message(provider, &signer, &application)
-            .await.unwrap();
+            .await
+            .unwrap();
 
         test_application_priv(
-            setup_group(provider, ciphersuite, &test, false),
+            setup_group(provider, ciphersuite, &test, false).await,
             provider,
             application.clone(),
             private_message.into(),
-        );
+        )
+        .await;
     }
 
     log::trace!("Finished test verification");
@@ -526,7 +538,7 @@ fn read_test_vectors_mp() {
         read_json!("../../../../test_vectors/message-protection.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector, provider) {
+        match run_test_vector(test_vector, provider).await {
             Ok(_) => {}
             Err(e) => panic!("Error while checking message protection test vector.\n{e:?}"),
         }

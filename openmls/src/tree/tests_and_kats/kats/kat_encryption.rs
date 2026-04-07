@@ -452,9 +452,7 @@ pub async fn generate_test_vector(
     }
 }
 
-#[maybe_async::maybe_async]
-#[cfg_attr(feature = "sync", test)]
-#[cfg_attr(not(feature = "sync"), tokio::test)]
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
 async fn write_test_vectors() {
     use openmls_traits::prelude::*;
 
@@ -823,9 +821,7 @@ pub async fn run_test_vector(
     Ok(())
 }
 
-#[maybe_async::maybe_async]
-#[cfg_attr(not(feature = "sync"), tokio::test)]
-#[cfg_attr(feature = "sync", test)]
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
 async fn read_test_vectors_encryption() {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
