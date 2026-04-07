@@ -22,6 +22,5 @@ rand = "0.8"
 
 [features]
 sync = ["maybe-async/is_sync", "openmls_traits/sync"]
-async = ["openmls_traits/async"]
 clonable = []                                         # Make the keys clonable
 test-utils = []                                       # Only use for tests!
