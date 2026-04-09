@@ -5,9 +5,11 @@
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     credentials::CredentialWithKey,
+    extensions::{AnyObject, Extensions},
     framing::SenderContext,
     group::errors::ValidationError,
     key_packages::*,
+    prelude::InvalidExtensionError,
     treesync::node::leaf_node::{LeafNodeIn, TreePosition, VerifiableLeafNode},
     versions::ProtocolVersion,
 };
@@ -18,12 +20,14 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use super::{
     proposals::{
-        AddProposal, AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal,
-        PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType, ReInitProposal,
-        RemoveProposal, UpdateProposal,
+        AddProposal, ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal,
+        Proposal, ProposalOrRef, ProposalType, ReInitProposal, RemoveProposal, UpdateProposal,
     },
     CustomProposal,
 };
+
+#[cfg(feature = "extensions-draft-08")]
+use super::proposals::{AppDataUpdateProposal, AppEphemeralProposal};
 
 /// Proposal.
 ///
@@ -54,13 +58,15 @@ pub enum ProposalIn {
     PreSharedKey(Box<PreSharedKeyProposal>),
     ReInit(Box<ReInitProposal>),
     ExternalInit(Box<ExternalInitProposal>),
-    GroupContextExtensions(Box<GroupContextExtensionProposal>),
+    GroupContextExtensions(Box<GroupContextExtensionProposalIn>),
     // # Extensions
-    // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
-    //             was moved to `draft-ietf-mls-extensions-00`.
-    AppAck(Box<AppAckProposal>),
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate(Box<AppDataUpdateProposal>),
+
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
+    #[cfg(feature = "extensions-draft-08")]
+    AppEphemeral(Box<AppEphemeralProposal>),
     Custom(Box<CustomProposal>),
 }
 
@@ -75,8 +81,11 @@ impl ProposalIn {
             ProposalIn::ReInit(_) => ProposalType::Reinit,
             ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
-            ProposalIn::AppAck(_) => ProposalType::AppAck,
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppDataUpdate(_) => ProposalType::AppDataUpdate,
             ProposalIn::SelfRemove => ProposalType::SelfRemove,
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppEphemeral(_) => ProposalType::AppEphemeral,
             ProposalIn::Custom(custom_proposal) => {
                 ProposalType::Custom(custom_proposal.proposal_type())
             }
@@ -116,10 +125,13 @@ impl ProposalIn {
             ProposalIn::ReInit(reinit) => Proposal::ReInit(reinit),
             ProposalIn::ExternalInit(external_init) => Proposal::ExternalInit(external_init),
             ProposalIn::GroupContextExtensions(group_context_extension) => {
-                Proposal::GroupContextExtensions(group_context_extension)
+                Proposal::group_context_extensions(group_context_extension.validate()?)
             }
-            ProposalIn::AppAck(app_ack) => Proposal::AppAck(app_ack),
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppDataUpdate(app_data_update) => Proposal::AppDataUpdate(app_data_update),
             ProposalIn::SelfRemove => Proposal::SelfRemove,
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppEphemeral(app_ephemeral) => Proposal::AppEphemeral(app_ephemeral),
             ProposalIn::Custom(custom) => Proposal::Custom(custom),
         })
     }
@@ -247,7 +259,7 @@ impl UpdateProposalIn {
 )]
 #[repr(u8)]
 #[allow(missing_docs)]
-pub(crate) enum ProposalOrRefIn {
+pub enum ProposalOrRefIn {
     #[tls_codec(discriminant = 1)]
     Proposal(Box<ProposalIn>),
     Reference(Box<ProposalRef>),
@@ -255,7 +267,7 @@ pub(crate) enum ProposalOrRefIn {
 
 impl ProposalOrRefIn {
     /// Returns a [`ProposalOrRef`] after successful validation.
-    pub(crate) fn validate(
+    pub fn validate(
         self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
@@ -317,6 +329,40 @@ impl From<UpdateProposal> for UpdateProposalIn {
     }
 }
 
+// The following `From` implementation breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
+#[cfg(any(feature = "test-utils", test))]
+impl From<GroupContextExtensionProposalIn> for GroupContextExtensionProposal {
+    fn from(value: GroupContextExtensionProposalIn) -> Self {
+        Self::new(value.extensions_tbv.try_into().unwrap())
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<GroupContextExtensionProposalIn> for Box<GroupContextExtensionProposal> {
+    fn from(value: GroupContextExtensionProposalIn) -> Self {
+        Box::new(GroupContextExtensionProposal::new(
+            value.extensions_tbv.try_into().unwrap(),
+        ))
+    }
+}
+
+impl From<GroupContextExtensionProposal> for GroupContextExtensionProposalIn {
+    fn from(value: crate::messages::proposals::GroupContextExtensionProposal) -> Self {
+        Self {
+            extensions_tbv: value.extensions().clone().into(),
+        }
+    }
+}
+
+impl From<GroupContextExtensionProposal> for Box<GroupContextExtensionProposalIn> {
+    fn from(value: GroupContextExtensionProposal) -> Self {
+        Box::new(GroupContextExtensionProposalIn {
+            extensions_tbv: value.into_extensions().into(),
+        })
+    }
+}
+
 #[cfg(any(feature = "test-utils", test))]
 impl From<UpdateProposalIn> for Box<UpdateProposal> {
     fn from(value: UpdateProposalIn) -> Self {
@@ -345,10 +391,13 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
             ProposalIn::ReInit(reinit) => Self::ReInit(reinit),
             ProposalIn::ExternalInit(external_init) => Self::ExternalInit(external_init),
             ProposalIn::GroupContextExtensions(group_context_extension) => {
-                Self::GroupContextExtensions(group_context_extension)
+                Self::GroupContextExtensions((*group_context_extension).into())
             }
-            ProposalIn::AppAck(app_ack) => Self::AppAck(app_ack),
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppDataUpdate(app_data_update) => Self::AppDataUpdate(app_data_update),
             ProposalIn::SelfRemove => Self::SelfRemove,
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),
             ProposalIn::Custom(other) => Self::Custom(other),
         }
     }
@@ -364,10 +413,13 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
             Proposal::ReInit(reinit) => Self::ReInit(reinit),
             Proposal::ExternalInit(external_init) => Self::ExternalInit(external_init),
             Proposal::GroupContextExtensions(group_context_extension) => {
-                Self::GroupContextExtensions(group_context_extension)
+                Self::GroupContextExtensions((*group_context_extension).into())
             }
-            Proposal::AppAck(app_ack) => Self::AppAck(app_ack),
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppDataUpdate(app_data_update) => Self::AppDataUpdate(app_data_update),
             Proposal::SelfRemove => Self::SelfRemove,
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),
             Proposal::Custom(other) => Self::Custom(other),
         }
     }
@@ -393,5 +445,32 @@ impl From<crate::messages::proposals::ProposalOrRef> for ProposalOrRefIn {
                 Self::Reference(reference)
             }
         }
+    }
+}
+
+/// GroupContext Extension Proposal.
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
+)]
+pub struct GroupContextExtensionProposalIn {
+    extensions_tbv: Extensions<AnyObject>,
+}
+
+impl GroupContextExtensionProposalIn {
+    pub(crate) fn validate(self) -> Result<GroupContextExtensionProposal, ValidationError> {
+        let group_context_extensions = self.extensions_tbv;
+        Ok(GroupContextExtensionProposal::new(
+            group_context_extensions
+                .try_into()
+                .map_err(InvalidExtensionError::from)?,
+        ))
     }
 }

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM openmls_encryption_key WHERE public_key = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "66d5c9a8b59b54c420dc83ace4649cb2a908dfd9959ce87b876c1469ba69d7b3"
+}

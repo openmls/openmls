@@ -4,7 +4,10 @@
 
 use thiserror::Error;
 
-use crate::{ciphersuite::signable::SignatureError, error::LibraryError};
+use crate::{
+    ciphersuite::signable::SignatureError, error::LibraryError,
+    prelude::ExtensionTypeNotValidInKeyPackageError, treesync::errors::LifetimeError,
+};
 
 /// KeyPackage verify error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -12,9 +15,9 @@ pub enum KeyPackageVerifyError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The lifetime of the leaf node is not valid.
-    #[error("The lifetime of the leaf node is not valid.")]
-    InvalidLifetime,
+    /// See [`LifetimeError`] for more details.
+    #[error(transparent)]
+    LifetimeError(#[from] LifetimeError),
     /// The lifetime of the leaf node is missing.
     #[error("The lifetime of the leaf node is missing.")]
     MissingLifetime,
@@ -36,6 +39,9 @@ pub enum KeyPackageVerifyError {
     /// The protocol version is not valid.
     #[error("The protocol version is not valid.")]
     InvalidProtocolVersion,
+    /// The provided extension is not allowed in key packages
+    #[error(transparent)]
+    ExtensionTypeNotValidInKeyPackage(#[from] ExtensionTypeNotValidInKeyPackageError),
 }
 
 /// KeyPackage extension support error

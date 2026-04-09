@@ -293,7 +293,11 @@ impl AuthenticatedContent {
 }
 
 impl SignedStruct<FramedContentTbs> for AuthenticatedContent {
-    fn from_payload(tbs: FramedContentTbs, signature: Signature) -> Self {
+    fn from_payload(
+        tbs: FramedContentTbs,
+        signature: Signature,
+        _serialized_payload: Vec<u8>,
+    ) -> Self {
         let auth = FramedContentAuthData {
             signature,
             // Tags must always be added after the signature

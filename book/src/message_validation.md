@@ -53,21 +53,21 @@ The following is a list of the individual semantic validation steps performed by
 
 ### Semantic validation of proposals covered by a Commit
 
-| ValidationStep | Description                                                                                 | Implemented | Tested | Test File                                             |
-| -------------- | ------------------------------------------------------------------------------------------- | ----------- | ------ | ----------------------------------------------------- |
-| `ValSem101`    | Add Proposal: Signature public key in proposals must be unique among proposals & members    | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem102`    | Add Proposal: Init key in proposals must be unique among proposals                          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem103`    | Add Proposal: Encryption key in proposals must be unique among proposals & members          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem104`    | Add Proposal: Init key and encryption key must be different                                 | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem105`    | Add Proposal: Ciphersuite & protocol version must match the group                           | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem106`    | Add Proposal: required capabilities                                                         | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem107`    | Remove Proposal: Removed member must be unique among proposals                              | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem108`    | Remove Proposal: Removed member must be an existing group member                            | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem109`    | Update Proposal: required capabilities                                                      | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem110`    | Update Proposal: Encryption key must be unique among proposals & members                    | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem111`    | Update Proposal: The sender of a full Commit must not include own update proposals          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem112`    | Update Proposal: The sender of a standalone update proposal must be of type member          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem113`    | All Proposals: The proposal type must be supported by all members of the group              | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| ValidationStep | Description                                                                              | Implemented | Tested | Test File                                             |
+| -------------- | ---------------------------------------------------------------------------------------- | ----------- | ------ | ----------------------------------------------------- |
+| `ValSem101`    | Add Proposal: Signature public key in proposals must be unique among proposals & members | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem102`    | Add Proposal: Init key in proposals must be unique among proposals                       | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem103`    | Add Proposal: Encryption key in proposals must be unique among proposals & members       | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem104`    | Add Proposal: Init key and encryption key must be different                              | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem105`    | Add Proposal: Ciphersuite & protocol version must match the group                        | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem106`    | Add Proposal: required capabilities                                                      | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem107`    | Remove Proposal: Removed member must be unique among proposals                           | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem108`    | Remove Proposal: Removed member must be an existing group member                         | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem109`    | Update Proposal: required capabilities                                                   | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem110`    | Update Proposal: Encryption key must be unique among proposals & members                 | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem111`    | Update Proposal: The sender of a full Commit must not include own update proposals       | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem112`    | Update Proposal: The sender of a standalone update proposal must be of type member       | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem113`    | All Proposals: The proposal type must be supported by all members of the group           | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 
 ### Commit message validation
 
@@ -98,14 +98,14 @@ The following is a list of the individual semantic validation steps performed by
 ### Ratchet tree validation
 
 | ValidationStep | Description                                                | Implemented | Tested | Test File                     |
-|----------------|------------------------------------------------------------|-------------|--------|-------------------------------|
+| -------------- | ---------------------------------------------------------- | ----------- | ------ | ----------------------------- |
 | `ValSem300`    | Exported ratchet trees must not have trailing blank nodes. | Yes         | Yes    | `openmls/src/treesync/mod.rs` |
 
 ### PSK Validation
 
 | ValidationStep | Description                                                                                                            | Implemented | Tested | Test File                                             |
-|----------------|------------------------------------------------------------------------------------------------------------------------|-------------|--------|-------------------------------------------------------|
-| `ValSem400`    | The application SHOULD specify an upper limit on the number of past epochs for which the resumption_psk may be stored. | ❌           | ❌      | https://github.com/openmls/openmls/issues/1122        |
-| `ValSem401`    | The nonce of a PreSharedKeyID must have length KDF.Nh.                                                                 | ✅           | ✅      | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem402`    | PSK in proposal must be of type Resumption (with usage Application) or External.                                       | ✅           | ✅      | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem403`    | Proposal list must not contain multiple PreSharedKey proposals that reference the same PreSharedKeyID.                 | ✅           | ❌      | https://github.com/openmls/openmls/issues/1335        |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------- | ------ | ----------------------------------------------------- |
+| `ValSem400`    | The application SHOULD specify an upper limit on the number of past epochs for which the resumption_psk may be stored. | ❌          | ❌     | https://github.com/openmls/openmls/issues/1122        |
+| `ValSem401`    | The nonce of a PreSharedKeyID must have length KDF.Nh.                                                                 | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem402`    | PSK in proposal must be of type Resumption (with usage Application) or External.                                       | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem403`    | Proposal list must not contain multiple PreSharedKey proposals that reference the same PreSharedKeyID.                 | ✅          | ❌     | https://github.com/openmls/openmls/issues/1335        |

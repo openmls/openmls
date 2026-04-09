@@ -419,6 +419,12 @@ impl From<MlsMessageOut> for FrankenMlsMessage {
             .unwrap()
     }
 }
+impl From<FrankenMlsMessage> for MlsMessageIn {
+    fn from(fln: FrankenMlsMessage) -> Self {
+        MlsMessageIn::tls_deserialize(&mut fln.tls_serialize_detached().unwrap().as_slice())
+            .unwrap()
+    }
+}
 
 impl From<FrankenMlsMessage> for MlsMessageOut {
     fn from(fln: FrankenMlsMessage) -> Self {

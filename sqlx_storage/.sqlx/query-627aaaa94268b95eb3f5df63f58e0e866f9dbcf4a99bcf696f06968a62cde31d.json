@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR REPLACE INTO openmls_group_data (group_id, data_type, group_data) VALUES (?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "627aaaa94268b95eb3f5df63f58e0e866f9dbcf4a99bcf696f06968a62cde31d"
+}

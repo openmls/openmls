@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM openmls_psk WHERE psk_id = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "0e21a895b58b1dd04d0a96be5d625c61e1b5f79d51588e321daee5db2024c0cd"
+}

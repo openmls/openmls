@@ -70,7 +70,7 @@ impl ParentNodeIndex {
     }
 
     /// Return the inner value as `u32`.
-    pub(crate) fn u32(&self) -> u32 {
+    pub fn u32(&self) -> u32 {
         self.0
     }
 

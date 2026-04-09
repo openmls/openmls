@@ -29,4 +29,4 @@ Clients should specify all extensions they support. See the documentation of ext
 
 This will also store the private key for the key package in the key store.
 
-All functions and structs related to key packages can be found in the [`key_packages`](https://docs.rs/crate/openmls/latest/key_packages/index.html) module.
+All functions and structs related to key packages can be found in the [`key_packages`](https://docs.rs/openmls/latest/openmls/key_packages/index.html) module.

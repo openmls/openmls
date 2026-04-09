@@ -72,6 +72,12 @@ pub enum ApplyUpdatePathError {
     /// External Committer used the wrong index.
     #[error("External Committer used the wrong index.")]
     InconsistentSenderIndex,
+    /// The own leaf is not in the tree.
+    #[error("The own leaf is not in the tree.")]
+    MissingOwnLeaf,
+    /// The ciphertext is missing in the update path node.
+    #[error("The ciphertext is missing in the update path node.")]
+    MissingCiphertext,
 }
 
 // === Crate errors ===
@@ -185,9 +191,9 @@ pub(crate) enum TreeSyncDiffError {
 /// Errors that can happen during leaf node validation.
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 pub enum LeafNodeValidationError {
-    /// Lifetime is not acceptable.
-    #[error("Lifetime is not acceptable.")]
-    Lifetime(LifetimeError),
+    /// See [`LifetimeError`] for more details.
+    #[error(transparent)]
+    Lifetime(#[from] LifetimeError),
     /// Extensions are not acceptable.
     #[error("Extensions are not acceptable.")]
     UnsupportedExtensions,
@@ -228,12 +234,25 @@ pub enum LeafNodeValidationError {
 /// Errors that can happen during lifetime validation.
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 pub enum LifetimeError {
-    /// Lifetime range is too wide.
-    #[error("Lifetime range is too wide.")]
-    RangeTooBig,
-    /// Lifetime doesn't cover current time.
-    #[error("Lifetime doesn't cover current time.")]
-    NotCurrent,
+    /// Lifetime is in the past.
+    #[error("Lifetime is in the past: not_after={not_after}, now={now}.")]
+    Expired {
+        /// The not_after value of the lifetime.
+        not_after: u64,
+        /// The current time when the validation was performed.
+        now: u64,
+    },
+    /// Lifetime is in the future.
+    #[error("Lifetime is in the future: not_before={not_before}, now={now}.")]
+    NotValidYet {
+        /// The not_before value of the lifetime.
+        not_before: u64,
+        /// The current time when the validation was performed.
+        now: u64,
+    },
+    /// System time is before UNIX epoch.
+    #[error("System time is before UNIX epoch.")]
+    SystemTimeBeforeUnixEpoch,
 }
 
 /// Errors that can happen during path validation.

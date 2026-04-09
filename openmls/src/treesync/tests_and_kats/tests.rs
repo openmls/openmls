@@ -155,3 +155,20 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
         )
         .unwrap();
 }
+
+/// Test the validation of the leaf node extension types.
+#[test]
+fn leaf_node_params_extension_validation() {
+    // create an extension that is invalid in the leaf node
+    let extension = Extension::ExternalSenders(ExternalSendersExtension::new());
+    assert!(!extension.extension_type().is_valid_in_leaf_node());
+
+    let result: Result<Extensions<LeafNode>, _> = Extensions::single(extension);
+
+    assert_eq!(
+        result.expect_err("expected an error because ExternalSenders is illegal in leaf nodes"),
+        InvalidExtensionError::ExtensionTypeNotValidInLeafNode(
+            ExtensionTypeNotValidInLeafNodeError(ExtensionType::ExternalSenders)
+        ),
+    );
+}

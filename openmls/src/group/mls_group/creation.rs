@@ -1,12 +1,13 @@
 use errors::NewGroupError;
-use openmls_traits::storage::StorageProvider as StorageProviderTrait;
+use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider as StorageProviderTrait};
 
 use super::{builder::MlsGroupBuilder, *};
 use crate::{
     credentials::CredentialWithKey,
+    extensions::Extensions,
     group::{
         commit_builder::external_commits::ExternalCommitBuilder,
-        errors::{ExternalCommitError, WelcomeError},
+        errors::{ExportSecretError, ExternalCommitError, WelcomeError},
     },
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
@@ -100,7 +101,7 @@ impl MlsGroup {
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupJoinConfig,
         capabilities: Option<Capabilities>,
-        extensions: Option<Extensions>,
+        extensions: Option<Extensions<LeafNode>>,
         aad: &[u8],
         credential_with_key: CredentialWithKey,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError<Provider::StorageError>>
@@ -174,6 +175,10 @@ impl ProcessedWelcome {
             ciphersuite,
             provider.crypto(),
         )?;
+
+        // Validate PSKs
+        PreSharedKeyId::validate_in_welcome(&group_secrets.psks, ciphersuite)?;
+
         let psk_secret = {
             let psks = load_psks(
                 provider.storage(),
@@ -201,6 +206,7 @@ impl ProcessedWelcome {
             &[],
             provider.crypto(),
         )?;
+
         if let Some(required_capabilities) =
             verifiable_group_info.extensions().required_capabilities()
         {
@@ -254,7 +260,12 @@ impl ProcessedWelcome {
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
-        self.into_staged_welcome_inner(provider, ratchet_tree, LeafNodeLifetimePolicy::Verify)
+        self.into_staged_welcome_inner(
+            provider,
+            ratchet_tree,
+            LeafNodeLifetimePolicy::Verify,
+            false,
+        )
     }
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
@@ -264,7 +275,17 @@ impl ProcessedWelcome {
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
         validate_lifetimes: LeafNodeLifetimePolicy,
+        replace_old_group: bool,
     ) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+        // Check if we need to replace an old group
+        if !replace_old_group
+            && MlsGroup::load(provider.storage(), self.verifiable_group_info.group_id())
+                .map_err(WelcomeError::StorageError)?
+                .is_some()
+        {
+            return Err(WelcomeError::GroupAlreadyExists);
+        }
+
         // Build the ratchet tree and group
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -288,6 +309,23 @@ impl ProcessedWelcome {
             ProposalStore::new(),
             validate_lifetimes,
         )?;
+
+        // Check that the leaf node of the added key package supports all extensions in the group
+        // context.
+        // https://validation.openmls.tech/#valn1415
+        let added_leaf_supports_all_group_context_extensions = public_group
+            .group_context()
+            .extensions()
+            .iter()
+            .all(|extension| {
+                self.key_package_bundle
+                    .key_package
+                    .leaf_node()
+                    .supports_extension(&extension.extension_type())
+            });
+        if !added_leaf_supports_all_group_context_extensions {
+            return Err(WelcomeError::UnsupportedExtensions);
+        }
 
         // Find our own leaf in the tree.
         let own_leaf_index = public_group
@@ -365,7 +403,7 @@ impl ProcessedWelcome {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Verify confirmation tag
-        // https://validation.openmls.tech/#valn1410
+        // https://validation.openmls.tech/#valn1411
         if &confirmation_tag != public_group.confirmation_tag() {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
@@ -379,7 +417,10 @@ impl ProcessedWelcome {
             }
         }
 
-        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
+        let message_secrets_store = MessageSecretsStore::new_with_secret(
+            &PastEpochDeletionPolicy::MaxEpochs(0),
+            message_secrets,
+        );
 
         // Extract and store the resumption PSK for the current epoch.
         let resumption_psk = group_epoch_secrets.resumption_psk();
@@ -515,6 +556,8 @@ impl StagedWelcome {
         #[cfg(feature = "extensions-draft-08")]
         let application_export_tree = ApplicationExportTree::new(self.application_export_secret);
 
+        let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();
+
         let mut mls_group = MlsGroup {
             mls_group_config: self.mls_group_config,
             own_leaf_nodes: vec![],
@@ -532,13 +575,43 @@ impl StagedWelcome {
         mls_group
             .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
             .map_err(WelcomeError::StorageError)?;
-        mls_group.set_max_past_epochs(mls_group.mls_group_config.max_past_epochs);
+        // resize the store
+        mls_group.resize_message_secrets_store(&past_epoch_deletion_policy);
 
         mls_group
             .store(provider.storage())
             .map_err(WelcomeError::StorageError)?;
 
         Ok(mls_group)
+    }
+
+    /// Exports a secret from the epoch of the group that is joined
+    /// using this [`StagedWelcome`].
+    /// Returns [`ExportSecretError::KeyLengthTooLong`] if the requested
+    /// key length is too long.
+    pub fn export_secret<CryptoProvider: OpenMlsCrypto>(
+        &self,
+        crypto: &CryptoProvider,
+        label: &str,
+        context: &[u8],
+        key_length: usize,
+    ) -> Result<Vec<u8>, ExportSecretError> {
+        if key_length > u16::MAX as usize {
+            log::error!("Got a key that is larger than u16::MAX");
+            return Err(ExportSecretError::KeyLengthTooLong);
+        }
+
+        Ok(self
+            .group_epoch_secrets
+            .exporter_secret()
+            .derive_exported_secret(
+                self.group_context().ciphersuite(),
+                crypto,
+                label,
+                context,
+                key_length,
+            )
+            .map_err(LibraryError::unexpected_crypto_error)?)
     }
 }
 
@@ -597,15 +670,17 @@ pub struct JoinBuilder<'a, Provider: OpenMlsProvider> {
     processed_welcome: ProcessedWelcome,
     ratchet_tree: Option<RatchetTreeIn>,
     validate_lifetimes: LeafNodeLifetimePolicy,
+    replace_old_group: bool,
 }
 
 impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     /// Create a new builder for the [`JoinBuilder`].
-    pub(crate) fn new(provider: &'a Provider, processed_welcome: ProcessedWelcome) -> Self {
+    pub fn new(provider: &'a Provider, processed_welcome: ProcessedWelcome) -> Self {
         Self {
             provider,
             processed_welcome,
             ratchet_tree: None,
+            replace_old_group: false,
             validate_lifetimes: LeafNodeLifetimePolicy::Verify,
         }
     }
@@ -613,6 +688,12 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     /// The ratchet tree to use for the new group.
     pub fn with_ratchet_tree(mut self, ratchet_tree: RatchetTreeIn) -> Self {
         self.ratchet_tree = Some(ratchet_tree);
+        self
+    }
+
+    /// Instruct the builder to replace any existing group with the same ID.
+    pub fn replace_old_group(mut self) -> Self {
+        self.replace_old_group = true;
         self
     }
 
@@ -638,6 +719,7 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
             self.provider,
             self.ratchet_tree,
             self.validate_lifetimes,
+            self.replace_old_group,
         )
     }
 }

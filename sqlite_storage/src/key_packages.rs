@@ -23,8 +23,8 @@ impl<KeyPackage: Entity<STORAGE_PROVIDER_VERSION>> StorableKeyPackage<KeyPackage
     ) -> Result<Option<KeyPackage>, rusqlite::Error> {
         connection
             .query_row(
-                "SELECT key_package 
-                FROM openmls_key_packages 
+                "SELECT key_package
+                FROM openmls_key_packages
                 WHERE key_package_ref = ?1
                     AND provider_version = ?2",
                 params![
@@ -48,7 +48,7 @@ impl<KeyPackage: Entity<STORAGE_PROVIDER_VERSION>> StorableKeyPackageRef<'_, Key
         key_package_ref: &KeyPackageRef,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO openmls_key_packages (key_package_ref, key_package, provider_version) 
+            "INSERT OR REPLACE INTO openmls_key_packages (key_package_ref, key_package, provider_version)
             VALUES (?1, ?2, ?3)",
             params![
                 KeyRefWrapper::<C, _>(key_package_ref, PhantomData),
@@ -70,7 +70,7 @@ impl<KeyPackageRef: Key<STORAGE_PROVIDER_VERSION>> StorableHashRef<'_, KeyPackag
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "DELETE FROM openmls_key_packages 
+            "DELETE FROM openmls_key_packages
             WHERE key_package_ref = ?1
                 AND provider_version = ?2",
             params![

@@ -10,7 +10,7 @@
 
 > The application using MLS is responsible for specifying which identifiers
 > it finds acceptable for each member in a group. In other words, following
-> the model that [[RFC6125]] describes for TLS, the application maintains a list
+> the model that [RFC6125][] describes for TLS, the application maintains a list
 > of "reference identifiers" for the members of a group, and the credentials
 > provide "presented identifiers". A member of a group is authenticated by first
 > validating that the member's credential legitimately represents some presented
@@ -18,7 +18,7 @@
 > are authenticated by those presented identifiers
 >
 > -- [RFC9420, Section 5.3.1](https://www.rfc-editor.org/rfc/rfc9420.html#section-5.3.1-1)
->
+
 ### Validity of Updated Presented Identifiers
 
 > In cases where a member's credential is being replaced, such as the Update and
@@ -28,7 +28,7 @@
 >
 > -- [RFC9420, Section 5.3.1](https://www.rfc-editor.org/rfc/rfc9420.html#section-5.3.1-5)
 
-### Application ID is Not Authenticed by AS
+### Application ID is Not Authenticated by AS
 
 > However, applications MUST NOT rely on the data in an application_id extension
 > as if it were authenticated by the Authentication Service, and SHOULD gracefully
@@ -44,7 +44,7 @@
 > LeafNode, and reject any LeafNode where the total lifetime is longer than this
 > duration. In order to avoid disagreements about whether a LeafNode has a valid
 > lifetime, the clients in a group SHOULD maintain time synchronization (e.g.,
-> using the Network Time Protocol [[RFC5905]]).
+> using the Network Time Protocol [RFC5905][]).
 >
 > -- [RFC9420, Section 7.2](https://www.rfc-editor.org/rfc/rfc9420.html#section-7.2-10)
 
@@ -55,7 +55,7 @@
 > It is up to the application to decide what authenticated_data to provide and
 > how much padding to add to a given message (if any). The overall size of the
 > AAD and ciphertext MUST fit within the limits established for the group's AEAD
-> algorithm in [[CFRG-AEAD-LIMITS]].
+> algorithm in [CFRG-AEAD-LIMITS][].
 >
 > -- [RFC9420, Section 6.3.1](https://www.rfc-editor.org/rfc/rfc9420.html#section-6.3.1-11)
 

@@ -50,7 +50,7 @@ impl<EncryptionKeyPair: Entity<STORAGE_PROVIDER_VERSION>>
         public_key: &EncryptionKey,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO openmls_encryption_keys (public_key, key_pair, provider_version) 
+            "INSERT OR REPLACE INTO openmls_encryption_keys (public_key, key_pair, provider_version)
             VALUES (?1, ?2, ?3)",
             params![
                 KeyRefWrapper::<C, _>(public_key, PhantomData),

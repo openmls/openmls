@@ -4,14 +4,19 @@
 
 use tls_codec::{Deserialize, DeserializeBytes, Serialize, Size};
 
+use crate::messages::proposals_in::GroupContextExtensionProposalIn;
+
 use super::{
     proposals::{
-        AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal,
-        Proposal, ProposalType, ReInitProposal, RemoveProposal,
+        ExternalInitProposal, PreSharedKeyProposal, Proposal, ProposalType, ReInitProposal,
+        RemoveProposal,
     },
     proposals_in::{AddProposalIn, ProposalIn, UpdateProposalIn},
     CustomProposal,
 };
+
+#[cfg(feature = "extensions-draft-08")]
+use super::proposals::{AppDataUpdateProposal, AppEphemeralProposal};
 
 impl Size for Proposal {
     fn tls_serialized_len(&self) -> usize {
@@ -24,8 +29,11 @@ impl Size for Proposal {
                 Proposal::ReInit(p) => p.tls_serialized_len(),
                 Proposal::ExternalInit(p) => p.tls_serialized_len(),
                 Proposal::GroupContextExtensions(p) => p.tls_serialized_len(),
-                Proposal::AppAck(p) => p.tls_serialized_len(),
+                #[cfg(feature = "extensions-draft-08")]
+                Proposal::AppDataUpdate(p) => p.tls_serialized_len(),
                 Proposal::SelfRemove => 0,
+                #[cfg(feature = "extensions-draft-08")]
+                Proposal::AppEphemeral(p) => p.tls_serialized_len(),
                 Proposal::Custom(p) => p.payload().tls_serialized_len(),
             }
     }
@@ -42,8 +50,11 @@ impl Serialize for Proposal {
             Proposal::ReInit(p) => p.tls_serialize(writer),
             Proposal::ExternalInit(p) => p.tls_serialize(writer),
             Proposal::GroupContextExtensions(p) => p.tls_serialize(writer),
-            Proposal::AppAck(p) => p.tls_serialize(writer),
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppDataUpdate(p) => p.tls_serialize(writer),
             Proposal::SelfRemove => Ok(0),
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppEphemeral(p) => p.tls_serialize(writer),
             Proposal::Custom(p) => p.payload().tls_serialize(writer),
         }
         .map(|l| written + l)
@@ -61,8 +72,11 @@ impl Size for &ProposalIn {
                 ProposalIn::ReInit(p) => p.tls_serialized_len(),
                 ProposalIn::ExternalInit(p) => p.tls_serialized_len(),
                 ProposalIn::GroupContextExtensions(p) => p.tls_serialized_len(),
-                ProposalIn::AppAck(p) => p.tls_serialized_len(),
+                #[cfg(feature = "extensions-draft-08")]
+                ProposalIn::AppDataUpdate(p) => p.tls_serialized_len(),
                 ProposalIn::SelfRemove => 0,
+                #[cfg(feature = "extensions-draft-08")]
+                ProposalIn::AppEphemeral(p) => p.tls_serialized_len(),
                 ProposalIn::Custom(p) => p.payload().tls_serialized_len(),
             }
     }
@@ -85,8 +99,11 @@ impl Serialize for &ProposalIn {
             ProposalIn::ReInit(p) => p.tls_serialize(writer),
             ProposalIn::ExternalInit(p) => p.tls_serialize(writer),
             ProposalIn::GroupContextExtensions(p) => p.tls_serialize(writer),
-            ProposalIn::AppAck(p) => p.tls_serialize(writer),
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppDataUpdate(p) => p.tls_serialize(writer),
             ProposalIn::SelfRemove => Ok(0),
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalIn::AppEphemeral(p) => p.tls_serialize(writer),
             ProposalIn::Custom(p) => p.payload().tls_serialize(writer),
         }
         .map(|l| written + l)
@@ -123,13 +140,18 @@ impl Deserialize for ProposalIn {
                 ProposalIn::ExternalInit(Box::new(ExternalInitProposal::tls_deserialize(bytes)?))
             }
             ProposalType::GroupContextExtensions => ProposalIn::GroupContextExtensions(Box::new(
-                GroupContextExtensionProposal::tls_deserialize(bytes)?,
+                GroupContextExtensionProposalIn::tls_deserialize(bytes)?,
             )),
-            ProposalType::AppAck => {
-                ProposalIn::AppAck(Box::new(AppAckProposal::tls_deserialize(bytes)?))
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalType::AppDataUpdate => {
+                ProposalIn::AppDataUpdate(Box::new(AppDataUpdateProposal::tls_deserialize(bytes)?))
             }
             ProposalType::SelfRemove => ProposalIn::SelfRemove,
-            ProposalType::Custom(_) => {
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalType::AppEphemeral => {
+                ProposalIn::AppEphemeral(Box::new(AppEphemeralProposal::tls_deserialize(bytes)?))
+            }
+            ProposalType::Grease(_) | ProposalType::Custom(_) => {
                 let payload = Vec::<u8>::tls_deserialize(bytes)?;
                 let custom_proposal = CustomProposal::new(proposal_type.into(), payload);
                 ProposalIn::Custom(Box::new(custom_proposal))

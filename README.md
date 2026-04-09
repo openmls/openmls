@@ -10,7 +10,8 @@
 [![Book][book-release-badge]][book-release-link]
 ![Rust Version][rustc-image]
 
-*OpenMLS* is a Rust implementation of the Messaging Layer Security (MLS) protocol, as specified in [RFC 9420](https://datatracker.ietf.org/doc/html/rfc9420).
+_OpenMLS_ is a Rust implementation of the Messaging Layer Security (MLS) protocol, as specified in [RFC 9420](https://datatracker.ietf.org/doc/html/rfc9420).
+
 <!-- The introduction of the book imports the lines up until here (line 13), excluding the headline and separately the lines below (starting from line 19, "Supported ciphersuite"). If the line numbers change here, please modify the imported lines in the book.-->
 
 It is a software library that can serve as a building block in applications that require end-to-end encryption of messages.
@@ -56,10 +57,32 @@ are two different cryptography providers implemented right now. But consumers
 can bring their own implementation. See [traits](https://github.com/openmls/openmls/tree/main/traits) for more
 details.
 
+## Features
+OpenMLS provides the following features
+
+- **extensions-draft-08**: enable features defined in [MLS extensions draft-08](https://messaginglayersecurity.rocks/mls-extensions/draft-ietf-mls-extensions.html)
+- **fork-resolution**: helper functionality for [resolving forks](https://book.openmls.tech/user_manual/fork-resolution.html).
+- **js**: enable compilation to wasm
+
+<details>
+<summary>Developer features</summary>
+
+- **libcrux-provider**: enable the libcrux crypto provider dependency
+- **openmls_rust_crypto**: enable the rust crypto provider
+- **sqlite-provider**: enable the sqlite provider
+- **backtrace**: enable backtraces
+- **content-debug**: allow printing sensitive content of messages for debugging
+- **crypto-debug**: allow printing cryptographic key material for debugging
+- **test-util**: test utilities
+
+</details>
+
 ## Working on OpenMLS
+
 For more details when working on OpenMLS itself please see the [Developer.md].
 
 ## Maintenance & Support
+
 OpenMLS is maintained and developed by [Phoenix R&D] and [Cryspen].
 
 ## Acknowledgements
@@ -83,4 +106,3 @@ OpenMLS is maintained and developed by [Phoenix R&D] and [Cryspen].
 [Phoenix R&D]: https://phnx.im
 [Cryspen]: https://cryspen.com
 [Zulip]: https://zulip.com/
-

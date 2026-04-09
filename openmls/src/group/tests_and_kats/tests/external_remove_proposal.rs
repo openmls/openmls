@@ -24,10 +24,10 @@ fn new_test_group(
     let mls_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
         .ciphersuite(ciphersuite)
-        .with_group_context_extensions(Extensions::single(Extension::ExternalSenders(
-            external_senders,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::ExternalSenders(external_senders))
+                .expect("failed to create single-element extensions list"),
+        )
         .build();
 
     (

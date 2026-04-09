@@ -35,6 +35,9 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::messages::proposals_in::ProposalOrRefIn;
+
 use super::{
     mls_auth_content::AuthenticatedContent,
     mls_auth_content_in::{AuthenticatedContentIn, VerifiableAuthenticatedContentIn},
@@ -101,7 +104,7 @@ impl DecryptedMessage {
         // TODO: #819 The old leaves should not be needed any more.
         //       Revisit when the transition is further along.
         let (message_secrets, _old_leaves) = group
-            .message_secrets_and_leaves_mut(ciphertext.epoch())
+            .message_secrets_and_leaves(ciphertext.epoch())
             .map_err(MessageDecryptionError::SecretTreeError)?;
         let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
         // Check if we are the sender
@@ -109,7 +112,7 @@ impl DecryptedMessage {
             return Err(ValidationError::CannotDecryptOwnMessage);
         }
         let message_secrets = group
-            .message_secrets_mut(ciphertext.epoch())
+            .message_secrets_for_epoch_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let verifiable_content = ciphertext.to_verifiable_content(
             ciphersuite,
@@ -219,7 +222,7 @@ pub(crate) enum SenderContext {
 /// The [`OpenMlsSignaturePublicKey`] is used to verify the signature of the
 /// message.
 #[derive(Debug, Clone)]
-pub(crate) struct UnverifiedMessage {
+pub struct UnverifiedMessage {
     verifiable_content: VerifiableAuthenticatedContentIn,
     credential: Credential,
     sender_pk: OpenMlsSignaturePublicKey,
@@ -261,9 +264,10 @@ impl UnverifiedMessage {
         Ok((content, self.credential))
     }
 
-    /// Get the content type of the message.
-    pub(crate) fn content_type(&self) -> ContentType {
-        self.verifiable_content.content_type()
+    /// Get the proposals of the commit, if it is one. If not, return `None`.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
+        self.verifiable_content.committed_proposals()
     }
 }
 

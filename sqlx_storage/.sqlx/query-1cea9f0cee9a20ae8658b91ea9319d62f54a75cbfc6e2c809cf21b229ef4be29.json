@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT key_pair FROM openmls_encryption_key WHERE public_key = ?1",
+  "describe": {
+    "columns": [
+      {
+        "name": "key_pair",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1cea9f0cee9a20ae8658b91ea9319d62f54a75cbfc6e2c809cf21b229ef4be29"
+}

@@ -18,7 +18,7 @@ The entries in the CHANGELOG file should follow the [keep a changelog guide].
 
 Before releasing a minor or major version of the OpenMLS crate, a pre-release version
 must be published to crates.io.
-Pre-release versions are defined by appending a hyphen, and a series of dot-separated identifiers, i.e., `-pre.x` where `x` gets counted up starting at 1.
+Pre-release versions are defined by appending a hyphen, and a series of dot-separated identifiers, i.e., `-rc.x` where `x` gets counted up starting at 1.
 Pre-releases must be tagged but don't require release notes or other documentation.
 It is also sufficient to tag only the most high-level crate being published.
 
@@ -29,7 +29,7 @@ It is also sufficient to tag only the most high-level crate being published.
 The crates must be published in the order below.
 
 - [Traits](https://github.com/openmls/openmls/blob/main/traits/Cargo.toml)
-- [Memory Keystore](https://github.com/openmls/openmls/blob/main/memory_keystore/Cargo.toml)
+- [Memory storage](https://github.com/openmls/openmls/blob/main/memory_storage/Cargo.toml)
 - [Rust Crypto provider](https://github.com/openmls/openmls/blob/main/openmls_rust_crypto/Cargo.toml)
 - [OpenMLS](https://github.com/openmls/openmls/blob/main/openmls/Cargo.toml)
 
@@ -69,8 +69,8 @@ The crates must be published in the order below.
 
 - [ ] If this is a minor or major release, has a pre-release version been published at least a week before the release?
   - If not, first do so and push the release one week.
-- [ ] Describe the release in the CHANGELOG.
-- [ ] Create and publish a git tag for each crate, e.g. `openmls/v0.4.0-pre.1`.
+- [ ] Describe the release in the CHANGELOG.md file of each crate.
+- [ ] Create and publish a git tag for each crate, e.g. `openmls/v0.4.0-rc.99`.
 - [ ] Create and publish release notes on Github.
 - [ ] Publish the crates to crates.io
 

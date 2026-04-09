@@ -26,12 +26,14 @@ This [trait](./src/crypto.rs) defines all cryptographic functions required by Op
 - Signatures
 - HPKE
 
-### OpenMlsKeyStore
+### StorageProvider
 
-This [trait](./src/key_store.rs) defines a CRUD API for a key store that is used to store long-term key material from OpenMLS.
+This [trait](./src/storage.rs) defines a CRUD API for a key store that is used to store long-term key material from OpenMLS.
 
 ### OpenMlsCryptoProvider
+
 Additionally, there's a wrapper [trait](./src/traits.rs) defined that is expected to be passed into the public OpenMLS API.
 
 ## Types
+
 For interoperability this crate also defines a number of [types](./src/types.rs) and algorithm identifiers.

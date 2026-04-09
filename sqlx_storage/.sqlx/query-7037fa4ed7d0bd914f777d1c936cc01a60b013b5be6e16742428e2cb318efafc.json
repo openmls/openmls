@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT psk_bundle FROM openmls_psk WHERE psk_id = ?1",
+  "describe": {
+    "columns": [
+      {
+        "name": "psk_bundle",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7037fa4ed7d0bd914f777d1c936cc01a60b013b5be6e16742428e2cb318efafc"
+}

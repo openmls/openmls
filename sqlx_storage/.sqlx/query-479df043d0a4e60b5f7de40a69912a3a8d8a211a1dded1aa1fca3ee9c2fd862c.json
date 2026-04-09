@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM openmls_group_data WHERE group_id = ? AND data_type = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "479df043d0a4e60b5f7de40a69912a3a8d8a211a1dded1aa1fca3ee9c2fd862c"
+}

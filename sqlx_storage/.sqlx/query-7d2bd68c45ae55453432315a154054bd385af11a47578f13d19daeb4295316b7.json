@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT key_package FROM openmls_key_package WHERE key_package_ref = ?1",
+  "describe": {
+    "columns": [
+      {
+        "name": "key_package",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7d2bd68c45ae55453432315a154054bd385af11a47578f13d19daeb4295316b7"
+}

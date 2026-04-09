@@ -12,6 +12,7 @@ use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
+    extensions::Extensions,
     framing::*,
     group::{
         tests_and_kats::utils::{generate_credential_with_key, generate_key_package, randombytes},
@@ -157,17 +158,14 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .unwrap();
 
     let alice_leaf_node = {
-        let capabilities = Capabilities::new(
-            None,
-            Some(&[
+        let capabilities = Capabilities::builder()
+            .ciphersuites(vec![
                 Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
                 Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            ]),
-            None,
-            Some(&[ProposalType::AppAck]),
-            Some(&[CredentialType::Basic]),
-        );
+            ])
+            .credentials(vec![CredentialType::Basic])
+            .build();
 
         LeafNode::generate_update(
             ciphersuite,
@@ -233,15 +231,16 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         group_id: alice_group.group_id().clone(),
         version: ProtocolVersion::Mls10,
         ciphersuite,
-        extensions: Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
-            alice_ratchet_tree.clone(),
-        ))),
+        extensions: Extensions::single(Extension::RequiredCapabilities(
+            RequiredCapabilitiesExtension::new(&[ExtensionType::LastResort], &[], &[]),
+        ))
+        .expect("failed to create single-element extensions list"),
     };
 
     let external_init_proposal = ExternalInitProposal::from(randombytes(32));
 
     let group_context_extensions_proposal =
-        GroupContextExtensionProposal::new(Extensions::default());
+        GroupContextExtensionProposal::new(Extensions::<GroupContext>::default());
 
     let (proposal_pt, _) = alice_group
         .propose_add_member(

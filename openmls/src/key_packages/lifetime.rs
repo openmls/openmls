@@ -6,6 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
+use crate::treesync::errors::LifetimeError;
+
 /// This value is used as the default lifetime if no default  lifetime is configured.
 /// The value is in seconds and amounts to 3 * 28 Days, i.e. about 3 months.
 const DEFAULT_KEY_PACKAGE_LIFETIME_SECONDS: u64 = 60 * 60 * 24 * 28 * 3;
@@ -81,17 +83,30 @@ impl Lifetime {
         }
     }
 
-    /// Returns true if this lifetime is valid.
-    pub fn is_valid(&self) -> bool {
-        match SystemTime::now()
+    /// Returns a [`LifetimeError`] if the lifetime is not valid.
+    pub fn validate(&self) -> Result<(), LifetimeError> {
+        self.validate_with_time(SystemTime::now())
+    }
+
+    /// Returns a [`LifetimeError`] if the lifetime is not valid at the given
+    /// time.
+    pub fn validate_with_time(&self, now: SystemTime) -> Result<(), LifetimeError> {
+        let duration_since_unix_epoch = now
             .duration_since(UNIX_EPOCH)
-            .map(|duration| duration.as_secs())
-        {
-            Ok(elapsed) => self.not_before < elapsed && elapsed < self.not_after,
-            Err(_) => {
-                log::error!("SystemTime before UNIX EPOCH.");
-                false
-            }
+            .map_err(|_| LifetimeError::SystemTimeBeforeUnixEpoch)?
+            .as_secs();
+        if self.not_after <= duration_since_unix_epoch {
+            Err(LifetimeError::Expired {
+                not_after: self.not_after,
+                now: duration_since_unix_epoch,
+            })
+        } else if self.not_before > duration_since_unix_epoch {
+            Err(LifetimeError::NotValidYet {
+                not_before: self.not_before,
+                now: duration_since_unix_epoch,
+            })
+        } else {
+            Ok(())
         }
     }
 
@@ -121,6 +136,12 @@ impl Default for Lifetime {
 
 #[cfg(test)]
 mod tests {
+    use core::time::Duration;
+    #[cfg(target_arch = "wasm32")]
+    use fluvio_wasm_timer::SystemTime;
+    #[cfg(not(target_arch = "wasm32"))]
+    use std::time::SystemTime;
+
     use tls_codec::{Deserialize, Serialize};
 
     use super::Lifetime;
@@ -129,12 +150,21 @@ mod tests {
     fn lifetime() {
         // A freshly created extensions must be valid.
         let ext = Lifetime::default();
-        assert!(ext.is_valid());
+        ext.validate().expect("Default Lifetime should be valid");
 
         // An extension without lifetime is invalid (waiting for 1 second).
         let ext = Lifetime::new(0);
-        std::thread::sleep(std::time::Duration::from_secs(1));
-        assert!(!ext.is_valid());
+        let now_plus_1s = SystemTime::now() + Duration::from_secs(1);
+        let e = ext
+            .validate_with_time(now_plus_1s)
+            .expect_err("Lifetime should be expired");
+        assert!(matches!(e, super::LifetimeError::Expired { .. }));
+
+        let five_hours_before_now = SystemTime::now() - Duration::from_hours(5);
+        let e = ext
+            .validate_with_time(five_hours_before_now)
+            .expect_err("Lifetime should not be valid yet");
+        assert!(matches!(e, super::LifetimeError::NotValidYet { .. }));
 
         // Test (de)serializing invalid extension
         let serialized = ext
@@ -142,6 +172,8 @@ mod tests {
             .expect("error encoding life time extension");
         let ext_deserialized = Lifetime::tls_deserialize(&mut serialized.as_slice())
             .expect("Error deserializing lifetime");
-        assert!(!ext_deserialized.is_valid());
+        ext_deserialized
+            .validate_with_time(now_plus_1s)
+            .expect_err("Lifetime should be expired");
     }
 }

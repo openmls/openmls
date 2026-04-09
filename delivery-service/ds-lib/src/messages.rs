@@ -1,5 +1,5 @@
 use crate::tls_codec::{self, TlsDeserialize, TlsSerialize, TlsSize};
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 use serde::{Deserialize, Serialize};
 
 use crate::ClientKeyPackages;
@@ -19,7 +19,7 @@ impl Default for AuthToken {
 
 impl AuthToken {
     pub(super) fn random() -> Self {
-        let token = thread_rng().gen::<[u8; 32]>().to_vec();
+        let token = rng().random::<[u8; 32]>().to_vec();
         Self { token }
     }
 }
