@@ -22,6 +22,7 @@ fn expect_valn0104_error<Provider: OpenMlsProvider>(error: Result<(), GroupError
         ))
     );
 }
+
 impl<'a, 'b: 'a, Provider: OpenMlsProvider + Default> GroupState<'b, Provider> {
     // add a member to the GroupState with the specified credential capabilities
     #[maybe_async::maybe_async]
