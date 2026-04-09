@@ -22,8 +22,8 @@ impl<PskBundle: Entity<STORAGE_PROVIDER_VERSION>> StorablePskBundle<PskBundle> {
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, rusqlite::Error> {
         let mut stmt = connection.prepare(
-            "SELECT psk_bundle 
-                FROM openmls_psks 
+            "SELECT psk_bundle
+                FROM openmls_psks
                 WHERE psk_id = ?1
                     AND provider_version = ?2",
         )?;
@@ -50,7 +50,7 @@ impl<PskBundle: Entity<STORAGE_PROVIDER_VERSION>> StorablePskBundleRef<'_, PskBu
         psk_id: &PskId,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO openmls_psks (psk_id, psk_bundle, provider_version)
+            "INSERT OR REPLACE INTO openmls_psks (psk_id, psk_bundle, provider_version)
             VALUES (?1, ?2, ?3)",
             params![
                 KeyRefWrapper::<C, _>(psk_id, PhantomData),
@@ -70,7 +70,7 @@ impl<PskId: Key<STORAGE_PROVIDER_VERSION>> StorablePskIdRef<'_, PskId> {
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "DELETE FROM openmls_psks 
+            "DELETE FROM openmls_psks
             WHERE psk_id = ?1
                 AND provider_version = ?2",
             params![

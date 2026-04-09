@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT group_data FROM openmls_group_data WHERE group_id = ? AND data_type = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "group_data",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "281ba0d01db932e2bda2fd9e8fa78f20ce9935e35c935ea1f569dd9b5a3d4874"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT signature_key FROM openmls_signature_key WHERE public_key = ?1",
+  "describe": {
+    "columns": [
+      {
+        "name": "signature_key",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "63ec829496b74fc620f7a556e95f4fdd1101ea25ff4f21ecda180f65cbbca872"
+}

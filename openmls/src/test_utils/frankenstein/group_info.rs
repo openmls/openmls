@@ -47,7 +47,11 @@ impl DerefMut for FrankenGroupInfo {
 }
 
 impl SignedStruct<FrankenGroupInfoTbs> for FrankenGroupInfo {
-    fn from_payload(payload: FrankenGroupInfoTbs, signature: Signature) -> Self {
+    fn from_payload(
+        payload: FrankenGroupInfoTbs,
+        signature: Signature,
+        _serialized_payload: Vec<u8>,
+    ) -> Self {
         Self {
             payload,
             signature: signature.as_slice().to_owned().into(),

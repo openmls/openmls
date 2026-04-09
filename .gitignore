@@ -15,3 +15,6 @@ fuzz/artifacts
 *.iws
 *.iml
 *.ipr
+
+# AI
+.cursor/

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT proposal_ref FROM openmls_proposal WHERE group_id = ?1",
+  "describe": {
+    "columns": [
+      {
+        "name": "proposal_ref",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "392c728b5709432ddee0d6ed58ac8716a7eb33a692284d0462b9acd7a946e166"
+}

@@ -2016,8 +2016,8 @@ fn test_valsem111() {
         .expect("Error creating self-update");
 
     // Check that there's no proposal in it.
-    let serialized_message = commit_bundle
-        .contents()
+    let (msg, welcome, group_info) = commit_bundle.contents();
+    let serialized_message = (msg, welcome.cloned(), group_info.cloned())
         .tls_serialize_detached()
         .expect("error serializing plaintext");
 
@@ -2035,8 +2035,8 @@ fn test_valsem111() {
     // The commit should contain no proposals.
     assert_eq!(commit_content.proposals.len(), 0);
 
-    let serialized_update = commit_bundle
-        .contents()
+    let (msg, welcome, group_info) = commit_bundle.contents();
+    let serialized_update = (msg, welcome.cloned(), group_info.cloned())
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 

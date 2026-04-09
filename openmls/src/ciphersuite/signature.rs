@@ -139,7 +139,7 @@ impl Signature {
 }
 
 impl<T> SignedStruct<T> for Signature {
-    fn from_payload(_payload: T, signature: Signature) -> Self {
+    fn from_payload(_payload: T, signature: Signature, _serialized_payload: Vec<u8>) -> Self {
         signature
     }
 }

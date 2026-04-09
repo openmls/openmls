@@ -34,7 +34,7 @@ use crate::{
     messages::*,
     treesync::{node::Node, LeafNode, RatchetTree, RatchetTreeIn},
 };
-use ::rand::{rngs::OsRng, RngCore};
+use ::rand::{rngs::OsRng, RngCore, TryRngCore};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -69,7 +69,7 @@ pub struct Group {
 impl Group {
     /// Return the identity of a random member of the group.
     pub fn random_group_member(&self) -> (u32, Vec<u8>) {
-        let index = (OsRng.next_u32() as usize) % self.members.len();
+        let index = (OsRng.unwrap_mut().next_u32() as usize) % self.members.len();
         let (i, identity) = self.members[index].clone();
         (i as u32, identity)
     }
@@ -465,7 +465,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
     ) -> Result<GroupId, SetupError<Provider::StorageError>> {
         // Pick a random group creator.
         let clients = self.clients.read().expect("An unexpected error occurred.");
-        let group_creator_id = ((OsRng.next_u32() as usize) % clients.len())
+        let group_creator_id = ((OsRng.unwrap_mut().next_u32() as usize) % clients.len())
             .to_be_bytes()
             .to_vec();
         let group_creator = clients
@@ -521,7 +521,8 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
             // Pick a random adder.
             let adder_id = group.random_group_member();
             // Add between 1 and 5 new members.
-            let number_of_adds = ((OsRng.next_u32() as usize) % 5 % new_members.len()) + 1;
+            let number_of_adds =
+                ((OsRng.unwrap_mut().next_u32() as usize) % 5 % new_members.len()) + 1;
             let members_to_add = new_members.drain(0..number_of_adds).collect();
             self.add_clients(
                 ActionType::Commit,
@@ -655,19 +656,22 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
         group: &mut Group,
         authentication_service: &AS,
     ) -> Result<(), SetupError<Provider::StorageError>> {
+        let mut rng = OsRng;
+        let mut rng = rng.unwrap_mut();
+
         // Who's going to do it?
         let member_id = group.random_group_member();
         println!("Member performing the operation: {member_id:?}");
 
         // TODO: Do both things.
-        let action_type = match (OsRng.next_u32() as usize) % 2 {
+        let action_type = match (rng.next_u32() as usize) % 2 {
             0 => ActionType::Proposal,
             1 => ActionType::Commit,
             _ => return Err(SetupError::Unknown),
         };
 
         // TODO: Do multiple things.
-        let operation_type = (OsRng.next_u32() as usize) % 3;
+        let operation_type = (rng.next_u32() as usize) % 3;
         match operation_type {
             0 => {
                 println!("Performing a self-update with action type: {action_type:?}");
@@ -684,7 +688,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
                 if group.members.len() > 1 {
                     // How many members?
                     let number_of_removals =
-                        (((OsRng.next_u32() as usize) % group.members.len()) % 5) + 1;
+                        (((rng.next_u32() as usize) % group.members.len()) % 5) + 1;
 
                     let (own_index, _) = group
                         .members
@@ -701,8 +705,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
                     println!("Removing members:");
                     for _ in 0..number_of_removals {
                         // Get a random index.
-                        let mut member_list_index =
-                            (OsRng.next_u32() as usize) % group.members.len();
+                        let mut member_list_index = (rng.next_u32() as usize) % group.members.len();
                         // Re-sample until the index is not our own index and
                         // not one that is not already being removed.
                         let (mut leaf_index, mut identity) =
@@ -710,7 +713,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
                         while leaf_index == own_index
                             || target_member_identities.contains(&identity)
                         {
-                            member_list_index = (OsRng.next_u32() as usize) % group.members.len();
+                            member_list_index = (rng.next_u32() as usize) % group.members.len();
                             let (new_leaf_index, new_identity) =
                                 group.members[member_list_index].clone();
                             leaf_index = new_leaf_index;
@@ -747,7 +750,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
                     .len()
                     - group.members.len();
                 if clients_left > 0 {
-                    let number_of_adds = (((OsRng.next_u32() as usize) % clients_left) % 5) + 1;
+                    let number_of_adds = (((rng.next_u32() as usize) % clients_left) % 5) + 1;
                     let new_member_ids = self
                         .random_new_members_for_group(group, number_of_adds)
                         .expect("An unexpected error occurred.");

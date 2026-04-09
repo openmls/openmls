@@ -67,8 +67,8 @@ use self::{proposals::*, proposals_in::ProposalOrRefIn};
     TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
-    Serialize,
-    Deserialize,
+    serde::Serialize,
+    serde::Deserialize,
 )]
 pub struct Welcome {
     cipher_suite: Ciphersuite,
@@ -134,8 +134,8 @@ impl Welcome {
     TlsDeserializeBytes,
     TlsSerialize,
     TlsSize,
-    Serialize,
-    Deserialize,
+    serde::Serialize,
+    serde::Deserialize,
 )]
 pub struct EncryptedGroupSecrets {
     /// Key package reference of the new member
@@ -291,6 +291,11 @@ impl CommitIn {
             None
         };
         Ok(Commit { proposals, path })
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn proposals(&self) -> &[ProposalOrRefIn] {
+        &self.proposals
     }
 }
 

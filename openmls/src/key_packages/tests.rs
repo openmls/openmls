@@ -1,9 +1,9 @@
-use crate::test_utils::*;
+use crate::{prelude::ExtensionTypeNotValidInLeafNodeError, test_utils::*};
 use openmls_basic_credential::SignatureKeyPair;
 
 use tls_codec::Deserialize;
 
-use crate::{extensions::*, key_packages::*, storage::OpenMlsProvider};
+use crate::{extensions::errors::*, extensions::*, key_packages::*, storage::OpenMlsProvider};
 
 /// Helper function to generate key packages
 pub(crate) fn key_package(
@@ -27,6 +27,25 @@ pub(crate) fn key_package(
         .expect("An unexpected error occurred.");
 
     (key_package, credential.into(), signer)
+}
+
+/// Ensure that invalid leaf node extensions cannot be added to the KeyPackage
+#[test]
+fn key_package_builder_leaf_node_extensions_validation() {
+    // create an extension that is invalid in the leaf node
+    let extension = Extension::ExternalSenders(ExternalSendersExtension::new());
+    assert!(!extension.extension_type().is_valid_in_leaf_node());
+
+    let extensions_result: Result<Extensions<LeafNode>, _> = Extensions::single(extension);
+    let err = extensions_result
+        .expect_err("expected validation to fail because this type is not valid in leaf nodes");
+
+    assert_eq!(
+        err,
+        InvalidExtensionError::ExtensionTypeNotValidInLeafNode(
+            ExtensionTypeNotValidInLeafNodeError(ExtensionType::ExternalSenders)
+        ),
+    );
 }
 
 #[openmls_test::openmls_test]
@@ -66,9 +85,10 @@ fn application_id_extension() {
     // Generate a valid KeyPackage.
     let id = b"application id" as &[u8];
     let key_package = KeyPackage::builder()
-        .leaf_node_extensions(Extensions::single(Extension::ApplicationId(
-            ApplicationIdExtension::new(id),
-        )))
+        .leaf_node_extensions(
+            Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(id)))
+                .expect("failed to create single-element extensions list"),
+        )
         .build(
             ciphersuite,
             provider,
@@ -179,10 +199,10 @@ fn last_resort_key_package() {
 
     // build with extension
     let key_package = KeyPackage::builder()
-        .key_package_extensions(Extensions::single(Extension::Unknown(
-            0xFF00,
-            UnknownExtension(vec![0x00]),
-        )))
+        .key_package_extensions(
+            Extensions::single(Extension::Unknown(0xFF00, UnknownExtension(vec![0x00])))
+                .expect("failed to create single-element extensions list"),
+        )
         .mark_as_last_resort()
         .build(
             ciphersuite,

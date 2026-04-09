@@ -4,7 +4,7 @@
 use crate::{
     ciphersuite::{signable::*, *},
     credentials::*,
-    extensions::Extensions,
+    extensions::{AnyObject, Extensions},
     treesync::node::leaf_node::{LeafNodeIn, VerifiableLeafNode},
     versions::ProtocolVersion,
 };
@@ -58,6 +58,7 @@ impl Verifiable for VerifiableKeyPackage {
         Ok(KeyPackage {
             payload: self.payload,
             signature: self.signature,
+            serialized_payload: None,
         })
     }
 }
@@ -91,7 +92,7 @@ struct KeyPackageTbsIn {
     ciphersuite: Ciphersuite,
     init_key: InitKey,
     leaf_node: LeafNodeIn,
-    extensions: Extensions,
+    extensions: Extensions<AnyObject>,
 }
 
 /// The key package struct.
@@ -170,7 +171,7 @@ impl KeyPackageIn {
             ciphersuite: self.payload.ciphersuite,
             init_key: self.payload.init_key,
             leaf_node,
-            extensions: self.payload.extensions,
+            extensions: self.payload.extensions.try_into()?,
         };
 
         // Verify the KeyPackage signature
@@ -193,9 +194,7 @@ impl KeyPackageIn {
 
         // Ensure validity of the life time extension in the leaf node.
         if let Some(life_time) = key_package.payload.leaf_node.life_time() {
-            if !life_time.is_valid() {
-                return Err(KeyPackageVerifyError::InvalidLifetime);
-            }
+            life_time.validate()?;
         } else {
             // This assumes that we only verify key packages with leaf nodes
             // that were created for the key package.
@@ -220,7 +219,7 @@ impl From<KeyPackageTbsIn> for KeyPackageTbs {
             ciphersuite: value.ciphersuite,
             init_key: value.init_key,
             leaf_node: value.leaf_node.into(),
-            extensions: value.extensions,
+            extensions: value.extensions.coerce(),
         }
     }
 }
@@ -232,7 +231,7 @@ impl From<KeyPackageTbs> for KeyPackageTbsIn {
             ciphersuite: value.ciphersuite,
             init_key: value.init_key,
             leaf_node: value.leaf_node.into(),
-            extensions: value.extensions,
+            extensions: value.extensions.into(),
         }
     }
 }
@@ -262,6 +261,7 @@ impl From<KeyPackageIn> for KeyPackage {
         Self {
             payload: value.payload.into(),
             signature: value.signature,
+            serialized_payload: None,
         }
     }
 }

@@ -103,6 +103,36 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
         })
     }
 
+    /// Create a tree directly from separate vectors of leaf and parent nodes,
+    /// avoiding the allocations required when using `TreeNode` enum variants.
+    ///
+    /// # Arguments
+    /// * `leaf_nodes` - Vector of leaf nodes
+    /// * `parent_nodes` - Vector of parent nodes
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * The total number of nodes exceeds `MAX_TREE_SIZE`
+    /// * The vectors don't form a valid full, left-balanced binary tree
+    pub(crate) fn from_components(
+        leaf_nodes: Vec<L>,
+        parent_nodes: Vec<P>,
+    ) -> Result<Self, ABinaryTreeError> {
+        let total_nodes = leaf_nodes.len() + parent_nodes.len();
+        if total_nodes > MAX_TREE_SIZE as usize {
+            return Err(ABinaryTreeError::OutOfRange);
+        }
+        if leaf_nodes.len() != parent_nodes.len() + 1 {
+            return Err(ABinaryTreeError::InvalidNumberOfNodes);
+        }
+        Ok(ABinaryTree {
+            leaf_nodes,
+            parent_nodes,
+            default_leaf: L::default(),
+            default_parent: P::default(),
+        })
+    }
+
     /// Obtain a reference to the data contained in the leaf node at index
     /// `leaf_index`, where the indexing corresponds to the array representation
     /// of the underlying binary tree. Returns the default value if the node

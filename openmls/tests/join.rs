@@ -45,7 +45,9 @@ fn join_tree_with_outdated_leafnodes() {
             .expect("SystemTime before UNIX EPOCH!")
             .as_secs();
         let bob_pre_group = bob_party
-            .generate_pre_group_lifetime(ciphersuite, Lifetime::init(now - 60, now + VALIDITY));
+            .pre_group_builder(ciphersuite)
+            .with_lifetime(Lifetime::init(now - 60, now + VALIDITY))
+            .build();
         let bob_key_package = bob_pre_group.key_package_bundle.key_package().clone();
 
         let [alice] = group_state.members_mut(&["alice"]);

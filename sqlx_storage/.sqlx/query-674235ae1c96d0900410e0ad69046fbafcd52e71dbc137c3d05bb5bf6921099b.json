@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM openmls_epoch_key_pairs WHERE group_id = ? AND epoch_id = ? AND leaf_index = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "674235ae1c96d0900410e0ad69046fbafcd52e71dbc137c3d05bb5bf6921099b"
+}

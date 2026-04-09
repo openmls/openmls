@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM openmls_signature_key WHERE public_key = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "43f047dae814eea359fab0ce00d26a2f8b1b85de1c2e9da10d31a75d90584c34"
+}

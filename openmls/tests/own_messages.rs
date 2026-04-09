@@ -1,4 +1,4 @@
-//! Test that decryptoin of own messages fails.
+//! Test that decryption of own messages fails.
 use openmls::prelude::*;
 use openmls_test::openmls_test;
 use test_utils::new_credential;

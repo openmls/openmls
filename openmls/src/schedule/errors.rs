@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     error::LibraryError,
-    schedule::psk::{PreSharedKeyId, PskType, ResumptionPskUsage},
+    schedule::psk::{PskType, ResumptionPskUsage},
 };
 
 /// PSK secret error
@@ -39,6 +39,20 @@ pub enum PskError {
         /// Got PSK type.
         got: ResumptionPskUsage,
     },
+    /// Usage conflict.
+    #[error("Usage conflict. First found `{first:?}`, now additionally found `{second:?}`.")]
+    UsageConflict {
+        /// First found PSK type.
+        first: ResumptionPskUsage,
+        /// Second found PSK type.
+        second: ResumptionPskUsage,
+    },
+    /// Usage duplicate.
+    #[error("Usage duplicate. Found two resumption PSKs with usage `{usage:?}`.")]
+    UsageDuplicate {
+        /// Resumption usage found in duplicate.
+        usage: ResumptionPskUsage,
+    },
     /// Nonce length mismatch.
     #[error("Nonce length mismatch. Expected either of `{expected:?}`, got `{got:?}`.")]
     NonceLengthMismatch {
@@ -46,12 +60,6 @@ pub enum PskError {
         expected: usize,
         /// Got nonce length.
         got: usize,
-    },
-    /// Duplicate PSK ID.
-    #[error("Duplicate PSK ID. First detected duplicate is `{first:?}`.")]
-    Duplicate {
-        /// First detected duplicate.
-        first: PreSharedKeyId,
     },
 }
 

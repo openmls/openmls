@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR REPLACE INTO openmls_proposal (group_id, proposal_ref, proposal) VALUES (?1, ?2, ?3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "529f17568e96ecba959b5ed4f295c7e7762c8bdd8c0048b478a7a4e5161b44f9"
+}

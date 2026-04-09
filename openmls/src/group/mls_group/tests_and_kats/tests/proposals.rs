@@ -23,6 +23,15 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+#[cfg(feature = "extensions-draft-08")]
+use crate::{
+    component::ComponentId,
+    group::MlsGroupCreateConfig,
+    messages::proposals::AppEphemeralProposal,
+    prelude::{MlsMessageIn, StagedCommit},
+    test_utils::single_group_test_framework::*,
+};
+
 /// This test makes sure ProposalQueue works as intended. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
 /// `filtered_queued_proposals` returns only proposals of a certain type
@@ -297,10 +306,10 @@ fn required_extension_key_package_mismatch() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
-        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-            required_capabilities,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities))
+                .expect("failed to create single-element extensions list"),
+        )
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
 
@@ -342,10 +351,10 @@ fn group_context_extensions() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
-        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-            required_capabilities,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities))
+                .expect("failed to create single-element extensions list"),
+        )
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
 
@@ -396,10 +405,10 @@ fn group_context_extension_proposal_fails() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
-        .with_group_context_extensions(Extensions::single(Extension::RequiredCapabilities(
-            required_capabilities,
-        )))
-        .unwrap()
+        .with_group_context_extensions(
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities))
+                .expect("failed to create single-element extensions list"),
+        )
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
 
@@ -465,7 +474,8 @@ fn group_context_extension_proposal() {
     let (gce_proposal, _) = alice_group
         .propose_group_context_extensions(
             alice_provider,
-            Extensions::single(required_application_id),
+            Extensions::single(required_application_id)
+                .expect("failed to create single-element extensions list"),
             &alice_signer,
         )
         .expect("Error proposing gce.");
@@ -533,7 +543,7 @@ fn self_remove_proposals() {
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackage::builder()
-        .leaf_node_capabilities(capabilities)
+        .leaf_node_capabilities(capabilities.clone())
         .build(
             ciphersuite,
             bob_provider,
@@ -546,6 +556,8 @@ fn self_remove_proposals() {
     // Alice creates a group
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        // support the non-default SelfRemove proposal type
+        .with_capabilities(capabilities)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(alice_provider, &alice_signer, alice_credential.clone())
         .expect("Error creating group.");
