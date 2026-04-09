@@ -75,7 +75,7 @@ async fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> 
 
     let mut psk_ids = vec![];
 
-    for psk in test.psks.iter() {
+    for psk in test.psks {
         let external_psk = ExternalPsk::new(psk.psk_id.clone());
         let psk_type = Psk::External(external_psk);
 

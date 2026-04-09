@@ -25,7 +25,7 @@ async fn join_tree_with_outdated_leafnodes() {
         let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
         let join_config = create_config.join_config().clone();
         let mut group_state = {
-            let group_id = GroupId::from_slice(b"Test setup(Group");
+            let group_id = GroupId::from_slice(b"Test Group");
 
             let group_state = GroupState::new_from_party(
                 group_id,

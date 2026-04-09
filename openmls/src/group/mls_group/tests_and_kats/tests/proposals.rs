@@ -477,9 +477,14 @@ async fn group_context_extension_proposal() {
     // Basic group setup.
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
-    let (mut alice_group, alice_signer, mut bob_group, bob_signer, _alice_credential, _bob_credential) =
-        // TODO: don't let alice and bob share the provider
-        setup_alice_bob_group(ciphersuite, alice_provider, bob_provider).await;
+    let (
+        mut alice_group,
+        alice_signer,
+        mut bob_group,
+        bob_signer,
+        _alice_credential,
+        _bob_credential,
+    ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider).await;
 
     // Alice adds a required capability.
     let required_application_id =

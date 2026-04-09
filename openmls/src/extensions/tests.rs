@@ -171,9 +171,6 @@ async fn ratchet_tree_extension() {
     )
     .await
     .err();
-    // TODO: determine if the lines below are needed
-    // .and_then(|staged_join| staged_join.into_group(bob_provider).await)
-    // .err();
 
     // We expect an error because the ratchet tree is missing
     assert!(matches!(

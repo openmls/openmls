@@ -320,21 +320,17 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
         .expect("Unexptected message type.");
         let clients = self.clients.read().expect("An unexpected error occurred.");
         // Distribute message to all members, except to the sender in the case of application messages
-        for member_id in group.members.iter().filter_map(|(_index, member_id)| {
-            if message.content_type() == ContentType::Application && member_id == sender_id {
-                None
-            } else {
-                Some(member_id)
+        for (_index, member_id) in group.members.iter() {
+            if message.content_type() != ContentType::Application || member_id != sender_id {
+                let member = clients
+                    .get(member_id.as_slice())
+                    .expect("An unexpected error occurred.")
+                    .read()
+                    .expect("An unexpected error occurred.");
+                member
+                    .receive_messages_for_group(&message, sender_id, &authentication_service)
+                    .await?;
             }
-        }) {
-            let member = clients
-                .get(member_id)
-                .expect("An unexpected error occurred.")
-                .read()
-                .expect("An unexpected error occurred.");
-            member
-                .receive_messages_for_group(&message, sender_id, &authentication_service)
-                .await?;
         }
 
         // Get the current tree and figure out who's still in the group.
