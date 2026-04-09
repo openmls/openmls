@@ -97,10 +97,8 @@ pub struct TestEpoch {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TestProposal(#[serde(with = "hex::serde")] Vec<u8>);
 
-#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
-async fn test_read_vectors() {
-    let handle = crate::skip_validation::checks::leaf_node_lifetime::handle();
-    (*handle).disable_validation();
+#[maybe_async::maybe_async]
+async fn read_vectors_inner() {
     for file in TEST_VECTORS_PATH_READ {
         let scenario: Vec<PassiveClientWelcomeTestVector> = read(file);
 
@@ -111,7 +109,13 @@ async fn test_read_vectors() {
             info!("## {i:04} END");
         }
     }
-    (*handle).enable_validation();
+}
+
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn test_read_vectors() {
+    crate::skip_validation::checks::leaf_node_lifetime::handle()
+        .with_disabled(read_vectors_inner)
+        .await;
 }
 
 #[maybe_async::maybe_async]
@@ -188,11 +192,8 @@ pub async fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     }
 }
 
-#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
-async fn test_write_vectors() {
-    let handle = crate::skip_validation::checks::leaf_node_lifetime::handle();
-    (*handle).disable_validation();
-
+#[maybe_async::maybe_async]
+async fn write_vectors_inner() {
     let mut tests = Vec::new();
 
     for _ in 0..NUM_TESTS {
@@ -208,7 +209,13 @@ async fn test_write_vectors() {
 
     // TODO(#1279)
     write(TEST_VECTOR_PATH_WRITE[0], &tests);
-    (*handle).enable_validation();
+}
+
+#[maybe_async::test(feature = "sync", async(not(feature = "sync"), tokio::test))]
+async fn test_write_vectors() {
+    crate::skip_validation::checks::leaf_node_lifetime::handle()
+        .with_disabled(write_vectors_inner)
+        .await;
 }
 
 struct PassiveClient {
