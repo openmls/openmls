@@ -89,6 +89,7 @@ pub enum ProposalType {
     AppDataUpdate,
     Grease(u16),
     Custom(u16),
+    Batched,
 }
 
 impl ProposalType {
@@ -106,6 +107,7 @@ impl ProposalType {
             ProposalType::SelfRemove | ProposalType::Grease(_) | ProposalType::Custom(_) => false,
             #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppEphemeral | ProposalType::AppDataUpdate => false,
+            ProposalType::Batched => false,
         }
     }
 
@@ -208,6 +210,7 @@ impl From<ProposalType> for u16 {
             ProposalType::SelfRemove => 0x000a,
             ProposalType::Grease(id) => id,
             ProposalType::Custom(id) => id,
+            ProposalType::Batched => 0x000b, // TODO: id
         }
     }
 }
@@ -250,7 +253,11 @@ pub enum Proposal {
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral(Box<AppEphemeralProposal>),
     Custom(Box<CustomProposal>),
+    Batched(Box<BatchedProposalList>),
 }
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
+pub struct BatchedProposalList(pub(crate) Vec<Proposal>);
 
 impl Proposal {
     /// Build a remove proposal.
@@ -310,6 +317,7 @@ impl Proposal {
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(_) => ProposalType::AppEphemeral,
             Proposal::Custom(custom) => ProposalType::Custom(custom.proposal_type.to_owned()),
+            Proposal::Batched(_) => ProposalType::Batched,
         }
     }
 
