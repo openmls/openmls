@@ -11,7 +11,7 @@ use super::{
         ExternalInitProposal, PreSharedKeyProposal, Proposal, ProposalType, ReInitProposal,
         RemoveProposal,
     },
-    proposals_in::{AddProposalIn, ProposalIn, UpdateProposalIn},
+    proposals_in::{AddProposalIn, BatchedProposalListIn, ProposalIn, UpdateProposalIn},
     CustomProposal,
 };
 
@@ -35,6 +35,7 @@ impl Size for Proposal {
                 #[cfg(feature = "extensions-draft-08")]
                 Proposal::AppEphemeral(p) => p.tls_serialized_len(),
                 Proposal::Custom(p) => p.payload().tls_serialized_len(),
+                Proposal::Batched(p) => p.tls_serialized_len(),
             }
     }
 }
@@ -56,6 +57,7 @@ impl Serialize for Proposal {
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(p) => p.tls_serialize(writer),
             Proposal::Custom(p) => p.payload().tls_serialize(writer),
+            Proposal::Batched(p) => p.tls_serialize(writer),
         }
         .map(|l| written + l)
     }
@@ -78,6 +80,7 @@ impl Size for &ProposalIn {
                 #[cfg(feature = "extensions-draft-08")]
                 ProposalIn::AppEphemeral(p) => p.tls_serialized_len(),
                 ProposalIn::Custom(p) => p.payload().tls_serialized_len(),
+                ProposalIn::Batched(p) => p.tls_serialized_len(),
             }
     }
 }
@@ -105,6 +108,7 @@ impl Serialize for &ProposalIn {
             #[cfg(feature = "extensions-draft-08")]
             ProposalIn::AppEphemeral(p) => p.tls_serialize(writer),
             ProposalIn::Custom(p) => p.payload().tls_serialize(writer),
+            ProposalIn::Batched(p) => p.tls_serialize(writer),
         }
         .map(|l| written + l)
     }
@@ -155,6 +159,9 @@ impl Deserialize for ProposalIn {
                 let payload = Vec::<u8>::tls_deserialize(bytes)?;
                 let custom_proposal = CustomProposal::new(proposal_type.into(), payload);
                 ProposalIn::Custom(Box::new(custom_proposal))
+            }
+            ProposalType::Batched => {
+                ProposalIn::Batched(Box::new(BatchedProposalListIn::tls_deserialize(bytes)?))
             }
         };
         Ok(proposal)

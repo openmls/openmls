@@ -20,8 +20,9 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use super::{
     proposals::{
-        AddProposal, ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal,
-        Proposal, ProposalOrRef, ProposalType, ReInitProposal, RemoveProposal, UpdateProposal,
+        AddProposal, BatchedProposalList, ExternalInitProposal, GroupContextExtensionProposal,
+        PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType, ReInitProposal,
+        RemoveProposal, UpdateProposal,
     },
     CustomProposal,
 };
@@ -68,6 +69,7 @@ pub enum ProposalIn {
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral(Box<AppEphemeralProposal>),
     Custom(Box<CustomProposal>),
+    Batched(Box<BatchedProposalListIn>),
 }
 
 impl ProposalIn {
@@ -89,6 +91,7 @@ impl ProposalIn {
             ProposalIn::Custom(custom_proposal) => {
                 ProposalType::Custom(custom_proposal.proposal_type())
             }
+            ProposalIn::Batched(_) => ProposalType::Batched,
         }
     }
 
@@ -133,6 +136,7 @@ impl ProposalIn {
             #[cfg(feature = "extensions-draft-08")]
             ProposalIn::AppEphemeral(app_ephemeral) => Proposal::AppEphemeral(app_ephemeral),
             ProposalIn::Custom(custom) => Proposal::Custom(custom),
+            ProposalIn::Batched(list) => todo!(),
         })
     }
 }
@@ -161,6 +165,19 @@ impl ProposalIn {
 pub struct AddProposalIn {
     key_package: KeyPackageIn,
 }
+
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
+)]
+pub struct BatchedProposalListIn(Vec<ProposalIn>);
 
 impl AddProposalIn {
     pub(crate) fn unverified_credential(&self) -> CredentialWithKey {
@@ -310,6 +327,14 @@ impl From<AddProposal> for Box<AddProposalIn> {
     }
 }
 
+impl From<BatchedProposalList> for Box<BatchedProposalListIn> {
+    fn from(value: BatchedProposalList) -> Self {
+        Box::new(BatchedProposalListIn(
+            value.0.into_iter().map(ProposalIn::from).collect(),
+        ))
+    }
+}
+
 // The following `From` implementation( breaks abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
 #[cfg(any(feature = "test-utils", test))]
@@ -399,6 +424,7 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
             #[cfg(feature = "extensions-draft-08")]
             ProposalIn::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),
             ProposalIn::Custom(other) => Self::Custom(other),
+            ProposalIn::Batched(list) => Self::Batched(todo!()),
         }
     }
 }
@@ -421,6 +447,7 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),
             Proposal::Custom(other) => Self::Custom(other),
+            Proposal::Batched(list) => Self::Batched((*list).into()),
         }
     }
 }
