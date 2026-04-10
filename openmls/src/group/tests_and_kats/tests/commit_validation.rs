@@ -1,7 +1,9 @@
 //! This module tests the validation of commits as defined in
 //! https://book.openmls.tech/message_validation.html#commit-message-validation
 
-use openmls_traits::{prelude::*, signatures::Signer, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, prelude::*, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
+};
 use proposal_store::QueuedProposal;
 use tls_codec::{Deserialize, Serialize};
 
@@ -295,6 +297,23 @@ async fn test_valsem200() {
         .await
         .expect("Unexpected error.");
 }
+impl Proposal {
+    /// Helper to create a queued proposal
+    /// from a provided Proposal, where Alice is the sender.
+    fn into_queued_proposal_with_alice_sender<Crypto: OpenMlsCrypto>(
+        self,
+        crypto: &Crypto,
+        alice_group: &MlsGroup,
+    ) -> QueuedProposal {
+        QueuedProposal::from_proposal_and_sender(
+            alice_group.ciphersuite(),
+            crypto,
+            self,
+            &Sender::Member(alice_group.own_leaf_index()),
+        )
+        .unwrap()
+    }
+}
 
 // ValSem201: Path must be present, if at least one proposal requires a path
 #[openmls_test::openmls_test]
@@ -302,6 +321,7 @@ async fn test_valsem201() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     let charlie_provider = &Provider::default();
+    let dave_provider = &Provider::default();
 
     let wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
     // Test with PublicMessage
@@ -320,28 +340,17 @@ async fn test_valsem201() {
     )
     .await;
 
-    fn queued<Provider: OpenMlsProvider>(
-        proposal: Proposal,
-        alice_provider: &Provider,
-        alice_group: &MlsGroup,
-        ciphersuite: Ciphersuite,
-    ) -> QueuedProposal {
-        QueuedProposal::from_proposal_and_sender(
-            ciphersuite,
-            alice_provider.crypto(),
-            proposal,
-            &Sender::Member(alice_group.own_leaf_index()),
-        )
-        .unwrap()
-    }
-
+    /// Helper that returns a proposal to add Dave to `alice_group`
+    /// using a new key package, as a QueuedProposal with Alice as the sender.
     #[maybe_async::maybe_async]
-    async fn add_proposal(
-        ciphersuite: Ciphersuite,
+    async fn create_queued_add_proposal(
         alice_provider: &Provider,
         alice_group: &MlsGroup,
+        dave_provider: &Provider,
     ) -> QueuedProposal {
-        let dave_provider = &Provider::default();
+        let ciphersuite = alice_group.ciphersuite();
+
+        // create a new CredentialWithKey and KeyPackage
         let dave_credential = generate_credential_with_key(
             "Dave".into(),
             ciphersuite.signature_algorithm(),
@@ -356,52 +365,76 @@ async fn test_valsem201() {
         )
         .await;
 
-        queued(
-            Proposal::add(AddProposal {
-                key_package: dave_key_package.key_package().clone(),
-            }),
-            alice_provider,
-            alice_group,
-            ciphersuite,
-        )
+        Proposal::add(AddProposal {
+            key_package: dave_key_package.key_package().clone(),
+        })
+        .into_queued_proposal_with_alice_sender(alice_provider.crypto(), alice_group)
     }
 
-    let update_proposal = queued(
-        Proposal::update(UpdateProposal {
-            leaf_node: alice_group
-                .own_leaf()
-                .expect("Unable to get own leaf")
-                .clone(),
-        }),
-        alice_provider,
-        &alice_group,
-        ciphersuite,
-    );
+    /// Helper that returns a new PreSharedKeyProposal as a QueuedProposal with Alice as the sender.
+    #[maybe_async::maybe_async]
+    async fn create_queued_psk_proposal<Provider: OpenMlsProvider>(
+        alice_provider: &Provider,
+        bob_provider: &Provider,
+        alice_group: &MlsGroup,
+    ) -> QueuedProposal {
+        let ciphersuite = alice_group.ciphersuite();
 
-    let remove_proposal = || {
-        queued(
-            Proposal::remove(RemoveProposal {
-                removed: charlie_group.own_leaf_index(),
-            }),
-            alice_provider,
-            &alice_group,
+        let secret = Secret::random(ciphersuite, alice_provider.rand()).unwrap();
+        let rand = alice_provider
+            .rand()
+            .random_vec(ciphersuite.hash_length())
+            .unwrap();
+        let psk_id = PreSharedKeyId::new(
             ciphersuite,
+            alice_provider.rand(),
+            Psk::External(ExternalPsk::new(rand)),
         )
-    };
+        .unwrap();
+        psk_id
+            .store(alice_provider, secret.as_slice())
+            .await
+            .unwrap();
+        psk_id.store(bob_provider, secret.as_slice()).await.unwrap();
+        Proposal::psk(PreSharedKeyProposal::new(psk_id))
+            .into_queued_proposal_with_alice_sender(alice_provider.crypto(), alice_group)
+    }
+
+    let update_proposal = Proposal::update(UpdateProposal {
+        leaf_node: alice_group
+            .own_leaf()
+            .expect("Unable to get own leaf")
+            .clone(),
+    })
+    .into_queued_proposal_with_alice_sender(alice_provider.crypto(), &alice_group);
+
+    /// Helper that returns a proposal to remove Charlie from the group
+    /// as a QueuedProposal with Alice as the sender.
+    fn create_queued_remove_proposal(
+        alice_provider: &Provider,
+        alice_group: &MlsGroup,
+        charlie_leaf_index: LeafNodeIndex,
+    ) -> QueuedProposal {
+        Proposal::remove(RemoveProposal {
+            removed: charlie_leaf_index,
+        })
+        .into_queued_proposal_with_alice_sender(alice_provider.crypto(), alice_group)
+    }
 
     let group_context_extensions: Extensions<GroupContext> =
         alice_group.context().extensions().clone();
-
-    let gce_proposal = || {
-        queued(
-            Proposal::group_context_extensions(GroupContextExtensionProposal::new(
-                group_context_extensions,
-            )),
-            alice_provider,
-            &alice_group,
-            ciphersuite,
-        )
-    };
+    /// Helper that returns a proposal to update the group context extensions
+    /// as a QueuedProposal with Alice as the sender.
+    fn create_queued_gce_proposal(
+        alice_provider: &Provider,
+        alice_group: &MlsGroup,
+        group_context_extensions: Extensions<GroupContext>,
+    ) -> QueuedProposal {
+        Proposal::group_context_extensions(GroupContextExtensionProposal::new(
+            group_context_extensions,
+        ))
+        .into_queued_proposal_with_alice_sender(alice_provider.crypto(), alice_group)
+    }
 
     // ExternalInit Proposal cannot be used alone and has to be in an external commit which
     // always contains a path anyway
@@ -411,48 +444,66 @@ async fn test_valsem201() {
     // in [MlsGroup::apply_proposals()]
     let cases = Vec::from([
         (
-            Vec::from([add_proposal(ciphersuite, alice_provider, &alice_group).await]),
+            Vec::from([
+                create_queued_add_proposal(alice_provider, &alice_group, dave_provider).await,
+            ]),
             false,
         ),
         (
-            Vec::from([psk_proposals(
-                ciphersuite,
-                alice_provider,
-                bob_provider,
-                &alice_group,
-                queued,
-            )
-            .await]),
+            Vec::from([
+                create_queued_psk_proposal(alice_provider, bob_provider, &alice_group).await,
+            ]),
             false,
         ),
         (vec![update_proposal.clone()], true),
-        (vec![remove_proposal()], true),
-        (vec![gce_proposal()], true),
+        (
+            vec![create_queued_remove_proposal(
+                alice_provider,
+                &alice_group,
+                charlie_group.own_leaf_index(),
+            )],
+            true,
+        ),
+        (
+            vec![create_queued_gce_proposal(
+                alice_provider,
+                &alice_group,
+                group_context_extensions,
+            )],
+            true,
+        ),
         // !path_required + !path_required = !path_required
         (
             Vec::from([
-                add_proposal(ciphersuite, alice_provider, &alice_group).await,
-                psk_proposals(
-                    ciphersuite,
-                    alice_provider,
-                    bob_provider,
-                    &alice_group,
-                    queued,
-                )
-                .await,
+                create_queued_add_proposal(alice_provider, &alice_group, dave_provider).await,
+                create_queued_psk_proposal(alice_provider, bob_provider, &alice_group).await,
             ]),
             false,
         ),
         // path_required + !path_required = path_required
         (
             Vec::from([
-                remove_proposal(),
-                add_proposal(ciphersuite, alice_provider, &alice_group).await,
+                create_queued_remove_proposal(
+                    alice_provider,
+                    &alice_group,
+                    charlie_group.own_leaf_index(),
+                ),
+                create_queued_add_proposal(alice_provider, &alice_group, dave_provider).await,
             ]),
             true,
         ),
         // path_required + path_required = path_required
-        (Vec::from([update_proposal, remove_proposal()]), true),
+        (
+            vec![
+                update_proposal,
+                create_queued_remove_proposal(
+                    alice_provider,
+                    &alice_group,
+                    charlie_group.own_leaf_index(),
+                ),
+            ],
+            true,
+        ),
         // TODO: #566 this should work if GCE proposals validation were implemented
         // (vec![add_proposal(), gce_proposal()], true),
     ]);
@@ -535,38 +586,6 @@ async fn test_valsem201() {
             .await
             .unwrap();
     }
-}
-
-#[maybe_async::maybe_async]
-async fn psk_proposals<Provider: OpenMlsProvider>(
-    ciphersuite: Ciphersuite,
-    alice_provider: &Provider,
-    bob_provider: &Provider,
-    alice_group: &MlsGroup,
-    queued: impl Fn(Proposal, &Provider, &MlsGroup, Ciphersuite) -> QueuedProposal,
-) -> QueuedProposal {
-    let secret = Secret::random(ciphersuite, alice_provider.rand()).unwrap();
-    let rand = alice_provider
-        .rand()
-        .random_vec(ciphersuite.hash_length())
-        .unwrap();
-    let psk_id = PreSharedKeyId::new(
-        ciphersuite,
-        alice_provider.rand(),
-        Psk::External(ExternalPsk::new(rand)),
-    )
-    .unwrap();
-    psk_id
-        .store(alice_provider, secret.as_slice())
-        .await
-        .unwrap();
-    psk_id.store(bob_provider, secret.as_slice()).await.unwrap();
-    queued(
-        Proposal::psk(PreSharedKeyProposal::new(psk_id)),
-        alice_provider,
-        alice_group,
-        ciphersuite,
-    )
 }
 
 fn erase_path(
