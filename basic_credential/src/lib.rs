@@ -6,7 +6,6 @@
 
 use std::fmt::Debug;
 
-use ml_dsa::KeyGen;
 use openmls_traits::{
     signatures::{Signer, SignerError},
     storage::{self, StorageProvider, CURRENT_VERSION},
@@ -87,13 +86,13 @@ impl Signer for SignatureKeyPair {
                 Ok(signature.to_bytes().into())
             }
             SignatureScheme::MLDSA87 => {
-                let signing_key_bytes: [u8; 4896] = self
+                // Note: Conversion of private key to a *ref* of encoded key
+                let encoded_key: &ml_dsa::EncodedSigningKey<ml_dsa::MlDsa87> = self
                     .private
                     .as_slice()
                     .try_into()
                     .map_err(|_| SignerError::SigningError)?;
-                let encoded_key = signing_key_bytes.into();
-                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::decode(&encoded_key);
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::decode(encoded_key);
                 let signature = k.sign(payload);
                 Ok(signature.encode().to_vec())
             }
@@ -142,6 +141,7 @@ impl SignatureKeyPair {
                 (sk.as_bytes().as_slice().into(), pk)
             }
             SignatureScheme::MLDSA87 => {
+                use ml_dsa::KeyGen as _;
                 let kp = ml_dsa::MlDsa87::key_gen(&mut OsRng);
                 let pk = kp.verifying_key().encode().to_vec();
                 let sk = kp.signing_key().encode().to_vec();

@@ -10,7 +10,6 @@ use hkdf::Hkdf;
 use hpke::Hpke;
 use hpke_rs_crypto::types as hpke_types;
 use hpke_rs_rust_crypto::HpkeRustCrypto;
-use ml_dsa::KeyGen as _;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
@@ -279,6 +278,7 @@ impl OpenMlsCrypto for RustCrypto {
                 Ok((k.to_bytes().as_slice().into(), pk))
             }
             SignatureScheme::MLDSA87 => {
+                use ml_dsa::KeyGen as _;
                 let mut rng = self
                     .rng
                     .write()
@@ -336,17 +336,16 @@ impl OpenMlsCrypto for RustCrypto {
                 .map_err(|_| CryptoError::InvalidSignature)
             }
             SignatureScheme::MLDSA87 => {
-                let verifying_key_bytes: [u8; 2592] =
+                // Note: Conversion of key and signature to a *ref* of corresponding encoded types
+                let encoded_key: &ml_dsa::EncodedVerifyingKey<ml_dsa::MlDsa87> =
                     pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
-                let encoded_key = verifying_key_bytes.into();
-                let k = ml_dsa::VerifyingKey::<ml_dsa::MlDsa87>::decode(&encoded_key);
-                let signature_bytes: [u8; 4627] = signature
+                let encoded_signature: &ml_dsa::EncodedSignature<ml_dsa::MlDsa87> = signature
                     .try_into()
                     .map_err(|_| CryptoError::InvalidLength)?;
-                let encoded_signature = signature_bytes.into();
-                let signature = ml_dsa::Signature::<ml_dsa::MlDsa87>::decode(&encoded_signature)
+                let key = ml_dsa::VerifyingKey::<ml_dsa::MlDsa87>::decode(encoded_key);
+                let signature = ml_dsa::Signature::<ml_dsa::MlDsa87>::decode(encoded_signature)
                     .ok_or(CryptoError::InvalidSignature)?;
-                k.verify(data, &signature)
+                key.verify(data, &signature)
                     .map_err(|_| CryptoError::InvalidSignature)
             }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
@@ -379,10 +378,10 @@ impl OpenMlsCrypto for RustCrypto {
                 Ok(signature.to_bytes().into())
             }
             SignatureScheme::MLDSA87 => {
-                let signing_key_bytes: [u8; 4896] =
+                // Note: Conversion of private key to a *ref* of encoded key
+                let encoded_key: &ml_dsa::EncodedSigningKey<ml_dsa::MlDsa87> =
                     key.try_into().map_err(|_| CryptoError::InvalidLength)?;
-                let encoded_key = signing_key_bytes.into();
-                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::decode(&encoded_key);
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::decode(encoded_key);
                 let signature = k.sign(data);
                 Ok(signature.encode().to_vec())
             }
