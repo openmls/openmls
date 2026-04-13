@@ -10,6 +10,7 @@ use hkdf::Hkdf;
 use hpke::Hpke;
 use hpke_rs_crypto::types as hpke_types;
 use hpke_rs_rust_crypto::HpkeRustCrypto;
+use ml_dsa::KeyGen as _;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
@@ -61,6 +62,7 @@ fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
         HpkeKemType::XWingKemDraft6 => {
             unimplemented!("XWingKemDraft6 is not supported by the RustCrypto provider.")
         }
+        HpkeKemType::MlKem1024 => hpke_types::KemAlgorithm::MlKem1024,
     }
 }
 
@@ -88,7 +90,8 @@ impl OpenMlsCrypto for RustCrypto {
         match ciphersuite {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
             | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-            | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(()),
+            | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
+            | Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384 => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }
     }
@@ -98,6 +101,8 @@ impl OpenMlsCrypto for RustCrypto {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384,
+            Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87,
         ]
     }
 
@@ -264,6 +269,25 @@ impl OpenMlsCrypto for RustCrypto {
                 let pk = sk.verifying_key().to_bytes().into();
                 Ok((sk.to_bytes().into(), pk))
             }
+            SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+                let mut rng = self
+                    .rng
+                    .write()
+                    .map_err(|_| CryptoError::InsufficientRandomness)?;
+                let k = p384::ecdsa::SigningKey::random(&mut *rng);
+                let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
+                Ok((k.to_bytes().as_slice().into(), pk))
+            }
+            SignatureScheme::MLDSA87 => {
+                let mut rng = self
+                    .rng
+                    .write()
+                    .map_err(|_| CryptoError::InsufficientRandomness)?;
+                let kp = ml_dsa::MlDsa87::key_gen(&mut *rng);
+                let pk = kp.verifying_key().encode().to_vec();
+                let sk = kp.signing_key().encode().to_vec();
+                Ok((sk, pk))
+            }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
     }
@@ -298,6 +322,33 @@ impl OpenMlsCrypto for RustCrypto {
                 k.verify_strict(data, &ed25519_dalek::Signature::from(sig))
                     .map_err(|_| CryptoError::InvalidSignature)
             }
+            SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+                let k = p384::ecdsa::VerifyingKey::from_encoded_point(
+                    &p384::EncodedPoint::from_bytes(pk)
+                        .map_err(|_| CryptoError::CryptoLibraryError)?,
+                )
+                .map_err(|_| CryptoError::CryptoLibraryError)?;
+                k.verify(
+                    data,
+                    &p384::ecdsa::Signature::from_der(signature)
+                        .map_err(|_| CryptoError::InvalidSignature)?,
+                )
+                .map_err(|_| CryptoError::InvalidSignature)
+            }
+            SignatureScheme::MLDSA87 => {
+                let verifying_key_bytes: [u8; 2592] =
+                    pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let encoded_key = verifying_key_bytes.into();
+                let k = ml_dsa::VerifyingKey::<ml_dsa::MlDsa87>::decode(&encoded_key);
+                let signature_bytes: [u8; 4627] = signature
+                    .try_into()
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                let encoded_signature = signature_bytes.into();
+                let signature = ml_dsa::Signature::<ml_dsa::MlDsa87>::decode(&encoded_signature)
+                    .ok_or(CryptoError::InvalidSignature)?;
+                k.verify(data, &signature)
+                    .map_err(|_| CryptoError::InvalidSignature)
+            }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
     }
@@ -315,11 +366,25 @@ impl OpenMlsCrypto for RustCrypto {
                 let signature: Signature = k.sign(data);
                 Ok(signature.to_der().to_bytes().into())
             }
+            SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+                let k = p384::ecdsa::SigningKey::from_bytes(key.into())
+                    .map_err(|_| CryptoError::CryptoLibraryError)?;
+                let signature: p384::ecdsa::Signature = k.sign(data);
+                Ok(signature.to_der().to_bytes().into())
+            }
             SignatureScheme::ED25519 => {
                 let k = ed25519_dalek::SigningKey::try_from(key)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
                 let signature = k.sign(data);
                 Ok(signature.to_bytes().into())
+            }
+            SignatureScheme::MLDSA87 => {
+                let signing_key_bytes: [u8; 4896] =
+                    key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let encoded_key = signing_key_bytes.into();
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::decode(&encoded_key);
+                let signature = k.sign(data);
+                Ok(signature.encode().to_vec())
             }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
