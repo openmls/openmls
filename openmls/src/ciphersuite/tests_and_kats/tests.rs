@@ -86,7 +86,7 @@ fn test_safe_hpke_seal_open() {
     let provider = &Provider::default();
 
     const CONTEXT: &[u8] = &[1, 2, 3];
-    const LABEL: &'static str = "label";
+    const LABEL: &str = "label";
 
     let plaintext = &[1, 2, 3];
     let kp = provider
