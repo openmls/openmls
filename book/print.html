@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-939744e6.js";
+            window.path_to_searchindex_js = "searchindex-e98e28f4.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-b82fad9d.js"></script>
@@ -1265,7 +1265,7 @@ to 16 bit. We are using 16 bit ComponentIDs. More context in issue <a href="http
 <li>Decrementing below zero is invalid and will cause the commit to be rejected</li>
 </ul>
 <pre><code class="language-rust no_run noplayground">/// Our counter component ID (in the private range 0x8000..0xffff)
-const COUNTER_COMPONENT_ID: u16 = 0xf042;
+const COUNTER_COMPONENT_ID: ComponentId = 0xf042;
 
 /// The operations that can be performed on the counter
 #[repr(u8)]
