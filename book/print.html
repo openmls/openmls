@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e98e28f4.js";
+            window.path_to_searchindex_js = "searchindex-dab74b33.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-b82fad9d.js"></script>
@@ -2034,7 +2034,7 @@ Notice how Alice needs to provide a new key package for Bob.</p>
     let (commit, welcome, _) = readd_messages.into_contents();
     let welcome = welcome.unwrap();
     let processed_welcome =
-        ProcessedWelcome::new_from_welcome(bob_provider, &amp;mls_group_config, welcome).unwrap();
+        ProcessedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome).unwrap();
     let bob_group = JoinBuilder::new(bob_provider, processed_welcome)
         .replace_old_group()
         .build()
