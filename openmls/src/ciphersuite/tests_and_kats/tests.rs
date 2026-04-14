@@ -83,6 +83,8 @@ fn test_hpke_seal_open() {
 #[cfg(feature = "extensions-draft-08")]
 #[openmls_test::openmls_test]
 fn test_safe_hpke_seal_open() {
+    use crate::component::ComponentId;
+
     let provider = &Provider::default();
 
     const CONTEXT: &[u8] = &[1, 2, 3];
@@ -99,7 +101,7 @@ fn test_safe_hpke_seal_open() {
         )
         .expect("error deriving hpke key pair");
 
-    const COMPONENT_ID: u16 = 1;
+    const COMPONENT_ID: ComponentId = 1;
 
     let ciphertext = hpke::safe_encrypt_with_label(
         &kp.public,

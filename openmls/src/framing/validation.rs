@@ -36,7 +36,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::messages::proposals_in::ProposalOrRefIn;
+use crate::{component::ComponentId, messages::proposals_in::ProposalOrRefIn};
 
 use super::{
     mls_auth_content::AuthenticatedContent,
@@ -343,7 +343,7 @@ impl ProcessedMessage {
     pub fn safe_export_secret<Crypto: OpenMlsCrypto>(
         &mut self,
         crypto: &Crypto,
-        component_id: u16,
+        component_id: ComponentId,
     ) -> Result<Vec<u8>, ProcessedMessageSafeExportSecretError> {
         if let ProcessedMessageContent::StagedCommitMessage(ref mut staged_commit) =
             &mut self.content

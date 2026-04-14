@@ -18,7 +18,7 @@ use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;
 use crate::prelude::{Commit, LeafNodeIndex};
 #[cfg(feature = "extensions-draft-08")]
-use crate::schedule::application_export_tree::ApplicationExportTree;
+use crate::{component::ComponentId, schedule::application_export_tree::ApplicationExportTree};
 
 use crate::treesync::errors::TreeSyncFromNodesError;
 use crate::treesync::RatchetTree;
@@ -754,7 +754,7 @@ impl StagedCommit {
     pub(crate) fn safe_export_secret(
         &mut self,
         crypto: &impl OpenMlsCrypto,
-        component_id: u16,
+        component_id: ComponentId,
     ) -> Result<Vec<u8>, StagedSafeExportSecretError> {
         let ciphersuite = self.group_context().ciphersuite();
         let StagedCommitState::GroupMember(ref mut staged_commit) = self.state else {
