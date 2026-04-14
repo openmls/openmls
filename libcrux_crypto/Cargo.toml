@@ -20,7 +20,7 @@ libcrux-traits = { version = "0.0.6" }
 openmls_traits = { workspace = true }
 openmls_memory_storage = { workspace = true }
 
-rand = "0.9"
+rand = "0.10"
 tls_codec.workspace = true
 rand_chacha = "0.9"
 
