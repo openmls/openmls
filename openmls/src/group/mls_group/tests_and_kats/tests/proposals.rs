@@ -23,15 +23,6 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft-08")]
-use crate::{
-    component::ComponentId,
-    group::MlsGroupCreateConfig,
-    messages::proposals::AppEphemeralProposal,
-    prelude::{MlsMessageIn, StagedCommit},
-    test_utils::single_group_test_framework::*,
-};
-
 /// This test makes sure ProposalQueue works as intended. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
 /// `filtered_queued_proposals` returns only proposals of a certain type
