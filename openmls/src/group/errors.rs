@@ -461,6 +461,9 @@ pub enum ValidationError {
     /// See [`InvalidExtensionError`]
     #[error("Invalid extension")]
     InvalidExtension(#[from] InvalidExtensionError),
+    #[cfg(feature = "batched-proposals")]
+    #[error(transparent)]
+    BatchedProposalValidation(#[from] BatchedProposalValidationError),
 }
 
 /// Proposal validation error
@@ -639,6 +642,16 @@ pub enum MergeCommitError<StorageError> {
     /// Error writing updated group to storage.
     #[error("Error writing updated group data to storage.")]
     StorageError(StorageError),
+}
+
+#[cfg(feature = "batched-proposals")]
+/// Error validating a batched proposal
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum BatchedProposalValidationError {
+    #[error("The provided batch is empty")]
+    EmptyList,
+    #[error("The provided batch contains at least one nested batched proposal")]
+    NestedBatch,
 }
 
 #[cfg(feature = "extensions-draft-08")]

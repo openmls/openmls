@@ -21,6 +21,7 @@ pub enum FrankenProposalType {
     AppEphemeral,
     #[cfg(feature = "extensions-draft-08")]
     AppDataUpdate,
+    Batched,
     Custom(u16),
 }
 
@@ -38,6 +39,7 @@ impl From<u16> for FrankenProposalType {
             8 => FrankenProposalType::AppDataUpdate,
             #[cfg(feature = "extensions-draft-08")]
             0x0009 => FrankenProposalType::AppEphemeral,
+            0x000b => FrankenProposalType::Batched,
             other => FrankenProposalType::Custom(other),
         }
     }
@@ -57,6 +59,7 @@ impl From<FrankenProposalType> for u16 {
             FrankenProposalType::AppDataUpdate => 8,
             #[cfg(feature = "extensions-draft-08")]
             FrankenProposalType::AppEphemeral => 0x0009,
+            FrankenProposalType::Batched => 0x000b,
             FrankenProposalType::Custom(id) => id,
         }
     }
@@ -78,6 +81,7 @@ impl FrankenProposal {
             FrankenProposal::AppEphemeral(_) => FrankenProposalType::AppEphemeral,
             #[cfg(feature = "extensions-draft-08")]
             FrankenProposal::AppDataUpdate(_) => FrankenProposalType::AppDataUpdate,
+            FrankenProposal::Batched(_) => FrankenProposalType::Batched,
             FrankenProposal::Custom(FrankenCustomProposal {
                 proposal_type,
                 payload: _,
@@ -100,6 +104,7 @@ pub enum FrankenProposal {
     AppEphemeral(FrankenAppEphemeralProposal),
     #[cfg(feature = "extensions-draft-08")]
     AppDataUpdate(FrankenAppDataUpdateProposal),
+    Batched(FrankenBatchedProposalList),
     Custom(FrankenCustomProposal),
 }
 
@@ -236,3 +241,6 @@ pub struct FrankenCustomProposal {
     pub proposal_type: u16,
     pub payload: VLBytes,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FrankenBatchedProposalList(pub Vec<FrankenProposal>);

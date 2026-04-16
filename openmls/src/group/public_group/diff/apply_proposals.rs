@@ -70,7 +70,7 @@ impl PublicGroupDiff<'_> {
         // same leaf as we are in) is valid in this case. We only care about the
         // first proposal and ignore all others.
         let external_init_proposal_option = proposal_queue
-            .filtered_by_type(ProposalType::ExternalInit)
+            .filtered_by_type_flattened(ProposalType::ExternalInit)
             .next()
             .and_then(|queued_proposal| {
                 if let Proposal::ExternalInit(external_init_proposal) = queued_proposal.proposal() {
@@ -81,7 +81,7 @@ impl PublicGroupDiff<'_> {
             });
 
         // Process updates first
-        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
+        for queued_proposal in proposal_queue.filtered_by_type_flattened(ProposalType::Update) {
             if let Proposal::Update(update_proposal) = queued_proposal.proposal() {
                 // Check if this is our own update.
                 let sender = queued_proposal.sender();
@@ -99,7 +99,7 @@ impl PublicGroupDiff<'_> {
 
         // Process removes
         let own_leaf_index = own_leaf_index.into();
-        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Remove) {
+        for queued_proposal in proposal_queue.filtered_by_type_flattened(ProposalType::Remove) {
             if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
                 // Check if we got removed from the group
                 match own_leaf_index {
@@ -114,7 +114,7 @@ impl PublicGroupDiff<'_> {
         }
 
         // Process self removes
-        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::SelfRemove) {
+        for queued_proposal in proposal_queue.filtered_by_type_flattened(ProposalType::SelfRemove) {
             if let Proposal::SelfRemove = queued_proposal.proposal() {
                 // Check if we got removed from the group
                 let Sender::Member(removed) = queued_proposal.sender() else {
@@ -131,10 +131,10 @@ impl PublicGroupDiff<'_> {
 
         // Process adds
         let add_proposals = proposal_queue
-            .filtered_by_type(ProposalType::Add)
+            .filtered_by_type_flattened(ProposalType::Add)
             .filter_map(|queued_proposal| {
                 if let Proposal::Add(add_proposal) = queued_proposal.proposal() {
-                    Some(add_proposal)
+                    Some(add_proposal.clone())
                 } else {
                     None
                 }
@@ -149,14 +149,14 @@ impl PublicGroupDiff<'_> {
                 .diff
                 .add_leaf(leaf_node.clone())
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
-            invitation_list.push((leaf_index, *(*add_proposal).clone()))
+            invitation_list.push((leaf_index, *add_proposal))
         }
 
         self.diff.trim_tree();
 
         // Process PSK proposals
         let presharedkeys: Vec<PreSharedKeyId> = proposal_queue
-            .filtered_by_type(ProposalType::PreSharedKey)
+            .filtered_by_type_flattened(ProposalType::PreSharedKey)
             .filter_map(|queued_proposal| {
                 if let Proposal::PreSharedKey(psk_proposal) = queued_proposal.proposal() {
                     Some(psk_proposal.clone().into_psk_id())
@@ -170,7 +170,7 @@ impl PublicGroupDiff<'_> {
         // can be followed by AppDataUpdate proposals that modify
         // the AppDataDictionary in the extensions
         let updated_group_context_extensions = proposal_queue
-            .filtered_by_type(ProposalType::GroupContextExtensions)
+            .filtered_by_type_flattened(ProposalType::GroupContextExtensions)
             .find_map(|queued_proposal| match queued_proposal.proposal() {
                 Proposal::GroupContextExtensions(extensions) => {
                     Some(extensions.extensions().clone())
@@ -179,7 +179,7 @@ impl PublicGroupDiff<'_> {
             });
 
         let proposals_require_path = proposal_queue
-            .queued_proposals()
+            .flattened_queued_proposals()
             .any(|p| p.proposal().is_path_required());
 
         // This flag determines if the commit requires a path. A path is required if:

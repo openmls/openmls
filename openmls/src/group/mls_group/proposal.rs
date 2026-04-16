@@ -2,19 +2,26 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::C
 
 use super::{
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError, RemoveProposalError},
-    AddProposal, CreateGroupContextExtProposalError, CustomProposal, FramingParameters, MlsGroup,
-    PreSharedKeyProposal, Proposal, QueuedProposal, RemoveProposal, UpdateProposal, WireFormat,
+    AddProposal, CreateGroupContextExtProposalError, CustomProposal, FramingParameters, Member,
+    MlsGroup, PreSharedKeyProposal, Proposal, QueuedProposal, RemoveProposal, UpdateProposal,
+    WireFormat,
 };
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     credentials::Credential,
     error::LibraryError,
-    extensions::Extensions,
+    extensions::{ExtensionType, Extensions, RequiredCapabilitiesExtension},
     framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut},
-    group::{errors::CreateAddProposalError, GroupContext, GroupId, ValidationError},
+    group::{
+        errors::CreateAddProposalError, public_group::PublicGroup, GroupContext, GroupId,
+        ValidationError,
+    },
     key_packages::KeyPackage,
-    messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
+    messages::{
+        group_info::GroupInfo,
+        proposals::{GroupContextExtensionProposal, ProposalOrRefType},
+    },
     schedule::PreSharedKeyId,
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{LeafNode, LeafNodeParameters},
@@ -25,6 +32,11 @@ use crate::{
 use crate::{
     component::ComponentId,
     messages::proposals::{AppDataUpdateOperation, AppDataUpdateProposal},
+};
+
+#[cfg(feature = "batched-proposals")]
+use crate::{
+    group::mls_group::errors::ProposeBatchedError, messages::proposals::BatchedProposalList,
 };
 
 /// Helper for building a proposal based on the raw values.
@@ -264,6 +276,47 @@ impl MlsGroup {
         }
     }
 
+    #[cfg(feature = "batched-proposals")]
+    pub fn batched_proposal_builder(&mut self) -> ProposeBatchedBuilder<'_> {
+        ProposeBatchedBuilder {
+            group: self,
+            proposals: vec![],
+        }
+    }
+
+    #[cfg(feature = "batched-proposals")]
+    pub(crate) fn propose_batched<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        proposals: Vec<Proposal>,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeBatchedError<Provider::StorageError>> {
+        self.is_operational()?;
+        // initial validation of the list
+        let batch = BatchedProposalList::validate(proposals)?;
+        let batched_proposal =
+            self.create_batched_proposal(self.framing_parameters(), batch, signer)?;
+
+        let proposal = QueuedProposal::from_authenticated_content_by_ref(
+            self.ciphersuite(),
+            provider.crypto(),
+            batched_proposal.clone(),
+        )?;
+
+        let proposal_ref = proposal.proposal_reference();
+
+        provider
+            .storage()
+            .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .map_err(ProposeBatchedError::StorageError)?;
+        self.proposal_store_mut().add(proposal);
+
+        let mls_message = self.content_to_mls_message(batched_proposal, provider)?;
+
+        self.reset_aad();
+        Ok((mls_message, proposal_ref))
+    }
+
     /// Creates proposals to add members to the group.
     ///
     /// Returns an error if there is a pending commit.
@@ -348,13 +401,7 @@ impl MlsGroup {
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError<Provider::StorageError>>
     {
-        // Find the user for the credential first.
-        let member_index = self
-            .public_group()
-            .members()
-            .find(|m| &m.credential == member)
-            .map(|m| m.index);
-
+        let member_index = find_member_index_by_credential(self.public_group().members(), member);
         if let Some(member_index) = member_index {
             self.propose_remove_member(provider, signer, member_index)
         } else {
@@ -372,13 +419,7 @@ impl MlsGroup {
         signer: &impl Signer,
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
-        // Find the user for the credential first.
-        let member_index = self
-            .public_group()
-            .members()
-            .find(|m| &m.credential == member)
-            .map(|m| m.index);
-
+        let member_index = find_member_index_by_credential(self.public_group().members(), member);
         if let Some(member_index) = member_index {
             self.propose_remove_member_by_value(provider, signer, member_index)
         } else {
@@ -524,16 +565,7 @@ impl MlsGroup {
         joiner_key_package: KeyPackage,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, CreateAddProposalError> {
-        if let Some(required_capabilities) = self.required_capabilities() {
-            joiner_key_package
-                .leaf_node()
-                .capabilities()
-                .supports_required_capabilities(required_capabilities)?;
-        }
-        let add_proposal = AddProposal {
-            key_package: joiner_key_package,
-        };
-        let proposal = Proposal::add(add_proposal);
+        let proposal = build_add_proposal(joiner_key_package, self.required_capabilities())?;
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
@@ -653,6 +685,23 @@ impl MlsGroup {
         )
     }
 
+    #[cfg(feature = "batched-proposals")]
+    pub(crate) fn create_batched_proposal(
+        &self,
+        framing_parameters: FramingParameters,
+        batch: BatchedProposalList,
+        signer: &impl Signer,
+    ) -> Result<AuthenticatedContent, LibraryError> {
+        let proposal = Proposal::Batched(Box::new(batch));
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            self.own_leaf_index(),
+            proposal,
+            self.context(),
+            signer,
+        )
+    }
+
     pub(crate) fn create_custom_proposal(
         &self,
         framing_parameters: FramingParameters,
@@ -668,4 +717,134 @@ impl MlsGroup {
             signer,
         )
     }
+}
+
+#[cfg(feature = "batched-proposals")]
+pub struct ProposeBatchedBuilder<'a> {
+    proposals: Vec<Proposal>,
+    group: &'a mut MlsGroup,
+}
+
+#[cfg(feature = "batched-proposals")]
+impl<'a> ProposeBatchedBuilder<'a> {
+    pub fn propose<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+        signer: &impl Signer,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeBatchedError<Provider::StorageError>> {
+        self.group.propose_batched(provider, signer, self.proposals)
+    }
+
+    pub fn add_member(mut self, key_package: KeyPackage) -> Result<Self, CreateAddProposalError> {
+        self.proposals.push(build_add_proposal(
+            key_package,
+            self.group.required_capabilities(),
+        )?);
+        Ok(self)
+    }
+
+    pub fn remove_member(mut self, leaf_index: LeafNodeIndex) -> Result<Self, ValidationError> {
+        if self.group.public_group().leaf(leaf_index).is_none() {
+            return Err(ValidationError::UnknownMember);
+        }
+
+        self.proposals.push(Proposal::remove(RemoveProposal {
+            removed: leaf_index,
+        }));
+
+        Ok(self)
+    }
+
+    pub fn remove_member_by_credential(
+        self,
+        credential: &Credential,
+    ) -> Result<Self, ValidationError> {
+        let member_index =
+            find_member_index_by_credential(self.group.public_group().members(), credential)
+                .ok_or(ValidationError::UnknownMember)?;
+        self.remove_member(member_index)
+    }
+
+    pub fn external_psk(mut self, psk_id: PreSharedKeyId) -> Self {
+        self.proposals
+            .push(Proposal::psk(PreSharedKeyProposal::new(psk_id)));
+        self
+    }
+
+    pub fn custom_proposal(mut self, custom: CustomProposal) -> Self {
+        self.proposals.push(Proposal::custom(custom));
+        self
+    }
+
+    pub fn group_context_extensions(
+        mut self,
+        extensions: Extensions<GroupContext>,
+    ) -> Result<Self, CreateGroupContextExtProposalError<std::convert::Infallible>> {
+        self.proposals.push(build_group_context_extensions_proposal(
+            extensions,
+            self.group.own_leaf_node(),
+            self.group.public_group(),
+        )?);
+        Ok(self)
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn app_data_update(
+        mut self,
+        component_id: ComponentId,
+        operation: AppDataUpdateOperation,
+    ) -> Self {
+        self.proposals.push(Proposal::AppDataUpdate(Box::new(
+            AppDataUpdateProposal::new(component_id, operation),
+        )));
+        self
+    }
+}
+
+/// Helper function to build an add proposal for a provided KeyPackage
+fn build_add_proposal(
+    key_package: KeyPackage,
+    required_capabilities: Option<&RequiredCapabilitiesExtension>,
+) -> Result<Proposal, CreateAddProposalError> {
+    if let Some(required_capabilities) = required_capabilities {
+        key_package
+            .leaf_node()
+            .capabilities()
+            .supports_required_capabilities(required_capabilities)?;
+    }
+    Ok(Proposal::add(AddProposal { key_package }))
+}
+
+fn find_member_index_by_credential(
+    mut members: impl Iterator<Item = Member>,
+    credential: &Credential,
+) -> Option<LeafNodeIndex> {
+    members
+        .find(|m| &m.credential == credential)
+        .map(|m| m.index)
+}
+
+pub(super) fn build_group_context_extensions_proposal<StorageError>(
+    extensions: Extensions<GroupContext>,
+    own_leaf_node: Option<&LeafNode>,
+    public_group: &PublicGroup,
+) -> Result<Proposal, CreateGroupContextExtProposalError<StorageError>> {
+    // Ensure that the group supports all the extensions that are wanted.
+    let required_extension = extensions
+        .iter()
+        .find(|e| e.extension_type() == ExtensionType::RequiredCapabilities);
+    if let Some(required_extension) = required_extension {
+        let required_capabilities = required_extension.as_required_capabilities_extension()?;
+        // Ensure we support all the capabilities.
+        own_leaf_node
+            .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))?
+            .capabilities()
+            .supports_required_capabilities(required_capabilities)?;
+        // Ensure that all other leaf nodes support all the required
+        // extensions as well.
+        public_group.check_extension_support(required_capabilities.extension_types())?;
+    }
+    Ok(Proposal::group_context_extensions(
+        GroupContextExtensionProposal::new(extensions),
+    ))
 }

@@ -224,7 +224,7 @@ impl PublicGroup {
         let sender_index = match sender {
             Sender::Member(leaf_index) => *leaf_index,
             Sender::NewMemberCommit => {
-                self.leftmost_free_index(proposal_queue.queued_proposals())?
+                self.leftmost_free_index(proposal_queue.flattened_queued_proposals())?
             }
             _ => {
                 return Err(StageCommitError::SenderTypeExternal);
@@ -240,7 +240,7 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
-        for proposal in proposal_queue.queued_proposals() {
+        for proposal in proposal_queue.flattened_queued_proposals() {
             if matches!(
                 proposal.proposal().proposal_type(),
                 ProposalType::ExternalInit

@@ -270,7 +270,11 @@ impl ExternalCommitBuilder {
 
         queued_proposals.extend(inline_proposals);
 
-        let own_leaf_index = public_group.leftmost_free_index(queued_proposals.iter())?;
+        let own_leaf_index = public_group.leftmost_free_index(
+            queued_proposals
+                .iter()
+                .flat_map(|proposal| proposal.flatten()),
+        )?;
 
         let original_wire_format_policy = config.wire_format_policy;
 

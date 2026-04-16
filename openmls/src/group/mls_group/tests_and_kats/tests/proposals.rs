@@ -158,7 +158,7 @@ fn proposal_queue_functions() {
     assert!(!proposal_queue.contains(invalid_proposal_reference_list));
 
     // Get filtered proposals
-    for filtered_proposal in proposal_queue.filtered_by_type(ProposalType::Add) {
+    for filtered_proposal in proposal_queue.filtered_by_type_flattened(ProposalType::Add) {
         assert!(filtered_proposal.proposal().is_type(ProposalType::Add));
     }
 }

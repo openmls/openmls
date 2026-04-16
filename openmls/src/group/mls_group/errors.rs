@@ -27,6 +27,9 @@ use crate::{
 #[cfg(feature = "extensions-draft-08")]
 pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
+#[cfg(feature = "batched-proposals")]
+use crate::group::errors::BatchedProposalValidationError;
+
 #[cfg(doc)]
 use crate::group::GroupId;
 
@@ -248,6 +251,24 @@ pub enum SwapMembersError<StorageError> {
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError),
+}
+
+#[cfg(feature = "batched-proposals")]
+/// Propose batched proposals error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProposeBatchedError<StorageError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// Error validating a batch of proposals.
+    #[error(transparent)]
+    BatchedProposalValidation(#[from] BatchedProposalValidationError),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+    /// Error writing to storage
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
 }
 
 /// Propose add members error

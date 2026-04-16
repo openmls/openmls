@@ -12,7 +12,7 @@ impl ProposalQueue {
         &self,
         component_id: ComponentId,
     ) -> impl Iterator<Item = QueuedAppEphemeralProposal<'_>> {
-        self.app_ephemeral_proposals()
+        self.flattened_app_ephemeral_proposals()
             .filter(move |p| p.app_ephemeral_proposal().component_id() == component_id)
     }
 
@@ -21,7 +21,7 @@ impl ProposalQueue {
     pub fn unique_component_ids_for_app_ephemeral(&self) -> Vec<ComponentId> {
         // sort and deduplicate
         let ids: BTreeSet<_> = self
-            .app_ephemeral_proposals()
+            .flattened_app_ephemeral_proposals()
             .map(|p| p.app_ephemeral_proposal().component_id())
             .collect();
 
