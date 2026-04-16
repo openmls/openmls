@@ -763,6 +763,7 @@ impl StagedCommit {
         let Some(application_export_tree) = staged_commit.application_export_tree.as_mut() else {
             return Err(StagedSafeExportSecretError::Unsupported);
         };
+        // TODO: Most likely we want to make Secret public
         let secret =
             application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
         Ok(secret.as_slice().to_vec())
