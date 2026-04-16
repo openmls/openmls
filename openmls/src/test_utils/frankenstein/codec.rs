@@ -8,9 +8,9 @@ use super::{
         FrankenExternalPubExtension, FrankenExternalSendersExtension, FrankenRatchetTreeExtension,
         FrankenRequiredCapabilitiesExtension,
     },
-    FrankenAddProposal, FrankenCustomProposal, FrankenExternalInitProposal,
-    FrankenPreSharedKeyProposal, FrankenProposal, FrankenProposalType, FrankenReInitProposal,
-    FrankenRemoveProposal, FrankenUpdateProposal,
+    FrankenAddProposal, FrankenBatchedProposalList, FrankenCustomProposal,
+    FrankenExternalInitProposal, FrankenPreSharedKeyProposal, FrankenProposal,
+    FrankenProposalType, FrankenReInitProposal, FrankenRemoveProposal, FrankenUpdateProposal,
 };
 
 #[cfg(feature = "extensions-draft-08")]
@@ -81,6 +81,7 @@ impl Size for FrankenProposal {
                 FrankenProposal::AppEphemeral(p) => p.tls_serialized_len(),
                 #[cfg(feature = "extensions-draft-08")]
                 FrankenProposal::AppDataUpdate(p) => p.tls_serialized_len(),
+                FrankenProposal::Batched(p) => p.tls_serialized_len(),
                 FrankenProposal::Custom(p) => p.tls_serialized_len(),
             }
     }
@@ -101,6 +102,7 @@ impl Serialize for FrankenProposal {
             FrankenProposal::AppEphemeral(p) => p.tls_serialize(writer),
             #[cfg(feature = "extensions-draft-08")]
             FrankenProposal::AppDataUpdate(p) => p.tls_serialize(writer),
+            FrankenProposal::Batched(p) => p.tls_serialize(writer),
             FrankenProposal::Custom(p) => p.payload.tls_serialize(writer),
         }
         .map(|l| written + l)
@@ -143,6 +145,9 @@ impl Deserialize for FrankenProposal {
             FrankenProposalType::AppDataUpdate => FrankenProposal::AppDataUpdate(
                 FrankenAppDataUpdateProposal::tls_deserialize(bytes)?,
             ),
+            FrankenProposalType::Batched => {
+                FrankenProposal::Batched(FrankenBatchedProposalList::tls_deserialize(bytes)?)
+            }
             FrankenProposalType::Custom(_) => {
                 let payload = VLBytes::tls_deserialize(bytes)?;
                 let custom_proposal = FrankenCustomProposal {
@@ -165,6 +170,41 @@ impl DeserializeBytes for FrankenProposal {
         let proposal = FrankenProposal::tls_deserialize(&mut bytes_ref)?;
         let remainder = &bytes[proposal.tls_serialized_len()..];
         Ok((proposal, remainder))
+    }
+}
+
+impl Size for FrankenBatchedProposalList {
+    fn tls_serialized_len(&self) -> usize {
+        self.0.tls_serialized_len()
+    }
+}
+
+impl Serialize for FrankenBatchedProposalList {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        self.0.tls_serialize(writer)
+    }
+}
+
+impl Deserialize for FrankenBatchedProposalList {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        Ok(FrankenBatchedProposalList(
+            Vec::<FrankenProposal>::tls_deserialize(bytes)?,
+        ))
+    }
+}
+
+impl DeserializeBytes for FrankenBatchedProposalList {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_ref = bytes;
+        let list = FrankenBatchedProposalList::tls_deserialize(&mut bytes_ref)?;
+        let remainder = &bytes[list.tls_serialized_len()..];
+        Ok((list, remainder))
     }
 }
 

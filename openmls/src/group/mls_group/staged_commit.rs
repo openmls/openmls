@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as _;
 
 use super::proposal_store::{
-    QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
+    FlattenedQueuedProposal, QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal,
+    QueuedUpdateProposal,
 };
 
 use super::{
@@ -649,6 +650,13 @@ impl StagedCommit {
     /// Returns an iterator over all [`QueuedProposal`]s.
     pub fn queued_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.staged_proposal_queue.queued_proposals()
+    }
+
+    /// Returns an iterator over all [`FlattenedQueuedProposal`]s.
+    pub(crate) fn flattened_queued_proposals(
+        &self,
+    ) -> impl Iterator<Item = FlattenedQueuedProposal<'_>> {
+        self.staged_proposal_queue.flattened_queued_proposals()
     }
 
     /// Returns the leaf node of the (optional) update path.

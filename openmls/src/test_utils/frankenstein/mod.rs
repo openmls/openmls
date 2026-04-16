@@ -20,6 +20,7 @@ pub use self::credentials::*;
 pub use self::crypto::*;
 pub use self::extensions::*;
 pub use self::framing::*;
+pub use self::group_info::FrankenGroupContext;
 pub use self::key_package::*;
 pub use self::leaf_node::*;
 pub use self::proposals::*;

@@ -139,7 +139,7 @@ impl PublicGroup {
         // Collect signature keys of removed members s.t. we can skip them
         // when checking capabilities.
         let signature_keys: HashSet<_> = proposal_queue
-            .remove_proposals()
+            .flattened_remove_proposals()
             .filter_map(|p| {
                 let removed_index = p.remove_proposal().removed();
                 self.treesync()
@@ -209,7 +209,7 @@ impl PublicGroup {
         // Handle the exceptions needed for https://validation.openmls.tech/#valn0306
         let remove_proposals = HashSet::<LeafNodeIndex>::from_iter(
             proposal_queue
-                .remove_proposals()
+                .flattened_remove_proposals()
                 .map(|remove_proposal| remove_proposal.remove_proposal().removed),
         );
 
@@ -229,20 +229,22 @@ impl PublicGroup {
         }
 
         // Collect signature keys from add proposals
-        let signature_keys = proposal_queue.add_proposals().map(|add_proposal| {
-            add_proposal
-                .add_proposal()
-                .key_package()
-                .leaf_node()
-                .signature_key()
-                .as_slice()
-                .to_vec()
-        });
+        let signature_keys = proposal_queue
+            .flattened_add_proposals()
+            .map(|add_proposal| {
+                add_proposal
+                    .add_proposal()
+                    .key_package()
+                    .leaf_node()
+                    .signature_key()
+                    .as_slice()
+                    .to_vec()
+            });
 
         // Collect encryption keys from add proposals, update proposals, the
         // commit leaf node and path keys
         let encryption_keys = proposal_queue
-            .add_proposals()
+            .flattened_add_proposals()
             .map(|add_proposal| {
                 add_proposal
                     .add_proposal()
@@ -253,15 +255,19 @@ impl PublicGroup {
                     .as_slice()
                     .to_vec()
             })
-            .chain(proposal_queue.update_proposals().map(|update_proposal| {
-                update_proposal
-                    .update_proposal()
-                    .leaf_node()
-                    .encryption_key()
-                    .key()
-                    .as_slice()
-                    .to_vec()
-            }))
+            .chain(
+                proposal_queue
+                    .flattened_update_proposals()
+                    .map(|update_proposal| {
+                        update_proposal
+                            .update_proposal()
+                            .leaf_node()
+                            .encryption_key()
+                            .key()
+                            .as_slice()
+                            .to_vec()
+                    }),
+            )
             .chain(commit.and_then(|commit| {
                 commit
                     .path
@@ -282,14 +288,16 @@ impl PublicGroup {
             );
 
         // Collect init keys from add proposals
-        let init_keys = proposal_queue.add_proposals().map(|add_proposal| {
-            add_proposal
-                .add_proposal()
-                .key_package()
-                .hpke_init_key()
-                .as_slice()
-                .to_vec()
-        });
+        let init_keys = proposal_queue
+            .flattened_add_proposals()
+            .map(|add_proposal| {
+                add_proposal
+                    .add_proposal()
+                    .key_package()
+                    .hpke_init_key()
+                    .as_slice()
+                    .to_vec()
+            });
 
         // Validate uniqueness of signature keys
         //  - ValSem101
@@ -376,7 +384,7 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
-        let add_proposals = proposal_queue.add_proposals();
+        let add_proposals = proposal_queue.flattened_add_proposals();
 
         // We do the key package validation checks here inline
         // https://validation.openmls.tech/#valn0501
@@ -418,7 +426,7 @@ impl PublicGroup {
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
         let updates_set: HashSet<_> = proposal_queue
-            .update_proposals()
+            .flattened_update_proposals()
             .map(|proposal| {
                 if let Sender::Member(index) = proposal.sender() {
                     Ok(*index)
@@ -428,7 +436,7 @@ impl PublicGroup {
             })
             .collect::<Result<_, _>>()?;
 
-        let remove_proposals = proposal_queue.remove_proposals();
+        let remove_proposals = proposal_queue.flattened_remove_proposals();
 
         let mut removes_set = HashSet::new();
 
@@ -470,7 +478,7 @@ impl PublicGroup {
         committer: LeafNodeIndex,
     ) -> Result<(), ProposalValidationError> {
         // Check the update proposals from the proposal queue first
-        let update_proposals = proposal_queue.update_proposals();
+        let update_proposals = proposal_queue.flattened_update_proposals();
 
         for update_proposal in update_proposals {
             // ValSem112
@@ -518,7 +526,7 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
-        for proposal in proposal_queue.psk_proposals() {
+        for proposal in proposal_queue.flattened_psk_proposals() {
             let psk_id = proposal.psk_proposal().clone().into_psk_id();
 
             // ValSem401
@@ -540,7 +548,7 @@ impl PublicGroup {
     ) -> Result<(), ExternalCommitValidationError> {
         // [valn0401](https://validation.openmls.tech/#valn0401)
         let count_external_init_proposals = proposal_queue
-            .filtered_by_type(ProposalType::ExternalInit)
+            .filtered_by_type_flattened(ProposalType::ExternalInit)
             .count();
         if count_external_init_proposals == 0 {
             // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
@@ -552,7 +560,7 @@ impl PublicGroup {
 
         // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
         // [valn0404](https://validation.openmls.tech/#valn0404)
-        let contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
+        let contains_denied_proposal = proposal_queue.flattened_queued_proposals().any(|p| {
             let is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
             let is_allowed_type = matches!(
                 p.proposal(),
@@ -583,7 +591,7 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), GroupContextExtensionsProposalValidationError> {
-        let iter = proposal_queue.filtered_by_type(ProposalType::GroupContextExtensions);
+        let iter = proposal_queue.filtered_by_type_flattened(ProposalType::GroupContextExtensions);
 
         for (i, queued_proposal) in iter.enumerate() {
             // There must at most be one group context extionsion proposal. Return an error if there are more
@@ -654,16 +662,19 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), AppDataUpdateValidationError> {
-        let no_app_data_updates = proposal_queue.app_data_update_proposals().next().is_none();
+        let no_app_data_updates = proposal_queue
+            .flattened_app_data_update_proposals()
+            .next()
+            .is_none();
         if no_app_data_updates {
             return Ok(());
         }
 
         // retrieve the GroupContextExtensions proposal, if available
         let group_context_extension_proposal = proposal_queue
-            .filtered_by_type(ProposalType::GroupContextExtensions)
+            .filtered_by_type_flattened(ProposalType::GroupContextExtensions)
             .filter_map(|queued_proposal| match queued_proposal.proposal() {
-                Proposal::GroupContextExtensions(p) => Some(p),
+                Proposal::GroupContextExtensions(p) => Some(p.clone()),
                 _ => None,
             })
             .next();
@@ -690,7 +701,7 @@ impl PublicGroup {
             return Err(AppDataUpdateValidationError::IncorrectOrder);
         }
 
-        if let Some(group_context_extension) = group_context_extension_proposal {
+        if let Some(ref group_context_extension) = group_context_extension_proposal {
             let required_capabilities_contain_app_data_update_proposal = group_context_extension
                 .extensions()
                 .required_capabilities()
@@ -726,7 +737,7 @@ impl PublicGroup {
         // won't mess with the ordering of updates within a component.
         // This is ensured in ProposalQueue::app_data_update_proposals.
         let mut latest = None;
-        for proposal in proposal_queue.app_data_update_proposals() {
+        for proposal in proposal_queue.flattened_app_data_update_proposals() {
             let proposal = &proposal.app_data_update_proposal;
             let component_id = proposal.component_id();
             let operation_type = proposal.operation().operation_type();
@@ -751,7 +762,7 @@ impl PublicGroup {
                 // state for a component_id that has no state present.
                 //
                 // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-4
-                let Some(gce) = group_context_extension_proposal else {
+                let Some(ref gce) = group_context_extension_proposal else {
                     // extension gets implicitly created in the group context, so absence is not an
                     // error condition
                     return Ok(());

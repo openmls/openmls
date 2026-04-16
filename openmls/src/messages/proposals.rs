@@ -27,6 +27,9 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+#[cfg(feature = "batched-proposals")]
+use crate::group::errors::BatchedProposalValidationError;
+
 #[cfg(feature = "extensions-draft-08")]
 use crate::component::ComponentId;
 
@@ -89,6 +92,7 @@ pub enum ProposalType {
     AppDataUpdate,
     Grease(u16),
     Custom(u16),
+    #[cfg(feature = "batched-proposals")]
     Batched,
 }
 
@@ -107,6 +111,7 @@ impl ProposalType {
             ProposalType::SelfRemove | ProposalType::Grease(_) | ProposalType::Custom(_) => false,
             #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppEphemeral | ProposalType::AppDataUpdate => false,
+            #[cfg(feature = "batched-proposals")]
             ProposalType::Batched => false,
         }
     }
@@ -187,6 +192,8 @@ impl From<u16> for ProposalType {
             #[cfg(feature = "extensions-draft-08")]
             0x0009 => ProposalType::AppEphemeral,
             0x000a => ProposalType::SelfRemove,
+            #[cfg(feature = "batched-proposals")]
+            0x000b => ProposalType::Batched,
             other if crate::grease::is_grease_value(other) => ProposalType::Grease(other),
             other => ProposalType::Custom(other),
         }
@@ -210,7 +217,8 @@ impl From<ProposalType> for u16 {
             ProposalType::SelfRemove => 0x000a,
             ProposalType::Grease(id) => id,
             ProposalType::Custom(id) => id,
-            ProposalType::Batched => 0x000b, // TODO: id
+            #[cfg(feature = "batched-proposals")]
+            ProposalType::Batched => 0x000b,
         }
     }
 }
@@ -253,12 +261,36 @@ pub enum Proposal {
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral(Box<AppEphemeralProposal>),
     Custom(Box<CustomProposal>),
+    #[cfg(feature = "batched-proposals")]
     Batched(Box<BatchedProposalList>),
 }
 
+#[cfg(feature = "batched-proposals")]
+/// A list of proposals bundled together in a single batched proposal.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub struct BatchedProposalList(pub(crate) Vec<Proposal>);
 
+#[cfg(feature = "batched-proposals")]
+impl BatchedProposalList {
+    /// Initial validation of batched proposals
+    pub(crate) fn validate(
+        proposals: Vec<Proposal>,
+    ) -> Result<Self, BatchedProposalValidationError> {
+        if proposals.is_empty() {
+            return Err(BatchedProposalValidationError::EmptyList);
+        }
+
+        if proposals
+            .iter()
+            .map(Proposal::proposal_type)
+            .any(|proposal_type| proposal_type == ProposalType::Batched)
+        {
+            return Err(BatchedProposalValidationError::NestedBatch);
+        }
+
+        Ok(Self(proposals))
+    }
+}
 impl Proposal {
     /// Build a remove proposal.
     pub(crate) fn remove(r: RemoveProposal) -> Self {
@@ -317,6 +349,7 @@ impl Proposal {
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(_) => ProposalType::AppEphemeral,
             Proposal::Custom(custom) => ProposalType::Custom(custom.proposal_type.to_owned()),
+            #[cfg(feature = "batched-proposals")]
             Proposal::Batched(_) => ProposalType::Batched,
         }
     }

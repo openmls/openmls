@@ -21,7 +21,7 @@ use self::{
     errors::CreationFromExternalError,
 };
 use super::{
-    proposal_store::{ProposalStore, QueuedProposal},
+    proposal_store::{FlattenedQueuedProposal, ProposalStore, QueuedProposal},
     GroupContext, GroupId, Member, StagedCommit,
 };
 #[cfg(test)]
@@ -298,7 +298,7 @@ impl PublicGroup {
         &self,
         commit: &StagedCommit,
     ) -> Result<LeafNodeIndex, LibraryError> {
-        self.leftmost_free_index(commit.queued_proposals())
+        self.leftmost_free_index(commit.flattened_queued_proposals())
     }
 
     /// Returns the leftmost free leaf index.
@@ -309,7 +309,7 @@ impl PublicGroup {
     /// The proposals must be validated before calling this function.
     pub(crate) fn leftmost_free_index<'a>(
         &self,
-        queued_proposals: impl Iterator<Item = &'a QueuedProposal>,
+        queued_proposals: impl Iterator<Item = FlattenedQueuedProposal<'a>>,
     ) -> Result<LeafNodeIndex, LibraryError> {
         // Leftmost free leaf in the tree
         let free_leaf_index = self.treesync().free_leaf_index();

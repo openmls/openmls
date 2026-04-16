@@ -20,10 +20,9 @@ use crate::{
     extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{
-        CreateGroupContextExtProposalError, Extension, ExtensionType, ExternalPubExtension,
-        GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig, MlsGroupStateError,
-        OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension, RequiredCapabilitiesExtension,
-        StagedCommit,
+        CreateGroupContextExtProposalError, Extension, ExternalPubExtension, GroupContext,
+        GroupEpoch, GroupId, MlsGroupJoinConfig, MlsGroupStateError, OutgoingWireFormatPolicy,
+        PublicGroup, RatchetTreeExtension, RequiredCapabilitiesExtension, StagedCommit,
     },
     key_packages::KeyPackageBundle,
     messages::{
@@ -583,25 +582,11 @@ impl MlsGroup {
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError<Provider::StorageError>>
     {
-        // Ensure that the group supports all the extensions that are wanted.
-        let required_extension = extensions
-            .iter()
-            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
-        if let Some(required_extension) = required_extension {
-            let required_capabilities = required_extension.as_required_capabilities_extension()?;
-            // Ensure we support all the capabilities.
-            self.own_leaf_node()
-                .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))?
-                .capabilities()
-                .supports_required_capabilities(required_capabilities)?;
-
-            // Ensure that all other leaf nodes support all the required
-            // extensions as well.
-            self.public_group()
-                .check_extension_support(required_capabilities.extension_types())?;
-        }
-        let proposal = GroupContextExtensionProposal::new(extensions);
-        let proposal = Proposal::GroupContextExtensions(Box::new(proposal));
+        let proposal = proposal::build_group_context_extensions_proposal(
+            extensions,
+            self.own_leaf_node(),
+            self.public_group(),
+        )?;
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),

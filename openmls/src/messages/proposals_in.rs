@@ -20,11 +20,15 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use super::{
     proposals::{
-        AddProposal, BatchedProposalList, ExternalInitProposal, GroupContextExtensionProposal,
-        PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalType, ReInitProposal,
-        RemoveProposal, UpdateProposal,
+        AddProposal, ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal,
+        Proposal, ProposalOrRef, ProposalType, ReInitProposal, RemoveProposal, UpdateProposal,
     },
     CustomProposal,
+};
+
+#[cfg(feature = "batched-proposals")]
+use crate::{
+    group::errors::BatchedProposalValidationError, messages::proposals::BatchedProposalList,
 };
 
 #[cfg(feature = "extensions-draft-08")]
@@ -69,6 +73,7 @@ pub enum ProposalIn {
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral(Box<AppEphemeralProposal>),
     Custom(Box<CustomProposal>),
+    #[cfg(feature = "batched-proposals")]
     Batched(Box<BatchedProposalListIn>),
 }
 
@@ -91,6 +96,7 @@ impl ProposalIn {
             ProposalIn::Custom(custom_proposal) => {
                 ProposalType::Custom(custom_proposal.proposal_type())
             }
+            #[cfg(feature = "batched-proposals")]
             ProposalIn::Batched(_) => ProposalType::Batched,
         }
     }
@@ -136,7 +142,28 @@ impl ProposalIn {
             #[cfg(feature = "extensions-draft-08")]
             ProposalIn::AppEphemeral(app_ephemeral) => Proposal::AppEphemeral(app_ephemeral),
             ProposalIn::Custom(custom) => Proposal::Custom(custom),
-            ProposalIn::Batched(list) => todo!(),
+            #[cfg(feature = "batched-proposals")]
+            ProposalIn::Batched(list) => {
+                // basic validation of batched proposals
+                // NOTE: Additional validation will be performed later, upon
+                // commit creation, to ensure that these proposals can be
+                // included together in a commit.
+                let proposals = list
+                    .0
+                    .into_iter()
+                    .map(|proposal_in| match proposal_in {
+                        ProposalIn::Batched(_) => Err(BatchedProposalValidationError::NestedBatch)?,
+                        _ => proposal_in.validate(
+                            crypto,
+                            ciphersuite,
+                            sender_context.clone(),
+                            protocol_version,
+                        ),
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Proposal::Batched(Box::new(BatchedProposalList(proposals)))
+            }
         })
     }
 }
@@ -166,6 +193,8 @@ pub struct AddProposalIn {
     key_package: KeyPackageIn,
 }
 
+#[cfg(feature = "batched-proposals")]
+/// The incoming variant of [`BatchedProposalList`], used for deserialization and validation.
 #[derive(
     Debug,
     PartialEq,
@@ -327,6 +356,7 @@ impl From<AddProposal> for Box<AddProposalIn> {
     }
 }
 
+#[cfg(feature = "batched-proposals")]
 impl From<BatchedProposalList> for Box<BatchedProposalListIn> {
     fn from(value: BatchedProposalList) -> Self {
         Box::new(BatchedProposalListIn(
@@ -424,7 +454,10 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
             #[cfg(feature = "extensions-draft-08")]
             ProposalIn::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),
             ProposalIn::Custom(other) => Self::Custom(other),
-            ProposalIn::Batched(list) => Self::Batched(todo!()),
+            #[cfg(feature = "batched-proposals")]
+            ProposalIn::Batched(list) => Self::Batched(Box::new(BatchedProposalList(
+                list.0.into_iter().map(|proposal| proposal.into()).collect(),
+            ))),
         }
     }
 }
@@ -447,6 +480,7 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),
             Proposal::Custom(other) => Self::Custom(other),
+            #[cfg(feature = "batched-proposals")]
             Proposal::Batched(list) => Self::Batched((*list).into()),
         }
     }
