@@ -22,7 +22,7 @@ use p256::{
     ecdsa::{signature::Verifier, Signature, SigningKey, VerifyingKey},
     EncodedPoint,
 };
-use rand::{RngCore, SeedableRng};
+use rand_core::{RngCore as _, SeedableRng as _};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use tls_codec::SecretVLBytes;
 
