@@ -7,7 +7,7 @@ use super::*;
 impl EpochTree {
     #[cfg(test)]
     pub(crate) fn timestamp(&self) -> Option<std::time::SystemTime> {
-        self.message_secrets.timestamp().copied()
+        self.message_secrets.timestamp()
     }
 }
 
@@ -225,7 +225,7 @@ impl MessageSecretsStore {
 
     fn delete_past_epoch_secrets_older_than_duration(&mut self, duration: std::time::Duration) {
         // first, compare to the timestamp of the current message secrets
-        if let Some(added_at) = self.message_secrets.timestamp().copied() {
+        if let Some(added_at) = self.message_secrets.timestamp() {
             if let Ok(elapsed) = std::time::SystemTime::now().duration_since(added_at) {
                 if elapsed > duration {
                     // delete all
@@ -242,7 +242,7 @@ impl MessageSecretsStore {
             .enumerate()
             .rev()
             .find(|(_idx, tree)| {
-                let Some(added_at) = tree.message_secrets.timestamp().copied() else {
+                let Some(added_at) = tree.message_secrets.timestamp() else {
                     return false;
                 };
 
@@ -265,7 +265,7 @@ impl MessageSecretsStore {
 
     fn delete_past_epoch_secrets_before_timestamp(&mut self, cutoff: std::time::SystemTime) {
         // first, compare to timestamp of the current message secrets
-        if let Some(added_at) = self.message_secrets.timestamp().copied() {
+        if let Some(added_at) = self.message_secrets.timestamp() {
             if added_at < cutoff {
                 // delete all
                 self.past_epoch_trees.clear();
@@ -280,7 +280,7 @@ impl MessageSecretsStore {
             .enumerate()
             .rev()
             .find(|(_idx, tree)| {
-                let Some(added_at) = tree.message_secrets.timestamp().copied() else {
+                let Some(added_at) = tree.message_secrets.timestamp() else {
                     return false;
                 };
 

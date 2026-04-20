@@ -77,8 +77,8 @@ impl MessageSecrets {
         &mut self.secret_tree
     }
 
-    pub(crate) fn timestamp(&self) -> Option<&std::time::SystemTime> {
-        self.added_at.as_ref()
+    pub(crate) fn timestamp(&self) -> Option<std::time::SystemTime> {
+        self.added_at
     }
 
     pub(crate) fn with_timestamp(
