@@ -23,9 +23,9 @@ aes-gcm = { version = "0.10" }
 chacha20poly1305 = { version = "0.10" }
 hmac = { version = "0.12" }
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
 p256 = { version = "0.13" }
 hkdf = { version = "0.12" }
-rand = "0.8"
 rand_chacha = { version = "0.3" }
 hpke-rs-crypto = { version = "0.6.1" }
 hpke-rs-rust-crypto = { version = "0.6.1" }

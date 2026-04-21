@@ -8,14 +8,14 @@ members = [
     "cli",
     "interop_client",
     "memory_storage",
-    "sqlite_storage",
-    "sqlx_storage",
     "delivery-service/ds",
     "delivery-service/ds-lib",
     "basic_credential",
     "openmls-wasm",
     "openmls_test",
+    "sqlite_storage",
 ]
+exclude = ["sqlx_storage"]
 resolver = "2"
 
 # Central dependency management for some crates
