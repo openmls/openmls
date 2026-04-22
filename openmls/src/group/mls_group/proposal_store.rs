@@ -890,6 +890,23 @@ impl ProposalQueue {
         iter: impl IntoIterator<Item = QueuedProposal>,
         own_index: LeafNodeIndex,
     ) -> Result<(Self, bool), ProposalQueueError> {
+        // TODO: refactor the proposal filtering logic.
+        //
+        // The below implementation
+        // uses a workaround to flatten batched proposals, and apply the proposal
+        // validation on the flat list in a loop. In the loop body,
+        // batched proposals that are rejected are removed from the `proposals_to_filter` list,
+        // and the filtering logic is applied to the proposals in the list again 
+        // until a valid commit can be created.
+        //
+        // Refactor TODOs:
+        // - Reorganize the maps and booleans used for keeping track of included proposals
+        // - Move the filtering logic from a loop to a standalone method
+        // - Ensure the `ProposalType::has_lower_priority_than()` encapsulates all of the
+        //   cases that are now supported
+        // - Ensure that error handling is consistent, and determine which proposals should
+        //   be excluded from the commit, and which should return an error
+
         // NOTE: identical proposals (which have the same hash reference)
         // are automatically deduplicated by this step.
         let mut proposals_to_filter = ProposalsToFilter::new(iter);
