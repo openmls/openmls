@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - [#1972](https://github.com/openmls/openmls/pull/1972): Add APIs for time-based deletion of past epoch secrets, and for setting the past epoch deletion policy for an `MlsGroup`.
+- [#2010](https://github.com/openmls/openmls/pull/2010): Added `MlsGroup::propose_self_update_with_new_signer`, a variant of `propose_self_update` that stages an `Update` proposal carrying a new signature key.
 
 ### Changed
 
