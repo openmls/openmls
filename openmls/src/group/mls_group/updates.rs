@@ -191,4 +191,51 @@ impl MlsGroup {
         self.reset_aad();
         Ok((mls_message, proposal_ref))
     }
+
+    /// Creates a proposal to update the own leaf node. The application can
+    /// choose to update the credential, the capabilities, and the extensions by
+    /// building the [`LeafNodeParameters`].
+    pub fn propose_self_update<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        leaf_node_parameters: LeafNodeParameters,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
+        // This trivial type allows propose_self_update and propose_self_update_with_new_signer to share
+        // a call to _propose_self_update. NoSigner is never (and can't be) instantiated and is only
+        // pushed to the None case to satisfy types. This is preferable to copy pasting the inner impl which
+        // shares almost all logic.
+        enum NoSigner {}
+        impl Signer for NoSigner {
+            fn sign(&self, _payload: &[u8]) -> Result<Vec<u8>, SignerError> { unreachable!() }
+            fn signature_scheme(&self) -> SignatureScheme { unreachable!() }
+        }
+
+        self._propose_self_update(provider, signer, None::<NewSignerBundle<'_, NoSigner>>, leaf_node_parameters)
+    }
+
+    /// Creates an Update proposal that rotates the sender's signature key.
+    ///
+    /// In contrast to [`Self::propose_self_update`], this function allows
+    /// updating the signature public key of the sender's leaf node. The
+    /// produced MLS message's envelope is authenticated using `old_signer`
+    /// (required because the sender's current leaf in the group tree still
+    /// carries the old signature key), while the new leaf embedded in the
+    /// `UpdateProposal` is self-signed by `new_signer.signer` so that it
+    /// validates against its own `signature_key` field at the receiver.
+    ///
+    /// If `leaf_node_parameters` sets `credential_with_key`, it MUST equal
+    /// `new_signer.credential_with_key`. If it is not set the new-signer credential
+    /// is folded in automatically.
+    ///
+    /// Returns an error if there is a pending commit.
+    pub fn propose_self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
+        &mut self,
+        provider: &Provider,
+        old_signer: &impl Signer,
+        new_signer: NewSignerBundle<'_, S>,
+        leaf_node_parameters: LeafNodeParameters,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
+        self._propose_self_update(provider, old_signer, Some(new_signer), leaf_node_parameters)
+    }
 }
