@@ -90,11 +90,11 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    fn _propose_self_update<Provider: OpenMlsProvider>(
+    fn _create_self_update_proposal<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
-        leaf_node_parmeters: LeafNodeParameters,
+        leaf_node_parameters: LeafNodeParameters,
     ) -> Result<AuthenticatedContent, ProposeSelfUpdateError<Provider::StorageError>> {
         self.is_operational()?;
 
@@ -114,7 +114,7 @@ impl MlsGroup {
             signer,
             self.group_id().clone(),
             self.own_leaf_index(),
-            leaf_node_parmeters,
+            leaf_node_parameters,
         )?;
 
         // Validate that the updated leaf node supports all group context extensions
