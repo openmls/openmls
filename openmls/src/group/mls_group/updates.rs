@@ -1,6 +1,10 @@
 use commit_builder::CommitMessageBundle;
 use errors::{ProposeSelfUpdateError, SelfUpdateError};
-use openmls_traits::{signatures::{Signer, SignerError}, storage::StorageProvider as _, types::SignatureScheme};
+use openmls_traits::{
+    signatures::{Signer, SignerError},
+    storage::StorageProvider as _,
+    types::SignatureScheme,
+};
 
 use crate::{credentials::NewSignerBundle, storage::OpenMlsProvider, treesync::LeafNodeParameters};
 
@@ -118,8 +122,7 @@ impl MlsGroup {
                     return Err(ProposeSelfUpdateError::InvalidLeafNodeParameters);
                 }
             } else {
-                leaf_node_parameters
-                    .set_credential_with_key(new_signer.credential_with_key);
+                leaf_node_parameters.set_credential_with_key(new_signer.credential_with_key);
             }
 
             own_leaf.update(
@@ -173,7 +176,12 @@ impl MlsGroup {
         new_signer: Option<NewSignerBundle<'_, S>>,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        let update_proposal = self._create_self_update_proposal(provider, old_signer, new_signer, leaf_node_parameters)?;
+        let update_proposal = self._create_self_update_proposal(
+            provider,
+            old_signer,
+            new_signer,
+            leaf_node_parameters,
+        )?;
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
             provider.crypto(),
@@ -207,11 +215,20 @@ impl MlsGroup {
         // shares almost all logic.
         enum NoSigner {}
         impl Signer for NoSigner {
-            fn sign(&self, _payload: &[u8]) -> Result<Vec<u8>, SignerError> { unreachable!() }
-            fn signature_scheme(&self) -> SignatureScheme { unreachable!() }
+            fn sign(&self, _payload: &[u8]) -> Result<Vec<u8>, SignerError> {
+                unreachable!()
+            }
+            fn signature_scheme(&self) -> SignatureScheme {
+                unreachable!()
+            }
         }
 
-        self._propose_self_update(provider, signer, None::<NewSignerBundle<'_, NoSigner>>, leaf_node_parameters)
+        self._propose_self_update(
+            provider,
+            signer,
+            None::<NewSignerBundle<'_, NoSigner>>,
+            leaf_node_parameters,
+        )
     }
 
     /// Creates an Update proposal that rotates the sender's signature key.

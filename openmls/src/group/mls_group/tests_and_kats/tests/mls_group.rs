@@ -3563,12 +3563,8 @@ fn propose_self_update_with_new_signer_roundtrip() {
     let mls_group_join_config = mls_group_create_config.join_config().clone();
 
     let group_id = GroupId::from_slice(b"test");
-    let mut group_state = GroupState::new_from_party(
-        group_id,
-        alice_pre_group,
-        mls_group_create_config,
-    )
-    .unwrap();
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
 
     group_state
         .add_member(AddMemberConfig {
@@ -3581,7 +3577,10 @@ fn propose_self_update_with_new_signer_roundtrip() {
 
     // Alice generates a new signer + credential.
     let new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
-    let new_signature_key = new_pre_group_state.credential_with_key.signature_key.clone();
+    let new_signature_key = new_pre_group_state
+        .credential_with_key
+        .signature_key
+        .clone();
 
     let new_signer_bundle = NewSignerBundle {
         signer: &new_pre_group_state.signer,
@@ -3620,10 +3619,7 @@ fn propose_self_update_with_new_signer_roundtrip() {
         };
         bob_group_state
             .group
-            .store_pending_proposal(
-                bob_group_state.party.core_state.provider.storage(),
-                *staged,
-            )
+            .store_pending_proposal(bob_group_state.party.core_state.provider.storage(), *staged)
             .expect("Bob failed to store proposal");
     }
 
@@ -3705,12 +3701,8 @@ fn propose_self_update_with_new_signer_committed_by_proposer() {
     let mls_group_join_config = mls_group_create_config.join_config().clone();
 
     let group_id = GroupId::from_slice(b"test");
-    let mut group_state = GroupState::new_from_party(
-        group_id,
-        alice_pre_group,
-        mls_group_create_config,
-    )
-    .unwrap();
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
 
     group_state
         .add_member(AddMemberConfig {
@@ -3722,7 +3714,10 @@ fn propose_self_update_with_new_signer_committed_by_proposer() {
         .expect("Could not add member");
 
     let new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
-    let new_signature_key = new_pre_group_state.credential_with_key.signature_key.clone();
+    let new_signature_key = new_pre_group_state
+        .credential_with_key
+        .signature_key
+        .clone();
 
     // Alice proposes, then Alice commits via build_with_new_signer.
     let commit = {
