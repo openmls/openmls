@@ -1,6 +1,6 @@
 use commit_builder::CommitMessageBundle;
 use errors::{ProposeSelfUpdateError, SelfUpdateError};
-use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
+use openmls_traits::{signatures::{Signer, SignerError}, storage::StorageProvider as _, types::SignatureScheme};
 
 use crate::{credentials::NewSignerBundle, storage::OpenMlsProvider, treesync::LeafNodeParameters};
 
@@ -90,11 +90,12 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    fn _create_self_update_proposal<Provider: OpenMlsProvider>(
+    fn _create_self_update_proposal<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
-        signer: &impl Signer,
-        leaf_node_parameters: LeafNodeParameters,
+        old_signer: &impl Signer,
+        new_signer: Option<NewSignerBundle<'_, S>>,
+        mut leaf_node_parameters: LeafNodeParameters,
     ) -> Result<AuthenticatedContent, ProposeSelfUpdateError<Provider::StorageError>> {
         self.is_operational()?;
 
@@ -108,14 +109,37 @@ impl MlsGroup {
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
 
-        own_leaf.update(
-            self.ciphersuite(),
-            provider,
-            signer,
-            self.group_id().clone(),
-            self.own_leaf_index(),
-            leaf_node_parameters,
-        )?;
+        if let Some(new_signer) = new_signer {
+            // Reconcile `leaf_node_parameters.credential_with_key` with
+            // `new_signer.credential_with_key`. Mirrors the commit-path logic in
+            // `CommitBuilder::build_internal`.
+            if let Some(ln_cred) = leaf_node_parameters.credential_with_key() {
+                if ln_cred != &new_signer.credential_with_key {
+                    return Err(ProposeSelfUpdateError::InvalidLeafNodeParameters);
+                }
+            } else {
+                leaf_node_parameters
+                    .set_credential_with_key(new_signer.credential_with_key);
+            }
+
+            own_leaf.update(
+                self.ciphersuite(),
+                provider,
+                new_signer.signer,
+                self.group_id().clone(),
+                self.own_leaf_index(),
+                leaf_node_parameters,
+            )?;
+        } else {
+            own_leaf.update(
+                self.ciphersuite(),
+                provider,
+                old_signer,
+                self.group_id().clone(),
+                self.own_leaf_index(),
+                leaf_node_parameters,
+            )?;
+        }
 
         // Validate that the updated leaf node supports all group context extensions
         // https://validation.openmls.tech/#valn0602
@@ -131,7 +155,7 @@ impl MlsGroup {
         }
 
         let update_proposal =
-            self.create_update_proposal(self.framing_parameters(), own_leaf.clone(), signer)?;
+            self.create_update_proposal(self.framing_parameters(), own_leaf.clone(), old_signer)?;
 
         provider
             .storage()
@@ -142,16 +166,14 @@ impl MlsGroup {
         Ok(update_proposal)
     }
 
-    /// Creates a proposal to update the own leaf node. The application can
-    /// choose to update the credential, the capabilities, and the extensions by
-    /// building the [`LeafNodeParameters`].
-    pub fn propose_self_update<Provider: OpenMlsProvider>(
+    fn _propose_self_update<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
-        signer: &impl Signer,
+        old_signer: &impl Signer,
+        new_signer: Option<NewSignerBundle<'_, S>>,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        let update_proposal = self._propose_self_update(provider, signer, leaf_node_parameters)?;
+        let update_proposal = self._create_self_update_proposal(provider, old_signer, new_signer, leaf_node_parameters)?;
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
             provider.crypto(),
