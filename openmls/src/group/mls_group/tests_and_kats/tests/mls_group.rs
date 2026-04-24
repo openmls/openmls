@@ -3544,6 +3544,74 @@ fn propose_self_update_with_new_signer_mismatched_credential() {
     assert_eq!(err, ProposeSelfUpdateError::InvalidLeafNodeParameters);
 }
 
+// A `NewSignerBundle` whose `signer` uses a signature scheme that does not
+// match the group's ciphersuite is rejected with `InvalidSignerCiphersuite`
+// before any proposal is staged.
+#[openmls_test::openmls_test]
+fn propose_self_update_with_new_signer_mismatched_ciphersuite() {
+    use crate::credentials::{BasicCredential, CredentialWithKey};
+    use openmls_traits::types::SignatureScheme;
+
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    // Pick a signature scheme that differs from the group's ciphersuite.
+    // Ed25519 covers every non-Ed25519 ciphersuite; P-256 covers the Ed25519
+    // ones. Both schemes are supported by the rust-crypto test provider.
+    let group_scheme = ciphersuite.signature_algorithm();
+    let mismatched_scheme = if group_scheme == SignatureScheme::ED25519 {
+        SignatureScheme::ECDSA_SECP256R1_SHA256
+    } else {
+        SignatureScheme::ED25519
+    };
+
+    let [alice_group_state] = group_state.members_mut(&["alice"]);
+    let mismatched_signer = SignatureKeyPair::new(mismatched_scheme).unwrap();
+    let credential_with_key = CredentialWithKey {
+        credential: BasicCredential::new(b"alice".to_vec()).into(),
+        signature_key: mismatched_signer.to_public_vec().into(),
+    };
+
+    let new_signer = NewSignerBundle {
+        signer: &mismatched_signer,
+        credential_with_key,
+    };
+
+    let err = alice_group_state
+        .group
+        .propose_self_update_with_new_signer(
+            &alice_group_state.party.core_state.provider,
+            &alice_group_state.party.signer,
+            new_signer,
+            LeafNodeParameters::default(),
+        )
+        .unwrap_err();
+
+    assert_eq!(err, ProposeSelfUpdateError::InvalidSignerCiphersuite);
+}
+
 // Alice proposes a signer swap; Bob processes the proposal (envelope verifies
 // against Alice's OLD leaf sig key, embedded leaf verifies against the NEW sig
 // key), stores it, and commits it. After both merge, everyone's view of

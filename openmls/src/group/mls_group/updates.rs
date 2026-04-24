@@ -1,9 +1,8 @@
 use commit_builder::CommitMessageBundle;
 use errors::{ProposeSelfUpdateError, SelfUpdateError};
 use openmls_traits::{
-    signatures::{Signer, SignerError},
+    signatures::Signer,
     storage::StorageProvider as _,
-    types::SignatureScheme,
 };
 
 use crate::{credentials::NewSignerBundle, storage::OpenMlsProvider, treesync::LeafNodeParameters};
@@ -114,6 +113,10 @@ impl MlsGroup {
             .clone();
 
         if let Some(new_signer) = new_signer {
+            if self.ciphersuite().signature_algorithm() != new_signer.signer.signature_scheme() {
+                return Err(ProposeSelfUpdateError::InvalidSignerCiphersuite);
+            }
+
             // Reconcile `leaf_node_parameters.credential_with_key` with
             // `new_signer.credential_with_key`. Mirrors the commit-path logic in
             // `CommitBuilder::build_internal`.
@@ -239,6 +242,11 @@ impl MlsGroup {
         new_signer: NewSignerBundle<'_, S>,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        self.propose_self_update_internal(provider, old_signer, Some(new_signer), leaf_node_parameters)
+        self.propose_self_update_internal(
+            provider,
+            old_signer,
+            Some(new_signer),
+            leaf_node_parameters,
+        )
     }
 }
