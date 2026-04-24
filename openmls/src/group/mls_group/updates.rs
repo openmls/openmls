@@ -203,30 +203,16 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. The application can
     /// choose to update the credential, the capabilities, and the extensions by
     /// building the [`LeafNodeParameters`].
-    pub fn propose_self_update<Provider: OpenMlsProvider>(
+    pub fn propose_self_update<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
-        signer: &impl Signer,
+        signer: &S,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        // This trivial type allows propose_self_update and propose_self_update_with_new_signer to share
-        // a call to _propose_self_update. NoSigner is never (and can't be) instantiated and is only
-        // pushed to the None case to satisfy types. This is preferable to copy pasting the inner impl which
-        // shares almost all logic.
-        enum NoSigner {}
-        impl Signer for NoSigner {
-            fn sign(&self, _payload: &[u8]) -> Result<Vec<u8>, SignerError> {
-                unreachable!()
-            }
-            fn signature_scheme(&self) -> SignatureScheme {
-                unreachable!()
-            }
-        }
-
         self._propose_self_update(
             provider,
             signer,
-            None::<NewSignerBundle<'_, NoSigner>>,
+            None::<NewSignerBundle<'_, S>>,
             leaf_node_parameters,
         )
     }
