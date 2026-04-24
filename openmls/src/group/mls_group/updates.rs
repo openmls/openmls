@@ -94,7 +94,7 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    fn _create_self_update_proposal<Provider: OpenMlsProvider, S: Signer>(
+    fn create_self_update_proposal_internal<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
         old_signer: &impl Signer,
@@ -169,14 +169,14 @@ impl MlsGroup {
         Ok(update_proposal)
     }
 
-    fn _propose_self_update<Provider: OpenMlsProvider, S: Signer>(
+    fn propose_self_update_internal<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
         old_signer: &impl Signer,
         new_signer: Option<NewSignerBundle<'_, S>>,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        let update_proposal = self._create_self_update_proposal(
+        let update_proposal = self.create_self_update_proposal_internal(
             provider,
             old_signer,
             new_signer,
@@ -209,7 +209,7 @@ impl MlsGroup {
         signer: &S,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        self._propose_self_update(
+        self.propose_self_update_internal(
             provider,
             signer,
             None::<NewSignerBundle<'_, S>>,
@@ -239,6 +239,6 @@ impl MlsGroup {
         new_signer: NewSignerBundle<'_, S>,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        self._propose_self_update(provider, old_signer, Some(new_signer), leaf_node_parameters)
+        self.propose_self_update_internal(provider, old_signer, Some(new_signer), leaf_node_parameters)
     }
 }
