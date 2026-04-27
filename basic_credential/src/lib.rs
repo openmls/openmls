@@ -14,7 +14,7 @@ use openmls_traits::{
 
 use p256::ecdsa::{signature::Signer as P256Signer, Signature, SigningKey};
 
-use rand::rngs::OsRng;
+use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use tls_codec::{SecretVLBytes, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 use zeroize::Zeroize;
