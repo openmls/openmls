@@ -400,9 +400,8 @@ fn hpke_kem(kem: HpkeKemType) -> hpke_rs_crypto::types::KemAlgorithm {
         HpkeKemType::DhKem25519 => hpke_rs_crypto::types::KemAlgorithm::DhKem25519,
         HpkeKemType::DhKem448 => hpke_rs_crypto::types::KemAlgorithm::DhKem448,
         HpkeKemType::XWingKemDraft6 => hpke_rs_crypto::types::KemAlgorithm::XWingDraft06,
-        HpkeKemType::MlKem1024 => {
-            unimplemented!("libcrux does not support XWingP256Kem")
-        }
+        HpkeKemType::MlKem768 => hpke_rs_crypto::types::KemAlgorithm::MlKem768,
+        HpkeKemType::MlKem1024 => hpke_rs_crypto::types::KemAlgorithm::MlKem1024,
     }
 }
 

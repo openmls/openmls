@@ -58,9 +58,8 @@ fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
         HpkeKemType::DhKemP521 => hpke_types::KemAlgorithm::DhKemP521,
         HpkeKemType::DhKem25519 => hpke_types::KemAlgorithm::DhKem25519,
         HpkeKemType::DhKem448 => hpke_types::KemAlgorithm::DhKem448,
-        HpkeKemType::XWingKemDraft6 => {
-            unimplemented!("XWingKemDraft6 is not supported by the RustCrypto provider.")
-        }
+        HpkeKemType::XWingKemDraft6 => hpke_types::KemAlgorithm::XWingDraft06,
+        HpkeKemType::MlKem768 => hpke_types::KemAlgorithm::MlKem768,
         HpkeKemType::MlKem1024 => hpke_types::KemAlgorithm::MlKem1024,
     }
 }
@@ -90,7 +89,12 @@ impl OpenMlsCrypto for RustCrypto {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
             | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
             | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
-            | Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384 => Ok(()),
+            | Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384
+            | Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519
+            | Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519
+            | Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256
+            | Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65
+            | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87 => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }
     }
@@ -102,6 +106,11 @@ impl OpenMlsCrypto for RustCrypto {
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
             Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384,
             Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87,
+            Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519,
+            Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519,
+            Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256,
+            Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
+            Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
         ]
     }
 
@@ -277,6 +286,17 @@ impl OpenMlsCrypto for RustCrypto {
                 let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
                 Ok((k.to_bytes().as_slice().into(), pk))
             }
+            SignatureScheme::MLDSA65 => {
+                use ml_dsa::KeyGen as _;
+                let mut rng = self
+                    .rng
+                    .write()
+                    .map_err(|_| CryptoError::InsufficientRandomness)?;
+                let kp = ml_dsa::MlDsa65::key_gen(&mut *rng);
+                let pk = kp.verifying_key().encode().to_vec();
+                let sk = kp.signing_key().encode().to_vec();
+                Ok((sk, pk))
+            }
             SignatureScheme::MLDSA87 => {
                 use ml_dsa::KeyGen as _;
                 let mut rng = self
@@ -335,6 +355,18 @@ impl OpenMlsCrypto for RustCrypto {
                 )
                 .map_err(|_| CryptoError::InvalidSignature)
             }
+            SignatureScheme::MLDSA65 => {
+                let encoded_key: &ml_dsa::EncodedVerifyingKey<ml_dsa::MlDsa65> =
+                    pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let encoded_signature: &ml_dsa::EncodedSignature<ml_dsa::MlDsa65> = signature
+                    .try_into()
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                let key = ml_dsa::VerifyingKey::<ml_dsa::MlDsa65>::decode(encoded_key);
+                let signature = ml_dsa::Signature::<ml_dsa::MlDsa65>::decode(encoded_signature)
+                    .ok_or(CryptoError::InvalidSignature)?;
+                key.verify(data, &signature)
+                    .map_err(|_| CryptoError::InvalidSignature)
+            }
             SignatureScheme::MLDSA87 => {
                 // Note: Conversion of key and signature to a *ref* of corresponding encoded types
                 let encoded_key: &ml_dsa::EncodedVerifyingKey<ml_dsa::MlDsa87> =
@@ -376,6 +408,13 @@ impl OpenMlsCrypto for RustCrypto {
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
                 let signature = k.sign(data);
                 Ok(signature.to_bytes().into())
+            }
+            SignatureScheme::MLDSA65 => {
+                let encoded_key: &ml_dsa::EncodedSigningKey<ml_dsa::MlDsa65> =
+                    key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa65>::decode(encoded_key);
+                let signature = k.sign(data);
+                Ok(signature.encode().to_vec())
             }
             SignatureScheme::MLDSA87 => {
                 // Note: Conversion of private key to a *ref* of encoded key
