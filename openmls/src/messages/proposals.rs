@@ -367,16 +367,15 @@ impl Proposal {
         match (self, new_proposal) {
             // Updates have the lowest priority.
             (Proposal::Update(_), _) => true,
-            // Removes have a higher priority than Updates.
+            // Removes beat Updates.
             (Proposal::Remove(_), Proposal::Update(_)) => false,
-            // Later Removes trump earlier Removes
+            // Later Removes trump earlier Removes.
             (Proposal::Remove(_), Proposal::Remove(_)) => true,
-            // SelfRemoves have the highest priority.
+            // SelfRemove replaces any proposal (including another SelfRemove — later wins).
             (_, Proposal::SelfRemove) => true,
-            _ => {
-                debug_assert!(false);
-                false
-            }
+            // SelfRemove is not replaced by non-SelfRemove proposals.
+            (Proposal::SelfRemove, _) => false,
+            _ => false,
         }
     }
 

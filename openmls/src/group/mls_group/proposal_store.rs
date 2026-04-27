@@ -369,6 +369,121 @@ impl<'a> MemberSpecificProposals<'a> {
     }
 }
 
+/// Accumulates categorised proposals during a single filter pass.
+struct FilterAccumulator<'a> {
+    /// Add proposals, kept separately so they can be appended after other
+    /// non-member-specific proposals (preserving existing ordering).
+    adds: OrderedProposalRefs,
+    /// Non-member-specific valid proposals (PSK, ExternalInit, GCE, …).
+    valid: OrderedProposalRefs,
+    /// At most one proposal per member leaf, keeping the highest-priority one.
+    per_member: MemberSpecificProposals<'a>,
+    contains_own_updates: bool,
+    contains_external_init: bool,
+}
+
+impl<'a> FilterAccumulator<'a> {
+    fn new() -> Self {
+        Self {
+            adds: OrderedProposalRefs::new(),
+            valid: OrderedProposalRefs::new(),
+            per_member: MemberSpecificProposals::default(),
+            contains_own_updates: false,
+            contains_external_init: false,
+        }
+    }
+
+    /// Categorises a single flattened proposal into this accumulator.
+    ///
+    /// Returns `Err` for sender-constraint violations
+    /// (`UpdateFromExternalSender`, `SelfRemoveFromNonMember`).  All other
+    /// exclusions (priority races, deduplication) are silent — the lower-priority
+    /// or duplicate proposal simply does not appear in the final valid set.
+    fn process(
+        &mut self,
+        queued_proposal: FlattenedQueuedProposal<'a>,
+        own_index: LeafNodeIndex,
+    ) -> Result<(), ProposalQueueError> {
+        match queued_proposal.proposal {
+            Proposal::Add(_) => {
+                self.adds.add(queued_proposal.proposal_ref().clone());
+            }
+            Proposal::Update(_) => {
+                // Only members can send update proposals
+                // ValSem112
+                let Sender::Member(sender_index) = queued_proposal.sender() else {
+                    return Err(ProposalQueueError::UpdateFromExternalSender);
+                };
+                if sender_index == &own_index {
+                    self.contains_own_updates = true;
+                } else {
+                    self.per_member.register(*sender_index, queued_proposal);
+                }
+            }
+            Proposal::Remove(ref remove_proposal) => {
+                let removed = remove_proposal.removed();
+                self.per_member.register(removed, queued_proposal);
+            }
+            Proposal::PreSharedKey(_) => {
+                self.valid.add(queued_proposal.proposal_ref().clone());
+            }
+            Proposal::ReInit(_) => {
+                // TODO #751: Only keep one ReInit
+            }
+            Proposal::ExternalInit(_) => {
+                // Only use the first external init proposal we find.
+                if !self.contains_external_init {
+                    self.valid.add(queued_proposal.proposal_ref().clone());
+                    self.contains_external_init = true;
+                }
+            }
+            Proposal::GroupContextExtensions(_) => {
+                self.valid.add(queued_proposal.proposal_ref().clone());
+            }
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppDataUpdate(_) => {
+                self.valid.add(queued_proposal.proposal_ref().clone());
+            }
+            Proposal::SelfRemove => {
+                let Sender::Member(removed) = queued_proposal.sender() else {
+                    return Err(ProposalQueueError::SelfRemoveFromNonMember);
+                };
+                self.per_member.register(*removed, queued_proposal);
+            }
+            #[cfg(feature = "extensions-draft-08")]
+            Proposal::AppEphemeral(_) => {
+                self.valid.add(queued_proposal.proposal_ref().clone());
+            }
+            #[cfg(feature = "batched-proposals")]
+            Proposal::Batched(_) => {
+                return Err(LibraryError::custom(
+                    "Nested batched proposal should have been identified in earlier processing",
+                )
+                .into())
+            }
+            Proposal::Custom(_) => {
+                // Other/unknown proposals are always considered valid and
+                // have to be checked by the application instead.
+                self.valid.add(queued_proposal.proposal_ref().clone());
+            }
+        }
+        Ok(())
+    }
+
+    /// Merges adds and per-member proposals into the valid set and returns it
+    /// together with the `contains_own_updates` flag.
+    fn into_valid_proposals(mut self) -> (OrderedProposalRefs, bool) {
+        // TODO: ensure ordering is correct
+        for proposal_ref in self.adds.iter() {
+            self.valid.add(proposal_ref.clone());
+        }
+        for proposal in self.per_member.values() {
+            self.valid.add(proposal.proposal_ref().clone());
+        }
+        (self.valid, self.contains_own_updates)
+    }
+}
+
 /// Helper struct to collect proposals such that they are unique and can be read
 /// out in the order in that they were added.
 struct OrderedProposalRefs {
@@ -864,6 +979,50 @@ impl ProposalQueue {
         proposals.into_iter()
     }
 
+    /// Performs one pass of proposal filtering: categorises every flattened
+    /// proposal and returns the ordered set of valid proposal references together
+    /// with a flag indicating whether own-node Updates were present.
+    fn filter_pass(
+        proposals_to_filter: &ProposalsToFilter,
+        own_index: LeafNodeIndex,
+    ) -> Result<(OrderedProposalRefs, bool), ProposalQueueError> {
+        let mut acc = FilterAccumulator::new();
+        for proposal in proposals_to_filter.flatten() {
+            acc.process(proposal, own_index)?;
+        }
+        Ok(acc.into_valid_proposals())
+    }
+
+    /// Runs [`filter_pass`] and, if the first incomplete batch is found,
+    /// removes it and recurses until every remaining batch is fully represented.
+    ///
+    /// Removing one batch at a time (rather than all at once) is required for
+    /// correctness: removing batch A may allow a previously-incomplete batch B to
+    /// become fully valid (e.g. if A's winning proposal for a member slot was
+    /// displaced once A is gone, letting B's proposal take that slot).
+    ///
+    /// The recursion terminates because each call removes at least one batch and
+    /// the number of batches is finite.
+    #[cfg(feature = "batched-proposals")]
+    fn filter_until_stable(
+        proposals_to_filter: &mut ProposalsToFilter,
+        own_index: LeafNodeIndex,
+    ) -> Result<(OrderedProposalRefs, bool), ProposalQueueError> {
+        let (valid_proposals, contains_own_updates) =
+            Self::filter_pass(proposals_to_filter, own_index)?;
+
+        if let Some((rejected_ref, _)) = proposals_to_filter
+            .batched()
+            .into_iter()
+            .find(|(r, n)| !valid_proposals.contains_entire_batch(r, *n))
+        {
+            proposals_to_filter.remove(&rejected_ref);
+            return Self::filter_until_stable(proposals_to_filter, own_index);
+        }
+
+        Ok((valid_proposals, contains_own_updates))
+    }
+
     /// Filters received proposals
     ///
     /// 11.2 Commit
@@ -884,144 +1043,36 @@ impl ProposalQueue {
     /// - Check for presence of Removes and delete Updates
     /// - Only keep the last Update
     ///
+    /// Batched proposals are accepted only if every proposal in the batch
+    /// survives filtering (all-or-nothing semantics).
+    ///
     /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for
     /// the own node were included
     pub(crate) fn filter_proposals(
         iter: impl IntoIterator<Item = QueuedProposal>,
         own_index: LeafNodeIndex,
     ) -> Result<(Self, bool), ProposalQueueError> {
-        // TODO: refactor the proposal filtering logic.
-        //
-        // The below implementation
-        // uses a workaround to flatten batched proposals, and apply the proposal
-        // validation on the flat list in a loop. In the loop body,
-        // batched proposals that are rejected are removed from the `proposals_to_filter` list,
-        // and the filtering logic is applied to the proposals in the list again 
-        // until a valid commit can be created.
-        //
-        // Refactor TODOs:
-        // - Reorganize the maps and booleans used for keeping track of included proposals
-        // - Move the filtering logic from a loop to a standalone method
-        // - Ensure the `ProposalType::has_lower_priority_than()` encapsulates all of the
-        //   cases that are now supported
-        // - Ensure that error handling is consistent, and determine which proposals should
-        //   be excluded from the commit, and which should return an error
-
         // NOTE: identical proposals (which have the same hash reference)
         // are automatically deduplicated by this step.
         let mut proposals_to_filter = ProposalsToFilter::new(iter);
 
-        'filter: loop {
-            // flatten proposals
-            let flattened = proposals_to_filter.flatten();
-            // We use a HashSet to filter out duplicate Adds and use a vector in
-            // addition to keep the order as they come in.
-            let mut adds: OrderedProposalRefs = OrderedProposalRefs::new();
-            let mut valid_proposals: OrderedProposalRefs = OrderedProposalRefs::new();
-            let mut contains_own_updates = false;
-            let mut contains_external_init = false;
+        #[cfg(feature = "batched-proposals")]
+        let (valid_proposals, contains_own_updates) =
+            Self::filter_until_stable(&mut proposals_to_filter, own_index)?;
+        #[cfg(not(feature = "batched-proposals"))]
+        let (valid_proposals, contains_own_updates) =
+            Self::filter_pass(&proposals_to_filter, own_index)?;
 
-            let mut member_specific_proposals = MemberSpecificProposals::default();
-
-            // Parse proposals and build adds and member list
-            for queued_proposal in flattened {
-                match queued_proposal.proposal {
-                    Proposal::Add(_) => {
-                        adds.add(queued_proposal.proposal_ref().clone());
-                    }
-                    Proposal::Update(_) => {
-                        // Only members can send update proposals
-                        // ValSem112
-                        let Sender::Member(sender_index) = queued_proposal.sender() else {
-                            return Err(ProposalQueueError::UpdateFromExternalSender);
-                        };
-                        if sender_index == &own_index {
-                            contains_own_updates = true;
-                            continue;
-                        }
-                        member_specific_proposals.register(*sender_index, queued_proposal);
-                    }
-                    Proposal::Remove(ref remove_proposal) => {
-                        let removed = remove_proposal.removed();
-                        member_specific_proposals.register(removed, queued_proposal);
-                    }
-                    Proposal::PreSharedKey(_) => {
-                        valid_proposals.add(queued_proposal.proposal_ref().clone());
-                    }
-                    Proposal::ReInit(_) => {
-                        // TODO #751: Only keep one ReInit
-                    }
-                    Proposal::ExternalInit(_) => {
-                        // Only use the first external init proposal we find.
-                        if !contains_external_init {
-                            valid_proposals.add(queued_proposal.proposal_ref().clone());
-                            contains_external_init = true;
-                        }
-                    }
-                    Proposal::GroupContextExtensions(_) => {
-                        valid_proposals.add(queued_proposal.proposal_ref().clone());
-                    }
-                    #[cfg(feature = "extensions-draft-08")]
-                    Proposal::AppDataUpdate(_) => {
-                        valid_proposals.add(queued_proposal.proposal_ref().clone())
-                    }
-                    Proposal::SelfRemove => {
-                        let Sender::Member(removed) = queued_proposal.sender() else {
-                            return Err(ProposalQueueError::SelfRemoveFromNonMember);
-                        };
-                        member_specific_proposals.register(*removed, queued_proposal);
-                    }
-                    #[cfg(feature = "extensions-draft-08")]
-                    Proposal::AppEphemeral(_) => {
-                        valid_proposals.add(queued_proposal.proposal_ref().clone());
-                    }
-                    #[cfg(feature = "batched-proposals")]
-                    Proposal::Batched(_) => return Err(LibraryError::custom(
-                        "Nested batched proposal should have been identified in earlier processing",
-                    )
-                    .into()),
-                    Proposal::Custom(_) => {
-                        // Other/unknown proposals are always considered valid and
-                        // have to be checked by the application instead.
-                        valid_proposals.add(queued_proposal.proposal_ref().clone());
-                    }
-                }
-            }
-
-            // TODO: ensure ordering is correct
-            for proposal_ref in adds.iter() {
-                valid_proposals.add(proposal_ref.clone());
-            }
-
-            // Add the leaf-specific proposals to the list of valid proposals.
-            for proposal in member_specific_proposals.values() {
-                valid_proposals.add(proposal.proposal_ref().clone());
-            }
-
-            // validate batched
-            // if not all of a batched proposal was kept, remove it from the list,
-            // and restart the validation
-            #[cfg(feature = "batched-proposals")]
-            for (proposal_ref, num_proposals) in proposals_to_filter.batched() {
-                if !valid_proposals.contains_entire_batch(&proposal_ref, num_proposals) {
-                    proposals_to_filter.remove(&proposal_ref);
-                    continue 'filter;
-                }
-            }
-
-            // Build the queue
-            // Only retain `adds` and `valid_proposals`
-            let mut proposal_queue = ProposalQueue::default();
-            for proposal_reference in valid_proposals.iter() {
-                let queued_proposal = proposals_to_filter
-                    .get(proposal_reference.proposal_ref())
-                    .cloned()
-                    .ok_or(ProposalQueueError::ProposalNotFound)?;
-                proposal_queue.add(queued_proposal);
-            }
-
-            return Ok((proposal_queue, contains_own_updates));
+        let mut proposal_queue = ProposalQueue::default();
+        for proposal_reference in valid_proposals.iter() {
+            let queued_proposal = proposals_to_filter
+                .get(proposal_reference.proposal_ref())
+                .cloned()
+                .ok_or(ProposalQueueError::ProposalNotFound)?;
+            proposal_queue.add(queued_proposal);
         }
+
+        Ok((proposal_queue, contains_own_updates))
     }
 
     /// Returns `true` if all `ProposalRef` values from the list are
