@@ -1,9 +1,6 @@
 use commit_builder::CommitMessageBundle;
 use errors::{ProposeSelfUpdateError, SelfUpdateError};
-use openmls_traits::{
-    signatures::Signer,
-    storage::StorageProvider as _,
-};
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 use crate::{credentials::NewSignerBundle, storage::OpenMlsProvider, treesync::LeafNodeParameters};
 
