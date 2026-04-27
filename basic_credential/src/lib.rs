@@ -85,6 +85,7 @@ impl Signer for SignatureKeyPair {
                 let signature = k.sign(payload);
                 Ok(signature.to_bytes().into())
             }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA65 => {
                 let encoded_key: &ml_dsa::EncodedSigningKey<ml_dsa::MlDsa65> = self
                     .private
@@ -95,6 +96,7 @@ impl Signer for SignatureKeyPair {
                 let signature = k.sign(payload);
                 Ok(signature.encode().to_vec())
             }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA87 => {
                 // Note: Conversion of private key to a *ref* of encoded key
                 let encoded_key: &ml_dsa::EncodedSigningKey<ml_dsa::MlDsa87> = self
@@ -150,6 +152,7 @@ impl SignatureKeyPair {
                 // sk itself implements ZeroizeOnDrop.
                 (sk.as_bytes().as_slice().into(), pk)
             }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA65 => {
                 use ml_dsa::KeyGen as _;
                 let kp = ml_dsa::MlDsa65::key_gen(&mut OsRng);
@@ -157,6 +160,7 @@ impl SignatureKeyPair {
                 let sk = kp.signing_key().encode().to_vec();
                 (sk.into(), pk)
             }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA87 => {
                 use ml_dsa::KeyGen as _;
                 let kp = ml_dsa::MlDsa87::key_gen(&mut OsRng);

@@ -38,3 +38,4 @@ ml-dsa = "0.0.4"
 
 [features]
 test-utils = ["openmls_memory_storage/test-utils"]
+draft-ietf-mls-pq-ciphersuites = ["openmls_traits/draft-ietf-mls-pq-ciphersuites"]

@@ -58,8 +58,11 @@ fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
         HpkeKemType::DhKemP521 => hpke_types::KemAlgorithm::DhKemP521,
         HpkeKemType::DhKem25519 => hpke_types::KemAlgorithm::DhKem25519,
         HpkeKemType::DhKem448 => hpke_types::KemAlgorithm::DhKem448,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         HpkeKemType::XWingKemDraft6 => hpke_types::KemAlgorithm::XWingDraft06,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         HpkeKemType::MlKem768 => hpke_types::KemAlgorithm::MlKem768,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         HpkeKemType::MlKem1024 => hpke_types::KemAlgorithm::MlKem1024,
     }
 }
@@ -88,8 +91,9 @@ impl OpenMlsCrypto for RustCrypto {
         match ciphersuite {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
             | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-            | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
-            | Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384
+            | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(()),
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384
             | Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519
             | Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519
             | Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256
@@ -104,12 +108,19 @@ impl OpenMlsCrypto for RustCrypto {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
         ]
     }
@@ -286,6 +297,7 @@ impl OpenMlsCrypto for RustCrypto {
                 let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
                 Ok((k.to_bytes().as_slice().into(), pk))
             }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA65 => {
                 use ml_dsa::KeyGen as _;
                 let mut rng = self
@@ -297,6 +309,7 @@ impl OpenMlsCrypto for RustCrypto {
                 let sk = kp.signing_key().encode().to_vec();
                 Ok((sk, pk))
             }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA87 => {
                 use ml_dsa::KeyGen as _;
                 let mut rng = self
@@ -355,6 +368,7 @@ impl OpenMlsCrypto for RustCrypto {
                 )
                 .map_err(|_| CryptoError::InvalidSignature)
             }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA65 => {
                 let encoded_key: &ml_dsa::EncodedVerifyingKey<ml_dsa::MlDsa65> =
                     pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
@@ -367,6 +381,7 @@ impl OpenMlsCrypto for RustCrypto {
                 key.verify(data, &signature)
                     .map_err(|_| CryptoError::InvalidSignature)
             }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA87 => {
                 // Note: Conversion of key and signature to a *ref* of corresponding encoded types
                 let encoded_key: &ml_dsa::EncodedVerifyingKey<ml_dsa::MlDsa87> =
@@ -409,6 +424,7 @@ impl OpenMlsCrypto for RustCrypto {
                 let signature = k.sign(data);
                 Ok(signature.to_bytes().into())
             }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA65 => {
                 let encoded_key: &ml_dsa::EncodedSigningKey<ml_dsa::MlDsa65> =
                     key.try_into().map_err(|_| CryptoError::InvalidLength)?;
@@ -416,6 +432,7 @@ impl OpenMlsCrypto for RustCrypto {
                 let signature = k.sign(data);
                 Ok(signature.encode().to_vec())
             }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA87 => {
                 // Note: Conversion of private key to a *ref* of encoded key
                 let encoded_key: &ml_dsa::EncodedSigningKey<ml_dsa::MlDsa87> =

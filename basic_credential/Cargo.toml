@@ -25,6 +25,7 @@ zeroize = "1.8.2"
 [features]
 clonable = []   # Make the keys clonable
 test-utils = [] # Only use for tests!
+draft-ietf-mls-pq-ciphersuites = ["openmls_traits/draft-ietf-mls-pq-ciphersuites"]
 
 [dev-dependencies]
 serde_json = "1.0.149"
