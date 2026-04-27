@@ -95,6 +95,8 @@ draft-ietf-mls-pq-ciphersuites = [
     "openmls_memory_storage?/draft-ietf-mls-pq-ciphersuites",
     "openmls_sqlite_storage?/draft-ietf-mls-pq-ciphersuites",
     "openmls_libcrux_crypto?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_rust_crypto?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_basic_credential?/draft-ietf-mls-pq-ciphersuites",
 ]
 # enable randomness source
 fork-resolution = []
