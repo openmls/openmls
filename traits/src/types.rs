@@ -429,6 +429,13 @@ pub enum Ciphersuite {
     /// [draft-ietf-mls-pq-ciphersuites]: https://datatracker.ietf.org/doc/draft-ietf-mls-pq-ciphersuites
     MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519 = 0x004E,
 
+    // TBD3, TBD4, TBD5 are currently not supported because there are no implementations for hybrid
+    // schemes MLKEM768P256 and MLKEM1024P384.
+    //
+    // MLS_128_MLKEM768P256_AES128GCM_SHA256_P256 = TBD3,
+    // MLS_128_MLKEM768P256_AES256GCM_SHA384_P256 = TBD4
+    // MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384 =TBD5,
+    //
     /// ML-KEM768 | AES-GCM256 | SHA2-384 | EcDSA P256
     ///
     /// [draft-ietf-mls-pq-ciphersuites] TBD6 (provisional code point)
