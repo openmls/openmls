@@ -87,6 +87,11 @@ js-test = [
 extensions-draft-08 = [
     "openmls_traits/extensions-draft-08",
     "openmls_memory_storage?/extensions-draft-08",
+    # XXX: to avoid enabling the optional dependency
+    # for `openmls_sqlite_storage`, it is not
+    # explicitly included in this feature.
+    #
+    # Also see https://github.com/rust-lang/cargo/issues/10801
     #"openmls_sqlite_storage?/extensions-draft-08",
     "openmls_libcrux_crypto?/extensions-draft-08",
 ]
