@@ -282,6 +282,11 @@ impl PrivateMessage {
         Ok(output)
     }
 
+    /// Returns the epoch of the message.
+    pub fn epoch(&self) -> GroupEpoch {
+        self.epoch
+    }
+
     /// Returns `true` if this is a handshake message and `false` otherwise.
     #[cfg(test)]
     pub(crate) fn is_handshake_message(&self) -> bool {

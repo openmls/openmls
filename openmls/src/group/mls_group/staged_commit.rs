@@ -1,5 +1,4 @@
 use core::fmt::Debug;
-use std::mem;
 
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::storage::StorageProvider as _;
@@ -19,7 +18,7 @@ use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;
 use crate::prelude::{Commit, LeafNodeIndex};
 #[cfg(feature = "extensions-draft-08")]
-use crate::schedule::application_export_tree::ApplicationExportTree;
+use crate::{component::ComponentId, schedule::application_export_tree::ApplicationExportTree};
 
 use crate::treesync::errors::TreeSyncFromNodesError;
 use crate::treesync::RatchetTree;
@@ -459,13 +458,14 @@ impl MlsGroup {
                 self.group_epoch_secrets = state.group_epoch_secrets;
 
                 // Replace the previous message secrets with the new ones and return the previous message secrets
-                let mut message_secrets = state.message_secrets;
-                mem::swap(
-                    &mut message_secrets,
-                    self.message_secrets_store.message_secrets_mut(),
+                let old_message_secrets = self
+                    .message_secrets_store
+                    .replace_current_message_secrets(state.message_secrets);
+                self.message_secrets_store.add_past_epoch_tree(
+                    past_epoch,
+                    old_message_secrets,
+                    leaves,
                 );
-                self.message_secrets_store
-                    .add(past_epoch, message_secrets, leaves);
 
                 // Replace the previous exporter tree with the new one.
                 #[cfg(feature = "extensions-draft-08")]
@@ -754,7 +754,7 @@ impl StagedCommit {
     pub(crate) fn safe_export_secret(
         &mut self,
         crypto: &impl OpenMlsCrypto,
-        component_id: u16,
+        component_id: ComponentId,
     ) -> Result<Vec<u8>, StagedSafeExportSecretError> {
         let ciphersuite = self.group_context().ciphersuite();
         let StagedCommitState::GroupMember(ref mut staged_commit) = self.state else {

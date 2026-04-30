@@ -5,15 +5,19 @@
 //! over the size of the tree. Additionally, it is designed to be efficient even
 //! for larger sizes.
 
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap, fmt, marker::PhantomData};
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, CryptoError},
 };
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de::{self, Visitor},
+    ser::SerializeSeq,
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 use thiserror::Error;
-use zeroize::ZeroizeOnDrop;
+use zeroize::Zeroize;
 
 use crate::{
     binary_tree::array_representation::TreeSize, ciphersuite::Secret,
@@ -43,20 +47,28 @@ pub enum PprfError {
 }
 
 /// A Node in the PPRF tree that contains the node's secret.
-#[derive(Debug, Serialize, Deserialize, Clone, ZeroizeOnDrop)]
+///
+/// Implements transparent and custom serde for efficiently storing and reading secret bytes.
+#[derive(Debug, Clone)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
-#[serde(transparent)]
-struct PprfNode(#[serde(with = "serde_bytes")] Vec<u8>);
+struct PprfNode(Secret);
 
-impl From<Secret> for PprfNode {
-    fn from(secret: Secret) -> Self {
-        Self(secret.as_slice().to_vec())
+impl Serialize for PprfNode {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serde_bytes::Bytes::new(self.0.as_slice()).serialize(serializer)
     }
 }
 
-impl From<PprfNode> for Secret {
-    fn from(node: PprfNode) -> Self {
-        Secret::from_slice(&node.0)
+impl<'de> Deserialize<'de> for PprfNode {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        // Some serialization formats do not support 0-copy deserialization of bytes, so we need to
+        // support owned bytes as well.
+        let bytes: Cow<[u8]> = serde_bytes::Deserialize::deserialize(deserializer)?;
+        let secret = Secret::from_slice(bytes.as_ref());
+        if let Cow::Owned(mut bytes) = bytes {
+            bytes.zeroize() // Zeroize owned bytes to prevent leaking secrets.
+        }
+        Ok(Self(secret))
     }
 }
 
@@ -67,9 +79,9 @@ impl PprfNode {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<(Self, Self), CryptoError> {
-        let own_secret = Secret::from_slice(&self.0);
-        let (left_secret, right_secret) = derive_child_secrets(&own_secret, crypto, ciphersuite)?;
-        Ok((left_secret.into(), right_secret.into()))
+        let own_secret = &self.0;
+        let (left_secret, right_secret) = derive_child_secrets(own_secret, crypto, ciphersuite)?;
+        Ok((Self(left_secret), Self(right_secret)))
     }
 }
 
@@ -105,7 +117,7 @@ impl<P: Prefix> Pprf<P> {
         Pprf {
             // The width of the tree in bytes.
             width,
-            nodes: [(P::new(), PprfNode(secret.as_slice().to_vec()))].into(),
+            nodes: [(P::new(), PprfNode(secret))].into(),
         }
     }
 
@@ -115,7 +127,7 @@ impl<P: Prefix> Pprf<P> {
         Pprf {
             // The width of the tree in bytes.
             width,
-            nodes: [(P::new(), secret.into())].into(),
+            nodes: [(P::new(), PprfNode(secret))].into(),
         }
     }
 
@@ -142,7 +154,7 @@ impl<P: Prefix> Pprf<P> {
         loop {
             if let Some(node) = self.nodes.remove(&prefix) {
                 if depth == P::MAX_DEPTH {
-                    return Ok(node.into());
+                    return Ok(node.0);
                 } // already at leaf
                 current_node = node;
                 break;
@@ -175,19 +187,21 @@ impl<P: Prefix> Pprf<P> {
             prefix.push_bit(bit);
         }
 
-        Ok(current_node.into())
+        Ok(current_node.0)
     }
 }
 
-fn serialize_hashmap<'a, T, U, V, S>(v: &'a V, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_hashmap<T, U, S>(map: &HashMap<T, U>, serializer: S) -> Result<S::Ok, S::Error>
 where
     T: Serialize,
     U: Serialize,
-    &'a V: IntoIterator<Item = (T, U)> + 'a,
     S: Serializer,
 {
-    let vec = v.into_iter().collect::<Vec<_>>();
-    vec.serialize(serializer)
+    let mut seq = serializer.serialize_seq(Some(map.len()))?;
+    for (k, v) in map {
+        seq.serialize_element(&(k, v))?;
+    }
+    seq.end()
 }
 
 fn deserialize_hashmap<'de, T, U, D>(deserializer: D) -> Result<HashMap<T, U>, D::Error>
@@ -196,9 +210,36 @@ where
     U: Deserialize<'de>,
     D: Deserializer<'de>,
 {
-    Ok(Vec::<(T, U)>::deserialize(deserializer)?
-        .into_iter()
-        .collect::<HashMap<T, U>>())
+    struct TupleSeqVisitor<T, U> {
+        marker: PhantomData<(T, U)>,
+    }
+
+    impl<'de, T, U> Visitor<'de> for TupleSeqVisitor<T, U>
+    where
+        T: Eq + std::hash::Hash + Deserialize<'de>,
+        U: Deserialize<'de>,
+    {
+        type Value = HashMap<T, U>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a sequence of tuples")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: de::SeqAccess<'de>,
+        {
+            let mut map = HashMap::with_capacity(seq.size_hint().unwrap_or(0));
+            while let Some((k, v)) = seq.next_element::<(T, U)>()? {
+                map.insert(k, v);
+            }
+            Ok(map)
+        }
+    }
+
+    deserializer.deserialize_seq(TupleSeqVisitor {
+        marker: PhantomData,
+    })
 }
 
 #[cfg(test)]
@@ -291,5 +332,27 @@ mod tests {
 
         let result = pprf.evaluate(crypto, ciphersuite, &index);
         assert!(matches!(result, Err(PprfError::IndexOutOfBounds)));
+    }
+
+    #[openmls_test]
+    fn pprf_serialization() {
+        let provider = &Provider::default();
+        let seed: [u8; 32] = OsRng.unwrap_mut().random();
+        println!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
+        let root_secret = dummy_secret(&mut rng, ciphersuite);
+        let mut pprf = Pprf::<Prefix16>::new_for_test(root_secret);
+        let index = random_vec(&mut rng, Prefix16::MAX_INPUT_LEN);
+
+        let crypto = provider.crypto();
+
+        let result = pprf.evaluate(crypto, ciphersuite, &index);
+        assert!(result.is_ok());
+
+        let serialized = serde_json::to_string(&pprf).unwrap();
+        println!("Serialized: {}", serialized);
+        let deserialized: Pprf<Prefix16> = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(pprf, deserialized);
     }
 }

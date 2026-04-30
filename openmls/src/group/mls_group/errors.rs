@@ -57,6 +57,22 @@ pub enum NewGroupError<StorageError> {
     GroupAlreadyExists,
 }
 
+/// An error when deleting past epoch secrets.
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
+pub enum DeletePastEpochSecretsError<StorageError> {
+    /// Error accessing the storage.
+    #[error(transparent)]
+    StorageError(#[from] StorageError),
+}
+
+/// An error when setting the past epoch deletion policy.
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
+pub enum SetPastEpochDeletionPolicyError<StorageError> {
+    /// Error accessing the storage.
+    #[error(transparent)]
+    StorageError(#[from] StorageError),
+}
+
 /// EmptyInput error
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum EmptyInputError {
@@ -363,6 +379,14 @@ pub enum ProposeSelfUpdateError<StorageError> {
     /// The updated leaf node does not support all group context extensions.
     #[error("The updated leaf node does not support all group context extensions.")]
     UnsupportedGroupContextExtensions,
+    /// The `leaf_node_parameters.credential_with_key` does not match
+    /// `new_signer.credential_with_key` (rotation paths only).
+    #[error("Mismatched credential_with_key between leaf_node_parameters and new_signer")]
+    InvalidLeafNodeParameters,
+    /// The `leaf_node_parameters.credential_with_key` does not match
+    /// `new_signer.credential_with_key` (rotation paths only).
+    #[error("Mismatched ciphersuite between new_signer and the group")]
+    InvalidSignerCiphersuite,
 }
 
 /// Commit to pending proposals error

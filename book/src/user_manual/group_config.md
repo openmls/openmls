@@ -8,7 +8,7 @@ Two very similar structs can help configure groups upon their creation: `MlsGrou
 | ------------------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------ |
 | `wire_format_policy`           | `WireFormatPolicy`           | Defines the wire format policy for outgoing and incoming handshake messages.                     |
 | `padding_size`                 | `usize`                      | Size of padding in bytes. The default is 0.                                                      |
-| `max_past_epochs`              | `usize`                      | Maximum number of past epochs for which application messages can be decrypted. The default is 0. |
+| `past_epoch_deletion_policy`   | `PastEpochDeletionPolicy`    | Configures the number of past epochs for which application messages can be decrypted. The default is `MaxEpochs(0)`. For more information, see [Past epoch secret deletion](./past_epoch_secret_deletion.md).
 | `number_of_resumption_psks`    | `usize`                      | Number of resumption psks to keep. The default is 0.                                             |
 | `use_ratchet_tree_extension`   | `bool`                       | Flag indicating the Ratchet Tree Extension should be used. The default is `false`.               |
 | `sender_ratchet_configuration` | `SenderRatchetConfiguration` | Sender ratchet configuration.                                                                    |

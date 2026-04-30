@@ -3,6 +3,7 @@ use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use crate::{
     binary_tree::array_representation::TreeSize,
     ciphersuite::Secret,
+    component::ComponentId,
     schedule::{
         pprf::{Pprf, PprfError, Prefix16},
         ApplicationExportSecret,
@@ -25,7 +26,7 @@ impl ApplicationExportTree {
         &mut self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
-        component_id: u16,
+        component_id: ComponentId,
     ) -> Result<Secret, ApplicationExportTreeError> {
         self.evaluate(crypto, ciphersuite, &component_id)
     }

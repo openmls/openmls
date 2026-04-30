@@ -1,12 +1,15 @@
 use errors::{ExportGroupInfoError, ExportSecretError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
-#[cfg(feature = "extensions-draft-08")]
-use crate::group::{PendingSafeExportSecretError, SafeExportSecretError};
 use crate::{
     ciphersuite::HpkePublicKey,
     extensions::errors::InvalidExtensionError,
     schedule::{EpochAuthenticator, ResumptionPskSecret},
+};
+#[cfg(feature = "extensions-draft-08")]
+use crate::{
+    component::ComponentId,
+    group::{PendingSafeExportSecretError, SafeExportSecretError},
 };
 
 use super::*;
@@ -51,7 +54,7 @@ impl MlsGroup {
         &mut self,
         crypto: &Crypto,
         storage: &Storage,
-        component_id: u16,
+        component_id: ComponentId,
     ) -> Result<Vec<u8>, SafeExportSecretError<Storage::Error>> {
         if !self.is_active() {
             return Err(SafeExportSecretError::GroupState(
@@ -79,7 +82,7 @@ impl MlsGroup {
         &mut self,
         crypto: &impl OpenMlsCrypto,
         storage: &Provider,
-        component_id: u16,
+        component_id: ComponentId,
     ) -> Result<Vec<u8>, PendingSafeExportSecretError<Provider::Error>> {
         let group_id = self.group_id().clone();
         let MlsGroupState::PendingCommit(ref mut group_state) = self.group_state else {
