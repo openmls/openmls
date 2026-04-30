@@ -14,9 +14,11 @@ use crate::tree::sender_ratchet::SenderRatchetConfiguration;
 
 use super::*;
 
-#[cfg(not(feature = "virtual-clients-draft"))]
-pub(crate) type EncryptionOutput = PrivateMessage;
-#[cfg(feature = "virtual-clients-draft")]
+/// The result of encrypting an [`AuthenticatedContent`] into a
+/// [`PrivateMessage`]. The `u32` is the generation of the encryption secret
+/// used. With the `virtual-clients-draft` feature, callers use the generation
+/// to confirm the message and delete the corresponding encryption secret.
+/// Without the feature, the generation is unused.
 pub(crate) type EncryptionOutput = (u32, PrivateMessage);
 
 /// `PrivateMessage` is the framing struct for an encrypted `PublicMessage`.
@@ -275,11 +277,7 @@ impl PrivateMessage {
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
         };
-        #[cfg(feature = "virtual-clients-draft")]
-        let output = (generation, private_message);
-        #[cfg(not(feature = "virtual-clients-draft"))]
-        let output = private_message;
-        Ok(output)
+        Ok((generation, private_message))
     }
 
     /// Returns the epoch of the message.

@@ -124,7 +124,7 @@ fn codec_ciphertext() {
     let mut message_secrets =
         MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0));
 
-    let orig = PrivateMessage::encrypt_with_different_header::<StorageError>(
+    let (_, orig) = PrivateMessage::encrypt_with_different_header::<StorageError>(
         provider.crypto(),
         provider.rand(),
         &plaintext,
@@ -138,9 +138,6 @@ fn codec_ciphertext() {
         0,
     )
     .expect("Could not encrypt PublicMessage.");
-
-    #[cfg(feature = "virtual-clients-draft")]
-    let orig = orig.1;
 
     let enc = orig
         .tls_serialize_detached()
@@ -182,7 +179,7 @@ fn wire_format_checks() {
     message_secrets.replace_secret_tree(sender_secret_tree);
 
     let sender_index = LeafNodeIndex::new(0);
-    let ciphertext = PrivateMessage::encrypt_with_different_header::<StorageError>(
+    let (_, ciphertext) = PrivateMessage::encrypt_with_different_header::<StorageError>(
         provider.crypto(),
         provider.rand(),
         &plaintext,
@@ -196,9 +193,6 @@ fn wire_format_checks() {
         0,
     )
     .expect("Could not encrypt PublicMessage.");
-
-    #[cfg(feature = "virtual-clients-draft")]
-    let ciphertext = ciphertext.1;
 
     let ciphertext = PrivateMessageIn::from(ciphertext);
 
@@ -236,7 +230,7 @@ fn wire_format_checks() {
 
     let receiver_secret_tree = message_secrets.replace_secret_tree(sender_secret_tree);
     // Bypass wire format check during encryption
-    let ciphertext = PrivateMessage::encrypt_without_check::<StorageError>(
+    let (_, ciphertext) = PrivateMessage::encrypt_without_check::<StorageError>(
         provider.crypto(),
         provider.rand(),
         &plaintext,
@@ -245,9 +239,6 @@ fn wire_format_checks() {
         0,
     )
     .expect("Could not encrypt PublicMessage.");
-
-    #[cfg(feature = "virtual-clients-draft")]
-    let ciphertext = ciphertext.1;
 
     let ciphertext = PrivateMessageIn::from(ciphertext);
 
@@ -488,7 +479,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
     )
     .expect("Could not create new ApplicationMessage.");
 
-    let enc_message = PrivateMessage::encrypt_with_different_header::<StorageError>(
+    let (_, enc_message) = PrivateMessage::encrypt_with_different_header::<StorageError>(
         alice_provider.crypto(),
         alice_provider.rand(),
         &bogus_sender_message,
@@ -502,9 +493,6 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         0,
     )
     .expect("Encryption error");
-
-    #[cfg(feature = "virtual-clients-draft")]
-    let enc_message = enc_message.1;
 
     let received_message = charlie_group.process_message(
         charlie_provider,
