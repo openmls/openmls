@@ -212,7 +212,9 @@ impl DecryptionRatchet {
         let window_index = ((self.generation() - generation) as i32) - 1;
         if window_index >= 0 {
             let index = window_index as usize;
-            self.past_secrets.get_mut(index).take();
+            if let Some(entry) = self.past_secrets.get_mut(index) {
+                entry.take();
+            }
         }
     }
 
