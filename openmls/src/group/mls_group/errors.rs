@@ -10,7 +10,6 @@ use thiserror::Error;
 use crate::{
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
-    framing::MessageEncryptionError,
     group::{
         errors::{
             CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
@@ -24,6 +23,9 @@ use crate::{
         node::leaf_node::LeafNodeUpdateError,
     },
 };
+
+#[cfg(feature = "virtual-clients-draft")]
+use crate::framing::MessageEncryptionError;
 
 #[cfg(feature = "extensions-draft-08")]
 pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
@@ -182,6 +184,19 @@ pub enum ProcessMessageError<StorageError> {
 }
 
 /// Create message error
+#[cfg(not(feature = "virtual-clients-draft"))]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum CreateMessageError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Create message error
+#[cfg(feature = "virtual-clients-draft")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum CreateMessageError<StorageError> {
     /// See [`LibraryError`] for more details.

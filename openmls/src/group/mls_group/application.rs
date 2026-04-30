@@ -7,11 +7,6 @@ use crate::tree::secret_tree::SecretType;
 
 use super::{errors::CreateMessageError, *};
 
-#[cfg(feature = "virtual-clients-draft")]
-type CreateMessageReturn = (u32, MlsMessageOut);
-#[cfg(not(feature = "virtual-clients-draft"))]
-type CreateMessageReturn = MlsMessageOut;
-
 impl MlsGroup {
     // === Application messages ===
 
@@ -22,31 +17,13 @@ impl MlsGroup {
     /// proposals exist. In that case `.process_pending_proposals()` must be
     /// called first and incoming messages from the DS must be processed
     /// afterwards.
+    #[cfg(not(feature = "virtual-clients-draft"))]
     pub fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
-    ) -> Result<MlsMessageOut, CreateMessageError<Provider::StorageError>> {
-        let output = self.create_message_internal(
-            provider,
-            signer,
-            message,
-            #[cfg(feature = "virtual-clients-draft")]
-            true,
-        )?;
-        #[cfg(feature = "virtual-clients-draft")]
-        let output = output.1;
-        Ok(output)
-    }
-
-    fn create_message_internal<Provider: OpenMlsProvider>(
-        &mut self,
-        provider: &Provider,
-        signer: &impl Signer,
-        message: &[u8],
-        #[cfg(feature = "virtual-clients-draft")] confirm: bool,
-    ) -> Result<CreateMessageReturn, CreateMessageError<Provider::StorageError>> {
+    ) -> Result<MlsMessageOut, CreateMessageError> {
         if !self.is_active() {
             return Err(CreateMessageError::GroupStateError(
                 MlsGroupStateError::UseAfterEviction,
@@ -70,22 +47,67 @@ impl MlsGroup {
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
 
-        #[cfg(feature = "virtual-clients-draft")]
-        let (generation, ciphertext) = {
-            if confirm {
-                self.confirm_message(provider.storage(), ciphertext.0)?;
-            }
-            (ciphertext.0, ciphertext.1)
-        };
+        let output = MlsMessageOut::from_private_message(ciphertext, self.version());
+        self.reset_aad();
+        Ok(output)
+    }
+
+    /// Creates an application message. Returns
+    /// `CreateMessageError::MlsGroupStateError::UseAfterEviction` if the member
+    /// is no longer part of the group. Returns
+    /// `CreateMessageError::MlsGroupStateError::PendingProposal` if pending
+    /// proposals exist. In that case `.process_pending_proposals()` must be
+    /// called first and incoming messages from the DS must be processed
+    /// afterwards.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn create_message<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        message: &[u8],
+    ) -> Result<MlsMessageOut, CreateMessageError<Provider::StorageError>> {
+        let (_generation, output) = self.create_message_internal(provider, signer, message, true)?;
+        Ok(output)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn create_message_internal<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        message: &[u8],
+        confirm: bool,
+    ) -> Result<(u32, MlsMessageOut), CreateMessageError<Provider::StorageError>> {
+        if !self.is_active() {
+            return Err(CreateMessageError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
+            ));
+        }
+        if !self.proposal_store().is_empty() {
+            return Err(CreateMessageError::GroupStateError(
+                MlsGroupStateError::PendingProposal,
+            ));
+        }
+
+        let authenticated_content = AuthenticatedContent::new_application(
+            self.own_leaf_index(),
+            &self.aad,
+            message,
+            self.context(),
+            signer,
+        )?;
+        let (generation, ciphertext) = self
+            .encrypt(authenticated_content, provider)
+            // We know the application message is wellformed and we have the key material of the current epoch
+            .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
+
+        if confirm {
+            self.confirm_message(provider.storage(), generation)?;
+        }
 
         let output = MlsMessageOut::from_private_message(ciphertext, self.version());
-
-        #[cfg(feature = "virtual-clients-draft")]
-        let output = (generation, output);
-
         self.reset_aad();
-
-        Ok(output)
+        Ok((generation, output))
     }
 
     /// Creates an application message. Encryption secrets are only deleted
