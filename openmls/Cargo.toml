@@ -86,9 +86,21 @@ js-test = [
 
 extensions-draft-08 = [
     "openmls_traits/extensions-draft-08",
-    "openmls_memory_storage?/extensions-draft-08",
+    # XXX: to avoid enabling the `openmls_sqlite_storage` dependency
+    # and other dependencies used for testing
+    # when enabling this feature, these optional dependencies
+    # are not explicitly included in this feature.
+    #
+    # See https://github.com/rust-lang/cargo/issues/10801
+    # "openmls_sqlite_storage?/extensions-draft-08",
+    # "openmls_libcrux_crypto?/extensions-draft-08",
+    # "openmls_memory_storage?/extensions-draft-08",
+]
+
+extensions-draft-08-test-dependencies = [
     "openmls_sqlite_storage?/extensions-draft-08",
     "openmls_libcrux_crypto?/extensions-draft-08",
+    "openmls_memory_storage?/extensions-draft-08",
 ]
 # experimental feature implementing the virtual-clients draft
 virtual-clients-draft = []
