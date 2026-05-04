@@ -5,10 +5,13 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
-use openmls_traits::crypto::OpenMlsCrypto;
 #[cfg(feature = "virtual-clients-draft")]
 use std::collections::BTreeMap;
 use std::collections::VecDeque;
+#[cfg(feature = "virtual-clients-draft")]
+use std::mem;
+
+use openmls_traits::crypto::OpenMlsCrypto;
 
 use openmls_traits::types::Ciphersuite;
 
@@ -299,16 +302,48 @@ pub struct DualUseRatchet {
     #[serde(with = "vector_converter")]
     past_secrets: BTreeMap<Generation, DualUsePastSecret>,
     ratchet_head: RatchetSecret,
-    decryption_generation: Generation,
 }
 
 #[cfg(feature = "virtual-clients-draft")]
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 #[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
-struct DualUsePastSecret {
-    ratchet_secret: RatchetKeyMaterial,
-    pending_confirmation: bool,
+enum DualUsePastSecret {
+    AwaitingConfirmation(RatchetKeyMaterial),
+    RetainedForDecryption(RetainedDecryptionSecret),
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
+#[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
+enum RetainedDecryptionSecret {
+    Available(RatchetKeyMaterial),
+    Consumed,
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl DualUsePastSecret {
+    fn take_for_decryption(&mut self) -> Result<RatchetKeyMaterial, SecretTreeError> {
+        match mem::replace(
+            self,
+            Self::RetainedForDecryption(RetainedDecryptionSecret::Consumed),
+        ) {
+            Self::AwaitingConfirmation(ratchet_secret)
+            | Self::RetainedForDecryption(RetainedDecryptionSecret::Available(ratchet_secret)) => {
+                *self = Self::RetainedForDecryption(RetainedDecryptionSecret::Consumed);
+                Ok(ratchet_secret)
+            }
+            Self::RetainedForDecryption(RetainedDecryptionSecret::Consumed) => {
+                *self = Self::RetainedForDecryption(RetainedDecryptionSecret::Consumed);
+                Err(SecretTreeError::SecretReuseError)
+            }
+        }
+    }
+
+    fn is_retained_for_decryption(&self) -> bool {
+        matches!(self, Self::RetainedForDecryption(_))
+    }
 }
 
 #[cfg(feature = "virtual-clients-draft")]
@@ -317,7 +352,6 @@ impl DualUseRatchet {
         Self {
             past_secrets: BTreeMap::new(),
             ratchet_head: RatchetSecret::initial_ratchet_secret(secret),
-            decryption_generation: 0,
         }
     }
 
@@ -338,7 +372,7 @@ impl DualUseRatchet {
         }
         if matches!(
             self.past_secrets.get(&generation),
-            Some(entry) if entry.pending_confirmation
+            Some(DualUsePastSecret::AwaitingConfirmation(_))
         ) {
             self.past_secrets.remove(&generation);
         }
@@ -363,21 +397,17 @@ impl DualUseRatchet {
             .map(|(_, key_material)| key_material)?;
         self.past_secrets.insert(
             generation,
-            DualUsePastSecret {
-                ratchet_secret: ratchet_secrets.clone(),
-                pending_confirmation: true,
-            },
+            DualUsePastSecret::AwaitingConfirmation(ratchet_secrets.clone()),
         );
         Ok((generation, ratchet_secrets))
     }
 
     /// Gets a secret for decryption.
     ///
-    /// The receive-side retention window is tracked independently from the
-    /// derivation head because encryption also advances the derivation head.
-    /// Unconfirmed encryption secrets are retained even if they fall outside
-    /// the receive window; all other cached secrets are pruned when decryption
-    /// moves the receive window forward.
+    /// The receive-side retention window is computed only from generations
+    /// retained for decryption because encryption also advances the derivation
+    /// head. Local sends don't enter this window. Unconfirmed encryption secrets
+    /// are retained even if they fall outside the receive window.
     pub(crate) fn secret_for_decryption(
         &mut self,
         ciphersuite: Ciphersuite,
@@ -393,12 +423,6 @@ impl DualUseRatchet {
             return Err(SecretTreeError::TooDistantInTheFuture);
         }
 
-        let window_start = self.window_start(configuration);
-        if generation < window_start && !self.has_unconfirmed_secret(generation) {
-            log::error!("  Generation is too far in the past (broke out of order tolerance ({}) {generation} < {}).", configuration.out_of_order_tolerance(), self.decryption_generation);
-            return Err(SecretTreeError::TooDistantInThePast);
-        }
-
         let ratchet_secrets = if generation >= head_generation {
             for skipped_generation in head_generation..generation {
                 let ratchet_secrets = self
@@ -407,50 +431,68 @@ impl DualUseRatchet {
                     .map(|(_, key_material)| key_material)?;
                 self.past_secrets.insert(
                     skipped_generation,
-                    DualUsePastSecret {
-                        ratchet_secret: ratchet_secrets,
-                        pending_confirmation: false,
-                    },
+                    DualUsePastSecret::RetainedForDecryption(RetainedDecryptionSecret::Available(
+                        ratchet_secrets,
+                    )),
                 );
             }
-            self.ratchet_head
+            let ratchet_secrets = self
+                .ratchet_head
                 .ratchet_forward(crypto, ciphersuite)
-                .map(|(_, key_material)| key_material)?
+                .map(|(_, key_material)| key_material)?;
+            self.past_secrets.insert(
+                generation,
+                DualUsePastSecret::RetainedForDecryption(RetainedDecryptionSecret::Consumed),
+            );
+            ratchet_secrets
         } else {
-            self.past_secrets
-                .remove(&generation)
-                .map(|entry| entry.ratchet_secret)
-                .ok_or(SecretTreeError::SecretReuseError)?
+            let Some(entry) = self.past_secrets.get_mut(&generation) else {
+                return Err(self.error_for_missing_past_secret(generation));
+            };
+            entry.take_for_decryption()?
         };
 
-        self.advance_decryption_generation(generation, configuration);
+        self.prune_past_secrets(configuration);
         Ok(ratchet_secrets)
     }
 
-    fn has_unconfirmed_secret(&self, generation: Generation) -> bool {
-        matches!(
-            self.past_secrets.get(&generation),
-            Some(entry) if entry.pending_confirmation
-        )
-    }
-
-    fn window_start(&self, configuration: &SenderRatchetConfiguration) -> Generation {
-        self.decryption_generation
-            .saturating_sub(configuration.out_of_order_tolerance())
-    }
-
-    fn advance_decryption_generation(
-        &mut self,
-        generation: Generation,
-        configuration: &SenderRatchetConfiguration,
-    ) {
-        self.decryption_generation = self.decryption_generation.max(generation.saturating_add(1));
-        self.prune_past_secrets(configuration);
+    fn error_for_missing_past_secret(&self, generation: Generation) -> SecretTreeError {
+        if self
+            .past_secrets
+            .iter()
+            .find_map(|(retained_generation, entry)| {
+                entry
+                    .is_retained_for_decryption()
+                    .then_some(*retained_generation)
+            })
+            .is_some_and(|oldest_generation| generation < oldest_generation)
+        {
+            log::error!("  Generation is too far in the past (not in the window).");
+            SecretTreeError::TooDistantInThePast
+        } else {
+            SecretTreeError::SecretReuseError
+        }
     }
 
     fn prune_past_secrets(&mut self, configuration: &SenderRatchetConfiguration) {
-        let window_start = self.window_start(configuration);
-        self.past_secrets
-            .retain(|generation, entry| *generation >= window_start || entry.pending_confirmation);
+        let excess_retained_decryption_secrets = self
+            .past_secrets
+            .values()
+            .filter(|entry| entry.is_retained_for_decryption())
+            .count()
+            .saturating_sub(configuration.out_of_order_tolerance() as usize);
+
+        let generations_to_prune = self
+            .past_secrets
+            .iter()
+            .filter_map(|(generation, entry)| {
+                entry.is_retained_for_decryption().then_some(*generation)
+            })
+            .take(excess_retained_decryption_secrets)
+            .collect::<Vec<_>>();
+
+        for generation in generations_to_prune {
+            self.past_secrets.remove(&generation);
+        }
     }
 }

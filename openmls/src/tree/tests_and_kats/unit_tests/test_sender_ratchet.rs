@@ -366,3 +366,67 @@ fn dual_use_decryption_moves_receive_window() {
         )
         .expect("Expected retained out-of-order secret.");
 }
+
+// Local sends must not occupy slots in the receive-side retention window. Only
+// decrypting a message advances that window. In this scenario the first
+// decryption leaves a full receive window, then we send and confirm enough
+// messages to span the whole tolerance. A later decryption should prune only as
+// far as that one received message requires, not by the locally sent
+// generations.
+#[cfg(feature = "virtual-clients-draft")]
+#[openmls_test::openmls_test]
+fn dual_use_local_sends_do_not_advance_receive_window() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::default();
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut ratchet = DualUseRatchet::new(secret);
+
+    let first_received_generation = configuration.out_of_order_tolerance();
+    let _decrypted = ratchet
+        .secret_for_decryption(
+            ciphersuite,
+            provider.crypto(),
+            first_received_generation,
+            configuration,
+        )
+        .expect("Expected first decryption secret.");
+
+    for _ in 0..configuration.out_of_order_tolerance() {
+        let (generation, _) = ratchet
+            .secret_for_encryption(ciphersuite, provider.crypto())
+            .expect("Expected encryption secret.");
+        ratchet.delete_secret_for_generation(generation);
+    }
+
+    let later_received_generation = ratchet.generation();
+    let _decrypted = ratchet
+        .secret_for_decryption(
+            ciphersuite,
+            provider.crypto(),
+            later_received_generation,
+            configuration,
+        )
+        .expect("Expected later decryption secret.");
+
+    let pruned_by_later_decryption =
+        first_received_generation.saturating_sub(configuration.out_of_order_tolerance()) + 1;
+    let err = ratchet
+        .secret_for_decryption(
+            ciphersuite,
+            provider.crypto(),
+            pruned_by_later_decryption,
+            configuration,
+        )
+        .expect_err("One old generation should be pruned by the later decryption.");
+    assert_eq!(err, SecretTreeError::TooDistantInThePast);
+
+    let retained_across_local_sends = pruned_by_later_decryption + 1;
+    let _decrypted = ratchet
+        .secret_for_decryption(
+            ciphersuite,
+            provider.crypto(),
+            retained_across_local_sends,
+            configuration,
+        )
+        .expect("Local sends should not prune the receive window.");
+}
