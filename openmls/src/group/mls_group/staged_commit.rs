@@ -476,69 +476,42 @@ impl MlsGroup {
         use tls_codec::DeserializeBytes;
 
         use crate::components::vc_derivation_info::{
-            DerivationInfo, EpochBaseSecret, EpochEncryptionKey, VC_COMPONENT_ID,
+            DerivationInfo, EpochBaseSecret, EpochEncryptionKey, VirtualClientsError,
+            VC_COMPONENT_ID,
         };
 
         let app_data_dictionary = path
             .leaf_node()
             .extensions()
             .app_data_dictionary()
-            .ok_or_else(|| {
-                StageCommitError::VirtualClientsError(
-                    "Can't find app data dictionary.".to_string(),
-                )
-            })?;
+            .ok_or(VirtualClientsError::MissingAppDataDictionary)?;
         let derivation_info_bytes = app_data_dictionary
             .dictionary()
             .get(&VC_COMPONENT_ID)
-            .ok_or_else(|| {
-                StageCommitError::VirtualClientsError("Can't find derivation info.".to_string())
-            })?;
+            .ok_or(VirtualClientsError::MissingDerivationInfo)?;
         let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
-            .map_err(|_| {
-                StageCommitError::VirtualClientsError(
-                    "Can't deserialize derivation info.".to_string(),
-                )
-            })?;
+            .map_err(|_| VirtualClientsError::DerivationInfoMalformed)?;
 
         let storage = provider.storage();
         let epoch_encryption_key: EpochEncryptionKey = storage
             .vc_epoch_encryption_key(derivation_info.epoch_id())
-            .map_err(|e| {
-                StageCommitError::VirtualClientsError(format!(
-                    "Failed to load VC epoch encryption key: {e}"
-                ))
-            })?
-            .ok_or_else(|| {
-                StageCommitError::VirtualClientsError(
-                    "No VC epoch encryption key for this epoch.".to_string(),
-                )
-            })?;
+            .map_err(|e| VirtualClientsError::StorageError(format!("{e}")))?
+            .ok_or(VirtualClientsError::MissingEpochEncryptionKey)?;
         let epoch_info =
-            derivation_info.decrypt(provider.crypto(), ciphersuite, &epoch_encryption_key);
+            derivation_info.decrypt(provider.crypto(), ciphersuite, &epoch_encryption_key)?;
         if epoch_info.leaf_index != self.own_leaf_index() {
-            return Err(StageCommitError::VirtualClientsError(
-                "Epoch info leaf index does not match own leaf index.".to_string(),
-            ));
+            return Err(VirtualClientsError::LeafIndexMismatch.into());
         }
 
         let epoch_base_secret: EpochBaseSecret = storage
             .vc_epoch_base_secret(derivation_info.epoch_id())
-            .map_err(|e| {
-                StageCommitError::VirtualClientsError(format!(
-                    "Failed to load VC epoch base secret: {e}"
-                ))
-            })?
-            .ok_or_else(|| {
-                StageCommitError::VirtualClientsError(
-                    "No VC epoch base secret for this epoch.".to_string(),
-                )
-            })?;
+            .map_err(|e| VirtualClientsError::StorageError(format!("{e}")))?
+            .ok_or(VirtualClientsError::MissingEpochBaseSecret)?;
 
         let operation_secret =
-            epoch_base_secret.derive_operation_secret(provider.crypto(), ciphersuite);
+            epoch_base_secret.derive_operation_secret(provider.crypto(), ciphersuite)?;
         let path_secret = operation_secret
-            .derive_path_generation_secret(provider.crypto(), ciphersuite)
+            .derive_path_generation_secret(provider.crypto(), ciphersuite)?
             .into();
         let (encryption_key_pairs, commit_secret) = diff.recreate_path_from_path_secret(
             provider.crypto(),
@@ -550,12 +523,10 @@ impl MlsGroup {
         // Verify that the leaf encryption key in the path matches the one
         // derived from the path secret.
         let (encryption_key, _encryption_private_key) = operation_secret
-            .derive_encryption_key_secret(provider.crypto(), ciphersuite)
-            .generate_encryption_key_pair(provider.crypto(), ciphersuite);
+            .derive_encryption_key_secret(provider.crypto(), ciphersuite)?
+            .generate_encryption_key_pair(provider.crypto(), ciphersuite)?;
         if &encryption_key != path.leaf_node().encryption_key() {
-            return Err(StageCommitError::VirtualClientsError(
-                "Public key from path does not match derived public key.".to_string(),
-            ));
+            return Err(VirtualClientsError::EncryptionKeyMismatch.into());
         }
 
         Ok((encryption_key_pairs, commit_secret))

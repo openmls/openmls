@@ -201,8 +201,11 @@ impl<StorageError> From<ExternalCommitBuilderFinalizeError<StorageError>>
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum StageCommitError {
     /// Virtual clients error.
-    #[error("Virtual clients error: {0}")]
-    VirtualClientsError(String),
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(
+        #[from] crate::components::vc_derivation_info::VirtualClientsError,
+    ),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
