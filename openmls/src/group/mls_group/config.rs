@@ -27,6 +27,11 @@
 //!     .build();
 //! ```
 
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::SystemTime;
+#[cfg(target_arch = "wasm32")]
+use web_time::SystemTime;
+
 use super::*;
 use crate::{
     extensions::Extensions,
@@ -119,7 +124,7 @@ pub struct PastEpochDeletion {
 /// A duration or timestamp before which to delete past epoch secrets.
 pub(crate) enum PastEpochDeletionTimeConfig {
     OlderThanDuration(std::time::Duration),
-    BeforeTimestamp(std::time::SystemTime),
+    BeforeTimestamp(SystemTime),
     DeleteAllWithoutTimestamp,
 }
 
@@ -133,7 +138,7 @@ impl PastEpochDeletion {
     }
 
     /// Delete all past epoch secrets before a provided timestamp.
-    pub fn before_timestamp(timestamp: std::time::SystemTime) -> Self {
+    pub fn before_timestamp(timestamp: SystemTime) -> Self {
         Self {
             config: Some(PastEpochDeletionTimeConfig::BeforeTimestamp(timestamp)),
             max_past_epochs: None,
