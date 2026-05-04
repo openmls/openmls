@@ -259,6 +259,10 @@ const TREE_LABEL: &[u8] = b"Tree";
 const GROUP_CONTEXT_LABEL: &[u8] = b"GroupContext";
 #[cfg(feature = "extensions-draft-08")]
 const APPLICATION_EXPORT_TREE_LABEL: &[u8] = b"ApplicationExportTree";
+#[cfg(feature = "virtual-clients-draft")]
+const VC_EPOCH_ENCRYPTION_KEY_LABEL: &[u8] = b"VcEpochEncryptionKey";
+#[cfg(feature = "virtual-clients-draft")]
+const VC_EPOCH_BASE_SECRET_LABEL: &[u8] = b"VcEpochBaseSecret";
 const INTERIM_TRANSCRIPT_HASH_LABEL: &[u8] = b"InterimTranscriptHash";
 const CONFIRMATION_TAG_LABEL: &[u8] = b"ConfirmationTag";
 
@@ -1024,6 +1028,92 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         self.delete::<CURRENT_VERSION>(
             APPLICATION_EXPORT_TREE_LABEL,
             &serde_json::to_vec(group_id).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_epoch_encryption_key<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<CURRENT_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_epoch_encryption_key: &VcEpochEncryptionKey,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            VC_EPOCH_ENCRYPTION_KEY_LABEL,
+            &serde_json::to_vec(epoch_id).unwrap(),
+            serde_json::to_vec(vc_epoch_encryption_key).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_epoch_encryption_key<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<CURRENT_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcEpochEncryptionKey>, Self::Error> {
+        let values = self.values.read().unwrap();
+        let key = build_key::<CURRENT_VERSION, &EpochId>(VC_EPOCH_ENCRYPTION_KEY_LABEL, epoch_id);
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        Ok(serde_json::from_slice(value).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_epoch_encryption_key<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(
+            VC_EPOCH_ENCRYPTION_KEY_LABEL,
+            &serde_json::to_vec(epoch_id).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_epoch_base_secret<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcEpochBaseSecret: traits::VcEpochBaseSecret<CURRENT_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_epoch_base_secret: &VcEpochBaseSecret,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            VC_EPOCH_BASE_SECRET_LABEL,
+            &serde_json::to_vec(epoch_id).unwrap(),
+            serde_json::to_vec(vc_epoch_base_secret).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_epoch_base_secret<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcEpochBaseSecret: traits::VcEpochBaseSecret<CURRENT_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcEpochBaseSecret>, Self::Error> {
+        let values = self.values.read().unwrap();
+        let key = build_key::<CURRENT_VERSION, &EpochId>(VC_EPOCH_BASE_SECRET_LABEL, epoch_id);
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        Ok(serde_json::from_slice(value).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_epoch_base_secret<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(
+            VC_EPOCH_BASE_SECRET_LABEL,
+            &serde_json::to_vec(epoch_id).unwrap(),
         )
     }
 }

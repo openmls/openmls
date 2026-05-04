@@ -151,6 +151,21 @@ impl Entity<CURRENT_VERSION> for ApplicationExportTree {}
 #[cfg(feature = "extensions-draft-08")]
 impl traits::ApplicationExportTree<CURRENT_VERSION> for ApplicationExportTree {}
 
+#[cfg(feature = "virtual-clients-draft")]
+mod virtual_clients_storage {
+    use super::*;
+    use crate::components::vc_derivation_info::{EpochBaseSecret, EpochEncryptionKey, EpochId};
+
+    impl Key<CURRENT_VERSION> for EpochId {}
+    impl traits::VcEpochId<CURRENT_VERSION> for EpochId {}
+
+    impl Entity<CURRENT_VERSION> for EpochEncryptionKey {}
+    impl traits::VcEpochEncryptionKey<CURRENT_VERSION> for EpochEncryptionKey {}
+
+    impl Entity<CURRENT_VERSION> for EpochBaseSecret {}
+    impl traits::VcEpochBaseSecret<CURRENT_VERSION> for EpochBaseSecret {}
+}
+
 #[cfg(test)]
 mod test {
     use crate::{

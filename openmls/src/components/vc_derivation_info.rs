@@ -3,7 +3,8 @@ use openmls_traits::{
     random::OpenMlsRand,
     types::{Ciphersuite, CryptoError, HpkePrivateKey},
 };
-use tls_codec::{DeserializeBytes, Serialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
+use serde::{Deserialize, Serialize};
+use tls_codec::{DeserializeBytes, Serialize as _, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
 use crate::{
     binary_tree::LeafNodeIndex, ciphersuite::Secret, group::MlsGroup, key_packages::InitKey,
@@ -17,7 +18,6 @@ const BASE_SECRET_LABEL: &str = "Base Secret";
 const ENCRYPTION_KEY_LABEL: &str = "Encryption Key";
 const INIT_KEY_LABEL: &str = "Init Key";
 const PATH_GENERATION_LABEL: &str = "Path Generation";
-const SIGNATURE_KEY_LABEL: &str = "Signature Key";
 
 #[derive(Debug, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub(crate) struct DerivationInfo {
@@ -26,6 +26,10 @@ pub(crate) struct DerivationInfo {
 }
 
 impl DerivationInfo {
+    pub(crate) fn epoch_id(&self) -> &EpochId {
+        &self.epoch_id
+    }
+
     pub(crate) fn decrypt(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -77,11 +81,13 @@ impl EmulatorEpochSecret {
     }
 }
 
-#[derive(Debug, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+#[derive(Debug, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub(crate) struct EpochId(Vec<u8>);
 
+#[derive(Serialize, Deserialize)]
 pub(crate) struct EpochEncryptionKey(Secret);
 
+#[derive(Serialize, Deserialize)]
 pub(crate) struct EpochBaseSecret(Secret);
 
 impl EpochBaseSecret {
@@ -102,18 +108,6 @@ impl EpochBaseSecret {
 pub(crate) struct OperationSecret(Secret);
 
 impl OperationSecret {
-    pub(crate) fn derive_signature_key_secret(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
-    ) -> SignatureKeySecret {
-        let signature_key_secret = self
-            .0
-            .derive_secret(crypto, ciphersuite, SIGNATURE_KEY_LABEL)
-            .unwrap();
-        SignatureKeySecret(signature_key_secret)
-    }
-
     pub(crate) fn derive_encryption_key_secret(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -150,8 +144,6 @@ impl OperationSecret {
         PathGenerationSecret(path_generation_secret)
     }
 }
-
-pub(crate) struct SignatureKeySecret(Secret);
 
 pub(crate) struct EncryptionKeySecret(Secret);
 

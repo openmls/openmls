@@ -562,4 +562,66 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     ) -> Result<(), Self::Error> {
         todo!()
     }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_epoch_encryption_key<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+        _vc_epoch_encryption_key: &VcEpochEncryptionKey,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_epoch_encryption_key<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<Option<VcEpochEncryptionKey>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_epoch_encryption_key<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_epoch_base_secret<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcEpochBaseSecret: traits::VcEpochBaseSecret<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+        _vc_epoch_base_secret: &VcEpochBaseSecret,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_epoch_base_secret<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcEpochBaseSecret: traits::VcEpochBaseSecret<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<Option<VcEpochBaseSecret>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_epoch_base_secret<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
 }
