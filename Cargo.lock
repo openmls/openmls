@@ -695,7 +695,7 @@ dependencies = [
  "openmls_rust_crypto",
  "openmls_traits",
  "pretty_env_logger",
- "rand_chacha 0.9.0",
+ "rand_chacha 0.10.0",
  "reqwest",
  "serde",
  "serde_json",
@@ -1091,7 +1091,7 @@ dependencies = [
  "openmls_memory_storage",
  "openmls_rust_crypto",
  "openmls_traits",
- "rand 0.9.4",
+ "rand 0.10.1",
  "serde",
 ]
 
@@ -2667,7 +2667,7 @@ dependencies = [
  "openmls_test",
  "openmls_traits",
  "pretty_env_logger",
- "rand 0.9.4",
+ "rand 0.10.1",
  "rayon",
  "serde",
  "serde_bytes",
@@ -2734,8 +2734,8 @@ dependencies = [
  "libcrux-traits",
  "openmls_memory_storage",
  "openmls_traits",
- "rand 0.9.4",
- "rand_chacha 0.9.0",
+ "rand 0.10.1",
+ "rand_chacha 0.10.0",
  "tls_codec",
 ]
 
@@ -2768,7 +2768,7 @@ dependencies = [
  "openmls_memory_storage",
  "openmls_traits",
  "p256",
- "rand_chacha 0.3.1",
+ "rand_chacha 0.10.0",
  "rand_core 0.6.4",
  "serde",
  "sha2 0.11.0",
