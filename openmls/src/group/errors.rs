@@ -200,12 +200,16 @@ impl<StorageError> From<ExternalCommitBuilderFinalizeError<StorageError>>
 /// Stage Commit error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum StageCommitError {
+    /// Virtual clients error.
+    #[error("Virtual clients error: {0}")]
+    VirtualClientsError(String),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// The epoch of the group context and PublicMessage didn't match.
     #[error("The epoch of the group context and PublicMessage didn't match.")]
     EpochMismatch,
+    #[cfg(not(feature = "virtual-clients-draft"))]
     /// The Commit was created by this client.
     #[error("The Commit was created by this client.")]
     OwnCommit,
@@ -452,6 +456,7 @@ pub enum ValidationError {
         "The ciphersuite in the KeyPackage of the Add proposal does not match the group context."
     )]
     InvalidAddProposalCiphersuite,
+    #[cfg(not(feature = "virtual-clients-draft"))]
     /// Cannot decrypt own messages because the necessary key has been deleted according to the deletion schedule.
     #[error("Cannot decrypt own messages.")]
     CannotDecryptOwnMessage,

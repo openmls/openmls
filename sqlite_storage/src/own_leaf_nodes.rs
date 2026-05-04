@@ -5,7 +5,7 @@ use rusqlite::params;
 
 use crate::{
     codec::Codec,
-    storage_provider::StorableGroupIdRef,
+    storage_provider::StorableKeyRef,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
     STORAGE_PROVIDER_VERSION,
 };
@@ -64,7 +64,7 @@ impl<LeafNode: Entity<STORAGE_PROVIDER_VERSION>> StorableLeafNodeRef<'_, LeafNod
     }
 }
 
-impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
+impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId> {
     pub(super) fn delete_leaf_nodes<C: Codec>(
         &self,
         connection: &rusqlite::Connection,

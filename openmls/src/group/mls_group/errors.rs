@@ -24,6 +24,9 @@ use crate::{
     },
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::framing::MessageEncryptionError;
+
 #[cfg(feature = "extensions-draft-08")]
 pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
@@ -181,6 +184,7 @@ pub enum ProcessMessageError<StorageError> {
 }
 
 /// Create message error
+#[cfg(not(feature = "virtual-clients-draft"))]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum CreateMessageError {
     /// See [`LibraryError`] for more details.
@@ -189,6 +193,24 @@ pub enum CreateMessageError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Create message error
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum CreateMessageError<StorageError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+    /// See [`MessageEncryptionError`] for more details.
+    #[error(transparent)]
+    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
+    /// Error writing to storage.
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
 }
 
 /// Add members error

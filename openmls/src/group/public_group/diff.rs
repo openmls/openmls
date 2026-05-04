@@ -12,6 +12,9 @@ use tls_codec::Serialize as TlsSerialize;
 #[cfg(feature = "extensions-draft-08")]
 use super::errors::ApplyAppDataUpdateError;
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::messages::PathSecret;
+
 use super::PublicGroup;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
@@ -147,6 +150,29 @@ impl<'a> PublicGroupDiff<'a> {
             params,
             owned_keys,
             own_leaf_index,
+        )
+    }
+
+    /// Create the update path of an incoming commit by deriving the path
+    /// secrets from the given `path_secret`.
+    ///
+    /// Returns a vector containing the derived [`ParentNode`] instances, as
+    /// well as the [`CommitSecret`] resulting from their derivation. Returns an
+    /// error if the derived path does not match the given `update_path`.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn recreate_path_from_path_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        path_secret: PathSecret,
+        own_leaf_index: LeafNodeIndex,
+        update_path: &[UpdatePathNode],
+    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
+        self.diff.recreate_path_from_path_secret(
+            crypto,
+            self.group_context().ciphersuite(),
+            path_secret,
+            own_leaf_index,
+            update_path,
         )
     }
 

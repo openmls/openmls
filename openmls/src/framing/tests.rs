@@ -124,7 +124,7 @@ fn codec_ciphertext() {
     let mut message_secrets =
         MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0));
 
-    let orig = PrivateMessage::encrypt_with_different_header::<StorageError>(
+    let (_, orig) = PrivateMessage::encrypt_with_different_header::<StorageError>(
         provider.crypto(),
         provider.rand(),
         &plaintext,
@@ -179,22 +179,22 @@ fn wire_format_checks() {
     message_secrets.replace_secret_tree(sender_secret_tree);
 
     let sender_index = LeafNodeIndex::new(0);
-    let ciphertext: PrivateMessageIn =
-        PrivateMessage::encrypt_with_different_header::<StorageError>(
-            provider.crypto(),
-            provider.rand(),
-            &plaintext,
-            ciphersuite,
-            MlsMessageHeader {
-                group_id: plaintext.group_id().clone(),
-                epoch: plaintext.epoch(),
-                sender: sender_index,
-            },
-            &mut message_secrets,
-            0,
-        )
-        .expect("Could not encrypt PublicMessage.")
-        .into();
+    let (_, ciphertext) = PrivateMessage::encrypt_with_different_header::<StorageError>(
+        provider.crypto(),
+        provider.rand(),
+        &plaintext,
+        ciphersuite,
+        MlsMessageHeader {
+            group_id: plaintext.group_id().clone(),
+            epoch: plaintext.epoch(),
+            sender: sender_index,
+        },
+        &mut message_secrets,
+        0,
+    )
+    .expect("Could not encrypt PublicMessage.");
+
+    let ciphertext = PrivateMessageIn::from(ciphertext);
 
     // Decrypt the ciphertext and expect the correct wire format
 
@@ -230,7 +230,7 @@ fn wire_format_checks() {
 
     let receiver_secret_tree = message_secrets.replace_secret_tree(sender_secret_tree);
     // Bypass wire format check during encryption
-    let ciphertext: PrivateMessageIn = PrivateMessage::encrypt_without_check::<StorageError>(
+    let (_, ciphertext) = PrivateMessage::encrypt_without_check::<StorageError>(
         provider.crypto(),
         provider.rand(),
         &plaintext,
@@ -238,8 +238,9 @@ fn wire_format_checks() {
         &mut message_secrets,
         0,
     )
-    .expect("Could not encrypt PublicMessage.")
-    .into();
+    .expect("Could not encrypt PublicMessage.");
+
+    let ciphertext = PrivateMessageIn::from(ciphertext);
 
     // Try to process a ciphertext with the wrong wire format
     let sender_secret_tree = message_secrets.replace_secret_tree(receiver_secret_tree);
@@ -476,7 +477,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
     )
     .expect("Could not create new ApplicationMessage.");
 
-    let enc_message = PrivateMessage::encrypt_with_different_header::<StorageError>(
+    let (_, enc_message) = PrivateMessage::encrypt_with_different_header::<StorageError>(
         alice_provider.crypto(),
         alice_provider.rand(),
         &bogus_sender_message,

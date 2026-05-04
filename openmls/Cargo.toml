@@ -84,6 +84,8 @@ js-test = [
 
 ]
 
+virtual-clients-draft = ["extensions-draft-08"]
+
 extensions-draft-08 = [
     "openmls_traits/extensions-draft-08",
     # XXX: to avoid enabling the `openmls_sqlite_storage` dependency
@@ -102,6 +104,7 @@ extensions-draft-08-test-dependencies = [
     "openmls_libcrux_crypto?/extensions-draft-08",
     "openmls_memory_storage?/extensions-draft-08",
 ]
+# experimental feature implementing the virtual-clients draft
 # enable randomness source
 fork-resolution = []
 

@@ -9,10 +9,12 @@ use super::proposal_store::{
     QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
 };
 
+#[cfg(not(feature = "virtual-clients-draft"))]
+use super::Sender;
 use super::{
     super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
-    Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
+    Proposal, ProposalQueue, PskSecret, QueuedProposal,
 };
 use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;
@@ -161,6 +163,7 @@ impl MlsGroup {
         provider: &impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
+        #[cfg(not(feature = "virtual-clients-draft"))]
         if let Sender::Member(member) = mls_content.sender() {
             if member == &self.own_leaf_index() {
                 return Err(StageCommitError::OwnCommit);
@@ -208,6 +211,7 @@ impl MlsGroup {
         provider: &impl OpenMlsProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
+        #[cfg(not(feature = "virtual-clients-draft"))]
         if let Sender::Member(member) = mls_content.sender() {
             if member == &self.own_leaf_index() {
                 return Err(StageCommitError::OwnCommit);
@@ -286,6 +290,90 @@ impl MlsGroup {
                         StagedCommitState::PublicState(Box::new(staged_state)),
                     );
                     return Ok(staged_commit);
+                }
+
+                #[cfg(feature = "virtual-clients-draft")]
+                {
+                    if sender_index == self.own_leaf_index() {
+                        use tls_codec::DeserializeBytes;
+
+                        use crate::components::vc_derivation_info::{
+                            DerivationInfo, EpochBaseSecret, VC_COMPONENT_ID,
+                        };
+
+                        let app_data_dictionary =
+                            path.leaf_node().extensions().app_data_dictionary().ok_or(
+                                StageCommitError::VirtualClientsError(
+                                    "Can't find app data dictionary.".to_string(),
+                                ),
+                            )?;
+                        let derivation_info_bytes = app_data_dictionary
+                            .dictionary()
+                            .get(&VC_COMPONENT_ID)
+                            .ok_or(StageCommitError::VirtualClientsError(
+                                "Can't find derivation info.".to_string(),
+                            ))?;
+                        let derivation_info =
+                            DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
+                                .map_err(|_| {
+                                    StageCommitError::VirtualClientsError(
+                                        "Can't deserialize derivation info.".to_string(),
+                                    )
+                                })?;
+                        let epoch_encryption_key = todo!("Load from storage provider");
+                        let epoch_info = derivation_info.decrypt(
+                            provider.crypto(),
+                            ciphersuite,
+                            &epoch_encryption_key,
+                        );
+                        let epoch_base_secret: EpochBaseSecret =
+                            todo!("Load from storage provider");
+                        let operation_secret = epoch_base_secret
+                            .derive_operation_secret(provider.crypto(), ciphersuite);
+                        let path_secret = operation_secret
+                            .derive_path_generation_secret(provider.crypto(), ciphersuite)
+                            .into();
+                        let (encryption_key_pairs, commit_secret) = diff
+                            .recreate_path_from_path_secret(
+                                provider.crypto(),
+                                path_secret,
+                                self.own_leaf_index(),
+                                path.nodes(),
+                            )?;
+                        // Generate the new keypairs for the leaf node in the
+                        // path, compare the public keys to the ones in the leaf
+                        // node and store the private keys.
+                        let (encryption_key, encryption_private_key) = operation_secret
+                            .derive_encryption_key_secret(provider.crypto(), ciphersuite)
+                            .generate_encryption_key_pair(provider.crypto(), ciphersuite);
+                        if &encryption_key != path.leaf_node().encryption_key() {
+                            return Err(StageCommitError::VirtualClientsError(
+                                "Public key from path does not match derived public key."
+                                    .to_string(),
+                            ));
+                        }
+                        // Check whether the signature public key has changed
+                        // and if so, generate the new keypair and check the
+                        // public key.
+                        let current_leaf = self.public_group().leaf(self.own_leaf_index()).ok_or(
+                            StageCommitError::LibraryError(LibraryError::custom(
+                                "Can't find own leaf",
+                            )),
+                        )?;
+                        if path.leaf_node().signature_key() != current_leaf.signature_key() {
+                            let (signature_key, signature_private_key) = operation_secret
+                                .derive_signature_key_secret(provider.crypto(), ciphersuite)
+                                .generate_signature_key_pair(provider.crypto(), ciphersuite);
+                            if &signature_key != path.leaf_node().signature_key() {
+                                return Err(StageCommitError::VirtualClientsError(
+                                    "Signature public key from path does not match derived public key."
+                                        .to_string(),
+                                ));
+                            }
+                            // Store the new signature private key in the key store
+                            todo!("Store signature private key in storage provider");
+                        }
+                    }
                 }
 
                 let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs

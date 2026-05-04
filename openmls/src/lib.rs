@@ -154,6 +154,9 @@ compile_error!("In order for OpenMLS to build for WebAssembly, JavaScript APIs m
 #[cfg(any(feature = "test-utils", test))]
 pub mod prelude_test;
 
+#[cfg(feature = "extensions-draft-08")]
+pub mod components;
+
 #[cfg(any(feature = "test-utils", test))]
 #[macro_use]
 pub mod test_utils;

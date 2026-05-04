@@ -172,6 +172,28 @@ pub trait StorageProvider<const VERSION: u16> {
         application_export_tree: &ApplicationExportTree,
     ) -> Result<(), Self::Error>;
 
+    /// Write the virtual clients epoch encryption key for the given epoch.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_epoch_encryption_key<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_epoch_encryption_key: &VcEpochEncryptionKey,
+    ) -> Result<(), Self::Error>;
+
+    /// Write the virtual clients epoch base secret for the given epoch.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_epoch_base_secret<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcEpochBaseSecret: traits::VcEpochBaseSecret<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_epoch_base_secret: &VcEpochBaseSecret,
+    ) -> Result<(), Self::Error>;
+
     //
     //    ---   setters/writers/enqueuers for crypto objects  ---
     //
@@ -434,6 +456,26 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<Option<ApplicationExportTree>, Self::Error>;
 
+    #[cfg(feature = "virtual-clients-draft")]
+    /// Get the virtual clients epoch encryption key for the given epoch.
+    fn vc_epoch_encryption_key<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcEpochEncryptionKey>, Self::Error>;
+
+    #[cfg(feature = "virtual-clients-draft")]
+    /// Get the virtual clients epoch base secret for the given epoch.
+    fn vc_epoch_base_secret<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcEpochBaseSecret: traits::VcEpochBaseSecret<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcEpochBaseSecret>, Self::Error>;
+
     //
     //     ---    deleters for group state    ---
     //
@@ -582,6 +624,18 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_epoch_encryption_key<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error>;
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_epoch_base_secret<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error>;
 }
 
 // base traits for keys and values
@@ -637,6 +691,12 @@ pub mod traits {
     pub trait MlsGroupJoinConfig<const VERSION: u16>: Entity<VERSION> {}
     pub trait LeafNode<const VERSION: u16>: Entity<VERSION> {}
     pub trait ApplicationExportTree<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEpochId<const VERSION: u16>: Key<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEpochEncryptionKey<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEpochBaseSecret<const VERSION: u16>: Entity<VERSION> {}
 
     // traits for types that implement both
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}
