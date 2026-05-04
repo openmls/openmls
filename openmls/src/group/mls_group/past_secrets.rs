@@ -1,12 +1,17 @@
 use std::collections::{HashMap, VecDeque};
 
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::SystemTime;
+#[cfg(target_arch = "wasm32")]
+use web_time::SystemTime;
+
 use crate::schedule::message_secrets::MessageSecrets;
 
 use super::*;
 
 impl EpochTree {
     #[cfg(test)]
-    pub(crate) fn timestamp(&self) -> Option<std::time::SystemTime> {
+    pub(crate) fn timestamp(&self) -> Option<SystemTime> {
         self.message_secrets.timestamp()
     }
 }
@@ -72,7 +77,7 @@ impl MessageSecretsStore {
         Self {
             max_epochs,
             past_epoch_trees: VecDeque::new(),
-            message_secrets: message_secrets.with_timestamp(std::time::SystemTime::now()),
+            message_secrets: message_secrets.with_timestamp(SystemTime::now()),
         }
     }
 
@@ -97,7 +102,7 @@ impl MessageSecretsStore {
         &mut self,
         message_secrets: MessageSecrets,
     ) -> MessageSecrets {
-        let mut message_secrets = message_secrets.with_timestamp(std::time::SystemTime::now());
+        let mut message_secrets = message_secrets.with_timestamp(SystemTime::now());
         std::mem::swap(&mut self.message_secrets, &mut message_secrets);
 
         message_secrets
@@ -226,7 +231,7 @@ impl MessageSecretsStore {
     fn delete_past_epoch_secrets_older_than_duration(&mut self, duration: std::time::Duration) {
         // first, compare to the timestamp of the current message secrets
         if let Some(added_at) = self.message_secrets.timestamp() {
-            if let Ok(elapsed) = std::time::SystemTime::now().duration_since(added_at) {
+            if let Ok(elapsed) = SystemTime::now().duration_since(added_at) {
                 if elapsed > duration {
                     // delete all
                     self.past_epoch_trees.clear();
@@ -246,7 +251,7 @@ impl MessageSecretsStore {
                     return false;
                 };
 
-                let Ok(elapsed) = std::time::SystemTime::now().duration_since(added_at) else {
+                let Ok(elapsed) = SystemTime::now().duration_since(added_at) else {
                     return false;
                 };
 
@@ -263,7 +268,7 @@ impl MessageSecretsStore {
         }
     }
 
-    fn delete_past_epoch_secrets_before_timestamp(&mut self, cutoff: std::time::SystemTime) {
+    fn delete_past_epoch_secrets_before_timestamp(&mut self, cutoff: SystemTime) {
         // first, compare to timestamp of the current message secrets
         if let Some(added_at) = self.message_secrets.timestamp() {
             if added_at < cutoff {
