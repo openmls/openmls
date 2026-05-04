@@ -54,10 +54,58 @@ fn processing_own_application_message() {
         .confirm_message(alice_provider.storage(), generation)
         .unwrap();
 
-    let _processed_message = alice_group
+    let _ = alice_group
         .process_message(
             alice_provider,
             ciphertext.clone().into_protocol_message().unwrap(),
         )
-        .unwrap();
+        .expect_err("Expected an error when processing a confirmed message.");
+}
+
+#[openmls_test::openmls_test]
+fn old_unconfirmed_own_message_survives_later_confirmations() {
+    let alice_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("An unexpected error occurred.");
+
+    let first_message = b"first unconfirmed message";
+    let (_first_generation, first_ciphertext) = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, first_message)
+        .expect("Could not create first unconfirmed message.");
+
+    let tolerance = alice_group
+        .configuration()
+        .sender_ratchet_configuration()
+        .out_of_order_tolerance();
+
+    for i in 0..tolerance + 2 {
+        let (generation, _) = alice_group
+            .create_unconfirmed_message(
+                alice_provider,
+                &alice_signer,
+                format!("later confirmed message {i}").as_bytes(),
+            )
+            .expect("Could not create later unconfirmed message.");
+        alice_group
+            .confirm_message(alice_provider.storage(), generation)
+            .expect("Could not confirm later message.");
+    }
+
+    let processed_message = alice_group
+        .process_message(
+            alice_provider,
+            first_ciphertext.into_protocol_message().unwrap(),
+        )
+        .expect("Expected old unconfirmed own message to decrypt.");
+
+    let ProcessedMessageContent::ApplicationMessage(msg) = processed_message.into_content() else {
+        panic!("Expected an application message.");
+    };
+    assert_eq!(first_message.as_slice(), msg.into_bytes().as_slice());
 }

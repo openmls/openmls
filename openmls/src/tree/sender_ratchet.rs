@@ -6,12 +6,16 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 use openmls_traits::crypto::OpenMlsCrypto;
+#[cfg(feature = "virtual-clients-draft")]
+use std::collections::BTreeMap;
 use std::collections::VecDeque;
 
 use openmls_traits::types::Ciphersuite;
 
 use crate::ciphersuite::{AeadNonce, *};
 use crate::tree::secret_tree::*;
+#[cfg(feature = "virtual-clients-draft")]
+use crate::utils::vector_converter;
 
 use super::*;
 
@@ -69,13 +73,17 @@ pub(crate) type RatchetKeyMaterial = (AeadKey, AeadNonce);
 /// ([`DecryptionRatchet`]). A [`DecryptionRatchet`] can be configured with an
 /// `out_of_order_tolerance` and a `maximum_forward_distance` (see
 /// [`SenderRatchetConfiguration`]) while an Encryption Ratchet never keeps past
-/// secrets around.
+/// secrets around. With the `virtual-clients-draft` feature, own sender
+/// ratchets are [`DualUseRatchet`]s, which can output key material for both
+/// encryption and decryption.
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 #[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
 pub(crate) enum SenderRatchet {
     EncryptionRatchet(RatchetSecret),
     DecryptionRatchet(DecryptionRatchet),
+    #[cfg(feature = "virtual-clients-draft")]
+    DualUseRatchet(DualUseRatchet),
 }
 
 impl SenderRatchet {
@@ -84,6 +92,8 @@ impl SenderRatchet {
         match self {
             SenderRatchet::EncryptionRatchet(enc_ratchet) => enc_ratchet.generation(),
             SenderRatchet::DecryptionRatchet(dec_ratchet) => dec_ratchet.generation(),
+            #[cfg(feature = "virtual-clients-draft")]
+            SenderRatchet::DualUseRatchet(dual_ratchet) => dual_ratchet.generation(),
         }
     }
 }
@@ -190,14 +200,8 @@ impl DecryptionRatchet {
         }
     }
 
-    /// Remove elements from the `past_secrets` queue until it is within the
-    /// bounds determined by the [`SenderRatchetConfiguration`].
-    fn prune_past_secrets(&mut self, configuration: &SenderRatchetConfiguration) {
-        self.past_secrets
-            .truncate(configuration.out_of_order_tolerance() as usize)
-    }
-
     /// Get the generation of the ratchet head.
+    #[cfg(test)]
     pub(crate) fn generation(&self) -> Generation {
         self.ratchet_head.generation()
     }
@@ -205,39 +209,6 @@ impl DecryptionRatchet {
     #[cfg(test)]
     pub(crate) fn ratchet_secret_mut(&mut self) -> &mut RatchetSecret {
         &mut self.ratchet_head
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
-    pub(crate) fn delete_secret_for_generation(&mut self, generation: Generation) {
-        let window_index = ((self.generation() - generation) as i32) - 1;
-        if window_index >= 0 {
-            let index = window_index as usize;
-            if let Some(entry) = self.past_secrets.get_mut(index) {
-                entry.take();
-            }
-        }
-    }
-
-    /// Gets a secret from the SenderRatchet. Returns an error if the generation
-    /// is out of bound.
-    #[cfg(feature = "virtual-clients-draft")]
-    pub(crate) fn secret_for_encryption(
-        &mut self,
-        ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
-        configuration: &SenderRatchetConfiguration,
-    ) -> Result<(u32, RatchetKeyMaterial), SecretTreeError> {
-        let generation = self.ratchet_head.generation();
-        let ratchet_secrets = {
-            self.ratchet_head
-                .ratchet_forward(crypto, ciphersuite)
-                .map(|(_, key_material)| key_material)
-        }?;
-        // Add the ratchet secrets to the past secrets queue. The caller has to
-        // delete it explicitly by confirming the operation.
-        self.past_secrets.push_front(Some(ratchet_secrets.clone()));
-        self.prune_past_secrets(configuration);
-        Ok((generation, ratchet_secrets))
     }
 
     /// Gets a secret from the SenderRatchet. Returns an error if the generation
@@ -250,45 +221,45 @@ impl DecryptionRatchet {
         configuration: &SenderRatchetConfiguration,
     ) -> Result<RatchetKeyMaterial, SecretTreeError> {
         log::debug!("secret_for_decryption");
+        let head_generation = self.ratchet_head.generation();
         // If generation is too distant in the future
-        if self.generation() < u32::MAX - configuration.maximum_forward_distance()
-            && generation > self.generation() + configuration.maximum_forward_distance()
+        if head_generation < u32::MAX - configuration.maximum_forward_distance()
+            && generation > head_generation + configuration.maximum_forward_distance()
         {
             return Err(SecretTreeError::TooDistantInTheFuture);
         }
-        // If generation id too distant in the past
-        if generation < self.generation()
-            && (self.generation() - generation) > configuration.out_of_order_tolerance()
+        // If generation is too distant in the past
+        if generation < head_generation
+            && (head_generation - generation) > configuration.out_of_order_tolerance()
         {
-            log::error!("  Generation is too far in the past (broke out of order tolerance ({}) {generation} < {}).", configuration.out_of_order_tolerance(), self.generation());
+            log::error!("  Generation is too far in the past (broke out of order tolerance ({}) {generation} < {head_generation}).", configuration.out_of_order_tolerance());
             return Err(SecretTreeError::TooDistantInThePast);
         }
         // If generation is the one the ratchet is currently at or in the future
-        if generation >= self.generation() {
+        if generation >= head_generation {
             // Ratchet the chain forward as far as necessary
-            for _ in 0..(generation - self.generation()) {
+            for _ in 0..(generation - head_generation) {
                 // Derive the key material
-                let ratchet_secrets = {
-                    self.ratchet_head
-                        .ratchet_forward(crypto, ciphersuite)
-                        .map(|(_, key_material)| key_material)
-                }?;
+                let ratchet_secrets = self
+                    .ratchet_head
+                    .ratchet_forward(crypto, ciphersuite)
+                    .map(|(_, key_material)| key_material)?;
                 // Add it to the front of the queue
                 self.past_secrets.push_front(Some(ratchet_secrets));
             }
-            let ratchet_secrets = {
-                self.ratchet_head
-                    .ratchet_forward(crypto, ciphersuite)
-                    .map(|(_, key_material)| key_material)
-            }?;
+            let ratchet_secrets = self
+                .ratchet_head
+                .ratchet_forward(crypto, ciphersuite)
+                .map(|(_, key_material)| key_material)?;
             // Add an entry to the past secrets queue to keep indexing consistent.
             self.past_secrets.push_front(None);
-            self.prune_past_secrets(configuration);
+            self.past_secrets
+                .truncate(configuration.out_of_order_tolerance() as usize);
             Ok(ratchet_secrets)
         } else {
             // If the requested generation is within the window of past secrets,
             // we should get a positive index.
-            let window_index = ((self.generation() - generation) as i32) - 1;
+            let window_index = ((head_generation - generation) as i32) - 1;
             // We might not have the key material (e.g. we might have discarded
             // it when generating an encryption secret).
             let index = if window_index >= 0 {
@@ -309,5 +280,177 @@ impl DecryptionRatchet {
                 // earlier, throw an error.
                 .ok_or(SecretTreeError::SecretReuseError)
         }
+    }
+}
+
+/// [`SenderRatchet`] used for own ratchets when the `virtual-clients-draft`
+/// feature is enabled. It supports both encryption and decryption: encryption
+/// is needed to send messages, while decryption lets the local member also
+/// decrypt their own ciphertexts (e.g. when receiving a message encrypted by
+/// another emulating client). Encryption secrets are kept in a past-secrets
+/// window like a [`DecryptionRatchet`] until they are explicitly dropped by
+/// confirming the corresponding generation via
+/// [`Self::delete_secret_for_generation`].
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
+#[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
+pub struct DualUseRatchet {
+    #[serde(with = "vector_converter")]
+    past_secrets: BTreeMap<Generation, DualUsePastSecret>,
+    ratchet_head: RatchetSecret,
+    decryption_generation: Generation,
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
+#[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
+struct DualUsePastSecret {
+    ratchet_secret: RatchetKeyMaterial,
+    pending_confirmation: bool,
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl DualUseRatchet {
+    pub(crate) fn new(secret: Secret) -> Self {
+        Self {
+            past_secrets: BTreeMap::new(),
+            ratchet_head: RatchetSecret::initial_ratchet_secret(secret),
+            decryption_generation: 0,
+        }
+    }
+
+    pub(crate) fn generation(&self) -> Generation {
+        self.ratchet_head.generation()
+    }
+
+    /// Discard the cached encryption secret for a previously emitted
+    /// generation. Call this to confirm a sent message and drop the
+    /// corresponding key material for forward secrecy.
+    ///
+    /// No-op if the requested generation is at or beyond the ratchet head
+    /// (i.e. nothing has been emitted yet for that generation).
+    pub(crate) fn delete_secret_for_generation(&mut self, generation: Generation) {
+        let head = self.generation();
+        if generation >= head {
+            return;
+        }
+        if matches!(
+            self.past_secrets.get(&generation),
+            Some(entry) if entry.pending_confirmation
+        ) {
+            self.past_secrets.remove(&generation);
+        }
+    }
+
+    /// Gets a secret for encryption. The secret is also recorded in the
+    /// past-secrets window so the caller can later confirm and drop it.
+    ///
+    /// The cache is not pruned here: emitted encryption secrets are only
+    /// cleared by an explicit call to [`Self::delete_secret_for_generation`]
+    /// (i.e. confirming the message). Auto-pruning at this point could drop
+    /// unconfirmed secrets the caller still intends to confirm.
+    pub(crate) fn secret_for_encryption(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<(u32, RatchetKeyMaterial), SecretTreeError> {
+        let generation = self.ratchet_head.generation();
+        let ratchet_secrets = self
+            .ratchet_head
+            .ratchet_forward(crypto, ciphersuite)
+            .map(|(_, key_material)| key_material)?;
+        self.past_secrets.insert(
+            generation,
+            DualUsePastSecret {
+                ratchet_secret: ratchet_secrets.clone(),
+                pending_confirmation: true,
+            },
+        );
+        Ok((generation, ratchet_secrets))
+    }
+
+    /// Gets a secret for decryption.
+    ///
+    /// The receive-side retention window is tracked independently from the
+    /// derivation head because encryption also advances the derivation head.
+    /// Unconfirmed encryption secrets are retained even if they fall outside
+    /// the receive window; all other cached secrets are pruned when decryption
+    /// moves the receive window forward.
+    pub(crate) fn secret_for_decryption(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        generation: Generation,
+        configuration: &SenderRatchetConfiguration,
+    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
+        log::debug!("secret_for_decryption");
+        let head_generation = self.ratchet_head.generation();
+        if head_generation < u32::MAX - configuration.maximum_forward_distance()
+            && generation > head_generation + configuration.maximum_forward_distance()
+        {
+            return Err(SecretTreeError::TooDistantInTheFuture);
+        }
+
+        let window_start = self.window_start(configuration);
+        if generation < window_start && !self.has_unconfirmed_secret(generation) {
+            log::error!("  Generation is too far in the past (broke out of order tolerance ({}) {generation} < {}).", configuration.out_of_order_tolerance(), self.decryption_generation);
+            return Err(SecretTreeError::TooDistantInThePast);
+        }
+
+        let ratchet_secrets = if generation >= head_generation {
+            for skipped_generation in head_generation..generation {
+                let ratchet_secrets = self
+                    .ratchet_head
+                    .ratchet_forward(crypto, ciphersuite)
+                    .map(|(_, key_material)| key_material)?;
+                self.past_secrets.insert(
+                    skipped_generation,
+                    DualUsePastSecret {
+                        ratchet_secret: ratchet_secrets,
+                        pending_confirmation: false,
+                    },
+                );
+            }
+            self.ratchet_head
+                .ratchet_forward(crypto, ciphersuite)
+                .map(|(_, key_material)| key_material)?
+        } else {
+            self.past_secrets
+                .remove(&generation)
+                .map(|entry| entry.ratchet_secret)
+                .ok_or(SecretTreeError::SecretReuseError)?
+        };
+
+        self.advance_decryption_generation(generation, configuration);
+        Ok(ratchet_secrets)
+    }
+
+    fn has_unconfirmed_secret(&self, generation: Generation) -> bool {
+        matches!(
+            self.past_secrets.get(&generation),
+            Some(entry) if entry.pending_confirmation
+        )
+    }
+
+    fn window_start(&self, configuration: &SenderRatchetConfiguration) -> Generation {
+        self.decryption_generation
+            .saturating_sub(configuration.out_of_order_tolerance())
+    }
+
+    fn advance_decryption_generation(
+        &mut self,
+        generation: Generation,
+        configuration: &SenderRatchetConfiguration,
+    ) {
+        self.decryption_generation = self.decryption_generation.max(generation.saturating_add(1));
+        self.prune_past_secrets(configuration);
+    }
+
+    fn prune_past_secrets(&mut self, configuration: &SenderRatchetConfiguration) {
+        let window_start = self.window_start(configuration);
+        self.past_secrets
+            .retain(|generation, entry| *generation >= window_start || entry.pending_confirmation);
     }
 }

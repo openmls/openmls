@@ -279,29 +279,37 @@ impl SecretTree {
             "application ratchet secret {application_ratchet_secret:x?}"
         );
 
-        // Initialize SenderRatchets, we differentiate between the own
-        // SenderRatchets and the SenderRatchets of other members. If the
-        // `virtual-clients` feature is enabled, the own SenderRatchets are also
-        // initialized as DecryptionRatchets.
-        let (handshake_sender_ratchet, application_sender_ratchet) = if index == self.own_index
-            && cfg!(not(feature = "virtual-clients-draft"))
-        {
-            let handshake_sender_ratchet = SenderRatchet::EncryptionRatchet(
-                RatchetSecret::initial_ratchet_secret(handshake_ratchet_secret),
-            );
-            let application_sender_ratchet = SenderRatchet::EncryptionRatchet(
-                RatchetSecret::initial_ratchet_secret(application_ratchet_secret),
-            );
-
-            (handshake_sender_ratchet, application_sender_ratchet)
+        // Initialize SenderRatchets. We differentiate between the own
+        // SenderRatchets and the SenderRatchets of other members. With the
+        // `virtual-clients-draft` feature, the own SenderRatchets are
+        // [`DualUseRatchet`]s, which can produce key material for both
+        // encryption and decryption.
+        let (handshake_sender_ratchet, application_sender_ratchet) = if index == self.own_index {
+            #[cfg(not(feature = "virtual-clients-draft"))]
+            {
+                (
+                    SenderRatchet::EncryptionRatchet(RatchetSecret::initial_ratchet_secret(
+                        handshake_ratchet_secret,
+                    )),
+                    SenderRatchet::EncryptionRatchet(RatchetSecret::initial_ratchet_secret(
+                        application_ratchet_secret,
+                    )),
+                )
+            }
+            #[cfg(feature = "virtual-clients-draft")]
+            {
+                (
+                    SenderRatchet::DualUseRatchet(DualUseRatchet::new(handshake_ratchet_secret)),
+                    SenderRatchet::DualUseRatchet(DualUseRatchet::new(application_ratchet_secret)),
+                )
+            }
         } else {
-            let handshake_sender_ratchet =
-                SenderRatchet::DecryptionRatchet(DecryptionRatchet::new(handshake_ratchet_secret));
-            let application_sender_ratchet = SenderRatchet::DecryptionRatchet(
-                DecryptionRatchet::new(application_ratchet_secret),
-            );
-
-            (handshake_sender_ratchet, application_sender_ratchet)
+            (
+                SenderRatchet::DecryptionRatchet(DecryptionRatchet::new(handshake_ratchet_secret)),
+                SenderRatchet::DecryptionRatchet(DecryptionRatchet::new(
+                    application_ratchet_secret,
+                )),
+            )
         };
 
         *self
@@ -350,6 +358,11 @@ impl SecretTree {
                 log::trace!("   getting secret for decryption");
                 dec_ratchet.secret_for_decryption(ciphersuite, crypto, generation, configuration)
             }
+            #[cfg(feature = "virtual-clients-draft")]
+            SenderRatchet::DualUseRatchet(dual_ratchet) => {
+                log::trace!("   getting secret for decryption (own dual-use ratchet)");
+                dual_ratchet.secret_for_decryption(ciphersuite, crypto, generation, configuration)
+            }
         }
     }
 
@@ -361,26 +374,21 @@ impl SecretTree {
         crypto: &impl OpenMlsCrypto,
         index: LeafNodeIndex,
         secret_type: SecretType,
-        #[cfg(feature = "virtual-clients-draft")] configuration: SenderRatchetConfiguration,
     ) -> Result<(u32, RatchetKeyMaterial), SecretTreeError> {
         if self.ratchet_opt(index, secret_type)?.is_none() {
             self.initialize_sender_ratchets(ciphersuite, crypto, index)?;
         }
         match self.ratchet_mut(index, secret_type)? {
-            // With the `virtual-clients` feature enabled, the own
-            // SenderRatchets are also initialized as DecryptionRatchets, so we
-            // can call `secret_for_encryption` on them as well.
-            #[cfg(not(feature = "virtual-clients-draft"))]
             SenderRatchet::DecryptionRatchet(_) => {
                 log::error!("Invalid ratchet type. Got decryption, expected encryption.");
                 Err(SecretTreeError::RatchetTypeError)
             }
-            #[cfg(feature = "virtual-clients-draft")]
-            SenderRatchet::DecryptionRatchet(dec_ratchet) => {
-                dec_ratchet.secret_for_encryption(ciphersuite, crypto, &configuration)
-            }
             SenderRatchet::EncryptionRatchet(enc_ratchet) => {
                 enc_ratchet.ratchet_forward(crypto, ciphersuite)
+            }
+            #[cfg(feature = "virtual-clients-draft")]
+            SenderRatchet::DualUseRatchet(dual_ratchet) => {
+                dual_ratchet.secret_for_encryption(ciphersuite, crypto)
             }
         }
     }
@@ -392,11 +400,13 @@ impl SecretTree {
         generation: Generation,
     ) -> Result<(), SecretTreeError> {
         match self.ratchet_mut(self.own_index, secret_type)? {
-            SenderRatchet::DecryptionRatchet(dec_ratchet) => {
-                dec_ratchet.delete_secret_for_generation(generation);
+            SenderRatchet::DualUseRatchet(dual_ratchet) => {
+                dual_ratchet.delete_secret_for_generation(generation);
                 Ok(())
             }
-            SenderRatchet::EncryptionRatchet(_) => Err(SecretTreeError::RatchetTypeError),
+            SenderRatchet::EncryptionRatchet(_) | SenderRatchet::DecryptionRatchet(_) => {
+                Err(SecretTreeError::RatchetTypeError)
+            }
         }
     }
 

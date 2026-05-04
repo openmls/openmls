@@ -9,9 +9,6 @@ use crate::{
     tree::secret_tree::SecretType,
 };
 
-#[cfg(feature = "virtual-clients-draft")]
-use crate::tree::sender_ratchet::SenderRatchetConfiguration;
-
 use super::*;
 
 /// The result of encrypting an [`AuthenticatedContent`] into a
@@ -85,7 +82,6 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-        #[cfg(feature = "virtual-clients-draft")] configuration: SenderRatchetConfiguration,
     ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         log::debug!("PrivateMessage::try_from_authenticated_content");
         log::trace!("  ciphersuite: {ciphersuite}");
@@ -101,8 +97,6 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
-            #[cfg(feature = "virtual-clients-draft")]
-            configuration,
         )
     }
 
@@ -123,8 +117,6 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
-            #[cfg(feature = "virtual-clients-draft")]
-            SenderRatchetConfiguration::default(),
         )
     }
 
@@ -146,8 +138,6 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
-            #[cfg(feature = "virtual-clients-draft")]
-            SenderRatchetConfiguration::default(),
         )
     }
 
@@ -161,7 +151,6 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-        #[cfg(feature = "virtual-clients-draft")] configuration: SenderRatchetConfiguration,
     ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         // https://validation.openmls.tech/#valn1305
         let sender_index = if let Some(index) = public_message.sender().as_member() {
@@ -193,14 +182,7 @@ impl PrivateMessage {
         let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             // Even in tests we want to use the real sender index, so we have a key to encrypt.
-            .secret_for_encryption(
-                ciphersuite,
-                crypto,
-                sender_index,
-                secret_type,
-                #[cfg(feature = "virtual-clients-draft")]
-                configuration,
-            )?;
+            .secret_for_encryption(ciphersuite, crypto, sender_index, secret_type)?;
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(rand).map_err(LibraryError::unexpected_crypto_error)?;
