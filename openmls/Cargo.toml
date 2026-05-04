@@ -28,7 +28,7 @@ openmls_libcrux_crypto = { workspace = true, optional = true }
 serde = { version = "^1.0", features = ["derive"] }
 log = { version = "0.4", features = ["std"] }
 tls_codec = { workspace = true }
-rayon = "^1.5.0"
+rayon = "^1.12.0"
 thiserror = "^2.0"
 backtrace = { version = "0.3", optional = true }
 # Only required for tests.

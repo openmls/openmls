@@ -4,50 +4,10 @@ use crate::schedule::message_secrets::MessageSecrets;
 
 use super::*;
 
-// Internal helper struct
-/// A wrapper for all data associated with a `MessageSecrets`
-/// NOTE: this struct can be deserialized directly from data
-/// that was serialized from a `MessageSecrets`.
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
-#[cfg_attr(feature = "crypto-debug", derive(Debug))]
-pub(crate) struct MessageSecretsWithTimestamp {
-    /// When the secrets were added to the store
-    /// `None` if no timestamp is available
-    /// NOTE: SystemTime is not guaranteed to be monotonic.
-    #[serde(default)]
-    added_at: Option<std::time::SystemTime>,
-    /// The message secrets
-    #[serde(flatten)]
-    message_secrets: MessageSecrets,
-}
-
-impl MessageSecrets {
-    #[cfg(test)]
-    pub(crate) fn with_timestamp(
-        self,
-        timestamp: impl Into<Option<std::time::SystemTime>>,
-    ) -> MessageSecretsWithTimestamp {
-        MessageSecretsWithTimestamp {
-            message_secrets: self,
-            added_at: timestamp.into(),
-        }
-    }
-
-    /// Helper function to create a `MessageSecrets` with `None` timestamp
-    #[cfg(test)]
-    pub(crate) fn without_timestamp(self) -> MessageSecretsWithTimestamp {
-        MessageSecretsWithTimestamp {
-            message_secrets: self,
-            added_at: None,
-        }
-    }
-}
-
 impl EpochTree {
     #[cfg(test)]
     pub(crate) fn timestamp(&self) -> Option<std::time::SystemTime> {
-        self.message_secrets.added_at
+        self.message_secrets.timestamp()
     }
 }
 
@@ -57,8 +17,8 @@ impl EpochTree {
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct EpochTree {
     epoch: u64,
+    message_secrets: MessageSecrets,
     leaves: Vec<Member>,
-    message_secrets: MessageSecretsWithTimestamp,
 }
 
 /// Can store message secrets for up to `max_epochs`. The trees are added with [`self::add()`] and can be queried
@@ -73,7 +33,7 @@ pub(crate) struct MessageSecretsStore {
     // NOTE: these are in order of addition (latest at end).
     past_epoch_trees: VecDeque<EpochTree>,
     // The message secrets of the current epoch.
-    message_secrets: MessageSecretsWithTimestamp,
+    message_secrets: MessageSecrets,
 }
 
 #[cfg(not(feature = "crypto-debug"))]
@@ -112,10 +72,7 @@ impl MessageSecretsStore {
         Self {
             max_epochs,
             past_epoch_trees: VecDeque::new(),
-            message_secrets: MessageSecretsWithTimestamp {
-                added_at: Some(std::time::SystemTime::now()),
-                message_secrets,
-            },
+            message_secrets: message_secrets.with_timestamp(std::time::SystemTime::now()),
         }
     }
 
@@ -139,11 +96,8 @@ impl MessageSecretsStore {
     pub(crate) fn replace_current_message_secrets(
         &mut self,
         message_secrets: MessageSecrets,
-    ) -> MessageSecretsWithTimestamp {
-        let mut message_secrets = MessageSecretsWithTimestamp {
-            added_at: Some(std::time::SystemTime::now()),
-            message_secrets,
-        };
+    ) -> MessageSecrets {
+        let mut message_secrets = message_secrets.with_timestamp(std::time::SystemTime::now());
         std::mem::swap(&mut self.message_secrets, &mut message_secrets);
 
         message_secrets
@@ -155,7 +109,7 @@ impl MessageSecretsStore {
     pub(crate) fn add_past_epoch_tree(
         &mut self,
         group_epoch: impl Into<GroupEpoch>,
-        message_secrets: MessageSecretsWithTimestamp,
+        message_secrets: MessageSecrets,
         leaves: Vec<Member>,
     ) {
         // Don't store the tree if it's not intended
@@ -189,7 +143,7 @@ impl MessageSecretsStore {
         let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter_mut() {
             if epoch_tree.epoch == epoch {
-                return Some(&mut epoch_tree.message_secrets.message_secrets);
+                return Some(&mut epoch_tree.message_secrets);
             }
         }
         None
@@ -204,7 +158,7 @@ impl MessageSecretsStore {
         let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter() {
             if epoch_tree.epoch == epoch {
-                return Some(&epoch_tree.message_secrets.message_secrets);
+                return Some(&epoch_tree.message_secrets);
             }
         }
         None
@@ -220,10 +174,7 @@ impl MessageSecretsStore {
         let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter() {
             if epoch_tree.epoch == epoch {
-                return Some((
-                    &epoch_tree.message_secrets.message_secrets,
-                    &epoch_tree.leaves,
-                ));
+                return Some((&epoch_tree.message_secrets, &epoch_tree.leaves));
             }
         }
         None
@@ -264,17 +215,17 @@ impl MessageSecretsStore {
 
     /// Get a mutable reference to the message secrets of the current epoch.
     pub(crate) fn message_secrets_mut(&mut self) -> &mut MessageSecrets {
-        &mut self.message_secrets.message_secrets
+        &mut self.message_secrets
     }
 
     /// Get a reference to the message secrets of the current epoch.
     pub(crate) fn message_secrets(&self) -> &MessageSecrets {
-        &self.message_secrets.message_secrets
+        &self.message_secrets
     }
 
     fn delete_past_epoch_secrets_older_than_duration(&mut self, duration: std::time::Duration) {
         // first, compare to the timestamp of the current message secrets
-        if let Some(added_at) = self.message_secrets.added_at {
+        if let Some(added_at) = self.message_secrets.timestamp() {
             if let Ok(elapsed) = std::time::SystemTime::now().duration_since(added_at) {
                 if elapsed > duration {
                     // delete all
@@ -291,7 +242,7 @@ impl MessageSecretsStore {
             .enumerate()
             .rev()
             .find(|(_idx, tree)| {
-                let Some(added_at) = tree.message_secrets.added_at else {
+                let Some(added_at) = tree.message_secrets.timestamp() else {
                     return false;
                 };
 
@@ -314,7 +265,7 @@ impl MessageSecretsStore {
 
     fn delete_past_epoch_secrets_before_timestamp(&mut self, cutoff: std::time::SystemTime) {
         // first, compare to timestamp of the current message secrets
-        if let Some(added_at) = self.message_secrets.added_at {
+        if let Some(added_at) = self.message_secrets.timestamp() {
             if added_at < cutoff {
                 // delete all
                 self.past_epoch_trees.clear();
@@ -329,7 +280,7 @@ impl MessageSecretsStore {
             .enumerate()
             .rev()
             .find(|(_idx, tree)| {
-                let Some(added_at) = tree.message_secrets.added_at else {
+                let Some(added_at) = tree.message_secrets.timestamp() else {
                     return false;
                 };
 
@@ -351,7 +302,7 @@ impl MessageSecretsStore {
             match config {
                 PastEpochDeletionTimeConfig::DeleteAllWithoutTimestamp => {
                     self.past_epoch_trees
-                        .retain(|tree| tree.message_secrets.added_at.is_some());
+                        .retain(|tree| tree.message_secrets.timestamp().is_some());
                 }
                 PastEpochDeletionTimeConfig::BeforeTimestamp(timestamp) => {
                     self.delete_past_epoch_secrets_before_timestamp(timestamp)

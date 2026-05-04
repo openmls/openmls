@@ -12,6 +12,11 @@ pub(crate) struct MessageSecrets {
     confirmation_key: ConfirmationKey,
     serialized_context: Vec<u8>,
     secret_tree: SecretTree,
+    /// When the secrets were added to the store
+    /// `None` if no timestamp is available
+    /// NOTE: SystemTime is not guaranteed to be monotonic.
+    #[serde(default)]
+    added_at: Option<std::time::SystemTime>,
 }
 
 #[cfg(not(feature = "crypto-debug"))]
@@ -43,6 +48,7 @@ impl MessageSecrets {
             confirmation_key,
             serialized_context,
             secret_tree,
+            added_at: None,
         }
     }
 
@@ -69,6 +75,29 @@ impl MessageSecrets {
     /// Get a mutable reference to the message secrets's secret tree.
     pub(crate) fn secret_tree_mut(&mut self) -> &mut SecretTree {
         &mut self.secret_tree
+    }
+
+    pub(crate) fn timestamp(&self) -> Option<std::time::SystemTime> {
+        self.added_at
+    }
+
+    pub(crate) fn with_timestamp(
+        self,
+        timestamp: impl Into<Option<std::time::SystemTime>>,
+    ) -> Self {
+        Self {
+            added_at: timestamp.into(),
+            ..self
+        }
+    }
+
+    /// Helper function to create a `MessageSecrets` with `None` timestamp
+    #[cfg(test)]
+    pub(crate) fn without_timestamp(self) -> Self {
+        Self {
+            added_at: None,
+            ..self
+        }
     }
 }
 
@@ -107,6 +136,7 @@ impl MessageSecrets {
                 TreeSize::new(10),
                 own_index,
             ),
+            added_at: None,
         }
     }
 
