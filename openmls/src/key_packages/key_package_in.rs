@@ -209,6 +209,24 @@ impl KeyPackageIn {
     pub(crate) fn version_is_supported(&self, protocol_version: ProtocolVersion) -> bool {
         self.payload.protocol_version == protocol_version
     }
+
+    /// Assume that the signature is valid and return the [`KeyPackage`].
+    ///
+    /// Use with caution, the client must guarantee that the key package is verified.
+    pub fn unwrap_verified(self) -> Result<KeyPackage, KeyPackageVerifyError> {
+        let payload = KeyPackageTbs {
+            protocol_version: self.payload.protocol_version,
+            ciphersuite: self.payload.ciphersuite,
+            init_key: self.payload.init_key,
+            leaf_node: self.payload.leaf_node.unwrap_verified(),
+            extensions: self.payload.extensions.try_into()?,
+        };
+        Ok(KeyPackage {
+            payload,
+            signature: self.signature,
+            serialized_payload: None,
+        })
+    }
 }
 
 #[cfg(any(feature = "test-utils", test))]
