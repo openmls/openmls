@@ -478,6 +478,12 @@ pub enum Ciphersuite {
     /// [draft-ietf-mls-pq-ciphersuites]: https://datatracker.ietf.org/doc/draft-ietf-mls-pq-ciphersuites
     #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
     MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87 = 0x0907,
+
+    /// ML-KEM768 | AES-GCM256 | SHA2-384 | Ed25519
+    ///
+    /// A custom variant of MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519 without hybrid KEM.
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    AIR_128_MLKEM768_AES256GCM_SHA384_Ed25519 = 0xF042,
 }
 
 impl core::fmt::Display for Ciphersuite {
@@ -603,6 +609,8 @@ impl Ciphersuite {
             | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => HashType::Sha2_512,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87 => HashType::Sha2_512,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::AIR_128_MLKEM768_AES256GCM_SHA384_Ed25519 => HashType::Sha2_384,
         }
     }
 
@@ -646,6 +654,8 @@ impl Ciphersuite {
             | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87 => SignatureScheme::MLDSA87,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65 => SignatureScheme::MLDSA65,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::AIR_128_MLKEM768_AES256GCM_SHA384_Ed25519 => SignatureScheme::ED25519,
         }
     }
 
@@ -675,6 +685,8 @@ impl Ciphersuite {
             | Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256
             | Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65
             | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87 => AeadType::Aes256Gcm,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::AIR_128_MLKEM768_AES256GCM_SHA384_Ed25519 => AeadType::Aes256Gcm,
         }
     }
 
@@ -706,6 +718,8 @@ impl Ciphersuite {
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87 => HpkeKdfType::HkdfSha512,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::AIR_128_MLKEM768_AES256GCM_SHA384_Ed25519 => HpkeKdfType::HkdfSha384,
         }
     }
 
@@ -735,6 +749,8 @@ impl Ciphersuite {
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256
             | Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65 => HpkeKemType::MlKem768,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::AIR_128_MLKEM768_AES256GCM_SHA384_Ed25519 => HpkeKemType::MlKem768,
         }
     }
 
@@ -764,6 +780,8 @@ impl Ciphersuite {
             | Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256
             | Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65
             | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87 => HpkeAeadType::AesGcm256,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::AIR_128_MLKEM768_AES256GCM_SHA384_Ed25519 => HpkeAeadType::AesGcm256,
         }
     }
 
