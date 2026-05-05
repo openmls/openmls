@@ -21,7 +21,14 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::prelude::processing::AppDataUpdates;
+use crate::{
+    component::ComponentData,
+    messages::{
+        proposals::AppDataUpdateOperation,
+        proposals_in::{ProposalIn, ProposalOrRefIn},
+    },
+    prelude::processing::{AppDataDictionaryUpdater, AppDataUpdates},
+};
 
 use super::PublicGroup;
 
@@ -185,6 +192,73 @@ impl PublicGroup {
             .parse_message(decrypted_message, None)
             .map_err(PublicProcessMessageError::from)?;
         self.process_unverified_message(crypto, unverified_message)
+    }
+
+    /// Processes a public-group message and applies committed app-data update proposals.
+    ///
+    /// This is equivalent to [`Self::process_message`] for messages without app-data update
+    /// proposals. If app-data update proposals are committed by value, their resulting dictionary
+    /// changes are computed and supplied during staged commit validation.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn process_message_with_app_data_updates(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        message: impl Into<ProtocolMessage>,
+    ) -> Result<ProcessedMessage, PublicProcessMessageError> {
+        let protocol_message = message.into();
+        self.validate_framing(&protocol_message)?;
+
+        let decrypted_message = match protocol_message {
+            ProtocolMessage::PrivateMessage(_) => {
+                return Err(PublicProcessMessageError::IncompatibleWireFormat)
+            }
+            ProtocolMessage::PublicMessage(public_message) => {
+                DecryptedMessage::from_inbound_public_message(
+                    *public_message,
+                    None,
+                    self.group_context()
+                        .tls_serialize_detached()
+                        .map_err(LibraryError::missing_bound_check)?,
+                    crypto,
+                    self.ciphersuite(),
+                )?
+            }
+        };
+
+        let unverified_message = self
+            .parse_message(decrypted_message, None)
+            .map_err(PublicProcessMessageError::from)?;
+        let app_data_updates = self.extract_app_data_updates(&unverified_message);
+        self.process_unverified_message_with_app_data_updates(
+            crypto,
+            unverified_message,
+            app_data_updates,
+        )
+    }
+
+    #[cfg(feature = "extensions-draft-08")]
+    fn extract_app_data_updates(&self, unverified: &UnverifiedMessage) -> Option<AppDataUpdates> {
+        let mut updater = AppDataDictionaryUpdater::new(self.group_context().app_data_dict());
+        let mut updated = false;
+        for proposal in unverified.committed_proposals()? {
+            if let ProposalOrRefIn::Proposal(proposal) = proposal {
+                if let ProposalIn::AppDataUpdate(app_data_update) = &**proposal {
+                    match app_data_update.operation() {
+                        AppDataUpdateOperation::Update(data) => {
+                            updater.set(ComponentData::from_parts(
+                                app_data_update.component_id(),
+                                data.clone(),
+                            ));
+                        }
+                        AppDataUpdateOperation::Remove => {
+                            updater.remove(&app_data_update.component_id());
+                        }
+                    }
+                    updated = true;
+                }
+            }
+        }
+        updated.then(|| updater.changes()).flatten()
     }
 }
 
