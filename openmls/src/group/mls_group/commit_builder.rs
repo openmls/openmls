@@ -38,8 +38,9 @@ use crate::{
 #[cfg(feature = "virtual-clients-draft")]
 use crate::{
     components::vc_derivation_info::{
-        pprf_input, DerivationInfo, EpochEncryptionKey, EpochId, EpochInfoTbe, OperationSecret,
-        VcEmulation, VcPprf, VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
+        pprf_input, DerivationInfo, EmulationEpochState, EpochEncryptionKey, EpochId, EpochInfoTbe,
+        OperationSecret, VcEmulation, VcPprf, VirtualClientOperationType, VirtualClientsError,
+        VC_COMPONENT_ID,
     },
     extensions::{AppDataDictionary, AppDataDictionaryExtension},
     treesync::node::leaf_node::LeafNode,
@@ -362,24 +363,39 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
 
     /// Opt this commit into the virtual-clients-draft sender flow.
     ///
-    /// The application supplies the per-commit material in `emulation` —
-    /// see [`VcEmulation`]. When set, building this commit will:
+    /// The application supplies a [`VcEmulation`] referencing an
+    /// already-registered emulation epoch (see
+    /// [`MlsGroup::register_vc_emulation_epoch`]). When set, building this
+    /// commit will:
     ///
-    /// - derive the path secret and the new leaf's encryption keypair from
-    ///   `emulation.operation_secret`, so a sibling virtual client can
+    /// - load the per-epoch [`VcPprf`](crate::components::vc_derivation_info)
+    ///   and AEAD key from the storage provider;
+    /// - draw fresh per-commit randomness, evaluate (and puncture) the
+    ///   PPRF on the resulting input to produce the per-commit
+    ///   `OperationSecret`, and persist the punctured state at
+    ///   `stage_commit` time;
+    /// - derive the path secret and the new leaf's encryption keypair
+    ///   from that `OperationSecret`, so a sibling virtual client can
     ///   rederive them on the receiver side;
-    /// - inject a `DerivationInfo` blob under [`VC_COMPONENT_ID`] in the
-    ///   new leaf's `app_data_dictionary` extension, encrypted under
-    ///   `emulation.epoch_encryption_key` with `emulation.epoch_id` as
-    ///   AAD;
-    /// - extend the new leaf's capabilities to declare AppDataDictionary
-    ///   support, which the leaf-node validator otherwise rejects;
-    /// - at `stage_commit` time, persist `emulation.epoch_encryption_key`
-    ///   and `emulation.operation_secret` to the storage provider, keyed
-    ///   by `emulation.epoch_id`, so the receiver can look them up.
+    /// - embed an encrypted `DerivationInfo` blob under [`VC_COMPONENT_ID`]
+    ///   in the new leaf's `app_data_dictionary` extension.
+    ///
+    /// The application is responsible for ensuring the new leaf:
+    ///
+    /// - lists [`ExtensionType::AppDataDictionary`](crate::extensions::ExtensionType::AppDataDictionary)
+    ///   in its `Capabilities.extensions`, and
+    /// - signals support for [`VC_COMPONENT_ID`].
+    ///
+    /// If those preconditions are not met the build fails with
+    /// `VirtualClientsError::AppDataDictionaryNotSupported` or
+    /// `VirtualClientsError::VcComponentNotListed` (wrapped in
+    /// [`CreateCommitError::VirtualClientsError`]) before any randomness
+    /// is drawn.
     ///
     /// Implies that a self-update takes place: the commit will always have
     /// a path even if no other proposals are queued.
+    ///
+    /// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
     #[cfg(feature = "virtual-clients-draft")]
     pub fn vc_emulation(mut self, emulation: VcEmulation) -> Self {
         self.stage.vc_emulation = Some(emulation);
@@ -428,32 +444,32 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         };
 
         // When the caller opted into virtual-clients for this commit, load
-        // the per-emulation-epoch PPRF and AEAD key from storage now —
-        // both must already be registered via
-        // `register_vc_emulation_epoch`. Refusing to instantiate either on
-        // the fly avoids accidentally diverging from a sibling virtual
-        // client's already-advanced PPRF.
+        // the per-emulation-epoch PPRF + state (AEAD key + the registering
+        // client's emulation-group leaf index) from storage now — both
+        // must already be registered via
+        // `MlsGroup::register_vc_emulation_epoch`. Refusing to instantiate
+        // either on the fly avoids accidentally diverging from a sibling
+        // virtual client's already-advanced PPRF.
         #[cfg(feature = "virtual-clients-draft")]
         let vc_loaded = if let Some(emulation) = &self.stage.vc_emulation {
             let pprf: VcPprf = storage
                 .vc_pprf(&emulation.epoch_id)
                 .map_err(|e| {
-                    CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError(
-                        format!("{e}"),
-                    ))
+                    log::error!("vc: load pprf in load_psks failed: {e:?}");
+                    CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
                 })?
                 .ok_or(VirtualClientsError::MissingPprf)?;
-            let epoch_encryption_key: EpochEncryptionKey = storage
-                .vc_epoch_encryption_key(&emulation.epoch_id)
+            let state: EmulationEpochState = storage
+                .vc_emulation_epoch_state(&emulation.epoch_id)
                 .map_err(|e| {
-                    CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError(
-                        format!("{e}"),
-                    ))
+                    log::error!("vc: load emulation epoch state in load_psks failed: {e:?}");
+                    CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
                 })?
                 .ok_or(VirtualClientsError::MissingEpochEncryptionKey)?;
+            let (emulation_leaf_index, epoch_encryption_key) = state.into_parts();
             Some(VcLoaded {
                 epoch_id: emulation.epoch_id.clone(),
-                emulation_leaf_index: emulation.emulation_leaf_index,
+                emulation_leaf_index,
                 pprf,
                 epoch_encryption_key,
             })
@@ -688,18 +704,30 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         }
 
         // Virtual-clients sender hook: when the caller opted into VC for
-        // this commit, evaluate the pre-loaded PPRF (mutating it in
-        // place — the punctured state is propagated to `Complete` for
-        // `stage_commit` to persist), derive the path-secret + leaf-
-        // keypair override, and embed the `DerivationInfo` blob in the
-        // leaf's `app_data_dictionary` extension. Declaring
-        // `AppDataDictionary` support in the leaf's capabilities is the
-        // caller's responsibility.
+        // this commit, validate that the effective leaf is configured to
+        // accept the derivation-info entry (capabilities + AppComponents),
+        // then evaluate the pre-loaded PPRF (mutating it in place — the
+        // punctured state is propagated to `Complete` for `stage_commit`
+        // to persist), derive the path-secret + leaf-keypair override,
+        // and embed the `DerivationInfo` blob in the leaf's
+        // `app_data_dictionary` extension.
         #[cfg(feature = "virtual-clients-draft")]
         let own_update_override = if let Some(loaded) = cur_stage.vc_loaded.as_mut() {
+            // Run the leaf-configuration pre-check. Returns the resolved
+            // `AppDataDictionary` so the inject step can preserve every other
+            // entry the application registered, including the AppComponents
+            // entry that survives across multiple VC commits.
+            let resolved_dictionary = check_vc_leaf_configuration(
+                &cur_stage.leaf_node_parameters,
+                group,
+                own_leaf_index,
+                is_external_commit,
+            )?;
+
             Some(apply_vc_emulation(
                 loaded,
                 &mut cur_stage.leaf_node_parameters,
+                resolved_dictionary,
                 rand,
                 crypto,
                 ciphersuite,
@@ -1134,18 +1162,14 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     }
 }
 
-/// Build the path-secret + leaf-keypair override from a `VcEmulation` and
+/// Build the path-secret + leaf-keypair override from a [`VcEmulation`] and
 /// inject the corresponding `DerivationInfo` blob into `leaf_node_parameters`'s
 /// `app_data_dictionary` extension.
-///
-/// The caller is responsible for ensuring the leaf already declares
-/// `AppDataDictionary` support in its capabilities (either via the existing
-/// leaf or via `leaf_node_parameters.capabilities`). If it doesn't, the
-/// leaf-node validator will reject the resulting commit.
 #[cfg(feature = "virtual-clients-draft")]
 fn apply_vc_emulation(
     loaded: &mut VcLoaded,
     leaf_node_parameters: &mut LeafNodeParameters,
+    resolved_dictionary: AppDataDictionary,
     rand: &impl OpenMlsRand,
     crypto: &impl OpenMlsCrypto,
     ciphersuite: openmls_traits::types::Ciphersuite,
@@ -1154,9 +1178,10 @@ fn apply_vc_emulation(
     // with `epoch_encryption_key`. The same struct is hashed to produce
     // the PPRF input so that sender and receiver derive the same
     // per-commit secret.
-    let random = rand
-        .random_vec(32)
-        .map_err(|_| VirtualClientsError::RandError)?;
+    let random = rand.random_vec(32).map_err(|e| {
+        log::error!("vc: per-commit randomness failed: {e:?}");
+        VirtualClientsError::RandError
+    })?;
     let epoch_info = EpochInfoTbe {
         // Update-path leaf-node derivations are the only operation type
         // wired up so far; KeyPackage / Application will use this same
@@ -1183,9 +1208,13 @@ fn apply_vc_emulation(
     let derivation_info = DerivationInfo::new(loaded.epoch_id.clone(), encrypted_epoch_info);
     let derivation_info_bytes = derivation_info
         .tls_serialize_detached()
-        .map_err(|_| VirtualClientsError::SerializationError)?;
+        .map_err(VirtualClientsError::from)?;
 
-    inject_vc_derivation_info(leaf_node_parameters, derivation_info_bytes)?;
+    inject_vc_derivation_info(
+        leaf_node_parameters,
+        resolved_dictionary,
+        derivation_info_bytes,
+    )?;
 
     let path_secret = operation_secret
         .derive_path_generation_secret(crypto, ciphersuite)?
@@ -1199,26 +1228,113 @@ fn apply_vc_emulation(
     })
 }
 
+/// Verify that the effective leaf for this commit (= the merged view of
+/// `leaf_node_parameters` over the existing leaf, or `leaf_node_parameters`
+/// alone for external commits) declares `AppDataDictionary` and lists
+/// [`VC_COMPONENT_ID`] in its `AppComponents` entry. Without both, the
+/// receiver cannot reliably surface the derivation-info entry to the
+/// virtual-clients consumer, so we reject the commit at build time.
+///
+/// Returns the resolved `AppDataDictionary` (caller's override merged
+/// over the existing leaf's, with the caller winning on duplicate keys)
+/// so subsequent injection of the VC derivation-info preserves the
+/// AppComponents entry across commits.
+#[cfg(feature = "virtual-clients-draft")]
+fn check_vc_leaf_configuration(
+    leaf_node_parameters: &LeafNodeParameters,
+    group: &MlsGroup,
+    own_leaf_index: LeafNodeIndex,
+    is_external_commit: bool,
+) -> Result<AppDataDictionary, CreateCommitError> {
+    use crate::{
+        component::{ComponentId, ComponentType},
+        extensions::ExtensionType,
+    };
+    use tls_codec::DeserializeBytes as _;
+
+    let current_leaf = if is_external_commit {
+        None
+    } else {
+        Some(group.public_group().leaf(own_leaf_index).ok_or_else(|| {
+            LibraryError::custom("Couldn't find own leaf for VC capability check")
+        })?)
+    };
+
+    let supports_app_data_dictionary = match leaf_node_parameters.capabilities() {
+        Some(c) => c.extensions().contains(&ExtensionType::AppDataDictionary),
+        None => current_leaf
+            .map(|leaf| {
+                leaf.capabilities()
+                    .extensions()
+                    .contains(&ExtensionType::AppDataDictionary)
+            })
+            .unwrap_or(false),
+    };
+    if !supports_app_data_dictionary {
+        return Err(CreateCommitError::VirtualClientsError(
+            VirtualClientsError::AppDataDictionaryNotSupported,
+        ));
+    }
+
+    // Merge the dictionary from the current leaf with anything the
+    // caller passed in `leaf_node_parameters`, with the caller winning.
+    // For external commits there's no current leaf to merge from.
+    let mut resolved_dictionary = current_leaf
+        .and_then(|leaf| leaf.extensions().app_data_dictionary())
+        .map(|ext| ext.dictionary().clone())
+        .unwrap_or_default();
+    if let Some(caller_dict) = leaf_node_parameters
+        .extensions()
+        .and_then(|exts| exts.app_data_dictionary())
+    {
+        for entry in caller_dict.dictionary().entries() {
+            resolved_dictionary.insert(entry.id(), entry.data().to_vec());
+        }
+    }
+
+    let app_components_bytes = resolved_dictionary
+        .get(&ComponentId::from(ComponentType::AppComponents))
+        .map(|bytes| bytes.to_vec());
+    let Some(app_components_bytes) = app_components_bytes else {
+        return Err(CreateCommitError::VirtualClientsError(
+            VirtualClientsError::VcComponentNotListed,
+        ));
+    };
+
+    // The AppComponents body is `ComponentID supported_components<V>`,
+    // i.e. a TLS-encoded variable-length vector of u16. `Vec<u16>`'s
+    // `DeserializeBytes` impl handles the length prefix.
+    let supported_components = Vec::<u16>::tls_deserialize_exact_bytes(&app_components_bytes)
+        .map_err(|e| {
+            log::error!("vc: AppComponents body failed to deserialize: {e:?}");
+            CreateCommitError::VirtualClientsError(VirtualClientsError::VcComponentNotListed)
+        })?;
+    if !supported_components.contains(&VC_COMPONENT_ID) {
+        return Err(CreateCommitError::VirtualClientsError(
+            VirtualClientsError::VcComponentNotListed,
+        ));
+    }
+
+    Ok(resolved_dictionary)
+}
+
 /// Merge a virtual-clients derivation info blob into
 /// `leaf_node_parameters.app_data_dictionary[VC_COMPONENT_ID]`,
-/// preserving any other component ids the caller already populated.
+/// preserving every other component id from `resolved_dictionary` and
+/// every non-`AppDataDictionary` leaf-node extension the caller put in.
 #[cfg(feature = "virtual-clients-draft")]
 fn inject_vc_derivation_info(
     leaf_node_parameters: &mut LeafNodeParameters,
+    mut resolved_dictionary: AppDataDictionary,
     derivation_info_bytes: Vec<u8>,
 ) -> Result<(), CreateCommitError> {
-    // Start from the existing dictionary (if any) so other component ids
-    // the caller put in survive the round-trip.
-    let mut dictionary = leaf_node_parameters
-        .extensions()
-        .and_then(|exts| exts.app_data_dictionary())
-        .map(|ext| ext.dictionary().clone())
-        .unwrap_or_else(AppDataDictionary::new);
-    dictionary.insert(VC_COMPONENT_ID, derivation_info_bytes);
-    let vc_extension = Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary));
+    resolved_dictionary.insert(VC_COMPONENT_ID, derivation_info_bytes);
+    let vc_extension =
+        Extension::AppDataDictionary(AppDataDictionaryExtension::new(resolved_dictionary));
 
-    // Drop any pre-existing AppDataDictionary entry from the extension
-    // list (we just rebuilt it) and append the merged one.
+    // Drop any pre-existing AppDataDictionary entry from the caller-
+    // supplied extension list (we just rebuilt it) and append the merged
+    // one.
     let other_extensions = leaf_node_parameters
         .extensions()
         .map(|exts| {

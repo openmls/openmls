@@ -564,30 +564,30 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_epoch_encryption_key<
+    fn write_vc_emulation_epoch_state<
         EpochId: traits::VcEpochId<V_TEST>,
-        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<V_TEST>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<V_TEST>,
     >(
         &self,
         _epoch_id: &EpochId,
-        _vc_epoch_encryption_key: &VcEpochEncryptionKey,
+        _vc_emulation_epoch_state: &VcEmulationEpochState,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_epoch_encryption_key<
+    fn vc_emulation_epoch_state<
         EpochId: traits::VcEpochId<V_TEST>,
-        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<V_TEST>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<V_TEST>,
     >(
         &self,
         _epoch_id: &EpochId,
-    ) -> Result<Option<VcEpochEncryptionKey>, Self::Error> {
+    ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_epoch_encryption_key<EpochId: traits::VcEpochId<V_TEST>>(
+    fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<V_TEST>>(
         &self,
         _epoch_id: &EpochId,
     ) -> Result<(), Self::Error> {

@@ -4,7 +4,7 @@ CREATE TABLE vc_emulation_group_secrets (
     epoch_id BLOB NOT NULL,
     secret_type TEXT NOT NULL CHECK (secret_type IN (
         'pprf',
-        'epoch_encryption_key'
+        'emulation_epoch_state'
     )),
     vc_secret BLOB NOT NULL,
     PRIMARY KEY (epoch_id, secret_type)

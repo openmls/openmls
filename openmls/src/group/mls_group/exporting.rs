@@ -12,6 +12,14 @@ use crate::{
     group::{PendingSafeExportSecretError, SafeExportSecretError},
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::{
+    components::vc_derivation_info::{
+        build_vc_pprf, EmulationEpochState, EmulatorEpochSecret, EpochId, VC_COMPONENT_ID,
+    },
+    group::mls_group::errors::RegisterVcEmulationEpochError,
+};
+
 use super::*;
 
 impl MlsGroup {
@@ -96,6 +104,54 @@ impl MlsGroup {
             .write_group_state(&group_id, &self.group_state)
             .map_err(PendingSafeExportSecretError::Storage)?;
         Ok(secret.as_slice().to_vec())
+    }
+
+    /// Register a new virtual-clients emulation epoch for this *emulation*
+    /// group.
+    ///
+    /// Sources the per-emulation-epoch root secret from
+    /// `self.safe_export_secret(crypto, storage, VC_COMPONENT_ID)`,
+    /// derives the [`EpochId`], the AEAD key, and the PPRF root, and
+    /// persists the PPRF + AEAD key in the storage provider keyed on the
+    /// derived `EpochId`. Returns the `EpochId` so the caller can reference
+    /// this emulation epoch on subsequent virtual-clients commits.
+    ///
+    /// The emulation group must support `safe_export_secret` (i.e. it
+    /// must have been created with the appropriate
+    /// `AppDataDictionary` capability/extension wiring); otherwise this
+    /// returns [`SafeExportSecretError::Unsupported`] via
+    /// [`RegisterVcEmulationEpochError::SafeExportSecret`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn register_vc_emulation_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        &mut self,
+        crypto: &Crypto,
+        storage: &Storage,
+    ) -> Result<EpochId, RegisterVcEmulationEpochError<Storage::Error>> {
+        let ciphersuite = self.ciphersuite();
+        let leaf_index = self.own_leaf_index();
+        let bytes = self.safe_export_secret(crypto, storage, VC_COMPONENT_ID)?;
+        let emulator_epoch_secret = EmulatorEpochSecret::new(&bytes);
+        let epoch_id = emulator_epoch_secret.derive_epoch_id(crypto, ciphersuite)?;
+        let epoch_encryption_key =
+            emulator_epoch_secret.derive_epoch_encryption_key(crypto, ciphersuite)?;
+        let epoch_secret = emulator_epoch_secret.derive_epoch_secret(crypto, ciphersuite)?;
+        let pprf = build_vc_pprf(epoch_secret);
+        let state = EmulationEpochState::new(leaf_index, epoch_encryption_key);
+
+        storage.write_vc_pprf(&epoch_id, &pprf).map_err(|e| {
+            log::error!("vc: persist pprf in register_vc_emulation_epoch failed: {e:?}");
+            RegisterVcEmulationEpochError::Storage(e)
+        })?;
+        storage
+            .write_vc_emulation_epoch_state(&epoch_id, &state)
+            .map_err(|e| {
+                log::error!(
+                    "vc: persist emulation epoch state in register_vc_emulation_epoch failed: {e:?}"
+                );
+                RegisterVcEmulationEpochError::Storage(e)
+            })?;
+
+        Ok(epoch_id)
     }
 
     /// Returns the epoch authenticator of the current epoch.

@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
 use openmls_traits::storage::{
-    traits::VcEpochEncryptionKey as VcEpochEncryptionKeyTrait, traits::VcEpochId as VcEpochIdTrait,
-    traits::VcPprf as VcPprfTrait, Entity as EntityTrait, Key,
+    traits::VcEmulationEpochState as VcEmulationEpochStateTrait,
+    traits::VcEpochId as VcEpochIdTrait, traits::VcPprf as VcPprfTrait, Entity as EntityTrait, Key,
 };
 use rusqlite::{params, OptionalExtension as _, ToSql};
 
@@ -14,14 +14,14 @@ use crate::{
 
 enum SecretType {
     Pprf,
-    EpochEncryptionKey,
+    EmulationEpochState,
 }
 
 impl ToSql for SecretType {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
         let secret_type_str = match self {
             SecretType::Pprf => "pprf",
-            SecretType::EpochEncryptionKey => "epoch_encryption_key",
+            SecretType::EmulationEpochState => "emulation_epoch_state",
         };
         Ok(rusqlite::types::ToSqlOutput::Borrowed(
             rusqlite::types::ValueRef::Text(secret_type_str.as_bytes()),
@@ -33,10 +33,13 @@ pub(super) struct StorableEntityRef<'a, Entity: EntityTrait<STORAGE_PROVIDER_VER
     pub &'a Entity,
 );
 
-impl<'a, VcEpochEncryptionKey: VcEpochEncryptionKeyTrait<STORAGE_PROVIDER_VERSION>>
-    StorableEntityRef<'a, VcEpochEncryptionKey>
+impl<'a, VcEmulationEpochState: VcEmulationEpochStateTrait<STORAGE_PROVIDER_VERSION>>
+    StorableEntityRef<'a, VcEmulationEpochState>
 {
-    pub(super) fn store_vc_encryption_key<C: Codec, EpochId: Key<STORAGE_PROVIDER_VERSION>>(
+    pub(super) fn store_vc_emulation_epoch_state<
+        C: Codec,
+        EpochId: Key<STORAGE_PROVIDER_VERSION>,
+    >(
         &self,
         connection: &rusqlite::Connection,
         epoch_id: &EpochId,
@@ -49,7 +52,7 @@ impl<'a, VcEpochEncryptionKey: VcEpochEncryptionKeyTrait<STORAGE_PROVIDER_VERSIO
             params![
                 STORAGE_PROVIDER_VERSION,
                 KeyRefWrapper::<C, _>(epoch_id, PhantomData),
-                SecretType::EpochEncryptionKey,
+                SecretType::EmulationEpochState,
                 EntityRefWrapper::<C, _>(self.0, PhantomData)
             ],
         )?;
@@ -80,13 +83,13 @@ impl<'a, VcPprf: VcPprfTrait<STORAGE_PROVIDER_VERSION>> StorableEntityRef<'a, Vc
 }
 
 impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcEpochId> {
-    pub(super) fn load_vc_encryption_key<
+    pub(super) fn load_vc_emulation_epoch_state<
         C: Codec,
-        VcEpochEncryptionKey: VcEpochEncryptionKeyTrait<STORAGE_PROVIDER_VERSION>,
+        VcEmulationEpochState: VcEmulationEpochStateTrait<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         connection: &rusqlite::Connection,
-    ) -> Result<Option<VcEpochEncryptionKey>, rusqlite::Error> {
+    ) -> Result<Option<VcEmulationEpochState>, rusqlite::Error> {
         let Self(epoch_id) = self;
         let mut stmt = connection.prepare(
             "SELECT vc_secret
@@ -99,18 +102,17 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
             params![
                 KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
                 STORAGE_PROVIDER_VERSION,
-                SecretType::EpochEncryptionKey
+                SecretType::EmulationEpochState
             ],
             |row| {
-                let EntityWrapper::<C, VcEpochEncryptionKey>(epoch_encryption_key, ..) =
-                    row.get(0)?;
-                Ok(epoch_encryption_key)
+                let EntityWrapper::<C, VcEmulationEpochState>(state, ..) = row.get(0)?;
+                Ok(state)
             },
         )
         .optional()
     }
 
-    pub(super) fn delete_vc_encryption_key<C: Codec>(
+    pub(super) fn delete_vc_emulation_epoch_state<C: Codec>(
         &self,
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
@@ -123,7 +125,7 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
             params![
                 KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
                 STORAGE_PROVIDER_VERSION,
-                SecretType::EpochEncryptionKey
+                SecretType::EmulationEpochState
             ],
         )?;
         Ok(())

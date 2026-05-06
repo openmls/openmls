@@ -742,36 +742,36 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_epoch_encryption_key<
+    fn write_vc_emulation_epoch_state<
         EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
-        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<STORAGE_PROVIDER_VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-        vc_epoch_encryption_key: &VcEpochEncryptionKey,
+        vc_emulation_epoch_state: &VcEmulationEpochState,
     ) -> Result<(), Self::Error> {
-        StorableVcSecretRef(vc_epoch_encryption_key)
-            .store_vc_encryption_key::<C, _>(self.connection.borrow(), epoch_id)
+        StorableVcSecretRef(vc_emulation_epoch_state)
+            .store_vc_emulation_epoch_state::<C, _>(self.connection.borrow(), epoch_id)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_epoch_encryption_key<
+    fn vc_emulation_epoch_state<
         EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
-        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<STORAGE_PROVIDER_VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<Option<VcEpochEncryptionKey>, Self::Error> {
+    ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
         StorableKeyRef(epoch_id)
-            .load_vc_encryption_key::<C, VcEpochEncryptionKey>(self.connection.borrow())
+            .load_vc_emulation_epoch_state::<C, VcEmulationEpochState>(self.connection.borrow())
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_epoch_encryption_key<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
+    fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error> {
-        StorableKeyRef(epoch_id).delete_vc_encryption_key::<C>(self.connection.borrow())
+        StorableKeyRef(epoch_id).delete_vc_emulation_epoch_state::<C>(self.connection.borrow())
     }
 
     #[cfg(feature = "virtual-clients-draft")]

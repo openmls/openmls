@@ -324,43 +324,40 @@ impl MlsGroup {
         }
     }
 
-    /// Resolve a commit's virtual-clients derivation info to the
-    /// per-commit `OperationSecret` the receiver needs in order to
-    /// recreate the path of an own (sibling-virtual-client) commit.
+    /// Resolve a commit's virtual-clients derivation info to the per-commit
+    /// `OperationSecret` the receiver needs in order to recreate the path of an
+    /// own (sibling-virtual-client) commit.
     ///
-    /// **Precondition**: only call this when the commit's sender is our
-    /// own leaf. Other senders' commits are processed via the normal HPKE
-    /// path and never need to look up VC secrets — calling this for them
-    /// would force every plain group member to register VC state.
+    /// Only call this when the commit's sender is our own leaf. Other senders'
+    /// commits are processed via the normal HPKE path and never need to look up
+    /// VC secrets.
     ///
     /// Returns `Ok(None)` when the commit carries no virtual-clients
-    /// derivation-info entry on its update-path leaf (path-less commits,
-    /// or commits without an `app_data_dictionary`). Otherwise:
+    /// derivation-info entry on its update-path leaf (path-less commits, or
+    /// commits without an `app_data_dictionary`). Otherwise:
     ///   - looks up the per-epoch `VcPprf` and `EpochEncryptionKey` the
     ///     application registered via `register_vc_emulation_epoch`,
     ///   - decrypts the wrapped `EpochInfoTbe` with the AEAD key,
     ///   - hashes the decrypted `EpochInfoTbe` to produce the PPRF input,
-    ///   - evaluates the PPRF (puncturing it) and persists the punctured
-    ///     state back to storage,
+    ///   - evaluates the PPRF (puncturing it) and persists the punctured state
+    ///     back to storage,
     ///   - returns the resulting `OperationSecret`.
     ///
-    /// Once the precondition holds, missing PPRF / AEAD-key registration
-    /// or AEAD decryption failure is reported as an error: an own-leaf
-    /// commit carrying the VC component must be derivable.
+    /// Once the precondition holds, missing PPRF / AEAD-key registration or
+    /// AEAD decryption failure is reported as an error: an own-leaf commit
+    /// carrying the VC component must be derivable.
     #[cfg(feature = "virtual-clients-draft")]
     fn load_vc_commit_material<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         commit: &Commit,
-    ) -> Result<
-        Option<crate::components::vc_derivation_info::OperationSecret>,
-        StageCommitError,
-    > {
+    ) -> Result<Option<crate::components::vc_derivation_info::OperationSecret>, StageCommitError>
+    {
         use tls_codec::DeserializeBytes;
 
         use crate::components::vc_derivation_info::{
-            pprf_input, DerivationInfo, OperationSecret, VcPprf, VirtualClientOperationType,
-            VirtualClientsError, VC_COMPONENT_ID,
+            pprf_input, DerivationInfo, EmulationEpochState, OperationSecret, VcPprf,
+            VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
         };
 
         let Some(path) = commit.path.as_ref() else {
@@ -373,18 +370,31 @@ impl MlsGroup {
             return Ok(None);
         };
         let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
-            .map_err(|_| VirtualClientsError::DerivationInfoMalformed)?;
+            .map_err(|e| {
+                log::error!("vc: derivation info deserialize failed: {e:?}");
+                VirtualClientsError::DerivationInfoMalformed
+            })?;
 
         let epoch_id = derivation_info.epoch_id();
         let storage = provider.storage();
         let mut pprf: VcPprf = storage
             .vc_pprf(epoch_id)
-            .map_err(|e| VirtualClientsError::StorageError(format!("{e}")))?
+            .map_err(|e| {
+                log::error!("vc: load pprf failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?
             .ok_or(VirtualClientsError::MissingPprf)?;
-        let epoch_encryption_key = storage
-            .vc_epoch_encryption_key(epoch_id)
-            .map_err(|e| VirtualClientsError::StorageError(format!("{e}")))?
+        let state: EmulationEpochState = storage
+            .vc_emulation_epoch_state(epoch_id)
+            .map_err(|e| {
+                log::error!("vc: load emulation epoch state failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?
             .ok_or(VirtualClientsError::MissingEpochEncryptionKey)?;
+        // Receiver only needs the AEAD key; the leaf index travels on the
+        // wire inside `EpochInfoTbe` (sender's view), so it doesn't have
+        // to come from storage on this side.
+        let (_state_leaf_index, epoch_encryption_key) = state.into_parts();
 
         let ciphersuite = self.ciphersuite();
         let crypto = provider.crypto();
@@ -394,8 +404,15 @@ impl MlsGroup {
         // update-path commit — anything else here is a sender bug or a
         // cross-context replay. Treat it as malformed rather than silently
         // deriving a secret in the wrong domain.
-        if !matches!(epoch_info.operation_type, VirtualClientOperationType::LeafNode) {
-            return Err(VirtualClientsError::EpochInfoMalformed.into());
+        if !matches!(
+            epoch_info.operation_type,
+            VirtualClientOperationType::LeafNode
+        ) {
+            log::error!(
+                "vc: unexpected operation_type on update-path leaf: {:?}",
+                epoch_info.operation_type
+            );
+            return Err(VirtualClientsError::DerivationInfoMalformed.into());
         }
 
         let pprf_input_bytes = pprf_input(crypto, ciphersuite, &epoch_info)?;
@@ -409,7 +426,10 @@ impl MlsGroup {
         // want for forward secrecy.
         storage
             .write_vc_pprf(epoch_id, &pprf)
-            .map_err(|e| VirtualClientsError::StorageError(format!("{e}")))?;
+            .map_err(|e| {
+                log::error!("vc: persist punctured pprf failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?;
 
         Ok(Some(operation_secret))
     }
@@ -590,7 +610,6 @@ impl MlsGroup {
                 {
                     self.load_vc_commit_material(provider, commit)?
                 } else {
-                    let _ = commit;
                     None
                 };
                 #[cfg(not(feature = "virtual-clients-draft"))]
@@ -662,7 +681,6 @@ impl MlsGroup {
                 {
                     self.load_vc_commit_material(provider, commit)?
                 } else {
-                    let _ = commit;
                     None
                 };
                 #[cfg(not(feature = "virtual-clients-draft"))]

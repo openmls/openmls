@@ -462,6 +462,23 @@ pub enum SafeExportSecretError<StorageError> {
     Storage(StorageError),
 }
 
+/// Errors returned by
+/// [`MlsGroup::register_vc_emulation_epoch`](super::MlsGroup::register_vc_emulation_epoch).
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum RegisterVcEmulationEpochError<StorageError> {
+    /// See [`SafeExportSecretError`] for more details.
+    #[error(transparent)]
+    SafeExportSecret(#[from] SafeExportSecretError<StorageError>),
+    /// See [`VirtualClientsError`](crate::components::vc_derivation_info::VirtualClientsError)
+    /// for more details.
+    #[error(transparent)]
+    VirtualClients(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// Persisting the derived virtual-clients state to storage failed.
+    #[error("Error writing virtual-clients state to storage")]
+    Storage(StorageError),
+}
+
 /// Export secret error
 #[cfg(feature = "extensions-draft-08")]
 #[derive(Error, Debug, PartialEq, Clone)]

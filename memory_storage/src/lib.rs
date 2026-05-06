@@ -260,7 +260,7 @@ const GROUP_CONTEXT_LABEL: &[u8] = b"GroupContext";
 #[cfg(feature = "extensions-draft-08")]
 const APPLICATION_EXPORT_TREE_LABEL: &[u8] = b"ApplicationExportTree";
 #[cfg(feature = "virtual-clients-draft")]
-const VC_EPOCH_ENCRYPTION_KEY_LABEL: &[u8] = b"VcEpochEncryptionKey";
+const VC_EMULATION_EPOCH_STATE_LABEL: &[u8] = b"VcEmulationEpochState";
 #[cfg(feature = "virtual-clients-draft")]
 const VC_PPRF_LABEL: &[u8] = b"VcPprf";
 const INTERIM_TRANSCRIPT_HASH_LABEL: &[u8] = b"InterimTranscriptHash";
@@ -1032,31 +1032,31 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_epoch_encryption_key<
+    fn write_vc_emulation_epoch_state<
         EpochId: traits::VcEpochId<CURRENT_VERSION>,
-        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<CURRENT_VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-        vc_epoch_encryption_key: &VcEpochEncryptionKey,
+        vc_emulation_epoch_state: &VcEmulationEpochState,
     ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
-            VC_EPOCH_ENCRYPTION_KEY_LABEL,
+            VC_EMULATION_EPOCH_STATE_LABEL,
             &serde_json::to_vec(epoch_id).unwrap(),
-            serde_json::to_vec(vc_epoch_encryption_key).unwrap(),
+            serde_json::to_vec(vc_emulation_epoch_state).unwrap(),
         )
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_epoch_encryption_key<
+    fn vc_emulation_epoch_state<
         EpochId: traits::VcEpochId<CURRENT_VERSION>,
-        VcEpochEncryptionKey: traits::VcEpochEncryptionKey<CURRENT_VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<Option<VcEpochEncryptionKey>, Self::Error> {
+    ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
         let values = self.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &EpochId>(VC_EPOCH_ENCRYPTION_KEY_LABEL, epoch_id);
+        let key = build_key::<CURRENT_VERSION, &EpochId>(VC_EMULATION_EPOCH_STATE_LABEL, epoch_id);
         let Some(value) = values.get(&key) else {
             return Ok(None);
         };
@@ -1064,12 +1064,12 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_epoch_encryption_key<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+    fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
-            VC_EPOCH_ENCRYPTION_KEY_LABEL,
+            VC_EMULATION_EPOCH_STATE_LABEL,
             &serde_json::to_vec(epoch_id).unwrap(),
         )
     }
