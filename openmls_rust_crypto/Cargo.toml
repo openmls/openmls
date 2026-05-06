@@ -34,10 +34,8 @@ hpke-rs-rust-crypto = { version = "0.6.1", features = ["experimental"] }
 tls_codec = { workspace = true }
 thiserror = "2.0"
 serde = { version = "^1.0", features = ["derive"] }
-ml-dsa = "0.1.0-rc.9"
+ml-dsa = "0.0.4"
 
 [features]
 test-utils = ["openmls_memory_storage/test-utils"]
-draft-ietf-mls-pq-ciphersuites = [
-  "openmls_traits/draft-ietf-mls-pq-ciphersuites",
-]
+draft-ietf-mls-pq-ciphersuites = ["openmls_traits/draft-ietf-mls-pq-ciphersuites"]
