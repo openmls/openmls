@@ -370,6 +370,12 @@ pub enum SelfUpdateError<StorageError> {
     /// Error accessing the storage.
     #[error("Error accessing the storage.")]
     StorageError(StorageError),
+    /// Virtual-clients error.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(
+        #[from] crate::components::vc_derivation_info::VirtualClientsError,
+    ),
 }
 
 /// Propose self update error

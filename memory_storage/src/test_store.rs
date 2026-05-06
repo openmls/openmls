@@ -595,30 +595,30 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_epoch_base_secret<
+    fn write_vc_pprf<
         EpochId: traits::VcEpochId<V_TEST>,
-        VcEpochBaseSecret: traits::VcEpochBaseSecret<V_TEST>,
+        VcPprf: traits::VcPprf<V_TEST>,
     >(
         &self,
         _epoch_id: &EpochId,
-        _vc_epoch_base_secret: &VcEpochBaseSecret,
+        _vc_pprf: &VcPprf,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_epoch_base_secret<
+    fn vc_pprf<
         EpochId: traits::VcEpochId<V_TEST>,
-        VcEpochBaseSecret: traits::VcEpochBaseSecret<V_TEST>,
+        VcPprf: traits::VcPprf<V_TEST>,
     >(
         &self,
         _epoch_id: &EpochId,
-    ) -> Result<Option<VcEpochBaseSecret>, Self::Error> {
+    ) -> Result<Option<VcPprf>, Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_epoch_base_secret<EpochId: traits::VcEpochId<V_TEST>>(
+    fn delete_vc_pprf<EpochId: traits::VcEpochId<V_TEST>>(
         &self,
         _epoch_id: &EpochId,
     ) -> Result<(), Self::Error> {

@@ -183,15 +183,15 @@ pub trait StorageProvider<const VERSION: u16> {
         vc_epoch_encryption_key: &VcEpochEncryptionKey,
     ) -> Result<(), Self::Error>;
 
-    /// Write the virtual clients epoch base secret for the given epoch.
+    /// Write the virtual clients PPRF for the given epoch.
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_epoch_base_secret<
+    fn write_vc_pprf<
         EpochId: traits::VcEpochId<VERSION>,
-        VcEpochBaseSecret: traits::VcEpochBaseSecret<VERSION>,
+        VcPprf: traits::VcPprf<VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-        vc_epoch_base_secret: &VcEpochBaseSecret,
+        vc_pprf: &VcPprf,
     ) -> Result<(), Self::Error>;
 
     //
@@ -467,14 +467,11 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<VcEpochEncryptionKey>, Self::Error>;
 
     #[cfg(feature = "virtual-clients-draft")]
-    /// Get the virtual clients epoch base secret for the given epoch.
-    fn vc_epoch_base_secret<
-        EpochId: traits::VcEpochId<VERSION>,
-        VcEpochBaseSecret: traits::VcEpochBaseSecret<VERSION>,
-    >(
+    /// Get the virtual clients PPRF for the given epoch.
+    fn vc_pprf<EpochId: traits::VcEpochId<VERSION>, VcPprf: traits::VcPprf<VERSION>>(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<Option<VcEpochBaseSecret>, Self::Error>;
+    ) -> Result<Option<VcPprf>, Self::Error>;
 
     //
     //     ---    deleters for group state    ---
@@ -632,7 +629,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_epoch_base_secret<EpochId: traits::VcEpochId<VERSION>>(
+    fn delete_vc_pprf<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error>;
@@ -696,7 +693,7 @@ pub mod traits {
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcEpochEncryptionKey<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
-    pub trait VcEpochBaseSecret<const VERSION: u16>: Entity<VERSION> {}
+    pub trait VcPprf<const VERSION: u16>: Entity<VERSION> {}
 
     // traits for types that implement both
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}

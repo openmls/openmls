@@ -1,9 +1,8 @@
 use std::marker::PhantomData;
 
 use openmls_traits::storage::{
-    traits::VcEpochBaseSecret as VcEpochBaseSecretTrait,
     traits::VcEpochEncryptionKey as VcEpochEncryptionKeyTrait, traits::VcEpochId as VcEpochIdTrait,
-    Entity as EntityTrait, Key,
+    traits::VcPprf as VcPprfTrait, Entity as EntityTrait, Key,
 };
 use rusqlite::{params, OptionalExtension as _, ToSql};
 
@@ -14,14 +13,14 @@ use crate::{
 };
 
 enum SecretType {
-    EpochBaseSecret,
+    Pprf,
     EpochEncryptionKey,
 }
 
 impl ToSql for SecretType {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
         let secret_type_str = match self {
-            SecretType::EpochBaseSecret => "epoch_base_secret",
+            SecretType::Pprf => "pprf",
             SecretType::EpochEncryptionKey => "epoch_encryption_key",
         };
         Ok(rusqlite::types::ToSqlOutput::Borrowed(
@@ -58,10 +57,8 @@ impl<'a, VcEpochEncryptionKey: VcEpochEncryptionKeyTrait<STORAGE_PROVIDER_VERSIO
     }
 }
 
-impl<'a, VcEpochBaseSecret: VcEpochBaseSecretTrait<STORAGE_PROVIDER_VERSION>>
-    StorableEntityRef<'a, VcEpochBaseSecret>
-{
-    pub(super) fn store_vc_base_secret<C: Codec, EpochId: Key<STORAGE_PROVIDER_VERSION>>(
+impl<'a, VcPprf: VcPprfTrait<STORAGE_PROVIDER_VERSION>> StorableEntityRef<'a, VcPprf> {
+    pub(super) fn store_vc_pprf<C: Codec, EpochId: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
         connection: &rusqlite::Connection,
         epoch_id: &EpochId,
@@ -74,7 +71,7 @@ impl<'a, VcEpochBaseSecret: VcEpochBaseSecretTrait<STORAGE_PROVIDER_VERSION>>
             params![
                 STORAGE_PROVIDER_VERSION,
                 KeyRefWrapper::<C, _>(epoch_id, PhantomData),
-                SecretType::EpochBaseSecret,
+                SecretType::Pprf,
                 EntityRefWrapper::<C, _>(self.0, PhantomData)
             ],
         )?;
@@ -132,13 +129,13 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
         Ok(())
     }
 
-    pub(super) fn load_vc_base_secret<
+    pub(super) fn load_vc_pprf<
         C: Codec,
-        VcEpochBaseSecret: VcEpochBaseSecretTrait<STORAGE_PROVIDER_VERSION>,
+        VcPprf: VcPprfTrait<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         connection: &rusqlite::Connection,
-    ) -> Result<Option<VcEpochBaseSecret>, rusqlite::Error> {
+    ) -> Result<Option<VcPprf>, rusqlite::Error> {
         let Self(epoch_id) = self;
         let mut stmt = connection.prepare(
             "SELECT vc_secret
@@ -151,17 +148,17 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
             params![
                 KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
                 STORAGE_PROVIDER_VERSION,
-                SecretType::EpochBaseSecret
+                SecretType::Pprf
             ],
             |row| {
-                let EntityWrapper::<C, VcEpochBaseSecret>(epoch_base_secret, ..) = row.get(0)?;
-                Ok(epoch_base_secret)
+                let EntityWrapper::<C, VcPprf>(pprf, ..) = row.get(0)?;
+                Ok(pprf)
             },
         )
         .optional()
     }
 
-    pub(super) fn delete_vc_base_secret<C: Codec>(
+    pub(super) fn delete_vc_pprf<C: Codec>(
         &self,
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
@@ -174,7 +171,7 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
             params![
                 KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
                 STORAGE_PROVIDER_VERSION,
-                SecretType::EpochBaseSecret
+                SecretType::Pprf
             ],
         )?;
         Ok(())

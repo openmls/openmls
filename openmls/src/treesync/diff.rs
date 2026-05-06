@@ -26,6 +26,17 @@ use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 
 use super::node::leaf_node::UpdateLeafNodeParams;
+
+/// Override for the sender-side path derivation. When passed to
+/// [`TreeSyncDiff::apply_own_update_path`], the contained `path_secret` is
+/// used as the path-derivation seed instead of fresh randomness, and
+/// `leaf_encryption_keypair` is used as the new leaf's encryption keypair.
+///
+/// This is the hook for the virtual-clients-draft sender flow.
+pub(crate) struct OwnUpdatePathOverride {
+    pub(crate) path_secret: PathSecret,
+    pub(crate) leaf_encryption_keypair: EncryptionKeyPair,
+}
 use super::{
     errors::*,
     node::{
@@ -286,6 +297,11 @@ impl TreeSyncDiff<'_> {
 
     /// Derive a new direct path for the leaf with the given index.
     ///
+    /// If `path_secret_override` is `Some`, it is used as the path secret seed
+    /// instead of fresh randomness — this is the hook for the
+    /// virtual-clients sender, where the path secret must be deterministic
+    /// so that a sibling virtual client can rederive the same path.
+    ///
     /// Returns an error if the leaf is not in the tree
     fn derive_path(
         &self,
@@ -293,10 +309,15 @@ impl TreeSyncDiff<'_> {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
+        path_secret_override: Option<PathSecret>,
     ) -> Result<PathDerivationResult, LibraryError> {
-        let path_secret = PathSecret::from(
-            Secret::random(ciphersuite, rand).map_err(LibraryError::unexpected_crypto_error)?,
-        );
+        let path_secret = if let Some(p) = path_secret_override {
+            p
+        } else {
+            PathSecret::from(
+                Secret::random(ciphersuite, rand).map_err(LibraryError::unexpected_crypto_error)?,
+            )
+        };
 
         let path_indices = self.filtered_direct_path(leaf_index);
 
@@ -306,6 +327,13 @@ impl TreeSyncDiff<'_> {
     /// Given a new [`LeafNode`], use it to create a new path starting from
     /// `leaf_index` and apply it to this diff. The given [`Signer`] reference
     /// is used to sign the target [`LeafNode`] after updating its parent hash.
+    ///
+    /// If `vc_override` is `Some`, the contained `path_secret` is used to
+    /// derive the path (instead of fresh randomness), and the contained
+    /// leaf encryption keypair replaces the freshly generated one. This is
+    /// the hook for the virtual-clients sender so a sibling virtual client
+    /// can rederive both the path and the leaf keypair from the shared
+    /// per-epoch operation secret.
     ///
     /// Returns the [`CommitSecret`] and the path resulting from the path
     /// derivation, as well as the newly derived [`EncryptionKeyPair`]s.
@@ -322,6 +350,7 @@ impl TreeSyncDiff<'_> {
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
         leaf_node_params: UpdateLeafNodeParams,
+        vc_override: Option<OwnUpdatePathOverride>,
     ) -> Result<UpdatePathResult, TreeSyncAddLeaf> {
         // For External Commits, we temporarily add a placeholder leaf node to the tree, because it
         // might be required to make the tree grow to the right size. If we
@@ -333,9 +362,17 @@ impl TreeSyncDiff<'_> {
             self.add_leaf(leaf_node)?;
         }
 
+        let (path_secret_override, leaf_keypair_override) = match vc_override {
+            Some(OwnUpdatePathOverride {
+                path_secret,
+                leaf_encryption_keypair,
+            }) => (Some(path_secret), Some(leaf_encryption_keypair)),
+            None => (None, None),
+        };
+
         // We calculate the parent hash so that we can use it for a fresh leaf
         let (path, update_path_nodes, parent_keypairs, commit_secret) =
-            self.derive_path(rand, crypto, ciphersuite, leaf_index)?;
+            self.derive_path(rand, crypto, ciphersuite, leaf_index, path_secret_override)?;
         let parent_hash = self
             .process_update_path(crypto, ciphersuite, leaf_index, path)
             .map_err(|e| match e {
@@ -355,6 +392,7 @@ impl TreeSyncDiff<'_> {
             group_id,
             leaf_index,
             signer,
+            leaf_keypair_override,
         )?;
 
         // We insert the fresh leaf into the tree.

@@ -12,6 +12,7 @@ use crate::{
     group::{errors::CreateCommitError, GroupContext},
     schedule::CommitSecret,
     treesync::{
+        diff::OwnUpdatePathOverride,
         node::{
             encryption_keys::EncryptionKeyPair,
             leaf_node::{Capabilities, LeafNodeParameters, UpdateLeafNodeParams},
@@ -52,6 +53,7 @@ impl PublicGroupDiff<'_> {
         leaf_node_params: &LeafNodeParameters,
         signer: &impl Signer,
         gc_extensions: Option<Extensions<GroupContext>>,
+        own_update_override: Option<OwnUpdatePathOverride>,
     ) -> Result<PathComputationResult, CreateCommitError> {
         let ciphersuite = self.group_context().ciphersuite();
 
@@ -113,6 +115,7 @@ impl PublicGroupDiff<'_> {
             self.group_context().group_id().clone(),
             leaf_index,
             leaf_node_params,
+            own_update_override,
         )?;
 
         // After we've processed the path, we can update the group context s.t.

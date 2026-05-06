@@ -97,6 +97,13 @@ virtual-clients-draft = [
 virtual-clients-draft-test-dependencies = [
     "openmls_sqlite_storage?/virtual-clients-draft",
     "openmls_memory_storage?/virtual-clients-draft",
+    # `virtual-clients-draft` (above) enables `extensions-draft-08` in this
+    # crate, but the storage backends only expose the corresponding trait
+    # methods when their own `extensions-draft-08` feature is on. Pull in
+    # the test-side wrapper so the feature combo
+    # `virtual-clients-draft + virtual-clients-draft-test-dependencies`
+    # compiles standalone.
+    "extensions-draft-08-test-dependencies",
 ]
 
 extensions-draft-08 = [

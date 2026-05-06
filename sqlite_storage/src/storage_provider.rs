@@ -775,35 +775,33 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_epoch_base_secret<
+    fn write_vc_pprf<
         EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
-        VcEpochBaseSecret: traits::VcEpochBaseSecret<STORAGE_PROVIDER_VERSION>,
+        VcPprf: traits::VcPprf<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-        vc_epoch_base_secret: &VcEpochBaseSecret,
+        vc_pprf: &VcPprf,
     ) -> Result<(), Self::Error> {
-        StorableVcSecretRef(vc_epoch_base_secret)
-            .store_vc_base_secret::<C, _>(self.connection.borrow(), epoch_id)
+        StorableVcSecretRef(vc_pprf).store_vc_pprf::<C, _>(self.connection.borrow(), epoch_id)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_epoch_base_secret<
+    fn vc_pprf<
         EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
-        VcEpochBaseSecret: traits::VcEpochBaseSecret<STORAGE_PROVIDER_VERSION>,
+        VcPprf: traits::VcPprf<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<Option<VcEpochBaseSecret>, Self::Error> {
-        StorableKeyRef(epoch_id)
-            .load_vc_base_secret::<C, VcEpochBaseSecret>(self.connection.borrow())
+    ) -> Result<Option<VcPprf>, Self::Error> {
+        StorableKeyRef(epoch_id).load_vc_pprf::<C, VcPprf>(self.connection.borrow())
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_epoch_base_secret<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
+    fn delete_vc_pprf<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error> {
-        StorableKeyRef(epoch_id).delete_vc_base_secret::<C>(self.connection.borrow())
+        StorableKeyRef(epoch_id).delete_vc_pprf::<C>(self.connection.borrow())
     }
 }

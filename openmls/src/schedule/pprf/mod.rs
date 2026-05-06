@@ -27,7 +27,7 @@ use crate::{
 use input::AsIndexBytes;
 use prefix::Prefix;
 
-pub use prefix::Prefix16;
+pub use prefix::{Prefix16, Prefix256};
 
 mod input;
 mod prefix;
@@ -112,7 +112,7 @@ fn get_bit(index: &[u8], bit_index: usize) -> bool {
 
 impl<P: Prefix> Pprf<P> {
     /// Create a new PPRF with the given secret and size.
-    pub(super) fn new_with_size(secret: Secret, size: TreeSize) -> Self {
+    pub(crate) fn new_with_size(secret: Secret, size: TreeSize) -> Self {
         let width = size.leaf_count() as usize;
         Pprf {
             // The width of the tree in bytes.
@@ -132,7 +132,7 @@ impl<P: Prefix> Pprf<P> {
     }
 
     /// Evaluates the PPRF at the given input.
-    pub(super) fn evaluate<Input: AsIndexBytes>(
+    pub(crate) fn evaluate<Input: AsIndexBytes>(
         &mut self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,

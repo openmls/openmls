@@ -6,6 +6,7 @@
 //! an empty prefix, which then grows in size with each step down the tree.
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_bytes::ByteArray;
 
 pub(crate) trait Prefix:
     Clone + Eq + std::hash::Hash + Serialize + DeserializeOwned
@@ -59,6 +60,52 @@ impl From<SerdePrefix16> for Prefix16 {
     fn from(prefix: SerdePrefix16) -> Self {
         Prefix16 {
             bits: prefix.0,
+            len: prefix.1,
+        }
+    }
+}
+
+/// A prefix in a PPRF whose inputs are 32-byte (256-bit) strings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(from = "SerdePrefix256", into = "SerdePrefix256")]
+pub struct Prefix256 {
+    bits: [u8; 32],
+    len: u16,
+}
+
+impl Prefix for Prefix256 {
+    const MAX_DEPTH: usize = 256;
+
+    fn new() -> Self {
+        Self {
+            bits: [0; 32],
+            len: 0,
+        }
+    }
+
+    fn push_bit(&mut self, bit: bool) {
+        if bit {
+            let byte_idx = (self.len / 8) as usize;
+            let bit_idx = 7 - (self.len % 8) as u8;
+            self.bits[byte_idx] |= 1 << bit_idx;
+        }
+        self.len += 1;
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct SerdePrefix256(ByteArray<32>, u16);
+
+impl From<Prefix256> for SerdePrefix256 {
+    fn from(prefix: Prefix256) -> Self {
+        SerdePrefix256(ByteArray::new(prefix.bits), prefix.len)
+    }
+}
+
+impl From<SerdePrefix256> for Prefix256 {
+    fn from(prefix: SerdePrefix256) -> Self {
+        Prefix256 {
+            bits: prefix.0.into_array(),
             len: prefix.1,
         }
     }

@@ -35,12 +35,33 @@ use crate::{
     treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
 };
+#[cfg(feature = "virtual-clients-draft")]
+use crate::{
+    components::vc_derivation_info::{
+        pprf_input, DerivationInfo, EpochEncryptionKey, EpochId, EpochInfoTbe, OperationSecret,
+        VcEmulation, VcPprf, VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
+    },
+    extensions::{AppDataDictionary, AppDataDictionaryExtension},
+    treesync::node::leaf_node::LeafNode,
+};
 #[cfg(feature = "extensions-draft-08")]
 use crate::{
     messages::proposals::AppDataUpdateProposal,
     prelude::processing::{AppDataDictionaryUpdater, AppDataUpdates},
     schedule::application_export_tree::ApplicationExportTree,
 };
+
+/// Per-commit virtual-clients state loaded from the storage provider in
+/// `load_psks`, kept around through `build` (which punctures the PPRF) and
+/// `stage_commit` (which writes the punctured state back).
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Debug)]
+struct VcLoaded {
+    epoch_id: EpochId,
+    emulation_leaf_index: LeafNodeIndex,
+    pprf: VcPprf,
+    epoch_encryption_key: EpochEncryptionKey,
+}
 
 pub(crate) mod external_commits;
 
@@ -81,6 +102,15 @@ pub struct Initial {
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
+
+    /// Per-commit virtual-clients material supplied by the application.
+    /// When `Some`, the commit's path secret and leaf encryption keypair
+    /// are derived from `operation_secret` (so a sibling virtual client
+    /// can rederive them), the `DerivationInfo` blob is embedded in the
+    /// new leaf's `app_data_dictionary` extension, and the per-commit
+    /// secrets are persisted at `stage_commit` time.
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_emulation: Option<VcEmulation>,
 }
 
 impl Default for Initial {
@@ -91,6 +121,8 @@ impl Default for Initial {
             leaf_node_parameters: LeafNodeParameters::default(),
             own_proposals: vec![],
             external_commit_info: None,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_emulation: None,
         }
     }
 }
@@ -112,6 +144,12 @@ pub struct LoadedPsks {
 
     #[cfg(feature = "extensions-draft-08")]
     app_data_dictionary_updates: Option<AppDataUpdates>,
+
+    /// Per-emulation-epoch PPRF + AEAD key loaded from the storage
+    /// provider when the caller opted in via `vc_emulation`. The PPRF is
+    /// punctured during `build` and persisted by `stage_commit`.
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_loaded: Option<VcLoaded>,
 }
 
 /// This stage is after we validated the data, ready for staging and exporting the messages
@@ -120,6 +158,18 @@ pub struct Complete {
     result: CreateCommitResult,
     // Only for external commits
     original_wire_format_policy: Option<WireFormatPolicy>,
+    /// Punctured PPRF state to persist back to storage on `stage_commit`,
+    /// keyed on `epoch_id`. `None` when virtual-clients was not opted into
+    /// for this commit.
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_punctured: Option<VcPunctured>,
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Debug)]
+struct VcPunctured {
+    epoch_id: EpochId,
+    pprf: VcPprf,
 }
 
 /// The [`CommitBuilder`] is used to easily and dynamically build commit messages.
@@ -310,6 +360,32 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         self
     }
 
+    /// Opt this commit into the virtual-clients-draft sender flow.
+    ///
+    /// The application supplies the per-commit material in `emulation` —
+    /// see [`VcEmulation`]. When set, building this commit will:
+    ///
+    /// - derive the path secret and the new leaf's encryption keypair from
+    ///   `emulation.operation_secret`, so a sibling virtual client can
+    ///   rederive them on the receiver side;
+    /// - inject a `DerivationInfo` blob under [`VC_COMPONENT_ID`] in the
+    ///   new leaf's `app_data_dictionary` extension, encrypted under
+    ///   `emulation.epoch_encryption_key` with `emulation.epoch_id` as
+    ///   AAD;
+    /// - extend the new leaf's capabilities to declare AppDataDictionary
+    ///   support, which the leaf-node validator otherwise rejects;
+    /// - at `stage_commit` time, persist `emulation.epoch_encryption_key`
+    ///   and `emulation.operation_secret` to the storage provider, keyed
+    ///   by `emulation.epoch_id`, so the receiver can look them up.
+    ///
+    /// Implies that a self-update takes place: the commit will always have
+    /// a path even if no other proposals are queued.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn vc_emulation(mut self, emulation: VcEmulation) -> Self {
+        self.stage.vc_emulation = Some(emulation);
+        self
+    }
+
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
     pub fn load_psks<Storage: StorageProvider>(
         self,
@@ -351,6 +427,40 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             other_extensions: vec![],
         };
 
+        // When the caller opted into virtual-clients for this commit, load
+        // the per-emulation-epoch PPRF and AEAD key from storage now —
+        // both must already be registered via
+        // `register_vc_emulation_epoch`. Refusing to instantiate either on
+        // the fly avoids accidentally diverging from a sibling virtual
+        // client's already-advanced PPRF.
+        #[cfg(feature = "virtual-clients-draft")]
+        let vc_loaded = if let Some(emulation) = &self.stage.vc_emulation {
+            let pprf: VcPprf = storage
+                .vc_pprf(&emulation.epoch_id)
+                .map_err(|e| {
+                    CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError(
+                        format!("{e}"),
+                    ))
+                })?
+                .ok_or(VirtualClientsError::MissingPprf)?;
+            let epoch_encryption_key: EpochEncryptionKey = storage
+                .vc_epoch_encryption_key(&emulation.epoch_id)
+                .map_err(|e| {
+                    CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError(
+                        format!("{e}"),
+                    ))
+                })?
+                .ok_or(VirtualClientsError::MissingEpochEncryptionKey)?;
+            Some(VcLoaded {
+                epoch_id: emulation.epoch_id.clone(),
+                emulation_leaf_index: emulation.emulation_leaf_index,
+                pprf,
+                epoch_encryption_key,
+            })
+        } else {
+            None
+        };
+
         Ok(self
             .map_stage(|stage| {
                 (
@@ -365,6 +475,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         external_commit_info: stage.external_commit_info,
                         #[cfg(feature = "extensions-draft-08")]
                         app_data_dictionary_updates: None,
+                        #[cfg(feature = "virtual-clients-draft")]
+                        vc_loaded,
                     },
                 )
             })
@@ -575,6 +687,29 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
 
+        // Virtual-clients sender hook: when the caller opted into VC for
+        // this commit, evaluate the pre-loaded PPRF (mutating it in
+        // place — the punctured state is propagated to `Complete` for
+        // `stage_commit` to persist), derive the path-secret + leaf-
+        // keypair override, and embed the `DerivationInfo` blob in the
+        // leaf's `app_data_dictionary` extension. Declaring
+        // `AppDataDictionary` support in the leaf's capabilities is the
+        // caller's responsibility.
+        #[cfg(feature = "virtual-clients-draft")]
+        let own_update_override = if let Some(loaded) = cur_stage.vc_loaded.as_mut() {
+            Some(apply_vc_emulation(
+                loaded,
+                &mut cur_stage.leaf_node_parameters,
+                rand,
+                crypto,
+                ciphersuite,
+            )?)
+        } else {
+            None
+        };
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        let own_update_override: Option<crate::treesync::diff::OwnUpdatePathOverride> = None;
+
         let path_computation_result =
             // If path is needed, compute path values
             if apply_proposals_values.path_required
@@ -611,7 +746,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         &commit_type,
                         &cur_stage.leaf_node_parameters,
                         new_signer.signer,
-                        apply_proposals_values.extensions.clone()
+                        apply_proposals_values.extensions.clone(),
+                        own_update_override,
                     )?
                 } else {
                     diff.compute_path(
@@ -622,7 +758,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         &commit_type,
                         &cur_stage.leaf_node_parameters,
                         old_signer,
-                        apply_proposals_values.extensions.clone()
+                        apply_proposals_values.extensions.clone(),
+                        own_update_override,
                     )?
                 }
             } else {
@@ -883,6 +1020,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 .external_commit_info
                 .as_ref()
                 .map(|info| info.wire_format_policy),
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_punctured: cur_stage.vc_loaded.map(|loaded| VcPunctured {
+                epoch_id: loaded.epoch_id,
+                pprf: loaded.pprf,
+            }),
         }))
     }
 
@@ -948,6 +1090,8 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
                 Complete {
                     result: create_commit_result,
                     original_wire_format_policy: _,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    vc_punctured,
                 },
             ..
         } = self;
@@ -962,6 +1106,15 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
             .storage()
             .write_group_state(group.group_id(), &group.group_state)
             .map_err(CommitBuilderStageError::KeyStoreError)?;
+
+        // Persist the punctured PPRF for forward secrecy.
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some(VcPunctured { epoch_id, pprf }) = vc_punctured {
+            provider
+                .storage()
+                .write_vc_pprf(&epoch_id, &pprf)
+                .map_err(CommitBuilderStageError::KeyStoreError)?;
+        }
 
         group.reset_aad();
 
@@ -979,6 +1132,111 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
             group_info: create_commit_result.group_info,
         })
     }
+}
+
+/// Build the path-secret + leaf-keypair override from a `VcEmulation` and
+/// inject the corresponding `DerivationInfo` blob into `leaf_node_parameters`'s
+/// `app_data_dictionary` extension.
+///
+/// The caller is responsible for ensuring the leaf already declares
+/// `AppDataDictionary` support in its capabilities (either via the existing
+/// leaf or via `leaf_node_parameters.capabilities`). If it doesn't, the
+/// leaf-node validator will reject the resulting commit.
+#[cfg(feature = "virtual-clients-draft")]
+fn apply_vc_emulation(
+    loaded: &mut VcLoaded,
+    leaf_node_parameters: &mut LeafNodeParameters,
+    rand: &impl OpenMlsRand,
+    crypto: &impl OpenMlsCrypto,
+    ciphersuite: openmls_traits::types::Ciphersuite,
+) -> Result<crate::treesync::diff::OwnUpdatePathOverride, CreateCommitError> {
+    // Build the encrypted EpochInfoTbe payload the receiver will decrypt
+    // with `epoch_encryption_key`. The same struct is hashed to produce
+    // the PPRF input so that sender and receiver derive the same
+    // per-commit secret.
+    let random = rand
+        .random_vec(32)
+        .map_err(|_| VirtualClientsError::RandError)?;
+    let epoch_info = EpochInfoTbe {
+        // Update-path leaf-node derivations are the only operation type
+        // wired up so far; KeyPackage / Application will use this same
+        // helper with their own variants when emitted.
+        operation_type: VirtualClientOperationType::LeafNode,
+        leaf_index: loaded.emulation_leaf_index,
+        random,
+    };
+
+    let pprf_input_bytes = pprf_input(crypto, ciphersuite, &epoch_info)?;
+    let operation_secret: OperationSecret = loaded
+        .pprf
+        .evaluate(crypto, ciphersuite, &pprf_input_bytes)
+        .map_err(VirtualClientsError::from)?
+        .into();
+
+    let encrypted_epoch_info = epoch_info.encrypt(
+        crypto,
+        rand,
+        ciphersuite,
+        &loaded.epoch_encryption_key,
+        &loaded.epoch_id,
+    )?;
+    let derivation_info = DerivationInfo::new(loaded.epoch_id.clone(), encrypted_epoch_info);
+    let derivation_info_bytes = derivation_info
+        .tls_serialize_detached()
+        .map_err(|_| VirtualClientsError::SerializationError)?;
+
+    inject_vc_derivation_info(leaf_node_parameters, derivation_info_bytes)?;
+
+    let path_secret = operation_secret
+        .derive_path_generation_secret(crypto, ciphersuite)?
+        .into();
+    let leaf_encryption_keypair = operation_secret
+        .derive_encryption_key_secret(crypto, ciphersuite)?
+        .generate_encryption_key_pair(crypto, ciphersuite)?;
+    Ok(crate::treesync::diff::OwnUpdatePathOverride {
+        path_secret,
+        leaf_encryption_keypair,
+    })
+}
+
+/// Merge a virtual-clients derivation info blob into
+/// `leaf_node_parameters.app_data_dictionary[VC_COMPONENT_ID]`,
+/// preserving any other component ids the caller already populated.
+#[cfg(feature = "virtual-clients-draft")]
+fn inject_vc_derivation_info(
+    leaf_node_parameters: &mut LeafNodeParameters,
+    derivation_info_bytes: Vec<u8>,
+) -> Result<(), CreateCommitError> {
+    // Start from the existing dictionary (if any) so other component ids
+    // the caller put in survive the round-trip.
+    let mut dictionary = leaf_node_parameters
+        .extensions()
+        .and_then(|exts| exts.app_data_dictionary())
+        .map(|ext| ext.dictionary().clone())
+        .unwrap_or_else(AppDataDictionary::new);
+    dictionary.insert(VC_COMPONENT_ID, derivation_info_bytes);
+    let vc_extension = Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary));
+
+    // Drop any pre-existing AppDataDictionary entry from the extension
+    // list (we just rebuilt it) and append the merged one.
+    let other_extensions = leaf_node_parameters
+        .extensions()
+        .map(|exts| {
+            exts.iter()
+                .filter(|ext| !matches!(ext, Extension::AppDataDictionary(_)))
+                .cloned()
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let new_extensions: Vec<Extension> = other_extensions
+        .into_iter()
+        .chain(std::iter::once(vc_extension))
+        .collect();
+    let extensions = crate::extensions::Extensions::<LeafNode>::from_vec(new_extensions)
+        .map_err(|_| LibraryError::custom("Failed to build leaf-node extensions"))?;
+
+    leaf_node_parameters.set_extensions(extensions);
+    Ok(())
 }
 
 /// Contains the messages that are produced by committing. The messages can be accessed individually
