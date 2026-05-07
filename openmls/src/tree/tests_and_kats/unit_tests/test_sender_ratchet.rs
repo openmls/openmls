@@ -1,3 +1,5 @@
+#[cfg(feature = "virtual-clients-draft")]
+use crate::tree::dual_use_ratchet::DualUseRatchet;
 use crate::{
     ciphersuite::Secret, test_utils::*, tree::secret_tree::SecretTreeError, tree::sender_ratchet::*,
 };
