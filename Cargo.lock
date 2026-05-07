@@ -695,7 +695,7 @@ dependencies = [
  "openmls_rust_crypto",
  "openmls_traits",
  "pretty_env_logger",
- "rand_chacha 0.9.0",
+ "rand_chacha 0.10.0",
  "reqwest",
  "serde",
  "serde_json",
@@ -1091,7 +1091,7 @@ dependencies = [
  "openmls_memory_storage",
  "openmls_rust_crypto",
  "openmls_traits",
- "rand 0.9.4",
+ "rand 0.10.1",
  "serde",
 ]
 
@@ -2667,7 +2667,7 @@ dependencies = [
  "openmls_test",
  "openmls_traits",
  "pretty_env_logger",
- "rand 0.9.4",
+ "rand 0.10.1",
  "rayon",
  "serde",
  "serde_bytes",
@@ -2734,8 +2734,8 @@ dependencies = [
  "libcrux-traits",
  "openmls_memory_storage",
  "openmls_traits",
- "rand 0.9.4",
- "rand_chacha 0.9.0",
+ "rand 0.10.1",
+ "rand_chacha 0.10.0",
  "tls_codec",
 ]
 
@@ -2768,7 +2768,7 @@ dependencies = [
  "openmls_memory_storage",
  "openmls_traits",
  "p256",
- "rand_chacha 0.3.1",
+ "rand_chacha 0.10.0",
  "rand_core 0.6.4",
  "serde",
  "sha2 0.11.0",
@@ -4179,9 +4179,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.52.1"
+version = "1.52.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b67dee974fe86fd92cc45b7a95fdd2f99a36a6d7b0d431a231178d3d670bbcc6"
+checksum = "110a78583f19d5cdb2c5ccf321d1290344e71313c6c37d43520d386027d18386"
 dependencies = [
  "bytes",
  "libc",
@@ -4312,9 +4312,9 @@ checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "tonic"
-version = "0.14.5"
+version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fec7c61a0695dc1887c1b53952990f3ad2e3a31453e1f49f10e75424943a93ec"
+checksum = "ac2a5518c70fa84342385732db33fb3f44bc4cc748936eb5833d2df34d6445ef"
 dependencies = [
  "async-trait",
  "axum",
