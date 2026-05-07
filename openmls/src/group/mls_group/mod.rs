@@ -819,11 +819,13 @@ impl MlsGroup {
             OutgoingWireFormatPolicy::AlwaysCiphertext => {
                 // Decrypting own handshake messages is not supported yet with
                 // the `virtual-clients` feature, so the generation is unused.
-                let (_, ciphertext) = self
+                let EncryptionOutput {
+                    private_message, ..
+                } = self
                     .encrypt(mls_auth_content, provider)
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
-                MlsMessageOut::from_private_message(ciphertext, self.version())
+                MlsMessageOut::from_private_message(private_message, self.version())
             }
         };
         Ok(msg)

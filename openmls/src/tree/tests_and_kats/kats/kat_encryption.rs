@@ -243,7 +243,7 @@ fn build_handshake_messages(
                 .unwrap(),
         )
         .expect("Error setting membership tag.");
-    let (_, ciphertext) = PrivateMessage::encrypt_without_check::<Infallible>(
+    let ciphertext = PrivateMessage::encrypt_without_check::<Infallible>(
         provider.crypto(),
         provider.rand(),
         &content,
@@ -251,7 +251,8 @@ fn build_handshake_messages(
         group.message_secrets_test_mut(),
         0,
     )
-    .expect("Could not create PrivateMessage");
+    .expect("Could not create PrivateMessage")
+    .private_message;
     (
         plaintext
             .tls_serialize_detached()
@@ -308,7 +309,7 @@ fn build_application_messages(
         group.message_secrets_test_mut(),
         0,
     ) {
-        Ok((_, c)) => c,
+        Ok(output) => output.private_message,
         Err(e) => panic!("Could not create PrivateMessage {e}"),
     };
     (

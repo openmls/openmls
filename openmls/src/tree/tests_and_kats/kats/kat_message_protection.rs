@@ -292,9 +292,10 @@ pub fn run_test_vector(
             &signer,
         )
         .unwrap();
-        let (_, my_proposal_priv) = sender_group
+        let my_proposal_priv = sender_group
             .encrypt(proposal_authenticated_content, provider)
-            .unwrap();
+            .unwrap()
+            .private_message;
 
         let my_proposal_priv_out = MlsMessageOut::from_private_message(
             my_proposal_priv,
@@ -409,9 +410,10 @@ pub fn run_test_vector(
         commit_authenticated_content.set_confirmation_tag(ConfirmationTag(Mac {
             mac_value: vec![0; 32].into(), // Set a fake mac, we don't check it.
         }));
-        let (_, my_commit_pub) = sender_group
+        let my_commit_pub = sender_group
             .encrypt(commit_authenticated_content, provider)
-            .unwrap();
+            .unwrap()
+            .private_message;
 
         let my_commit_priv_out = MlsMessageOut::from_private_message(
             my_commit_pub,

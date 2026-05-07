@@ -6,17 +6,23 @@ use super::mls_auth_content::AuthenticatedContent;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, error::LibraryError,
-    tree::secret_tree::SecretType,
+    tree::secret_tree::SecretType, tree::sender_ratchet::Generation,
 };
 
 use super::*;
 
 /// The result of encrypting an [`AuthenticatedContent`] into a
-/// [`PrivateMessage`]. The `u32` is the generation of the encryption secret
-/// used. With the `virtual-clients-draft` feature, callers use the generation
-/// to confirm the message and delete the corresponding encryption secret.
-/// Without the feature, the generation is unused.
-pub(crate) type EncryptionOutput = (u32, PrivateMessage);
+/// [`PrivateMessage`].
+#[derive(Debug)]
+pub(crate) struct EncryptionOutput {
+    /// The generation of the encryption secret used. With the
+    /// `virtual-clients-draft` feature, callers use the generation to confirm
+    /// the message and delete the corresponding encryption secret. Without the
+    /// feature, the generation is unused.
+    pub(crate) generation: Generation,
+    /// The resulting encrypted message.
+    pub(crate) private_message: PrivateMessage,
+}
 
 /// `PrivateMessage` is the framing struct for an encrypted `PublicMessage`.
 /// This message format is meant to be sent to and received from the Delivery
@@ -259,7 +265,10 @@ impl PrivateMessage {
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
         };
-        Ok((generation, private_message))
+        Ok(EncryptionOutput {
+            generation,
+            private_message,
+        })
     }
 
     /// Returns the epoch of the message.
