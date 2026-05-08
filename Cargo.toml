@@ -3,6 +3,7 @@ members = [
     "openmls",
     "traits",
     "openmls_rust_crypto",
+    "openmls_rust_crypto_hpke_ng",
     "libcrux_crypto",
     "fuzz",
     "cli",
