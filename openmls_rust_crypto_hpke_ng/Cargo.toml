@@ -13,7 +13,7 @@ readme = "README.md"
 openmls_traits = { workspace = true }
 openmls_memory_storage = { workspace = true }
 
-hpke-ng = { default-features = false, features = ["std"] }
+hpke-ng = { version = "0.1.0-rc.2", default-features = false, features = ["std"] }
 
 # Rust Crypto dependencies
 sha2 = { version = "0.11" }
