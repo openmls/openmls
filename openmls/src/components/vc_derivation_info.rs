@@ -117,9 +117,7 @@ pub enum VirtualClientsError {
     /// The leaf's `AppDataDictionary` extension is missing the
     /// `AppComponents` entry, or that entry does not list
     /// [`VC_COMPONENT_ID`].
-    #[error(
-        "Leaf's AppComponents entry does not list the virtual-clients component id."
-    )]
+    #[error("Leaf's AppComponents entry does not list the virtual-clients component id.")]
     VcComponentNotListed,
 }
 

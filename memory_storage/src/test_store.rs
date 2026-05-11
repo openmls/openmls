@@ -595,10 +595,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_pprf<
-        EpochId: traits::VcEpochId<V_TEST>,
-        VcPprf: traits::VcPprf<V_TEST>,
-    >(
+    fn write_vc_pprf<EpochId: traits::VcEpochId<V_TEST>, VcPprf: traits::VcPprf<V_TEST>>(
         &self,
         _epoch_id: &EpochId,
         _vc_pprf: &VcPprf,
@@ -607,10 +604,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_pprf<
-        EpochId: traits::VcEpochId<V_TEST>,
-        VcPprf: traits::VcPprf<V_TEST>,
-    >(
+    fn vc_pprf<EpochId: traits::VcEpochId<V_TEST>, VcPprf: traits::VcPprf<V_TEST>>(
         &self,
         _epoch_id: &EpochId,
     ) -> Result<Option<VcPprf>, Self::Error> {

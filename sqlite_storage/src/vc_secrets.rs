@@ -131,10 +131,7 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
         Ok(())
     }
 
-    pub(super) fn load_vc_pprf<
-        C: Codec,
-        VcPprf: VcPprfTrait<STORAGE_PROVIDER_VERSION>,
-    >(
+    pub(super) fn load_vc_pprf<C: Codec, VcPprf: VcPprfTrait<STORAGE_PROVIDER_VERSION>>(
         &self,
         connection: &rusqlite::Connection,
     ) -> Result<Option<VcPprf>, rusqlite::Error> {

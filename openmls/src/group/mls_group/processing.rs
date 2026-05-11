@@ -424,12 +424,10 @@ impl MlsGroup {
         // Persist puncture immediately. Reprocessing the same commit will
         // fail with `PprfError::PuncturedInput`, which is exactly what we
         // want for forward secrecy.
-        storage
-            .write_vc_pprf(epoch_id, &pprf)
-            .map_err(|e| {
-                log::error!("vc: persist punctured pprf failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?;
+        storage.write_vc_pprf(epoch_id, &pprf).map_err(|e| {
+            log::error!("vc: persist punctured pprf failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?;
 
         Ok(Some(operation_secret))
     }

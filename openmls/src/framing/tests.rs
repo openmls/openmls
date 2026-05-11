@@ -124,7 +124,7 @@ fn codec_ciphertext() {
     let mut message_secrets =
         MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0));
 
-    let (_, orig) = PrivateMessage::encrypt_with_different_header::<StorageError>(
+    let orig = PrivateMessage::encrypt_with_different_header::<StorageError>(
         provider.crypto(),
         provider.rand(),
         &plaintext,
@@ -180,7 +180,7 @@ fn wire_format_checks() {
     message_secrets.replace_secret_tree(sender_secret_tree);
 
     let sender_index = LeafNodeIndex::new(0);
-    let (_, ciphertext) = PrivateMessage::encrypt_with_different_header::<StorageError>(
+    let ciphertext = PrivateMessage::encrypt_with_different_header::<StorageError>(
         provider.crypto(),
         provider.rand(),
         &plaintext,
@@ -232,7 +232,7 @@ fn wire_format_checks() {
 
     let receiver_secret_tree = message_secrets.replace_secret_tree(sender_secret_tree);
     // Bypass wire format check during encryption
-    let (_, ciphertext) = PrivateMessage::encrypt_without_check::<StorageError>(
+    let ciphertext = PrivateMessage::encrypt_without_check::<StorageError>(
         provider.crypto(),
         provider.rand(),
         &plaintext,
@@ -480,7 +480,7 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
     )
     .expect("Could not create new ApplicationMessage.");
 
-    let (_, enc_message) = PrivateMessage::encrypt_with_different_header::<StorageError>(
+    let enc_message = PrivateMessage::encrypt_with_different_header::<StorageError>(
         alice_provider.crypto(),
         alice_provider.rand(),
         &bogus_sender_message,

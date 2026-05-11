@@ -187,10 +187,7 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Write the virtual clients PPRF for the given epoch.
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_pprf<
-        EpochId: traits::VcEpochId<VERSION>,
-        VcPprf: traits::VcPprf<VERSION>,
-    >(
+    fn write_vc_pprf<EpochId: traits::VcEpochId<VERSION>, VcPprf: traits::VcPprf<VERSION>>(
         &self,
         epoch_id: &EpochId,
         vc_pprf: &VcPprf,

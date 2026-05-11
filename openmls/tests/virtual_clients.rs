@@ -607,10 +607,7 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
         .expect("alice main group present on alice_b_provider");
 
     // Sanity: all four parties agree (post add-members).
-    fn assert_all_agree<P: OpenMlsProvider>(
-        groups_and_providers: &[(&MlsGroup, &P)],
-        label: &str,
-    ) {
+    fn assert_all_agree<P: OpenMlsProvider>(groups_and_providers: &[(&MlsGroup, &P)], label: &str) {
         let mut iter = groups_and_providers.iter();
         let (first_group, _) = iter.next().expect("at least one party");
         let reference = first_group.epoch_authenticator();

@@ -243,7 +243,7 @@ fn build_handshake_messages(
                 .unwrap(),
         )
         .expect("Error setting membership tag.");
-    let (_, ciphertext) = PrivateMessage::encrypt_without_check::<Infallible>(
+    let ciphertext = PrivateMessage::encrypt_without_check::<Infallible>(
         provider.crypto(),
         provider.rand(),
         &content,
