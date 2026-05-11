@@ -32,7 +32,10 @@ pub(crate) struct EpochTree {
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct MessageSecretsStore {
-    // Maximum size of the `past_epoch_trees` list.
+    // Maximum size of the `past_epoch_trees` list. Serialized as `u64` so
+    // bytes are portable between 32-bit and 64-bit hosts (e.g. wasm32 ↔
+    // 64-bit servers).
+    #[serde(with = "crate::utils::usize_as_u64")]
     pub(crate) max_epochs: usize,
     // Past message secrets.
     // NOTE: these are in order of addition (latest at end).

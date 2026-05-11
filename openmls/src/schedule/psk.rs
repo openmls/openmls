@@ -560,11 +560,19 @@ pub mod store {
     /// Resumption PSK store.
     ///
     /// This is where the resumption PSKs are kept in a rollover list.
+    //
+    // `max_number_of_secrets` and `cursor` are serialized through the
+    // `usize_as_u64` adapter so bytes are portable between 32-bit
+    // (`wasm32`) and 64-bit hosts. Neither value feeds into key derivation —
+    // `cursor` is a ring-buffer index and `max_number_of_secrets` is the
+    // cap — so the only correctness requirement is that they round-trip.
     #[derive(Debug, Serialize, Deserialize)]
     #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
     pub(crate) struct ResumptionPskStore {
+        #[serde(with = "crate::utils::usize_as_u64")]
         max_number_of_secrets: usize,
         resumption_psk: Vec<(GroupEpoch, ResumptionPskSecret)>,
+        #[serde(with = "crate::utils::usize_as_u64")]
         cursor: usize,
     }
 

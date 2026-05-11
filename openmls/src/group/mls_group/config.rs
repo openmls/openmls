@@ -76,11 +76,16 @@ impl Serialize for PastEpochDeletionPolicy {
     where
         S: serde::Serializer,
     {
-        let usize = match self {
-            Self::MaxEpochs(epochs) => *epochs,
-            Self::KeepAll => usize::MAX,
+        // Wire encoding is always `u64` (never platform-dependent `usize`) so
+        // bytes written on a 64-bit host are still readable on `wasm32` and
+        // vice versa. `KeepAll` is encoded as `u64::MAX` rather than
+        // `usize::MAX as u64`, because `usize::MAX` differs between platforms
+        // (`u32::MAX` on `wasm32`, `u64::MAX` on 64-bit).
+        let value: u64 = match self {
+            Self::MaxEpochs(epochs) => *epochs as u64,
+            Self::KeepAll => u64::MAX,
         };
-        serializer.serialize_u64(usize as u64)
+        serializer.serialize_u64(value)
     }
 }
 
@@ -89,11 +94,11 @@ impl<'de> Deserialize<'de> for PastEpochDeletionPolicy {
     where
         D: serde::Deserializer<'de>,
     {
-        let epochs = u64::deserialize(deserializer)?;
-        let epochs = usize::try_from(epochs).map_err(serde::de::Error::custom)?;
-        if epochs == usize::MAX {
+        let value = u64::deserialize(deserializer)?;
+        if value == u64::MAX {
             Ok(Self::KeepAll)
         } else {
+            let epochs = usize::try_from(value).map_err(serde::de::Error::custom)?;
             Ok(Self::MaxEpochs(epochs))
         }
     }
@@ -190,6 +195,7 @@ pub struct MlsGroupJoinConfig {
     /// Application are always encrypted regardless.
     pub(crate) wire_format_policy: WireFormatPolicy,
     /// Size of padding in bytes
+    #[serde(with = "crate::utils::usize_as_u64")]
     pub(crate) padding_size: usize,
     /// Maximum number of past epochs for which application messages
     /// can be decrypted. The default is 0.
@@ -197,6 +203,7 @@ pub struct MlsGroupJoinConfig {
     // alias for backwards compatibility after renaming field
     pub(crate) past_epoch_deletion_policy: PastEpochDeletionPolicy,
     /// Number of resumption secrets to keep
+    #[serde(with = "crate::utils::usize_as_u64")]
     pub(crate) number_of_resumption_psks: usize,
     /// Flag to indicate the Ratchet Tree Extension should be used
     pub(crate) use_ratchet_tree_extension: bool,
