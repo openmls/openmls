@@ -137,7 +137,8 @@ fn codec_ciphertext() {
         &mut message_secrets,
         0,
     )
-    .expect("Could not encrypt PublicMessage.");
+    .expect("Could not encrypt PublicMessage.")
+    .private_message;
 
     let enc = orig
         .tls_serialize_detached()
@@ -192,7 +193,8 @@ fn wire_format_checks() {
         &mut message_secrets,
         0,
     )
-    .expect("Could not encrypt PublicMessage.");
+    .expect("Could not encrypt PublicMessage.")
+    .private_message;
 
     let ciphertext = PrivateMessageIn::from(ciphertext);
 
@@ -238,7 +240,8 @@ fn wire_format_checks() {
         &mut message_secrets,
         0,
     )
-    .expect("Could not encrypt PublicMessage.");
+    .expect("Could not encrypt PublicMessage.")
+    .private_message;
 
     let ciphertext = PrivateMessageIn::from(ciphertext);
 
@@ -490,7 +493,8 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         alice_group.message_secrets_test_mut(),
         0,
     )
-    .expect("Encryption error");
+    .expect("Encryption error")
+    .private_message;
 
     let received_message = charlie_group.process_message(
         charlie_provider,

@@ -294,7 +294,8 @@ pub fn run_test_vector(
         .unwrap();
         let (_, my_proposal_priv) = sender_group
             .encrypt(proposal_authenticated_content, provider)
-            .unwrap();
+            .unwrap()
+            .private_message;
 
         let my_proposal_priv_out = MlsMessageOut::from_private_message(
             my_proposal_priv,
@@ -411,7 +412,8 @@ pub fn run_test_vector(
         }));
         let (_, my_commit_pub) = sender_group
             .encrypt(commit_authenticated_content, provider)
-            .unwrap();
+            .unwrap()
+            .private_message;
 
         let my_commit_priv_out = MlsMessageOut::from_private_message(
             my_commit_pub,

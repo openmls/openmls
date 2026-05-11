@@ -5,17 +5,15 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
-#[cfg(feature = "virtual-clients-draft")]
-use std::collections::BTreeMap;
 use std::collections::VecDeque;
-#[cfg(feature = "virtual-clients-draft")]
-use std::mem;
 
 use openmls_traits::crypto::OpenMlsCrypto;
 
 use openmls_traits::types::Ciphersuite;
 
 use crate::ciphersuite::{AeadNonce, *};
+#[cfg(feature = "virtual-clients-draft")]
+use crate::tree::dual_use_ratchet::DualUseRatchet;
 use crate::tree::secret_tree::*;
 #[cfg(feature = "virtual-clients-draft")]
 use crate::utils::vector_converter;
@@ -77,8 +75,9 @@ pub(crate) type RatchetKeyMaterial = (AeadKey, AeadNonce);
 /// `out_of_order_tolerance` and a `maximum_forward_distance` (see
 /// [`SenderRatchetConfiguration`]) while an Encryption Ratchet never keeps past
 /// secrets around. With the `virtual-clients-draft` feature, own sender
-/// ratchets are [`DualUseRatchet`]s, which can output key material for both
-/// encryption and decryption.
+/// ratchets are
+/// [`DualUseRatchet`](super::dual_use_ratchet::DualUseRatchet)s, which can
+/// output key material for both encryption and decryption.
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 #[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]

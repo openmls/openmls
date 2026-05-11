@@ -120,7 +120,6 @@ extensions-draft-08-test-dependencies = [
     "openmls_libcrux_crypto?/extensions-draft-08",
     "openmls_memory_storage?/extensions-draft-08",
 ]
-
 # enable randomness source
 fork-resolution = []
 

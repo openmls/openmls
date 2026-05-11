@@ -74,12 +74,15 @@ impl MlsGroup {
             self.context(),
             signer,
         )?;
-        let (generation, ciphertext) = self
+        let EncryptionOutput {
+            generation,
+            private_message,
+        } = self
             .encrypt(authenticated_content, provider)
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
 
-        let output = MlsMessageOut::from_private_message(ciphertext, self.version());
+        let output = MlsMessageOut::from_private_message(private_message, self.version());
         self.reset_aad();
         Ok((generation, output))
     }

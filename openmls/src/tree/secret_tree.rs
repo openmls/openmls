@@ -4,6 +4,8 @@ use thiserror::Error;
 use tls_codec::{Error as TlsCodecError, TlsSerialize, TlsSize};
 
 use super::*;
+#[cfg(feature = "virtual-clients-draft")]
+use crate::tree::dual_use_ratchet::DualUseRatchet;
 use crate::{
     binary_tree::{
         array_representation::{
