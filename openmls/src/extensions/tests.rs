@@ -467,3 +467,103 @@ fn app_data_dictionary_extension() {
     // check the dictionary
     assert_eq!(&dictionary, extension.dictionary());
 }
+
+/// Locks the `(variant_index, variant_name)` pair that the manual `Serialize`
+/// impl for [`ExtensionType`] emits for each variant. These values are the
+/// bincode/postcard wire encoding of the enum tag and must not change without
+/// a deliberate, versioned migration of every existing persisted group.
+///
+/// When adding a new variant, append a new `check(...)` line with a fresh
+/// `variant_index` — never reuse or renumber the existing entries.
+#[test]
+fn extension_type_variant_indices() {
+    use crate::utils::variant_index_probe::probe;
+
+    fn check(value: ExtensionType, expected_index: u32, expected_name: &'static str) {
+        let (idx, name) =
+            probe(&value).expect("ExtensionType Serialize should call serialize_*_variant");
+        assert_eq!(
+            (idx, name),
+            (expected_index, expected_name),
+            "ExtensionType::{expected_name} drifted from index {expected_index}",
+        );
+    }
+
+    check(ExtensionType::ApplicationId, 0, "ApplicationId");
+    check(ExtensionType::RatchetTree, 1, "RatchetTree");
+    check(
+        ExtensionType::RequiredCapabilities,
+        2,
+        "RequiredCapabilities",
+    );
+    check(ExtensionType::ExternalPub, 3, "ExternalPub");
+    check(ExtensionType::ExternalSenders, 4, "ExternalSenders");
+    check(ExtensionType::LastResort, 5, "LastResort");
+    check(ExtensionType::Unknown(0), 6, "Unknown");
+    check(ExtensionType::Grease(0), 7, "Grease");
+    #[cfg(feature = "extensions-draft-08")]
+    check(ExtensionType::AppDataDictionary, 8, "AppDataDictionary");
+}
+
+/// Locks the `(variant_index, variant_name)` pair for each [`Extension`]
+/// variant. See [`extension_type_variant_indices`] for the rationale and
+/// growth discipline.
+///
+/// The payloads of newtype/tuple variants are never serialized by the probe
+/// — they are constructed only to satisfy Rust's type system at the call
+/// site. Using minimal/empty payloads keeps this test independent of any
+/// other types.
+#[test]
+fn extension_variant_indices() {
+    use crate::utils::variant_index_probe::probe;
+
+    fn check(value: Extension, expected_index: u32, expected_name: &'static str) {
+        let (idx, name) =
+            probe(&value).expect("Extension Serialize should call serialize_*_variant");
+        assert_eq!(
+            (idx, name),
+            (expected_index, expected_name),
+            "Extension::{expected_name} drifted from index {expected_index}",
+        );
+    }
+
+    check(
+        Extension::ApplicationId(ApplicationIdExtension::new(&[])),
+        0,
+        "ApplicationId",
+    );
+    check(
+        Extension::RatchetTree(RatchetTreeExtension::new(
+            RatchetTreeIn::from_nodes(vec![]).into(),
+        )),
+        1,
+        "RatchetTree",
+    );
+    check(
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default()),
+        2,
+        "RequiredCapabilities",
+    );
+    check(
+        Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(vec![]))),
+        3,
+        "ExternalPub",
+    );
+    check(Extension::ExternalSenders(vec![]), 4, "ExternalSenders");
+    check(
+        Extension::LastResort(LastResortExtension::new()),
+        5,
+        "LastResort",
+    );
+    check(
+        Extension::Unknown(0, UnknownExtension(vec![])),
+        6,
+        "Unknown",
+    );
+    #[cfg(feature = "extensions-draft-08")]
+    check(
+        Extension::AppDataDictionary(AppDataDictionaryExtension::new(AppDataDictionary::new())),
+        7,
+        "AppDataDictionary",
+    );
+}

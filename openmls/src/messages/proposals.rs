@@ -922,7 +922,7 @@ impl CustomProposal {
 mod tests {
     use tls_codec::{Deserialize, Serialize};
 
-    use super::ProposalType;
+    use super::*;
 
     #[test]
     fn that_unknown_proposal_types_are_de_serialized_correctly() {
@@ -947,5 +947,100 @@ mod tests {
             let got_serialized = got.tls_serialize_detached().unwrap();
             assert_eq!(test, got_serialized);
         }
+    }
+
+    /// Locks the `(variant_index, variant_name)` pair that the manual
+    /// `Serialize` impl for [`ProposalType`] emits for each variant. These
+    /// values are the bincode/postcard wire encoding of the enum tag and must
+    /// not change without a deliberate, versioned migration of every existing
+    /// persisted group.
+    ///
+    /// When adding a new variant, append a new `check(...)` line with a fresh
+    /// `variant_index` — never reuse or renumber the existing entries.
+    #[test]
+    fn proposal_type_variant_indices() {
+        use crate::utils::variant_index_probe::probe;
+
+        fn check(value: ProposalType, expected_index: u32, expected_name: &'static str) {
+            let (idx, name) =
+                probe(&value).expect("ProposalType Serialize should call serialize_*_variant");
+            assert_eq!(
+                (idx, name),
+                (expected_index, expected_name),
+                "ProposalType::{expected_name} drifted from index {expected_index}",
+            );
+        }
+
+        check(ProposalType::Add, 0, "Add");
+        check(ProposalType::Update, 1, "Update");
+        check(ProposalType::Remove, 2, "Remove");
+        check(ProposalType::PreSharedKey, 3, "PreSharedKey");
+        check(ProposalType::Reinit, 4, "Reinit");
+        check(ProposalType::ExternalInit, 5, "ExternalInit");
+        check(
+            ProposalType::GroupContextExtensions,
+            6,
+            "GroupContextExtensions",
+        );
+        check(ProposalType::_AppAck, 7, "AppAck");
+        check(ProposalType::SelfRemove, 8, "SelfRemove");
+        check(ProposalType::Custom(0), 9, "Custom");
+        check(ProposalType::Grease(0), 10, "Grease");
+        #[cfg(feature = "extensions-draft-08")]
+        check(ProposalType::AppEphemeral, 11, "AppEphemeral");
+        #[cfg(feature = "extensions-draft-08")]
+        check(ProposalType::AppDataUpdate, 12, "AppDataUpdate");
+    }
+
+    /// Locks the `(variant_index, variant_name)` pair that the manual
+    /// `Serialize` impl for [`Proposal`] emits for each variant. See
+    /// [`proposal_type_variant_indices`] for the rationale.
+    ///
+    /// Variants whose payload is non-trivial to construct in a unit-test
+    /// context (those carrying `Box<…Proposal>` with cryptographic content)
+    /// are exercised indirectly via the [`ProposalType`] test: the
+    /// `Serialize` impls for `Proposal` and `ProposalType` use the same
+    /// numeric indices by construction, and the `Proposal::proposal_type()`
+    /// match keeps the two enums in lockstep. The variants exercised
+    /// directly here are the ones that historically drifted in PRs since
+    /// openmls-0.7.x (`_AppAck`, `SelfRemove`, `Custom`).
+    #[test]
+    fn proposal_variant_indices_anchor_variants() {
+        use crate::utils::variant_index_probe::probe;
+
+        fn check(value: Proposal, expected_index: u32, expected_name: &'static str) {
+            let (idx, name) =
+                probe(&value).expect("Proposal Serialize should call serialize_*_variant");
+            assert_eq!(
+                (idx, name),
+                (expected_index, expected_name),
+                "Proposal::{expected_name} drifted from index {expected_index}",
+            );
+        }
+
+        // Variants with payloads that are cheap to construct from primitives.
+        check(
+            Proposal::Remove(Box::new(RemoveProposal {
+                removed: crate::binary_tree::array_representation::LeafNodeIndex::new(0),
+            })),
+            2,
+            "Remove",
+        );
+        check(
+            Proposal::ExternalInit(Box::new(ExternalInitProposal::from(Vec::<u8>::new()))),
+            5,
+            "ExternalInit",
+        );
+
+        // Placeholders / unit variants — the historical drift points.
+        check(Proposal::_AppAck, 7, "AppAck");
+        check(Proposal::SelfRemove, 8, "SelfRemove");
+
+        // Custom — was at index 9 in 0.7.x and must remain there.
+        check(
+            Proposal::Custom(Box::new(CustomProposal::new(0x7C7C, Vec::new()))),
+            9,
+            "Custom",
+        );
     }
 }

@@ -49,3 +49,30 @@ fn that_unknown_credential_types_are_de_serialized_correctly() {
         assert_eq!(test, got_serialized);
     }
 }
+
+/// Locks the `(variant_index, variant_name)` pair that the manual `Serialize`
+/// impl for [`CredentialType`] emits for each variant. These values are the
+/// bincode/postcard wire encoding of the enum tag and must not change without
+/// a deliberate, versioned migration of every existing persisted group.
+///
+/// When adding a new variant, append a new `check(...)` line with a fresh
+/// `variant_index` — never reuse or renumber the existing entries.
+#[test]
+fn credential_type_variant_indices() {
+    use crate::utils::variant_index_probe::probe;
+
+    fn check(value: CredentialType, expected_index: u32, expected_name: &'static str) {
+        let (idx, name) =
+            probe(&value).expect("CredentialType Serialize should call serialize_*_variant");
+        assert_eq!(
+            (idx, name),
+            (expected_index, expected_name),
+            "CredentialType::{expected_name} drifted from index {expected_index}",
+        );
+    }
+
+    check(CredentialType::Basic, 0, "Basic");
+    check(CredentialType::X509, 1, "X509");
+    check(CredentialType::Other(0), 2, "Other");
+    check(CredentialType::Grease(0), 3, "Grease");
+}
