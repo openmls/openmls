@@ -8,6 +8,26 @@ use web_time::SystemTime;
 use super::*;
 
 /// Combined message secrets that need to be stored for later decryption/verification
+//
+// Compatibility note for non-self-describing serde formats:
+//
+// `added_at` was added as a trailing field after openmls-0.7.x with
+// `#[serde(default)]`. That attribute is honored by self-describing formats
+// (JSON, CBOR) but ignored by positional formats like bincode and postcard,
+// where the deserializer requires the field's bytes to be present. Loading
+// 0.7.x-persisted state on current code with bincode/postcard therefore
+// fails for any `MessageSecrets` written before this field existed.
+//
+// A tolerant trailing-field deserializer would address the top-level
+// `MessageSecretsStore.message_secrets` case but is unsafe here, because
+// `MessageSecrets` is also embedded in `EpochTree { epoch, message_secrets,
+// leaves }` — not at the tail. An EOF-tolerant read of `added_at` inside
+// `EpochTree` would consume bytes belonging to `leaves` and silently
+// corrupt past-epoch state.
+//
+// Consumers using bincode/postcard who need to load pre-`added_at` state
+// should write a one-shot migration: read the old state with pinned
+// `openmls = "0.7"` types and re-write it with the current types.
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone))]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
