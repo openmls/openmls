@@ -77,10 +77,7 @@ pub mod errors;
 /// | 0xDADA           | GREASE                   | Y | RFC XXXX |
 /// | 0xEAEA           | GREASE                   | Y | RFC XXXX |
 /// | 0xF000  - 0xFFFF | Reserved for Private Use | - | RFC XXXX |
-// Variant order is part of the serde wire format for non-self-describing
-// serializers like bincode. Do not reorder existing variants; append new
-// variants at the end of the enum.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u16)]
 pub enum CredentialType {
     /// A [`BasicCredential`]
@@ -89,12 +86,114 @@ pub enum CredentialType {
     X509 = 2,
     /// Another type of credential that is not in the MLS protocol spec.
     Other(u16),
-
-    // --- Variants appended after openmls-0.7.x ---
-    // New variants MUST be added below this line to preserve the serde wire
-    // format with older persisted data.
     /// A GREASE credential type for ensuring extensibility.
     Grease(u16),
+}
+
+// Manual serde impls with explicit variant indices. The variant index is the
+// bincode/postcard wire format for this enum; the variant *name* is the JSON
+// wire format. Both must remain stable across versions. Indices are listed in
+// the constant below — new variants get a fresh, never-reused index appended
+// at the end; existing variants never change index.
+const CREDENTIAL_TYPE_VARIANTS: &[&str] = &["Basic", "X509", "Other", "Grease"];
+
+impl Serialize for CredentialType {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Basic => serializer.serialize_unit_variant("CredentialType", 0, "Basic"),
+            Self::X509 => serializer.serialize_unit_variant("CredentialType", 1, "X509"),
+            Self::Other(v) => serializer.serialize_newtype_variant("CredentialType", 2, "Other", v),
+            Self::Grease(v) => {
+                serializer.serialize_newtype_variant("CredentialType", 3, "Grease", v)
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for CredentialType {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_enum(
+            "CredentialType",
+            CREDENTIAL_TYPE_VARIANTS,
+            CredentialTypeVisitor,
+        )
+    }
+}
+
+#[derive(Clone, Copy)]
+enum CredentialTypeId {
+    Basic,
+    X509,
+    Other,
+    Grease,
+}
+
+impl<'de> Deserialize<'de> for CredentialTypeId {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct V;
+        impl<'de> serde::de::Visitor<'de> for V {
+            type Value = CredentialTypeId;
+
+            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str("CredentialType variant identifier")
+            }
+
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                match v {
+                    0 => Ok(CredentialTypeId::Basic),
+                    1 => Ok(CredentialTypeId::X509),
+                    2 => Ok(CredentialTypeId::Other),
+                    3 => Ok(CredentialTypeId::Grease),
+                    other => Err(E::invalid_value(
+                        serde::de::Unexpected::Unsigned(other),
+                        &"variant index 0..=3",
+                    )),
+                }
+            }
+
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                match v {
+                    "Basic" => Ok(CredentialTypeId::Basic),
+                    "X509" => Ok(CredentialTypeId::X509),
+                    "Other" => Ok(CredentialTypeId::Other),
+                    "Grease" => Ok(CredentialTypeId::Grease),
+                    other => Err(E::unknown_variant(other, CREDENTIAL_TYPE_VARIANTS)),
+                }
+            }
+
+            fn visit_bytes<E: serde::de::Error>(self, v: &[u8]) -> Result<Self::Value, E> {
+                self.visit_str(std::str::from_utf8(v).map_err(E::custom)?)
+            }
+        }
+        deserializer.deserialize_identifier(V)
+    }
+}
+
+struct CredentialTypeVisitor;
+
+impl<'de> serde::de::Visitor<'de> for CredentialTypeVisitor {
+    type Value = CredentialType;
+
+    fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("enum CredentialType")
+    }
+
+    fn visit_enum<A: serde::de::EnumAccess<'de>>(self, data: A) -> Result<Self::Value, A::Error> {
+        use serde::de::VariantAccess;
+        let (variant, access) = data.variant::<CredentialTypeId>()?;
+        match variant {
+            CredentialTypeId::Basic => {
+                access.unit_variant()?;
+                Ok(CredentialType::Basic)
+            }
+            CredentialTypeId::X509 => {
+                access.unit_variant()?;
+                Ok(CredentialType::X509)
+            }
+            CredentialTypeId::Other => Ok(CredentialType::Other(access.newtype_variant()?)),
+            CredentialTypeId::Grease => Ok(CredentialType::Grease(access.newtype_variant()?)),
+        }
+    }
 }
 
 impl CredentialType {
