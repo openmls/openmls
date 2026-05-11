@@ -100,6 +100,11 @@ pub(crate) struct Pprf<P: Prefix> {
         deserialize_with = "deserialize_hashmap"
     )]
     nodes: HashMap<P, PprfNode>, // Mapping of prefix and depth to node
+    // Serialized as `u64` so persisted application-export-tree bytes are
+    // portable between 32-bit (`wasm32`) and 64-bit hosts. The width is the
+    // tree size in *bytes* of the underlying prefix and is independent of
+    // any key derivation input.
+    #[serde(with = "crate::utils::usize_as_u64")]
     width: usize,
 }
 
