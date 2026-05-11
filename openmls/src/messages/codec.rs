@@ -29,12 +29,13 @@ impl Size for Proposal {
                 Proposal::ReInit(p) => p.tls_serialized_len(),
                 Proposal::ExternalInit(p) => p.tls_serialized_len(),
                 Proposal::GroupContextExtensions(p) => p.tls_serialized_len(),
+                Proposal::_AppAck => 0,
+                Proposal::SelfRemove => 0,
+                Proposal::Custom(p) => p.payload().tls_serialized_len(),
                 #[cfg(feature = "extensions-draft-08")]
                 Proposal::AppDataUpdate(p) => p.tls_serialized_len(),
-                Proposal::SelfRemove => 0,
                 #[cfg(feature = "extensions-draft-08")]
                 Proposal::AppEphemeral(p) => p.tls_serialized_len(),
-                Proposal::Custom(p) => p.payload().tls_serialized_len(),
             }
     }
 }
@@ -50,12 +51,13 @@ impl Serialize for Proposal {
             Proposal::ReInit(p) => p.tls_serialize(writer),
             Proposal::ExternalInit(p) => p.tls_serialize(writer),
             Proposal::GroupContextExtensions(p) => p.tls_serialize(writer),
+            Proposal::_AppAck => Ok(0),
+            Proposal::SelfRemove => Ok(0),
+            Proposal::Custom(p) => p.payload().tls_serialize(writer),
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppDataUpdate(p) => p.tls_serialize(writer),
-            Proposal::SelfRemove => Ok(0),
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(p) => p.tls_serialize(writer),
-            Proposal::Custom(p) => p.payload().tls_serialize(writer),
         }
         .map(|l| written + l)
     }
@@ -155,6 +157,13 @@ impl Deserialize for ProposalIn {
                 let payload = Vec::<u8>::tls_deserialize(bytes)?;
                 let custom_proposal = CustomProposal::new(proposal_type.into(), payload);
                 ProposalIn::Custom(Box::new(custom_proposal))
+            }
+            // `_AppAck` is a hidden placeholder kept only to preserve serde
+            // variant indices; `ProposalType::from(u16)` never produces it.
+            ProposalType::_AppAck => {
+                return Err(tls_codec::Error::DecodingError(
+                    "AppAck proposals are not supported".to_string(),
+                ));
             }
         };
         Ok(proposal)

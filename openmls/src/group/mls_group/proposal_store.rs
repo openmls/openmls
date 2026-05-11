@@ -637,6 +637,9 @@ impl ProposalQueue {
                     // have to be checked by the application instead.
                     valid_proposals.add(queued_proposal.proposal_reference());
                 }
+                // Hidden placeholder kept only for serde wire-format
+                // stability; the library does not produce this variant.
+                Proposal::_AppAck => {}
             }
         }
 

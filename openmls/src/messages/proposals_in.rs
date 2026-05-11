@@ -421,6 +421,9 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),
             Proposal::Custom(other) => Self::Custom(other),
+            // Hidden placeholder kept only for serde wire-format stability;
+            // the library does not produce this variant.
+            Proposal::_AppAck => Self::SelfRemove,
         }
     }
 }
