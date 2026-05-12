@@ -26,6 +26,8 @@ use crate::{
 
 #[cfg(feature = "virtual-clients-draft")]
 use crate::framing::MessageEncryptionError;
+#[cfg(feature = "virtual-clients-draft")]
+use crate::tree::secret_tree::SecretTreeError;
 
 #[cfg(feature = "extensions-draft-08")]
 pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
@@ -211,6 +213,30 @@ pub enum CreateMessageError<StorageError> {
     /// Error writing to storage.
     #[error("Error writing to storage: {0}")]
     StorageError(StorageError),
+}
+
+/// Confirm message error
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ConfirmMessageError<StorageError> {
+    /// See [`SecretTreeError`] for more details.
+    #[error(transparent)]
+    SecretTreeError(#[from] SecretTreeError),
+    /// Error writing to storage.
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl<StorageError> From<ConfirmMessageError<StorageError>> for CreateMessageError<StorageError> {
+    fn from(err: ConfirmMessageError<StorageError>) -> Self {
+        match err {
+            ConfirmMessageError::SecretTreeError(e) => CreateMessageError::MessageEncryptionError(
+                MessageEncryptionError::SecretTreeError(e),
+            ),
+            ConfirmMessageError::StorageError(e) => CreateMessageError::StorageError(e),
+        }
+    }
 }
 
 /// Add members error
