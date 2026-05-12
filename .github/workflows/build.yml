@@ -85,4 +85,5 @@ jobs:
         run: |
           cargo hack check --feature-powerset --no-dev-deps --verbose -p openmls \
           --group-features test-utils,crypto-debug,content-debug,backtrace,libcrux-provider,sqlite-provider \
-          --group-features extensions-draft-08,extensions-draft-08-test-dependencies
+          --group-features extensions-draft-08,extensions-draft-08-test-dependencies \
+          --group-features virtual-clients-draft,virtual-clients-draft-test-dependencies
