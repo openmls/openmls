@@ -33,3 +33,9 @@ openmls_libcrux_crypto = { version = "0.3.1", path = "libcrux_crypto" }
 
 openmls_memory_storage = { version = "0.5.0", path = "memory_storage" }
 openmls_sqlite_storage = { version = "0.2.0", path = "sqlite_storage" }
+
+[patch.crates-io]
+hpke-rs ={ git = "https://github.com/cryspen/hpke-rs", branch ="franziskus/bump-libcrux"}
+hpke-rs-crypto ={ git = "https://github.com/cryspen/hpke-rs", branch ="franziskus/bump-libcrux"}
+hpke-rs-libcrux ={ git = "https://github.com/cryspen/hpke-rs", branch ="franziskus/bump-libcrux"}
+hpke-rs-rust-crypto={ git = "https://github.com/cryspen/hpke-rs", branch ="franziskus/bump-libcrux"}

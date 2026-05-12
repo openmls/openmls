@@ -1,32 +1,23 @@
 use hpke_rs_libcrux::HpkeLibcrux;
 
-use std::sync::{Mutex, MutexGuard};
-
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{
     AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext,
     HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
 };
 
-use rand::{rngs::OsRng, rngs::ReseedingRng, CryptoRng, RngCore};
-use rand_chacha::ChaCha20Core;
-
 use tls_codec::SecretVLBytes;
 
 /// The libcrux-backed cryptography provider for OpenMLS
-pub struct CryptoProvider {
-    pub(super) rng: Mutex<ReseedingRng<ChaCha20Core, OsRng>>,
-}
+///
+/// *NOTE*: The randomness used here is only system randomness, which is not
+/// recommended to be used in production.
+pub struct CryptoProvider {}
 
 impl CryptoProvider {
     /// Instantiate a libcrux-based CryptoProvider
     pub fn new() -> Result<Self, CryptoError> {
-        let reseeding_rng = ReseedingRng::<ChaCha20Core, _>::new(0x100000000, OsRng)
-            .map_err(|_| CryptoError::InsufficientRandomness)?;
-
-        Ok(Self {
-            rng: Mutex::new(reseeding_rng),
-        })
+        Ok(Self {})
     }
 }
 
@@ -208,11 +199,7 @@ impl OpenMlsCrypto for CryptoProvider {
             return Err(CryptoError::UnsupportedSignatureScheme);
         }
 
-        let mut rng = self
-            .rng
-            .lock()
-            .map_err(|_| CryptoError::CryptoLibraryError)
-            .map(GuardedRng)?;
+        let mut rng = rand::rng();
 
         libcrux_ed25519::generate_key_pair(&mut rng)
             .map_err(|_| CryptoError::SigningError)
@@ -435,21 +422,3 @@ fn aead_alg(alg_type: AeadType) -> libcrux_aead::Aead {
         AeadType::Aes256Gcm => libcrux_aead::Aead::AesGcm256,
     }
 }
-
-struct GuardedRng<'a, Rng: RngCore>(MutexGuard<'a, Rng>);
-
-impl<Rng: RngCore> RngCore for GuardedRng<'_, Rng> {
-    fn next_u32(&mut self) -> u32 {
-        self.0.next_u32()
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        self.0.next_u64()
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.0.fill_bytes(dest)
-    }
-}
-
-impl<Rng: RngCore + CryptoRng> CryptoRng for GuardedRng<'_, Rng> {}

@@ -1,6 +1,6 @@
 use openmls_traits::random::OpenMlsRand;
 
-use rand::TryRngCore;
+use rand::TryRng;
 
 use crate::CryptoProvider;
 
@@ -30,7 +30,7 @@ impl OpenMlsRand for CryptoProvider {
     type Error = RandError;
 
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
-        let mut rng = self.rng.lock().map_err(|_| RandError::UnableToGenerate)?;
+        let mut rng = rand::rng();
 
         let mut output = [0u8; N];
 
@@ -41,7 +41,7 @@ impl OpenMlsRand for CryptoProvider {
     }
 
     fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error> {
-        let mut rng = self.rng.lock().map_err(|_| RandError::UnableToGenerate)?;
+        let mut rng = rand::rng();
 
         let mut output = vec![0u8; len];
 
