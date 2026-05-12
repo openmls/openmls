@@ -58,11 +58,9 @@ impl DualUsePastSecret {
         ) {
             Self::AwaitingConfirmation(ratchet_secret)
             | Self::RetainedForDecryption(RetainedDecryptionSecret::Available(ratchet_secret)) => {
-                *self = Self::RetainedForDecryption(RetainedDecryptionSecret::Consumed);
                 Ok(ratchet_secret)
             }
             Self::RetainedForDecryption(RetainedDecryptionSecret::Consumed) => {
-                *self = Self::RetainedForDecryption(RetainedDecryptionSecret::Consumed);
                 Err(SecretTreeError::SecretReuseError)
             }
         }
