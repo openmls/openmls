@@ -184,12 +184,8 @@ impl DualUseRatchet {
         if self
             .past_secrets
             .iter()
-            .find_map(|(retained_generation, entry)| {
-                entry
-                    .is_retained_for_decryption()
-                    .then_some(*retained_generation)
-            })
-            .is_some_and(|oldest_generation| generation < oldest_generation)
+            .find(|(_, entry)| entry.is_retained_for_decryption())
+            .is_some_and(|(oldest_generation, _)| generation < *oldest_generation)
         {
             log::error!("  Generation is too far in the past (not in the window).");
             SecretTreeError::TooDistantInThePast
