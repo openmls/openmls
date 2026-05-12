@@ -63,6 +63,46 @@ fn processing_own_application_message() {
 }
 
 #[openmls_test::openmls_test]
+fn unconfirmed_message_decrypts_after_next_message_is_confirmed() {
+    let alice_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("An unexpected error occurred.");
+
+    let first_message = b"first unconfirmed message";
+    let (first_generation, first_ciphertext) = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, first_message)
+        .expect("Could not create first unconfirmed message.");
+    assert_eq!(first_generation, 0);
+
+    let second_message = b"second confirmed message";
+    let (second_generation, _second_ciphertext) = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, second_message)
+        .expect("Could not create second message.");
+    assert_eq!(second_generation, 1);
+    alice_group
+        .confirm_message(alice_provider.storage(), second_generation)
+        .expect("Could not confirm second message.");
+
+    let processed_message = alice_group
+        .process_message(
+            alice_provider,
+            first_ciphertext.into_protocol_message().unwrap(),
+        )
+        .expect("Expected first unconfirmed message to decrypt.");
+
+    let ProcessedMessageContent::ApplicationMessage(msg) = processed_message.into_content() else {
+        panic!("Expected an application message.");
+    };
+    assert_eq!(first_message.as_slice(), msg.into_bytes().as_slice());
+}
+
+#[openmls_test::openmls_test]
 fn old_unconfirmed_own_message_survives_later_confirmations() {
     let alice_provider = &Provider::default();
 
