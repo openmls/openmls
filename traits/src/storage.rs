@@ -193,6 +193,23 @@ pub trait StorageProvider<const VERSION: u16> {
         vc_pprf: &VcPprf,
     ) -> Result<(), Self::Error>;
 
+    /// Bind a higher-level group to the emulation-group epoch whose
+    /// currently-active virtual-client LeafNode produced its current key
+    /// material. Used by the reuse-guard derivation path to look up the
+    /// per-message `ReuseGuardSecret` for a given higher-level group.
+    ///
+    /// The binding is updated when a VC commit is merged on the higher-level
+    /// group. A subsequent write replaces any previous binding.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_binding<
+        GroupId: traits::GroupId<VERSION>,
+        EpochId: traits::VcEpochId<VERSION> + Entity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error>;
+
     //
     //    ---   setters/writers/enqueuers for crypto objects  ---
     //
@@ -474,6 +491,18 @@ pub trait StorageProvider<const VERSION: u16> {
         epoch_id: &EpochId,
     ) -> Result<Option<VcPprf>, Self::Error>;
 
+    /// Look up the emulation-group epoch a higher-level group is currently
+    /// bound to (see [`Self::write_vc_emulation_binding`]). Returns `None`
+    /// if no VC commit has been merged on this higher-level group.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_binding<
+        GroupId: traits::GroupId<VERSION>,
+        EpochId: traits::VcEpochId<VERSION> + Entity<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<EpochId>, Self::Error>;
+
     //
     //     ---    deleters for group state    ---
     //
@@ -633,6 +662,14 @@ pub trait StorageProvider<const VERSION: u16> {
     fn delete_vc_pprf<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
+    ) -> Result<(), Self::Error>;
+
+    /// Remove the binding between higher-level-group and emulation-epoch for
+    /// the given group. Called when the group is being deleted.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_binding<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 }
 

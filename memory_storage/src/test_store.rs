@@ -618,4 +618,35 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     ) -> Result<(), Self::Error> {
         todo!()
     }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_binding<
+        GroupId: traits::GroupId<V_TEST>,
+        EpochId: traits::VcEpochId<V_TEST> + Entity<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_binding<
+        GroupId: traits::GroupId<V_TEST>,
+        EpochId: traits::VcEpochId<V_TEST> + Entity<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<Option<EpochId>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_binding<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
 }

@@ -156,8 +156,11 @@ mod virtual_clients_storage {
     use super::*;
     use crate::components::vc_derivation_info::{EmulationEpochState, EpochId, VcPprf};
 
+    // EpochId is both used as a key and a value, so it implements both traits.
     impl Key<CURRENT_VERSION> for EpochId {}
+    impl Entity<CURRENT_VERSION> for EpochId {}
     impl traits::VcEpochId<CURRENT_VERSION> for EpochId {}
+
 
     impl Entity<CURRENT_VERSION> for EmulationEpochState {}
     impl traits::VcEmulationEpochState<CURRENT_VERSION> for EmulationEpochState {}
