@@ -303,7 +303,12 @@ impl PublicGroup {
 
         let staged_commit_state = StagedCommitState::PublicState(Box::new(staged_state));
 
-        Ok(StagedCommit::new(proposal_queue, staged_commit_state))
+        Ok(StagedCommit::new(
+            proposal_queue,
+            staged_commit_state,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
+        ))
     }
 
     #[cfg(feature = "extensions-draft-08")]
@@ -329,7 +334,12 @@ impl PublicGroup {
 
         let staged_commit_state = StagedCommitState::PublicState(Box::new(staged_state));
 
-        Ok(StagedCommit::new(proposal_queue, staged_commit_state))
+        Ok(StagedCommit::new(
+            proposal_queue,
+            staged_commit_state,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
+        ))
     }
 
     fn stage_diff(

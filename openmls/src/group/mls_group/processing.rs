@@ -279,6 +279,27 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(MergeCommitError::StorageError)?;
 
+        // Update the emulation-epoch binding. Self-removal drops it,
+        // otherwise a VC commit writes the new one.
+        #[cfg(feature = "virtual-clients-draft")]
+        if staged_commit.self_removed() {
+            provider
+                .storage()
+                .delete_vc_emulation_binding(self.group_id())
+                .map_err(|e| {
+                    log::error!("vc: drop emulation binding on self-removal failed: {e:?}");
+                    MergeCommitError::StorageError(e)
+                })?;
+        } else if let Some(epoch_id) = staged_commit.vc_emulation_epoch_id.as_ref() {
+            provider
+                .storage()
+                .write_vc_emulation_binding(self.group_id(), epoch_id)
+                .map_err(|e| {
+                    log::error!("vc: persist emulation binding at merge failed: {e:?}");
+                    MergeCommitError::StorageError(e)
+                })?;
+        }
+
         // Merge staged commit
         self.merge_commit(provider, staged_commit)?;
 
@@ -325,34 +346,27 @@ impl MlsGroup {
     }
 
     /// Resolve a commit's virtual-clients derivation info to the per-commit
-    /// `OperationSecret` the receiver needs in order to recreate the path of an
-    /// own (sibling-virtual-client) commit.
+    /// `OperationSecret` needed to recreate the path of an own
+    /// (sibling-virtual-client) commit, plus the `EpochId` the commit
+    /// binds the group to on merge.
     ///
-    /// Only call this when the commit's sender is our own leaf. Other senders'
-    /// commits are processed via the normal HPKE path and never need to look up
-    /// VC secrets.
-    ///
-    /// Returns `Ok(None)` when the commit carries no virtual-clients
-    /// derivation-info entry on its update-path leaf (path-less commits, or
-    /// commits without an `app_data_dictionary`). Otherwise:
-    ///   - looks up the per-epoch `VcPprf` and `EpochEncryptionKey` the
-    ///     application registered via `register_vc_emulation_epoch`,
-    ///   - decrypts the wrapped `EpochInfoTbe` with the AEAD key,
-    ///   - hashes the decrypted `EpochInfoTbe` to produce the PPRF input,
-    ///   - evaluates the PPRF (puncturing it) and persists the punctured state
-    ///     back to storage,
-    ///   - returns the resulting `OperationSecret`.
-    ///
-    /// Once the precondition holds, missing PPRF / AEAD-key registration or
-    /// AEAD decryption failure is reported as an error: an own-leaf commit
-    /// carrying the VC component must be derivable.
+    /// Only call this when the commit's sender is our own leaf. Returns
+    /// `Ok(None)` if the commit carries no derivation-info entry on its
+    /// update-path leaf. Otherwise evaluates and persists the punctured
+    /// PPRF, decrypts the wrapped `EpochInfoTbe`, and returns the
+    /// resulting `OperationSecret` and `EpochId`.
     #[cfg(feature = "virtual-clients-draft")]
     fn load_vc_commit_material<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         commit: &Commit,
-    ) -> Result<Option<crate::components::vc_derivation_info::OperationSecret>, StageCommitError>
-    {
+    ) -> Result<
+        Option<(
+            crate::components::vc_derivation_info::EpochId,
+            crate::components::vc_derivation_info::OperationSecret,
+        )>,
+        StageCommitError,
+    > {
         use tls_codec::DeserializeBytes;
 
         use crate::components::vc_derivation_info::{
@@ -429,7 +443,7 @@ impl MlsGroup {
             VirtualClientsError::StorageError
         })?;
 
-        Ok(Some(operation_secret))
+        Ok(Some((epoch_id.clone(), operation_secret)))
     }
 
     /// Helper function to read decryption keypairs.
@@ -604,11 +618,14 @@ impl MlsGroup {
                 // commit never has the per-epoch PPRF / AEAD key in storage
                 // and must fall through to the normal HPKE path.
                 #[cfg(feature = "virtual-clients-draft")]
-                let vc_material = if matches!(&sender, Sender::Member(idx) if *idx == self.own_leaf_index())
+                let (vc_material, vc_emulation_epoch_id) = if matches!(&sender, Sender::Member(idx) if *idx == self.own_leaf_index())
                 {
-                    self.load_vc_commit_material(provider, commit)?
+                    match self.load_vc_commit_material(provider, commit)? {
+                        Some((epoch_id, op)) => (Some(op), Some(epoch_id)),
+                        None => (None, None),
+                    }
                 } else {
-                    None
+                    (None, None)
                 };
                 #[cfg(not(feature = "virtual-clients-draft"))]
                 let _ = commit;
@@ -621,6 +638,8 @@ impl MlsGroup {
                     provider,
                     #[cfg(feature = "virtual-clients-draft")]
                     vc_material,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    vc_emulation_epoch_id,
                 )?;
 
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
@@ -675,11 +694,14 @@ impl MlsGroup {
                 // for the rationale: VC material lookup is gated on the
                 // commit being from our own leaf.
                 #[cfg(feature = "virtual-clients-draft")]
-                let vc_material = if matches!(&sender, Sender::Member(idx) if *idx == self.own_leaf_index())
+                let (vc_material, vc_emulation_epoch_id) = if matches!(&sender, Sender::Member(idx) if *idx == self.own_leaf_index())
                 {
-                    self.load_vc_commit_material(provider, commit)?
+                    match self.load_vc_commit_material(provider, commit)? {
+                        Some((epoch_id, op)) => (Some(op), Some(epoch_id)),
+                        None => (None, None),
+                    }
                 } else {
-                    None
+                    (None, None)
                 };
                 #[cfg(not(feature = "virtual-clients-draft"))]
                 let _ = commit;
@@ -691,6 +713,8 @@ impl MlsGroup {
                     provider,
                     #[cfg(feature = "virtual-clients-draft")]
                     vc_material,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    vc_emulation_epoch_id,
                 )?;
 
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))

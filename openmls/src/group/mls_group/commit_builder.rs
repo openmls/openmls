@@ -465,7 +465,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                     log::error!("vc: load emulation epoch state in load_psks failed: {e:?}");
                     CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
                 })?
-                .ok_or(VirtualClientsError::MissingEpochEncryptionKey)?;
+                .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
             let (emulation_leaf_index, epoch_encryption_key) = state.into_parts();
             Some(VcLoaded {
                 epoch_id: emulation.epoch_id.clone(),
@@ -1035,6 +1035,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let staged_commit = StagedCommit::new(
             proposal_queue,
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
+            #[cfg(feature = "virtual-clients-draft")]
+            cur_stage
+                .vc_loaded
+                .as_ref()
+                .map(|loaded| loaded.epoch_id.clone()),
         );
 
         Ok(builder.into_stage(Complete {
