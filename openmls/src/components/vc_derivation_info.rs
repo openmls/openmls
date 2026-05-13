@@ -28,12 +28,17 @@ const PATH_GENERATION_LABEL: &str = "Path Generation";
 const SIGNATURE_KEY_LABEL: &str = "Signature Key";
 #[allow(dead_code)] // reserved for KeyPackage/Application operation types
 const INIT_KEY_LABEL: &str = "Init Key";
-#[allow(dead_code)] // reserved for KeyPackage/Application operation types
-const REUSE_GUARD_LABEL: &str = "Reuse Guard";
 
 const EPOCH_ID_LABEL: &str = "Epoch ID";
 const EPOCH_ENCRYPTION_KEY_LABEL: &str = "Encryption Key";
 const EPOCH_SECRET_LABEL: &str = "Base Secret";
+/// `DeriveSecret` label for [`ReuseGuardSecret`].
+const REUSE_GUARD_LABEL: &str = "Reuse Guard";
+/// `ExpandWithLabel` label for the 16-byte FF1 PRP key derived from a
+/// [`ReuseGuardSecret`] (mls-virtual-clients draft, Reuse Guard section).
+const REUSE_GUARD_PRP_KEY_LABEL: &str = "reuse guard";
+/// FF1 PRP key length in bytes (AES-128).
+const PRP_KEY_LEN: usize = 16;
 
 /// PPRF instance keyed on a 32-byte input. One of these is registered per
 /// emulation-group epoch by
@@ -87,6 +92,10 @@ pub enum VirtualClientsError {
     /// No virtual-clients PPRF was registered for this epoch.
     #[error("No virtual-clients PPRF for this epoch.")]
     MissingPprf,
+    /// No virtual-clients `EmulationEpochState` was registered for this
+    /// epoch, or it has been deleted.
+    #[error("No virtual-clients emulation-epoch state for this epoch.")]
+    MissingEmulationEpochState,
     /// Loading or storing virtual-clients state via the storage provider
     /// failed.
     #[error("Virtual-clients storage error")]
@@ -193,6 +202,78 @@ impl EmulatorEpochSecret {
                 VirtualClientsError::CryptoError
             })
     }
+
+    /// Derive the per-emulation-epoch [`ReuseGuardSecret`].
+    pub(crate) fn derive_reuse_guard_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+    ) -> Result<ReuseGuardSecret, VirtualClientsError> {
+        let secret = self
+            .0
+            .derive_secret(crypto, ciphersuite, REUSE_GUARD_LABEL)
+            .map_err(|e| {
+                log::error!("vc: derive reuse-guard secret failed: {e:?}");
+                VirtualClientsError::CryptoError
+            })?;
+        Ok(ReuseGuardSecret(secret))
+    }
+}
+
+/// Per-emulation-epoch secret used to derive the FF1 PRP key for
+/// `reuse_guard` values sent by this virtual client. Derived from
+/// [`EmulatorEpochSecret`] via [`EmulatorEpochSecret::derive_reuse_guard_secret`].
+#[derive(Serialize, Deserialize)]
+pub(crate) struct ReuseGuardSecret(Secret);
+
+impl std::fmt::Debug for ReuseGuardSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ReuseGuardSecret")
+            .field("secret", &"<redacted>")
+            .finish()
+    }
+}
+
+impl ReuseGuardSecret {
+    /// Test-only constructor from raw bytes.
+    #[cfg(test)]
+    pub(crate) fn from_secret_for_tests(secret: Secret) -> Self {
+        Self(secret)
+    }
+
+    /// Derive the 16-byte FF1 PRP key for a single application message:
+    ///
+    /// ```text
+    /// prp_key = ExpandWithLabel(reuse_guard_secret, "reuse guard",
+    ///                           key_schedule_nonce, 16)
+    /// ```
+    ///
+    /// `ciphersuite` is the emulation group's ciphersuite, stored on
+    /// [`EmulationEpochState`].
+    pub(crate) fn derive_prp_key(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        key_schedule_nonce: &[u8],
+    ) -> Result<[u8; PRP_KEY_LEN], VirtualClientsError> {
+        let key = self
+            .0
+            .kdf_expand_label(
+                crypto,
+                ciphersuite,
+                REUSE_GUARD_PRP_KEY_LABEL,
+                key_schedule_nonce,
+                PRP_KEY_LEN,
+            )
+            .map_err(|e| {
+                log::error!("vc: derive reuse-guard PRP key failed: {e:?}");
+                VirtualClientsError::CryptoError
+            })?;
+        key.as_slice().try_into().map_err(|_| {
+            log::error!("vc: derived PRP key has unexpected length (expected {PRP_KEY_LEN})");
+            VirtualClientsError::CryptoError
+        })
+    }
 }
 
 /// Build the per-emulation-epoch [`VcPprf`] root from the emulator epoch
@@ -269,32 +350,64 @@ impl std::fmt::Debug for EpochEncryptionKey {
     }
 }
 
-/// Per-emulation-epoch state persisted by [`MlsGroup::register_vc_emulation_epoch`]
-/// alongside the per-epoch PPRF, keyed by [`EpochId`]. Bundles everything
-/// the library needs to emit a VC commit for this epoch without requiring
-/// the application to round-trip the leaf index.
+/// Per-emulation-epoch state persisted by
+/// [`MlsGroup::register_vc_emulation_epoch`] alongside the per-epoch PPRF,
+/// keyed by [`EpochId`]. Bundles everything the library needs to emit a VC
+/// commit for this epoch and to XOR application message nonces with
+/// deterministic reuse guards.
 ///
-/// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
+/// [`MlsGroup::register_vc_emulation_epoch`]:
+///     crate::group::MlsGroup::register_vc_emulation_epoch
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EmulationEpochState {
-    /// The registering client's leaf index in the *emulation* group at
-    /// registration time. Hashed into `EpochInfoTbe` so a sibling
-    /// emulator that processed our commit can rederive the operation
-    /// secret. Constant across the lifetime of the epoch.
+    /// The registering client's leaf index in the emulation group at
+    /// registration time. Hashed into `EpochInfoTbe` and used as the
+    /// sender's `leaf_index_e` in the reuse-guard derivation.
     pub(crate) leaf_index: LeafNodeIndex,
     pub(crate) epoch_encryption_key: EpochEncryptionKey,
+    pub(crate) reuse_guard_secret: ReuseGuardSecret,
+    /// Number of leaves `N_e` in the emulation group at registration time.
+    pub(crate) emulation_group_size: TreeSize,
+    /// Ciphersuite of the emulation group at registration time. Used by
+    /// the reuse-guard derivation.
+    pub(crate) emulation_ciphersuite: Ciphersuite,
 }
 
 impl EmulationEpochState {
-    pub(crate) fn new(leaf_index: LeafNodeIndex, epoch_encryption_key: EpochEncryptionKey) -> Self {
+    pub(crate) fn new(
+        leaf_index: LeafNodeIndex,
+        epoch_encryption_key: EpochEncryptionKey,
+        reuse_guard_secret: ReuseGuardSecret,
+        emulation_group_size: TreeSize,
+        emulation_ciphersuite: Ciphersuite,
+    ) -> Self {
         Self {
             leaf_index,
             epoch_encryption_key,
+            reuse_guard_secret,
+            emulation_group_size,
+            emulation_ciphersuite,
         }
     }
 
+    /// Consume the state and return only the fields needed by the
+    /// commit-builder / commit-processing paths.
     pub(crate) fn into_parts(self) -> (LeafNodeIndex, EpochEncryptionKey) {
         (self.leaf_index, self.epoch_encryption_key)
+    }
+
+    /// Borrow the per-message inputs the framing layer needs to derive
+    /// the PRP key and pick `x` for a reuse guard.
+    #[allow(dead_code)] // wired up in framing in a later commit
+    pub(crate) fn reuse_guard_inputs(
+        &self,
+    ) -> (&ReuseGuardSecret, Ciphersuite, TreeSize, LeafNodeIndex) {
+        (
+            &self.reuse_guard_secret,
+            self.emulation_ciphersuite,
+            self.emulation_group_size,
+            self.leaf_index,
+        )
     }
 }
 

@@ -129,14 +129,23 @@ impl MlsGroup {
     ) -> Result<EpochId, RegisterVcEmulationEpochError<Storage::Error>> {
         let ciphersuite = self.ciphersuite();
         let leaf_index = self.own_leaf_index();
+        let emulation_group_size = self.public_group().tree_size();
         let bytes = self.safe_export_secret(crypto, storage, VC_COMPONENT_ID)?;
         let emulator_epoch_secret = EmulatorEpochSecret::new(&bytes);
         let epoch_id = emulator_epoch_secret.derive_epoch_id(crypto, ciphersuite)?;
         let epoch_encryption_key =
             emulator_epoch_secret.derive_epoch_encryption_key(crypto, ciphersuite)?;
         let epoch_secret = emulator_epoch_secret.derive_epoch_secret(crypto, ciphersuite)?;
+        let reuse_guard_secret =
+            emulator_epoch_secret.derive_reuse_guard_secret(crypto, ciphersuite)?;
         let pprf = build_vc_pprf(epoch_secret);
-        let state = EmulationEpochState::new(leaf_index, epoch_encryption_key);
+        let state = EmulationEpochState::new(
+            leaf_index,
+            epoch_encryption_key,
+            reuse_guard_secret,
+            emulation_group_size,
+            ciphersuite,
+        );
 
         storage.write_vc_pprf(&epoch_id, &pprf).map_err(|e| {
             log::error!("vc: persist pprf in register_vc_emulation_epoch failed: {e:?}");
