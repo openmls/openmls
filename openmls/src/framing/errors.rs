@@ -48,6 +48,12 @@ pub enum MessageEncryptionError<StorageError> {
     /// Error reading from or writing to storage
     #[error("Error reading from or writing to storage: {0}")]
     StorageError(StorageError),
+    /// Virtual-clients reuse-guard derivation failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(
+        #[from] crate::components::vc_derivation_info::VirtualClientsError,
+    ),
 }
 
 /// MlsMessage error

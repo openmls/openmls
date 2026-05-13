@@ -282,6 +282,8 @@ fn wire_format_checks() {
             ciphersuite,
             &mut message_secrets,
             0,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         )
         .expect_err("Could encrypt despite wrong wire format."),
         MessageEncryptionError::WrongWireFormat

@@ -398,16 +398,13 @@ impl EmulationEpochState {
 
     /// Borrow the per-message inputs the framing layer needs to derive
     /// the PRP key and pick `x` for a reuse guard.
-    #[allow(dead_code)] // wired up in framing in a later commit
-    pub(crate) fn reuse_guard_inputs(
-        &self,
-    ) -> (&ReuseGuardSecret, Ciphersuite, TreeSize, LeafNodeIndex) {
-        (
-            &self.reuse_guard_secret,
-            self.emulation_ciphersuite,
-            self.emulation_group_size,
-            self.leaf_index,
-        )
+    pub(crate) fn reuse_guard_inputs(&self) -> crate::framing::EmulatorReuseGuardCtx<'_> {
+        crate::framing::EmulatorReuseGuardCtx {
+            reuse_guard_secret: &self.reuse_guard_secret,
+            emulation_ciphersuite: self.emulation_ciphersuite,
+            emulation_group_size: self.emulation_group_size,
+            emulation_leaf_index: self.leaf_index,
+        }
     }
 }
 

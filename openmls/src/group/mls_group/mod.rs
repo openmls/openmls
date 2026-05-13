@@ -485,6 +485,13 @@ impl MlsGroup {
         #[cfg(feature = "extensions-draft-08")]
         storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
 
+        // Drop this group's emulation-epoch binding. `EmulationEpochState`
+        // and `VcPprf` are keyed on the emulation epoch and may still be
+        // referenced by other higher-level groups, so they're not
+        // deleted here.
+        #[cfg(feature = "virtual-clients-draft")]
+        storage.delete_vc_emulation_binding(self.group_id())?;
+
         self.proposal_store_mut().empty();
         storage.delete_encryption_epoch_key_pairs(
             self.group_id(),
@@ -649,6 +656,29 @@ impl MlsGroup {
         provider: &Provider,
     ) -> Result<EncryptionOutput, MessageEncryptionError<Provider::StorageError>> {
         let padding_size = self.configuration().padding_size();
+
+        // If this group is bound to an emulation epoch, load the state so
+        // the framing layer can derive a deterministic reuse guard.
+        #[cfg(feature = "virtual-clients-draft")]
+        let emulation_state: Option<
+            crate::components::vc_derivation_info::EmulationEpochState,
+        > = {
+            let binding: Option<crate::components::vc_derivation_info::EpochId> = provider
+                .storage()
+                .vc_emulation_binding(self.group_id())
+                .map_err(MessageEncryptionError::StorageError)?;
+            match binding {
+                Some(epoch_id) => provider
+                    .storage()
+                    .vc_emulation_epoch_state(&epoch_id)
+                    .map_err(MessageEncryptionError::StorageError)?,
+                None => None,
+            }
+        };
+        #[cfg(feature = "virtual-clients-draft")]
+        let emulator_ctx: Option<crate::framing::EmulatorReuseGuardCtx<'_>> =
+            emulation_state.as_ref().map(|state| state.reuse_guard_inputs());
+
         let msg = PrivateMessage::try_from_authenticated_content(
             provider.crypto(),
             provider.rand(),
@@ -656,6 +686,8 @@ impl MlsGroup {
             self.ciphersuite(),
             self.message_secrets_store.message_secrets_mut(),
             padding_size,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulator_ctx.as_ref(),
         )?;
 
         provider

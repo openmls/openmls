@@ -82,6 +82,8 @@ pub(crate) use mls_content_in::*;
 
 // Crate
 pub(crate) use sender::*;
+#[cfg(feature = "virtual-clients-draft")]
+pub(crate) use private_message::EmulatorReuseGuardCtx;
 
 // Public
 pub mod errors;
