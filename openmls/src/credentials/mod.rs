@@ -77,6 +77,9 @@ pub mod errors;
 /// | 0xDADA           | GREASE                   | Y | RFC XXXX |
 /// | 0xEAEA           | GREASE                   | Y | RFC XXXX |
 /// | 0xF000  - 0xFFFF | Reserved for Private Use | - | RFC XXXX |
+// Variant order is part of the serde wire format for non-self-describing
+// serializers like bincode. Do not reorder existing variants; append new
+// variants at the end of the enum.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum CredentialType {
@@ -84,10 +87,13 @@ pub enum CredentialType {
     Basic = 1,
     /// An X.509 [`Certificate`]
     X509 = 2,
-    /// A GREASE credential type for ensuring extensibility.
-    Grease(u16),
     /// Another type of credential that is not in the MLS protocol spec.
     Other(u16),
+    // --- Variants appended after openmls-0.7.x ---
+    // New variants MUST be added below this line to preserve the serde wire
+    // format with older persisted data.
+    /// A GREASE credential type for ensuring extensibility.
+    Grease(u16),
 }
 
 impl CredentialType {

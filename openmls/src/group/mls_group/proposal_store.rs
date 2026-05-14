@@ -637,6 +637,13 @@ impl ProposalQueue {
                     // have to be checked by the application instead.
                     valid_proposals.add(queued_proposal.proposal_reference());
                 }
+                Proposal::_AppAck => {
+                    // `_AppAck` is a serde-format placeholder for the
+                    // removed `AppAck` variant; it cannot be produced via
+                    // TLS deserialization, so reaching this arm would
+                    // indicate corrupted state.
+                    unreachable!("Proposal::_AppAck cannot reach the proposal queue")
+                }
             }
         }
 

@@ -421,6 +421,12 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),
             Proposal::Custom(other) => Self::Custom(other),
+            Proposal::_AppAck => {
+                // `_AppAck` is a serde-format placeholder for the removed
+                // `AppAck` variant; the library never produces it at
+                // runtime, so this arm is unreachable.
+                unreachable!("Proposal::_AppAck has no corresponding ProposalIn")
+            }
         }
     }
 }

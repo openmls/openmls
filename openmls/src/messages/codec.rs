@@ -35,6 +35,7 @@ impl Size for Proposal {
                 #[cfg(feature = "extensions-draft-08")]
                 Proposal::AppEphemeral(p) => p.tls_serialized_len(),
                 Proposal::Custom(p) => p.payload().tls_serialized_len(),
+                Proposal::_AppAck => 0,
             }
     }
 }
@@ -56,6 +57,12 @@ impl Serialize for Proposal {
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(p) => p.tls_serialize(writer),
             Proposal::Custom(p) => p.payload().tls_serialize(writer),
+            // `_AppAck` is a serde-format placeholder for the removed
+            // `AppAck` variant; the library never produces it at runtime,
+            // so TLS serialization is unreachable.
+            Proposal::_AppAck => {
+                unreachable!("Proposal::_AppAck cannot be TLS-serialized")
+            }
         }
         .map(|l| written + l)
     }
@@ -155,6 +162,13 @@ impl Deserialize for ProposalIn {
                 let payload = Vec::<u8>::tls_deserialize(bytes)?;
                 let custom_proposal = CustomProposal::new(proposal_type.into(), payload);
                 ProposalIn::Custom(Box::new(custom_proposal))
+            }
+            ProposalType::_AppAck => {
+                // `_AppAck` is a serde-format placeholder for the removed
+                // `AppAck` variant; the TLS wire mapping `From<u16>` never
+                // constructs it (the reserved value `0x000b` is routed to
+                // `Custom`), so this arm is unreachable on the TLS wire.
+                unreachable!("ProposalType::_AppAck is not produced by TLS deserialization");
             }
         };
         Ok(proposal)

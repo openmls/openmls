@@ -72,6 +72,15 @@ use crate::component::ComponentId;
 /// |:=======|:==============|:============|:==============|:==========|:=============================|
 /// | 0x0009 | app_ephemeral | Y           | N             | RFC XXXX  | draft-ietf-mls-extensions-08 |
 /// | 0x000a | self_remove   | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-07 |
+// Variant order is part of the serde wire format for non-self-describing
+// serializers like bincode. Do not reorder existing variants; append new
+// variants at the end of the enum.
+//
+// Feature-gated variants must come last. If a non-optional variant is
+// added after a `#[cfg(feature = ...)]` variant, the new variant's
+// serde index shifts depending on whether the feature is enabled —
+// which silently corrupts persisted data in non-self-describing formats
+// (bincode, postcard) when consumers toggle the feature.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
 #[allow(missing_docs)]
 pub enum ProposalType {
@@ -82,13 +91,23 @@ pub enum ProposalType {
     Reinit,
     ExternalInit,
     GroupContextExtensions,
+    // Placeholder for the removed `AppAck` variant. Kept (hidden) to preserve
+    // the serde variant indices of subsequent variants for non-self-describing
+    // formats. `AppAck` was never produced by the library on the wire, so no
+    // real data should round-trip through this variant.
+    #[doc(hidden)]
+    #[serde(rename = "AppAck")]
+    _AppAck,
     SelfRemove,
+    Custom(u16),
+    // --- Variants appended after openmls-0.7.x ---
+    // New variants MUST be added below this line to preserve the serde wire
+    // format with older persisted data.
+    Grease(u16),
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral,
     #[cfg(feature = "extensions-draft-08")]
     AppDataUpdate,
-    Grease(u16),
-    Custom(u16),
 }
 
 impl ProposalType {
@@ -103,7 +122,10 @@ impl ProposalType {
             | ProposalType::Reinit
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions => true,
-            ProposalType::SelfRemove | ProposalType::Grease(_) | ProposalType::Custom(_) => false,
+            ProposalType::SelfRemove
+            | ProposalType::Grease(_)
+            | ProposalType::Custom(_)
+            | ProposalType::_AppAck => false,
             #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppEphemeral | ProposalType::AppDataUpdate => false,
         }
@@ -201,6 +223,11 @@ impl From<ProposalType> for u16 {
             ProposalType::Reinit => 5,
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
+            // The library never produces `_AppAck` on the wire; this arm
+            // exists only to keep the match exhaustive. The TLS-wire value
+            // `0x000b` was historically assigned to `AppAck` in earlier MLS
+            // drafts.
+            ProposalType::_AppAck => 0x000b,
             #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppDataUpdate => 8,
             #[cfg(feature = "extensions-draft-08")]
@@ -231,6 +258,15 @@ impl From<ProposalType> for u16 {
 ///     };
 /// } Proposal;
 /// ```
+// Variant order is part of the serde wire format for non-self-describing
+// serializers like bincode. Do not reorder existing variants; append new
+// variants at the end of the enum.
+//
+// Feature-gated variants must come last. If a non-optional variant is
+// added after a `#[cfg(feature = ...)]` variant, the new variant's
+// serde index shifts depending on whether the feature is enabled —
+// which silently corrupts persisted data in non-self-describing formats
+// (bincode, postcard) when consumers toggle the feature.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 #[repr(u16)]
@@ -242,14 +278,23 @@ pub enum Proposal {
     ReInit(Box<ReInitProposal>),
     ExternalInit(Box<ExternalInitProposal>),
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
-    // # Extensions
-    #[cfg(feature = "extensions-draft-08")]
-    AppDataUpdate(Box<AppDataUpdateProposal>),
+    // Placeholder for the removed `AppAck(Box<AppAckProposal>)` variant.
+    // Kept (hidden) to preserve the serde variant indices of subsequent
+    // variants for non-self-describing formats. The library never produced
+    // `AppAck` proposals.
+    #[doc(hidden)]
+    #[serde(rename = "AppAck")]
+    _AppAck,
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
+    Custom(Box<CustomProposal>),
+    // --- Variants appended after openmls-0.7.x ---
+    // New variants MUST be added below this line to preserve the serde wire
+    // format with older persisted data.
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate(Box<AppDataUpdateProposal>),
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral(Box<AppEphemeralProposal>),
-    Custom(Box<CustomProposal>),
 }
 
 impl Proposal {
@@ -304,6 +349,7 @@ impl Proposal {
             Proposal::ReInit(_) => ProposalType::Reinit,
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            Proposal::_AppAck => ProposalType::_AppAck,
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppDataUpdate(_) => ProposalType::AppDataUpdate,
             Proposal::SelfRemove => ProposalType::SelfRemove,
