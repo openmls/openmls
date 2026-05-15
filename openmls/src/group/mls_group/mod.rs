@@ -552,7 +552,8 @@ impl MlsGroup {
     }
 
     /// Set the past epoch secret deletion policy for the group.
-    pub fn set_past_epoch_deletion_policy<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn set_past_epoch_deletion_policy<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         policy: PastEpochDeletionPolicy,
@@ -566,12 +567,14 @@ impl MlsGroup {
         // persist the join config
         provider
             .storage()
-            .write_mls_join_config(self.group_id(), &self.mls_group_config)?;
+            .write_mls_join_config(self.group_id(), &self.mls_group_config)
+            .await?;
 
         // update the message secrets store in storage
         provider
             .storage()
-            .write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await?;
 
         Ok(())
     }
@@ -698,7 +701,8 @@ impl MlsGroup {
     /// Delete all past epoch secrets.
     ///
     /// For more information on the arguments to this method, see [`PastEpochDeletion`].
-    pub fn delete_past_epoch_secrets<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn delete_past_epoch_secrets<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         policy: PastEpochDeletion,
@@ -708,7 +712,8 @@ impl MlsGroup {
         // update the message secrets store in storage
         provider
             .storage()
-            .write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await?;
 
         Ok(())
     }
