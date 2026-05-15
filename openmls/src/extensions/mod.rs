@@ -94,7 +94,7 @@ mod tests;
 // serde index shifts depending on whether the feature is enabled —
 // which silently corrupts persisted data in non-self-describing formats
 // (bincode, postcard) when consumers toggle the feature.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum ExtensionType {
     /// The application id extension allows applications to add an explicit,
     /// application-defined identifier to a KeyPackage.
@@ -132,6 +132,180 @@ pub enum ExtensionType {
     #[cfg(feature = "extensions-draft-08")]
     /// AppDataDictionary extension
     AppDataDictionary,
+}
+
+// Manual serde impls with explicit variant indices. See the comment on
+// `CredentialType` in `credentials/mod.rs` for the rationale: indices are
+// the bincode wire format and must remain stable across versions.
+const EXTENSION_TYPE_VARIANTS: &[&str] = &[
+    "ApplicationId",
+    "RatchetTree",
+    "RequiredCapabilities",
+    "ExternalPub",
+    "ExternalSenders",
+    "LastResort",
+    "Unknown",
+    "Grease",
+    #[cfg(feature = "extensions-draft-08")]
+    "AppDataDictionary",
+];
+
+impl Serialize for ExtensionType {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::ApplicationId => {
+                serializer.serialize_unit_variant("ExtensionType", 0, "ApplicationId")
+            }
+            Self::RatchetTree => {
+                serializer.serialize_unit_variant("ExtensionType", 1, "RatchetTree")
+            }
+            Self::RequiredCapabilities => {
+                serializer.serialize_unit_variant("ExtensionType", 2, "RequiredCapabilities")
+            }
+            Self::ExternalPub => {
+                serializer.serialize_unit_variant("ExtensionType", 3, "ExternalPub")
+            }
+            Self::ExternalSenders => {
+                serializer.serialize_unit_variant("ExtensionType", 4, "ExternalSenders")
+            }
+            Self::LastResort => serializer.serialize_unit_variant("ExtensionType", 5, "LastResort"),
+            Self::Unknown(v) => {
+                serializer.serialize_newtype_variant("ExtensionType", 6, "Unknown", v)
+            }
+            Self::Grease(v) => {
+                serializer.serialize_newtype_variant("ExtensionType", 7, "Grease", v)
+            }
+            #[cfg(feature = "extensions-draft-08")]
+            Self::AppDataDictionary => {
+                serializer.serialize_unit_variant("ExtensionType", 8, "AppDataDictionary")
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ExtensionType {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_enum(
+            "ExtensionType",
+            EXTENSION_TYPE_VARIANTS,
+            ExtensionTypeVisitor,
+        )
+    }
+}
+
+#[derive(Clone, Copy)]
+enum ExtensionTypeId {
+    ApplicationId,
+    RatchetTree,
+    RequiredCapabilities,
+    ExternalPub,
+    ExternalSenders,
+    LastResort,
+    Unknown,
+    Grease,
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataDictionary,
+}
+
+impl<'de> Deserialize<'de> for ExtensionTypeId {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct V;
+        impl<'de> serde::de::Visitor<'de> for V {
+            type Value = ExtensionTypeId;
+
+            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str("ExtensionType variant identifier")
+            }
+
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                match v {
+                    0 => Ok(ExtensionTypeId::ApplicationId),
+                    1 => Ok(ExtensionTypeId::RatchetTree),
+                    2 => Ok(ExtensionTypeId::RequiredCapabilities),
+                    3 => Ok(ExtensionTypeId::ExternalPub),
+                    4 => Ok(ExtensionTypeId::ExternalSenders),
+                    5 => Ok(ExtensionTypeId::LastResort),
+                    6 => Ok(ExtensionTypeId::Unknown),
+                    7 => Ok(ExtensionTypeId::Grease),
+                    #[cfg(feature = "extensions-draft-08")]
+                    8 => Ok(ExtensionTypeId::AppDataDictionary),
+                    other => Err(E::invalid_value(
+                        serde::de::Unexpected::Unsigned(other),
+                        &"valid ExtensionType variant index",
+                    )),
+                }
+            }
+
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                match v {
+                    "ApplicationId" => Ok(ExtensionTypeId::ApplicationId),
+                    "RatchetTree" => Ok(ExtensionTypeId::RatchetTree),
+                    "RequiredCapabilities" => Ok(ExtensionTypeId::RequiredCapabilities),
+                    "ExternalPub" => Ok(ExtensionTypeId::ExternalPub),
+                    "ExternalSenders" => Ok(ExtensionTypeId::ExternalSenders),
+                    "LastResort" => Ok(ExtensionTypeId::LastResort),
+                    "Unknown" => Ok(ExtensionTypeId::Unknown),
+                    "Grease" => Ok(ExtensionTypeId::Grease),
+                    #[cfg(feature = "extensions-draft-08")]
+                    "AppDataDictionary" => Ok(ExtensionTypeId::AppDataDictionary),
+                    other => Err(E::unknown_variant(other, EXTENSION_TYPE_VARIANTS)),
+                }
+            }
+
+            fn visit_bytes<E: serde::de::Error>(self, v: &[u8]) -> Result<Self::Value, E> {
+                self.visit_str(std::str::from_utf8(v).map_err(E::custom)?)
+            }
+        }
+        deserializer.deserialize_identifier(V)
+    }
+}
+
+struct ExtensionTypeVisitor;
+
+impl<'de> serde::de::Visitor<'de> for ExtensionTypeVisitor {
+    type Value = ExtensionType;
+
+    fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("enum ExtensionType")
+    }
+
+    fn visit_enum<A: serde::de::EnumAccess<'de>>(self, data: A) -> Result<Self::Value, A::Error> {
+        use serde::de::VariantAccess;
+        let (variant, access) = data.variant::<ExtensionTypeId>()?;
+        match variant {
+            ExtensionTypeId::ApplicationId => {
+                access.unit_variant()?;
+                Ok(ExtensionType::ApplicationId)
+            }
+            ExtensionTypeId::RatchetTree => {
+                access.unit_variant()?;
+                Ok(ExtensionType::RatchetTree)
+            }
+            ExtensionTypeId::RequiredCapabilities => {
+                access.unit_variant()?;
+                Ok(ExtensionType::RequiredCapabilities)
+            }
+            ExtensionTypeId::ExternalPub => {
+                access.unit_variant()?;
+                Ok(ExtensionType::ExternalPub)
+            }
+            ExtensionTypeId::ExternalSenders => {
+                access.unit_variant()?;
+                Ok(ExtensionType::ExternalSenders)
+            }
+            ExtensionTypeId::LastResort => {
+                access.unit_variant()?;
+                Ok(ExtensionType::LastResort)
+            }
+            ExtensionTypeId::Unknown => Ok(ExtensionType::Unknown(access.newtype_variant()?)),
+            ExtensionTypeId::Grease => Ok(ExtensionType::Grease(access.newtype_variant()?)),
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionTypeId::AppDataDictionary => {
+                access.unit_variant()?;
+                Ok(ExtensionType::AppDataDictionary)
+            }
+        }
+    }
 }
 
 impl ExtensionType {
@@ -311,7 +485,7 @@ impl From<ExtensionType> for u16 {
 // serde index shifts depending on whether the feature is enabled —
 // which silently corrupts persisted data in non-self-describing formats
 // (bincode, postcard) when consumers toggle the feature.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Extension {
     /// An [`ApplicationIdExtension`]
     ApplicationId(ApplicationIdExtension),
@@ -340,6 +514,181 @@ pub enum Extension {
     /// An [`AppDataDictionaryExtension`]
     #[cfg(feature = "extensions-draft-08")]
     AppDataDictionary(AppDataDictionaryExtension),
+}
+
+// Manual serde impls with explicit variant indices. See the comment on
+// `CredentialType` in `credentials/mod.rs` for the rationale.
+const EXTENSION_VARIANTS: &[&str] = &[
+    "ApplicationId",
+    "RatchetTree",
+    "RequiredCapabilities",
+    "ExternalPub",
+    "ExternalSenders",
+    "LastResort",
+    "Unknown",
+    #[cfg(feature = "extensions-draft-08")]
+    "AppDataDictionary",
+];
+
+impl Serialize for Extension {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeTupleVariant;
+        match self {
+            Self::ApplicationId(e) => {
+                serializer.serialize_newtype_variant("Extension", 0, "ApplicationId", e)
+            }
+            Self::RatchetTree(e) => {
+                serializer.serialize_newtype_variant("Extension", 1, "RatchetTree", e)
+            }
+            Self::RequiredCapabilities(e) => {
+                serializer.serialize_newtype_variant("Extension", 2, "RequiredCapabilities", e)
+            }
+            Self::ExternalPub(e) => {
+                serializer.serialize_newtype_variant("Extension", 3, "ExternalPub", e)
+            }
+            Self::ExternalSenders(e) => {
+                serializer.serialize_newtype_variant("Extension", 4, "ExternalSenders", e)
+            }
+            Self::LastResort(e) => {
+                serializer.serialize_newtype_variant("Extension", 5, "LastResort", e)
+            }
+            Self::Unknown(t, data) => {
+                let mut tv = serializer.serialize_tuple_variant("Extension", 6, "Unknown", 2)?;
+                tv.serialize_field(t)?;
+                tv.serialize_field(data)?;
+                tv.end()
+            }
+            #[cfg(feature = "extensions-draft-08")]
+            Self::AppDataDictionary(e) => {
+                serializer.serialize_newtype_variant("Extension", 7, "AppDataDictionary", e)
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Extension {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_enum("Extension", EXTENSION_VARIANTS, ExtensionVisitor)
+    }
+}
+
+#[derive(Clone, Copy)]
+enum ExtensionId {
+    ApplicationId,
+    RatchetTree,
+    RequiredCapabilities,
+    ExternalPub,
+    ExternalSenders,
+    LastResort,
+    Unknown,
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataDictionary,
+}
+
+impl<'de> Deserialize<'de> for ExtensionId {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct V;
+        impl<'de> serde::de::Visitor<'de> for V {
+            type Value = ExtensionId;
+
+            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str("Extension variant identifier")
+            }
+
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                match v {
+                    0 => Ok(ExtensionId::ApplicationId),
+                    1 => Ok(ExtensionId::RatchetTree),
+                    2 => Ok(ExtensionId::RequiredCapabilities),
+                    3 => Ok(ExtensionId::ExternalPub),
+                    4 => Ok(ExtensionId::ExternalSenders),
+                    5 => Ok(ExtensionId::LastResort),
+                    6 => Ok(ExtensionId::Unknown),
+                    #[cfg(feature = "extensions-draft-08")]
+                    7 => Ok(ExtensionId::AppDataDictionary),
+                    other => Err(E::invalid_value(
+                        serde::de::Unexpected::Unsigned(other),
+                        &"valid Extension variant index",
+                    )),
+                }
+            }
+
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                match v {
+                    "ApplicationId" => Ok(ExtensionId::ApplicationId),
+                    "RatchetTree" => Ok(ExtensionId::RatchetTree),
+                    "RequiredCapabilities" => Ok(ExtensionId::RequiredCapabilities),
+                    "ExternalPub" => Ok(ExtensionId::ExternalPub),
+                    "ExternalSenders" => Ok(ExtensionId::ExternalSenders),
+                    "LastResort" => Ok(ExtensionId::LastResort),
+                    "Unknown" => Ok(ExtensionId::Unknown),
+                    #[cfg(feature = "extensions-draft-08")]
+                    "AppDataDictionary" => Ok(ExtensionId::AppDataDictionary),
+                    other => Err(E::unknown_variant(other, EXTENSION_VARIANTS)),
+                }
+            }
+
+            fn visit_bytes<E: serde::de::Error>(self, v: &[u8]) -> Result<Self::Value, E> {
+                self.visit_str(std::str::from_utf8(v).map_err(E::custom)?)
+            }
+        }
+        deserializer.deserialize_identifier(V)
+    }
+}
+
+struct ExtensionVisitor;
+
+impl<'de> serde::de::Visitor<'de> for ExtensionVisitor {
+    type Value = Extension;
+
+    fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("enum Extension")
+    }
+
+    fn visit_enum<A: serde::de::EnumAccess<'de>>(self, data: A) -> Result<Self::Value, A::Error> {
+        use serde::de::VariantAccess;
+        let (variant, access) = data.variant::<ExtensionId>()?;
+        match variant {
+            ExtensionId::ApplicationId => Ok(Extension::ApplicationId(access.newtype_variant()?)),
+            ExtensionId::RatchetTree => Ok(Extension::RatchetTree(access.newtype_variant()?)),
+            ExtensionId::RequiredCapabilities => {
+                Ok(Extension::RequiredCapabilities(access.newtype_variant()?))
+            }
+            ExtensionId::ExternalPub => Ok(Extension::ExternalPub(access.newtype_variant()?)),
+            ExtensionId::ExternalSenders => {
+                Ok(Extension::ExternalSenders(access.newtype_variant()?))
+            }
+            ExtensionId::LastResort => Ok(Extension::LastResort(access.newtype_variant()?)),
+            ExtensionId::Unknown => {
+                struct UnknownPayload;
+                impl<'de> serde::de::Visitor<'de> for UnknownPayload {
+                    type Value = (u16, UnknownExtension);
+                    fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                        f.write_str("tuple (u16, UnknownExtension)")
+                    }
+                    fn visit_seq<A: serde::de::SeqAccess<'de>>(
+                        self,
+                        mut seq: A,
+                    ) -> Result<Self::Value, A::Error> {
+                        use serde::de::Error;
+                        let t: u16 = seq
+                            .next_element()?
+                            .ok_or_else(|| Error::invalid_length(0, &self))?;
+                        let data: UnknownExtension = seq
+                            .next_element()?
+                            .ok_or_else(|| Error::invalid_length(1, &self))?;
+                        Ok((t, data))
+                    }
+                }
+                let (t, data) = access.tuple_variant(2, UnknownPayload)?;
+                Ok(Extension::Unknown(t, data))
+            }
+            #[cfg(feature = "extensions-draft-08")]
+            ExtensionId::AppDataDictionary => {
+                Ok(Extension::AppDataDictionary(access.newtype_variant()?))
+            }
+        }
+    }
 }
 
 /// A unknown/unparsed extension represented by raw bytes.
