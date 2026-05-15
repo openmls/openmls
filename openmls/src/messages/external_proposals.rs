@@ -11,7 +11,7 @@ use crate::{
     group::{
         errors::{CreateGroupContextExtProposalError, ProposeRemoveMemberError},
         mls_group::errors::ProposeAddMemberError,
-        GroupEpoch, GroupId,
+        GroupContext, GroupEpoch, GroupId,
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
@@ -72,7 +72,7 @@ impl ExternalProposal {
     /// * `sender` - index of the sender of the proposal (in the [crate::extensions::ExternalSendersExtension] array
     ///   from the Group Context)
     pub fn new_group_context_extensions<Provider: OpenMlsProvider>(
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
         group_id: GroupId,
         epoch: GroupEpoch,
         signer: &impl Signer,

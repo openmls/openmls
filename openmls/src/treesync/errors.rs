@@ -72,6 +72,12 @@ pub enum ApplyUpdatePathError {
     /// External Committer used the wrong index.
     #[error("External Committer used the wrong index.")]
     InconsistentSenderIndex,
+    /// The own leaf is not in the tree.
+    #[error("The own leaf is not in the tree.")]
+    MissingOwnLeaf,
+    /// The ciphertext is missing in the update path node.
+    #[error("The ciphertext is missing in the update path node.")]
+    MissingCiphertext,
 }
 
 // === Crate errors ===

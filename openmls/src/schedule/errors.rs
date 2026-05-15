@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     error::LibraryError,
-    schedule::psk::{PreSharedKeyId, PskType, ResumptionPskUsage},
+    schedule::psk::{PskType, ResumptionPskUsage},
 };
 
 /// PSK secret error
@@ -60,12 +60,6 @@ pub enum PskError {
         expected: usize,
         /// Got nonce length.
         got: usize,
-    },
-    /// Duplicate PSK ID.
-    #[error("Duplicate PSK ID. First detected duplicate is `{first:?}`.")]
-    Duplicate {
-        /// First detected duplicate.
-        first: PreSharedKeyId,
     },
 }
 

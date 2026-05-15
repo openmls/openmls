@@ -30,5 +30,10 @@ tls_codec = { workspace = true }
 console_error_panic_hook = { version = "0.1.7", optional = true }
 js-sys = "0.3.68"
 
+# currently, this dependency is required
+# to enable the getrandom backend needed for
+# openmls_rust_crypto and openmls_basic_credential.
+getrandom_old = { package = "getrandom", version = "0.2.15", features = ["js"] }
+
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"

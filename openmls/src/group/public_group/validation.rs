@@ -1,36 +1,40 @@
 //! This module contains validation functions for incoming messages
 //! as defined in <https://github.com/openmls/openmls/wiki/Message-validation>
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::HashSet;
 
 use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
-use crate::extensions::RequiredCapabilitiesExtension;
-use crate::group::creation::LeafNodeLifetimePolicy;
-use crate::group::proposal_store::ProposalQueue;
-use crate::group::GroupContextExtensionsProposalValidationError;
-use crate::prelude::LibraryError;
-use crate::treesync::{errors::LeafNodeValidationError, LeafNode};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
+    extensions::RequiredCapabilitiesExtension,
     framing::{
         mls_auth_content_in::VerifiableAuthenticatedContentIn, ContentType, ProtocolMessage,
         Sender, WireFormat,
     },
     group::{
+        creation::LeafNodeLifetimePolicy,
         errors::{ExternalCommitValidationError, ProposalValidationError, ValidationError},
         past_secrets::MessageSecretsStore,
-        Member,
+        proposal_store::ProposalQueue,
+        GroupContextExtensionsProposalValidationError, Member,
     },
     messages::{
         proposals::{Proposal, ProposalOrRefType, ProposalType},
         Commit,
     },
-    schedule::errors::PskError,
+    prelude::LibraryError,
+    treesync::{
+        errors::{LeafNodeValidationError, LifetimeError},
+        LeafNode,
+    },
 };
 
-use crate::treesync::errors::LifetimeError;
+#[cfg(feature = "extensions-draft-08")]
+use crate::{
+    group::errors::AppDataUpdateValidationError, messages::proposals::AppDataUpdateOperationType,
+};
 
 impl PublicGroup {
     // === Messages ===
@@ -132,10 +136,27 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
-        let mut leaves = self.treesync().full_leaves();
-        let Some(first_leaf) = leaves.next() else {
+        // Collect signature keys of removed members s.t. we can skip them
+        // when checking capabilities.
+        let signature_keys: HashSet<_> = proposal_queue
+            .remove_proposals()
+            .filter_map(|p| {
+                let removed_index = p.remove_proposal().removed();
+                self.treesync()
+                    .leaf(removed_index)
+                    .map(|leaf_node| leaf_node.signature_key())
+            })
+            .collect();
+
+        // Iterate over all leaf nodes except the removed ones
+        let mut leaves = self
+            .treesync()
+            .full_leaves()
+            .filter(|(_, leaf_node)| !signature_keys.contains(leaf_node.signature_key()));
+        let Some((_, first_leaf)) = leaves.next() else {
             return Ok(());
         };
+
         // Initialize the capabilities intersection with the capabilities of the
         // first leaf node.
         let mut capabilities_intersection = first_leaf
@@ -144,7 +165,7 @@ impl PublicGroup {
             .iter()
             .collect::<HashSet<_>>();
         // Iterate over the remaining leaf nodes and intersect their capabilities
-        for leaf_node in leaves {
+        for (_, leaf_node) in leaves {
             let leaf_capabilities_set = leaf_node.capabilities().proposals().iter().collect();
             capabilities_intersection = capabilities_intersection
                 .intersection(&leaf_capabilities_set)
@@ -199,7 +220,7 @@ impl PublicGroup {
             encryption_key,
             signature_key,
             ..
-        } in self.treesync().full_leave_members()
+        } in self.treesync().full_leaf_members()
         {
             if !remove_proposals.contains(&index) {
                 signature_key_set.insert(signature_key);
@@ -288,6 +309,7 @@ impl PublicGroup {
         //  - ValSem206
         //  - ValSem207
         //  - https://validation.openmls.tech/#valn0112
+        //  - https://validation.openmls.tech/#valn1209
         for encryption_key in encryption_keys {
             if init_key_set.contains(&encryption_key) {
                 return Err(ProposalValidationError::InitEncryptionKeyCollision);
@@ -367,6 +389,21 @@ impl PublicGroup {
                 return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
             }
 
+            // Check that the leaf node of the added key package supports all extensions in the group
+            // context.
+            // https://validation.openmls.tech/#valn0502
+            let added_leaf_supports_all_group_context_extensions =
+                self.group_context().extensions().iter().all(|extension| {
+                    add_proposal
+                        .add_proposal()
+                        .key_package
+                        .leaf_node()
+                        .supports_extension(&extension.extension_type())
+                });
+            if !added_leaf_supports_all_group_context_extensions {
+                return Err(ProposalValidationError::InsufficientCapabilities);
+            }
+
             // https://validation.openmls.tech/#valn0202
             self.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())?;
         }
@@ -440,6 +477,7 @@ impl PublicGroup {
             // The sender of a standalone update proposal must be of type member
             if let Sender::Member(sender_index) = update_proposal.sender() {
                 // ValSem111
+                // https://validation.openmls.tech/#valn0302
                 // The sender of a full Commit must not include own update proposals
                 if committer == *sender_index {
                     return Err(ProposalValidationError::CommitterIncludedOwnUpdate);
@@ -450,6 +488,22 @@ impl PublicGroup {
 
             // https://validation.openmls.tech/#valn0601
             self.validate_leaf_node(update_proposal.update_proposal().leaf_node())?;
+
+            // Check that the leaf node in the update proposal supports all group context extensions
+            // https://validation.openmls.tech/#valn0602
+            let leaf_node_supports_group_context_extensions =
+                self.group_context().extensions().iter().all(|extension| {
+                    update_proposal
+                        .update_proposal()
+                        .leaf_node()
+                        .supports_extension(&extension.extension_type())
+                });
+
+            if !leaf_node_supports_group_context_extensions {
+                return Err(ProposalValidationError::LeafNodeValidation(
+                    LeafNodeValidationError::UnsupportedExtensions,
+                ));
+            }
         }
         Ok(())
     }
@@ -460,30 +514,17 @@ impl PublicGroup {
     ///
     /// * ValSem401: The nonce of a PreSharedKeyID must have length KDF.Nh.
     /// * ValSem402: PSK in proposal must be of type Resumption (with usage Application) or External.
-    /// * ValSem403: Proposal list must not contain multiple PreSharedKey proposals that reference the same PreSharedKeyID.
     pub(crate) fn validate_pre_shared_key_proposals(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
-        // ValSem403 (1/2)
-        // TODO(#1335): Duplicate proposals are (likely) filtered.
-        //              Let's do this check here until we haven't made sure.
-        let mut visited_psk_ids = BTreeSet::new();
-
         for proposal in proposal_queue.psk_proposals() {
             let psk_id = proposal.psk_proposal().clone().into_psk_id();
 
             // ValSem401
             // ValSem402
             // https://validation.openmls.tech/#valn0803
-            let psk_id = psk_id.validate_in_proposal(self.ciphersuite())?;
-
-            // ValSem403 (2/2)
-            if !visited_psk_ids.contains(&psk_id) {
-                visited_psk_ids.insert(psk_id);
-            } else {
-                return Err(PskError::Duplicate { first: psk_id }.into());
-            }
+            psk_id.validate_in_proposal(self.ciphersuite())?;
         }
 
         Ok(())
@@ -600,6 +641,138 @@ impl PublicGroup {
         Ok(())
     }
 
+    /// Returns an [`AppDataUpdateValidationError`] if:
+    ///   - An [`AppDataUpdateProposal`] appears before a [`GroupContextExtensionProposal`]
+    ///   - The [`GroupContextExtensionProposal`] updates the [`AppDataDictionary`] when the
+    ///     required capabilities include AppDataUpdate proposal type
+    ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes both Updates
+    ///     and Removes
+    ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes more than one
+    ///     Remove
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn validate_app_data_update_proposals_and_group_context(
+        &self,
+        proposal_queue: &ProposalQueue,
+    ) -> Result<(), AppDataUpdateValidationError> {
+        let no_app_data_updates = proposal_queue.app_data_update_proposals().next().is_none();
+        if no_app_data_updates {
+            return Ok(());
+        }
+
+        // retrieve the GroupContextExtensions proposal, if available
+        let group_context_extension_proposal = proposal_queue
+            .filtered_by_type(ProposalType::GroupContextExtensions)
+            .filter_map(|queued_proposal| match queued_proposal.proposal() {
+                Proposal::GroupContextExtensions(p) => Some(p),
+                _ => None,
+            })
+            .next();
+
+        // check ordering
+        // return an error if an AppDataUpdate appears before a GroupContextExtensions proposal
+        //
+        // From the draft:
+        //
+        // A commit can contain a GroupContextExtensions proposal which modifies
+        // GroupContext extensions other than app_data_dictionary, and can be
+        // followed by zero or more AppDataUpdate proposals.
+        //
+        // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-7
+        //
+        // Note that it is a bit unclear if this is really needed; we already require that default
+        // proposals are processed first.
+        if proposal_queue
+            .queued_proposals()
+            .map(|proposal| proposal.proposal().proposal_type())
+            .skip_while(|proposal_type| *proposal_type != ProposalType::AppDataUpdate)
+            .any(|proposal_type| proposal_type == ProposalType::GroupContextExtensions)
+        {
+            return Err(AppDataUpdateValidationError::IncorrectOrder);
+        }
+
+        if let Some(group_context_extension) = group_context_extension_proposal {
+            let required_capabilities_contain_app_data_update_proposal = group_context_extension
+                .extensions()
+                .required_capabilities()
+                .map(|required_capabilities| {
+                    required_capabilities
+                        .proposal_types()
+                        .contains(&ProposalType::AppDataUpdate)
+                })
+                .unwrap_or(false);
+
+            // From https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-6:
+            // When an MLS group contains the AppDataUpdate proposal type in the proposal_types list in
+            // the group's required_capabilities extension, a GroupContextExtensions proposal MUST NOT
+            // add, remove, or modify the app_data_dictionary GroupContext extension. In other words,
+            // when every member of the group supports the AppDataUpdate proposal, a
+            // GroupContextExtensions proposal could be sent to update some other extension(s), but the
+            // app_data_dictionary GroupContext extension, if it exists, is left as it was.
+            if required_capabilities_contain_app_data_update_proposal
+                && group_context_extension.extensions().app_data_dictionary()
+                    != self.group_context().extensions().app_data_dictionary()
+            {
+                return Err(AppDataUpdateValidationError::CannotUpdateDictionaryDirectly);
+            }
+        }
+
+        // From the draft:
+        //
+        // A proposal list is invalid if it includes multiple AppDataUpdate proposals that remove state for the same component_id, or proposals that both update and remove state for the same component_id.
+        //
+        // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-4
+        // NOTE: We depend on the proposals being sorted by component id first and by
+        // type second - for a given ID, removes come first. The sorting is stable and
+        // won't mess with the ordering of updates within a component.
+        // This is ensured in ProposalQueue::app_data_update_proposals.
+        let mut latest = None;
+        for proposal in proposal_queue.app_data_update_proposals() {
+            let proposal = &proposal.app_data_update_proposal;
+            let component_id = proposal.component_id();
+            let operation_type = proposal.operation().operation_type();
+
+            if latest == Some(component_id) {
+                let app_data_update_validation_error = match operation_type {
+                    AppDataUpdateOperationType::Update => {
+                        AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
+                    }
+                    AppDataUpdateOperationType::Remove => {
+                        AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
+                    }
+                };
+
+                return Err(app_data_update_validation_error);
+            }
+
+            if proposal.operation().operation_type() == AppDataUpdateOperationType::Remove {
+                // From the draft:
+                //
+                // An AppDataUpdate proposal is invalid if [...] it specifies the removal of
+                // state for a component_id that has no state present.
+                //
+                // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-4
+                let Some(gce) = group_context_extension_proposal else {
+                    // extension gets implicitly created in the group context, so absence is not an
+                    // error condition
+                    return Ok(());
+                };
+                let Some(app_data_dict) = gce.extensions().app_data_dictionary() else {
+                    // extension gets implicitly created in the group context, so absence is not an
+                    // error condition
+                    return Ok(());
+                };
+
+                if app_data_dict.dictionary().get(&component_id).is_none() {
+                    return Err(AppDataUpdateValidationError::CannotRemoveNonexistentComponent);
+                }
+
+                latest = Some(component_id)
+            }
+        }
+
+        Ok(())
+    }
+
     fn validate_leaf_node_capabilities(
         &self,
         leaf_node: &LeafNode,
@@ -630,7 +803,7 @@ impl PublicGroup {
         }
 
         // Check that the credential type is supported by all members of the group (https://validation.openmls.tech/#valn0104).
-        if !self.treesync().full_leaves().all(|node| {
+        if !self.treesync().full_leaves().all(|(_, node)| {
             node.capabilities()
                 .contains_credential(leaf_node.credential().credential_type())
         }) {
@@ -643,7 +816,7 @@ impl PublicGroup {
         if !self
             .treesync()
             .full_leaves()
-            .all(|node| capabilities.contains_credential(node.credential().credential_type()))
+            .all(|(_, node)| capabilities.contains_credential(node.credential().credential_type()))
         {
             return Err(LeafNodeValidationError::UnsupportedCredentials);
         }
@@ -727,7 +900,7 @@ impl PublicGroup {
         &self,
         extensions: &[crate::extensions::ExtensionType],
     ) -> Result<(), LeafNodeValidationError> {
-        for leaf in self.treesync().full_leaves() {
+        for (_, leaf) in self.treesync().full_leaves() {
             leaf.check_extension_support(extensions)?;
         }
         Ok(())

@@ -14,7 +14,7 @@ use super::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use super::FrankenAppEphemeralProposal;
+use super::{FrankenAppDataUpdateProposal, FrankenAppEphemeralProposal};
 
 fn vlbytes_len_len(length: usize) -> usize {
     if length < 0x40 {
@@ -79,6 +79,8 @@ impl Size for FrankenProposal {
                 FrankenProposal::GroupContextExtensions(p) => p.tls_serialized_len(),
                 #[cfg(feature = "extensions-draft-08")]
                 FrankenProposal::AppEphemeral(p) => p.tls_serialized_len(),
+                #[cfg(feature = "extensions-draft-08")]
+                FrankenProposal::AppDataUpdate(p) => p.tls_serialized_len(),
                 FrankenProposal::Custom(p) => p.tls_serialized_len(),
             }
     }
@@ -97,6 +99,8 @@ impl Serialize for FrankenProposal {
             FrankenProposal::GroupContextExtensions(p) => p.tls_serialize(writer),
             #[cfg(feature = "extensions-draft-08")]
             FrankenProposal::AppEphemeral(p) => p.tls_serialize(writer),
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposal::AppDataUpdate(p) => p.tls_serialize(writer),
             FrankenProposal::Custom(p) => p.payload.tls_serialize(writer),
         }
         .map(|l| written + l)
@@ -135,6 +139,10 @@ impl Deserialize for FrankenProposal {
             FrankenProposalType::AppEphemeral => {
                 FrankenProposal::AppEphemeral(FrankenAppEphemeralProposal::tls_deserialize(bytes)?)
             }
+            #[cfg(feature = "extensions-draft-08")]
+            FrankenProposalType::AppDataUpdate => FrankenProposal::AppDataUpdate(
+                FrankenAppDataUpdateProposal::tls_deserialize(bytes)?,
+            ),
             FrankenProposalType::Custom(_) => {
                 let payload = VLBytes::tls_deserialize(bytes)?;
                 let custom_proposal = FrankenCustomProposal {
@@ -210,7 +218,7 @@ impl Size for FrankenExtension {
             FrankenExtension::ExternalPub(e) => e.tls_serialized_len(),
             FrankenExtension::ExternalSenders(e) => e.tls_serialized_len(),
             FrankenExtension::LastResort => 0,
-            FrankenExtension::Unknown(_, e) => e.tls_serialized_len(),
+            FrankenExtension::Unknown(_, e) => e.as_slice().len(),
         };
         let vlbytes_len_len = vlbytes_len_len(extension_data_len);
         extension_type_length + vlbytes_len_len + extension_data_len
@@ -234,7 +242,7 @@ impl Serialize for FrankenExtension {
             FrankenExtension::LastResort => Ok(0),
             FrankenExtension::Unknown(_, e) => extension_data
                 .write_all(e.as_slice())
-                .map(|_| e.tls_serialized_len())
+                .map(|_| e.as_slice().len())
                 .map_err(|_| tls_codec::Error::EndOfStream),
         }?;
 

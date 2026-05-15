@@ -9,6 +9,9 @@ use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
+#[cfg(feature = "extensions-draft-08")]
+use super::errors::ApplyAppDataUpdateError;
+
 use super::PublicGroup;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
@@ -20,13 +23,13 @@ use crate::{
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
     treesync::{
         diff::{StagedTreeSyncDiff, TreeSyncDiff},
-        errors::ApplyUpdatePathError,
+        errors::{ApplyUpdatePathError, TreeSyncFromNodesError},
         node::{
             encryption_keys::EncryptionKeyPair, leaf_node::LeafNode,
             parent_node::PlainUpdatePathNode,
         },
         treekem::{DecryptPathParams, UpdatePath, UpdatePathNode},
-        RatchetTree,
+        RatchetTree, TreeSync,
     },
 };
 
@@ -120,7 +123,6 @@ impl<'a> PublicGroupDiff<'a> {
     ///
     /// ValSem203: Path secrets must decrypt correctly
     /// ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-    /// TODO #804
     pub(crate) fn decrypt_path(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -158,7 +160,6 @@ impl<'a> PublicGroupDiff<'a> {
     ///
     /// Returns an error if the `sender_leaf_index` is outside of the tree.
     /// ValSem202: Path must be the right length
-    /// TODO #804
     pub(crate) fn apply_received_update_path(
         &mut self,
         crypto: &impl OpenMlsCrypto,
@@ -201,7 +202,7 @@ impl<'a> PublicGroupDiff<'a> {
     pub(crate) fn update_group_context(
         &mut self,
         crypto: &impl OpenMlsCrypto,
-        extensions: Option<Extensions>,
+        extensions: Option<Extensions<GroupContext>>,
     ) -> Result<(), LibraryError> {
         // Calculate tree hash
         let new_tree_hash = self
@@ -250,5 +251,18 @@ impl StagedPublicGroupDiff {
     /// Get the staged [`GroupContext`].
     pub(crate) fn group_context(&self) -> &GroupContext {
         &self.group_context
+    }
+
+    /// Export the staged [`RatchetTree`]
+    pub(crate) fn export_ratchet_tree(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        original_tree: RatchetTree,
+    ) -> Result<RatchetTree, TreeSyncFromNodesError> {
+        let original_tree_sync = TreeSync::from_ratchet_tree(crypto, ciphersuite, original_tree)?;
+        Ok(self
+            .staged_diff
+            .export_ratchet_tree(original_tree_sync.tree()))
     }
 }

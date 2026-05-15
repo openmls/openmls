@@ -26,7 +26,9 @@ use super::*;
 ///     opaque ciphertext<V>;
 /// } PrivateMessage;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, TlsSerialize, TlsSize)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, TlsSerialize, TlsSize, serde::Serialize, serde::Deserialize,
+)]
 pub struct PrivateMessage {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
@@ -250,6 +252,11 @@ impl PrivateMessage {
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
         })
+    }
+
+    /// Returns the epoch of the message.
+    pub fn epoch(&self) -> GroupEpoch {
+        self.epoch
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.

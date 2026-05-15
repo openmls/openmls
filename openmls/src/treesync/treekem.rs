@@ -92,7 +92,6 @@ impl TreeSyncDiff<'_> {
     ///
     /// ValSem203: Path secrets must decrypt correctly
     /// ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-    /// TODO #804
     pub(crate) fn decrypt_path(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -103,14 +102,13 @@ impl TreeSyncDiff<'_> {
     ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
         let path_position = self
             .subtree_root_position(params.sender_leaf_index, own_leaf_index)
-            .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
+            .map_err(|_| ApplyUpdatePathError::MissingOwnLeaf)?;
 
         let update_path_node = params
             .update_path
             .get(path_position)
             // We know the update path has the right length through validation, therefore there must be an element at this position
-            // TODO #804
-            .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path 1"))?;
+            .ok_or(ApplyUpdatePathError::PathLengthMismatch)?;
 
         let (decryption_key, resolution_position) = self
             .decryption_key(
@@ -119,14 +117,12 @@ impl TreeSyncDiff<'_> {
                 owned_keys,
                 own_leaf_index,
             )
-            // TODO #804
-            .map_err(|_| LibraryError::custom("Expected sender to be in the tree"))?;
+            .map_err(|_| ApplyUpdatePathError::MissingSender)?;
 
         let ciphertext = update_path_node
             .encrypted_path_secrets(resolution_position)
             // We know the update path has the right length through validation, therefore there must be a ciphertext at this position
-            // TODO #804
-            .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path 2"))?;
+            .ok_or(ApplyUpdatePathError::MissingCiphertext)?;
 
         // ValSem203: Path secrets must decrypt correctly
         let path_secret = PathSecret::decrypt(

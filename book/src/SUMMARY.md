@@ -21,6 +21,7 @@
   - [Persistence of group state](user_manual/persistence.md)
   - [Discarding commits](user_manual/discarding_commits.md)
   - [Credential validation](user_manual/credential_validation.md)
+  - [AppData handling](user_manual/app_data_updates.md)
   - [GREASE Support](user_manual/grease.md)
   - [WebAssembly](user_manual/wasm.md)
   - [Fork Resolution](user_manual/fork-resolution.md)

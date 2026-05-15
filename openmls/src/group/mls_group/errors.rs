@@ -27,6 +27,9 @@ use crate::{
 #[cfg(feature = "extensions-draft-08")]
 pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
+#[cfg(doc)]
+use crate::group::GroupId;
+
 /// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum NewGroupError<StorageError> {
@@ -48,6 +51,9 @@ pub enum NewGroupError<StorageError> {
     /// Invalid extensions set in configuration
     #[error("Invalid extensions set in configuration")]
     InvalidExtensions(#[from] InvalidExtensionError),
+    /// A group with the given [`GroupId`] already exists.
+    #[error("A group with the given GroupId already exists.")]
+    GroupAlreadyExists,
 }
 
 /// EmptyInput error
@@ -151,6 +157,11 @@ pub enum ProcessMessageError<StorageError> {
     /// The proposal is invalid for the Sender of type [External](crate::prelude::Sender::External)
     #[error("The proposal is invalid for the Sender of type External")]
     UnsupportedProposalType,
+
+    /// Use `_with_app_data_update` functions for handling AppDataUpdate proposals
+    #[cfg(feature = "extensions-draft-08")]
+    #[error("Use `_with_app_data_update` functions for handling AppDataUpdate proposals")]
+    FoundAppDataUpdateProposal,
 }
 
 /// Create message error
@@ -342,6 +353,9 @@ pub enum ProposeSelfUpdateError<StorageError> {
     /// See [`LeafNodeUpdateError`] for more details.
     #[error(transparent)]
     LeafNodeUpdateError(#[from] LeafNodeUpdateError<StorageError>),
+    /// The updated leaf node does not support all group context extensions.
+    #[error("The updated leaf node does not support all group context extensions.")]
+    UnsupportedGroupContextExtensions,
 }
 
 /// Commit to pending proposals error
@@ -373,6 +387,9 @@ pub enum ExportGroupInfoError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// See [`InvalidExtensionError`] for more details.
+    #[error(transparent)]
+    InvalidExtensionError(#[from] InvalidExtensionError),
 }
 
 /// Export secret error
@@ -493,6 +510,9 @@ pub enum ProposalError<StorageError> {
     /// See [`CreateGroupContextExtProposalError`] for more details.
     #[error(transparent)]
     CreateGroupContextExtProposalError(#[from] CreateGroupContextExtProposalError<StorageError>),
+    /// See [`InvalidExtensionError`]
+    #[error(transparent)]
+    InvalidExtension(#[from] InvalidExtensionError),
     /// Error writing proposal to storage.
     #[error("error writing proposal to storage")]
     StorageError(StorageError),

@@ -84,4 +84,4 @@ jobs:
       - name: Cargo hack
         run: |
           cargo hack check --feature-powerset --no-dev-deps --verbose -p openmls \
-          --group-features test-utils,crypto-debug,content-debug,backtrace,libcrux-provider,libcrux-provider-js,sqlite-provider
+          --group-features test-utils,crypto-debug,content-debug,backtrace,libcrux-provider,sqlite-provider

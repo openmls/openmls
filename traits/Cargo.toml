@@ -1,6 +1,6 @@
 [package]
 name = "openmls_traits"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["OpenMLS Authors"]
 edition = "2021"
 description = "Traits used by OpenMLS"

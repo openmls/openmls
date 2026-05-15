@@ -79,7 +79,7 @@ fn swap() {
     )
     .expect("Error constructing staged join");
 
-    let _yuk_group = staged_join
+    let mut yuk_group = staged_join
         .into_group(&yuk_party.provider)
         .expect("Error joining group from StagedWelcome");
 
@@ -122,6 +122,7 @@ fn swap() {
     let welcome = welcome.into_welcome().unwrap();
 
     // New Yuk
+    yuk_group.delete(yuk_party.provider.storage()).unwrap();
     let staged_join = StagedWelcome::new_from_welcome(
         &yuk_party.provider,
         group_config.join_config(),
@@ -133,6 +134,8 @@ fn swap() {
     let yuk_group = staged_join
         .into_group(&yuk_party.provider)
         .expect("Error joining group from StagedWelcome");
+
+    alice.group.delete(alice_party.provider.storage()).unwrap();
 
     // New Alice
     let staged_join = StagedWelcome::new_from_welcome(

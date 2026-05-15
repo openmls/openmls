@@ -17,12 +17,13 @@ use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Signable},
     credentials::Credential,
     error::LibraryError,
+    extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{
-        CreateGroupContextExtProposalError, Extension, ExtensionType, Extensions,
-        ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
-        MlsGroupStateError, OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension,
-        RequiredCapabilitiesExtension, StagedCommit,
+        CreateGroupContextExtProposalError, Extension, ExtensionType, ExternalPubExtension,
+        GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig, MlsGroupStateError,
+        OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension, RequiredCapabilitiesExtension,
+        StagedCommit,
     },
     key_packages::KeyPackageBundle,
     messages::{
@@ -38,7 +39,7 @@ use crate::{
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{
         node::{encryption_keys::EncryptionKeyPair, leaf_node::LeafNode},
-        RatchetTree,
+        RatchetTree, TreeSync,
     },
     versions::ProtocolVersion,
 };
@@ -349,6 +350,11 @@ impl MlsGroup {
         self.proposal_store().proposals()
     }
 
+    /// Returns the current tree state of the group, in the form of a [`TreeSync`].
+    pub fn treesync(&self) -> &TreeSync {
+        self.public_group.treesync()
+    }
+
     /// Returns a reference to the [`StagedCommit`] of the most recently created
     /// commit. If there was no commit created in this epoch, either because
     /// this commit or another commit was merged, it returns `None`.
@@ -419,7 +425,7 @@ impl MlsGroup {
     }
 
     /// Get a reference to the group context [`Extensions`] of this [`MlsGroup`].
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions<GroupContext> {
         self.public_group().group_context().extensions()
     }
 
@@ -592,7 +598,7 @@ impl MlsGroup {
     pub(crate) fn create_group_context_ext_proposal<Provider: OpenMlsProvider>(
         &self,
         framing_parameters: FramingParameters,
-        extensions: Extensions,
+        extensions: Extensions<GroupContext>,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError<Provider::StorageError>>
     {
@@ -660,7 +666,7 @@ impl MlsGroup {
     }
 
     /// Returns a reference to the proposal store.
-    pub(crate) fn proposal_store(&self) -> &ProposalStore {
+    pub fn proposal_store(&self) -> &ProposalStore {
         self.public_group.proposal_store()
     }
 
@@ -686,7 +692,7 @@ impl MlsGroup {
     }
 
     /// Returns a reference to the public group.
-    pub(crate) fn public_group(&self) -> &PublicGroup {
+    pub fn public_group(&self) -> &PublicGroup {
         &self.public_group
     }
 }

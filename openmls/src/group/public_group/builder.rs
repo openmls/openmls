@@ -4,14 +4,17 @@ use super::{errors::PublicGroupBuildError, PublicGroup};
 use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
-    extensions::{errors::InvalidExtensionError, Extensions},
+    extensions::Extensions,
     group::{GroupContext, GroupId},
     key_packages::Lifetime,
     messages::ConfirmationTag,
     schedule::CommitSecret,
     storage::OpenMlsProvider,
     treesync::{
-        node::{encryption_keys::EncryptionKeyPair, leaf_node::Capabilities},
+        node::{
+            encryption_keys::EncryptionKeyPair,
+            leaf_node::{Capabilities, LeafNode},
+        },
         TreeSync,
     },
     versions::ProtocolVersion,
@@ -24,8 +27,8 @@ pub(crate) struct TempBuilderPG1 {
     credential_with_key: CredentialWithKey,
     lifetime: Option<Lifetime>,
     capabilities: Option<Capabilities>,
-    leaf_node_extensions: Extensions,
-    group_context_extensions: Extensions,
+    leaf_node_extensions: Extensions<LeafNode>,
+    group_context_extensions: Extensions<GroupContext>,
 }
 
 impl TempBuilderPG1 {
@@ -41,28 +44,15 @@ impl TempBuilderPG1 {
 
     pub(crate) fn with_group_context_extensions(
         mut self,
-        extensions: Extensions,
-    ) -> Result<Self, InvalidExtensionError> {
-        let is_valid_in_group_context = extensions.application_id().is_none()
-            && extensions.ratchet_tree().is_none()
-            && extensions.external_pub().is_none();
-        if !is_valid_in_group_context {
-            return Err(InvalidExtensionError::IllegalInGroupContext);
-        }
+        extensions: Extensions<GroupContext>,
+    ) -> Self {
         self.group_context_extensions = extensions;
-        Ok(self)
+        self
     }
 
-    pub(crate) fn with_leaf_node_extensions(
-        mut self,
-        extensions: Extensions,
-    ) -> Result<Self, InvalidExtensionError> {
-        // Ensure that these extensions are not invalid for leaf nodes.
-        // https://validation.openmls.tech/#valn1601
-        extensions.validate_extension_types_for_leaf_node()?;
-
+    pub(crate) fn with_leaf_node_extensions(mut self, extensions: Extensions<LeafNode>) -> Self {
         self.leaf_node_extensions = extensions;
-        Ok(self)
+        self
     }
 
     pub(crate) fn get_secrets(

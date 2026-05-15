@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 use crate::schedule::message_secrets::MessageSecrets;
 
@@ -137,15 +137,23 @@ impl MessageSecretsStore {
         None
     }
 
-    /// Return a slice with the [`Member`]s of the `group_epoch`.
-    pub(crate) fn leaves_for_epoch(&self, group_epoch: impl Into<GroupEpoch>) -> &[Member] {
+    /// Returns a `HashMap` that maps a `LeafNodeIndex` to the correct
+    /// [`Member`] in the given `group_epoch`.
+    pub(crate) fn leaves_for_epoch(
+        &self,
+        group_epoch: impl Into<GroupEpoch>,
+    ) -> HashMap<LeafNodeIndex, &Member> {
         let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter() {
             if epoch_tree.epoch == epoch {
-                return &epoch_tree.leaves;
+                return epoch_tree
+                    .leaves
+                    .iter()
+                    .map(|m| (m.index, m))
+                    .collect::<HashMap<LeafNodeIndex, &Member>>();
             }
         }
-        &[]
+        HashMap::new()
     }
 
     /// Check if the provided epoch contains a leaf index.
