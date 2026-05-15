@@ -36,7 +36,7 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::messages::proposals_in::ProposalOrRefIn;
+use crate::{component::ComponentId, messages::proposals_in::ProposalOrRefIn};
 
 use super::{
     mls_auth_content::AuthenticatedContent,
@@ -104,7 +104,7 @@ impl DecryptedMessage {
         // TODO: #819 The old leaves should not be needed any more.
         //       Revisit when the transition is further along.
         let (message_secrets, _old_leaves) = group
-            .message_secrets_and_leaves_mut(ciphertext.epoch())
+            .message_secrets_and_leaves(ciphertext.epoch())
             .map_err(MessageDecryptionError::SecretTreeError)?;
         let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
         // Check if we are the sender
@@ -112,7 +112,7 @@ impl DecryptedMessage {
             return Err(ValidationError::CannotDecryptOwnMessage);
         }
         let message_secrets = group
-            .message_secrets_mut(ciphertext.epoch())
+            .message_secrets_for_epoch_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let verifiable_content = ciphertext.to_verifiable_content(
             ciphersuite,
@@ -343,7 +343,7 @@ impl ProcessedMessage {
     pub fn safe_export_secret<Crypto: OpenMlsCrypto>(
         &mut self,
         crypto: &Crypto,
-        component_id: u16,
+        component_id: ComponentId,
     ) -> Result<Vec<u8>, ProcessedMessageSafeExportSecretError> {
         if let ProcessedMessageContent::StagedCommitMessage(ref mut staged_commit) =
             &mut self.content

@@ -418,7 +418,6 @@ impl ProcessedWelcome {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", public_group.confirmation_tag());
-            debug_assert!(false, "Confirmation tag mismatch");
 
             // in some tests we need to be able to proceed despite the tag being wrong,
             // e.g. to test whether a later validation check is performed correctly.
@@ -427,7 +426,10 @@ impl ProcessedWelcome {
             }
         }
 
-        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
+        let message_secrets_store = MessageSecretsStore::new_with_secret(
+            &PastEpochDeletionPolicy::MaxEpochs(0),
+            message_secrets,
+        );
 
         // Extract and store the resumption PSK for the current epoch.
         let resumption_psk = group_epoch_secrets.resumption_psk();
@@ -566,6 +568,8 @@ impl StagedWelcome {
         #[cfg(feature = "extensions-draft-08")]
         let application_export_tree = ApplicationExportTree::new(self.application_export_secret);
 
+        let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();
+
         let mut mls_group = MlsGroup {
             mls_group_config: self.mls_group_config,
             own_leaf_nodes: vec![],
@@ -584,7 +588,8 @@ impl StagedWelcome {
             .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
             .await
             .map_err(WelcomeError::StorageError)?;
-        mls_group.set_max_past_epochs(mls_group.mls_group_config.max_past_epochs);
+        // resize the store
+        mls_group.resize_message_secrets_store(&past_epoch_deletion_policy);
 
         mls_group
             .store(provider.storage())

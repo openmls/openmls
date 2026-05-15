@@ -1,4 +1,4 @@
-use hmac::Mac;
+use hmac::{KeyInit, Mac};
 use openmls_traits::types;
 use openmls_traits::types::{CryptoError, HashType};
 use sha2::{Sha256, Sha384, Sha512};

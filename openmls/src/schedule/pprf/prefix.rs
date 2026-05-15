@@ -7,7 +7,9 @@
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-pub trait Prefix: Clone + Eq + std::hash::Hash + Serialize + DeserializeOwned {
+pub(crate) trait Prefix:
+    Clone + Eq + std::hash::Hash + Serialize + DeserializeOwned
+{
     /// The maximum depth of the prefix in bits. Must be a multiple of 8.
     const MAX_DEPTH: usize;
 
@@ -39,10 +41,7 @@ impl Prefix for Prefix16 {
     }
 
     fn push_bit(&mut self, bit: bool) {
-        self.bits <<= 1;
-        if bit {
-            self.bits |= 1;
-        }
+        self.bits = self.bits << 1 | u16::from(bit);
         self.len += 1;
     }
 }

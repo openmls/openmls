@@ -25,7 +25,7 @@ impl MlsGroup {
         let group_builder = MlsGroup::builder()
             .with_wire_format_policy(self.configuration().wire_format_policy)
             .padding_size(self.configuration().padding_size)
-            .max_past_epochs(self.configuration().max_past_epochs)
+            .set_past_epoch_deletion_policy(self.configuration().past_epoch_deletion_policy.clone())
             .number_of_resumption_psks(self.configuration().number_of_resumption_psks)
             .use_ratchet_tree_extension(self.configuration().use_ratchet_tree_extension)
             .sender_ratchet_configuration(self.configuration().sender_ratchet_configuration)

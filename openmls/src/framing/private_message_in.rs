@@ -133,7 +133,6 @@ impl PrivateMessageIn {
             )
             .map_err(|_| {
                 log::error!("  Ciphertext decryption error");
-                debug_assert!(false, "Ciphertext decryption failed");
                 MessageDecryptionError::AeadError
             })?;
         log_content!(

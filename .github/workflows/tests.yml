@@ -32,7 +32,7 @@ jobs:
         features:
           - { name: "", arg: "" }
           - { name: fork-resolution, arg: "-F fork-resolution" }
-          - { name: extensions-draft-08, arg: "-F extensions-draft-08" }
+          - { name: extensions-draft-08, arg: "-F extensions-draft-08,extensions-draft-08-test-dependencies" }
     runs-on: ${{ matrix.target.os }}
     name: ${{ matrix.target.target }} (${{ matrix.mode.name }}/${{ matrix.features.name }})
     steps:

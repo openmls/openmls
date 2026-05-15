@@ -32,4 +32,5 @@
 - [App Validation](./app_validation.md)
 - [Performance](./performance.md)
 - [Forward Secrecy](./forward_secrecy.md)
+  - [Past epoch secret deletion](./user_manual/past_epoch_secret_deletion.md)
 - [Release management](./release_management.md)

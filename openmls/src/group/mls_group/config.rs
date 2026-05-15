@@ -27,6 +27,11 @@
 //!     .build();
 //! ```
 
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::SystemTime;
+#[cfg(target_arch = "wasm32")]
+use web_time::SystemTime;
+
 use super::*;
 use crate::{
     extensions::Extensions,
@@ -35,6 +40,145 @@ use crate::{
     treesync::{errors::LeafNodeValidationError, node::leaf_node::Capabilities},
 };
 use serde::{Deserialize, Serialize};
+
+/// Configures the automatic deletion of past epoch secrets.
+///
+/// **WARNING**
+///
+/// Policies other than `MaxEpochs(0)` enable the storage of message secrets from past epochs.
+/// It is a trade-off between functionality and forward secrecy and should only be enabled
+/// if the Delivery Service cannot guarantee that application messages will be sent in
+/// the same epoch in which they were generated. The number for `max_epochs` should be
+/// as low as possible.
+///
+/// If the MaxEpochs policy is set to MaxEpochs(usize::MAX), if will be returned
+/// as KeepAll after deserialization due to backwards compatibility constraints.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PastEpochDeletionPolicy {
+    /// Keep at most `n` past epoch secrets.
+    MaxEpochs(usize),
+    /// Keep all past epoch secrets.
+    ///
+    /// NOTE: The application is responsible for deleting past epoch secrets when
+    /// `KeepAll` is set. Past epoch secrets can be deleted manually using:
+    /// - [`MlsGroup::delete_past_epoch_secrets()`]
+    KeepAll,
+}
+
+impl Default for PastEpochDeletionPolicy {
+    fn default() -> Self {
+        Self::MaxEpochs(0)
+    }
+}
+
+impl Serialize for PastEpochDeletionPolicy {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let usize = match self {
+            Self::MaxEpochs(epochs) => *epochs,
+            Self::KeepAll => usize::MAX,
+        };
+        serializer.serialize_u64(usize as u64)
+    }
+}
+
+impl<'de> Deserialize<'de> for PastEpochDeletionPolicy {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let epochs = u64::deserialize(deserializer)?;
+        let epochs = usize::try_from(epochs).map_err(serde::de::Error::custom)?;
+        if epochs == usize::MAX {
+            Ok(Self::KeepAll)
+        } else {
+            Ok(Self::MaxEpochs(epochs))
+        }
+    }
+}
+
+/// The input to [`MlsGroup::delete_past_epoch_secrets()`].
+///
+/// This struct can be used for manual deletion of past epoch secrets by the application.
+///
+/// An [`MlsGroup`] also applies automatic deletion of past epoch secrets by default.
+///
+/// For more information, see [`PastEpochDeletionPolicy`] and [`MlsGroup::set_past_epoch_deletion_policy()`].
+///
+/// These methods can be used by the application to set up time-based deletion schedules:
+/// - [`PastEpochDeletion::before_timestamp()`]
+/// - [`PastEpochDeletion::older_than_duration()`]
+///
+/// **NOTE**: Epoch secrets that were created using `openmls=0.8.1` or earlier will not yet include a timestamp.
+/// After migration, these may not always be deleted by applying a time-based [`PastEpochDeletion`]. Only if a new secret that does include a timestamp is added later, and it matches the time-based condition in the [`PastEpochDeletion`], all earlier past epoch secrets without timestamps will be deleted, as well. However, otherwise, past epoch secrets without timestamps will not be affected by applying time-based [`PastEpochDeletion`]s.
+///
+/// To manually delete all past epoch secrets without timestamps, see:
+/// [`PastEpochDeletion::delete_all_without_timestamps()`]
+pub struct PastEpochDeletion {
+    pub(crate) config: Option<PastEpochDeletionTimeConfig>,
+    pub(crate) max_past_epochs: Option<usize>,
+}
+
+/// A duration or timestamp before which to delete past epoch secrets.
+pub(crate) enum PastEpochDeletionTimeConfig {
+    OlderThanDuration(std::time::Duration),
+    BeforeTimestamp(SystemTime),
+    DeleteAllWithoutTimestamp,
+}
+
+impl PastEpochDeletion {
+    /// Delete all past epoch secrets older than a provided duration.
+    pub fn older_than_duration(duration: std::time::Duration) -> Self {
+        Self {
+            config: Some(PastEpochDeletionTimeConfig::OlderThanDuration(duration)),
+            max_past_epochs: None,
+        }
+    }
+
+    /// Delete all past epoch secrets before a provided timestamp.
+    pub fn before_timestamp(timestamp: SystemTime) -> Self {
+        Self {
+            config: Some(PastEpochDeletionTimeConfig::BeforeTimestamp(timestamp)),
+            max_past_epochs: None,
+        }
+    }
+
+    /// Delete all past epoch secrets without timestamps.
+    ///
+    /// NOTE: This will delete all past epoch secrets having the legacy
+    /// format that does not include a timestamp.
+    pub fn delete_all_without_timestamps() -> Self {
+        Self {
+            config: Some(PastEpochDeletionTimeConfig::DeleteAllWithoutTimestamp),
+            max_past_epochs: None,
+        }
+    }
+
+    /// Delete all past epoch secrets.
+    pub fn delete_all() -> Self {
+        Self {
+            config: None,
+            max_past_epochs: None,
+        }
+    }
+
+    /// Set the number of `max_past_epochs` that should be kept, at most.
+    pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
+        self.max_past_epochs = Some(max_past_epochs);
+        self
+    }
+}
+
+impl PastEpochDeletionPolicy {
+    pub(crate) fn max_epochs(&self) -> Option<usize> {
+        match self {
+            Self::MaxEpochs(epochs) => Some(*epochs),
+            Self::KeepAll => None,
+        }
+    }
+}
 
 /// The [`MlsGroupJoinConfig`] contains all configuration parameters that are
 /// relevant to group operation at runtime. It is used to configure the group's
@@ -49,7 +193,9 @@ pub struct MlsGroupJoinConfig {
     pub(crate) padding_size: usize,
     /// Maximum number of past epochs for which application messages
     /// can be decrypted. The default is 0.
-    pub(crate) max_past_epochs: usize,
+    #[serde(alias = "max_past_epochs")]
+    // alias for backwards compatibility after renaming field
+    pub(crate) past_epoch_deletion_policy: PastEpochDeletionPolicy,
     /// Number of resumption secrets to keep
     pub(crate) number_of_resumption_psks: usize,
     /// Flag to indicate the Ratchet Tree Extension should be used
@@ -77,6 +223,15 @@ impl MlsGroupJoinConfig {
     /// Returns the [`SenderRatchetConfiguration`] set in this  [`MlsGroupJoinConfig`].
     pub fn sender_ratchet_configuration(&self) -> &SenderRatchetConfiguration {
         &self.sender_ratchet_configuration
+    }
+
+    /// Returns the max past epochs configured in this [`MlsGroupJoinConfig`]
+    pub(crate) fn max_past_epochs(&self) -> Option<usize> {
+        self.past_epoch_deletion_policy.max_epochs()
+    }
+
+    pub(crate) fn past_epoch_deletion_policy(&self) -> &PastEpochDeletionPolicy {
+        &self.past_epoch_deletion_policy
     }
 }
 
@@ -139,8 +294,39 @@ impl MlsGroupJoinConfigBuilder {
     }
 
     /// Sets the `max_past_epochs` property of the [`MlsGroupJoinConfig`].
+    ///
+    /// This method overrides the policy set by [`Self::set_past_epoch_deletion_policy()`],
+    /// and is equivalent to setting the past epoch deletion policy to
+    /// `PastEpochDeletionPolicy::MaxEpochs(max_past_epochs)`.
+    ///
+    /// **WARNING**
+    ///
+    /// This feature enables the storage of message secrets from past epochs.
+    /// It is a trade-off between functionality and forward secrecy and should only be enabled
+    /// if the Delivery Service cannot guarantee that application messages will be sent in
+    /// the same epoch in which they were generated. The number for `max_epochs` should be
+    /// as low as possible.
     pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
-        self.join_config.max_past_epochs = max_past_epochs;
+        self.join_config.past_epoch_deletion_policy =
+            PastEpochDeletionPolicy::MaxEpochs(max_past_epochs);
+        self
+    }
+
+    /// Set the policy for deleting past epoch secrets.
+    ///
+    /// By default, storage of past epoch secrets is disabled.
+    ///
+    /// This method overrides the configuration set by [`Self::max_past_epochs()`].
+    ///
+    /// **WARNING**
+    ///
+    /// This feature enables the storage of message secrets from past epochs.
+    /// It is a trade-off between functionality and forward secrecy and should only be enabled
+    /// if the Delivery Service cannot guarantee that application messages will be sent in
+    /// the same epoch in which they were generated. The number for `max_epochs` should be
+    /// as low as possible.
+    pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
+        self.join_config.past_epoch_deletion_policy = policy;
         self
     }
 
@@ -188,8 +374,8 @@ impl MlsGroupCreateConfig {
     }
 
     /// Returns the [`MlsGroupCreateConfig`] max past epochs.
-    pub fn max_past_epochs(&self) -> usize {
-        self.join_config.max_past_epochs
+    pub fn max_past_epochs(&self) -> Option<usize> {
+        self.join_config.max_past_epochs()
     }
 
     /// Returns the [`MlsGroupCreateConfig`] number of resumption psks.
@@ -270,6 +456,10 @@ impl MlsGroupCreateConfigBuilder {
     /// Sets the `max_past_epochs` property of the MlsGroupCreateConfig.
     /// This allows application messages from previous epochs to be decrypted.
     ///
+    /// This method overrides the policy set by [`Self::set_past_epoch_deletion_policy()`],
+    /// and is equivalent to setting the past epoch deletion policy to
+    /// `PastEpochDeletionPolicy::MaxEpochs(max_past_epochs)`.
+    ///
     /// **WARNING**
     ///
     /// This feature enables the storage of message secrets from past epochs.
@@ -278,7 +468,26 @@ impl MlsGroupCreateConfigBuilder {
     /// the same epoch in which they were generated. The number for `max_epochs` should be
     /// as low as possible.
     pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
-        self.config.join_config.max_past_epochs = max_past_epochs;
+        self.config.join_config.past_epoch_deletion_policy =
+            PastEpochDeletionPolicy::MaxEpochs(max_past_epochs);
+        self
+    }
+
+    /// Set the policy for deleting past epoch secrets.
+    ///
+    /// By default, storage of past epoch secrets is disabled.
+    ///
+    /// This method overrides the configuration set by [`Self::max_past_epochs()`].
+    ///
+    /// **WARNING**
+    ///
+    /// This feature enables the storage of message secrets from past epochs.
+    /// It is a trade-off between functionality and forward secrecy and should only be enabled
+    /// if the Delivery Service cannot guarantee that application messages will be sent in
+    /// the same epoch in which they were generated. The number for `max_epochs` should be
+    /// as low as possible.
+    pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
+        self.config.join_config.past_epoch_deletion_policy = policy;
         self
     }
 

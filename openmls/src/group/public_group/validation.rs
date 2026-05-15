@@ -25,10 +25,7 @@ use crate::{
         Commit,
     },
     prelude::LibraryError,
-    treesync::{
-        errors::{LeafNodeValidationError, LifetimeError},
-        LeafNode,
-    },
+    treesync::{errors::LeafNodeValidationError, LeafNode},
 };
 
 #[cfg(feature = "extensions-draft-08")]
@@ -869,13 +866,7 @@ impl PublicGroup {
             && !crate::skip_validation::is_disabled::leaf_node_lifetime()
         {
             if let Some(lifetime) = leaf_node.life_time() {
-                if !lifetime.is_valid() {
-                    log::warn!(
-                        "offending lifetime: {lifetime:?} for leaf node with {credential:?}",
-                        credential = leaf_node.credential()
-                    );
-                    return Err(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
-                }
+                lifetime.validate()?;
             }
         }
 

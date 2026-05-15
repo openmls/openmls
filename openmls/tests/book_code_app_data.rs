@@ -6,13 +6,13 @@
 
 #![cfg(feature = "extensions-draft-08")]
 
-use openmls::prelude::*;
 use openmls::test_utils::single_group_test_framework::*;
+use openmls::{component::ComponentId, prelude::*};
 use openmls_test::openmls_test;
 
 // ANCHOR: component_definition
 /// Our counter component ID (in the private range 0x8000..0xffff)
-const COUNTER_COMPONENT_ID: u16 = 0xf042;
+const COUNTER_COMPONENT_ID: ComponentId = 0xf042;
 
 /// The operations that can be performed on the counter
 #[repr(u8)]
