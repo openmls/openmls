@@ -43,6 +43,11 @@ use tls_codec::{Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, Tl
 
 use super::LABEL_PREFIX;
 
+#[cfg(feature = "targeted-messages-draft")]
+use crate::error::LibraryError;
+#[cfg(feature = "targeted-messages-draft")]
+use openmls_traits::crypto::HpkeSealPskResolvedAadError;
+
 #[cfg(feature = "extensions-draft-08")]
 use crate::component::{ComponentId, ComponentOperationLabel};
 
@@ -266,4 +271,66 @@ pub fn safe_decrypt_with_label(
     )?;
 
     decrypt_with_label_internal(private_key, context, ciphertext, ciphersuite, crypto)
+}
+
+#[cfg(feature = "targeted-messages-draft")]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn encrypt_with_label_psk_resolved_aad<F>(
+    public_key: &[u8],
+    label: &str,
+    context: &[u8],
+    psk: &[u8],
+    psk_id_bytes: &[u8],
+    plaintext: &[u8],
+    ciphersuite: Ciphersuite,
+    crypto: &impl OpenMlsCrypto,
+    aad_builder: F,
+) -> Result<HpkeCiphertext, LibraryError>
+where
+    F: FnOnce(&[u8]) -> Result<Vec<u8>, LibraryError>,
+{
+    let info = EncryptContext::new(label, context.into())
+        .tls_serialize_detached()
+        .map_err(LibraryError::missing_bound_check)?;
+    crypto
+        .hpke_seal_psk_resolved_aad(
+            ciphersuite.hpke_config(),
+            public_key,
+            &info,
+            plaintext,
+            psk,
+            psk_id_bytes,
+            aad_builder,
+        )
+        .map_err(|e| match e {
+            HpkeSealPskResolvedAadError::CryptoError(e) => LibraryError::unexpected_crypto_error(e),
+            HpkeSealPskResolvedAadError::AadBuildError(e) => e,
+        })
+}
+
+#[cfg(feature = "targeted-messages-draft")]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn decrypt_with_label_psk_aad(
+    private_key: &[u8],
+    label: &str,
+    context: &[u8],
+    psk: &[u8],
+    psk_id_bytes: &[u8],
+    aad: &[u8],
+    ciphertext: &HpkeCiphertext,
+    ciphersuite: Ciphersuite,
+    crypto: &impl OpenMlsCrypto,
+) -> Result<Vec<u8>, Error> {
+    let info = EncryptContext::new(label, context.into()).tls_serialize_detached()?;
+    let content_bytes = crypto.hpke_open_psk(
+        ciphersuite.hpke_config(),
+        ciphertext,
+        private_key,
+        &info,
+        aad,
+        psk,
+        psk_id_bytes,
+    )?;
+
+    Ok(content_bytes)
 }

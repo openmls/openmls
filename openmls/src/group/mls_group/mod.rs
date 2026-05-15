@@ -71,6 +71,9 @@ pub(crate) mod staged_commit;
 #[cfg(feature = "extensions-draft-08")]
 pub(crate) mod app_ephemeral;
 
+#[cfg(feature = "targeted-messages-draft")]
+mod targeted_messages;
+
 // Tests
 #[cfg(test)]
 pub(crate) mod tests_and_kats;

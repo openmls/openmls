@@ -102,6 +102,13 @@ extensions-draft-08-test-dependencies = [
     "openmls_libcrux_crypto?/extensions-draft-08",
     "openmls_memory_storage?/extensions-draft-08",
 ]
+# Implementation of the targeted messages draft:
+# https://datatracker.ietf.org/doc/draft-ietf-mls-targeted-messages/
+targeted-messages-draft = [
+    "openmls_traits/targeted-messages-draft",
+    "openmls_rust_crypto?/targeted-messages-draft",
+    "openmls_libcrux_crypto?/targeted-messages-draft",
+]
 # enable randomness source
 fork-resolution = []
 

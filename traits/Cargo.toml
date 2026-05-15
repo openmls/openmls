@@ -16,6 +16,7 @@ path = "src/traits.rs"
 default = []
 test-utils = []
 extensions-draft-08 = []
+targeted-messages-draft = []
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

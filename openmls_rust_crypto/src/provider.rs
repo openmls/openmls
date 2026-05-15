@@ -10,6 +10,8 @@ use hkdf::Hkdf;
 use hpke::Hpke;
 use hpke_rs_crypto::types as hpke_types;
 use hpke_rs_rust_crypto::HpkeRustCrypto;
+#[cfg(feature = "targeted-messages-draft")]
+use openmls_traits::crypto::HpkeSealPskResolvedAadError;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
@@ -419,11 +421,81 @@ impl OpenMlsCrypto for RustCrypto {
             public: kp.1.as_slice().into(),
         })
     }
+
+    #[cfg(feature = "targeted-messages-draft")]
+    fn hpke_open_psk(
+        &self,
+        config: HpkeConfig,
+        input: &types::HpkeCiphertext,
+        sk_r: &[u8],
+        info: &[u8],
+        aad: &[u8],
+        psk: &[u8],
+        psk_id: &[u8],
+    ) -> Result<Vec<u8>, CryptoError> {
+        hpke_psk_from_config(config)
+            .open(
+                input.kem_output.as_slice(),
+                &sk_r.into(),
+                info,
+                aad,
+                input.ciphertext.as_slice(),
+                Some(psk),
+                Some(psk_id),
+                None,
+            )
+            .map_err(|_| CryptoError::HpkeDecryptionError)
+    }
+
+    #[cfg(feature = "targeted-messages-draft")]
+    fn hpke_seal_psk_resolved_aad<F, E>(
+        &self,
+        config: HpkeConfig,
+        pk_r: &[u8],
+        info: &[u8],
+        ptxt: &[u8],
+        psk: &[u8],
+        psk_id: &[u8],
+        aad_builder: F,
+    ) -> Result<HpkeCiphertext, HpkeSealPskResolvedAadError<E>>
+    where
+        F: FnOnce(&[u8]) -> Result<Vec<u8>, E>,
+    {
+        let mut hpke = hpke_psk_from_config(config);
+        let (kem_output, mut context) = hpke
+            .setup_sender(&pk_r.into(), info, Some(psk), Some(psk_id), None)
+            .map_err(|_| HpkeSealPskResolvedAadError::CryptoError(CryptoError::SenderSetupError))?;
+        let aad = aad_builder(kem_output.as_slice())
+            .map_err(HpkeSealPskResolvedAadError::AadBuildError)?;
+        let ciphertext = context.seal(&aad, ptxt).map_err(|e| match e {
+            hpke::HpkeError::InvalidInput => {
+                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InvalidLength)
+            }
+            hpke::HpkeError::InsufficientRandomness => {
+                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InsufficientRandomness)
+            }
+            _ => HpkeSealPskResolvedAadError::CryptoError(CryptoError::HpkeEncryptionError),
+        })?;
+        Ok(HpkeCiphertext {
+            kem_output: kem_output.into(),
+            ciphertext: ciphertext.into(),
+        })
+    }
 }
 
 fn hpke_from_config(config: HpkeConfig) -> Hpke<HpkeRustCrypto> {
     Hpke::<HpkeRustCrypto>::new(
         hpke::Mode::Base,
+        kem_mode(config.0),
+        kdf_mode(config.1),
+        aead_mode(config.2),
+    )
+}
+
+#[cfg(feature = "targeted-messages-draft")]
+fn hpke_psk_from_config(config: HpkeConfig) -> Hpke<HpkeRustCrypto> {
+    Hpke::<HpkeRustCrypto>::new(
+        hpke::Mode::Psk,
         kem_mode(config.0),
         kdf_mode(config.1),
         aead_mode(config.2),

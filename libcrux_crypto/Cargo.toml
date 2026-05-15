@@ -33,3 +33,4 @@ extensions-draft-08 = [
     "openmls_traits/extensions-draft-08",
     "openmls_memory_storage/extensions-draft-08",
 ]
+targeted-messages-draft = ["openmls_traits/targeted-messages-draft"]

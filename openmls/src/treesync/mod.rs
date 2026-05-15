@@ -567,6 +567,14 @@ impl TreeSync {
         self.tree.tree_size()
     }
 
+    /// Returns a vec of all leaf slots, including blanks.
+    pub fn leaves(&self) -> Vec<Option<&LeafNode>> {
+        self.tree
+            .leaves()
+            .map(|(_, tsn)| tsn.node().as_ref())
+            .collect()
+    }
+
     /// Returns an iterator over the (non-blank) [`LeafNode`]s in the tree.
     pub fn full_leaves(&self) -> impl Iterator<Item = (LeafNodeIndex, &LeafNode)> {
         self.tree

@@ -2,6 +2,8 @@ use hpke_rs_libcrux::HpkeLibcrux;
 
 use std::sync::{Mutex, MutexGuard};
 
+#[cfg(feature = "targeted-messages-draft")]
+use openmls_traits::crypto::HpkeSealPskResolvedAadError;
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{
     AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext,
@@ -374,6 +376,66 @@ impl OpenMlsCrypto for CryptoProvider {
             public: pk.as_slice().to_vec(),
         })
     }
+
+    #[cfg(feature = "targeted-messages-draft")]
+    fn hpke_open_psk(
+        &self,
+        config: HpkeConfig,
+        input: &HpkeCiphertext,
+        sk_r: &[u8],
+        info: &[u8],
+        aad: &[u8],
+        psk: &[u8],
+        psk_id: &[u8],
+    ) -> Result<Vec<u8>, CryptoError> {
+        hpke_psk_from_config(config)
+            .open(
+                input.kem_output.as_slice(),
+                &sk_r.into(),
+                info,
+                aad,
+                input.ciphertext.as_slice(),
+                Some(psk),
+                Some(psk_id),
+                None,
+            )
+            .map_err(|_| CryptoError::HpkeDecryptionError)
+    }
+
+    #[cfg(feature = "targeted-messages-draft")]
+    fn hpke_seal_psk_resolved_aad<F, E>(
+        &self,
+        config: HpkeConfig,
+        pk_r: &[u8],
+        info: &[u8],
+        ptxt: &[u8],
+        psk: &[u8],
+        psk_id: &[u8],
+        aad_builder: F,
+    ) -> Result<HpkeCiphertext, HpkeSealPskResolvedAadError<E>>
+    where
+        F: FnOnce(&[u8]) -> Result<Vec<u8>, E>,
+    {
+        let mut hpke = hpke_psk_from_config(config);
+        let (kem_output, mut context) = hpke
+            .setup_sender(&pk_r.into(), info, Some(psk), Some(psk_id), None)
+            .map_err(|_| HpkeSealPskResolvedAadError::CryptoError(CryptoError::SenderSetupError))?;
+        let aad = aad_builder(kem_output.as_slice())
+            .map_err(HpkeSealPskResolvedAadError::AadBuildError)?;
+        let ciphertext = context.seal(&aad, ptxt).map_err(|e| match e {
+            hpke_rs::HpkeError::InvalidInput => {
+                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InvalidLength)
+            }
+            hpke_rs::HpkeError::InsufficientRandomness => {
+                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InsufficientRandomness)
+            }
+            _ => HpkeSealPskResolvedAadError::CryptoError(CryptoError::HpkeEncryptionError),
+        })?;
+        Ok(HpkeCiphertext {
+            kem_output: kem_output.into(),
+            ciphertext: ciphertext.into(),
+        })
+    }
 }
 
 fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
@@ -382,6 +444,15 @@ fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
     let aead = hpke_aead(config.2);
 
     hpke_rs::Hpke::new(hpke_rs::Mode::Base, kem, kdf, aead)
+}
+
+#[cfg(feature = "targeted-messages-draft")]
+fn hpke_psk_from_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
+    let kem = hpke_kem(config.0);
+    let kdf = hpke_kdf(config.1);
+    let aead = hpke_aead(config.2);
+
+    hpke_rs::Hpke::new(hpke_rs::Mode::Psk, kem, kdf, aead)
 }
 
 fn hpke_kdf(kdf: HpkeKdfType) -> hpke_rs_crypto::types::KdfAlgorithm {
