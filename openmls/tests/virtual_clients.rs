@@ -14,6 +14,7 @@ use openmls::{
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_test::openmls_test;
+use openmls_traits::storage::StorageProvider as _;
 use openmls_traits::OpenMlsProvider;
 use tls_codec::Serialize as _;
 
@@ -873,4 +874,272 @@ fn old_unconfirmed_own_message_survives_later_confirmations() {
         panic!("Expected an application message.");
     };
     assert_eq!(first_message.as_slice(), msg.into_bytes().as_slice());
+}
+
+/// End-to-end recipient-side reuse-guard inversion across two sibling
+/// emulators.
+#[openmls_test::openmls_test]
+fn reuse_guard_recovers_emulator_leaf_index() {
+    let _ = ciphersuite;
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let sender_provider = OpenMlsRustCrypto::default();
+    let (alice_credential, alice_signer) = new_credential(
+        &sender_provider,
+        b"Alice",
+        ciphersuite.signature_algorithm(),
+    );
+
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    let mut alice_sender = MlsGroup::new(
+        &sender_provider,
+        &alice_signer,
+        &group_config,
+        alice_credential,
+    )
+    .expect("create alice group on sender provider");
+    let group_id = alice_sender.group_id().clone();
+
+    let (mut emulator_sender, _emulator_signer) =
+        make_emulator_group(ciphersuite, &sender_provider, b"AliceEmulator");
+    let emulator_group_id = emulator_sender.group_id().clone();
+    let expected_emulation_leaf = emulator_sender.own_leaf_index();
+
+    let receiver_provider = sender_provider.clone();
+
+    let (commit_msg, epoch_id_sender) = send_vc_commit(
+        &mut alice_sender,
+        &mut emulator_sender,
+        &sender_provider,
+        &alice_signer,
+    );
+
+    let mut emulator_receiver = MlsGroup::load(receiver_provider.storage(), &emulator_group_id)
+        .expect("load emulator group on receiver provider")
+        .expect("emulator group present on receiver provider");
+    let epoch_id_receiver = emulator_receiver
+        .register_vc_emulation_epoch(receiver_provider.crypto(), receiver_provider.storage())
+        .expect("register vc epoch (receiver)");
+    assert_eq!(epoch_id_sender, epoch_id_receiver);
+
+    let mut alice_receiver = MlsGroup::load(receiver_provider.storage(), &group_id)
+        .expect("load alice group on receiver provider")
+        .expect("group present on receiver provider");
+    let processed_commit = alice_receiver
+        .process_message(
+            &receiver_provider,
+            commit_msg.into_protocol_message().unwrap(),
+        )
+        .expect("receiver processes VC commit");
+    let staged_commit = match processed_commit.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        _ => panic!("expected staged commit"),
+    };
+    alice_receiver
+        .merge_staged_commit(&receiver_provider, staged_commit)
+        .expect("receiver merges VC commit");
+
+    let plaintext = b"reuse-guard recovery payload";
+    let app_msg = alice_sender
+        .create_message(&sender_provider, &alice_signer, plaintext)
+        .expect("sender creates application message");
+
+    let processed_app = alice_receiver
+        .process_message(&receiver_provider, app_msg.into_protocol_message().unwrap())
+        .expect("receiver processes application message");
+
+    assert_eq!(
+        processed_app.emulator_sender_leaf_index(),
+        Some(expected_emulation_leaf),
+    );
+
+    match processed_app.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), plaintext);
+        }
+        _ => panic!("expected application message"),
+    }
+}
+
+/// A group with no emulation binding returns `None` from
+/// `emulator_sender_leaf_index` on application messages.
+#[openmls_test::openmls_test]
+fn emulator_sender_leaf_index_none_without_binding() {
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let (mut alice, _alice_signer, mut bob, bob_signer) =
+        setup_alice_bob_group(ciphersuite, &alice_provider, &bob_provider);
+
+    let plaintext = b"non-emulator application message";
+    let bob_msg = bob
+        .create_message(&bob_provider, &bob_signer, plaintext)
+        .expect("bob creates application message");
+
+    let processed = alice
+        .process_message(&alice_provider, bob_msg.into_protocol_message().unwrap())
+        .expect("alice processes bob's application message");
+
+    assert_eq!(processed.emulator_sender_leaf_index(), None);
+    match processed.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), plaintext);
+        }
+        _ => panic!("expected application message"),
+    }
+}
+
+/// A higher-level group with an emulation binding must not send with a
+/// random reuse guard if the bound emulation state is missing.
+#[test]
+fn bound_group_fails_closed_when_emulation_state_missing_on_send() {
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let provider = OpenMlsRustCrypto::default();
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    let mut alice_group = MlsGroup::new(&provider, &alice_signer, &group_config, alice_credential)
+        .expect("create alice group");
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+
+    let (_commit_msg, epoch_id) = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        &provider,
+        &alice_signer,
+    );
+    provider
+        .storage()
+        .delete_vc_emulation_epoch_state(&epoch_id)
+        .expect("delete emulation epoch state");
+
+    let err = alice_group
+        .create_message(&provider, &alice_signer, b"must not send")
+        .expect_err("bound group without emulation state must fail closed");
+
+    assert!(
+        matches!(
+            err,
+            openmls::group::CreateMessageError::MessageEncryptionError(
+                openmls::framing::errors::MessageEncryptionError::VirtualClientsError(
+                    openmls::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState
+                )
+            )
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
+/// End-to-end reuse-guard recovery with the emulator group and the
+/// higher-level group on different ciphersuites with different AEAD key
+/// lengths. The emulation epoch's AEAD/PPRF material must use the
+/// emulation ciphersuite, while the generated update path remains in the
+/// higher-level group's ciphersuite.
+#[test]
+fn reuse_guard_recovery_across_mismatched_ciphersuites() {
+    let _ = pretty_env_logger::try_init();
+    let higher_level_ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let emulator_ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
+    assert_ne!(higher_level_ciphersuite, emulator_ciphersuite);
+
+    let sender_provider = OpenMlsRustCrypto::default();
+    let (alice_credential, alice_signer) = new_credential(
+        &sender_provider,
+        b"Alice",
+        higher_level_ciphersuite.signature_algorithm(),
+    );
+
+    let higher_level_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(higher_level_ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    let mut alice_sender = MlsGroup::new(
+        &sender_provider,
+        &alice_signer,
+        &higher_level_config,
+        alice_credential,
+    )
+    .expect("create alice group on sender provider");
+    let group_id = alice_sender.group_id().clone();
+
+    let (mut emulator_sender, _emulator_signer) =
+        make_emulator_group(emulator_ciphersuite, &sender_provider, b"AliceEmulator");
+    let emulator_group_id = emulator_sender.group_id().clone();
+    let expected_emulation_leaf = emulator_sender.own_leaf_index();
+
+    let receiver_provider = sender_provider.clone();
+
+    let (commit_msg, epoch_id_sender) = send_vc_commit(
+        &mut alice_sender,
+        &mut emulator_sender,
+        &sender_provider,
+        &alice_signer,
+    );
+
+    let mut emulator_receiver = MlsGroup::load(receiver_provider.storage(), &emulator_group_id)
+        .expect("load emulator group on receiver provider")
+        .expect("emulator group present on receiver provider");
+    let epoch_id_receiver = emulator_receiver
+        .register_vc_emulation_epoch(receiver_provider.crypto(), receiver_provider.storage())
+        .expect("register vc epoch (receiver)");
+    assert_eq!(epoch_id_sender, epoch_id_receiver);
+
+    let mut alice_receiver = MlsGroup::load(receiver_provider.storage(), &group_id)
+        .expect("load alice group on receiver provider")
+        .expect("group present on receiver provider");
+    let processed_commit = alice_receiver
+        .process_message(
+            &receiver_provider,
+            commit_msg.into_protocol_message().unwrap(),
+        )
+        .expect("receiver processes VC commit");
+    let staged_commit = match processed_commit.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        _ => panic!("expected staged commit"),
+    };
+    alice_receiver
+        .merge_staged_commit(&receiver_provider, staged_commit)
+        .expect("receiver merges VC commit");
+
+    let plaintext = b"mismatched-ciphersuite reuse-guard recovery payload";
+    let app_msg = alice_sender
+        .create_message(&sender_provider, &alice_signer, plaintext)
+        .expect("sender creates application message");
+
+    let processed_app = alice_receiver
+        .process_message(&receiver_provider, app_msg.into_protocol_message().unwrap())
+        .expect("receiver processes application message");
+
+    assert_eq!(
+        processed_app.emulator_sender_leaf_index(),
+        Some(expected_emulation_leaf),
+    );
+    match processed_app.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), plaintext);
+        }
+        _ => panic!("expected application message"),
+    }
 }
