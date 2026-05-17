@@ -161,7 +161,6 @@ mod virtual_clients_storage {
     impl Entity<CURRENT_VERSION> for EpochId {}
     impl traits::VcEpochId<CURRENT_VERSION> for EpochId {}
 
-
     impl Entity<CURRENT_VERSION> for EmulationEpochState {}
     impl traits::VcEmulationEpochState<CURRENT_VERSION> for EmulationEpochState {}
 

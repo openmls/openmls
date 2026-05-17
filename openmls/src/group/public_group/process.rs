@@ -224,8 +224,9 @@ impl PublicGroup {
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         //  - https://validation.openmls.tech/#valn1203
-        let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
+        let verified = unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
+        let content = verified.content;
+        let credential = verified.credential;
 
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
@@ -274,8 +275,9 @@ impl PublicGroup {
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         //  - https://validation.openmls.tech/#valn1203
-        let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
+        let verified = unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
+        let content = verified.content;
+        let credential = verified.credential;
 
         match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => self
@@ -331,6 +333,8 @@ impl PublicGroup {
             authenticated_data,
             content,
             credential,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         ))
     }
 
@@ -386,6 +390,8 @@ impl PublicGroup {
             authenticated_data,
             content,
             credential,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         ))
     }
 
@@ -421,6 +427,8 @@ impl PublicGroup {
                     data,
                     content,
                     credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 ))
             }
 
@@ -439,6 +447,8 @@ impl PublicGroup {
                     data,
                     content,
                     credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 ))
             }
             FramedContentBody::Proposal(Proposal::Add(_)) => {
@@ -456,6 +466,8 @@ impl PublicGroup {
                     data,
                     content,
                     credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 ))
             }
             // TODO #151/#106

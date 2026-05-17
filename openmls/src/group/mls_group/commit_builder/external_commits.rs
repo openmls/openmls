@@ -226,7 +226,7 @@ impl ExternalCommitBuilder {
                 ciphersuite,
             )?;
             let unverified_message = public_group.parse_message(decrypted_message, None)?;
-            let (verified_message, _credential) = unverified_message.verify(
+            let verified = unverified_message.verify(
                 ciphersuite,
                 provider.crypto(),
                 ProtocolVersion::default(),
@@ -234,7 +234,7 @@ impl ExternalCommitBuilder {
             let queued_proposal = QueuedProposal::from_authenticated_content(
                 ciphersuite,
                 provider.crypto(),
-                verified_message,
+                verified.content,
                 ProposalOrRefType::Reference,
             )?;
             // We ignore any proposal that is not a SelfRemove.

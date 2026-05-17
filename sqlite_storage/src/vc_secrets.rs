@@ -1,8 +1,7 @@
 use std::marker::PhantomData;
 
 use openmls_traits::storage::{
-    traits::GroupId as GroupIdTrait,
-    traits::VcEmulationEpochState as VcEmulationEpochStateTrait,
+    traits::GroupId as GroupIdTrait, traits::VcEmulationEpochState as VcEmulationEpochStateTrait,
     traits::VcEpochId as VcEpochIdTrait, traits::VcPprf as VcPprfTrait, Entity as EntityTrait, Key,
 };
 use rusqlite::{params, OptionalExtension as _, ToSql};
@@ -180,10 +179,9 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
 
 /// Binding from higher-level-group to emulation-epoch binding. One row per
 /// higher-level group. Written on every VC commit merge.
-pub(super) struct StorableEmulationBindingRef<
-    'a,
-    EpochId: EntityTrait<STORAGE_PROVIDER_VERSION>,
->(pub &'a EpochId);
+pub(super) struct StorableEmulationBindingRef<'a, EpochId: EntityTrait<STORAGE_PROVIDER_VERSION>>(
+    pub &'a EpochId,
+);
 
 impl<'a, EpochId: EntityTrait<STORAGE_PROVIDER_VERSION>> StorableEmulationBindingRef<'a, EpochId> {
     pub(super) fn store_vc_emulation_binding<

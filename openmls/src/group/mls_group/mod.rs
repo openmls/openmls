@@ -668,16 +668,27 @@ impl MlsGroup {
                 .vc_emulation_binding(self.group_id())
                 .map_err(MessageEncryptionError::StorageError)?;
             match binding {
-                Some(epoch_id) => provider
-                    .storage()
-                    .vc_emulation_epoch_state(&epoch_id)
-                    .map_err(MessageEncryptionError::StorageError)?,
+                Some(epoch_id) => Some(
+                    provider
+                        .storage()
+                        .vc_emulation_epoch_state(&epoch_id)
+                        .map_err(MessageEncryptionError::StorageError)?
+                        .ok_or_else(|| {
+                            log::error!(
+                                "vc: group is bound to emulation epoch, but state is missing"
+                            );
+                            MessageEncryptionError::VirtualClientsError(
+                                crate::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState,
+                            )
+                        })?,
+                ),
                 None => None,
             }
         };
         #[cfg(feature = "virtual-clients-draft")]
-        let emulator_ctx: Option<crate::framing::EmulatorReuseGuardCtx<'_>> =
-            emulation_state.as_ref().map(|state| state.reuse_guard_inputs());
+        let emulator_ctx: Option<crate::framing::EmulatorReuseGuardCtx<'_>> = emulation_state
+            .as_ref()
+            .map(|state| state.reuse_guard_inputs());
 
         let msg = PrivateMessage::try_from_authenticated_content(
             provider.crypto(),

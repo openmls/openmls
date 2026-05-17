@@ -633,8 +633,11 @@ pub fn run_test_vector(
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
                     sender_data,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 )
                 .expect("Error decrypting PrivateMessage")
+                .verifiable
                 .into();
             assert!(matches!(
                 mls_plaintext_application.content(),
@@ -709,8 +712,11 @@ pub fn run_test_vector(
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
                     sender_data,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 )
                 .expect("Error decrypting PrivateMessage")
+                .verifiable
                 .into();
 
             assert!(matches!(
@@ -784,8 +790,11 @@ pub fn run_test_vector(
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
                     sender_data,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 )
                 .expect("Error decrypting PrivateMessage")
+                .verifiable
                 .into();
 
             assert!(matches!(

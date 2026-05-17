@@ -333,8 +333,8 @@ pub struct EpochId(Vec<u8>);
 
 /// AEAD key used by the sender to wrap the [`EpochInfoTbe`] in the leaf's
 /// `app_data_dictionary` entry, and by the receiver to unwrap it. Its
-/// length is exactly [`Ciphersuite::aead_key_length`] for the group's
-/// ciphersuite. Derived from the emulation group's
+/// length is exactly [`Ciphersuite::aead_key_length`] for the emulation
+/// group's ciphersuite. Derived from the emulation group's
 /// `safe_export_secret(VC_COMPONENT_ID)` by
 /// [`MlsGroup::register_vc_emulation_epoch`].
 ///
@@ -390,10 +390,14 @@ impl EmulationEpochState {
         }
     }
 
-    /// Consume the state and return only the fields needed by the
+    /// Consume the state and return the fields needed by the
     /// commit-builder / commit-processing paths.
-    pub(crate) fn into_parts(self) -> (LeafNodeIndex, EpochEncryptionKey) {
-        (self.leaf_index, self.epoch_encryption_key)
+    pub(crate) fn into_parts(self) -> (LeafNodeIndex, EpochEncryptionKey, Ciphersuite) {
+        (
+            self.leaf_index,
+            self.epoch_encryption_key,
+            self.emulation_ciphersuite,
+        )
     }
 
     /// Borrow the per-message inputs the framing layer needs to derive
@@ -528,8 +532,8 @@ pub(crate) enum VirtualClientOperationType {
 }
 
 /// Per-commit AEAD plaintext attached to the leaf via the VC component.
-/// Per the spec, the same struct is hashed (under the group ciphersuite's
-/// hash) to produce the PPRF input — see [`pprf_input`].
+/// Per the spec, the same struct is hashed (under the emulation group's
+/// ciphersuite) to produce the PPRF input. See [`pprf_input`].
 ///
 /// `leaf_index` is the *emulation*-group leaf index of the sending virtual
 /// client, *not* the leaf index in the group that carries this commit.

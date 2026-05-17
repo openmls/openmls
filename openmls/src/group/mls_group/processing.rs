@@ -181,13 +181,59 @@ impl MlsGroup {
         // private message
         let will_modify_secret_tree = matches!(message, ProtocolMessage::PrivateMessage(_));
 
+        // Resolve the emulator reuse-guard context for `PrivateMessage`
+        // before calling `decrypt_message` so storage errors surface as
+        // `ProcessMessageError::StorageError`. `PublicMessage` carries no
+        // `reuse_guard`, so the lookup is skipped for it.
+        #[cfg(feature = "virtual-clients-draft")]
+        let emulation_state: Option<
+            crate::components::vc_derivation_info::EmulationEpochState,
+        > = if matches!(message, ProtocolMessage::PrivateMessage(_)) {
+            let binding: Option<crate::components::vc_derivation_info::EpochId> = provider
+                .storage()
+                .vc_emulation_binding(self.group_id())
+                .map_err(ProcessMessageError::StorageError)?;
+            match binding {
+                Some(epoch_id) => Some(
+                    provider
+                        .storage()
+                        .vc_emulation_epoch_state(&epoch_id)
+                        .map_err(ProcessMessageError::StorageError)?
+                        .ok_or_else(|| {
+                            log::error!(
+                                "vc: group is bound to emulation epoch, but state is missing"
+                            );
+                            ProcessMessageError::ValidationError(
+                                crate::group::ValidationError::UnableToDecrypt(
+                                    crate::framing::errors::MessageDecryptionError::VirtualClientsError(
+                                        crate::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState,
+                                    ),
+                                ),
+                            )
+                        })?,
+                ),
+                None => None,
+            }
+        } else {
+            None
+        };
+        #[cfg(feature = "virtual-clients-draft")]
+        let emulator_ctx: Option<crate::framing::EmulatorReuseGuardCtx<'_>> = emulation_state
+            .as_ref()
+            .map(|state| state.reuse_guard_inputs());
+
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
-        let decrypted_message =
-            self.decrypt_message(provider.crypto(), message, &sender_ratchet_configuration)?;
+        let decrypted_message = self.decrypt_message(
+            provider.crypto(),
+            message,
+            &sender_ratchet_configuration,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulator_ctx.as_ref(),
+        )?;
 
         // Persist the secret tree if it was modified to ensure forward secrecy
         if will_modify_secret_tree {
@@ -404,15 +450,15 @@ impl MlsGroup {
                 log::error!("vc: load emulation epoch state failed: {e:?}");
                 VirtualClientsError::StorageError
             })?
-            .ok_or(VirtualClientsError::MissingEpochEncryptionKey)?;
-        // Receiver only needs the AEAD key; the leaf index travels on the
-        // wire inside `EpochInfoTbe` (sender's view), so it doesn't have
-        // to come from storage on this side.
-        let (_state_leaf_index, epoch_encryption_key) = state.into_parts();
+            .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+        // Receiver uses the emulation epoch's AEAD key and ciphersuite for
+        // `EpochInfoTbe`; the leaf index travels on the wire (sender's view),
+        // so it doesn't have to come from storage on this side.
+        let (_state_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
 
-        let ciphersuite = self.ciphersuite();
         let crypto = provider.crypto();
-        let epoch_info = derivation_info.decrypt(crypto, ciphersuite, &epoch_encryption_key)?;
+        let epoch_info =
+            derivation_info.decrypt(crypto, emulation_ciphersuite, &epoch_encryption_key)?;
 
         // We only know how to consume `LeafNode` operation type for an
         // update-path commit — anything else here is a sender bug or a
@@ -429,9 +475,9 @@ impl MlsGroup {
             return Err(VirtualClientsError::DerivationInfoMalformed.into());
         }
 
-        let pprf_input_bytes = pprf_input(crypto, ciphersuite, &epoch_info)?;
+        let pprf_input_bytes = pprf_input(crypto, emulation_ciphersuite, &epoch_info)?;
         let operation_secret: OperationSecret = pprf
-            .evaluate(crypto, ciphersuite, &pprf_input_bytes)
+            .evaluate(crypto, emulation_ciphersuite, &pprf_input_bytes)
             .map_err(VirtualClientsError::from)?
             .into();
 
@@ -486,20 +532,24 @@ impl MlsGroup {
         //  - ValSem246 (as part of ValSem010)
         //  - https://validation.openmls.tech/#valn1302
         //  - https://validation.openmls.tech/#valn1304
-        let (content, credential) =
+        let verified =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        match content.sender() {
+        match verified.content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
                 .process_internal_authenticated_content_with_app_data_updates(
                     provider,
-                    content,
-                    credential,
+                    verified.content,
+                    verified.credential,
                     app_data_dict_updates,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    verified.emulator_sender_leaf_index,
                 ),
-            Sender::External(_) => {
-                self.process_external_authenticated_content(provider, content, credential)
-            }
+            Sender::External(_) => self.process_external_authenticated_content(
+                provider,
+                verified.content,
+                verified.credential,
+            ),
         }
     }
 
@@ -540,16 +590,23 @@ impl MlsGroup {
         //  - ValSem246 (as part of ValSem010)
         //  - https://validation.openmls.tech/#valn1302
         //  - https://validation.openmls.tech/#valn1304
-        let (content, credential) =
+        let verified =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        match content.sender() {
-            Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => {
-                self.process_internal_authenticated_content(provider, content, credential)
-            }
-            Sender::External(_) => {
-                self.process_external_authenticated_content(provider, content, credential)
-            }
+        match verified.content.sender() {
+            Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
+                .process_internal_authenticated_content(
+                    provider,
+                    verified.content,
+                    verified.credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    verified.emulator_sender_leaf_index,
+                ),
+            Sender::External(_) => self.process_external_authenticated_content(
+                provider,
+                verified.content,
+                verified.credential,
+            ),
         }
     }
 
@@ -583,6 +640,7 @@ impl MlsGroup {
         content: AuthenticatedContent,
         credential: Credential,
         app_data_dict_updates: Option<AppDataUpdates>,
+        #[cfg(feature = "virtual-clients-draft")] emulator_sender_leaf_index: Option<LeafNodeIndex>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         let sender = content.sender().clone();
         let authenticated_data = content.authenticated_data().to_owned();
@@ -653,6 +711,8 @@ impl MlsGroup {
             authenticated_data,
             content,
             credential,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulator_sender_leaf_index,
         ))
     }
 
@@ -661,6 +721,7 @@ impl MlsGroup {
         provider: &Provider,
         content: AuthenticatedContent,
         credential: Credential,
+        #[cfg(feature = "virtual-clients-draft")] emulator_sender_leaf_index: Option<LeafNodeIndex>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         let sender = content.sender().clone();
         let authenticated_data = content.authenticated_data().to_owned();
@@ -728,6 +789,8 @@ impl MlsGroup {
             authenticated_data,
             content,
             credential,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulator_sender_leaf_index,
         ))
     }
 
@@ -742,6 +805,8 @@ impl MlsGroup {
         content: AuthenticatedContent,
         credential: Credential,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+        #[cfg(feature = "virtual-clients-draft")]
+        let emulator_sender_leaf_index: Option<crate::binary_tree::LeafNodeIndex> = None;
         let sender = content.sender().clone();
         let data = content.authenticated_data().to_owned();
 
@@ -768,6 +833,8 @@ impl MlsGroup {
                     data,
                     content,
                     credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    emulator_sender_leaf_index,
                 ))
             }
 
@@ -786,6 +853,8 @@ impl MlsGroup {
                     data,
                     content,
                     credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    emulator_sender_leaf_index,
                 ))
             }
             FramedContentBody::Proposal(Proposal::Add(_)) => {
@@ -803,6 +872,8 @@ impl MlsGroup {
                     data,
                     content,
                     credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    emulator_sender_leaf_index,
                 ))
             }
             // TODO #151/#106
@@ -829,6 +900,9 @@ impl MlsGroup {
         crypto: &impl OpenMlsCrypto,
         message: ProtocolMessage,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
+        #[cfg(feature = "virtual-clients-draft")] emulator_ctx: Option<
+            &crate::framing::EmulatorReuseGuardCtx<'_>,
+        >,
     ) -> Result<DecryptedMessage, ValidationError> {
         // Checks the following semantic validation:
         //  - ValSem002
@@ -866,6 +940,8 @@ impl MlsGroup {
                     crypto,
                     self,
                     sender_ratchet_configuration,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    emulator_ctx,
                 )
             }
         }

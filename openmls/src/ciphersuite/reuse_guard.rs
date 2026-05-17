@@ -20,6 +20,12 @@ pub struct ReuseGuard {
 }
 
 impl ReuseGuard {
+    /// Returns the raw 4 bytes of the guard.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn bytes(&self) -> [u8; REUSE_GUARD_BYTES] {
+        self.value
+    }
+
     /// Samples a fresh reuse guard uniformly at random.
     pub(crate) fn try_from_random(rng: &impl OpenMlsRand) -> Result<Self, CryptoError> {
         Ok(Self {
@@ -117,7 +123,10 @@ mod vc_tests {
         OpenMlsRustCrypto::default()
     }
 
-    fn dummy_reuse_guard_secret(_p: &OpenMlsRustCrypto, ciphersuite: Ciphersuite) -> ReuseGuardSecret {
+    fn dummy_reuse_guard_secret(
+        _p: &OpenMlsRustCrypto,
+        ciphersuite: Ciphersuite,
+    ) -> ReuseGuardSecret {
         let bytes = vec![0xa5u8; ciphersuite.hash_length()];
         ReuseGuardSecret::from_secret_for_tests(Secret::from_slice(&bytes))
     }

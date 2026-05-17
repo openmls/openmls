@@ -695,8 +695,7 @@ pub struct StagedCommit {
     /// the commit was built via `CommitBuilder::vc_emulation`.
     #[cfg(feature = "virtual-clients-draft")]
     #[serde(default)]
-    pub(super) vc_emulation_epoch_id:
-        Option<crate::components::vc_derivation_info::EpochId>,
+    pub(super) vc_emulation_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
 }
 
 impl StagedCommit {

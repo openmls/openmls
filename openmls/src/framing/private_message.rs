@@ -11,8 +11,7 @@ use crate::{
 
 #[cfg(feature = "virtual-clients-draft")]
 use crate::{
-    binary_tree::array_representation::TreeSize,
-    components::vc_derivation_info::ReuseGuardSecret,
+    binary_tree::array_representation::TreeSize, components::vc_derivation_info::ReuseGuardSecret,
 };
 
 use super::*;
