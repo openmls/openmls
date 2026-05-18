@@ -5,6 +5,8 @@ use crate::storage::OpenMlsProvider;
 #[cfg(feature = "virtual-clients-draft")]
 use crate::tree::secret_tree::SecretType;
 
+#[cfg(feature = "virtual-clients-draft")]
+use super::errors::ConfirmMessageError;
 use super::{errors::CreateMessageError, *};
 
 impl MlsGroup {
@@ -36,7 +38,7 @@ impl MlsGroup {
     /// proposals exist. In that case `.process_pending_proposals()` must be
     /// called first and incoming messages from the DS must be processed
     /// afterwards.
-    #[cfg(feature = "virtual-clients-draft")]
+    #[cfg(all(feature = "virtual-clients-draft", any(feature = "test-utils", test)))]
     pub fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -113,17 +115,16 @@ impl MlsGroup {
         &mut self,
         storage: &Storage,
         generation: u32,
-    ) -> Result<(), CreateMessageError<Storage::Error>> {
+    ) -> Result<(), ConfirmMessageError<Storage::Error>> {
         // For now we only support application secrets.
         let secret_type = SecretType::ApplicationSecret;
         self.message_secrets_store
             .message_secrets_mut()
             .secret_tree_mut()
-            .delete_own_secret_for_generation(secret_type, generation)
-            .map_err(MessageEncryptionError::SecretTreeError)?;
+            .delete_own_secret_for_generation(secret_type, generation)?;
         storage
             .write_message_secrets(self.group_id(), &self.message_secrets_store)
-            .map_err(CreateMessageError::StorageError)?;
+            .map_err(ConfirmMessageError::StorageError)?;
         Ok(())
     }
 }
