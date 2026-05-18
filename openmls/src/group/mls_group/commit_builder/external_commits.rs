@@ -104,9 +104,9 @@ impl ExternalCommitBuilder {
     }
 
     /// Specifies the configuration to use for the group built as part of the
-    /// external commit. Note that the external commit will always be a
-    /// `PublicMessage` regardless of the wire format policy set in the group
-    /// config.
+    /// external commit. The external commit will use the group's configured
+    /// wire format policy, allowing it to be sent as either a `PublicMessage`
+    /// or `PrivateMessage` depending on the policy.
     pub fn with_config(mut self, config: MlsGroupJoinConfig) -> Self {
         self.config = config;
         self
@@ -149,6 +149,11 @@ impl ExternalCommitBuilder {
             aad,
             validate_lifetimes,
         } = self;
+
+        // Save the original wire format policy and set to plaintext for the external commit.
+        let original_wire_format_policy = config.wire_format_policy;
+
+        config.wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
 
         // Build the ratchet tree
 
@@ -271,14 +276,6 @@ impl ExternalCommitBuilder {
         queued_proposals.extend(inline_proposals);
 
         let own_leaf_index = public_group.leftmost_free_index(queued_proposals.iter())?;
-
-        let original_wire_format_policy = config.wire_format_policy;
-
-        // We set this to PURE_PLAINTEXT_WIRE_FORMAT_POLICY so that the
-        // external commit can be sent as a PublicMessageIn. The wire format
-        // policy will be set to the original wire format policy after the
-        // external commit has been sent.
-        config.wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
 
         let mut mls_group = MlsGroup {
             mls_group_config: config,

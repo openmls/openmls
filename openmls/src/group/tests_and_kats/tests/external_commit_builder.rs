@@ -9,6 +9,7 @@ use crate::{
     messages::proposals::{PreSharedKeyProposal, ProposalType},
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     treesync::node::leaf_node::{Capabilities, LeafNodeParameters},
+    group::mls_group::commit_builder::{CommitMessageBundle, Complete},
 };
 
 #[openmls_test]
@@ -227,4 +228,85 @@ fn external_commit_builder() {
     assert!(members
         .iter()
         .any(|m| m.credential == charlie_credential_with_key.credential));
+}
+
+#[openmls_test]
+fn external_commit_builder_ciphertext_message() {
+    use crate::group::{LeaveGroupError, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY};
+
+    let provider = &Provider::default();
+    let CredentialWithKeyAndSigner {
+        credential_with_key,
+        signer,
+    } = generate_credential_with_key(
+        b"alice".into(),
+        ciphersuite.signature_algorithm(),
+        provider,
+    );
+
+    let mut group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .build(provider, &signer, credential_with_key.clone())
+        .unwrap();
+
+    // Self-remove is currently rejected for pure ciphertext wire format.
+    let err = group
+        .leave_group_via_self_remove(provider, &signer)
+        .expect_err("Expected self-remove to fail with pure ciphertext policy");
+    assert!(matches!(
+        err,
+        LeaveGroupError::CannotSelfRemoveWithPureCiphertext
+    ));
+
+    // Ensure the group is configured with PURE_CIPHERTEXT_WIRE_FORMAT_POLICY
+    assert_eq!(group.configuration().wire_format_policy(), PURE_CIPHERTEXT_WIRE_FORMAT_POLICY);
+
+    // Attempt to issue a self-remove proposal and ensure it fails
+    let result = group.leave_group_via_self_remove(provider, &signer);
+    assert!(matches!(result, Err(LeaveGroupError::CannotSelfRemoveWithPureCiphertext)));
+
+    // Validate that external commits can still be processed
+    let verifiable_group_info = group
+        .export_group_info(provider.crypto(), &signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    let tree_option = group.export_ratchet_tree();
+
+    let join_group_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .build();
+
+    let builder = MlsGroup::external_commit_builder()
+        .with_ratchet_tree(tree_option.into())
+        .with_config(join_group_config)
+        .build_group(provider, verifiable_group_info, credential_with_key.clone())
+        .unwrap()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &signer, |_| true)
+        .unwrap();
+    let builder: crate::group::mls_group::commit_builder::CommitBuilder<'_, Complete, MlsGroup> = builder;
+    let (new_group, commit_message_bundle): (MlsGroup, CommitMessageBundle) = builder.finalize(provider).unwrap();
+
+    // Ensure the new group is configured correctly
+    assert_eq!(new_group.configuration().wire_format_policy(), PURE_CIPHERTEXT_WIRE_FORMAT_POLICY);
+
+    // Validate that the commit message is processed correctly
+    let plaintext = commit_message_bundle
+        .into_commit()
+        .into_protocol_message()
+        .unwrap();
+
+    let processed_message = group.process_message(provider, plaintext).unwrap();
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a staged commit message.");
+    };
+    group
+        .merge_staged_commit(provider, *staged_commit)
+        .unwrap();
 }
