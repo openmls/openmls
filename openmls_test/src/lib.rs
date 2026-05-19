@@ -1,8 +1,32 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsProvider};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, ItemFn};
+
+/// Mandatory-to-implement ciphersuite per RFC 9420.
+/// Used as the sole default when the `all-ciphersuites` feature is off.
+const MTI_CIPHERSUITE: Ciphersuite =
+    Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+
+/// Returns the ciphersuites a provider's tests should be expanded over.
+///
+/// Without the `all-ciphersuites` feature, this collapses to the MTI
+/// ciphersuite so each `#[openmls_test]` produces one test per provider.
+/// With the feature enabled, every supported ciphersuite is emitted, which
+/// matches the historical behaviour and is intended for on-demand runs
+/// (nightly CI, release validation).
+fn expansion_ciphersuites(provider_supported: Vec<Ciphersuite>) -> Vec<Ciphersuite> {
+    if cfg!(feature = "all-ciphersuites") {
+        provider_supported
+    } else if provider_supported.contains(&MTI_CIPHERSUITE) {
+        vec![MTI_CIPHERSUITE]
+    } else {
+        // The provider does not advertise the MTI ciphersuite. Emit no
+        // tests for it rather than silently using something else.
+        Vec::new()
+    }
+}
 
 #[proc_macro_attribute]
 pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -15,7 +39,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let rc = OpenMlsRustCrypto::default();
 
-    let rc_ciphersuites = rc.crypto().supported_ciphersuites();
+    let rc_ciphersuites = expansion_ciphersuites(rc.crypto().supported_ciphersuites());
 
     let mut test_funs = Vec::new();
 
@@ -49,7 +73,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     #[cfg(all(feature = "sqlite-provider", not(target_arch = "wasm32",)))]
     {
-        let rc_ciphersuites = rc.crypto().supported_ciphersuites();
+        let rc_ciphersuites = expansion_ciphersuites(rc.crypto().supported_ciphersuites());
         for ciphersuite in rc_ciphersuites {
             let val = ciphersuite as u16;
             let ciphersuite_name = format!("{ciphersuite:?}");
@@ -136,7 +160,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     ))]
     {
         let libcrux = openmls_libcrux_crypto::Provider::default();
-        let libcrux_ciphersuites = libcrux.crypto().supported_ciphersuites();
+        let libcrux_ciphersuites = expansion_ciphersuites(libcrux.crypto().supported_ciphersuites());
 
         for ciphersuite in libcrux_ciphersuites {
             let val = ciphersuite as u16;
