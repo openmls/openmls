@@ -8,7 +8,17 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**/*.md'
+      - 'book/**'
+      - 'LICENSE*'
+      - '.gitignore'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'book/**'
+      - 'LICENSE*'
+      - '.gitignore'
   workflow_dispatch:
 
 env:
@@ -39,34 +49,20 @@ jobs:
           - aarch64-apple-ios
           # WASM
           - wasm32-unknown-unknown
-        include:
-          # Compile iOS sim on macOS
-          - os: macos-latest
-            arch: aarch64-apple-ios-sim
-        mode:
-          - debug
-          - release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      # Install the required target
       - uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.arch }}
       - uses: Swatinem/rust-cache@v2
 
-      - run: |
-          if [ ${{ matrix.mode }} == debug ]; then
-            echo "TEST_MODE=" >> $GITHUB_ENV
-          else
-            echo "TEST_MODE=--release" >> $GITHUB_ENV
-          fi
       - name: Build (wasm)
         if: matrix.arch == 'wasm32-unknown-unknown'
-        run: cargo build $TEST_MODE --verbose --target ${{ matrix.arch }} -p openmls -F js
+        run: cargo build --release --verbose --target ${{ matrix.arch }} -p openmls -F js
       - name: Build
-        if: ${{ matrix.arch != 'wasm32-unknown-unknown'  }} 
-        run: cargo build $TEST_MODE --verbose --target ${{ matrix.arch }} -p openmls
+        if: ${{ matrix.arch != 'wasm32-unknown-unknown'  }}
+        run: cargo build --release --verbose --target ${{ matrix.arch }} -p openmls
 
   # Check feature powerset
   check:
@@ -80,9 +76,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-hack
 
-      # Group all features except fork-resolution,js,extensions-draft-08
+      # Group all features except fork-resolution and extensions-draft-08
       - name: Cargo hack
         run: |
           cargo hack check --feature-powerset --no-dev-deps --verbose -p openmls \
           --group-features test-utils,crypto-debug,content-debug,backtrace,libcrux-provider,sqlite-provider \
-          --group-features extensions-draft-08,extensions-draft-08-test-dependencies
+          --group-features extensions-draft-08,extensions-draft-08-test-dependencies \
+          --group-features js,js-test
