@@ -1031,6 +1031,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             update_path_leaf_node,
             #[cfg(feature = "extensions-draft-08")]
             application_export_tree,
+            // The committer's `own_leaf_index` is already set to the new
+            // leaf (in `build_group` for external commits, or unchanged for
+            // regular commits), so `merge_commit` has nothing to overwrite.
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,

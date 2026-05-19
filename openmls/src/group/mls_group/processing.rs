@@ -325,12 +325,18 @@ impl MlsGroup {
     }
 
     /// Resolve a commit's virtual-clients derivation info to the per-commit
-    /// `OperationSecret` the receiver needs in order to recreate the path of an
-    /// own (sibling-virtual-client) commit.
+    /// `OperationSecret` the receiver needs in order to recreate the path of a
+    /// commit sent by a sibling emulator client.
     ///
-    /// Only call this when the commit's sender is our own leaf. Other senders'
-    /// commits are processed via the normal HPKE path and never need to look up
-    /// VC secrets.
+    /// See [`is_sibling_vc_commit`] for the precondition the caller must
+    /// check before invoking this helper. Sibling commits come in two
+    /// shapes:
+    ///
+    ///   * own-leaf VC commits, where a sibling emulator committed through our
+    ///     shared higher-level leaf
+    ///   * sibling-resync external commits, where a sibling emulator joined this
+    ///     higher-level group externally onto a leaf of their own,
+    ///     inline-removing our previous leaf.
     ///
     /// Returns `Ok(None)` when the commit carries no virtual-clients
     /// derivation-info entry on its update-path leaf (path-less commits, or
@@ -342,10 +348,6 @@ impl MlsGroup {
     ///   - evaluates the PPRF (puncturing it) and persists the punctured state
     ///     back to storage,
     ///   - returns the resulting `OperationSecret`.
-    ///
-    /// Once the precondition holds, missing PPRF / AEAD-key registration or
-    /// AEAD decryption failure is reported as an error: an own-leaf commit
-    /// carrying the VC component must be derivable.
     #[cfg(feature = "virtual-clients-draft")]
     fn load_vc_commit_material<Provider: OpenMlsProvider>(
         &self,
@@ -598,14 +600,18 @@ impl MlsGroup {
                 let (old_epoch_keypairs, leaf_node_keypairs) =
                     self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
 
-                // Only load virtual-clients material when the commit was sent
-                // by *our own* leaf — i.e. a sibling emulator of the same
-                // virtual client. A non-emulator member processing a VC
-                // commit never has the per-epoch PPRF / AEAD key in storage
-                // and must fall through to the normal HPKE path.
+                // The receiver only takes the VC path when it can
+                // identify itself as a sibling from the commit shape:
+                //
+                // * `Sender::Member(idx)` with `idx == own_leaf_index`: the
+                //   sender committed through our shared higher-level leaf, so
+                //   we are a sibling.
+                // * `Sender::NewMemberCommit` with an inline `Remove(own_leaf)`:
+                //   the sender is a sibling joining externally and the
+                //   auto-Remove targets our previous leaf, so we are the
+                //   sibling being resynced.
                 #[cfg(feature = "virtual-clients-draft")]
-                let vc_material = if matches!(&sender, Sender::Member(idx) if *idx == self.own_leaf_index())
-                {
+                let vc_material = if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
                     self.load_vc_commit_material(provider, commit)?
                 } else {
                     None
@@ -672,11 +678,12 @@ impl MlsGroup {
                     self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
 
                 // See `process_internal_authenticated_content_with_app_data_updates`
-                // for the rationale: VC material lookup is gated on the
-                // commit being from our own leaf.
+                // for the rationale. The receiver only takes the VC path when
+                // it can identify itself as a sibling of the
+                // sender from the commit shape: own-leaf sender, or external
+                // commit with an inline `Remove(own_leaf)`.
                 #[cfg(feature = "virtual-clients-draft")]
-                let vc_material = if matches!(&sender, Sender::Member(idx) if *idx == self.own_leaf_index())
-                {
+                let vc_material = if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
                     self.load_vc_commit_material(provider, commit)?
                 } else {
                     None
@@ -845,5 +852,36 @@ impl MlsGroup {
                 )
             }
         }
+    }
+}
+
+/// Determines from the commit's shape whether the receiver is a sibling virtual
+/// client of the sender of a virtual-clients commit.
+///
+/// Returns `true` for:
+///   * own-leaf commits (`Sender::Member(idx)` with `idx == own_leaf_index`),
+///     where receiver and sender share the higher-level leaf
+///   * sibling-resync external commits (`Sender::NewMemberCommit` whose
+///     proposal list inlines a `Remove` of `own_leaf_index`.
+///
+/// `false` for everything else.
+#[cfg(feature = "virtual-clients-draft")]
+fn is_sibling_vc_commit(
+    commit: &Commit,
+    sender: &super::Sender,
+    own_leaf_index: crate::binary_tree::LeafNodeIndex,
+) -> bool {
+    use crate::messages::proposals::{Proposal, ProposalOrRef};
+
+    match sender {
+        super::Sender::Member(idx) => *idx == own_leaf_index,
+        super::Sender::NewMemberCommit => commit.proposals.iter().any(|p| {
+            matches!(
+                p,
+                ProposalOrRef::Proposal(boxed)
+                    if matches!(boxed.as_ref(), Proposal::Remove(r) if r.removed() == own_leaf_index)
+            )
+        }),
+        _ => false,
     }
 }

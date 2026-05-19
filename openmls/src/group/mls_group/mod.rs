@@ -762,6 +762,7 @@ impl MlsGroup {
     /// the `provider`'s key store.
     ///
     /// Returns an error if access to the key store fails.
+    #[cfg(not(feature = "virtual-clients-draft"))]
     pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
@@ -770,6 +771,24 @@ impl MlsGroup {
             self.group_id(),
             &GroupEpoch::from(self.context().epoch().as_u64() - 1),
             self.own_leaf_index().u32(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
+        &self,
+        store: &Storage,
+        previous_own_leaf_index: LeafNodeIndex,
+    ) -> Result<(), Storage::Error> {
+        // In the sibling-resync flow, `merge_commit` installs the joiner's
+        // leaf as our own leaf before it filters and stores the new epoch
+        // keypairs. Previous-epoch keypairs are still stored under the leaf
+        // index from that previous epoch, so the caller must pass that index
+        // explicitly instead of having this helper read `self.own_leaf_index()`.
+        store.delete_encryption_epoch_key_pairs(
+            self.group_id(),
+            &GroupEpoch::from(self.context().epoch().as_u64() - 1),
+            previous_own_leaf_index.u32(),
         )
     }
 
