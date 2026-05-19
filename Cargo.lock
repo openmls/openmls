@@ -2475,6 +2475,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
+name = "maybe-async"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "746873a384ad60adc5db74471dfaba74bd278afbdcfd81db93fafcdfc8b5ca0c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2657,6 +2668,7 @@ dependencies = [
  "itertools 0.14.0",
  "lazy_static",
  "log",
+ "maybe-async",
  "once_cell",
  "openmls",
  "openmls_basic_credential",
@@ -2710,6 +2722,7 @@ name = "openmls_basic_credential"
 version = "0.5.0"
 dependencies = [
  "ed25519-dalek",
+ "maybe-async",
  "openmls_traits",
  "p256",
  "rand_core 0.6.4",
@@ -2809,6 +2822,7 @@ dependencies = [
 name = "openmls_traits"
 version = "0.5.0"
 dependencies = [
+ "maybe-async",
  "serde",
  "tls_codec",
 ]

@@ -20,7 +20,8 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn self_update<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -32,9 +33,11 @@ impl MlsGroup {
             .commit_builder()
             .leaf_node_parameters(leaf_node_parameters)
             .consume_proposal_store(true)
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         self.reset_aad();
 
@@ -59,7 +62,8 @@ impl MlsGroup {
     /// Returns an error if there is a pending commit.
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
+    #[maybe_async::maybe_async]
+    pub async fn self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
         old_signer: &impl Signer,
@@ -72,7 +76,8 @@ impl MlsGroup {
             .commit_builder()
             .leaf_node_parameters(leaf_node_parameters)
             .consume_proposal_store(true)
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build_with_new_signer(
                 provider.rand(),
                 provider.crypto(),
@@ -80,7 +85,8 @@ impl MlsGroup {
                 new_signer,
                 |_| true,
             )?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         self.reset_aad();
 
@@ -90,7 +96,8 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    fn create_self_update_proposal_internal<Provider: OpenMlsProvider, S: Signer>(
+    #[maybe_async::maybe_async]
+    async fn create_self_update_proposal_internal<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
         old_signer: &impl Signer,
@@ -125,23 +132,27 @@ impl MlsGroup {
                 leaf_node_parameters.set_credential_with_key(new_signer.credential_with_key);
             }
 
-            own_leaf.update(
-                self.ciphersuite(),
-                provider,
-                new_signer.signer,
-                self.group_id().clone(),
-                self.own_leaf_index(),
-                leaf_node_parameters,
-            )?;
+            own_leaf
+                .update(
+                    self.ciphersuite(),
+                    provider,
+                    new_signer.signer,
+                    self.group_id().clone(),
+                    self.own_leaf_index(),
+                    leaf_node_parameters,
+                )
+                .await?;
         } else {
-            own_leaf.update(
-                self.ciphersuite(),
-                provider,
-                old_signer,
-                self.group_id().clone(),
-                self.own_leaf_index(),
-                leaf_node_parameters,
-            )?;
+            own_leaf
+                .update(
+                    self.ciphersuite(),
+                    provider,
+                    old_signer,
+                    self.group_id().clone(),
+                    self.own_leaf_index(),
+                    leaf_node_parameters,
+                )
+                .await?;
         }
 
         // Validate that the updated leaf node supports all group context extensions
@@ -163,25 +174,29 @@ impl MlsGroup {
         provider
             .storage()
             .append_own_leaf_node(self.group_id(), &own_leaf)
+            .await
             .map_err(ProposeSelfUpdateError::StorageError)?;
         self.own_leaf_nodes.push(own_leaf);
 
         Ok(update_proposal)
     }
 
-    fn propose_self_update_internal<Provider: OpenMlsProvider, S: Signer>(
+    #[maybe_async::maybe_async]
+    async fn propose_self_update_internal<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
         old_signer: &impl Signer,
         new_signer: Option<NewSignerBundle<'_, S>>,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        let update_proposal = self.create_self_update_proposal_internal(
-            provider,
-            old_signer,
-            new_signer,
-            leaf_node_parameters,
-        )?;
+        let update_proposal = self
+            .create_self_update_proposal_internal(
+                provider,
+                old_signer,
+                new_signer,
+                leaf_node_parameters,
+            )
+            .await?;
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
             self.ciphersuite(),
             provider.crypto(),
@@ -191,10 +206,13 @@ impl MlsGroup {
         provider
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .await
             .map_err(ProposeSelfUpdateError::StorageError)?;
         self.proposal_store_mut().add(proposal);
 
-        let mls_message = self.content_to_mls_message(update_proposal, provider)?;
+        let mls_message = self
+            .content_to_mls_message(update_proposal, provider)
+            .await?;
 
         self.reset_aad();
         Ok((mls_message, proposal_ref))
@@ -203,7 +221,8 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. The application can
     /// choose to update the credential, the capabilities, and the extensions by
     /// building the [`LeafNodeParameters`].
-    pub fn propose_self_update<Provider: OpenMlsProvider, S: Signer>(
+    #[maybe_async::maybe_async]
+    pub async fn propose_self_update<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
         signer: &S,
@@ -215,6 +234,7 @@ impl MlsGroup {
             None::<NewSignerBundle<'_, S>>,
             leaf_node_parameters,
         )
+        .await
     }
 
     /// Creates an Update proposal that rotates the sender's signature key.
@@ -232,7 +252,8 @@ impl MlsGroup {
     /// is folded in automatically.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
+    #[maybe_async::maybe_async]
+    pub async fn propose_self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
         old_signer: &impl Signer,
@@ -245,5 +266,6 @@ impl MlsGroup {
             Some(new_signer),
             leaf_node_parameters,
         )
+        .await
     }
 }

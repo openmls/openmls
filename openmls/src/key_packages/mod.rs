@@ -535,7 +535,8 @@ impl KeyPackageBuilder {
     }
 
     /// Finalize and build the key package.
-    pub fn build(
+    #[maybe_async::maybe_async]
+    pub async fn build(
         mut self,
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
@@ -569,6 +570,7 @@ impl KeyPackageBuilder {
         provider
             .storage()
             .write_key_package(&full_kp.key_package.hash_ref(provider.crypto())?, &full_kp)
+            .await
             .map_err(|_| KeyPackageNewError::StorageError)?;
 
         Ok(full_kp)

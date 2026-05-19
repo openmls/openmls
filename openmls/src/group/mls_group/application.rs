@@ -13,7 +13,8 @@ impl MlsGroup {
     /// Returns `CreateMessageError::MlsGroupStateError::PendingProposal` if pending proposals
     /// exist. In that case `.process_pending_proposals()` must be called first
     /// and incoming messages from the DS must be processed afterwards.
-    pub fn create_message<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -39,6 +40,7 @@ impl MlsGroup {
         )?;
         let ciphertext = self
             .encrypt(authenticated_content, provider)
+            .await
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
 

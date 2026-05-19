@@ -22,7 +22,7 @@ use serde::Serialize;
 use sqlx::SqliteConnection;
 
 pub use crate::codec::Codec;
-use crate::{migrator::MigratorWrapper, storage_provider::block_async_in_place};
+use crate::migrator::MigratorWrapper;
 
 mod codec;
 mod group_data;
@@ -52,13 +52,13 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
         }
     }
 
-    /// Run the migrations for the storage provider. Uses sqlx's built-in
+    /// Run the migrations for the storage provider using sqlx's built-in
     /// migration support.
-    pub fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
+    pub async fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
         let mut conn = self.connection.borrow_mut();
-        block_async_in_place(
-            sqlx::migrate!("./migrations").run_direct(&mut MigratorWrapper(*conn)),
-        )?;
+        sqlx::migrate!("./migrations")
+            .run_direct(&mut MigratorWrapper(*conn))
+            .await?;
         Ok(())
     }
 

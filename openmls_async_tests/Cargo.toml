@@ -1,0 +1,28 @@
+[package]
+name = "openmls_async_tests"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+openmls = { path = "../openmls", default-features = false, features = [
+    "async",
+] }
+openmls_basic_credential = { path = "../basic_credential", default-features = false, features = [
+    "async",
+] }
+openmls_rust_crypto = { path = "../openmls_rust_crypto", default-features = false, features = [
+    "async",
+] }
+openmls_sqlx_storage = { path = "../sqlx_storage" }
+serde = "1.0"
+serde_json = "1.0"
+sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+
+[[bin]]
+name = "openmls_async_tests"
+path = "src/main.rs"

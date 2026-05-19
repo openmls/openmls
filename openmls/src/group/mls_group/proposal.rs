@@ -84,7 +84,8 @@ macro_rules! impl_propose_fun {
         /// Creates proposals to add an external PSK to the key schedule.
         ///
         /// Returns an error if there is a pending commit.
-        pub fn $name<Provider: OpenMlsProvider>(
+        #[maybe_async::maybe_async]
+        pub async fn $name<Provider: OpenMlsProvider>(
             &mut self,
             provider: &Provider,
             signer: &impl Signer,
@@ -106,10 +107,11 @@ macro_rules! impl_propose_fun {
             provider
                 .storage()
                 .queue_proposal(self.group_id(), &proposal_ref, &queued_proposal)
+                .await
                 .map_err(ProposalError::StorageError)?;
             self.proposal_store_mut().add(queued_proposal);
 
-            let mls_message = self.content_to_mls_message(proposal, provider)?;
+            let mls_message = self.content_to_mls_message(proposal, provider).await?;
 
             self.reset_aad();
             Ok((mls_message, proposal_ref))
@@ -161,7 +163,8 @@ impl MlsGroup {
     );
 
     /// Generate a proposal
-    pub fn propose<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn propose<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -172,47 +175,58 @@ impl MlsGroup {
             Propose::Add(key_package) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
                     self.propose_add_member_by_value(provider, signer, key_package)
+                        .await
                 }
                 ProposalOrRefType::Reference => self
                     .propose_add_member(provider, signer, &key_package)
+                    .await
                     .map_err(|e| e.into()),
             },
 
             Propose::Update(leaf_node_parameters) => match ref_or_value {
                 ProposalOrRefType::Proposal => self
                     .propose_self_update(provider, signer, leaf_node_parameters)
+                    .await
                     .map_err(|e| e.into()),
                 ProposalOrRefType::Reference => self
                     .propose_self_update(provider, signer, leaf_node_parameters)
+                    .await
                     .map_err(|e| e.into()),
             },
 
             Propose::Remove(leaf_index) => match ref_or_value {
-                ProposalOrRefType::Proposal => self.propose_remove_member_by_value(
-                    provider,
-                    signer,
-                    LeafNodeIndex::new(leaf_index),
-                ),
+                ProposalOrRefType::Proposal => {
+                    self.propose_remove_member_by_value(
+                        provider,
+                        signer,
+                        LeafNodeIndex::new(leaf_index),
+                    )
+                    .await
+                }
                 ProposalOrRefType::Reference => self
                     .propose_remove_member(provider, signer, LeafNodeIndex::new(leaf_index))
+                    .await
                     .map_err(|e| e.into()),
             },
 
             Propose::RemoveCredential(credential) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
                     self.propose_remove_member_by_credential_by_value(provider, signer, &credential)
+                        .await
                 }
                 ProposalOrRefType::Reference => self
                     .propose_remove_member_by_credential(provider, signer, &credential)
+                    .await
                     .map_err(|e| e.into()),
             },
             Propose::PreSharedKey(psk_id) => match psk_id.psk() {
                 crate::schedule::Psk::External(_) => match ref_or_value {
                     ProposalOrRefType::Proposal => {
                         self.propose_external_psk_by_value(provider, signer, psk_id)
+                            .await
                     }
                     ProposalOrRefType::Reference => {
-                        self.propose_external_psk(provider, signer, psk_id)
+                        self.propose_external_psk(provider, signer, psk_id).await
                     }
                 },
                 crate::schedule::Psk::Resumption(_) => Err(ProposalError::LibraryError(
@@ -238,27 +252,35 @@ impl MlsGroup {
             Propose::UpdateAppDataComponent {
                 component_id,
                 update,
-            } => self.propose_app_data_update(
-                provider,
-                signer,
-                component_id,
-                AppDataUpdateOperation::Update(update.into()),
-            ),
+            } => {
+                self.propose_app_data_update(
+                    provider,
+                    signer,
+                    component_id,
+                    AppDataUpdateOperation::Update(update.into()),
+                )
+                .await
+            }
             #[cfg(feature = "extensions-draft-08")]
-            Propose::RemoveAppDataComponent { component_id } => self.propose_app_data_update(
-                provider,
-                signer,
-                component_id,
-                AppDataUpdateOperation::Remove,
-            ),
+            Propose::RemoveAppDataComponent { component_id } => {
+                self.propose_app_data_update(
+                    provider,
+                    signer,
+                    component_id,
+                    AppDataUpdateOperation::Remove,
+                )
+                .await
+            }
 
             // custom
             Propose::Custom(custom_proposal) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
                     self.propose_custom_proposal_by_value(provider, signer, custom_proposal)
+                        .await
                 }
                 ProposalOrRefType::Reference => {
                     self.propose_custom_proposal_by_reference(provider, signer, custom_proposal)
+                        .await
                 }
             },
         }
@@ -267,7 +289,8 @@ impl MlsGroup {
     /// Creates proposals to add members to the group.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_add_member<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn propose_add_member<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -293,10 +316,11 @@ impl MlsGroup {
         provider
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .await
             .map_err(ProposeAddMemberError::StorageError)?;
         self.proposal_store_mut().add(proposal);
 
-        let mls_message = self.content_to_mls_message(add_proposal, provider)?;
+        let mls_message = self.content_to_mls_message(add_proposal, provider).await?;
 
         self.reset_aad();
         Ok((mls_message, proposal_ref))
@@ -306,7 +330,8 @@ impl MlsGroup {
     /// The `member` has to be the member's leaf index.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_remove_member<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn propose_remove_member<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -328,10 +353,13 @@ impl MlsGroup {
         provider
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &proposal)
+            .await
             .map_err(ProposeRemoveMemberError::StorageError)?;
         self.proposal_store_mut().add(proposal);
 
-        let mls_message = self.content_to_mls_message(remove_proposal, provider)?;
+        let mls_message = self
+            .content_to_mls_message(remove_proposal, provider)
+            .await?;
 
         self.reset_aad();
         Ok((mls_message, proposal_ref))
@@ -341,7 +369,8 @@ impl MlsGroup {
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_remove_member_by_credential<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn propose_remove_member_by_credential<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -357,6 +386,7 @@ impl MlsGroup {
 
         if let Some(member_index) = member_index {
             self.propose_remove_member(provider, signer, member_index)
+                .await
         } else {
             Err(ProposeRemoveMemberError::UnknownMember)
         }
@@ -366,7 +396,8 @@ impl MlsGroup {
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn propose_remove_member_by_credential_by_value<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn propose_remove_member_by_credential_by_value<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -381,6 +412,7 @@ impl MlsGroup {
 
         if let Some(member_index) = member_index {
             self.propose_remove_member_by_value(provider, signer, member_index)
+                .await
         } else {
             Err(ProposalError::ProposeRemoveMemberError(
                 ProposeRemoveMemberError::UnknownMember,
@@ -392,7 +424,8 @@ impl MlsGroup {
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions`.
-    pub fn propose_group_context_extensions<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn propose_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         extensions: Extensions<GroupContext>,
@@ -416,10 +449,11 @@ impl MlsGroup {
         provider
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &queued_proposal)
+            .await
             .map_err(ProposalError::StorageError)?;
         self.proposal_store_mut().add(queued_proposal);
 
-        let mls_message = self.content_to_mls_message(proposal, provider)?;
+        let mls_message = self.content_to_mls_message(proposal, provider).await?;
 
         self.reset_aad();
         Ok((mls_message, proposal_ref))
@@ -433,7 +467,8 @@ impl MlsGroup {
     /// in the new `extensions` or if there is a pending commit.
     //// FIXME: #1217
     #[allow(clippy::type_complexity)]
-    pub fn update_group_context_extensions<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn update_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         extensions: Extensions<GroupContext>,
@@ -448,9 +483,11 @@ impl MlsGroup {
         let bundle = self
             .commit_builder()
             .propose_group_context_extensions(extensions)?
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         // Extract messages and convert Welcome to MlsMessageOut
         let (commit, welcome, group_info) = bundle.into_contents();
@@ -461,7 +498,8 @@ impl MlsGroup {
 
     /// Updates the AppDataDictionary
     #[cfg(feature = "extensions-draft-08")]
-    pub fn propose_app_data_update<Provider: OpenMlsProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn propose_app_data_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -489,23 +527,26 @@ impl MlsGroup {
         provider
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &queued_proposal)
+            .await
             .map_err(ProposalError::StorageError)?;
         self.proposal_store_mut().add(queued_proposal);
 
-        let mls_message = self.content_to_mls_message(proposal, provider)?;
+        let mls_message = self.content_to_mls_message(proposal, provider).await?;
 
         self.reset_aad();
         Ok((mls_message, proposal_ref))
     }
 
     /// Removes a specific proposal from the store.
-    pub fn remove_pending_proposal<Storage: StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn remove_pending_proposal<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         proposal_ref: &ProposalRef,
     ) -> Result<(), RemoveProposalError<Storage::Error>> {
         storage
             .remove_proposal(self.group_id(), proposal_ref)
+            .await
             .map_err(RemoveProposalError::Storage)?;
         self.proposal_store_mut()
             .remove(proposal_ref)

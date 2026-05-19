@@ -50,7 +50,8 @@ impl MlsGroup {
     /// Export a secret from the forward secure exporter for the component with
     /// the given component ID.
     #[cfg(feature = "extensions-draft-08")]
-    pub fn safe_export_secret<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn safe_export_secret<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         &mut self,
         crypto: &Crypto,
         storage: &Storage,
@@ -70,6 +71,7 @@ impl MlsGroup {
             application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
         storage
             .write_application_export_tree(group_id, application_export_tree)
+            .await
             .map_err(SafeExportSecretError::Storage)?;
 
         Ok(component_secret.as_slice().to_vec())
@@ -78,7 +80,8 @@ impl MlsGroup {
     /// Export a secret from the forward secure exporter of the pending commit
     /// state for the component with the given component ID.
     #[cfg(feature = "extensions-draft-08")]
-    pub fn safe_export_secret_from_pending<Provider: StorageProvider>(
+    #[maybe_async::maybe_async]
+    pub async fn safe_export_secret_from_pending<Provider: StorageProvider>(
         &mut self,
         crypto: &impl OpenMlsCrypto,
         storage: &Provider,
@@ -94,6 +97,7 @@ impl MlsGroup {
         let secret = staged_commit.safe_export_secret(crypto, component_id)?;
         storage
             .write_group_state(&group_id, &self.group_state)
+            .await
             .map_err(PendingSafeExportSecretError::Storage)?;
         Ok(secret.as_slice().to_vec())
     }
