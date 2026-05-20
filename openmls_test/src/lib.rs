@@ -6,8 +6,7 @@ use syn::{parse_macro_input, ItemFn};
 
 /// Mandatory-to-implement ciphersuite per RFC 9420.
 /// Used as the sole default when the `all-ciphersuites` feature is off.
-const MTI_CIPHERSUITE: Ciphersuite =
-    Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+const MTI_CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
 /// Returns the ciphersuites a provider's tests should be expanded over.
 ///
@@ -160,7 +159,8 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     ))]
     {
         let libcrux = openmls_libcrux_crypto::Provider::default();
-        let libcrux_ciphersuites = expansion_ciphersuites(libcrux.crypto().supported_ciphersuites());
+        let libcrux_ciphersuites =
+            expansion_ciphersuites(libcrux.crypto().supported_ciphersuites());
 
         for ciphersuite in libcrux_ciphersuites {
             let val = ciphersuite as u16;
