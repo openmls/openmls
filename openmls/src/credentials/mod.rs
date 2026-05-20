@@ -84,10 +84,10 @@ pub enum CredentialType {
     Basic = 1,
     /// An X.509 [`Certificate`]
     X509 = 2,
-    /// A GREASE credential type for ensuring extensibility.
-    Grease(u16),
     /// Another type of credential that is not in the MLS protocol spec.
     Other(u16),
+    /// A GREASE credential type for ensuring extensibility.
+    Grease(u16),
 }
 
 impl CredentialType {

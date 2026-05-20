@@ -72,23 +72,47 @@ use crate::component::ComponentId;
 /// |:=======|:==============|:============|:==============|:==========|:=============================|
 /// | 0x0009 | app_ephemeral | Y           | N             | RFC XXXX  | draft-ietf-mls-extensions-08 |
 /// | 0x000a | self_remove   | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-07 |
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
+#[derive(
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    Copy,
+    Debug,
+    Hash,
+    openmls_serialization_helpers::Serialize,
+    openmls_serialization_helpers::Deserialize,
+)]
 #[allow(missing_docs)]
 pub enum ProposalType {
+    #[storage_tag = 0]
     Add,
+    #[storage_tag = 1]
     Update,
+    #[storage_tag = 2]
     Remove,
+    #[storage_tag = 3]
     PreSharedKey,
+    #[storage_tag = 4]
     Reinit,
+    #[storage_tag = 5]
     ExternalInit,
+    #[storage_tag = 6]
     GroupContextExtensions,
+    // AppAck = 7,
+    #[storage_tag = 8]
     SelfRemove,
+    #[storage_tag = 9]
+    Custom(u16),
+    #[storage_tag = 10]
+    Grease(u16),
     #[cfg(feature = "extensions-draft-08")]
+    #[storage_tag = 11]
     AppEphemeral,
     #[cfg(feature = "extensions-draft-08")]
+    #[storage_tag = 12]
     AppDataUpdate,
-    Grease(u16),
-    Custom(u16),
 }
 
 impl ProposalType {
@@ -231,25 +255,42 @@ impl From<ProposalType> for u16 {
 ///     };
 /// } Proposal;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    openmls_serialization_helpers::Serialize,
+    openmls_serialization_helpers::Deserialize,
+)]
 #[allow(missing_docs)]
-#[repr(u16)]
 pub enum Proposal {
+    #[storage_tag = 0]
     Add(Box<AddProposal>),
+    #[storage_tag = 1]
     Update(Box<UpdateProposal>),
+    #[storage_tag = 2]
     Remove(Box<RemoveProposal>),
+    #[storage_tag = 3]
     PreSharedKey(Box<PreSharedKeyProposal>),
+    #[storage_tag = 4]
     ReInit(Box<ReInitProposal>),
+    #[storage_tag = 5]
     ExternalInit(Box<ExternalInitProposal>),
+    #[storage_tag = 6]
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
+    // AppAck = 7,
+    // A SelfRemove proposal is an empty struct.
+    #[storage_tag = 8]
+    SelfRemove,
+    #[storage_tag = 9]
+    Custom(Box<CustomProposal>),
     // # Extensions
     #[cfg(feature = "extensions-draft-08")]
+    #[storage_tag = 10]
     AppDataUpdate(Box<AppDataUpdateProposal>),
-    // A SelfRemove proposal is an empty struct.
-    SelfRemove,
     #[cfg(feature = "extensions-draft-08")]
+    #[storage_tag = 11]
     AppEphemeral(Box<AppEphemeralProposal>),
-    Custom(Box<CustomProposal>),
 }
 
 impl Proposal {

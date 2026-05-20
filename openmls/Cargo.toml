@@ -23,6 +23,7 @@ openmls_memory_storage = { workspace = true, features = [
 ], optional = true }
 openmls_sqlite_storage = { workspace = true, optional = true }
 openmls_test = { workspace = true, optional = true }
+openmls_serialization_helpers = { workspace = true }
 openmls_libcrux_crypto = { workspace = true, optional = true }
 
 serde = { version = "^1.0", features = ["derive"] }
