@@ -444,6 +444,7 @@ pub fn generate_test_vector(
     }
 }
 
+#[cfg(feature = "generate-kats")]
 #[test]
 fn write_test_vectors() {
     use openmls_traits::prelude::*;

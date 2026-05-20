@@ -71,6 +71,9 @@ sqlite-provider = [
 # test per source function using the MTI ciphersuite. Opt in for nightly
 # CI or release validation.
 all-ciphersuites = ["openmls_test?/all-ciphersuites"]
+# Compile the KAT regenerators. Opt in when refreshing the bundled JSON test
+# vectors.
+generate-kats = []
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 js = [
