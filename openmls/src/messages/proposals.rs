@@ -380,6 +380,12 @@ impl AddProposal {
     }
 }
 
+impl From<KeyPackage> for AddProposal {
+    fn from(key_package: KeyPackage) -> AddProposal {
+        AddProposal { key_package }
+    }
+}
+
 /// Update Proposal.
 ///
 /// An Update proposal is a similar mechanism to [`AddProposal`] with the
