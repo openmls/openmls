@@ -77,15 +77,29 @@ pub mod errors;
 /// | 0xDADA           | GREASE                   | Y | RFC XXXX |
 /// | 0xEAEA           | GREASE                   | Y | RFC XXXX |
 /// | 0xF000  - 0xFFFF | Reserved for Private Use | - | RFC XXXX |
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    openmls_serialization_helpers::Serialize,
+    openmls_serialization_helpers::Deserialize,
+)]
 #[repr(u16)]
 pub enum CredentialType {
+    #[storage_tag = 0]
     /// A [`BasicCredential`]
     Basic = 1,
+    #[storage_tag = 1]
     /// An X.509 [`Certificate`]
     X509 = 2,
+    #[storage_tag = 2]
     /// Another type of credential that is not in the MLS protocol spec.
     Other(u16),
+    #[storage_tag = 3]
     /// A GREASE credential type for ensuring extensibility.
     Grease(u16),
 }
