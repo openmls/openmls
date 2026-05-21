@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#1980](https://github.com/openmls/openmls/pull/1980): Enrich limetime related errors returned during leaf node validation with more information
 - [#1972](https://github.com/openmls/openmls/pull/1972): The method `MlsGroup::max_past_epochs()` now returns an `Option<usize>`, rather than a `usize`
+- [#1963](https://github.com/openmls/openmls/pull/1963): `MessageEncryptionError` is now part of the public API, but only surfaces if the `virtual-clients-draft` feature flag is enabled.
 
 ## 0.8.1 (2026-02-13)
 
