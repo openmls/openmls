@@ -569,7 +569,7 @@ mod virtual_clients_draft {
     use crate::error::LibraryError;
     use crate::framing::MessageEncryptionError;
     use crate::group::SafeExportSecretError;
-use crate::tree::secret_tree::SecretTreeError;
+    use crate::tree::secret_tree::SecretTreeError;
 
     /// Create message error
     #[derive(Error, Debug, PartialEq, Clone)]
