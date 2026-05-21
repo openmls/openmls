@@ -24,7 +24,6 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
     // construct names for visitors
     let non_human_readable_visitor = build_name_ident(name, "VisitorNonHumanReadable");
     let human_readable_visitor = build_name_ident(name, "VisitorHumanReadable");
-    let tuple_visitor_name = build_name_ident(name, "TupleVisitor");
 
     let mut variant_names = vec![];
     let mut match_arms_non_self_describing = vec![];
@@ -45,57 +44,28 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
             panic!("Duplicate storage tags");
         }
 
-        let unit_variant_handling = quote! {
-            access.unit_variant()?;
-            Ok(#name::#variant_name)
-        };
-
-        let newtype_variant_handling = quote! {
-            Ok(#name::#variant_name(access.newtype_variant()?))
-        };
-
-        let tuple_variant_handling = quote! {
-            let (a,b) = access.tuple_variant(2, #tuple_visitor_name::new())?;
-            Ok(#name::#variant_name(a, b))
-        };
-
         // construct a match arm for the non-human-readable case based on the type
-        let match_arm_non_self_describing = match &variant.fields {
+        let handling = match &variant.fields {
             Fields::Unit => quote! {
-                #storage_tag => { #unit_variant_handling },
+                access.unit_variant()?;
+                Ok(#name::#variant_name)
             },
-            Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 1 => {
-                quote! {
-                    #storage_tag => { #newtype_variant_handling },
-                }
-            }
-            Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 2 => {
-                quote! {
-                    #storage_tag => { #tuple_variant_handling },
-                }
-            }
-            _ => unimplemented!("fields not supported"),
-        };
-        match_arms_non_self_describing.push(match_arm_non_self_describing);
 
-        // construct a match arm for the human-readable case based on the type
-        let match_arm_self_describing = match &variant.fields {
-            Fields::Unit => quote! {
-                #variant_name_str => { #unit_variant_handling },
-            },
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 1 => {
                 quote! {
-                    #variant_name_str => { #newtype_variant_handling },
+                    Ok(#name::#variant_name(access.newtype_variant()?))
                 }
             }
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 2 => {
                 quote! {
-                    #variant_name_str => { #tuple_variant_handling },
+                    let (a,b) = access.newtype_variant::<(_,_)>()?;
+                    Ok(#name::#variant_name(a, b))
                 }
             }
             _ => unimplemented!("fields not supported"),
         };
-        match_arms_self_describing.push(match_arm_self_describing);
+        match_arms_non_self_describing.push(quote! { #storage_tag => { #handling }, });
+        match_arms_self_describing.push(quote! { #variant_name_str => { #handling }, });
     }
 
     quote! {
@@ -163,35 +133,6 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
             }
 
         }
-
-        /// A visitor for deserializing the tuple contents of an enum variant
-        struct #tuple_visitor_name<A, B>(std::marker::PhantomData<A>, std::marker::PhantomData<B>);
-
-        impl<A, B> #tuple_visitor_name<A,B> {
-            fn new() -> Self {
-                Self(std::marker::PhantomData, std::marker::PhantomData)
-            }
-        }
-
-        impl<'de, A: serde::de::Deserialize<'de>, B: serde::de::Deserialize<'de>> serde::de::Visitor<'de>
-            for #tuple_visitor_name<A, B>
-        {
-            type Value = (A, B);
-
-            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                f.write_str("a tuple of two elements")
-            }
-
-            // XXX: retrieve each tuple entry in the sequence
-            fn visit_seq<S: serde::de::SeqAccess<'de>>(self, mut data: S) -> Result<Self::Value, S::Error> {
-                let a: A = data.next_element()?
-                    .ok_or_else(|| serde::de::Error::custom("missing tuple item"))?;
-                let b: B = data.next_element()?
-                    .ok_or_else(|| serde::de::Error::custom("missing tuple item"))?;
-                Ok((a, b))
-            }
-        }
-
 
     }
 }

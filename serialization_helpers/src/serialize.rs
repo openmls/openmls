@@ -25,8 +25,9 @@ pub(crate) fn serialize(input: TokenStream) -> TokenStream {
             let variant_name = &variant.ident;
 
             // get the storage tag
-            let storage_tag = extract_storage_tag(variant.attrs.iter())
-                .unwrap_or_else(|| panic!("storage tag not provided for variant {name}::{variant_name}"));
+            let storage_tag = extract_storage_tag(variant.attrs.iter()).unwrap_or_else(|| {
+                panic!("storage tag not provided for variant {name}::{variant_name}")
+            });
             if !storage_tags.insert(storage_tag) {
                 panic!("Duplicate storage tags");
             }
@@ -36,8 +37,7 @@ pub(crate) fn serialize(input: TokenStream) -> TokenStream {
                 Fields::Unit => quote! {
                     #name::#variant_name => s.serialize_unit_variant(
                         stringify!(#name),
-                        u32::try_from(#storage_tag)
-                            .map_err(|_| serde::ser::Error::custom("storage tag out of range"))?,
+                        #storage_tag,
                         stringify!(#variant_name),
                     ),
                 },
@@ -45,8 +45,7 @@ pub(crate) fn serialize(input: TokenStream) -> TokenStream {
                     quote! {
                         #name::#variant_name(v) => s.serialize_newtype_variant(
                             stringify!(#name),
-                            u32::try_from(#storage_tag)
-                                .map_err(|_| serde::ser::Error::custom("storage tag out of range"))?,
+                            #storage_tag,
                             stringify!(#variant_name),
                             v
                         ),
@@ -55,18 +54,12 @@ pub(crate) fn serialize(input: TokenStream) -> TokenStream {
                 }
                 Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 2 => {
                     quote! {
-                        #name::#variant_name(v1, v2) => {
-                            let mut tv = s.serialize_tuple_variant(
+                        #name::#variant_name(v1, v2) => s.serialize_newtype_variant(
                                 stringify!(#name),
-                                u32::try_from(#storage_tag)
-                                    .map_err(|_| serde::ser::Error::custom("storage tag out of range"))?,
+                                #storage_tag,
                                 stringify!(#variant_name),
-                                2
-                            )?;
-                            tv.serialize_field(v1)?;
-                            tv.serialize_field(v2)?;
-                            tv.end()
-                        },
+                                &(v1, v2)
+                        ),
 
                     }
                 }
