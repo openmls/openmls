@@ -9,7 +9,7 @@ use openmls::{
 use openmls_test::openmls_test;
 use openmls_traits::signatures::Signer;
 
-fn generate_key_package<Provider: OpenMlsProvider>(
+pub fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     extensions: Extensions<KeyPackage>,
     provider: &Provider,

@@ -647,7 +647,7 @@ impl MlsGroup {
         &mut self,
         public_message: AuthenticatedContent,
         provider: &Provider,
-    ) -> Result<PrivateMessage, MessageEncryptionError<Provider::StorageError>> {
+    ) -> Result<EncryptionOutput, MessageEncryptionError<Provider::StorageError>> {
         let padding_size = self.configuration().padding_size();
         let msg = PrivateMessage::try_from_authenticated_content(
             provider.crypto(),
@@ -817,11 +817,15 @@ impl MlsGroup {
                 plaintext.into()
             }
             OutgoingWireFormatPolicy::AlwaysCiphertext => {
-                let ciphertext = self
+                // Decrypting own handshake messages is not supported yet with
+                // the `virtual-clients` feature, so the generation is unused.
+                let EncryptionOutput {
+                    private_message, ..
+                } = self
                     .encrypt(mls_auth_content, provider)
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
-                MlsMessageOut::from_private_message(ciphertext, self.version())
+                MlsMessageOut::from_private_message(private_message, self.version())
             }
         };
         Ok(msg)
