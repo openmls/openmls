@@ -24,11 +24,6 @@ use crate::{
     },
 };
 
-#[cfg(feature = "virtual-clients-draft")]
-use crate::framing::MessageEncryptionError;
-#[cfg(feature = "virtual-clients-draft")]
-use crate::tree::secret_tree::SecretTreeError;
-
 #[cfg(feature = "extensions-draft-08")]
 pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
@@ -195,48 +190,6 @@ pub enum CreateMessageError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
-}
-
-/// Create message error
-#[cfg(feature = "virtual-clients-draft")]
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateMessageError<StorageError> {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    /// See [`MlsGroupStateError`] for more details.
-    #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError),
-    /// See [`MessageEncryptionError`] for more details.
-    #[error(transparent)]
-    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
-    /// Error writing to storage.
-    #[error("Error writing to storage: {0}")]
-    StorageError(StorageError),
-}
-
-/// Confirm message error
-#[cfg(feature = "virtual-clients-draft")]
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum ConfirmMessageError<StorageError> {
-    /// See [`SecretTreeError`] for more details.
-    #[error(transparent)]
-    SecretTreeError(#[from] SecretTreeError),
-    /// Error writing to storage.
-    #[error("Error writing to storage: {0}")]
-    StorageError(StorageError),
-}
-
-#[cfg(feature = "virtual-clients-draft")]
-impl<StorageError> From<ConfirmMessageError<StorageError>> for CreateMessageError<StorageError> {
-    fn from(err: ConfirmMessageError<StorageError>) -> Self {
-        match err {
-            ConfirmMessageError::SecretTreeError(e) => CreateMessageError::MessageEncryptionError(
-                MessageEncryptionError::SecretTreeError(e),
-            ),
-            ConfirmMessageError::StorageError(e) => CreateMessageError::StorageError(e),
-        }
-    }
 }
 
 /// Add members error
@@ -486,23 +439,6 @@ pub enum SafeExportSecretError<StorageError> {
     Storage(StorageError),
 }
 
-/// Errors returned by
-/// [`MlsGroup::register_vc_emulation_epoch`](super::MlsGroup::register_vc_emulation_epoch).
-#[cfg(feature = "virtual-clients-draft")]
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum RegisterVcEmulationEpochError<StorageError> {
-    /// See [`SafeExportSecretError`] for more details.
-    #[error(transparent)]
-    SafeExportSecret(#[from] SafeExportSecretError<StorageError>),
-    /// See [`VirtualClientsError`](crate::components::vc_derivation_info::VirtualClientsError)
-    /// for more details.
-    #[error(transparent)]
-    VirtualClients(#[from] crate::components::vc_derivation_info::VirtualClientsError),
-    /// Persisting the derived virtual-clients state to storage failed.
-    #[error("Error writing virtual-clients state to storage")]
-    Storage(StorageError),
-}
-
 /// Export secret error
 #[cfg(feature = "extensions-draft-08")]
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -620,4 +556,75 @@ pub enum RemoveProposalError<StorageError> {
     /// Error erasing proposal from storage.
     #[error("error writing proposal to storage")]
     Storage(StorageError),
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+pub use virtual_clients_draft::*;
+
+#[cfg(feature = "virtual-clients-draft")]
+mod virtual_clients_draft {
+    use thiserror::Error;
+
+    use super::MlsGroupStateError;
+    use crate::error::LibraryError;
+    use crate::framing::MessageEncryptionError;
+    use crate::group::SafeExportSecretError;
+use crate::tree::secret_tree::SecretTreeError;
+
+    /// Create message error
+    #[derive(Error, Debug, PartialEq, Clone)]
+    pub enum CreateMessageError<StorageError> {
+        /// See [`LibraryError`] for more details.
+        #[error(transparent)]
+        LibraryError(#[from] LibraryError),
+        /// See [`MlsGroupStateError`] for more details.
+        #[error(transparent)]
+        GroupStateError(#[from] MlsGroupStateError),
+        /// See [`MessageEncryptionError`] for more details.
+        #[error(transparent)]
+        MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
+        /// Error writing to storage.
+        #[error("Error writing to storage: {0}")]
+        StorageError(StorageError),
+    }
+
+    /// Confirm message error
+    #[derive(Error, Debug, PartialEq, Clone)]
+    pub enum ConfirmMessageError<StorageError> {
+        /// See [`SecretTreeError`] for more details.
+        #[error(transparent)]
+        SecretTreeError(#[from] SecretTreeError),
+        /// Error writing to storage.
+        #[error("Error writing to storage: {0}")]
+        StorageError(StorageError),
+    }
+
+    impl<StorageError> From<ConfirmMessageError<StorageError>> for CreateMessageError<StorageError> {
+        fn from(err: ConfirmMessageError<StorageError>) -> Self {
+            match err {
+                ConfirmMessageError::SecretTreeError(e) => {
+                    CreateMessageError::MessageEncryptionError(
+                        MessageEncryptionError::SecretTreeError(e),
+                    )
+                }
+                ConfirmMessageError::StorageError(e) => CreateMessageError::StorageError(e),
+            }
+        }
+    }
+
+    /// Errors returned by
+    /// [`MlsGroup::register_vc_emulation_epoch`](super::MlsGroup::register_vc_emulation_epoch).
+    #[derive(Error, Debug, PartialEq, Clone)]
+    pub enum RegisterVcEmulationEpochError<StorageError> {
+        /// See [`SafeExportSecretError`] for more details.
+        #[error(transparent)]
+        SafeExportSecret(#[from] SafeExportSecretError<StorageError>),
+        /// See [`VirtualClientsError`](crate::components::vc_derivation_info::VirtualClientsError)
+        /// for more details.
+        #[error(transparent)]
+        VirtualClients(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+        /// Persisting the derived virtual-clients state to storage failed.
+        #[error("Error writing virtual-clients state to storage")]
+        Storage(StorageError),
+    }
 }

@@ -103,7 +103,9 @@ impl DualUseRatchet {
     }
 
     /// Gets a secret for encryption. The secret is also recorded in the
-    /// past-secrets window so the caller can later confirm and drop it.
+    /// past-secrets window so the caller can later confirm and drop it. This
+    /// requires cloning the [`RatchetKeyMaterial`] with one clone returned and
+    /// the other retained until confirmation or use for decryption.
     ///
     /// The cache is not pruned here: emitted encryption secrets are only
     /// cleared by an explicit call to [`Self::delete_secret_for_generation`]
