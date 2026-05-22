@@ -1,7 +1,7 @@
-#[cfg(target_arch = "wasm32")]
-use fluvio_wasm_timer::{SystemTime, UNIX_EPOCH};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
+#[cfg(target_arch = "wasm32")]
+use web_time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
@@ -137,10 +137,10 @@ impl Default for Lifetime {
 #[cfg(test)]
 mod tests {
     use core::time::Duration;
-    #[cfg(target_arch = "wasm32")]
-    use fluvio_wasm_timer::SystemTime;
     #[cfg(not(target_arch = "wasm32"))]
     use std::time::SystemTime;
+    #[cfg(target_arch = "wasm32")]
+    use web_time::SystemTime;
 
     use tls_codec::{Deserialize, Serialize};
 

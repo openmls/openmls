@@ -1,7 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
+use crate::prelude::mls_group::MessageSecretsStore;
 use crate::prelude::*;
-use crate::prelude::{mls_group::MessageSecretsStore, past_secrets::MessageSecretsWithTimestamp};
 use crate::schedule::message_secrets::MessageSecrets;
 
 use openmls_rust_crypto::RustCrypto as CryptoProvider;
@@ -17,8 +17,7 @@ fn load_statements(filename: &str) -> String {
 }
 
 /// Test storage format compatibility with earlier storage formats
-/// serialized `MessageSecrets` should automatically be mapped to `MessageSecretsWithTimestamp`
-/// with a `None` timestamp.
+/// serialized `MessageSecrets` with a `None` added_at timestamp.
 /// - Sets up a provider using an in-memory Sqlite database
 /// - Loads data from a Sqlite dump using an earlier version of the MessageSecretsStore (openmls =
 ///   0.8.1)
@@ -77,7 +76,7 @@ fn test_storage_compatibility() {
     }
 }
 
-/// Test that `MessageSecretsWithTimestamp` is correctly serialized and deserialized
+/// Test that `MessageSecrets` is correctly serialized and deserialized
 #[test]
 fn test_serialize_deserialize() {
     // set up a basic provider
@@ -90,16 +89,16 @@ fn test_serialize_deserialize() {
         LeafNodeIndex::new(0),
     );
 
-    // serialize MessageSecrets -> deserialize MessageSecretsWithTimestamp
+    // serialize MessageSecrets -> deserialize MessageSecrets
     let serialized = serde_json::to_vec(&message_secrets).expect("error when serializing");
-    let deserialized: MessageSecretsWithTimestamp =
+    let deserialized: MessageSecrets =
         serde_json::from_slice(&serialized).expect("error when deserializing");
     assert!(deserialized == message_secrets.clone().with_timestamp(None));
 
-    // serialize MessageSecretsWithTimestamp -> deserialize MessageSecretsWithTimestamp
+    // serialize MessageSecrets -> deserialize MessageSecrets
     let with_timestamp = message_secrets.with_timestamp(std::time::SystemTime::now());
     let serialized = serde_json::to_vec(&with_timestamp).expect("error when serializing");
-    let deserialized: MessageSecretsWithTimestamp =
+    let deserialized: MessageSecrets =
         serde_json::from_slice(&serialized).expect("error when deserializing");
     assert!(deserialized == with_timestamp);
 }
