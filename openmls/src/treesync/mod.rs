@@ -208,6 +208,27 @@ impl RatchetTree {
             }
         }
     }
+
+    /// Returns an iterator over all nodes in the ratchet tree.
+    pub fn nodes<'a>(&'a self) -> impl Iterator<Item = &'a Node> {
+        self.0.iter().flatten()
+    }
+
+    /// Returns an iterator over all leaf nodes in the ratchet tree.
+    pub fn leaves<'a>(&'a self) -> impl Iterator<Item = &'a LeafNode> {
+        self.nodes().filter_map(|node| match node {
+            Node::LeafNode(leaf_node) => Some(&**leaf_node),
+            Node::ParentNode(_parent_node) => None,
+        })
+    }
+
+    /// Returns an iterator over all parent nodes in the ratchet tree.
+    pub fn parents<'a>(&'a self) -> impl Iterator<Item = &'a ParentNode> {
+        self.nodes().filter_map(|node| match node {
+            Node::ParentNode(parent_node) => Some(&**parent_node),
+            Node::LeafNode(_leaf_node) => None,
+        })
+    }
 }
 
 /// A ratchet tree made of unverified nodes. This is used for deserialization
@@ -236,6 +257,27 @@ impl RatchetTreeIn {
         group_id: &GroupId,
     ) -> Result<RatchetTree, RatchetTreeError> {
         RatchetTree::try_from_nodes(ciphersuite, crypto, self.0, group_id)
+    }
+
+    /// Returns an iterator over all nodes in the ratchet tree.
+    pub fn nodes<'a>(&'a self) -> impl Iterator<Item = &'a Node> {
+        self.0.iter().flatten()
+    }
+
+    /// Returns an iterator over all leaf nodes in the ratchet tree.
+    pub fn leaves<'a>(&'a self) -> impl Iterator<Item = &'a LeafNode> {
+        self.nodes().filter_map(|node| match node {
+            Node::LeafNode(leaf_node) => Some(&**leaf_node),
+            Node::ParentNode(_parent_node) => None,
+        })
+    }
+
+    /// Returns an iterator over all parent nodes in the ratchet tree.
+    pub fn parents<'a>(&'a self) -> impl Iterator<Item = &'a ParentNode> {
+        self.nodes().filter_map(|node| match node {
+            Node::ParentNode(parent_node) => Some(&**parent_node),
+            Node::LeafNode(_leaf_node) => None,
+        })
     }
 
     fn from_ratchet_tree(ratchet_tree: RatchetTree) -> Self {
