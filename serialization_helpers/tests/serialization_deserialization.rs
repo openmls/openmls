@@ -23,7 +23,7 @@ enum TestEnum {
 
 struct TestCase {
     data: TestEnum,
-    expected_tag: u16,
+    expected_tag: u32,
 }
 
 #[test]
