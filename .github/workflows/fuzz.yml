@@ -4,7 +4,17 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**/*.md'
+      - 'book/**'
+      - 'LICENSE*'
+      - '.gitignore'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'book/**'
+      - 'LICENSE*'
+      - '.gitignore'
   workflow_dispatch:
 
 concurrency: 
@@ -19,7 +29,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
         tests: [welcome_decode, mls_message_decode, proposal_decode]
         include:
           - tests: welcome_decode
@@ -28,7 +37,7 @@ jobs:
             runs: 50000
           - tests: proposal_decode
             runs: 50000
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
