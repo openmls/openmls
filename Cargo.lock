@@ -2732,6 +2732,7 @@ dependencies = [
  "openmls_sqlite_storage",
  "openmls_test",
  "openmls_traits",
+ "postcard",
  "pretty_env_logger",
  "rand 0.9.4",
  "rayon",
@@ -2846,7 +2847,6 @@ dependencies = [
 name = "openmls_serialization_helpers"
 version = "0.1.0"
 dependencies = [
- "openmls",
  "postcard",
  "proc-macro2",
  "quote",

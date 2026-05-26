@@ -22,4 +22,3 @@ proc-macro2 = { version = "1.0.10", features = ["span-locations"] }
 [dev-dependencies]
 postcard = { version = "1", features = ["alloc"] }
 serde_json = "1"
-openmls = { workspace = true }
