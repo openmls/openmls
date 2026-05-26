@@ -24,6 +24,7 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
     // construct names for visitors
     let non_human_readable_visitor = build_name_ident(name, "VisitorNonHumanReadable");
     let human_readable_visitor = build_name_ident(name, "VisitorHumanReadable");
+    let tuple_visitor = build_name_ident(name, "TupleVisitor");
 
     let mut variant_names = vec![];
     let mut match_arms_non_self_describing = vec![];
@@ -58,7 +59,7 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
             }
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 2 => {
                 quote! {
-                    let (a,b) = access.newtype_variant::<(_,_)>()?;
+                    let (a,b) = access.tuple_variant(2, #tuple_visitor::new())?;
                     Ok(#name::#variant_name(a, b))
                 }
             }
@@ -132,6 +133,33 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
                 }
             }
 
+        }
+
+        /// A visitor for deserializing the tuple (A,B) contents of an enum variant
+        struct #tuple_visitor<A, B>(std::marker::PhantomData<(A,B)>);
+
+        impl<A, B> #tuple_visitor<A,B> {
+            fn new() -> Self {
+                Self(std::marker::PhantomData)
+            }
+        }
+
+        impl<'de, A: serde::de::Deserialize<'de>, B: serde::de::Deserialize<'de>> serde::de::Visitor<'de>
+            for #tuple_visitor<A, B>
+        {
+            type Value = (A, B);
+
+            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str("a tuple of two elements")
+            }
+
+            fn visit_seq<S: serde::de::SeqAccess<'de>>(self, mut data: S) -> Result<Self::Value, S::Error> {
+                let a: A = data.next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
+                let b: B = data.next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
+                Ok((a, b))
+            }
         }
 
     }

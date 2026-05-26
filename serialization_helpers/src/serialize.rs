@@ -54,12 +54,17 @@ pub(crate) fn serialize(input: TokenStream) -> TokenStream {
                 }
                 Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 2 => {
                     quote! {
-                        #name::#variant_name(v1, v2) => s.serialize_newtype_variant(
+                        #name::#variant_name(v1, v2) => {
+                         let mut tv = s.serialize_tuple_variant(
                                 stringify!(#name),
                                 #storage_tag,
                                 stringify!(#variant_name),
-                                &(v1, v2)
-                        ),
+                                2
+                            )?;
+                            tv.serialize_field(v1)?;
+                            tv.serialize_field(v2)?;
+                            tv.end()
+                        }
 
                     }
                 }
