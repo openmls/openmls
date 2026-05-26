@@ -182,8 +182,8 @@ fn deserialize_invalid_variant_name_self_describing() {
 }
 
 #[test]
-/// Test tuple deserialization with incorrect number of fields.
-fn test_tuple_deserialization_fails_with_incorrect_number_of_fields_self_describing() {
+/// Test tuple deserialization with too few fields.
+fn test_tuple_deserialization_fails_with_too_few_fields_self_describing() {
     #[derive(Debug, openmls_serialization_helpers::Serialize)]
     enum Serialized {
         #[storage_tag = 1]
