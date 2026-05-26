@@ -40,9 +40,11 @@ use self::{
     },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
-use crate::binary_tree::array_representation::ParentNodeIndex;
 #[cfg(any(feature = "test-utils", test))]
 use crate::{binary_tree::array_representation::level, test_utils::bytes_to_hex};
+use crate::{
+    binary_tree::array_representation::ParentNodeIndex, treesync::node::leaf_node::LeafNodeIn,
+};
 use crate::{
     binary_tree::{
         array_representation::{is_node_in_tree, LeafNodeIndex, TreeSize},
@@ -260,12 +262,12 @@ impl RatchetTreeIn {
     }
 
     /// Returns an iterator over all nodes in the ratchet tree.
-    pub fn nodes<'a>(&'a self) -> impl Iterator<Item = &'a Node> {
+    pub fn nodes<'a>(&'a self) -> impl Iterator<Item = &'a NodeIn> {
         self.0.iter().flatten()
     }
 
     /// Returns an iterator over all leaf nodes in the ratchet tree.
-    pub fn leaves<'a>(&'a self) -> impl Iterator<Item = &'a LeafNode> {
+    pub fn leaves<'a>(&'a self) -> impl Iterator<Item = &'a LeafNodeIn> {
         self.nodes().filter_map(|node| match node {
             Node::LeafNode(leaf_node) => Some(&**leaf_node),
             Node::ParentNode(_parent_node) => None,
