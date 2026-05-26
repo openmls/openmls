@@ -269,16 +269,16 @@ impl RatchetTreeIn {
     /// Returns an iterator over all leaf nodes in the ratchet tree.
     pub fn leaves<'a>(&'a self) -> impl Iterator<Item = &'a LeafNodeIn> {
         self.nodes().filter_map(|node| match node {
-            Node::LeafNode(leaf_node) => Some(&**leaf_node),
-            Node::ParentNode(_parent_node) => None,
+            NodeIn::LeafNode(leaf_node) => Some(&**leaf_node),
+            NodeIn::ParentNode(_parent_node) => None,
         })
     }
 
     /// Returns an iterator over all parent nodes in the ratchet tree.
     pub fn parents<'a>(&'a self) -> impl Iterator<Item = &'a ParentNode> {
         self.nodes().filter_map(|node| match node {
-            Node::ParentNode(parent_node) => Some(&**parent_node),
-            Node::LeafNode(_leaf_node) => None,
+            NodeIn::ParentNode(parent_node) => Some(&**parent_node),
+            NodeIn::LeafNode(_leaf_node) => None,
         })
     }
 
