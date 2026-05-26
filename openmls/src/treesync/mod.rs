@@ -212,12 +212,12 @@ impl RatchetTree {
     }
 
     /// Returns an iterator over all nodes in the ratchet tree.
-    pub fn nodes<'a>(&'a self) -> impl Iterator<Item = &'a Node> {
+    pub fn nodes(&self) -> impl Iterator<Item = &Node> {
         self.0.iter().flatten()
     }
 
     /// Returns an iterator over all leaf nodes in the ratchet tree.
-    pub fn leaves<'a>(&'a self) -> impl Iterator<Item = &'a LeafNode> {
+    pub fn leaves(&self) -> impl Iterator<Item = &LeafNode> {
         self.nodes().filter_map(|node| match node {
             Node::LeafNode(leaf_node) => Some(&**leaf_node),
             Node::ParentNode(_parent_node) => None,
@@ -225,7 +225,7 @@ impl RatchetTree {
     }
 
     /// Returns an iterator over all parent nodes in the ratchet tree.
-    pub fn parents<'a>(&'a self) -> impl Iterator<Item = &'a ParentNode> {
+    pub fn parents(&self) -> impl Iterator<Item = &ParentNode> {
         self.nodes().filter_map(|node| match node {
             Node::ParentNode(parent_node) => Some(&**parent_node),
             Node::LeafNode(_leaf_node) => None,
@@ -262,12 +262,12 @@ impl RatchetTreeIn {
     }
 
     /// Returns an iterator over all nodes in the ratchet tree.
-    pub fn nodes<'a>(&'a self) -> impl Iterator<Item = &'a NodeIn> {
+    pub fn nodes(&self) -> impl Iterator<Item = &NodeIn> {
         self.0.iter().flatten()
     }
 
     /// Returns an iterator over all leaf nodes in the ratchet tree.
-    pub fn leaves<'a>(&'a self) -> impl Iterator<Item = &'a LeafNodeIn> {
+    pub fn leaves(&self) -> impl Iterator<Item = &LeafNodeIn> {
         self.nodes().filter_map(|node| match node {
             NodeIn::LeafNode(leaf_node) => Some(&**leaf_node),
             NodeIn::ParentNode(_parent_node) => None,
@@ -275,7 +275,7 @@ impl RatchetTreeIn {
     }
 
     /// Returns an iterator over all parent nodes in the ratchet tree.
-    pub fn parents<'a>(&'a self) -> impl Iterator<Item = &'a ParentNode> {
+    pub fn parents(&self) -> impl Iterator<Item = &ParentNode> {
         self.nodes().filter_map(|node| match node {
             NodeIn::ParentNode(parent_node) => Some(&**parent_node),
             NodeIn::LeafNode(_leaf_node) => None,
