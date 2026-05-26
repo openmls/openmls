@@ -107,7 +107,7 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
                 let (variant_str, access): (String, _) = data.variant()?;
                 match variant_str.as_str() {
                     #(#match_arms_self_describing)*
-                    _ => Err(serde::de::Error::custom(format!("unexpected variant name {}", variant_str))),
+                    _ => Err(serde::de::Error::custom(format!("unexpected variant name \"{}\"", variant_str))),
                 }
             }
 
