@@ -131,3 +131,79 @@ const TEST_CASES: &[TestCase] = &[
         expected_tag: 4,
     },
 ];
+
+#[test]
+/// Test that deserializing with an invalid storage tag fails
+/// using a non-self-describing serialization.
+fn deserialize_invalid_storage_tag_non_self_describing() {
+    #[derive(Debug, openmls_serialization_helpers::Serialize)]
+    enum Serialized {
+        #[storage_tag = 1]
+        Unit,
+    }
+    #[derive(Debug, openmls_serialization_helpers::Deserialize)]
+    enum Deserialized {
+        #[storage_tag = 2]
+        Unit,
+    }
+    // serialize the variant
+    let serialized = &postcard::to_allocvec(&Serialized::Unit).expect("serialization failed");
+
+    // deserialize the variant
+    let err =
+        postcard::from_bytes::<Deserialized>(serialized).expect_err("deserialization should fail");
+
+    // NOTE: this error variant does not include additional information
+    assert!(matches!(err, postcard::Error::SerdeDeCustom));
+}
+
+#[test]
+/// Test that deserializing a variant with an incorrect name fails
+/// using a self-describing serialization.
+fn deserialize_invalid_variant_name_self_describing() {
+    #[derive(Debug, openmls_serialization_helpers::Serialize)]
+    enum Serialized {
+        #[storage_tag = 1]
+        Unit,
+    }
+    #[derive(Debug, openmls_serialization_helpers::Deserialize)]
+    enum Deserialized {
+        #[storage_tag = 1]
+        Unit2,
+    }
+    // serialize the variant
+    let serialized = &serde_json::to_string(&Serialized::Unit).expect("serialization failed");
+
+    // deserialize the variant
+    let err =
+        serde_json::from_str::<Deserialized>(serialized).expect_err("deserialization should fail");
+
+    assert_eq!(err.to_string(), "unexpected variant name \"Unit\"");
+}
+
+#[test]
+/// Test tuple deserialization with incorrect number of fields.
+fn test_tuple_deserialization_fails_with_incorrect_number_of_fields_self_describing() {
+    #[derive(Debug, openmls_serialization_helpers::Serialize)]
+    enum Serialized {
+        #[storage_tag = 1]
+        Data(u16),
+    }
+    #[allow(dead_code)]
+    #[derive(Debug, openmls_serialization_helpers::Deserialize)]
+    enum Deserialized {
+        #[storage_tag = 1]
+        Data(u16, u16),
+    }
+
+    let data = Serialized::Data(1);
+
+    // serialize the variant
+    let serialized = &serde_json::to_string(&data).expect("serialization failed");
+
+    // deserialize the variant
+    let err =
+        serde_json::from_str::<Deserialized>(serialized).expect_err("deserialization should fail");
+
+    assert!(err.to_string().contains("expected a tuple of two elements"));
+}
