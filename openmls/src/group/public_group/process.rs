@@ -227,14 +227,22 @@ impl PublicGroup {
         let (content, credential) =
             unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
 
-        match content.sender() {
+        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        let mut processed = match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
-                self.process_internal_authenticated_content(crypto, content, credential)
+                self.process_internal_authenticated_content(crypto, content, credential)?
             }
             Sender::External(_) => {
-                self.process_external_authenticated_content(crypto, content, credential)
+                self.process_external_authenticated_content(crypto, content, credential)?
             }
+        };
+        #[cfg(feature = "extensions-draft-08")]
+        if self.group_context().safe_aad_required() {
+            processed
+                .try_attach_safe_aad()
+                .map_err(|_| PublicProcessMessageError::MalformedSafeAad)?;
         }
+        Ok(processed)
     }
 
     /// This processing function does most of the semantic verifications.
@@ -277,18 +285,26 @@ impl PublicGroup {
         let (content, credential) =
             unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
 
-        match content.sender() {
+        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        let mut processed = match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => self
                 .process_internal_authenticated_content_with_app_data_updates(
                     crypto,
                     content,
                     credential,
                     app_data_dict_updates,
-                ),
+                )?,
             Sender::External(_) => {
-                self.process_external_authenticated_content(crypto, content, credential)
+                self.process_external_authenticated_content(crypto, content, credential)?
             }
+        };
+        #[cfg(feature = "extensions-draft-08")]
+        if self.group_context().safe_aad_required() {
+            processed
+                .try_attach_safe_aad()
+                .map_err(|_| PublicProcessMessageError::MalformedSafeAad)?;
         }
+        Ok(processed)
     }
 
     fn process_internal_authenticated_content(

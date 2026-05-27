@@ -364,18 +364,26 @@ impl MlsGroup {
         let (content, credential) =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        match content.sender() {
+        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        let mut processed = match content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
                 .process_internal_authenticated_content_with_app_data_updates(
                     provider,
                     content,
                     credential,
                     app_data_dict_updates,
-                ),
+                )?,
             Sender::External(_) => {
-                self.process_external_authenticated_content(provider, content, credential)
+                self.process_external_authenticated_content(provider, content, credential)?
             }
+        };
+        #[cfg(feature = "extensions-draft-08")]
+        if self.context().safe_aad_required() {
+            processed
+                .try_attach_safe_aad()
+                .map_err(|_| ProcessMessageError::MalformedSafeAad)?;
         }
+        Ok(processed)
     }
 
     /// This processing function does most of the semantic verifications.
@@ -418,14 +426,22 @@ impl MlsGroup {
         let (content, credential) =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        match content.sender() {
+        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        let mut processed = match content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => {
-                self.process_internal_authenticated_content(provider, content, credential)
+                self.process_internal_authenticated_content(provider, content, credential)?
             }
             Sender::External(_) => {
-                self.process_external_authenticated_content(provider, content, credential)
+                self.process_external_authenticated_content(provider, content, credential)?
             }
+        };
+        #[cfg(feature = "extensions-draft-08")]
+        if self.context().safe_aad_required() {
+            processed
+                .try_attach_safe_aad()
+                .map_err(|_| ProcessMessageError::MalformedSafeAad)?;
         }
+        Ok(processed)
     }
 
     /// This processing function does most of the semantic verifications.
