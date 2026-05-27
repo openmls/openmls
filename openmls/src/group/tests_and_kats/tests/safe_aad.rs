@@ -325,14 +325,19 @@ fn safe_aad_rejects_malformed_inbound() {
         .unwrap();
 
     // Decompose the original into its franken form, replace authenticated_data
-    // with bytes that can never decode as a SafeAad (a too-large VL prefix),
-    // and re-sign so the signature verification does not short-circuit before
-    // Safe AAD parsing.
+    // with bytes that decode as a SafeAad with two SafeAadItems sharing the
+    // same component_id (which the SafeAad invariant rejects), and re-sign so
+    // signature verification does not short-circuit before Safe AAD parsing.
+    //
+    // Wire bytes:
+    //   0x06                 outer Vec<SafeAadItem> length: 6 bytes follow
+    //   0x00 0x01 0x00       SafeAadItem #1: component_id=1, aad_item_data len=0
+    //   0x00 0x01 0x00       SafeAadItem #2: component_id=1 (duplicate), len=0
     let frankenstein::FrankenMlsMessage {
         version,
         body:
             frankenstein::FrankenMlsMessageBody::PublicMessage(frankenstein::FrankenPublicMessage {
-                content: mut content,
+                mut content,
                 ..
             }),
     } = frankenstein::FrankenMlsMessage::from(update_prop)
@@ -340,7 +345,7 @@ fn safe_aad_rejects_malformed_inbound() {
         panic!("expected public message");
     };
 
-    content.authenticated_data = VLBytes::from(vec![0xffu8, 0xff, 0xff, 0xff]);
+    content.authenticated_data = VLBytes::from(vec![0x06, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00]);
 
     let group_context = alice_group.export_group_context().clone();
     let secrets = alice_group.message_secrets();
