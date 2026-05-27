@@ -40,9 +40,11 @@ use self::{
     },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
-use crate::binary_tree::array_representation::ParentNodeIndex;
 #[cfg(any(feature = "test-utils", test))]
 use crate::{binary_tree::array_representation::level, test_utils::bytes_to_hex};
+use crate::{
+    binary_tree::array_representation::ParentNodeIndex, treesync::node::leaf_node::LeafNodeIn,
+};
 use crate::{
     binary_tree::{
         array_representation::{is_node_in_tree, LeafNodeIndex, TreeSize},
@@ -208,6 +210,27 @@ impl RatchetTree {
             }
         }
     }
+
+    /// Returns an iterator over all nodes in the ratchet tree.
+    pub fn nodes(&self) -> impl Iterator<Item = &Node> {
+        self.0.iter().flatten()
+    }
+
+    /// Returns an iterator over all leaf nodes in the ratchet tree.
+    pub fn leaves(&self) -> impl Iterator<Item = &LeafNode> {
+        self.nodes().filter_map(|node| match node {
+            Node::LeafNode(leaf_node) => Some(&**leaf_node),
+            Node::ParentNode(_parent_node) => None,
+        })
+    }
+
+    /// Returns an iterator over all parent nodes in the ratchet tree.
+    pub fn parents(&self) -> impl Iterator<Item = &ParentNode> {
+        self.nodes().filter_map(|node| match node {
+            Node::ParentNode(parent_node) => Some(&**parent_node),
+            Node::LeafNode(_leaf_node) => None,
+        })
+    }
 }
 
 /// A ratchet tree made of unverified nodes. This is used for deserialization
@@ -236,6 +259,27 @@ impl RatchetTreeIn {
         group_id: &GroupId,
     ) -> Result<RatchetTree, RatchetTreeError> {
         RatchetTree::try_from_nodes(ciphersuite, crypto, self.0, group_id)
+    }
+
+    /// Returns an iterator over all nodes in the ratchet tree.
+    pub fn nodes(&self) -> impl Iterator<Item = &NodeIn> {
+        self.0.iter().flatten()
+    }
+
+    /// Returns an iterator over all leaf nodes in the ratchet tree.
+    pub fn leaves(&self) -> impl Iterator<Item = &LeafNodeIn> {
+        self.nodes().filter_map(|node| match node {
+            NodeIn::LeafNode(leaf_node) => Some(&**leaf_node),
+            NodeIn::ParentNode(_parent_node) => None,
+        })
+    }
+
+    /// Returns an iterator over all parent nodes in the ratchet tree.
+    pub fn parents(&self) -> impl Iterator<Item = &ParentNode> {
+        self.nodes().filter_map(|node| match node {
+            NodeIn::ParentNode(parent_node) => Some(&**parent_node),
+            NodeIn::LeafNode(_leaf_node) => None,
+        })
     }
 
     fn from_ratchet_tree(ratchet_tree: RatchetTree) -> Self {
