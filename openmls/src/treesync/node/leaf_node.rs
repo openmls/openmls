@@ -268,10 +268,10 @@ impl LeafNode {
 
     /// New [`LeafNode`] with a parent hash.
     ///
-    /// If `encryption_key_pair_override` is `Some`, it is used as the leaf's
-    /// encryption keypair instead of generating a fresh one. This is the
-    /// hook for the virtual-clients-draft sender; everywhere else this is
-    /// `None` and a random keypair is generated.
+    /// With the `virtual-clients-draft` feature, an
+    /// `encryption_key_pair_override` may be supplied. If `Some`, it is used
+    /// as the leaf's encryption keypair instead of generating a fresh one.
+    /// This is the hook for the virtual-clients-draft sender.
     #[allow(clippy::too_many_arguments)]
     pub(in crate::treesync) fn new_with_parent_hash(
         rand: &impl OpenMlsRand,
@@ -282,12 +282,17 @@ impl LeafNode {
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
         signer: &impl Signer,
-        encryption_key_pair_override: Option<EncryptionKeyPair>,
+        #[cfg(feature = "virtual-clients-draft")] encryption_key_pair_override: Option<
+            EncryptionKeyPair,
+        >,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+        #[cfg(feature = "virtual-clients-draft")]
         let encryption_key_pair = match encryption_key_pair_override {
             Some(kp) => kp,
             None => EncryptionKeyPair::random(rand, crypto, ciphersuite)?,
         };
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        let encryption_key_pair = EncryptionKeyPair::random(rand, crypto, ciphersuite)?;
 
         let leaf_node_tbs = LeafNodeTbs::new(
             encryption_key_pair.public_key().clone(),
