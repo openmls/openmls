@@ -44,6 +44,9 @@ pub enum PprfError {
     /// Error deriving child node.
     #[error("Error deriving child node: {0}")]
     ChildDerivationError(#[from] CryptoError),
+    /// Prefix exceeded its maximum depth.
+    #[error("Prefix length exceeds maximum depth")]
+    PrefixMaxDepthExceeded,
 }
 
 /// A Node in the PPRF tree that contains the node's secret.
@@ -167,7 +170,7 @@ impl<P: Prefix> Pprf<P> {
             }
 
             let bit = get_bit(&leaf_index, depth);
-            prefix.push_bit(bit);
+            prefix.push_bit(bit)?;
             depth += 1;
         }
 
@@ -179,12 +182,12 @@ impl<P: Prefix> Pprf<P> {
             let (next_node, copath_node) = if bit { (right, left) } else { (left, right) };
 
             let mut copath_prefix = prefix.clone();
-            copath_prefix.push_bit(!bit);
+            copath_prefix.push_bit(!bit)?;
             let node_at_copath_prefix = self.nodes.insert(copath_prefix.clone(), copath_node);
             debug_assert!(node_at_copath_prefix.is_none());
 
             current_node = next_node;
-            prefix.push_bit(bit);
+            prefix.push_bit(bit)?;
         }
 
         Ok(current_node.0)
