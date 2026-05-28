@@ -29,6 +29,7 @@ use crate::{
 
 pub mod frankenstein;
 pub mod storage_state;
+pub mod storage_tag_check;
 pub mod test_framework;
 
 pub mod single_group_test_framework;
