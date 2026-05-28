@@ -10,6 +10,71 @@ use serde_bytes::ByteArray;
 
 use super::PprfError;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+#[serde(bound(
+    serialize = "T: Serialize",
+    deserialize = "T: Copy + Into<usize> + Deserialize<'de>"
+))]
+struct PrefixLen<const MAX_DEPTH: usize, T>
+where
+    T: Copy + Into<usize>,
+{
+    #[serde(deserialize_with = "deserialize_prefix_len::<MAX_DEPTH, T, _>")]
+    len: T,
+}
+
+impl<const MAX_DEPTH: usize, T> PrefixLen<MAX_DEPTH, T>
+where
+    T: Copy + Into<usize>,
+{
+    fn new(len: T) -> Result<Self, PprfError> {
+        if len.into() > MAX_DEPTH {
+            return Err(PprfError::PrefixMaxDepthExceeded);
+        }
+        Ok(Self { len })
+    }
+
+    fn as_usize(self) -> usize {
+        self.len.into()
+    }
+}
+
+impl<const MAX_DEPTH: usize, T> PrefixLen<MAX_DEPTH, T>
+where
+    T: Copy + From<u8> + Into<usize>,
+{
+    fn zero() -> Self {
+        Self { len: T::from(0) }
+    }
+}
+
+impl<const MAX_DEPTH: usize, T> PrefixLen<MAX_DEPTH, T>
+where
+    T: Copy + Into<usize> + TryFrom<usize>,
+{
+    fn incremented(self) -> Result<Self, PprfError> {
+        let Some(len) = self.as_usize().checked_add(1) else {
+            return Err(PprfError::PrefixMaxDepthExceeded);
+        };
+        let Ok(len) = T::try_from(len) else {
+            return Err(PprfError::PrefixMaxDepthExceeded);
+        };
+        Self::new(len)
+    }
+}
+
+fn deserialize_prefix_len<'de, const MAX_DEPTH: usize, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    T: Copy + Into<usize> + Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    let len = T::deserialize(deserializer)?;
+    PrefixLen::<MAX_DEPTH, T>::new(len)
+        .map(|prefix_len| prefix_len.len)
+        .map_err(serde::de::Error::custom)
+}
+
 pub(crate) trait Prefix:
     Clone + Eq + std::hash::Hash + Serialize + DeserializeOwned
 {
@@ -33,28 +98,29 @@ pub struct Prefix16 {
     /// A u16 containing the bits of the prefix.
     bits: u16,
     /// The number of bits in the prefix.
-    len: u8,
+    len: PrefixLen<{ Self::MAX_DEPTH }, u8>,
 }
 
 impl Prefix for Prefix16 {
     const MAX_DEPTH: usize = 16;
 
     fn new() -> Self {
-        Self { bits: 0, len: 0 }
+        Self {
+            bits: 0,
+            len: PrefixLen::zero(),
+        }
     }
 
     fn push_bit(&mut self, bit: bool) -> Result<(), PprfError> {
-        if self.len as usize >= Self::MAX_DEPTH {
-            return Err(PprfError::PrefixMaxDepthExceeded);
-        }
+        let len = self.len.incremented()?;
         self.bits = self.bits << 1 | u16::from(bit);
-        self.len += 1;
+        self.len = len;
         Ok(())
     }
 }
 
 #[derive(Serialize, Deserialize)]
-struct SerdePrefix16(u16, u8);
+struct SerdePrefix16(u16, PrefixLen<{ Prefix16::MAX_DEPTH }, u8>);
 
 impl From<Prefix16> for SerdePrefix16 {
     fn from(prefix: Prefix16) -> Self {
@@ -71,42 +137,46 @@ impl From<SerdePrefix16> for Prefix16 {
     }
 }
 
-const PREFIX256_MAX_DEPTH: usize = 256;
-
 /// A prefix in a PPRF whose inputs are 32-byte (256-bit) strings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(from = "SerdePrefix256", into = "SerdePrefix256")]
 pub struct Prefix256 {
-    bits: [u8; Self::MAX_DEPTH.div_ceil(u8::BITS as usize)],
-    len: u16,
+    bits: [u8; Self::PPRF_INPUT_LEN],
+    len: PrefixLen<{ Self::MAX_DEPTH }, u16>,
+}
+
+impl Prefix256 {
+    pub const PPRF_INPUT_LEN: usize = Self::MAX_DEPTH / 8; // 32 bytes
 }
 
 impl Prefix for Prefix256 {
-    const MAX_DEPTH: usize = PREFIX256_MAX_DEPTH;
+    const MAX_DEPTH: usize = 256;
 
     fn new() -> Self {
         Self {
-            bits: [0; Self::MAX_DEPTH.div_ceil(u8::BITS as usize)],
-            len: 0,
+            bits: [0; Self::PPRF_INPUT_LEN],
+            len: PrefixLen::zero(),
         }
     }
 
     fn push_bit(&mut self, bit: bool) -> Result<(), PprfError> {
-        if self.len as usize >= Self::MAX_DEPTH {
-            return Err(PprfError::PrefixMaxDepthExceeded);
-        }
+        let len = self.len.as_usize();
+        let next_len = self.len.incremented()?;
         if bit {
-            let byte_idx = (self.len / 8) as usize;
-            let bit_idx = 7 - (self.len % 8) as u8;
+            let byte_idx = len / 8;
+            let bit_idx = 7 - (len % 8) as u8;
             self.bits[byte_idx] |= 1 << bit_idx;
         }
-        self.len += 1;
+        self.len = next_len;
         Ok(())
     }
 }
 
 #[derive(Serialize, Deserialize)]
-struct SerdePrefix256(ByteArray<32>, u16);
+struct SerdePrefix256(
+    ByteArray<{ Prefix256::PPRF_INPUT_LEN }>,
+    PrefixLen<{ Prefix256::MAX_DEPTH }, u16>,
+);
 
 impl From<Prefix256> for SerdePrefix256 {
     fn from(prefix: Prefix256) -> Self {
@@ -127,18 +197,28 @@ impl From<SerdePrefix256> for Prefix256 {
 mod tests {
     use super::*;
 
+    fn prefix_len<const MAX_DEPTH: usize, T>(len: T) -> PrefixLen<MAX_DEPTH, T>
+    where
+        T: Copy + Into<usize>,
+    {
+        match PrefixLen::new(len) {
+            Ok(prefix_len) => prefix_len,
+            Err(error) => panic!("{error}"),
+        }
+    }
+
     #[test]
     fn prefix16_rejects_push_at_max_depth() {
         let max_depth = Prefix16::MAX_DEPTH as u8;
         let mut prefix = Prefix16 {
             bits: u16::MAX,
-            len: max_depth,
+            len: prefix_len(max_depth),
         };
 
         let result = prefix.push_bit(true);
 
         assert_eq!(result, Err(PprfError::PrefixMaxDepthExceeded));
-        assert_eq!(prefix.len, max_depth);
+        assert_eq!(prefix.len.len, max_depth);
         assert_eq!(prefix.bits, u16::MAX);
     }
 
@@ -147,13 +227,34 @@ mod tests {
         let max_depth = Prefix256::MAX_DEPTH as u16;
         let mut prefix = Prefix256 {
             bits: [0xff; 32],
-            len: max_depth,
+            len: prefix_len(max_depth),
         };
 
         let result = prefix.push_bit(true);
 
         assert_eq!(result, Err(PprfError::PrefixMaxDepthExceeded));
-        assert_eq!(prefix.len, max_depth);
+        assert_eq!(prefix.len.len, max_depth);
         assert_eq!(prefix.bits, [0xff; 32]);
+    }
+
+    #[test]
+    fn prefix_len_new_rejects_len_greater_than_max_depth() {
+        let result = PrefixLen::<{ Prefix16::MAX_DEPTH }, u8>::new(17);
+
+        assert_eq!(result, Err(PprfError::PrefixMaxDepthExceeded));
+    }
+
+    #[test]
+    fn prefix_len_rejects_len_greater_than_max_depth() {
+        let result = serde_json::from_str::<PrefixLen<{ Prefix16::MAX_DEPTH }, u8>>("17");
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn prefix_len_accepts_len_at_max_depth() {
+        let result = serde_json::from_str::<PrefixLen<{ Prefix16::MAX_DEPTH }, u8>>("16").unwrap();
+
+        assert_eq!(result.len, Prefix16::MAX_DEPTH as u8);
     }
 }
