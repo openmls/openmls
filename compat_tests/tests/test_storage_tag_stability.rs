@@ -1,7 +1,7 @@
 //! These tests check storage tag stability for `serde` serializations of `Extension`,
 //!   `ExtensionType`, `Proposal`, `ProposalType`, and `CredentialType`.
 
-use crate::test_utils::storage_tag_check::*;
+use openmls_compat_tests::storage_tag_check::*;
 
 const TEST_CASES_CREDENTIAL_TYPE: &[&str] = &[r#""Basic""#, r#""X509""#, r#"{"Other":20}"#];
 

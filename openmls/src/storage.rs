@@ -33,9 +33,6 @@ use crate::{
 #[cfg(test)]
 pub mod kat_storage_stability;
 
-#[cfg(test)]
-pub mod test_storage_tag_stability;
-
 /// A convenience trait for the current version of the storage.
 /// Throughout the code, this one should be used instead of `openmls_traits::storage::StorageProvider`.
 pub trait StorageProvider: openmls_traits::storage::StorageProvider<CURRENT_VERSION> {}

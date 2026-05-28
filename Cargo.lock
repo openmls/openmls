@@ -2739,7 +2739,6 @@ dependencies = [
  "lazy_static",
  "log",
  "once_cell",
- "openmls 0.7.1",
  "openmls 0.8.1",
  "openmls_basic_credential",
  "openmls_libcrux_crypto",
@@ -2800,6 +2799,17 @@ dependencies = [
  "serde_json",
  "tls_codec",
  "zeroize",
+]
+
+[[package]]
+name = "openmls_compat_tests"
+version = "0.1.0"
+dependencies = [
+ "openmls 0.7.1",
+ "openmls 0.8.1",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

@@ -15,6 +15,7 @@ members = [
     "openmls_test",
     "sqlite_storage",
     "serialization_helpers",
+    "compat_tests",
 ]
 exclude = ["sqlx_storage"]
 resolver = "2"
