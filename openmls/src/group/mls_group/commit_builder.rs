@@ -1178,7 +1178,8 @@ fn apply_vc_emulation(
     // with `epoch_encryption_key`. The same struct is hashed to produce
     // the PPRF input so that sender and receiver derive the same
     // per-commit secret.
-    let random = rand.random_vec(32).map_err(|e| {
+    const VC_RANDOMNESS_SIZE: usize = 32;
+    let random = rand.random_vec(VC_RANDOMNESS_SIZE).map_err(|e| {
         log::error!("vc: per-commit randomness failed: {e:?}");
         VirtualClientsError::RandError
     })?;
