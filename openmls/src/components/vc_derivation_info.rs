@@ -1,4 +1,8 @@
-use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite};
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    random::OpenMlsRand,
+    types::{Ciphersuite, CryptoError},
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{DeserializeBytes, Serialize as _, TlsDeserializeBytes, TlsSerialize, TlsSize};
@@ -101,7 +105,17 @@ pub enum VirtualClientsError {
     PprfError(#[from] PprfError),
     /// A cryptographic operation failed during virtual-clients processing.
     #[error("Cryptographic operation failed.")]
-    CryptoError,
+    CryptoError(#[from] CryptoError),
+    /// Hash function produced output of unexpected length.
+    #[error(
+        "Hash function produced output of length {actual_length}, expected {expected_length}."
+    )]
+    HashOutputLengthMismatch {
+        /// The number of bytes in the hash output.
+        actual_length: usize,
+        /// The required number of bytes in the hash output.
+        expected_length: usize,
+    },
     /// Random byte generation failed.
     #[error("Random byte generation failed.")]
     RandError,
@@ -150,13 +164,7 @@ impl EmulatorEpochSecret {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<EpochId, VirtualClientsError> {
-        let secret = self
-            .0
-            .derive_secret(crypto, ciphersuite, EPOCH_ID_LABEL)
-            .map_err(|e| {
-                log::error!("vc: derive epoch id failed: {e:?}");
-                VirtualClientsError::CryptoError
-            })?;
+        let secret = self.0.derive_secret(crypto, ciphersuite, EPOCH_ID_LABEL)?;
         Ok(EpochId(secret.as_slice().to_vec()))
     }
 
@@ -165,19 +173,13 @@ impl EmulatorEpochSecret {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<EpochEncryptionKey, VirtualClientsError> {
-        let secret = self
-            .0
-            .kdf_expand_label(
-                crypto,
-                ciphersuite,
-                EPOCH_ENCRYPTION_KEY_LABEL,
-                &[],
-                ciphersuite.aead_key_length(),
-            )
-            .map_err(|e| {
-                log::error!("vc: derive epoch encryption key failed: {e:?}");
-                VirtualClientsError::CryptoError
-            })?;
+        let secret = self.0.kdf_expand_label(
+            crypto,
+            ciphersuite,
+            EPOCH_ENCRYPTION_KEY_LABEL,
+            &[],
+            ciphersuite.aead_key_length(),
+        )?;
         Ok(EpochEncryptionKey(secret))
     }
 
@@ -186,12 +188,9 @@ impl EmulatorEpochSecret {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<Secret, VirtualClientsError> {
-        self.0
-            .derive_secret(crypto, ciphersuite, EPOCH_SECRET_LABEL)
-            .map_err(|e| {
-                log::error!("vc: derive epoch base secret failed: {e:?}");
-                VirtualClientsError::CryptoError
-            })
+        Ok(self
+            .0
+            .derive_secret(crypto, ciphersuite, EPOCH_SECRET_LABEL)?)
     }
 }
 
@@ -316,13 +315,9 @@ impl OperationSecret {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<EncryptionKeySecret, VirtualClientsError> {
-        let encryption_key_secret = self
-            .0
-            .derive_secret(crypto, ciphersuite, ENCRYPTION_KEY_LABEL)
-            .map_err(|e| {
-                log::error!("vc: derive encryption-key secret failed: {e:?}");
-                VirtualClientsError::CryptoError
-            })?;
+        let encryption_key_secret =
+            self.0
+                .derive_secret(crypto, ciphersuite, ENCRYPTION_KEY_LABEL)?;
         Ok(EncryptionKeySecret(encryption_key_secret))
     }
 
@@ -331,13 +326,9 @@ impl OperationSecret {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<PathGenerationSecret, VirtualClientsError> {
-        let path_generation_secret = self
-            .0
-            .derive_secret(crypto, ciphersuite, PATH_GENERATION_LABEL)
-            .map_err(|e| {
-                log::error!("vc: derive path-generation secret failed: {e:?}");
-                VirtualClientsError::CryptoError
-            })?;
+        let path_generation_secret =
+            self.0
+                .derive_secret(crypto, ciphersuite, PATH_GENERATION_LABEL)?;
         Ok(PathGenerationSecret(path_generation_secret))
     }
 }
@@ -351,12 +342,7 @@ impl EncryptionKeySecret {
         ciphersuite: Ciphersuite,
     ) -> Result<EncryptionKeyPair, VirtualClientsError> {
         let hpke_config = ciphersuite.hpke_config();
-        let key_pair = crypto
-            .derive_hpke_keypair(hpke_config, self.0.as_slice())
-            .map_err(|e| {
-                log::error!("vc: derive HPKE keypair failed: {e:?}");
-                VirtualClientsError::CryptoError
-            })?;
+        let key_pair = crypto.derive_hpke_keypair(hpke_config, self.0.as_slice())?;
         Ok(EncryptionKeyPair::from(key_pair))
     }
 }
@@ -446,18 +432,13 @@ impl EpochInfoTbe {
                 VirtualClientsError::RandError
             })?;
         let payload = self.tls_serialize_detached()?;
-        let ciphertext = crypto
-            .aead_encrypt(
-                ciphersuite.aead_algorithm(),
-                key.0.as_slice(),
-                payload.as_slice(),
-                nonce.as_slice(),
-                epoch_id.0.as_slice(),
-            )
-            .map_err(|e| {
-                log::error!("vc: aead encrypt epoch info failed: {e:?}");
-                VirtualClientsError::CryptoError
-            })?;
+        let ciphertext = crypto.aead_encrypt(
+            ciphersuite.aead_algorithm(),
+            key.0.as_slice(),
+            payload.as_slice(),
+            nonce.as_slice(),
+            epoch_id.0.as_slice(),
+        )?;
         Ok(EncryptedEpochInfo { nonce, ciphertext })
     }
 }
@@ -469,23 +450,22 @@ pub(crate) fn pprf_input(
     crypto: &impl OpenMlsCrypto,
     ciphersuite: Ciphersuite,
     epoch_info: &EpochInfoTbe,
-) -> Result<[u8; 32], VirtualClientsError> {
+) -> Result<[u8; Prefix256::PPRF_INPUT_LEN], VirtualClientsError> {
     let serialized = epoch_info.tls_serialize_detached()?;
-    let hash = crypto
-        .hash(ciphersuite.hash_algorithm(), &serialized)
-        .map_err(|e| {
-            log::error!("vc: pprf input hash failed: {e:?}");
-            VirtualClientsError::CryptoError
-        })?;
-    if hash.len() < 32 {
+    let hash = crypto.hash(ciphersuite.hash_algorithm(), &serialized)?;
+    if hash.len() < Prefix256::PPRF_INPUT_LEN {
         log::error!(
-            "vc: pprf input hash too short: got {} bytes, need 32",
-            hash.len()
+            "vc: pprf input hash too short: got {} bytes, need {}",
+            hash.len(),
+            Prefix256::PPRF_INPUT_LEN
         );
-        return Err(VirtualClientsError::CryptoError);
+        return Err(VirtualClientsError::HashOutputLengthMismatch {
+            actual_length: hash.len(),
+            expected_length: Prefix256::PPRF_INPUT_LEN,
+        });
     }
-    let mut input = [0u8; 32];
-    input.copy_from_slice(&hash[..32]);
+    let mut input = [0u8; Prefix256::PPRF_INPUT_LEN];
+    input.copy_from_slice(&hash[..Prefix256::PPRF_INPUT_LEN]);
     Ok(input)
 }
 
