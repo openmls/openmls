@@ -28,12 +28,6 @@ pub const VC_COMPONENT_ID: u16 = 0xFFFF;
 // derivation can be added without churning the constants.
 const ENCRYPTION_KEY_LABEL: &str = "Encryption Key";
 const PATH_GENERATION_LABEL: &str = "Path Generation";
-#[allow(dead_code)] // reserved for KeyPackage/Application operation types
-const SIGNATURE_KEY_LABEL: &str = "Signature Key";
-#[allow(dead_code)] // reserved for KeyPackage/Application operation types
-const INIT_KEY_LABEL: &str = "Init Key";
-#[allow(dead_code)] // reserved for KeyPackage/Application operation types
-const REUSE_GUARD_LABEL: &str = "Reuse Guard";
 
 const EPOCH_ID_LABEL: &str = "Epoch ID";
 const EPOCH_ENCRYPTION_KEY_LABEL: &str = "Encryption Key";
