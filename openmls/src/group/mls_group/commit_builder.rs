@@ -673,12 +673,32 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             path: path_computation_result.encrypted_path,
         };
 
-        let framing_parameters =
-            if let Some(ExternalCommitInfo { aad, .. }) = &cur_stage.external_commit_info {
-                FramingParameters::new(aad, WireFormat::PublicMessage)
-            } else {
-                group.framing_parameters()
+        let (outgoing_aad, wire_format): (Vec<u8>, WireFormat) =
+            match &cur_stage.external_commit_info {
+                None => (
+                    group.outgoing_authenticated_data()?,
+                    group.outgoing_wire_format(),
+                ),
+                Some(ExternalCommitInfo { aad, .. }) => {
+                    // The spec requires the SafeAAD prefix even with zero items
+                    // when the target GroupContext has `safe_aad` present, so a
+                    // bare `aad` would be rejected by SafeAAD-aware receivers.
+                    #[cfg(feature = "extensions-draft-08")]
+                    let aad_bytes = if group.context().safe_aad_required() {
+                        crate::framing::safe_aad::assemble_authenticated_data(
+                            &crate::framing::SafeAad::empty(),
+                            aad,
+                        )
+                        .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
+                    } else {
+                        aad.clone()
+                    };
+                    #[cfg(not(feature = "extensions-draft-08"))]
+                    let aad_bytes = aad.clone();
+                    (aad_bytes, WireFormat::PublicMessage)
+                }
             };
+        let framing_parameters = FramingParameters::new(&outgoing_aad, wire_format);
 
         // Build AuthenticatedContent
         let mut authenticated_content = AuthenticatedContent::commit(

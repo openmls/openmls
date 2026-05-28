@@ -200,6 +200,54 @@ impl From<ComponentType> for ComponentId {
     }
 }
 
+/// A list of [`ComponentId`]s.
+///
+/// Used as the body of the `safe_aad` component in the `app_data_dictionary`
+/// extension. When present in a LeafNode it lists supported components. When
+/// present in the GroupContext it lists components whose Safe AAD must be
+/// understood by the entire group.
+///
+/// ```tls
+/// struct {
+///     ComponentID component_ids<V>;
+/// } ComponentsList;
+/// ```
+#[cfg(feature = "extensions-draft-08")]
+#[derive(
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
+)]
+pub struct ComponentsList {
+    component_ids: Vec<ComponentId>,
+}
+
+#[cfg(feature = "extensions-draft-08")]
+impl ComponentsList {
+    /// Create a new [`ComponentsList`] from a vector of [`ComponentId`]s.
+    pub fn new(component_ids: Vec<ComponentId>) -> Self {
+        Self { component_ids }
+    }
+
+    /// Access the underlying ids.
+    pub fn ids(&self) -> &[ComponentId] {
+        &self.component_ids
+    }
+
+    /// Consume self and return the ids.
+    pub fn into_ids(self) -> Vec<ComponentId> {
+        self.component_ids
+    }
+}
+
 /// Label for safe encryption/decryption as defined in Section 4.2 of the MLS Extensions draft
 #[derive(Debug, TlsSerialize, TlsSize)]
 pub(crate) struct ComponentOperationLabel {
