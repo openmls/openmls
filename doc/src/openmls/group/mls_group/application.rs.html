@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/application.rs`."><title>application.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (d1fc603d1 2026-05-26)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>application.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>openmls_traits::signatures::Signer;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/application.rs`."><title>application.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (57d06900f 2026-05-27)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>application.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>openmls_traits::signatures::Signer;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::storage::OpenMlsProvider;
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -69,63 +69,64 @@
 <a href=#69 id=69 data-nosnippet>69</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(MlsGroupStateError::PendingProposal.into());
 <a href=#70 id=70 data-nosnippet>70</a>        }
 <a href=#71 id=71 data-nosnippet>71</a>
-<a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>authenticated_content = AuthenticatedContent::new_application(
-<a href=#73 id=73 data-nosnippet>73</a>            <span class="self">self</span>.own_leaf_index(),
-<a href=#74 id=74 data-nosnippet>74</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.aad,
-<a href=#75 id=75 data-nosnippet>75</a>            message,
-<a href=#76 id=76 data-nosnippet>76</a>            <span class="self">self</span>.context(),
-<a href=#77 id=77 data-nosnippet>77</a>            signer,
-<a href=#78 id=78 data-nosnippet>78</a>        )<span class="question-mark">?</span>;
-<a href=#79 id=79 data-nosnippet>79</a>        <span class="kw">let </span>EncryptionOutput {
-<a href=#80 id=80 data-nosnippet>80</a>            generation,
-<a href=#81 id=81 data-nosnippet>81</a>            private_message,
-<a href=#82 id=82 data-nosnippet>82</a>        } = <span class="self">self
-<a href=#83 id=83 data-nosnippet>83</a>            </span>.encrypt(authenticated_content, provider)
-<a href=#84 id=84 data-nosnippet>84</a>            <span class="comment">// We know the application message is wellformed and we have the key material of the current epoch
-<a href=#85 id=85 data-nosnippet>85</a>            </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Malformed plaintext"</span>))<span class="question-mark">?</span>;
-<a href=#86 id=86 data-nosnippet>86</a>
-<a href=#87 id=87 data-nosnippet>87</a>        <span class="kw">let </span>output = MlsMessageOut::from_private_message(private_message, <span class="self">self</span>.version());
-<a href=#88 id=88 data-nosnippet>88</a>        <span class="self">self</span>.reset_aad();
-<a href=#89 id=89 data-nosnippet>89</a>        <span class="prelude-val">Ok</span>((generation, output))
-<a href=#90 id=90 data-nosnippet>90</a>    }
-<a href=#91 id=91 data-nosnippet>91</a>
-<a href=#92 id=92 data-nosnippet>92</a>    <span class="doccomment">/// Creates an application message. Encryption secrets are only deleted
-<a href=#93 id=93 data-nosnippet>93</a>    /// after the message has been confirmed via `confirm_message()`.
-<a href=#94 id=94 data-nosnippet>94</a>    ///
-<a href=#95 id=95 data-nosnippet>95</a>    /// Returns `CreateMessageError::MlsGroupStateError::UseAfterEviction` if
-<a href=#96 id=96 data-nosnippet>96</a>    /// the member is no longer part of the group. Returns
-<a href=#97 id=97 data-nosnippet>97</a>    /// `CreateMessageError::MlsGroupStateError::PendingProposal` if pending
-<a href=#98 id=98 data-nosnippet>98</a>    /// proposals exist. In that case `.process_pending_proposals()` must be
-<a href=#99 id=99 data-nosnippet>99</a>    /// called first and incoming messages from the DS must be processed
-<a href=#100 id=100 data-nosnippet>100</a>    /// afterwards.
-<a href=#101 id=101 data-nosnippet>101</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#102 id=102 data-nosnippet>102</a>    </span><span class="kw">pub fn </span>create_unconfirmed_message&lt;Provider: OpenMlsProvider&gt;(
-<a href=#103 id=103 data-nosnippet>103</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#104 id=104 data-nosnippet>104</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#105 id=105 data-nosnippet>105</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-<a href=#106 id=106 data-nosnippet>106</a>        message: <span class="kw-2">&amp;</span>[u8],
-<a href=#107 id=107 data-nosnippet>107</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(u32, MlsMessageOut), CreateMessageError&lt;Provider::StorageError&gt;&gt; {
-<a href=#108 id=108 data-nosnippet>108</a>        <span class="self">self</span>.create_message_internal(provider, signer, message)
-<a href=#109 id=109 data-nosnippet>109</a>    }
-<a href=#110 id=110 data-nosnippet>110</a>
-<a href=#111 id=111 data-nosnippet>111</a>    <span class="doccomment">/// Confirms that a message has been successfully sent without a generation
-<a href=#112 id=112 data-nosnippet>112</a>    /// collision. This deletes the encryption secrets for the given generation.
-<a href=#113 id=113 data-nosnippet>113</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#114 id=114 data-nosnippet>114</a>    </span><span class="kw">pub fn </span>confirm_message&lt;Storage: StorageProvider&gt;(
-<a href=#115 id=115 data-nosnippet>115</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#116 id=116 data-nosnippet>116</a>        storage: <span class="kw-2">&amp;</span>Storage,
-<a href=#117 id=117 data-nosnippet>117</a>        generation: u32,
-<a href=#118 id=118 data-nosnippet>118</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConfirmMessageError&lt;Storage::Error&gt;&gt; {
-<a href=#119 id=119 data-nosnippet>119</a>        <span class="comment">// For now we only support application secrets.
-<a href=#120 id=120 data-nosnippet>120</a>        </span><span class="kw">let </span>secret_type = SecretType::ApplicationSecret;
-<a href=#121 id=121 data-nosnippet>121</a>        <span class="self">self</span>.message_secrets_store
-<a href=#122 id=122 data-nosnippet>122</a>            .message_secrets_mut()
-<a href=#123 id=123 data-nosnippet>123</a>            .secret_tree_mut()
-<a href=#124 id=124 data-nosnippet>124</a>            .delete_own_secret_for_generation(secret_type, generation)<span class="question-mark">?</span>;
-<a href=#125 id=125 data-nosnippet>125</a>        storage
-<a href=#126 id=126 data-nosnippet>126</a>            .write_message_secrets(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span><span class="self">self</span>.message_secrets_store)
-<a href=#127 id=127 data-nosnippet>127</a>            .map_err(ConfirmMessageError::StorageError)<span class="question-mark">?</span>;
-<a href=#128 id=128 data-nosnippet>128</a>        <span class="prelude-val">Ok</span>(())
-<a href=#129 id=129 data-nosnippet>129</a>    }
-<a href=#130 id=130 data-nosnippet>130</a>}
+<a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>aad = <span class="self">self</span>.outgoing_authenticated_data()<span class="question-mark">?</span>;
+<a href=#73 id=73 data-nosnippet>73</a>        <span class="kw">let </span>authenticated_content = AuthenticatedContent::new_application(
+<a href=#74 id=74 data-nosnippet>74</a>            <span class="self">self</span>.own_leaf_index(),
+<a href=#75 id=75 data-nosnippet>75</a>            <span class="kw-2">&amp;</span>aad,
+<a href=#76 id=76 data-nosnippet>76</a>            message,
+<a href=#77 id=77 data-nosnippet>77</a>            <span class="self">self</span>.context(),
+<a href=#78 id=78 data-nosnippet>78</a>            signer,
+<a href=#79 id=79 data-nosnippet>79</a>        )<span class="question-mark">?</span>;
+<a href=#80 id=80 data-nosnippet>80</a>        <span class="kw">let </span>EncryptionOutput {
+<a href=#81 id=81 data-nosnippet>81</a>            generation,
+<a href=#82 id=82 data-nosnippet>82</a>            private_message,
+<a href=#83 id=83 data-nosnippet>83</a>        } = <span class="self">self
+<a href=#84 id=84 data-nosnippet>84</a>            </span>.encrypt(authenticated_content, provider)
+<a href=#85 id=85 data-nosnippet>85</a>            <span class="comment">// We know the application message is wellformed and we have the key material of the current epoch
+<a href=#86 id=86 data-nosnippet>86</a>            </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Malformed plaintext"</span>))<span class="question-mark">?</span>;
+<a href=#87 id=87 data-nosnippet>87</a>
+<a href=#88 id=88 data-nosnippet>88</a>        <span class="kw">let </span>output = MlsMessageOut::from_private_message(private_message, <span class="self">self</span>.version());
+<a href=#89 id=89 data-nosnippet>89</a>        <span class="self">self</span>.reset_aad();
+<a href=#90 id=90 data-nosnippet>90</a>        <span class="prelude-val">Ok</span>((generation, output))
+<a href=#91 id=91 data-nosnippet>91</a>    }
+<a href=#92 id=92 data-nosnippet>92</a>
+<a href=#93 id=93 data-nosnippet>93</a>    <span class="doccomment">/// Creates an application message. Encryption secrets are only deleted
+<a href=#94 id=94 data-nosnippet>94</a>    /// after the message has been confirmed via `confirm_message()`.
+<a href=#95 id=95 data-nosnippet>95</a>    ///
+<a href=#96 id=96 data-nosnippet>96</a>    /// Returns `CreateMessageError::MlsGroupStateError::UseAfterEviction` if
+<a href=#97 id=97 data-nosnippet>97</a>    /// the member is no longer part of the group. Returns
+<a href=#98 id=98 data-nosnippet>98</a>    /// `CreateMessageError::MlsGroupStateError::PendingProposal` if pending
+<a href=#99 id=99 data-nosnippet>99</a>    /// proposals exist. In that case `.process_pending_proposals()` must be
+<a href=#100 id=100 data-nosnippet>100</a>    /// called first and incoming messages from the DS must be processed
+<a href=#101 id=101 data-nosnippet>101</a>    /// afterwards.
+<a href=#102 id=102 data-nosnippet>102</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#103 id=103 data-nosnippet>103</a>    </span><span class="kw">pub fn </span>create_unconfirmed_message&lt;Provider: OpenMlsProvider&gt;(
+<a href=#104 id=104 data-nosnippet>104</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#105 id=105 data-nosnippet>105</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#106 id=106 data-nosnippet>106</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+<a href=#107 id=107 data-nosnippet>107</a>        message: <span class="kw-2">&amp;</span>[u8],
+<a href=#108 id=108 data-nosnippet>108</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(u32, MlsMessageOut), CreateMessageError&lt;Provider::StorageError&gt;&gt; {
+<a href=#109 id=109 data-nosnippet>109</a>        <span class="self">self</span>.create_message_internal(provider, signer, message)
+<a href=#110 id=110 data-nosnippet>110</a>    }
+<a href=#111 id=111 data-nosnippet>111</a>
+<a href=#112 id=112 data-nosnippet>112</a>    <span class="doccomment">/// Confirms that a message has been successfully sent without a generation
+<a href=#113 id=113 data-nosnippet>113</a>    /// collision. This deletes the encryption secrets for the given generation.
+<a href=#114 id=114 data-nosnippet>114</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#115 id=115 data-nosnippet>115</a>    </span><span class="kw">pub fn </span>confirm_message&lt;Storage: StorageProvider&gt;(
+<a href=#116 id=116 data-nosnippet>116</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#117 id=117 data-nosnippet>117</a>        storage: <span class="kw-2">&amp;</span>Storage,
+<a href=#118 id=118 data-nosnippet>118</a>        generation: u32,
+<a href=#119 id=119 data-nosnippet>119</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConfirmMessageError&lt;Storage::Error&gt;&gt; {
+<a href=#120 id=120 data-nosnippet>120</a>        <span class="comment">// For now we only support application secrets.
+<a href=#121 id=121 data-nosnippet>121</a>        </span><span class="kw">let </span>secret_type = SecretType::ApplicationSecret;
+<a href=#122 id=122 data-nosnippet>122</a>        <span class="self">self</span>.message_secrets_store
+<a href=#123 id=123 data-nosnippet>123</a>            .message_secrets_mut()
+<a href=#124 id=124 data-nosnippet>124</a>            .secret_tree_mut()
+<a href=#125 id=125 data-nosnippet>125</a>            .delete_own_secret_for_generation(secret_type, generation)<span class="question-mark">?</span>;
+<a href=#126 id=126 data-nosnippet>126</a>        storage
+<a href=#127 id=127 data-nosnippet>127</a>            .write_message_secrets(<span class="self">self</span>.group_id(), <span class="kw-2">&amp;</span><span class="self">self</span>.message_secrets_store)
+<a href=#128 id=128 data-nosnippet>128</a>            .map_err(ConfirmMessageError::StorageError)<span class="question-mark">?</span>;
+<a href=#129 id=129 data-nosnippet>129</a>        <span class="prelude-val">Ok</span>(())
+<a href=#130 id=130 data-nosnippet>130</a>    }
+<a href=#131 id=131 data-nosnippet>131</a>}
 </code></pre></div></section></main></body></html>

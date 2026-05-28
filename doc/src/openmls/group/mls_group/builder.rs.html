@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/builder.rs`."><title>builder.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (d1fc603d1 2026-05-26)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>builder.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/builder.rs`."><title>builder.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (57d06900f 2026-05-27)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>builder.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite};
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>tls_codec::Serialize;
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
@@ -183,156 +183,158 @@
 <a href=#183 id=183 data-nosnippet>183</a>            mls_group_config: mls_group_create_config.join_config.clone(),
 <a href=#184 id=184 data-nosnippet>184</a>            own_leaf_nodes: <span class="macro">vec!</span>[],
 <a href=#185 id=185 data-nosnippet>185</a>            aad: <span class="macro">vec!</span>[],
-<a href=#186 id=186 data-nosnippet>186</a>            group_state: MlsGroupState::Operational,
-<a href=#187 id=187 data-nosnippet>187</a>            public_group,
-<a href=#188 id=188 data-nosnippet>188</a>            group_epoch_secrets,
-<a href=#189 id=189 data-nosnippet>189</a>            own_leaf_index: LeafNodeIndex::new(<span class="number">0</span>),
-<a href=#190 id=190 data-nosnippet>190</a>            message_secrets_store,
-<a href=#191 id=191 data-nosnippet>191</a>            resumption_psk_store,
-<a href=#192 id=192 data-nosnippet>192</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
-<a href=#193 id=193 data-nosnippet>193</a>            </span>application_export_tree: <span class="prelude-val">Some</span>(application_export_tree),
-<a href=#194 id=194 data-nosnippet>194</a>        };
-<a href=#195 id=195 data-nosnippet>195</a>
-<a href=#196 id=196 data-nosnippet>196</a>        mls_group
-<a href=#197 id=197 data-nosnippet>197</a>            .store(provider.storage())
-<a href=#198 id=198 data-nosnippet>198</a>            .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
-<a href=#199 id=199 data-nosnippet>199</a>        mls_group
-<a href=#200 id=200 data-nosnippet>200</a>            .store_epoch_keypairs(provider.storage(), <span class="kw-2">&amp;</span>[leaf_keypair])
-<a href=#201 id=201 data-nosnippet>201</a>            .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
-<a href=#202 id=202 data-nosnippet>202</a>
-<a href=#203 id=203 data-nosnippet>203</a>        <span class="prelude-val">Ok</span>(mls_group)
-<a href=#204 id=204 data-nosnippet>204</a>    }
-<a href=#205 id=205 data-nosnippet>205</a>
-<a href=#206 id=206 data-nosnippet>206</a>    <span class="comment">// MlsGroupCreateConfigBuilder options
+<a href=#186 id=186 data-nosnippet>186</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#187 id=187 data-nosnippet>187</a>            </span>safe_aad: <span class="kw">crate</span>::framing::SafeAad::empty(),
+<a href=#188 id=188 data-nosnippet>188</a>            group_state: MlsGroupState::Operational,
+<a href=#189 id=189 data-nosnippet>189</a>            public_group,
+<a href=#190 id=190 data-nosnippet>190</a>            group_epoch_secrets,
+<a href=#191 id=191 data-nosnippet>191</a>            own_leaf_index: LeafNodeIndex::new(<span class="number">0</span>),
+<a href=#192 id=192 data-nosnippet>192</a>            message_secrets_store,
+<a href=#193 id=193 data-nosnippet>193</a>            resumption_psk_store,
+<a href=#194 id=194 data-nosnippet>194</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#195 id=195 data-nosnippet>195</a>            </span>application_export_tree: <span class="prelude-val">Some</span>(application_export_tree),
+<a href=#196 id=196 data-nosnippet>196</a>        };
+<a href=#197 id=197 data-nosnippet>197</a>
+<a href=#198 id=198 data-nosnippet>198</a>        mls_group
+<a href=#199 id=199 data-nosnippet>199</a>            .store(provider.storage())
+<a href=#200 id=200 data-nosnippet>200</a>            .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
+<a href=#201 id=201 data-nosnippet>201</a>        mls_group
+<a href=#202 id=202 data-nosnippet>202</a>            .store_epoch_keypairs(provider.storage(), <span class="kw-2">&amp;</span>[leaf_keypair])
+<a href=#203 id=203 data-nosnippet>203</a>            .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
+<a href=#204 id=204 data-nosnippet>204</a>
+<a href=#205 id=205 data-nosnippet>205</a>        <span class="prelude-val">Ok</span>(mls_group)
+<a href=#206 id=206 data-nosnippet>206</a>    }
 <a href=#207 id=207 data-nosnippet>207</a>
-<a href=#208 id=208 data-nosnippet>208</a>    </span><span class="doccomment">/// Sets the `wire_format` property of the MlsGroup.
-<a href=#209 id=209 data-nosnippet>209</a>    </span><span class="kw">pub fn </span>with_wire_format_policy(<span class="kw-2">mut </span><span class="self">self</span>, wire_format_policy: WireFormatPolicy) -&gt; <span class="self">Self </span>{
-<a href=#210 id=210 data-nosnippet>210</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#211 id=211 data-nosnippet>211</a>            </span>.mls_group_create_config_builder
-<a href=#212 id=212 data-nosnippet>212</a>            .wire_format_policy(wire_format_policy);
-<a href=#213 id=213 data-nosnippet>213</a>        <span class="self">self
-<a href=#214 id=214 data-nosnippet>214</a>    </span>}
-<a href=#215 id=215 data-nosnippet>215</a>
-<a href=#216 id=216 data-nosnippet>216</a>    <span class="doccomment">/// Sets the `padding_size` property of the MlsGroup.
-<a href=#217 id=217 data-nosnippet>217</a>    </span><span class="kw">pub fn </span>padding_size(<span class="kw-2">mut </span><span class="self">self</span>, padding_size: usize) -&gt; <span class="self">Self </span>{
-<a href=#218 id=218 data-nosnippet>218</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#219 id=219 data-nosnippet>219</a>            </span>.mls_group_create_config_builder
-<a href=#220 id=220 data-nosnippet>220</a>            .padding_size(padding_size);
-<a href=#221 id=221 data-nosnippet>221</a>        <span class="self">self
-<a href=#222 id=222 data-nosnippet>222</a>    </span>}
-<a href=#223 id=223 data-nosnippet>223</a>
-<a href=#224 id=224 data-nosnippet>224</a>    <span class="doccomment">/// Sets the `max_past_epochs` property of the MlsGroup.
-<a href=#225 id=225 data-nosnippet>225</a>    /// This allows application messages from previous epochs to be decrypted.
-<a href=#226 id=226 data-nosnippet>226</a>    ///
-<a href=#227 id=227 data-nosnippet>227</a>    /// This method overrides the policy set by [`Self::set_past_epoch_deletion_policy()`],
-<a href=#228 id=228 data-nosnippet>228</a>    /// and is equivalent to setting the past epoch deletion policy to
-<a href=#229 id=229 data-nosnippet>229</a>    /// `PastEpochDeletionPolicy::MaxEpochs(max_past_epochs)`.
-<a href=#230 id=230 data-nosnippet>230</a>    ///
-<a href=#231 id=231 data-nosnippet>231</a>    /// **WARNING**
+<a href=#208 id=208 data-nosnippet>208</a>    <span class="comment">// MlsGroupCreateConfigBuilder options
+<a href=#209 id=209 data-nosnippet>209</a>
+<a href=#210 id=210 data-nosnippet>210</a>    </span><span class="doccomment">/// Sets the `wire_format` property of the MlsGroup.
+<a href=#211 id=211 data-nosnippet>211</a>    </span><span class="kw">pub fn </span>with_wire_format_policy(<span class="kw-2">mut </span><span class="self">self</span>, wire_format_policy: WireFormatPolicy) -&gt; <span class="self">Self </span>{
+<a href=#212 id=212 data-nosnippet>212</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#213 id=213 data-nosnippet>213</a>            </span>.mls_group_create_config_builder
+<a href=#214 id=214 data-nosnippet>214</a>            .wire_format_policy(wire_format_policy);
+<a href=#215 id=215 data-nosnippet>215</a>        <span class="self">self
+<a href=#216 id=216 data-nosnippet>216</a>    </span>}
+<a href=#217 id=217 data-nosnippet>217</a>
+<a href=#218 id=218 data-nosnippet>218</a>    <span class="doccomment">/// Sets the `padding_size` property of the MlsGroup.
+<a href=#219 id=219 data-nosnippet>219</a>    </span><span class="kw">pub fn </span>padding_size(<span class="kw-2">mut </span><span class="self">self</span>, padding_size: usize) -&gt; <span class="self">Self </span>{
+<a href=#220 id=220 data-nosnippet>220</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#221 id=221 data-nosnippet>221</a>            </span>.mls_group_create_config_builder
+<a href=#222 id=222 data-nosnippet>222</a>            .padding_size(padding_size);
+<a href=#223 id=223 data-nosnippet>223</a>        <span class="self">self
+<a href=#224 id=224 data-nosnippet>224</a>    </span>}
+<a href=#225 id=225 data-nosnippet>225</a>
+<a href=#226 id=226 data-nosnippet>226</a>    <span class="doccomment">/// Sets the `max_past_epochs` property of the MlsGroup.
+<a href=#227 id=227 data-nosnippet>227</a>    /// This allows application messages from previous epochs to be decrypted.
+<a href=#228 id=228 data-nosnippet>228</a>    ///
+<a href=#229 id=229 data-nosnippet>229</a>    /// This method overrides the policy set by [`Self::set_past_epoch_deletion_policy()`],
+<a href=#230 id=230 data-nosnippet>230</a>    /// and is equivalent to setting the past epoch deletion policy to
+<a href=#231 id=231 data-nosnippet>231</a>    /// `PastEpochDeletionPolicy::MaxEpochs(max_past_epochs)`.
 <a href=#232 id=232 data-nosnippet>232</a>    ///
-<a href=#233 id=233 data-nosnippet>233</a>    ///
-<a href=#234 id=234 data-nosnippet>234</a>    /// This feature enables the storage of message secrets from past epochs.
-<a href=#235 id=235 data-nosnippet>235</a>    /// It is a trade-off between functionality and forward secrecy and should only be enabled
-<a href=#236 id=236 data-nosnippet>236</a>    /// if the Delivery Service cannot guarantee that application messages will be sent in
-<a href=#237 id=237 data-nosnippet>237</a>    /// the same epoch in which they were generated. The number for `max_epochs` should be
-<a href=#238 id=238 data-nosnippet>238</a>    /// as low as possible.
-<a href=#239 id=239 data-nosnippet>239</a>    ///
-<a href=#240 id=240 data-nosnippet>240</a>    /// NOTE: This function will be deprecated in future releases.
-<a href=#241 id=241 data-nosnippet>241</a>    </span><span class="kw">pub fn </span>max_past_epochs(<span class="kw-2">mut </span><span class="self">self</span>, max_past_epochs: usize) -&gt; <span class="self">Self </span>{
-<a href=#242 id=242 data-nosnippet>242</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#243 id=243 data-nosnippet>243</a>            </span>.mls_group_create_config_builder
-<a href=#244 id=244 data-nosnippet>244</a>            .max_past_epochs(max_past_epochs);
-<a href=#245 id=245 data-nosnippet>245</a>        <span class="self">self
-<a href=#246 id=246 data-nosnippet>246</a>    </span>}
-<a href=#247 id=247 data-nosnippet>247</a>
-<a href=#248 id=248 data-nosnippet>248</a>    <span class="doccomment">/// Set the policy for deleting past epoch secrets.
-<a href=#249 id=249 data-nosnippet>249</a>    ///
-<a href=#250 id=250 data-nosnippet>250</a>    /// By default, storage of past epoch secrets is disabled.
+<a href=#233 id=233 data-nosnippet>233</a>    /// **WARNING**
+<a href=#234 id=234 data-nosnippet>234</a>    ///
+<a href=#235 id=235 data-nosnippet>235</a>    ///
+<a href=#236 id=236 data-nosnippet>236</a>    /// This feature enables the storage of message secrets from past epochs.
+<a href=#237 id=237 data-nosnippet>237</a>    /// It is a trade-off between functionality and forward secrecy and should only be enabled
+<a href=#238 id=238 data-nosnippet>238</a>    /// if the Delivery Service cannot guarantee that application messages will be sent in
+<a href=#239 id=239 data-nosnippet>239</a>    /// the same epoch in which they were generated. The number for `max_epochs` should be
+<a href=#240 id=240 data-nosnippet>240</a>    /// as low as possible.
+<a href=#241 id=241 data-nosnippet>241</a>    ///
+<a href=#242 id=242 data-nosnippet>242</a>    /// NOTE: This function will be deprecated in future releases.
+<a href=#243 id=243 data-nosnippet>243</a>    </span><span class="kw">pub fn </span>max_past_epochs(<span class="kw-2">mut </span><span class="self">self</span>, max_past_epochs: usize) -&gt; <span class="self">Self </span>{
+<a href=#244 id=244 data-nosnippet>244</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#245 id=245 data-nosnippet>245</a>            </span>.mls_group_create_config_builder
+<a href=#246 id=246 data-nosnippet>246</a>            .max_past_epochs(max_past_epochs);
+<a href=#247 id=247 data-nosnippet>247</a>        <span class="self">self
+<a href=#248 id=248 data-nosnippet>248</a>    </span>}
+<a href=#249 id=249 data-nosnippet>249</a>
+<a href=#250 id=250 data-nosnippet>250</a>    <span class="doccomment">/// Set the policy for deleting past epoch secrets.
 <a href=#251 id=251 data-nosnippet>251</a>    ///
-<a href=#252 id=252 data-nosnippet>252</a>    /// This method overrides the configuration set by [`Self::max_past_epochs()`].
+<a href=#252 id=252 data-nosnippet>252</a>    /// By default, storage of past epoch secrets is disabled.
 <a href=#253 id=253 data-nosnippet>253</a>    ///
-<a href=#254 id=254 data-nosnippet>254</a>    /// **WARNING**
+<a href=#254 id=254 data-nosnippet>254</a>    /// This method overrides the configuration set by [`Self::max_past_epochs()`].
 <a href=#255 id=255 data-nosnippet>255</a>    ///
-<a href=#256 id=256 data-nosnippet>256</a>    /// This feature enables the storage of message secrets from past epochs.
-<a href=#257 id=257 data-nosnippet>257</a>    /// It is a trade-off between functionality and forward secrecy and should only be enabled
-<a href=#258 id=258 data-nosnippet>258</a>    /// if the Delivery Service cannot guarantee that application messages will be sent in
-<a href=#259 id=259 data-nosnippet>259</a>    /// the same epoch in which they were generated. The number for `max_epochs` should be
-<a href=#260 id=260 data-nosnippet>260</a>    /// as low as possible.
-<a href=#261 id=261 data-nosnippet>261</a>    </span><span class="kw">pub fn </span>set_past_epoch_deletion_policy(<span class="kw-2">mut </span><span class="self">self</span>, policy: PastEpochDeletionPolicy) -&gt; <span class="self">Self </span>{
-<a href=#262 id=262 data-nosnippet>262</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#263 id=263 data-nosnippet>263</a>            </span>.mls_group_create_config_builder
-<a href=#264 id=264 data-nosnippet>264</a>            .set_past_epoch_deletion_policy(policy);
-<a href=#265 id=265 data-nosnippet>265</a>        <span class="self">self
-<a href=#266 id=266 data-nosnippet>266</a>    </span>}
-<a href=#267 id=267 data-nosnippet>267</a>
-<a href=#268 id=268 data-nosnippet>268</a>    <span class="doccomment">/// Sets the `number_of_resumption_psks` property of the MlsGroup.
-<a href=#269 id=269 data-nosnippet>269</a>    </span><span class="kw">pub fn </span>number_of_resumption_psks(<span class="kw-2">mut </span><span class="self">self</span>, number_of_resumption_psks: usize) -&gt; <span class="self">Self </span>{
-<a href=#270 id=270 data-nosnippet>270</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#271 id=271 data-nosnippet>271</a>            </span>.mls_group_create_config_builder
-<a href=#272 id=272 data-nosnippet>272</a>            .number_of_resumption_psks(number_of_resumption_psks);
-<a href=#273 id=273 data-nosnippet>273</a>        <span class="self">self
-<a href=#274 id=274 data-nosnippet>274</a>    </span>}
-<a href=#275 id=275 data-nosnippet>275</a>
-<a href=#276 id=276 data-nosnippet>276</a>    <span class="doccomment">/// Sets the `use_ratchet_tree_extension` property of the MlsGroup.
-<a href=#277 id=277 data-nosnippet>277</a>    </span><span class="kw">pub fn </span>use_ratchet_tree_extension(<span class="kw-2">mut </span><span class="self">self</span>, use_ratchet_tree_extension: bool) -&gt; <span class="self">Self </span>{
-<a href=#278 id=278 data-nosnippet>278</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#279 id=279 data-nosnippet>279</a>            </span>.mls_group_create_config_builder
-<a href=#280 id=280 data-nosnippet>280</a>            .use_ratchet_tree_extension(use_ratchet_tree_extension);
-<a href=#281 id=281 data-nosnippet>281</a>        <span class="self">self
-<a href=#282 id=282 data-nosnippet>282</a>    </span>}
-<a href=#283 id=283 data-nosnippet>283</a>
-<a href=#284 id=284 data-nosnippet>284</a>    <span class="doccomment">/// Sets the `sender_ratchet_configuration` property of the MlsGroup.
-<a href=#285 id=285 data-nosnippet>285</a>    /// See [`SenderRatchetConfiguration`] for more information.
-<a href=#286 id=286 data-nosnippet>286</a>    </span><span class="kw">pub fn </span>sender_ratchet_configuration(
-<a href=#287 id=287 data-nosnippet>287</a>        <span class="kw-2">mut </span><span class="self">self</span>,
-<a href=#288 id=288 data-nosnippet>288</a>        sender_ratchet_configuration: SenderRatchetConfiguration,
-<a href=#289 id=289 data-nosnippet>289</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#290 id=290 data-nosnippet>290</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#291 id=291 data-nosnippet>291</a>            </span>.mls_group_create_config_builder
-<a href=#292 id=292 data-nosnippet>292</a>            .sender_ratchet_configuration(sender_ratchet_configuration);
-<a href=#293 id=293 data-nosnippet>293</a>        <span class="self">self
-<a href=#294 id=294 data-nosnippet>294</a>    </span>}
-<a href=#295 id=295 data-nosnippet>295</a>
-<a href=#296 id=296 data-nosnippet>296</a>    <span class="doccomment">/// Sets the `lifetime` of the group creator's leaf.
-<a href=#297 id=297 data-nosnippet>297</a>    </span><span class="kw">pub fn </span>lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
-<a href=#298 id=298 data-nosnippet>298</a>        <span class="self">self</span>.mls_group_create_config_builder =
-<a href=#299 id=299 data-nosnippet>299</a>            <span class="self">self</span>.mls_group_create_config_builder.lifetime(lifetime);
-<a href=#300 id=300 data-nosnippet>300</a>        <span class="self">self
-<a href=#301 id=301 data-nosnippet>301</a>    </span>}
-<a href=#302 id=302 data-nosnippet>302</a>
-<a href=#303 id=303 data-nosnippet>303</a>    <span class="doccomment">/// Sets the `ciphersuite` of the MlsGroup.
-<a href=#304 id=304 data-nosnippet>304</a>    </span><span class="kw">pub fn </span>ciphersuite(<span class="kw-2">mut </span><span class="self">self</span>, ciphersuite: Ciphersuite) -&gt; <span class="self">Self </span>{
-<a href=#305 id=305 data-nosnippet>305</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#306 id=306 data-nosnippet>306</a>            </span>.mls_group_create_config_builder
-<a href=#307 id=307 data-nosnippet>307</a>            .ciphersuite(ciphersuite);
-<a href=#308 id=308 data-nosnippet>308</a>        <span class="self">self
-<a href=#309 id=309 data-nosnippet>309</a>    </span>}
-<a href=#310 id=310 data-nosnippet>310</a>
-<a href=#311 id=311 data-nosnippet>311</a>    <span class="doccomment">/// Sets the initial group context extensions
-<a href=#312 id=312 data-nosnippet>312</a>    </span><span class="kw">pub fn </span>with_group_context_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Extensions&lt;GroupContext&gt;) -&gt; <span class="self">Self </span>{
-<a href=#313 id=313 data-nosnippet>313</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#314 id=314 data-nosnippet>314</a>            </span>.mls_group_create_config_builder
-<a href=#315 id=315 data-nosnippet>315</a>            .with_group_context_extensions(extensions);
-<a href=#316 id=316 data-nosnippet>316</a>        <span class="self">self
-<a href=#317 id=317 data-nosnippet>317</a>    </span>}
-<a href=#318 id=318 data-nosnippet>318</a>
-<a href=#319 id=319 data-nosnippet>319</a>    <span class="doccomment">/// Sets the initial leaf node extensions
-<a href=#320 id=320 data-nosnippet>320</a>    </span><span class="kw">pub fn </span>with_leaf_node_extensions(
-<a href=#321 id=321 data-nosnippet>321</a>        <span class="kw-2">mut </span><span class="self">self</span>,
-<a href=#322 id=322 data-nosnippet>322</a>        extensions: Extensions&lt;LeafNode&gt;,
-<a href=#323 id=323 data-nosnippet>323</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LeafNodeValidationError&gt; {
-<a href=#324 id=324 data-nosnippet>324</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#325 id=325 data-nosnippet>325</a>            </span>.mls_group_create_config_builder
-<a href=#326 id=326 data-nosnippet>326</a>            .with_leaf_node_extensions(extensions)<span class="question-mark">?</span>;
-<a href=#327 id=327 data-nosnippet>327</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
-<a href=#328 id=328 data-nosnippet>328</a>    }
-<a href=#329 id=329 data-nosnippet>329</a>
-<a href=#330 id=330 data-nosnippet>330</a>    <span class="doccomment">/// Sets the group creator's [`Capabilities`]
-<a href=#331 id=331 data-nosnippet>331</a>    </span><span class="kw">pub fn </span>with_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
-<a href=#332 id=332 data-nosnippet>332</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#333 id=333 data-nosnippet>333</a>            </span>.mls_group_create_config_builder
-<a href=#334 id=334 data-nosnippet>334</a>            .capabilities(capabilities);
-<a href=#335 id=335 data-nosnippet>335</a>        <span class="self">self
-<a href=#336 id=336 data-nosnippet>336</a>    </span>}
-<a href=#337 id=337 data-nosnippet>337</a>}
+<a href=#256 id=256 data-nosnippet>256</a>    /// **WARNING**
+<a href=#257 id=257 data-nosnippet>257</a>    ///
+<a href=#258 id=258 data-nosnippet>258</a>    /// This feature enables the storage of message secrets from past epochs.
+<a href=#259 id=259 data-nosnippet>259</a>    /// It is a trade-off between functionality and forward secrecy and should only be enabled
+<a href=#260 id=260 data-nosnippet>260</a>    /// if the Delivery Service cannot guarantee that application messages will be sent in
+<a href=#261 id=261 data-nosnippet>261</a>    /// the same epoch in which they were generated. The number for `max_epochs` should be
+<a href=#262 id=262 data-nosnippet>262</a>    /// as low as possible.
+<a href=#263 id=263 data-nosnippet>263</a>    </span><span class="kw">pub fn </span>set_past_epoch_deletion_policy(<span class="kw-2">mut </span><span class="self">self</span>, policy: PastEpochDeletionPolicy) -&gt; <span class="self">Self </span>{
+<a href=#264 id=264 data-nosnippet>264</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#265 id=265 data-nosnippet>265</a>            </span>.mls_group_create_config_builder
+<a href=#266 id=266 data-nosnippet>266</a>            .set_past_epoch_deletion_policy(policy);
+<a href=#267 id=267 data-nosnippet>267</a>        <span class="self">self
+<a href=#268 id=268 data-nosnippet>268</a>    </span>}
+<a href=#269 id=269 data-nosnippet>269</a>
+<a href=#270 id=270 data-nosnippet>270</a>    <span class="doccomment">/// Sets the `number_of_resumption_psks` property of the MlsGroup.
+<a href=#271 id=271 data-nosnippet>271</a>    </span><span class="kw">pub fn </span>number_of_resumption_psks(<span class="kw-2">mut </span><span class="self">self</span>, number_of_resumption_psks: usize) -&gt; <span class="self">Self </span>{
+<a href=#272 id=272 data-nosnippet>272</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#273 id=273 data-nosnippet>273</a>            </span>.mls_group_create_config_builder
+<a href=#274 id=274 data-nosnippet>274</a>            .number_of_resumption_psks(number_of_resumption_psks);
+<a href=#275 id=275 data-nosnippet>275</a>        <span class="self">self
+<a href=#276 id=276 data-nosnippet>276</a>    </span>}
+<a href=#277 id=277 data-nosnippet>277</a>
+<a href=#278 id=278 data-nosnippet>278</a>    <span class="doccomment">/// Sets the `use_ratchet_tree_extension` property of the MlsGroup.
+<a href=#279 id=279 data-nosnippet>279</a>    </span><span class="kw">pub fn </span>use_ratchet_tree_extension(<span class="kw-2">mut </span><span class="self">self</span>, use_ratchet_tree_extension: bool) -&gt; <span class="self">Self </span>{
+<a href=#280 id=280 data-nosnippet>280</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#281 id=281 data-nosnippet>281</a>            </span>.mls_group_create_config_builder
+<a href=#282 id=282 data-nosnippet>282</a>            .use_ratchet_tree_extension(use_ratchet_tree_extension);
+<a href=#283 id=283 data-nosnippet>283</a>        <span class="self">self
+<a href=#284 id=284 data-nosnippet>284</a>    </span>}
+<a href=#285 id=285 data-nosnippet>285</a>
+<a href=#286 id=286 data-nosnippet>286</a>    <span class="doccomment">/// Sets the `sender_ratchet_configuration` property of the MlsGroup.
+<a href=#287 id=287 data-nosnippet>287</a>    /// See [`SenderRatchetConfiguration`] for more information.
+<a href=#288 id=288 data-nosnippet>288</a>    </span><span class="kw">pub fn </span>sender_ratchet_configuration(
+<a href=#289 id=289 data-nosnippet>289</a>        <span class="kw-2">mut </span><span class="self">self</span>,
+<a href=#290 id=290 data-nosnippet>290</a>        sender_ratchet_configuration: SenderRatchetConfiguration,
+<a href=#291 id=291 data-nosnippet>291</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#292 id=292 data-nosnippet>292</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#293 id=293 data-nosnippet>293</a>            </span>.mls_group_create_config_builder
+<a href=#294 id=294 data-nosnippet>294</a>            .sender_ratchet_configuration(sender_ratchet_configuration);
+<a href=#295 id=295 data-nosnippet>295</a>        <span class="self">self
+<a href=#296 id=296 data-nosnippet>296</a>    </span>}
+<a href=#297 id=297 data-nosnippet>297</a>
+<a href=#298 id=298 data-nosnippet>298</a>    <span class="doccomment">/// Sets the `lifetime` of the group creator's leaf.
+<a href=#299 id=299 data-nosnippet>299</a>    </span><span class="kw">pub fn </span>lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
+<a href=#300 id=300 data-nosnippet>300</a>        <span class="self">self</span>.mls_group_create_config_builder =
+<a href=#301 id=301 data-nosnippet>301</a>            <span class="self">self</span>.mls_group_create_config_builder.lifetime(lifetime);
+<a href=#302 id=302 data-nosnippet>302</a>        <span class="self">self
+<a href=#303 id=303 data-nosnippet>303</a>    </span>}
+<a href=#304 id=304 data-nosnippet>304</a>
+<a href=#305 id=305 data-nosnippet>305</a>    <span class="doccomment">/// Sets the `ciphersuite` of the MlsGroup.
+<a href=#306 id=306 data-nosnippet>306</a>    </span><span class="kw">pub fn </span>ciphersuite(<span class="kw-2">mut </span><span class="self">self</span>, ciphersuite: Ciphersuite) -&gt; <span class="self">Self </span>{
+<a href=#307 id=307 data-nosnippet>307</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#308 id=308 data-nosnippet>308</a>            </span>.mls_group_create_config_builder
+<a href=#309 id=309 data-nosnippet>309</a>            .ciphersuite(ciphersuite);
+<a href=#310 id=310 data-nosnippet>310</a>        <span class="self">self
+<a href=#311 id=311 data-nosnippet>311</a>    </span>}
+<a href=#312 id=312 data-nosnippet>312</a>
+<a href=#313 id=313 data-nosnippet>313</a>    <span class="doccomment">/// Sets the initial group context extensions
+<a href=#314 id=314 data-nosnippet>314</a>    </span><span class="kw">pub fn </span>with_group_context_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Extensions&lt;GroupContext&gt;) -&gt; <span class="self">Self </span>{
+<a href=#315 id=315 data-nosnippet>315</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#316 id=316 data-nosnippet>316</a>            </span>.mls_group_create_config_builder
+<a href=#317 id=317 data-nosnippet>317</a>            .with_group_context_extensions(extensions);
+<a href=#318 id=318 data-nosnippet>318</a>        <span class="self">self
+<a href=#319 id=319 data-nosnippet>319</a>    </span>}
+<a href=#320 id=320 data-nosnippet>320</a>
+<a href=#321 id=321 data-nosnippet>321</a>    <span class="doccomment">/// Sets the initial leaf node extensions
+<a href=#322 id=322 data-nosnippet>322</a>    </span><span class="kw">pub fn </span>with_leaf_node_extensions(
+<a href=#323 id=323 data-nosnippet>323</a>        <span class="kw-2">mut </span><span class="self">self</span>,
+<a href=#324 id=324 data-nosnippet>324</a>        extensions: Extensions&lt;LeafNode&gt;,
+<a href=#325 id=325 data-nosnippet>325</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LeafNodeValidationError&gt; {
+<a href=#326 id=326 data-nosnippet>326</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#327 id=327 data-nosnippet>327</a>            </span>.mls_group_create_config_builder
+<a href=#328 id=328 data-nosnippet>328</a>            .with_leaf_node_extensions(extensions)<span class="question-mark">?</span>;
+<a href=#329 id=329 data-nosnippet>329</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+<a href=#330 id=330 data-nosnippet>330</a>    }
+<a href=#331 id=331 data-nosnippet>331</a>
+<a href=#332 id=332 data-nosnippet>332</a>    <span class="doccomment">/// Sets the group creator's [`Capabilities`]
+<a href=#333 id=333 data-nosnippet>333</a>    </span><span class="kw">pub fn </span>with_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
+<a href=#334 id=334 data-nosnippet>334</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#335 id=335 data-nosnippet>335</a>            </span>.mls_group_create_config_builder
+<a href=#336 id=336 data-nosnippet>336</a>            .capabilities(capabilities);
+<a href=#337 id=337 data-nosnippet>337</a>        <span class="self">self
+<a href=#338 id=338 data-nosnippet>338</a>    </span>}
+<a href=#339 id=339 data-nosnippet>339</a>}
 </code></pre></div></section></main></body></html>
