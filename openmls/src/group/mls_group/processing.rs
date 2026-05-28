@@ -666,7 +666,7 @@ impl MlsGroup {
                     ProcessedMessageContent::ProposalMessage(proposal)
                 }
             }
-            #[cfg_attr(feature = "virtual-clients-draft", allow(dead_code))]
+            #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_variables))]
             FramedContentBody::Commit(commit) => {
                 // Since this is a commit, we need to load the private key material we need for decryption.
                 let (old_epoch_keypairs, leaf_node_keypairs) =
