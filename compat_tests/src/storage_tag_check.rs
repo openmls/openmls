@@ -19,29 +19,41 @@ struct TagSerializer {
 /// An error when retrieving the [`serde`] storage tags for an enum variant.
 #[derive(Debug, thiserror::Error)]
 #[error("an error when retrieving the storage tags")]
-struct TestError(String);
+pub struct StorageTagError(String);
 
-impl serde::ser::Error for TestError {
+impl serde::ser::Error for StorageTagError {
     fn custom<T: std::fmt::Display>(msg: T) -> Self {
-        TestError(msg.to_string())
+        StorageTagError(msg.to_string())
     }
 }
 
 macro_rules! noop {
     ($($m:ident($($t:ty),*)),* $(,)?) => {
-        $(fn $m(self $(, _: $t)*) -> Result<Self::Ok, TestError> { Ok(()) })*
+        $(fn $m(self $(, _: $t)*) -> Result<Self::Ok, Self::Error> { Ok(()) })*
     };
+}
+
+impl TagSerializer {
+    fn update_tags(&mut self, storage_tags: StorageTags) -> Result<(), StorageTagError> {
+        if self.tags.is_some() {
+            return Err(Error::custom("storage tags were already retrieved"));
+        }
+
+        let _ = self.tags.insert(storage_tags);
+
+        Ok(())
+    }
 }
 
 impl serde::ser::Serializer for &mut TagSerializer {
     type Ok = ();
-    type Error = TestError;
-    type SerializeSeq = Impossible<(), TestError>;
-    type SerializeTuple = Impossible<(), TestError>;
-    type SerializeTupleStruct = Impossible<(), TestError>;
+    type Error = StorageTagError;
+    type SerializeSeq = Impossible<(), StorageTagError>;
+    type SerializeTuple = Impossible<(), StorageTagError>;
+    type SerializeTupleStruct = Impossible<(), StorageTagError>;
     type SerializeTupleVariant = Self;
-    type SerializeMap = Impossible<(), TestError>;
-    type SerializeStruct = Impossible<(), TestError>;
+    type SerializeMap = Impossible<(), StorageTagError>;
+    type SerializeStruct = Impossible<(), StorageTagError>;
     type SerializeStructVariant = Self;
 
     noop!(
@@ -64,39 +76,39 @@ impl serde::ser::Serializer for &mut TagSerializer {
         serialize_unit_struct(&'static str),
     );
 
-    fn serialize_some<T: ?Sized + Serialize>(self, _: &T) -> Result<(), TestError> {
+    fn serialize_some<T: ?Sized + Serialize>(self, _: &T) -> Result<(), StorageTagError> {
         Ok(())
     }
     fn serialize_newtype_struct<T: ?Sized + Serialize>(
         self,
         _: &'static str,
         _: &T,
-    ) -> Result<(), TestError> {
+    ) -> Result<(), StorageTagError> {
         Ok(())
     }
 
-    fn serialize_seq(self, _: Option<usize>) -> Result<Self::SerializeSeq, TestError> {
-        Err(TestError("seq".into()))
+    fn serialize_seq(self, _: Option<usize>) -> Result<Self::SerializeSeq, StorageTagError> {
+        Err(StorageTagError("seq".into()))
     }
-    fn serialize_tuple(self, _: usize) -> Result<Self::SerializeTuple, TestError> {
-        Err(TestError("tuple".into()))
+    fn serialize_tuple(self, _: usize) -> Result<Self::SerializeTuple, StorageTagError> {
+        Err(StorageTagError("tuple".into()))
     }
     fn serialize_tuple_struct(
         self,
         _: &'static str,
         _: usize,
-    ) -> Result<Self::SerializeTupleStruct, TestError> {
-        Err(TestError("ts".into()))
+    ) -> Result<Self::SerializeTupleStruct, StorageTagError> {
+        Err(StorageTagError("ts".into()))
     }
-    fn serialize_map(self, _: Option<usize>) -> Result<Self::SerializeMap, TestError> {
-        Err(TestError("map".into()))
+    fn serialize_map(self, _: Option<usize>) -> Result<Self::SerializeMap, StorageTagError> {
+        Err(StorageTagError("map".into()))
     }
     fn serialize_struct(
         self,
         _: &'static str,
         _: usize,
-    ) -> Result<Self::SerializeStruct, TestError> {
-        Err(TestError("struct".into()))
+    ) -> Result<Self::SerializeStruct, StorageTagError> {
+        Err(StorageTagError("struct".into()))
     }
 
     fn serialize_unit_variant(
@@ -105,14 +117,10 @@ impl serde::ser::Serializer for &mut TagSerializer {
         i: u32,
         v: &'static str,
     ) -> Result<(), Self::Error> {
-        if self.tags.is_some() {
-            return Err(Error::custom("more than one tag"));
-        }
-        let _ = self.tags.insert(StorageTags {
+        self.update_tags(StorageTags {
             non_self_describing: i,
             self_describing: v,
-        });
-        Ok(())
+        })
     }
     fn serialize_newtype_variant<T: ?Sized + Serialize>(
         self,
@@ -121,14 +129,10 @@ impl serde::ser::Serializer for &mut TagSerializer {
         v: &'static str,
         _: &T,
     ) -> Result<(), Self::Error> {
-        if self.tags.is_some() {
-            return Err(Error::custom("more than one tag"));
-        }
-        let _ = self.tags.insert(StorageTags {
+        self.update_tags(StorageTags {
             non_self_describing: i,
             self_describing: v,
-        });
-        Ok(())
+        })
     }
     fn serialize_tuple_variant(
         self,
@@ -137,14 +141,10 @@ impl serde::ser::Serializer for &mut TagSerializer {
         v: &'static str,
         _: usize,
     ) -> Result<Self, Self::Error> {
-        if self.tags.is_some() {
-            return Err(Error::custom("more than one tag"));
-        }
-
-        let _ = self.tags.insert(StorageTags {
+        self.update_tags(StorageTags {
             non_self_describing: i,
             self_describing: v,
-        });
+        })?;
         Ok(self)
     }
     fn serialize_struct_variant(
@@ -154,20 +154,17 @@ impl serde::ser::Serializer for &mut TagSerializer {
         v: &'static str,
         _: usize,
     ) -> Result<Self, Self::Error> {
-        if self.tags.is_some() {
-            return Err(Error::custom("more than one tag"));
-        }
-        let _ = self.tags.insert(StorageTags {
+        self.update_tags(StorageTags {
             non_self_describing: i,
             self_describing: v,
-        });
+        })?;
         Ok(self)
     }
 }
 
 impl serde::ser::SerializeTupleVariant for &mut TagSerializer {
     type Ok = ();
-    type Error = TestError;
+    type Error = StorageTagError;
     fn serialize_field<T: ?Sized + Serialize>(&mut self, _: &T) -> Result<(), Self::Error> {
         Ok(())
     }
@@ -178,7 +175,7 @@ impl serde::ser::SerializeTupleVariant for &mut TagSerializer {
 
 impl serde::ser::SerializeStructVariant for &mut TagSerializer {
     type Ok = ();
-    type Error = TestError;
+    type Error = StorageTagError;
     fn serialize_field<T: ?Sized + Serialize>(
         &mut self,
         _: &'static str,
@@ -196,9 +193,10 @@ impl StorageTags {
     ///
     /// This method returns `Some(StorageTags {..})` if the provided
     /// struct is an enum variant.
-    pub fn for_enum_variant<T: Serialize>(value: &T) -> Option<Self> {
+    pub fn for_enum_variant<T: Serialize>(value: &T) -> Result<Self, StorageTagError> {
         let mut c = TagSerializer { tags: None };
-        value.serialize(&mut c).ok()?;
+        value.serialize(&mut c)?;
         c.tags
+            .ok_or(StorageTagError::custom("no storage tag could be retrieved"))
     }
 }
