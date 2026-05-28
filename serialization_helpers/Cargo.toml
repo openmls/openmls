@@ -7,7 +7,7 @@ description = "Serialization helpers used by OpenMLS"
 license = "MIT"
 documentation = "https://docs.rs/openmls_serialization_helpers"
 repository = "https://github.com/openmls/openmls/tree/main/serialization_helpers"
-readme = "Readme.md"
+readme = "README.md"
 
 
 [lib]
