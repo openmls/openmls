@@ -173,7 +173,7 @@ impl<P: Prefix> Pprf<P> {
 
         // Step 2: Derive and walk the rest of the path
         for d in depth..P::MAX_DEPTH {
-            let (left, right) = current_node.derive_children(crypto, ciphersuite).unwrap();
+            let (left, right) = current_node.derive_children(crypto, ciphersuite)?;
             let bit = get_bit(&leaf_index, d);
 
             let (next_node, copath_node) = if bit { (right, left) } else { (left, right) };
