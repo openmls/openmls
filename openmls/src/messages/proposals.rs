@@ -72,7 +72,7 @@ use crate::component::ComponentId;
 /// |:=======|:==============|:============|:==============|:==========|:=============================|
 /// | 0x0009 | app_ephemeral | Y           | N             | RFC XXXX  | draft-ietf-mls-extensions-08 |
 /// | 0x000a | self_remove   | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-07 |
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash)]
 #[allow(missing_docs)]
 pub enum ProposalType {
     Add,
@@ -82,13 +82,227 @@ pub enum ProposalType {
     Reinit,
     ExternalInit,
     GroupContextExtensions,
+    // Placeholder for the removed `AppAck` variant. Kept (hidden) to preserve
+    // the serde variant index for subsequent variants. `AppAck` was never
+    // produced by the library, so no real data round-trips through it.
+    #[doc(hidden)]
+    _AppAck,
     SelfRemove,
+    Custom(u16),
+    Grease(u16),
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral,
     #[cfg(feature = "extensions-draft-08")]
     AppDataUpdate,
-    Grease(u16),
-    Custom(u16),
+}
+
+// Manual serde impls with explicit variant indices. See the comment on
+// `CredentialType` in `credentials/mod.rs` for the rationale. The `_AppAck`
+// placeholder serializes/deserializes under the historical name "AppAck" so
+// the JSON wire format also stays stable across the removal of the variant.
+const PROPOSAL_TYPE_VARIANTS: &[&str] = &[
+    "Add",
+    "Update",
+    "Remove",
+    "PreSharedKey",
+    "Reinit",
+    "ExternalInit",
+    "GroupContextExtensions",
+    "AppAck",
+    "SelfRemove",
+    "Custom",
+    "Grease",
+    #[cfg(feature = "extensions-draft-08")]
+    "AppEphemeral",
+    #[cfg(feature = "extensions-draft-08")]
+    "AppDataUpdate",
+];
+
+impl Serialize for ProposalType {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Add => serializer.serialize_unit_variant("ProposalType", 0, "Add"),
+            Self::Update => serializer.serialize_unit_variant("ProposalType", 1, "Update"),
+            Self::Remove => serializer.serialize_unit_variant("ProposalType", 2, "Remove"),
+            Self::PreSharedKey => {
+                serializer.serialize_unit_variant("ProposalType", 3, "PreSharedKey")
+            }
+            Self::Reinit => serializer.serialize_unit_variant("ProposalType", 4, "Reinit"),
+            Self::ExternalInit => {
+                serializer.serialize_unit_variant("ProposalType", 5, "ExternalInit")
+            }
+            Self::GroupContextExtensions => {
+                serializer.serialize_unit_variant("ProposalType", 6, "GroupContextExtensions")
+            }
+            Self::_AppAck => serializer.serialize_unit_variant("ProposalType", 7, "AppAck"),
+            Self::SelfRemove => serializer.serialize_unit_variant("ProposalType", 8, "SelfRemove"),
+            Self::Custom(v) => serializer.serialize_newtype_variant("ProposalType", 9, "Custom", v),
+            Self::Grease(v) => {
+                serializer.serialize_newtype_variant("ProposalType", 10, "Grease", v)
+            }
+            #[cfg(feature = "extensions-draft-08")]
+            Self::AppEphemeral => {
+                serializer.serialize_unit_variant("ProposalType", 11, "AppEphemeral")
+            }
+            #[cfg(feature = "extensions-draft-08")]
+            Self::AppDataUpdate => {
+                serializer.serialize_unit_variant("ProposalType", 12, "AppDataUpdate")
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ProposalType {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_enum("ProposalType", PROPOSAL_TYPE_VARIANTS, ProposalTypeVisitor)
+    }
+}
+
+#[derive(Clone, Copy)]
+enum ProposalTypeId {
+    Add,
+    Update,
+    Remove,
+    PreSharedKey,
+    Reinit,
+    ExternalInit,
+    GroupContextExtensions,
+    AppAck,
+    SelfRemove,
+    Custom,
+    Grease,
+    #[cfg(feature = "extensions-draft-08")]
+    AppEphemeral,
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate,
+}
+
+impl<'de> Deserialize<'de> for ProposalTypeId {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct V;
+        impl<'de> serde::de::Visitor<'de> for V {
+            type Value = ProposalTypeId;
+
+            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str("ProposalType variant identifier")
+            }
+
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                match v {
+                    0 => Ok(ProposalTypeId::Add),
+                    1 => Ok(ProposalTypeId::Update),
+                    2 => Ok(ProposalTypeId::Remove),
+                    3 => Ok(ProposalTypeId::PreSharedKey),
+                    4 => Ok(ProposalTypeId::Reinit),
+                    5 => Ok(ProposalTypeId::ExternalInit),
+                    6 => Ok(ProposalTypeId::GroupContextExtensions),
+                    7 => Ok(ProposalTypeId::AppAck),
+                    8 => Ok(ProposalTypeId::SelfRemove),
+                    9 => Ok(ProposalTypeId::Custom),
+                    10 => Ok(ProposalTypeId::Grease),
+                    #[cfg(feature = "extensions-draft-08")]
+                    11 => Ok(ProposalTypeId::AppEphemeral),
+                    #[cfg(feature = "extensions-draft-08")]
+                    12 => Ok(ProposalTypeId::AppDataUpdate),
+                    other => Err(E::invalid_value(
+                        serde::de::Unexpected::Unsigned(other),
+                        &"valid ProposalType variant index",
+                    )),
+                }
+            }
+
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                match v {
+                    "Add" => Ok(ProposalTypeId::Add),
+                    "Update" => Ok(ProposalTypeId::Update),
+                    "Remove" => Ok(ProposalTypeId::Remove),
+                    "PreSharedKey" => Ok(ProposalTypeId::PreSharedKey),
+                    "Reinit" => Ok(ProposalTypeId::Reinit),
+                    "ExternalInit" => Ok(ProposalTypeId::ExternalInit),
+                    "GroupContextExtensions" => Ok(ProposalTypeId::GroupContextExtensions),
+                    "AppAck" => Ok(ProposalTypeId::AppAck),
+                    "SelfRemove" => Ok(ProposalTypeId::SelfRemove),
+                    "Custom" => Ok(ProposalTypeId::Custom),
+                    "Grease" => Ok(ProposalTypeId::Grease),
+                    #[cfg(feature = "extensions-draft-08")]
+                    "AppEphemeral" => Ok(ProposalTypeId::AppEphemeral),
+                    #[cfg(feature = "extensions-draft-08")]
+                    "AppDataUpdate" => Ok(ProposalTypeId::AppDataUpdate),
+                    other => Err(E::unknown_variant(other, PROPOSAL_TYPE_VARIANTS)),
+                }
+            }
+
+            fn visit_bytes<E: serde::de::Error>(self, v: &[u8]) -> Result<Self::Value, E> {
+                self.visit_str(std::str::from_utf8(v).map_err(E::custom)?)
+            }
+        }
+        deserializer.deserialize_identifier(V)
+    }
+}
+
+struct ProposalTypeVisitor;
+
+impl<'de> serde::de::Visitor<'de> for ProposalTypeVisitor {
+    type Value = ProposalType;
+
+    fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("enum ProposalType")
+    }
+
+    fn visit_enum<A: serde::de::EnumAccess<'de>>(self, data: A) -> Result<Self::Value, A::Error> {
+        use serde::de::VariantAccess;
+        let (variant, access) = data.variant::<ProposalTypeId>()?;
+        match variant {
+            ProposalTypeId::Add => {
+                access.unit_variant()?;
+                Ok(ProposalType::Add)
+            }
+            ProposalTypeId::Update => {
+                access.unit_variant()?;
+                Ok(ProposalType::Update)
+            }
+            ProposalTypeId::Remove => {
+                access.unit_variant()?;
+                Ok(ProposalType::Remove)
+            }
+            ProposalTypeId::PreSharedKey => {
+                access.unit_variant()?;
+                Ok(ProposalType::PreSharedKey)
+            }
+            ProposalTypeId::Reinit => {
+                access.unit_variant()?;
+                Ok(ProposalType::Reinit)
+            }
+            ProposalTypeId::ExternalInit => {
+                access.unit_variant()?;
+                Ok(ProposalType::ExternalInit)
+            }
+            ProposalTypeId::GroupContextExtensions => {
+                access.unit_variant()?;
+                Ok(ProposalType::GroupContextExtensions)
+            }
+            ProposalTypeId::AppAck => {
+                access.unit_variant()?;
+                Ok(ProposalType::_AppAck)
+            }
+            ProposalTypeId::SelfRemove => {
+                access.unit_variant()?;
+                Ok(ProposalType::SelfRemove)
+            }
+            ProposalTypeId::Custom => Ok(ProposalType::Custom(access.newtype_variant()?)),
+            ProposalTypeId::Grease => Ok(ProposalType::Grease(access.newtype_variant()?)),
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalTypeId::AppEphemeral => {
+                access.unit_variant()?;
+                Ok(ProposalType::AppEphemeral)
+            }
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalTypeId::AppDataUpdate => {
+                access.unit_variant()?;
+                Ok(ProposalType::AppDataUpdate)
+            }
+        }
+    }
 }
 
 impl ProposalType {
@@ -103,7 +317,10 @@ impl ProposalType {
             | ProposalType::Reinit
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions => true,
-            ProposalType::SelfRemove | ProposalType::Grease(_) | ProposalType::Custom(_) => false,
+            ProposalType::SelfRemove
+            | ProposalType::Grease(_)
+            | ProposalType::Custom(_)
+            | ProposalType::_AppAck => false,
             #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppEphemeral | ProposalType::AppDataUpdate => false,
         }
@@ -206,6 +423,7 @@ impl From<ProposalType> for u16 {
             #[cfg(feature = "extensions-draft-08")]
             ProposalType::AppEphemeral => 0x0009,
             ProposalType::SelfRemove => 0x000a,
+            ProposalType::_AppAck => 0x000b,
             ProposalType::Grease(id) => id,
             ProposalType::Custom(id) => id,
         }
@@ -231,7 +449,7 @@ impl From<ProposalType> for u16 {
 ///     };
 /// } Proposal;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone)]
 #[allow(missing_docs)]
 #[repr(u16)]
 pub enum Proposal {
@@ -242,14 +460,193 @@ pub enum Proposal {
     ReInit(Box<ReInitProposal>),
     ExternalInit(Box<ExternalInitProposal>),
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
-    // # Extensions
+    // Placeholder for the removed `AppAck(Box<AppAckProposal>)` variant. Kept
+    // (hidden) to preserve the serde variant index for subsequent variants.
+    // The library never produced `AppAck` proposals.
+    #[doc(hidden)]
+    _AppAck,
+    SelfRemove,
+    Custom(Box<CustomProposal>),
     #[cfg(feature = "extensions-draft-08")]
     AppDataUpdate(Box<AppDataUpdateProposal>),
-    // A SelfRemove proposal is an empty struct.
-    SelfRemove,
     #[cfg(feature = "extensions-draft-08")]
     AppEphemeral(Box<AppEphemeralProposal>),
-    Custom(Box<CustomProposal>),
+}
+
+// Manual serde impls with explicit variant indices. See the comment on
+// `CredentialType` in `credentials/mod.rs` for the rationale. `_AppAck`
+// serializes/deserializes under the historical name "AppAck" so the JSON
+// wire format stays stable across the removal of the variant.
+const PROPOSAL_VARIANTS: &[&str] = &[
+    "Add",
+    "Update",
+    "Remove",
+    "PreSharedKey",
+    "ReInit",
+    "ExternalInit",
+    "GroupContextExtensions",
+    "AppAck",
+    "SelfRemove",
+    "Custom",
+    #[cfg(feature = "extensions-draft-08")]
+    "AppDataUpdate",
+    #[cfg(feature = "extensions-draft-08")]
+    "AppEphemeral",
+];
+
+impl Serialize for Proposal {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Add(p) => serializer.serialize_newtype_variant("Proposal", 0, "Add", p),
+            Self::Update(p) => serializer.serialize_newtype_variant("Proposal", 1, "Update", p),
+            Self::Remove(p) => serializer.serialize_newtype_variant("Proposal", 2, "Remove", p),
+            Self::PreSharedKey(p) => {
+                serializer.serialize_newtype_variant("Proposal", 3, "PreSharedKey", p)
+            }
+            Self::ReInit(p) => serializer.serialize_newtype_variant("Proposal", 4, "ReInit", p),
+            Self::ExternalInit(p) => {
+                serializer.serialize_newtype_variant("Proposal", 5, "ExternalInit", p)
+            }
+            Self::GroupContextExtensions(p) => {
+                serializer.serialize_newtype_variant("Proposal", 6, "GroupContextExtensions", p)
+            }
+            Self::_AppAck => serializer.serialize_unit_variant("Proposal", 7, "AppAck"),
+            Self::SelfRemove => serializer.serialize_unit_variant("Proposal", 8, "SelfRemove"),
+            Self::Custom(p) => serializer.serialize_newtype_variant("Proposal", 9, "Custom", p),
+            #[cfg(feature = "extensions-draft-08")]
+            Self::AppDataUpdate(p) => {
+                serializer.serialize_newtype_variant("Proposal", 10, "AppDataUpdate", p)
+            }
+            #[cfg(feature = "extensions-draft-08")]
+            Self::AppEphemeral(p) => {
+                serializer.serialize_newtype_variant("Proposal", 11, "AppEphemeral", p)
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Proposal {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_enum("Proposal", PROPOSAL_VARIANTS, ProposalVisitor)
+    }
+}
+
+#[derive(Clone, Copy)]
+enum ProposalId {
+    Add,
+    Update,
+    Remove,
+    PreSharedKey,
+    ReInit,
+    ExternalInit,
+    GroupContextExtensions,
+    AppAck,
+    SelfRemove,
+    Custom,
+    #[cfg(feature = "extensions-draft-08")]
+    AppDataUpdate,
+    #[cfg(feature = "extensions-draft-08")]
+    AppEphemeral,
+}
+
+impl<'de> Deserialize<'de> for ProposalId {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct V;
+        impl<'de> serde::de::Visitor<'de> for V {
+            type Value = ProposalId;
+
+            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str("Proposal variant identifier")
+            }
+
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                match v {
+                    0 => Ok(ProposalId::Add),
+                    1 => Ok(ProposalId::Update),
+                    2 => Ok(ProposalId::Remove),
+                    3 => Ok(ProposalId::PreSharedKey),
+                    4 => Ok(ProposalId::ReInit),
+                    5 => Ok(ProposalId::ExternalInit),
+                    6 => Ok(ProposalId::GroupContextExtensions),
+                    7 => Ok(ProposalId::AppAck),
+                    8 => Ok(ProposalId::SelfRemove),
+                    9 => Ok(ProposalId::Custom),
+                    #[cfg(feature = "extensions-draft-08")]
+                    10 => Ok(ProposalId::AppDataUpdate),
+                    #[cfg(feature = "extensions-draft-08")]
+                    11 => Ok(ProposalId::AppEphemeral),
+                    other => Err(E::invalid_value(
+                        serde::de::Unexpected::Unsigned(other),
+                        &"valid Proposal variant index",
+                    )),
+                }
+            }
+
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                match v {
+                    "Add" => Ok(ProposalId::Add),
+                    "Update" => Ok(ProposalId::Update),
+                    "Remove" => Ok(ProposalId::Remove),
+                    "PreSharedKey" => Ok(ProposalId::PreSharedKey),
+                    "ReInit" => Ok(ProposalId::ReInit),
+                    "ExternalInit" => Ok(ProposalId::ExternalInit),
+                    "GroupContextExtensions" => Ok(ProposalId::GroupContextExtensions),
+                    "AppAck" => Ok(ProposalId::AppAck),
+                    "SelfRemove" => Ok(ProposalId::SelfRemove),
+                    "Custom" => Ok(ProposalId::Custom),
+                    #[cfg(feature = "extensions-draft-08")]
+                    "AppDataUpdate" => Ok(ProposalId::AppDataUpdate),
+                    #[cfg(feature = "extensions-draft-08")]
+                    "AppEphemeral" => Ok(ProposalId::AppEphemeral),
+                    other => Err(E::unknown_variant(other, PROPOSAL_VARIANTS)),
+                }
+            }
+
+            fn visit_bytes<E: serde::de::Error>(self, v: &[u8]) -> Result<Self::Value, E> {
+                self.visit_str(std::str::from_utf8(v).map_err(E::custom)?)
+            }
+        }
+        deserializer.deserialize_identifier(V)
+    }
+}
+
+struct ProposalVisitor;
+
+impl<'de> serde::de::Visitor<'de> for ProposalVisitor {
+    type Value = Proposal;
+
+    fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("enum Proposal")
+    }
+
+    fn visit_enum<A: serde::de::EnumAccess<'de>>(self, data: A) -> Result<Self::Value, A::Error> {
+        use serde::de::VariantAccess;
+        let (variant, access) = data.variant::<ProposalId>()?;
+        match variant {
+            ProposalId::Add => Ok(Proposal::Add(access.newtype_variant()?)),
+            ProposalId::Update => Ok(Proposal::Update(access.newtype_variant()?)),
+            ProposalId::Remove => Ok(Proposal::Remove(access.newtype_variant()?)),
+            ProposalId::PreSharedKey => Ok(Proposal::PreSharedKey(access.newtype_variant()?)),
+            ProposalId::ReInit => Ok(Proposal::ReInit(access.newtype_variant()?)),
+            ProposalId::ExternalInit => Ok(Proposal::ExternalInit(access.newtype_variant()?)),
+            ProposalId::GroupContextExtensions => {
+                Ok(Proposal::GroupContextExtensions(access.newtype_variant()?))
+            }
+            ProposalId::AppAck => {
+                access.unit_variant()?;
+                Ok(Proposal::_AppAck)
+            }
+            ProposalId::SelfRemove => {
+                access.unit_variant()?;
+                Ok(Proposal::SelfRemove)
+            }
+            ProposalId::Custom => Ok(Proposal::Custom(access.newtype_variant()?)),
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalId::AppDataUpdate => Ok(Proposal::AppDataUpdate(access.newtype_variant()?)),
+            #[cfg(feature = "extensions-draft-08")]
+            ProposalId::AppEphemeral => Ok(Proposal::AppEphemeral(access.newtype_variant()?)),
+        }
+    }
 }
 
 impl Proposal {
@@ -304,12 +701,13 @@ impl Proposal {
             Proposal::ReInit(_) => ProposalType::Reinit,
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            Proposal::_AppAck => ProposalType::_AppAck,
+            Proposal::SelfRemove => ProposalType::SelfRemove,
+            Proposal::Custom(custom) => ProposalType::Custom(custom.proposal_type.to_owned()),
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppDataUpdate(_) => ProposalType::AppDataUpdate,
-            Proposal::SelfRemove => ProposalType::SelfRemove,
             #[cfg(feature = "extensions-draft-08")]
             Proposal::AppEphemeral(_) => ProposalType::AppEphemeral,
-            Proposal::Custom(custom) => ProposalType::Custom(custom.proposal_type.to_owned()),
         }
     }
 
@@ -882,7 +1280,7 @@ impl CustomProposal {
 mod tests {
     use tls_codec::{Deserialize, Serialize};
 
-    use super::ProposalType;
+    use super::*;
 
     #[test]
     fn that_unknown_proposal_types_are_de_serialized_correctly() {
@@ -907,5 +1305,100 @@ mod tests {
             let got_serialized = got.tls_serialize_detached().unwrap();
             assert_eq!(test, got_serialized);
         }
+    }
+
+    /// Locks the `(variant_index, variant_name)` pair that the manual
+    /// `Serialize` impl for [`ProposalType`] emits for each variant. These
+    /// values are the bincode/postcard wire encoding of the enum tag and must
+    /// not change without a deliberate, versioned migration of every existing
+    /// persisted group.
+    ///
+    /// When adding a new variant, append a new `check(...)` line with a fresh
+    /// `variant_index` — never reuse or renumber the existing entries.
+    #[test]
+    fn proposal_type_variant_indices() {
+        use crate::utils::variant_index_probe::probe;
+
+        fn check(value: ProposalType, expected_index: u32, expected_name: &'static str) {
+            let (idx, name) =
+                probe(&value).expect("ProposalType Serialize should call serialize_*_variant");
+            assert_eq!(
+                (idx, name),
+                (expected_index, expected_name),
+                "ProposalType::{expected_name} drifted from index {expected_index}",
+            );
+        }
+
+        check(ProposalType::Add, 0, "Add");
+        check(ProposalType::Update, 1, "Update");
+        check(ProposalType::Remove, 2, "Remove");
+        check(ProposalType::PreSharedKey, 3, "PreSharedKey");
+        check(ProposalType::Reinit, 4, "Reinit");
+        check(ProposalType::ExternalInit, 5, "ExternalInit");
+        check(
+            ProposalType::GroupContextExtensions,
+            6,
+            "GroupContextExtensions",
+        );
+        check(ProposalType::_AppAck, 7, "AppAck");
+        check(ProposalType::SelfRemove, 8, "SelfRemove");
+        check(ProposalType::Custom(0), 9, "Custom");
+        check(ProposalType::Grease(0), 10, "Grease");
+        #[cfg(feature = "extensions-draft-08")]
+        check(ProposalType::AppEphemeral, 11, "AppEphemeral");
+        #[cfg(feature = "extensions-draft-08")]
+        check(ProposalType::AppDataUpdate, 12, "AppDataUpdate");
+    }
+
+    /// Locks the `(variant_index, variant_name)` pair that the manual
+    /// `Serialize` impl for [`Proposal`] emits for each variant. See
+    /// [`proposal_type_variant_indices`] for the rationale.
+    ///
+    /// Variants whose payload is non-trivial to construct in a unit-test
+    /// context (those carrying `Box<…Proposal>` with cryptographic content)
+    /// are exercised indirectly via the [`ProposalType`] test: the
+    /// `Serialize` impls for `Proposal` and `ProposalType` use the same
+    /// numeric indices by construction, and the `Proposal::proposal_type()`
+    /// match keeps the two enums in lockstep. The variants exercised
+    /// directly here are the ones that historically drifted in PRs since
+    /// openmls-0.7.x (`_AppAck`, `SelfRemove`, `Custom`).
+    #[test]
+    fn proposal_variant_indices_anchor_variants() {
+        use crate::utils::variant_index_probe::probe;
+
+        fn check(value: Proposal, expected_index: u32, expected_name: &'static str) {
+            let (idx, name) =
+                probe(&value).expect("Proposal Serialize should call serialize_*_variant");
+            assert_eq!(
+                (idx, name),
+                (expected_index, expected_name),
+                "Proposal::{expected_name} drifted from index {expected_index}",
+            );
+        }
+
+        // Variants with payloads that are cheap to construct from primitives.
+        check(
+            Proposal::Remove(Box::new(RemoveProposal {
+                removed: crate::binary_tree::array_representation::LeafNodeIndex::new(0),
+            })),
+            2,
+            "Remove",
+        );
+        check(
+            Proposal::ExternalInit(Box::new(ExternalInitProposal::from(Vec::<u8>::new()))),
+            5,
+            "ExternalInit",
+        );
+
+        // Placeholders / unit variants — the historical drift points.
+        check(Proposal::_AppAck, 7, "AppAck");
+        check(Proposal::SelfRemove, 8, "SelfRemove");
+
+        // Custom — was at index 9 in 0.7.x and must remain there.
+        check(
+            Proposal::Custom(Box::new(CustomProposal::new(0x7C7C, Vec::new()))),
+            9,
+            "Custom",
+        );
     }
 }
