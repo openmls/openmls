@@ -19,7 +19,7 @@ use crate::{
 /// the leaf node's `app_data_dictionary` extension.
 ///
 /// `0xFFFF` is a placeholder until the IETF draft is assigned an IANA value.
-pub const VC_COMPONENT_ID: u16 = 0xFFFF;
+pub const VC_COMPONENT_ID: u16 = 0x000D;
 
 // Operation-secret child labels. Each child is derived from the per-commit
 // operation secret produced by evaluating the per-epoch PPRF on the per-commit
