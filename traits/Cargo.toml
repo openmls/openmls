@@ -18,5 +18,5 @@ test-utils = []
 extensions-draft-08 = []
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 tls_codec = { workspace = true }
