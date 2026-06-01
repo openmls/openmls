@@ -85,6 +85,7 @@ use crate::component::ComponentId;
     openmls_serialization_helpers::Deserialize,
 )]
 #[allow(missing_docs)]
+#[repr(u16)]
 pub enum ProposalType {
     #[storage_tag = 0]
     Add,
