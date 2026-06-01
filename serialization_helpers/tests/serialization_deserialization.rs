@@ -207,3 +207,38 @@ fn test_tuple_deserialization_fails_with_too_few_fields_self_describing() {
 
     assert!(err.to_string().contains("expected a tuple of two elements"));
 }
+
+/// Test that the macro produces valid output when
+/// the macro includes feature-flagged variants
+/// whose feature is not enabled.
+#[test]
+fn test_with_feature_flag() {
+    #[derive(
+        PartialEq,
+        Eq,
+        Clone,
+        Debug,
+        openmls_serialization_helpers::Serialize,
+        openmls_serialization_helpers::Deserialize,
+    )]
+    enum TestEnumWithFeatureFlags {
+        #[storage_tag = 0]
+        Unit1,
+        #[cfg(feature = "test-feature")]
+        #[storage_tag = 1]
+        Data(usize, usize),
+        #[storage_tag = 2]
+        Unit2,
+    }
+
+    let data = TestEnumWithFeatureFlags::Unit2;
+
+    // serialize the variant
+    let serialized = &serde_json::to_string(&data).expect("serialization failed");
+
+    // deserialize the variant
+    let deserialized = serde_json::from_str::<TestEnumWithFeatureFlags>(serialized)
+        .expect("deserialization failed");
+
+    assert_eq!(data, deserialized);
+}

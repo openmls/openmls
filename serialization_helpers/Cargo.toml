@@ -13,6 +13,13 @@ readme = "README.md"
 [lib]
 proc-macro = true
 
+[features]
+# a test feature that is not enabled by default,
+# to check that macros produce valid output for
+# enums that have some feature-flagged variants
+# whose feature is not enabled.
+test-feature = []
+
 [dependencies]
 syn = { version = "2.0" }
 quote = "1.0"
