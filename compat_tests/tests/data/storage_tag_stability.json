@@ -1,0 +1,235 @@
+{
+  "credential_type": [
+    "Basic",
+    "X509",
+    {
+      "Other": 20
+    }
+  ],
+  "extension_type": [
+    "ApplicationId",
+    "RatchetTree",
+    "RequiredCapabilities",
+    "ExternalPub",
+    "ExternalSenders",
+    "LastResort",
+    {
+      "Unknown": 20
+    }
+  ],
+  "extension": [
+    {
+      "ApplicationId": {
+        "key_id": {
+          "vec": []
+        }
+      }
+    },
+    {
+      "RatchetTree": {
+        "ratchet_tree": []
+      }
+    },
+    {
+      "RequiredCapabilities": {
+        "extension_types": [],
+        "proposal_types": [],
+        "credential_types": []
+      }
+    },
+    {
+      "ExternalPub": {
+        "external_pub": {
+          "vec": []
+        }
+      }
+    },
+    {
+      "ExternalSenders": []
+    },
+    {
+      "LastResort": {}
+    },
+    {
+      "Unknown": [
+        7,
+        []
+      ]
+    }
+  ],
+  "proposal_type": [
+    "Add",
+    "Update",
+    "Remove",
+    "PreSharedKey",
+    "Reinit",
+    "ExternalInit",
+    "GroupContextExtensions",
+    "SelfRemove",
+    {
+      "Custom": 20
+    }
+  ],
+  "proposal": [
+    {
+      "Add": {
+        "key_package": {
+          "payload": {
+            "protocol_version": "Mls10",
+            "ciphersuite": "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519",
+            "init_key": {
+              "key": {
+                "vec": []
+              }
+            },
+            "leaf_node": {
+              "payload": {
+                "encryption_key": {
+                  "key": {
+                    "vec": []
+                  }
+                },
+                "signature_key": {
+                  "value": {
+                    "vec": []
+                  }
+                },
+                "credential": {
+                  "credential_type": "Basic",
+                  "serialized_credential_content": {
+                    "vec": []
+                  }
+                },
+                "capabilities": {
+                  "versions": [],
+                  "ciphersuites": [],
+                  "extensions": [],
+                  "proposals": [],
+                  "credentials": []
+                },
+                "leaf_node_source": "Update",
+                "extensions": {
+                  "unique": []
+                }
+              },
+              "signature": {
+                "value": {
+                  "vec": []
+                }
+              }
+            },
+            "extensions": {
+              "unique": []
+            },
+            "signature": {
+              "value": {
+                "vec": []
+              }
+            }
+          },
+          "signature": {
+            "value": {
+              "vec": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "Update": {
+        "leaf_node": {
+          "payload": {
+            "encryption_key": {
+              "key": {
+                "vec": []
+              }
+            },
+            "signature_key": {
+              "value": {
+                "vec": []
+              }
+            },
+            "credential": {
+              "credential_type": "Basic",
+              "serialized_credential_content": {
+                "vec": []
+              }
+            },
+            "capabilities": {
+              "versions": [],
+              "ciphersuites": [],
+              "extensions": [],
+              "proposals": [],
+              "credentials": []
+            },
+            "leaf_node_source": "Update",
+            "extensions": {
+              "unique": []
+            }
+          },
+          "signature": {
+            "value": {
+              "vec": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "Remove": {
+        "removed": 0
+      }
+    },
+    {
+      "PreSharedKey": {
+        "psk": {
+          "psk": {
+            "External": {
+              "psk_id": {
+                "vec": []
+              }
+            }
+          },
+          "psk_nonce": {
+            "vec": []
+          }
+        }
+      }
+    },
+    {
+      "ReInit": {
+        "group_id": {
+          "value": {
+            "vec": []
+          }
+        },
+        "version": "Mls10",
+        "ciphersuite": "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519",
+        "extensions": {
+          "unique": []
+        }
+      }
+    },
+    {
+      "ExternalInit": {
+        "kem_output": {
+          "vec": []
+        }
+      }
+    },
+    {
+      "GroupContextExtensions": {
+        "extensions": {
+          "unique": []
+        }
+      }
+    },
+    "SelfRemove",
+    {
+      "Custom": {
+        "proposal_type": 0,
+        "payload": []
+      }
+    }
+  ]
+}

@@ -3,51 +3,32 @@
 
 use openmls_compat_tests::storage_tag_check::*;
 
-const TEST_CASES_CREDENTIAL_TYPE: &[&str] = &[r#""Basic""#, r#""X509""#, r#"{"Other":20}"#];
+use std::sync::OnceLock;
 
-const TEST_CASES_EXTENSION_TYPE: &[&str] = &[
-    r#""ApplicationId""#,
-    r#""RatchetTree""#,
-    r#""RequiredCapabilities""#,
-    r#""ExternalPub""#,
-    r#""ExternalSenders""#,
-    r#""LastResort""#,
-    r#"{"Unknown":20}"#,
-];
+static TEST_DATA: OnceLock<TestData> = OnceLock::new();
 
-const TEST_CASES_EXTENSION: &[&str] = &[
-    r#"{"ApplicationId":{"key_id":{"vec":[]}}}"#,
-    r#"{"RatchetTree":{"ratchet_tree":[]}}"#,
-    r#"{"RequiredCapabilities":{"extension_types":[],"proposal_types":[],"credential_types":[]}}"#,
-    r#"{"ExternalPub":{"external_pub":{"vec":[]}}}"#,
-    r#"{"ExternalSenders":[]}"#,
-    r#"{"LastResort":{}}"#,
-    r#"{"Unknown":[7,[]]}"#,
-];
+/// Partly deserialized test data.
+///
+/// Each `serde_json::Value` is deserialized separately
+/// into two versions of a type (Before, After), and
+/// can be used to compare their values..
+#[derive(serde::Deserialize)]
+struct TestData {
+    credential_type: Vec<serde_json::Value>,
+    extension_type: Vec<serde_json::Value>,
+    extension: Vec<serde_json::Value>,
+    proposal_type: Vec<serde_json::Value>,
+    proposal: Vec<serde_json::Value>,
+}
 
-const TEST_CASES_PROPOSAL: &[&str] = &[
-    r#"{"Add":{"key_package":{"payload":{"protocol_version":"Mls10","ciphersuite":"MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519","init_key":{"key":{"vec":[]}},"leaf_node":{"payload":{"encryption_key":{"key":{"vec":[]}},"signature_key":{"value":{"vec":[]}},"credential":{"credential_type":"Basic","serialized_credential_content":{"vec":[]}},"capabilities":{"versions":[],"ciphersuites":[],"extensions":[],"proposals":[],"credentials":[]},"leaf_node_source":"Update","extensions":{"unique":[]}},"signature":{"value":{"vec":[]}}},"extensions":{"unique":[]},"signature":{"value":{"vec":[]}}},"signature":{"value":{"vec":[]}}}}}"#,
-    r#"{"Update":{"leaf_node":{"payload":{"encryption_key":{"key":{"vec":[]}},"signature_key":{"value":{"vec":[]}},"credential":{"credential_type":"Basic","serialized_credential_content":{"vec":[]}},"capabilities":{"versions":[],"ciphersuites":[],"extensions":[],"proposals":[],"credentials":[]},"leaf_node_source":"Update","extensions":{"unique":[]}},"signature":{"value":{"vec":[]}}}}}"#,
-    r#"{"Remove":{"removed":0}}"#,
-    r#"{"PreSharedKey":{"psk":{"psk":{"External":{"psk_id":{"vec":[]}}},"psk_nonce":{"vec":[]}}}}"#,
-    r#"{"ReInit":{"group_id":{"value":{"vec":[]}},"version":"Mls10","ciphersuite":"MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519","extensions":{"unique":[]}}}"#,
-    r#"{"ExternalInit":{"kem_output":{"vec":[]}}}"#,
-    r#"{"GroupContextExtensions":{"extensions":{"unique":[]}}}"#,
-    r#""SelfRemove""#,
-    r#"{"Custom":{"proposal_type":0,"payload":[]}}"#,
-];
-
-const TEST_CASES_PROPOSAL_TYPE: &[&str] = &[
-    r#""Add""#,
-    r#""Update""#,
-    r#""Remove""#,
-    r#""PreSharedKey""#,
-    r#""Reinit""#,
-    r#""ExternalInit""#,
-    r#""GroupContextExtensions""#,
-    r#""SelfRemove""#,
-    r#"{"Custom":20}"#,
-];
+impl TestData {
+    fn load() -> &'static Self {
+        TEST_DATA.get_or_init(|| {
+            serde_json::from_str(include_str!("data/storage_tag_stability.json"))
+                .expect("invalid test data")
+        })
+    }
+}
 
 struct Migration<Before, After> {
     before: Before,
@@ -59,9 +40,11 @@ where
     Before: for<'a> serde::Deserialize<'a>,
     After: for<'a> serde::Deserialize<'a>,
 {
-    fn from_str(input: &str) -> Self {
-        let before: Before = serde_json::from_str(input).expect("error deserializing `before`");
-        let after: After = serde_json::from_str(input).expect("error deserializing `after`");
+    fn from_value(input: &serde_json::Value) -> Self {
+        let before: Before =
+            serde_json::from_value(input.clone()).expect("error deserializing `before`");
+        let after: After =
+            serde_json::from_value(input.clone()).expect("error deserializing `after`");
         Migration { before, after }
     }
 }
@@ -84,7 +67,7 @@ macro_rules! test_case {
         #[test]
         fn $test_name() {
             $test_cases.iter().for_each(|case| {
-                let migration = Migration::<$before, $after>::from_str(case);
+                let migration = Migration::<$before, $after>::from_value(case);
                 migration.test_tag()
             });
         }
@@ -100,32 +83,32 @@ macro_rules! compat_tests {
                 test_extension_type,
                 $before::prelude::ExtensionType,
                 $after::prelude::ExtensionType,
-                TEST_CASES_EXTENSION_TYPE
+                TestData::load().extension_type
             );
             test_case!(
                 test_extension,
                 $before::prelude::Extension,
                 $after::prelude::Extension,
-                TEST_CASES_EXTENSION
+                TestData::load().extension
             );
             test_case!(
                 test_credential_type,
                 $before::prelude::CredentialType,
                 $after::prelude::CredentialType,
-                TEST_CASES_CREDENTIAL_TYPE
+                TestData::load().credential_type
             );
             test_case!(
                 test_proposal_type,
                 $before::prelude::ProposalType,
                 $after::prelude::ProposalType,
-                TEST_CASES_PROPOSAL_TYPE
+                TestData::load().proposal_type
             );
 
             test_case!(
                 test_proposal,
                 $before::prelude::Proposal,
                 $after::prelude::Proposal,
-                TEST_CASES_PROPOSAL
+                TestData::load().proposal
             );
         }
     };
