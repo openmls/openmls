@@ -10,7 +10,7 @@ fn build_name_ident(name: &Ident, suffix: &str) -> Ident {
 
 pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
     // parse the input
-    let input: DeriveInput = parse2(input).expect("error parsing input");
+    let input: DeriveInput = parse2(input).expect("error parsing token stream");
     let name = &input.ident;
 
     // retrieve the enum

@@ -6,7 +6,7 @@ use crate::attrs::extract_storage_tag;
 
 pub(crate) fn serialize(input: TokenStream) -> TokenStream {
     // parse the input
-    let input: DeriveInput = parse2(input).unwrap();
+    let input: DeriveInput = parse2(input).expect("error parsing token stream");
     let name = &input.ident;
 
     // retrieve the enum
