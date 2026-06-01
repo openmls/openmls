@@ -17,6 +17,7 @@ proc-macro = true
 syn = { version = "2.0" }
 quote = "1.0"
 proc-macro2 = { version = "1.0.10", features = ["span-locations"] }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 postcard = { version = "1", features = ["alloc"] }

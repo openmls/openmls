@@ -2878,6 +2878,7 @@ dependencies = [
  "quote",
  "serde_json",
  "syn",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

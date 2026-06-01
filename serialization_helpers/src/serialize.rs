@@ -25,8 +25,8 @@ pub(crate) fn serialize(input: TokenStream) -> TokenStream {
             let variant_name = &variant.ident;
 
             // get the storage tag
-            let storage_tag = extract_storage_tag(variant.attrs.iter()).unwrap_or_else(|| {
-                panic!("storage tag not provided for variant {name}::{variant_name}")
+            let storage_tag = extract_storage_tag(variant.attrs.iter()).unwrap_or_else(|e| {
+                panic!("storage tag not provided for variant {name}::{variant_name}: {e}")
             });
             if !storage_tags.insert(storage_tag) {
                 panic!("Duplicate storage tags");

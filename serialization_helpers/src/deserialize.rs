@@ -36,8 +36,8 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
         variant_names.push(variant_name_str.clone());
 
         // get the storage tag
-        let storage_tag = extract_storage_tag(variant.attrs.iter()).unwrap_or_else(|| {
-            panic!("storage tag not provided for variant {name}::{variant_name}")
+        let storage_tag = extract_storage_tag(variant.attrs.iter()).unwrap_or_else(|e| {
+            panic!("storage tag not provided for variant {name}::{variant_name}: {e}")
         });
 
         // check for duplicates
