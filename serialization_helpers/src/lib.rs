@@ -31,6 +31,9 @@
 //!
 //! Other enum variant formats (such as `Data { field: .. }`) are not supported
 //! by these macros.
+//!
+//! These helper macros can also be used with enums that include feature-flagged
+//! variants.
 
 mod attrs;
 mod deserialize;
