@@ -150,7 +150,7 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
 
         }
 
-        /// A visitor for non-self-describing enum serialization
+        /// A visitor for non-self-describing enum deserialization
         struct #non_human_readable_visitor;
 
         impl <'de> serde::de::Visitor<'de> for #non_human_readable_visitor {
