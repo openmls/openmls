@@ -87,24 +87,25 @@ impl Signer for SignatureKeyPair {
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA65 => {
-                let encoded_key: &ml_dsa::EncodedSigningKey<ml_dsa::MlDsa65> = self
+                use ml_dsa::Signer;
+                let seed: &ml_dsa::Seed = self
                     .private
                     .as_slice()
                     .try_into()
                     .map_err(|_| SignerError::SigningError)?;
-                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa65>::decode(encoded_key);
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa65>::from_seed(seed);
                 let signature = k.sign(payload);
                 Ok(signature.encode().to_vec())
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA87 => {
-                // Note: Conversion of private key to a *ref* of encoded key
-                let encoded_key: &ml_dsa::EncodedSigningKey<ml_dsa::MlDsa87> = self
+                use ml_dsa::Signer;
+                let seed: &ml_dsa::Seed = self
                     .private
                     .as_slice()
                     .try_into()
                     .map_err(|_| SignerError::SigningError)?;
-                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::decode(encoded_key);
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::from_seed(seed);
                 let signature = k.sign(payload);
                 Ok(signature.encode().to_vec())
             }
@@ -154,18 +155,18 @@ impl SignatureKeyPair {
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA65 => {
-                use ml_dsa::KeyGen as _;
-                let kp = ml_dsa::MlDsa65::key_gen(&mut OsRng);
-                let pk = kp.verifying_key().encode().to_vec();
-                let sk = kp.signing_key().encode().to_vec();
+                use ml_dsa::{Generate, Keypair};
+                let sk = ml_dsa::SigningKey::<ml_dsa::MlDsa65>::generate();
+                let pk = sk.verifying_key().encode().to_vec();
+                let sk = sk.to_seed().to_vec();
                 (sk.into(), pk)
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA87 => {
-                use ml_dsa::KeyGen as _;
-                let kp = ml_dsa::MlDsa87::key_gen(&mut OsRng);
-                let pk = kp.verifying_key().encode().to_vec();
-                let sk = kp.signing_key().encode().to_vec();
+                use ml_dsa::{Generate, Keypair};
+                let sk = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::generate();
+                let pk = sk.verifying_key().encode().to_vec();
+                let sk = sk.to_seed().to_vec();
                 (sk.into(), pk)
             }
             _ => return Err(CryptoError::UnsupportedSignatureScheme),

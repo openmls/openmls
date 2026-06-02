@@ -25,6 +25,7 @@ chacha20poly1305 = { version = "0.10" }
 hmac = { version = "0.13" }
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
+rand_core_0_10 = { package = "rand_core", version = "0.10" }
 p256 = { version = "0.13" }
 p384 = { version = "0.13" }
 hkdf = { version = "0.13" }
