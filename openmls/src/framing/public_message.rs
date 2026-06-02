@@ -116,6 +116,11 @@ impl PublicMessage {
         self.content.body.content_type()
     }
 
+    /// Returns the [`GroupId`] of the group the message was sent in.
+    pub fn group_id(&self) -> &GroupId {
+        &self.content.group_id
+    }
+
     /// Returns the epoch of the message.
     pub fn epoch(&self) -> GroupEpoch {
         self.content.epoch
