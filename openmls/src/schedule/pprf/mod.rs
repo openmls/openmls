@@ -281,7 +281,10 @@ mod tests {
 
         let result = pprf.evaluate(crypto, ciphersuite, &index);
         assert!(result.is_ok());
-        assert_eq!(result.as_ref().unwrap().as_slice().len(), 32);
+        assert_eq!(
+            result.as_ref().unwrap().as_slice().len(),
+            ciphersuite.hash_length()
+        );
     }
 
     #[openmls_test]
