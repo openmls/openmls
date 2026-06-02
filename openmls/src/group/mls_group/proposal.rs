@@ -217,6 +217,16 @@ impl MlsGroup {
                         self.propose_external_psk(provider, signer, psk_id)
                     }
                 },
+                #[cfg(feature = "extensions-draft-08")]
+                crate::schedule::Psk::Application(_) => match ref_or_value {
+                    ProposalOrRefType::Proposal => {
+                        self.propose_external_psk_by_value(provider, signer, psk_id)
+                    }
+                    ProposalOrRefType::Reference => {
+                        self.propose_external_psk(provider, signer, psk_id)
+                    }
+                },
+
                 crate::schedule::Psk::Resumption(_) => Err(ProposalError::LibraryError(
                     LibraryError::custom("Invalid PSk argument"),
                 )),
