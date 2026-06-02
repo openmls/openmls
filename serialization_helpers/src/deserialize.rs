@@ -18,6 +18,9 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
         panic!("only enums are supported");
     };
 
+    // keep track of whether the tuple visitor is needed to deserialize any of the variants
+    let mut needs_tuple_visitor = false;
+
     // hashset of used storage tags to avoid collisions
     let mut storage_tags = std::collections::HashSet::new();
 
@@ -58,6 +61,7 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
                 }
             }
             Fields::Unnamed(FieldsUnnamed { unnamed, .. }) if unnamed.len() == 2 => {
+                needs_tuple_visitor = true;
                 quote! {
                     let (a,b) = access.tuple_variant(2, #tuple_visitor::new())?;
                     Ok(#name::#variant_name(a, b))
@@ -68,6 +72,39 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
         match_arms_non_self_describing.push(quote! { #storage_tag => { #handling }, });
         match_arms_self_describing.push(quote! { #variant_name_str => { #handling }, });
     }
+
+    let tuple_visitor_impl = if needs_tuple_visitor {
+        quote! {
+        /// A visitor for deserializing the tuple (A,B) contents of an enum variant
+        struct #tuple_visitor<A, B>(std::marker::PhantomData<(A,B)>);
+
+        impl<A, B> #tuple_visitor<A,B> {
+            fn new() -> Self {
+                Self(std::marker::PhantomData)
+            }
+        }
+
+        impl<'de, A: serde::de::Deserialize<'de>, B: serde::de::Deserialize<'de>> serde::de::Visitor<'de>
+            for #tuple_visitor<A, B>
+        {
+            type Value = (A, B);
+
+            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str("a tuple of two elements")
+            }
+
+            fn visit_seq<S: serde::de::SeqAccess<'de>>(self, mut data: S) -> Result<Self::Value, S::Error> {
+                let a: A = data.next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
+                let b: B = data.next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
+                Ok((a, b))
+            }
+        }
+        }
+    } else {
+        quote! {}
+    };
 
     quote! {
 
@@ -135,32 +172,7 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
 
         }
 
-        /// A visitor for deserializing the tuple (A,B) contents of an enum variant
-        struct #tuple_visitor<A, B>(std::marker::PhantomData<(A,B)>);
-
-        impl<A, B> #tuple_visitor<A,B> {
-            fn new() -> Self {
-                Self(std::marker::PhantomData)
-            }
-        }
-
-        impl<'de, A: serde::de::Deserialize<'de>, B: serde::de::Deserialize<'de>> serde::de::Visitor<'de>
-            for #tuple_visitor<A, B>
-        {
-            type Value = (A, B);
-
-            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                f.write_str("a tuple of two elements")
-            }
-
-            fn visit_seq<S: serde::de::SeqAccess<'de>>(self, mut data: S) -> Result<Self::Value, S::Error> {
-                let a: A = data.next_element()?
-                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
-                let b: B = data.next_element()?
-                    .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-                Ok((a, b))
-            }
-        }
+        #tuple_visitor_impl
 
     }
 }
