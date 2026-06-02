@@ -172,6 +172,27 @@ pub trait StorageProvider<const VERSION: u16> {
         application_export_tree: &ApplicationExportTree,
     ) -> Result<(), Self::Error>;
 
+    /// Write the virtual clients per-emulation-epoch state (the AEAD key
+    /// plus the registering client's emulation-group leaf index) for the
+    /// given epoch.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_epoch_state<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_emulation_epoch_state: &VcEmulationEpochState,
+    ) -> Result<(), Self::Error>;
+
+    /// Write the virtual clients PPRF for the given epoch.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_pprf<EpochId: traits::VcEpochId<VERSION>, VcPprf: traits::VcPprf<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+        vc_pprf: &VcPprf,
+    ) -> Result<(), Self::Error>;
+
     //
     //    ---   setters/writers/enqueuers for crypto objects  ---
     //
@@ -434,6 +455,25 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<Option<ApplicationExportTree>, Self::Error>;
 
+    #[cfg(feature = "virtual-clients-draft")]
+    /// Get the virtual clients per-emulation-epoch state for the given
+    /// epoch (the AEAD key plus the registering client's
+    /// emulation-group leaf index).
+    fn vc_emulation_epoch_state<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcEmulationEpochState>, Self::Error>;
+
+    #[cfg(feature = "virtual-clients-draft")]
+    /// Get the virtual clients PPRF for the given epoch.
+    fn vc_pprf<EpochId: traits::VcEpochId<VERSION>, VcPprf: traits::VcPprf<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcPprf>, Self::Error>;
+
     //
     //     ---    deleters for group state    ---
     //
@@ -582,6 +622,18 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error>;
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_pprf<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error>;
 }
 
 // base traits for keys and values
@@ -637,6 +689,12 @@ pub mod traits {
     pub trait MlsGroupJoinConfig<const VERSION: u16>: Entity<VERSION> {}
     pub trait LeafNode<const VERSION: u16>: Entity<VERSION> {}
     pub trait ApplicationExportTree<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEpochId<const VERSION: u16>: Key<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEmulationEpochState<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcPprf<const VERSION: u16>: Entity<VERSION> {}
 
     // traits for types that implement both
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}

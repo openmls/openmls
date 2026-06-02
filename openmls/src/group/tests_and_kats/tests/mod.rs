@@ -3,6 +3,8 @@
 mod aad;
 #[cfg(feature = "extensions-draft-08")]
 mod app_data_update_proposal_validation;
+#[cfg(feature = "extensions-draft-08")]
+mod safe_aad;
 
 mod capabilities_check;
 mod commit_validation;

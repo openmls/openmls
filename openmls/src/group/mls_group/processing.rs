@@ -13,6 +13,9 @@ use crate::{
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::messages::Commit;
+
 #[cfg(feature = "extensions-draft-08")]
 use crate::{
     component::{ComponentData, ComponentId},
@@ -321,6 +324,114 @@ impl MlsGroup {
         }
     }
 
+    /// Resolve a commit's virtual-clients derivation info to the per-commit
+    /// `OperationSecret` the receiver needs in order to recreate the path of an
+    /// own (sibling-virtual-client) commit.
+    ///
+    /// Only call this when the commit's sender is our own leaf. Other senders'
+    /// commits are processed via the normal HPKE path and never need to look up
+    /// VC secrets.
+    ///
+    /// Returns `Ok(None)` when the commit carries no virtual-clients
+    /// derivation-info entry on its update-path leaf (path-less commits, or
+    /// commits without an `app_data_dictionary`). Otherwise:
+    ///   - looks up the per-epoch `VcPprf` and `EpochEncryptionKey` the
+    ///     application registered via `register_vc_emulation_epoch`,
+    ///   - decrypts the wrapped `EpochInfoTbe` with the AEAD key,
+    ///   - hashes the decrypted `EpochInfoTbe` to produce the PPRF input,
+    ///   - evaluates the PPRF (puncturing it) and persists the punctured state
+    ///     back to storage,
+    ///   - returns the resulting `OperationSecret`.
+    ///
+    /// Once the precondition holds, missing PPRF / AEAD-key registration or
+    /// AEAD decryption failure is reported as an error: an own-leaf commit
+    /// carrying the VC component must be derivable.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn load_vc_commit_material<Provider: OpenMlsProvider>(
+        &self,
+        provider: &Provider,
+        commit: &Commit,
+    ) -> Result<Option<crate::components::vc_derivation_info::OperationSecret>, StageCommitError>
+    {
+        use tls_codec::DeserializeBytes;
+
+        use crate::components::vc_derivation_info::{
+            pprf_input, DerivationInfo, EmulationEpochState, OperationSecret, VcPprf,
+            VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
+        };
+
+        let Some(path) = commit.path.as_ref() else {
+            return Ok(None);
+        };
+        let Some(app_data_dict) = path.leaf_node().extensions().app_data_dictionary() else {
+            return Ok(None);
+        };
+        let Some(derivation_info_bytes) = app_data_dict.dictionary().get(&VC_COMPONENT_ID) else {
+            return Ok(None);
+        };
+        let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
+            .map_err(|e| {
+                log::error!("vc: derivation info deserialize failed: {e:?}");
+                VirtualClientsError::DerivationInfoMalformed
+            })?;
+
+        let epoch_id = derivation_info.epoch_id();
+        let storage = provider.storage();
+        let mut pprf: VcPprf = storage
+            .vc_pprf(epoch_id)
+            .map_err(|e| {
+                log::error!("vc: load pprf failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?
+            .ok_or(VirtualClientsError::MissingPprf)?;
+        let state: EmulationEpochState = storage
+            .vc_emulation_epoch_state(epoch_id)
+            .map_err(|e| {
+                log::error!("vc: load emulation epoch state failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?
+            .ok_or(VirtualClientsError::MissingEpochEncryptionKey)?;
+        // Receiver only needs the AEAD key; the leaf index travels on the
+        // wire inside `EpochInfoTbe` (sender's view), so it doesn't have
+        // to come from storage on this side.
+        let (_state_leaf_index, epoch_encryption_key) = state.into_parts();
+
+        let ciphersuite = self.ciphersuite();
+        let crypto = provider.crypto();
+        let epoch_info = derivation_info.decrypt(crypto, ciphersuite, &epoch_encryption_key)?;
+
+        // We only know how to consume `LeafNode` operation type for an
+        // update-path commit — anything else here is a sender bug or a
+        // cross-context replay. Treat it as malformed rather than silently
+        // deriving a secret in the wrong domain.
+        if !matches!(
+            epoch_info.operation_type,
+            VirtualClientOperationType::LeafNode
+        ) {
+            log::error!(
+                "vc: unexpected operation_type on update-path leaf: {:?}",
+                epoch_info.operation_type
+            );
+            return Err(VirtualClientsError::DerivationInfoMalformed.into());
+        }
+
+        let pprf_input_bytes = pprf_input(crypto, ciphersuite, &epoch_info)?;
+        let operation_secret: OperationSecret = pprf
+            .evaluate(crypto, ciphersuite, &pprf_input_bytes)
+            .map_err(VirtualClientsError::from)?
+            .into();
+
+        // Persist puncture immediately. Reprocessing the same commit will
+        // fail with `PprfError::PuncturedInput`, which is exactly what we
+        // want for forward secrecy.
+        storage.write_vc_pprf(epoch_id, &pprf).map_err(|e| {
+            log::error!("vc: persist punctured pprf failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?;
+
+        Ok(Some(operation_secret))
+    }
+
     /// Helper function to read decryption keypairs.
     pub(super) fn read_decryption_keypairs(
         &self,
@@ -364,18 +475,26 @@ impl MlsGroup {
         let (content, credential) =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        match content.sender() {
+        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        let mut processed = match content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
                 .process_internal_authenticated_content_with_app_data_updates(
                     provider,
                     content,
                     credential,
                     app_data_dict_updates,
-                ),
+                )?,
             Sender::External(_) => {
-                self.process_external_authenticated_content(provider, content, credential)
+                self.process_external_authenticated_content(provider, content, credential)?
             }
+        };
+        #[cfg(feature = "extensions-draft-08")]
+        if self.context().safe_aad_required() {
+            processed
+                .try_attach_safe_aad()
+                .map_err(|_| ProcessMessageError::MalformedSafeAad)?;
         }
+        Ok(processed)
     }
 
     /// This processing function does most of the semantic verifications.
@@ -418,14 +537,22 @@ impl MlsGroup {
         let (content, credential) =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        match content.sender() {
+        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        let mut processed = match content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => {
-                self.process_internal_authenticated_content(provider, content, credential)
+                self.process_internal_authenticated_content(provider, content, credential)?
             }
             Sender::External(_) => {
-                self.process_external_authenticated_content(provider, content, credential)
+                self.process_external_authenticated_content(provider, content, credential)?
             }
+        };
+        #[cfg(feature = "extensions-draft-08")]
+        if self.context().safe_aad_required() {
+            processed
+                .try_attach_safe_aad()
+                .map_err(|_| ProcessMessageError::MalformedSafeAad)?;
         }
+        Ok(processed)
     }
 
     /// This processing function does most of the semantic verifications.
@@ -482,10 +609,25 @@ impl MlsGroup {
                     ProcessedMessageContent::ProposalMessage(proposal)
                 }
             }
-            FramedContentBody::Commit(_) => {
+            FramedContentBody::Commit(commit) => {
                 // Since this is a commit, we need to load the private key material we need for decryption.
                 let (old_epoch_keypairs, leaf_node_keypairs) =
                     self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
+
+                // Only load virtual-clients material when the commit was sent
+                // by *our own* leaf — i.e. a sibling emulator of the same
+                // virtual client. A non-emulator member processing a VC
+                // commit never has the per-epoch PPRF / AEAD key in storage
+                // and must fall through to the normal HPKE path.
+                #[cfg(feature = "virtual-clients-draft")]
+                let vc_material = if matches!(&sender, Sender::Member(idx) if *idx == self.own_leaf_index())
+                {
+                    self.load_vc_commit_material(provider, commit)?
+                } else {
+                    None
+                };
+                #[cfg(not(feature = "virtual-clients-draft"))]
+                let _ = commit;
 
                 let staged_commit = self.stage_commit_with_app_data_updates(
                     &content,
@@ -493,6 +635,8 @@ impl MlsGroup {
                     leaf_node_keypairs,
                     app_data_dict_updates,
                     provider,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    vc_material,
                 )?;
 
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
@@ -538,13 +682,31 @@ impl MlsGroup {
                     ProcessedMessageContent::ProposalMessage(proposal)
                 }
             }
-            FramedContentBody::Commit(_) => {
+            #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_variables))]
+            FramedContentBody::Commit(commit) => {
                 // Since this is a commit, we need to load the private key material we need for decryption.
                 let (old_epoch_keypairs, leaf_node_keypairs) =
                     self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
 
-                let staged_commit =
-                    self.stage_commit(&content, old_epoch_keypairs, leaf_node_keypairs, provider)?;
+                // See `process_internal_authenticated_content_with_app_data_updates`
+                // for the rationale: VC material lookup is gated on the
+                // commit being from our own leaf.
+                #[cfg(feature = "virtual-clients-draft")]
+                let vc_material = if matches!(&sender, Sender::Member(idx) if *idx == self.own_leaf_index())
+                {
+                    self.load_vc_commit_material(provider, commit)?
+                } else {
+                    None
+                };
+
+                let staged_commit = self.stage_commit(
+                    &content,
+                    old_epoch_keypairs,
+                    leaf_node_keypairs,
+                    provider,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    vc_material,
+                )?;
 
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
             }

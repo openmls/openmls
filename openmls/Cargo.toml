@@ -85,6 +85,24 @@ js-test = [
 
 ]
 
+virtual-clients-draft = [
+    "extensions-draft-08",
+    "openmls_traits/virtual-clients-draft",
+]
+
+# Same XXX as for `extensions-draft-08-test-dependencies`: the storage-backend
+# crates only know about the `virtual-clients-draft` trait methods if they
+# enable their own `virtual-clients-draft` feature, but enabling it directly
+# from `virtual-clients-draft` would force them in even when not used. So we
+# expose a separate feature that tests turn on alongside `virtual-clients-draft`.
+# The backends' own `virtual-clients-draft` feature pulls in their
+# `extensions-draft-08` impls transitively, so we don't need to chain
+# `extensions-draft-08-test-dependencies` here.
+virtual-clients-draft-test-dependencies = [
+    "openmls_sqlite_storage?/virtual-clients-draft",
+    "openmls_memory_storage?/virtual-clients-draft",
+]
+
 extensions-draft-08 = [
     "openmls_traits/extensions-draft-08",
     # XXX: to avoid enabling the `openmls_sqlite_storage` dependency
@@ -104,7 +122,6 @@ extensions-draft-08-test-dependencies = [
     "openmls_memory_storage?/extensions-draft-08",
 ]
 # experimental feature implementing the virtual-clients draft
-virtual-clients-draft = []
 # enable randomness source
 fork-resolution = []
 
