@@ -27,7 +27,7 @@ use crate::{
 use input::AsIndexBytes;
 use prefix::Prefix;
 
-pub use prefix::Prefix16;
+pub use prefix::{Prefix16, Prefix256};
 
 mod input;
 mod prefix;
@@ -44,6 +44,9 @@ pub enum PprfError {
     /// Error deriving child node.
     #[error("Error deriving child node: {0}")]
     ChildDerivationError(#[from] CryptoError),
+    /// Prefix exceeded its maximum depth.
+    #[error("Prefix length exceeds maximum depth")]
+    PrefixMaxDepthExceeded,
 }
 
 /// A Node in the PPRF tree that contains the node's secret.
@@ -112,7 +115,7 @@ fn get_bit(index: &[u8], bit_index: usize) -> bool {
 
 impl<P: Prefix> Pprf<P> {
     /// Create a new PPRF with the given secret and size.
-    pub(super) fn new_with_size(secret: Secret, size: TreeSize) -> Self {
+    pub(crate) fn new_with_size(secret: Secret, size: TreeSize) -> Self {
         let width = size.leaf_count() as usize;
         Pprf {
             // The width of the tree in bytes.
@@ -132,7 +135,7 @@ impl<P: Prefix> Pprf<P> {
     }
 
     /// Evaluates the PPRF at the given input.
-    pub(super) fn evaluate<Input: AsIndexBytes>(
+    pub(crate) fn evaluate<Input: AsIndexBytes>(
         &mut self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
@@ -167,24 +170,24 @@ impl<P: Prefix> Pprf<P> {
             }
 
             let bit = get_bit(&leaf_index, depth);
-            prefix.push_bit(bit);
+            prefix.push_bit(bit)?;
             depth += 1;
         }
 
         // Step 2: Derive and walk the rest of the path
         for d in depth..P::MAX_DEPTH {
-            let (left, right) = current_node.derive_children(crypto, ciphersuite).unwrap();
+            let (left, right) = current_node.derive_children(crypto, ciphersuite)?;
             let bit = get_bit(&leaf_index, d);
 
             let (next_node, copath_node) = if bit { (right, left) } else { (left, right) };
 
             let mut copath_prefix = prefix.clone();
-            copath_prefix.push_bit(!bit);
+            copath_prefix.push_bit(!bit)?;
             let node_at_copath_prefix = self.nodes.insert(copath_prefix.clone(), copath_node);
             debug_assert!(node_at_copath_prefix.is_none());
 
             current_node = next_node;
-            prefix.push_bit(bit);
+            prefix.push_bit(bit)?;
         }
 
         Ok(current_node.0)

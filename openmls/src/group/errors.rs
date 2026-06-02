@@ -200,12 +200,17 @@ impl<StorageError> From<ExternalCommitBuilderFinalizeError<StorageError>>
 /// Stage Commit error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum StageCommitError {
+    /// Virtual clients error.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// The epoch of the group context and PublicMessage didn't match.
     #[error("The epoch of the group context and PublicMessage didn't match.")]
     EpochMismatch,
+    #[cfg(not(feature = "virtual-clients-draft"))]
     /// The Commit was created by this client.
     #[error("The Commit was created by this client.")]
     OwnCommit,
@@ -290,6 +295,10 @@ pub enum CreateCommitError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// Virtual-clients error.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
     /// Missing own key to apply proposal.
     #[error("Missing own key to apply proposal.")]
     OwnKeyNotFound,

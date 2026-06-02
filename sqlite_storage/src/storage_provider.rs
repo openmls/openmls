@@ -23,6 +23,9 @@ use crate::{
     STORAGE_PROVIDER_VERSION,
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::vc_secrets::StorableEntityRef as StorableVcSecretRef;
+
 refinery::embed_migrations!("migrations");
 
 /// Storage provider for OpenMLS using Sqlite through the `rusqlite` crate.
@@ -64,7 +67,7 @@ impl<C: Codec, ConnectionRef: BorrowMut<Connection>> SqliteStorageProvider<C, Co
     }
 }
 
-pub(super) struct StorableGroupIdRef<'a, GroupId: Key<STORAGE_PROVIDER_VERSION>>(pub &'a GroupId);
+pub(super) struct StorableKeyRef<'a, GroupId: Key<STORAGE_PROVIDER_VERSION>>(pub &'a GroupId);
 
 impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVIDER_VERSION>
     for SqliteStorageProvider<C, ConnectionRef>
@@ -542,21 +545,21 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id).delete_proposal::<C, _>(self.connection.borrow(), proposal_ref)
+        StorableKeyRef(group_id).delete_proposal::<C, _>(self.connection.borrow(), proposal_ref)
     }
 
     fn delete_own_leaf_nodes<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id).delete_leaf_nodes::<C>(self.connection.borrow())
+        StorableKeyRef(group_id).delete_leaf_nodes::<C>(self.connection.borrow())
     }
 
     fn delete_group_config<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
+        StorableKeyRef(group_id)
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::JoinGroupConfig)
     }
 
@@ -564,7 +567,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
+        StorableKeyRef(group_id)
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::Tree)
     }
 
@@ -572,7 +575,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
+        StorableKeyRef(group_id)
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::ConfirmationTag)
     }
 
@@ -580,7 +583,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
+        StorableKeyRef(group_id)
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::GroupState)
     }
 
@@ -588,7 +591,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
+        StorableKeyRef(group_id)
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::Context)
     }
 
@@ -596,7 +599,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id).delete_group_data::<C>(
+        StorableKeyRef(group_id).delete_group_data::<C>(
             self.connection.borrow(),
             GroupDataType::InterimTranscriptHash,
         )
@@ -606,7 +609,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
+        StorableKeyRef(group_id)
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::MessageSecrets)
     }
 
@@ -614,7 +617,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
+        StorableKeyRef(group_id)
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::ResumptionPskStore)
     }
 
@@ -622,7 +625,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
+        StorableKeyRef(group_id)
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::OwnLeafIndex)
     }
 
@@ -630,7 +633,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id)
+        StorableKeyRef(group_id)
             .delete_group_data::<C>(self.connection.borrow(), GroupDataType::GroupEpochSecrets)
     }
 
@@ -641,7 +644,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id).delete_all_proposals::<C>(self.connection.borrow())?;
+        StorableKeyRef(group_id).delete_all_proposals::<C>(self.connection.borrow())?;
         Ok(())
     }
 
@@ -672,7 +675,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         epoch: &EpochKey,
         leaf_index: u32,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id).delete_epoch_key_pair::<C, _>(
+        StorableKeyRef(group_id).delete_epoch_key_pair::<C, _>(
             self.connection.borrow(),
             epoch,
             leaf_index,
@@ -732,9 +735,73 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableGroupIdRef(group_id).delete_group_data::<C>(
+        StorableKeyRef(group_id).delete_group_data::<C>(
             self.connection.borrow(),
             GroupDataType::ApplicationExportTree,
         )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_epoch_state<
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_emulation_epoch_state: &VcEmulationEpochState,
+    ) -> Result<(), Self::Error> {
+        StorableVcSecretRef(vc_emulation_epoch_state)
+            .store_vc_emulation_epoch_state::<C, _>(self.connection.borrow(), epoch_id)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_epoch_state<
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
+        StorableKeyRef(epoch_id)
+            .load_vc_emulation_epoch_state::<C, VcEmulationEpochState>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        StorableKeyRef(epoch_id).delete_vc_emulation_epoch_state::<C>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_pprf<
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
+        VcPprf: traits::VcPprf<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_pprf: &VcPprf,
+    ) -> Result<(), Self::Error> {
+        StorableVcSecretRef(vc_pprf).store_vc_pprf::<C, _>(self.connection.borrow(), epoch_id)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_pprf<
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
+        VcPprf: traits::VcPprf<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcPprf>, Self::Error> {
+        StorableKeyRef(epoch_id).load_vc_pprf::<C, VcPprf>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_pprf<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        StorableKeyRef(epoch_id).delete_vc_pprf::<C>(self.connection.borrow())
     }
 }

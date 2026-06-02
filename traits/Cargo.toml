@@ -17,6 +17,7 @@ default = []
 test-utils = []
 extensions-draft-08 = []
 draft-ietf-mls-pq-ciphersuites = []
+virtual-clients-draft = ["extensions-draft-08"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

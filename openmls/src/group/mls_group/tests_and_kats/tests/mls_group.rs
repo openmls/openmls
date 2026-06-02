@@ -2809,6 +2809,7 @@ fn staged_commit_creation() {
     )
 }
 
+#[cfg(not(feature = "virtual-clients-draft"))]
 // Test processing of own commits
 #[openmls_test::openmls_test]
 fn own_commit_processing() {

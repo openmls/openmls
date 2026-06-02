@@ -5,6 +5,8 @@ use openmls_traits::types::Ciphersuite;
 
 use super::*;
 #[cfg(feature = "extensions-draft-08")]
+use crate::component::{ComponentId, ComponentType, ComponentsList};
+#[cfg(feature = "extensions-draft-08")]
 use crate::extensions::AppDataDictionary;
 use crate::{
     error::LibraryError,
@@ -89,6 +91,44 @@ impl GroupContext {
         self.extensions
             .app_data_dictionary()
             .map(|extension| extension.dictionary())
+    }
+
+    /// Whether Safe AAD framing is active for messages in this group.
+    ///
+    /// Returns `true` exactly when the `app_data_dictionary` GroupContext
+    /// extension contains a `safe_aad` component (the value bytes are not
+    /// inspected here, an empty `ComponentsList` is still "present").
+    /// Per the Safe AAD spec section 4.9, when this is `true` the
+    /// `authenticated_data` field always starts with the `SafeAAD` struct.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn safe_aad_required(&self) -> bool {
+        let safe_aad_id = ComponentId::from(ComponentType::SafeAad);
+        self.app_data_dict()
+            .is_some_and(|dict| dict.contains(&safe_aad_id))
+    }
+
+    /// The list of [`ComponentId`]s required to be understood by every member
+    /// for Safe AAD purposes.
+    ///
+    /// Returns `Ok(None)` when the `safe_aad` component is absent from the
+    /// `app_data_dictionary` GroupContext extension, `Ok(Some(list))` when it
+    /// is present and parses cleanly (the list may be empty), and an error
+    /// when the component value fails to decode as a `ComponentsList`.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn safe_aad_required_components(
+        &self,
+    ) -> Result<Option<Vec<ComponentId>>, crate::framing::SafeAadError> {
+        let safe_aad_id = ComponentId::from(ComponentType::SafeAad);
+        let Some(dict) = self.app_data_dict() else {
+            return Ok(None);
+        };
+        let Some(raw) = dict.get(&safe_aad_id) else {
+            return Ok(None);
+        };
+        use tls_codec::Deserialize as _;
+        let list = ComponentsList::tls_deserialize_exact(raw)
+            .map_err(|err| crate::framing::SafeAadError::Codec(err.to_string()))?;
+        Ok(Some(list.into_ids()))
     }
 
     /// Create the `GroupContext` needed upon creation of a new group.

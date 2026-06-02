@@ -141,6 +141,12 @@ pub enum PublicProcessMessageError {
     /// The proposal is invalid for the Sender of type [External](crate::prelude::Sender::External)
     #[error("The proposal is invalid for the Sender of type External")]
     UnsupportedProposalType,
+
+    /// The group's GroupContext requires Safe AAD framing, but the message's
+    /// `authenticated_data` did not start with a well-formed `SafeAad`.
+    #[cfg(feature = "extensions-draft-08")]
+    #[error("malformed SafeAAD prefix in authenticated_data")]
+    MalformedSafeAad,
 }
 
 /// Process message error
@@ -178,6 +184,12 @@ pub enum ProcessMessageError<StorageError> {
     #[cfg(feature = "extensions-draft-08")]
     #[error("Use `_with_app_data_update` functions for handling AppDataUpdate proposals")]
     FoundAppDataUpdateProposal,
+
+    /// The group's GroupContext requires Safe AAD framing, but the message's
+    /// `authenticated_data` did not start with a well-formed `SafeAad`.
+    #[cfg(feature = "extensions-draft-08")]
+    #[error("malformed SafeAAD prefix in authenticated_data")]
+    MalformedSafeAad,
 }
 
 /// Create message error
@@ -349,6 +361,10 @@ pub enum SelfUpdateError<StorageError> {
     /// Error accessing the storage.
     #[error("Error accessing the storage.")]
     StorageError(StorageError),
+    /// Virtual-clients error.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
 }
 
 /// Propose self update error
@@ -564,6 +580,7 @@ mod virtual_clients_draft {
     use super::MlsGroupStateError;
     use crate::error::LibraryError;
     use crate::framing::MessageEncryptionError;
+    use crate::group::SafeExportSecretError;
     use crate::tree::secret_tree::SecretTreeError;
 
     /// Create message error
@@ -605,5 +622,21 @@ mod virtual_clients_draft {
                 ConfirmMessageError::StorageError(e) => CreateMessageError::StorageError(e),
             }
         }
+    }
+
+    /// Errors returned by
+    /// [`MlsGroup::register_vc_emulation_epoch`](super::MlsGroup::register_vc_emulation_epoch).
+    #[derive(Error, Debug, PartialEq, Clone)]
+    pub enum RegisterVcEmulationEpochError<StorageError> {
+        /// See [`SafeExportSecretError`] for more details.
+        #[error(transparent)]
+        SafeExportSecret(#[from] SafeExportSecretError<StorageError>),
+        /// See [`VirtualClientsError`](crate::components::vc_derivation_info::VirtualClientsError)
+        /// for more details.
+        #[error(transparent)]
+        VirtualClients(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+        /// Persisting the derived virtual-clients state to storage failed.
+        #[error("Error writing virtual-clients state to storage")]
+        Storage(StorageError),
     }
 }

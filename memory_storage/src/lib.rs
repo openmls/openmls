@@ -259,6 +259,10 @@ const TREE_LABEL: &[u8] = b"Tree";
 const GROUP_CONTEXT_LABEL: &[u8] = b"GroupContext";
 #[cfg(feature = "extensions-draft-08")]
 const APPLICATION_EXPORT_TREE_LABEL: &[u8] = b"ApplicationExportTree";
+#[cfg(feature = "virtual-clients-draft")]
+const VC_EMULATION_EPOCH_STATE_LABEL: &[u8] = b"VcEmulationEpochState";
+#[cfg(feature = "virtual-clients-draft")]
+const VC_PPRF_LABEL: &[u8] = b"VcPprf";
 const INTERIM_TRANSCRIPT_HASH_LABEL: &[u8] = b"InterimTranscriptHash";
 const CONFIRMATION_TAG_LABEL: &[u8] = b"ConfirmationTag";
 
@@ -1025,6 +1029,89 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             APPLICATION_EXPORT_TREE_LABEL,
             &serde_json::to_vec(group_id).unwrap(),
         )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_epoch_state<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_emulation_epoch_state: &VcEmulationEpochState,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            VC_EMULATION_EPOCH_STATE_LABEL,
+            &serde_json::to_vec(epoch_id).unwrap(),
+            serde_json::to_vec(vc_emulation_epoch_state).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_epoch_state<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
+        let values = self.values.read().unwrap();
+        let key = build_key::<CURRENT_VERSION, &EpochId>(VC_EMULATION_EPOCH_STATE_LABEL, epoch_id);
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        Ok(serde_json::from_slice(value).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(
+            VC_EMULATION_EPOCH_STATE_LABEL,
+            &serde_json::to_vec(epoch_id).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_pprf<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcPprf: traits::VcPprf<CURRENT_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_pprf: &VcPprf,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            VC_PPRF_LABEL,
+            &serde_json::to_vec(epoch_id).unwrap(),
+            serde_json::to_vec(vc_pprf).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_pprf<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcPprf: traits::VcPprf<CURRENT_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcPprf>, Self::Error> {
+        let values = self.values.read().unwrap();
+        let key = build_key::<CURRENT_VERSION, &EpochId>(VC_PPRF_LABEL, epoch_id);
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        Ok(serde_json::from_slice(value).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_pprf<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(VC_PPRF_LABEL, &serde_json::to_vec(epoch_id).unwrap())
     }
 }
 

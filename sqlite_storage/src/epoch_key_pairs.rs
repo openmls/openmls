@@ -5,7 +5,7 @@ use rusqlite::{params, OptionalExtension};
 
 use crate::{
     codec::Codec,
-    storage_provider::StorableGroupIdRef,
+    storage_provider::StorableKeyRef,
     wrappers::{EntitySliceWrapper, EntityVecWrapper, KeyRefWrapper},
     STORAGE_PROVIDER_VERSION,
 };
@@ -85,7 +85,7 @@ impl<EpochKeyPairs: Entity<STORAGE_PROVIDER_VERSION>> StorableEpochKeyPairsRef<'
     }
 }
 
-impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
+impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId> {
     pub(super) fn delete_epoch_key_pair<C: Codec, EpochKey: Key<STORAGE_PROVIDER_VERSION>>(
         &self,
         connection: &rusqlite::Connection,

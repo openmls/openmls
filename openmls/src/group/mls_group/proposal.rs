@@ -92,7 +92,9 @@ macro_rules! impl_propose_fun {
         ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
             self.is_operational()?;
 
-            let proposal = self.$group_fun(self.framing_parameters(), value, signer)?;
+            let aad = self.outgoing_authenticated_data()?;
+            let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
+            let proposal = self.$group_fun(framing_parameters, value, signer)?;
 
             let queued_proposal = QueuedProposal::from_authenticated_content(
                 self.ciphersuite(),
@@ -285,8 +287,10 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeAddMemberError<Provider::StorageError>> {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let add_proposal = self
-            .create_add_proposal(self.framing_parameters(), key_package.clone(), signer)
+            .create_add_proposal(framing_parameters, key_package.clone(), signer)
             .map_err(|e| match e {
                 CreateAddProposalError::LibraryError(e) => e.into(),
                 CreateAddProposalError::LeafNodeValidation(error) => {
@@ -325,8 +329,10 @@ impl MlsGroup {
     {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let remove_proposal = self
-            .create_remove_proposal(self.framing_parameters(), member, signer)
+            .create_remove_proposal(framing_parameters, member, signer)
             .map_err(|_| ProposeRemoveMemberError::UnknownMember)?;
 
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
@@ -410,8 +416,10 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let proposal = self.create_group_context_ext_proposal::<Provider>(
-            self.framing_parameters(),
+            framing_parameters,
             extensions,
             signer,
         )?;
@@ -480,8 +488,10 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let proposal = self.create_app_data_update_proposal(
-            self.framing_parameters(),
+            framing_parameters,
             component_id,
             operation,
             signer,

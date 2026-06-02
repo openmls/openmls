@@ -25,3 +25,7 @@ extensions-draft-08 = ["openmls_traits/extensions-draft-08"]
 draft-ietf-mls-pq-ciphersuites = [
     "openmls_traits/draft-ietf-mls-pq-ciphersuites",
 ]
+virtual-clients-draft = [
+    "extensions-draft-08",
+    "openmls_traits/virtual-clients-draft",
+]
