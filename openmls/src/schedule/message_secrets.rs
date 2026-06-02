@@ -77,6 +77,11 @@ impl MessageSecrets {
         self.serialized_context.as_ref()
     }
 
+    /// Get a reference to the message secrets's secret tree.
+    pub(crate) fn secret_tree(&self) -> &SecretTree {
+        &self.secret_tree
+    }
+
     /// Get a mutable reference to the message secrets's secret tree.
     pub(crate) fn secret_tree_mut(&mut self) -> &mut SecretTree {
         &mut self.secret_tree

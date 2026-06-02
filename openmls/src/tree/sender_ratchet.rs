@@ -87,7 +87,6 @@ pub(crate) enum SenderRatchet {
 }
 
 impl SenderRatchet {
-    #[cfg(test)]
     pub(crate) fn generation(&self) -> Generation {
         match self {
             SenderRatchet::EncryptionRatchet(enc_ratchet) => enc_ratchet.generation(),
@@ -201,7 +200,6 @@ impl DecryptionRatchet {
     }
 
     /// Get the generation of the ratchet head.
-    #[cfg(test)]
     pub(crate) fn generation(&self) -> Generation {
         self.ratchet_head.generation()
     }

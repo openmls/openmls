@@ -1,9 +1,6 @@
 use openmls_traits::signatures::Signer;
 
-use crate::storage::OpenMlsProvider;
-
-#[cfg(feature = "virtual-clients-draft")]
-use crate::tree::secret_tree::SecretType;
+use crate::{storage::OpenMlsProvider, tree::secret_tree::SecretType};
 
 #[cfg(feature = "virtual-clients-draft")]
 use super::errors::ConfirmMessageError;
@@ -11,6 +8,18 @@ use super::{errors::CreateMessageError, *};
 
 impl MlsGroup {
     // === Application messages ===
+
+    /// Returns the ratchet generation that will be used for the next outgoing
+    /// application message.
+    ///
+    /// Reading it before creating a message allows callers to derive
+    /// per-message secrets that are tied to the same generation without
+    /// duplicating the counter.
+    pub fn own_application_message_generation(&self) -> u32 {
+        self.message_secrets()
+            .secret_tree()
+            .generation(self.own_leaf_index(), SecretType::ApplicationSecret)
+    }
 
     /// Creates an application message. Returns
     /// `CreateMessageError::MlsGroupStateError::UseAfterEviction` if the member
@@ -38,7 +47,7 @@ impl MlsGroup {
     /// proposals exist. In that case `.process_pending_proposals()` must be
     /// called first and incoming messages from the DS must be processed
     /// afterwards.
-    #[cfg(all(feature = "virtual-clients-draft", any(feature = "test-utils", test)))]
+    #[cfg(all(feature = "virtual-clients-draft"))]
     pub fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
