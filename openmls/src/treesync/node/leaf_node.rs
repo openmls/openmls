@@ -791,6 +791,16 @@ impl LeafNodeIn {
     pub fn credential(&self) -> &Credential {
         &self.payload.credential
     }
+
+    /// Assume that signature is valid and return the corresponding [`LeafNode`].
+    ///
+    /// Use with caution, the client must guarantee that the leaf node is verified.
+    pub fn unwrap_verified(self) -> LeafNode {
+        LeafNode {
+            payload: self.payload,
+            signature: self.signature,
+        }
+    }
 }
 
 impl From<LeafNode> for LeafNodeIn {
