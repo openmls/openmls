@@ -704,11 +704,11 @@ dependencies = [
  "base64",
  "ds-lib",
  "log",
- "openmls 0.8.1",
+ "openmls",
  "openmls_basic_credential",
  "openmls_memory_storage",
  "openmls_rust_crypto",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "pretty_env_logger",
  "rand_chacha 0.9.0",
  "reqwest",
@@ -1116,11 +1116,11 @@ dependencies = [
 name = "ds-lib"
 version = "0.1.0"
 dependencies = [
- "openmls 0.8.1",
+ "openmls",
  "openmls_basic_credential",
  "openmls_memory_storage",
  "openmls_rust_crypto",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "rand 0.9.4",
  "serde",
 ]
@@ -2049,10 +2049,10 @@ dependencies = [
  "clap",
  "clap_derive",
  "mls_interop_proto",
- "openmls 0.8.1",
+ "openmls",
  "openmls_basic_credential",
  "openmls_rust_crypto",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "serde",
  "serde_json",
  "tls_codec",
@@ -2595,10 +2595,10 @@ dependencies = [
  "futures-core",
  "futures-util",
  "log",
- "openmls 0.8.1",
+ "openmls",
  "openmls_basic_credential",
  "openmls_rust_crypto",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "pretty_env_logger",
  "serde",
  "serde_json",
@@ -2708,22 +2708,6 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
 name = "openmls"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7af47d535cef7b75806a2b5fcf81ba8e68179f5923aca9bc6a4d8d563e4f8757"
-dependencies = [
- "log",
- "openmls_traits 0.4.1",
- "rayon",
- "serde",
- "serde_bytes",
- "thiserror 2.0.18",
- "tls_codec",
- "zeroize",
-]
-
-[[package]]
-name = "openmls"
 version = "0.8.1"
 dependencies = [
  "backtrace",
@@ -2739,7 +2723,7 @@ dependencies = [
  "lazy_static",
  "log",
  "once_cell",
- "openmls 0.8.1",
+ "openmls",
  "openmls_basic_credential",
  "openmls_libcrux_crypto",
  "openmls_memory_storage",
@@ -2747,7 +2731,7 @@ dependencies = [
  "openmls_serialization_helpers",
  "openmls_sqlite_storage",
  "openmls_test",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "pretty_env_logger",
  "rand 0.9.4",
  "rayon",
@@ -2768,7 +2752,7 @@ name = "openmls-fuzz"
 version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
- "openmls 0.8.1",
+ "openmls",
 ]
 
 [[package]]
@@ -2778,10 +2762,10 @@ dependencies = [
  "console_error_panic_hook",
  "getrandom 0.2.17",
  "js-sys",
- "openmls 0.8.1",
+ "openmls",
  "openmls_basic_credential",
  "openmls_rust_crypto",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "tls_codec",
  "wasm-bindgen",
  "wasm-bindgen-test",
@@ -2792,24 +2776,13 @@ name = "openmls_basic_credential"
 version = "0.5.0"
 dependencies = [
  "ed25519-dalek",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "p256",
  "rand_core 0.6.4",
  "serde",
  "serde_json",
  "tls_codec",
  "zeroize",
-]
-
-[[package]]
-name = "openmls_compat_tests"
-version = "0.1.0"
-dependencies = [
- "openmls 0.7.1",
- "openmls 0.8.1",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -2826,7 +2799,7 @@ dependencies = [
  "libcrux-sha2",
  "libcrux-traits",
  "openmls_memory_storage",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "rand 0.9.4",
  "rand_chacha 0.9.0",
  "tls_codec",
@@ -2840,7 +2813,7 @@ dependencies = [
  "hex",
  "log",
  "openmls_memory_storage",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -2859,7 +2832,7 @@ dependencies = [
  "hpke-rs-crypto",
  "hpke-rs-rust-crypto",
  "openmls_memory_storage",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "p256",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
@@ -2887,7 +2860,7 @@ name = "openmls_sqlite_storage"
 version = "0.2.0"
 dependencies = [
  "log",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "refinery",
  "rusqlite",
  "serde",
@@ -2903,22 +2876,12 @@ dependencies = [
  "openmls_libcrux_crypto",
  "openmls_rust_crypto",
  "openmls_sqlite_storage",
- "openmls_traits 0.5.0",
+ "openmls_traits",
  "proc-macro2",
  "quote",
  "rstest",
  "rstest_reuse",
  "syn",
-]
-
-[[package]]
-name = "openmls_traits"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e21d8877bacdbc407060df29bf59b145bb886a8fa0099b87ae8067a34b902a13"
-dependencies = [
- "serde",
- "tls_codec",
 ]
 
 [[package]]
