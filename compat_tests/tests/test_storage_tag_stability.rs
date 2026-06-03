@@ -1,5 +1,6 @@
 //! These tests check storage tag stability for `serde` serializations of `Extension`,
 //!   `ExtensionType`, `Proposal`, `ProposalType`, and `CredentialType`.
+#![allow(dead_code)]
 
 use openmls_compat_tests::storage_tag_check::*;
 
@@ -115,4 +116,8 @@ macro_rules! compat_tests {
 }
 
 // check the storage tag stability for openmls=0.7.1 => `main`
+#[cfg(feature = "compat_0_7_1")]
 compat_tests!(test_storage_tags_0_7_1, openmls_0_7_1, openmls);
+// check the storage tag stability for openmls=0.8.1 => `main`
+#[cfg(feature = "compat_0_8_1")]
+compat_tests!(test_storage_tags_0_8_1, openmls_0_8_1, openmls);
