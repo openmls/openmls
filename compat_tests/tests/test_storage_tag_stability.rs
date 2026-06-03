@@ -9,7 +9,7 @@ use std::sync::OnceLock;
 static TEST_DATA: OnceLock<TestData> = OnceLock::new();
 
 #[allow(nonstandard_style)]
-#[derive(PartialEq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Debug, serde::Deserialize)]
 enum SupportedVersion {
     OpenMls_0_7_1,
     OpenMls_0_8_1,
@@ -21,7 +21,7 @@ enum SupportedVersion {
 /// Each `serde_json::Value` is deserialized separately
 /// into two versions of a type (Before, After), and
 /// can be used to compare their values..
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 struct TestData {
     credential_type: Vec<TestCase>,
     extension_type: Vec<TestCase>,
@@ -30,7 +30,7 @@ struct TestData {
     proposal: Vec<TestCase>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 struct TestCase {
     input: serde_json::Value,
     supported: Vec<SupportedVersion>,
