@@ -82,6 +82,7 @@ fn name(input: &serde_json::Value) -> String {
     match input {
         serde_json::Value::String(s) => s.to_string(),
         serde_json::Value::Object(map) => map.keys().next().unwrap().to_string(),
+        // NOTE: the test data does not include `serde_json::Value`s of other types
         _ => unimplemented!(),
     }
 }
