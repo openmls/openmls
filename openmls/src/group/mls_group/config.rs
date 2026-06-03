@@ -85,17 +85,29 @@ impl Serialize for PastEpochDeletionPolicy {
 }
 
 impl<'de> Deserialize<'de> for PastEpochDeletionPolicy {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let epochs = u64::deserialize(deserializer)?;
-        let epochs = usize::try_from(epochs).map_err(serde::de::Error::custom)?;
-        if epochs == usize::MAX {
-            Ok(Self::KeepAll)
-        } else {
-            Ok(Self::MaxEpochs(epochs))
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        // Previously supported format (changed to plain integer in 8bdba6f)
+        #[derive(Deserialize)]
+        enum Tagged {
+            MaxEpochs(usize),
+            KeepAll,
         }
+
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Format {
+            Int(u64),
+            Tagged(Tagged),
+        }
+
+        Ok(match Format::deserialize(deserializer)? {
+            Format::Int(u64::MAX) => Self::KeepAll,
+            Format::Int(n) => {
+                Self::MaxEpochs(usize::try_from(n).map_err(serde::de::Error::custom)?)
+            }
+            Format::Tagged(Tagged::MaxEpochs(n)) => Self::MaxEpochs(n),
+            Format::Tagged(Tagged::KeepAll) => Self::KeepAll,
+        })
     }
 }
 
