@@ -87,7 +87,7 @@ fn name(input: &serde_json::Value) -> String {
     }
 }
 
-macro_rules! test_case {
+macro_rules! generate_test_fn {
     ($test_name:ident,$before:ty,$after:ty,$test_cases:expr,$version:expr) => {
         #[test]
         fn $test_name() {
@@ -112,28 +112,28 @@ macro_rules! compat_tests {
         mod $mod_name {
             use super::*;
 
-            test_case!(
+            generate_test_fn!(
                 test_extension_type,
                 $before::prelude::ExtensionType,
                 $after::prelude::ExtensionType,
                 TestData::load().extension_type,
                 $version
             );
-            test_case!(
+            generate_test_fn!(
                 test_extension,
                 $before::prelude::Extension,
                 $after::prelude::Extension,
                 TestData::load().extension,
                 $version
             );
-            test_case!(
+            generate_test_fn!(
                 test_credential_type,
                 $before::prelude::CredentialType,
                 $after::prelude::CredentialType,
                 TestData::load().credential_type,
                 $version
             );
-            test_case!(
+            generate_test_fn!(
                 test_proposal_type,
                 $before::prelude::ProposalType,
                 $after::prelude::ProposalType,
@@ -141,7 +141,7 @@ macro_rules! compat_tests {
                 $version
             );
 
-            test_case!(
+            generate_test_fn!(
                 test_proposal,
                 $before::prelude::Proposal,
                 $after::prelude::Proposal,
