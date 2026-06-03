@@ -9,7 +9,7 @@ use std::sync::OnceLock;
 static TEST_DATA: OnceLock<TestData> = OnceLock::new();
 
 #[allow(nonstandard_style)]
-#[derive(PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 enum SupportedVersion {
     OpenMls_0_7_1,
     OpenMls_0_8_1,
@@ -77,6 +77,15 @@ where
     }
 }
 
+/// Helper function to retrieve the enum variant name from the `serde_json::Value` input data
+fn name(input: &serde_json::Value) -> String {
+    match input {
+        serde_json::Value::String(s) => s.to_string(),
+        serde_json::Value::Object(map) => map.keys().next().unwrap().to_string(),
+        _ => unimplemented!(),
+    }
+}
+
 macro_rules! test_case {
     ($test_name:ident,$before:ty,$after:ty,$test_cases:expr,$version:expr) => {
         #[test]
@@ -85,9 +94,13 @@ macro_rules! test_case {
                 .iter()
                 .filter(|case| case.supported.contains(&$version))
                 .for_each(|case| {
-                    eprintln!("{}", case.input);
                     let migration = Migration::<$before, $after>::from_value(&case.input);
-                    migration.test_tag()
+                    migration.test_tag();
+                    eprintln!(
+                        "Tests succeeded for {}::{}",
+                        stringify!($before).replace(" ", ""),
+                        name(&case.input)
+                    );
                 });
         }
     };
