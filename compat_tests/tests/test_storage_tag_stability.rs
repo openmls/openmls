@@ -8,18 +8,32 @@ use std::sync::OnceLock;
 
 static TEST_DATA: OnceLock<TestData> = OnceLock::new();
 
+#[allow(nonstandard_style)]
+#[derive(PartialEq, serde::Serialize, serde::Deserialize)]
+enum SupportedVersion {
+    OpenMls_0_7_1,
+    OpenMls_0_8_1,
+    OpenMls_0_8_1_Extensions,
+}
+
 /// Partly deserialized test data.
 ///
 /// Each `serde_json::Value` is deserialized separately
 /// into two versions of a type (Before, After), and
 /// can be used to compare their values..
-#[derive(serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct TestData {
-    credential_type: Vec<serde_json::Value>,
-    extension_type: Vec<serde_json::Value>,
-    extension: Vec<serde_json::Value>,
-    proposal_type: Vec<serde_json::Value>,
-    proposal: Vec<serde_json::Value>,
+    credential_type: Vec<TestCase>,
+    extension_type: Vec<TestCase>,
+    extension: Vec<TestCase>,
+    proposal_type: Vec<TestCase>,
+    proposal: Vec<TestCase>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct TestCase {
+    input: serde_json::Value,
+    supported: Vec<SupportedVersion>,
 }
 
 impl TestData {
@@ -64,19 +78,23 @@ where
 }
 
 macro_rules! test_case {
-    ($test_name:ident,$before:ty,$after:ty,$test_cases:expr) => {
+    ($test_name:ident,$before:ty,$after:ty,$test_cases:expr,$version:expr) => {
         #[test]
         fn $test_name() {
-            $test_cases.iter().for_each(|case| {
-                let migration = Migration::<$before, $after>::from_value(case);
-                migration.test_tag()
-            });
+            $test_cases
+                .iter()
+                .filter(|case| case.supported.contains(&$version))
+                .for_each(|case| {
+                    eprintln!("{}", case.input);
+                    let migration = Migration::<$before, $after>::from_value(&case.input);
+                    migration.test_tag()
+                });
         }
     };
 }
 
 macro_rules! compat_tests {
-    ($mod_name:ident, $before:tt, $after:tt) => {
+    ($mod_name:ident, $before:tt, $after:tt, $version:expr) => {
         mod $mod_name {
             use super::*;
 
@@ -84,32 +102,37 @@ macro_rules! compat_tests {
                 test_extension_type,
                 $before::prelude::ExtensionType,
                 $after::prelude::ExtensionType,
-                TestData::load().extension_type
+                TestData::load().extension_type,
+                $version
             );
             test_case!(
                 test_extension,
                 $before::prelude::Extension,
                 $after::prelude::Extension,
-                TestData::load().extension
+                TestData::load().extension,
+                $version
             );
             test_case!(
                 test_credential_type,
                 $before::prelude::CredentialType,
                 $after::prelude::CredentialType,
-                TestData::load().credential_type
+                TestData::load().credential_type,
+                $version
             );
             test_case!(
                 test_proposal_type,
                 $before::prelude::ProposalType,
                 $after::prelude::ProposalType,
-                TestData::load().proposal_type
+                TestData::load().proposal_type,
+                $version
             );
 
             test_case!(
                 test_proposal,
                 $before::prelude::Proposal,
                 $after::prelude::Proposal,
-                TestData::load().proposal
+                TestData::load().proposal,
+                $version
             );
         }
     };
@@ -117,7 +140,25 @@ macro_rules! compat_tests {
 
 // check the storage tag stability for openmls=0.7.1 => `main`
 #[cfg(feature = "compat_0_7_1")]
-compat_tests!(test_storage_tags_0_7_1, openmls_0_7_1, openmls);
+compat_tests!(
+    test_storage_tags_0_7_1,
+    openmls_0_7_1,
+    openmls,
+    SupportedVersion::OpenMls_0_7_1
+);
 // check the storage tag stability for openmls=0.8.1 => `main`
-#[cfg(feature = "compat_0_8_1")]
-compat_tests!(test_storage_tags_0_8_1, openmls_0_8_1, openmls);
+#[cfg(all(feature = "compat_0_8_1", not(feature = "compat_0_8_1_extensions")))]
+compat_tests!(
+    test_storage_tags_0_8_1,
+    openmls_0_8_1,
+    openmls,
+    SupportedVersion::OpenMls_0_8_1
+);
+// check the storage tag stability for openmls=0.8.1 => `main` with feature `extensions-draft-08`
+#[cfg(feature = "compat_0_8_1_extensions")]
+compat_tests!(
+    test_storage_tags_0_8_1,
+    openmls_0_8_1,
+    openmls,
+    SupportedVersion::OpenMls_0_8_1_Extensions
+);
