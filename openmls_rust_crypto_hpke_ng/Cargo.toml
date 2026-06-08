@@ -1,0 +1,42 @@
+[package]
+name = "openmls_rust_crypto_hpke_ng"
+authors = ["OpenMLS Authors"]
+version = "0.1.0"
+edition = "2021"
+description = "A crypto backend for OpenMLS implementing openmls_traits using RustCrypto primitives, with HPKE provided by hpke-ng."
+license = "MIT"
+documentation = "https://docs.rs/openmls_rust_crypto_hpke_ng"
+repository = "https://github.com/openmls/openmls/tree/main/openmls_rust_crypto_hpke_ng"
+readme = "README.md"
+
+[dependencies]
+openmls_traits = { workspace = true }
+openmls_memory_storage = { workspace = true }
+
+hpke-ng = { version = "0.1.0-rc.2", default-features = false, features = ["std"] }
+
+# Rust Crypto dependencies
+sha2 = { version = "0.11" }
+aes-gcm = { version = "0.10" }
+chacha20poly1305 = { version = "0.10" }
+hmac = { version = "0.13" }
+ed25519-dalek = { version = "2.0", features = ["rand_core"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+# hpke-ng uses rand_core 0.9; bring it in alongside 0.6 (used by ed25519-dalek
+# and p256) and bridge between them via a small trait wrapper in `provider.rs`.
+rand_core_09 = { package = "rand_core", version = "0.9", default-features = false }
+p256 = { version = "0.13" }
+hkdf = { version = "0.13" }
+rand_chacha = { version = "0.3" }
+tls_codec = { workspace = true }
+thiserror = "2.0"
+serde = { version = "^1.0", features = ["derive"] }
+zeroize = { version = "1.8", features = ["derive", "alloc"] }
+
+[features]
+test-utils = ["openmls_memory_storage/test-utils"]
+
+[dev-dependencies]
+# Cross-validate against the legacy hpke-rs-backed provider so the two crates
+# stay byte-compatible at the RFC 9180 layer.
+openmls_rust_crypto = { workspace = true }
