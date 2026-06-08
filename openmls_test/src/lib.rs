@@ -15,7 +15,7 @@ const MTI_CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_
 /// With the feature enabled, every supported ciphersuite is emitted, which
 /// matches the historical behaviour and is intended for on-demand runs
 /// (nightly CI, release validation).
-fn expansion_ciphersuites(provider_supported: Vec<Ciphersuite>) -> Vec<Ciphersuite> {
+fn filter_ciphersuites(provider_supported: Vec<Ciphersuite>) -> Vec<Ciphersuite> {
     if cfg!(feature = "all-ciphersuites") {
         provider_supported
     } else if provider_supported.contains(&MTI_CIPHERSUITE) {
@@ -38,7 +38,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let rc = OpenMlsRustCrypto::default();
 
-    let rc_ciphersuites = expansion_ciphersuites(rc.crypto().supported_ciphersuites());
+    let rc_ciphersuites = filter_ciphersuites(rc.crypto().supported_ciphersuites());
 
     let mut test_funs = Vec::new();
 
@@ -72,7 +72,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     #[cfg(all(feature = "sqlite-provider", not(target_arch = "wasm32",)))]
     {
-        let rc_ciphersuites = expansion_ciphersuites(rc.crypto().supported_ciphersuites());
+        let rc_ciphersuites = filter_ciphersuites(rc.crypto().supported_ciphersuites());
         for ciphersuite in rc_ciphersuites {
             let val = ciphersuite as u16;
             let ciphersuite_name = format!("{ciphersuite:?}");
@@ -160,7 +160,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     {
         let libcrux = openmls_libcrux_crypto::Provider::default();
         let libcrux_ciphersuites =
-            expansion_ciphersuites(libcrux.crypto().supported_ciphersuites());
+            filter_ciphersuites(libcrux.crypto().supported_ciphersuites());
 
         for ciphersuite in libcrux_ciphersuites {
             let val = ciphersuite as u16;
