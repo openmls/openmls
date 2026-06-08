@@ -159,8 +159,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     ))]
     {
         let libcrux = openmls_libcrux_crypto::Provider::default();
-        let libcrux_ciphersuites =
-            filter_ciphersuites(libcrux.crypto().supported_ciphersuites());
+        let libcrux_ciphersuites = filter_ciphersuites(libcrux.crypto().supported_ciphersuites());
 
         for ciphersuite in libcrux_ciphersuites {
             let val = ciphersuite as u16;
