@@ -53,6 +53,23 @@ jobs:
       - name: Tests
         run: cargo test ${{ matrix.mode_arg }} -p openmls --verbose --no-default-features ${{ matrix.features_arg }}
 
+  compat_tests:
+    runs-on: "ubuntu-latest"
+    defaults:
+      run:
+        working-directory: "compat_tests"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Tests
+        run: ./test.sh
+
+
+
   wasm:
     runs-on: "ubuntu-latest"
     steps:
