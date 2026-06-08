@@ -10,7 +10,7 @@ use crate::schedule::message_secrets::MessageSecrets;
 use super::*;
 
 impl EpochTree {
-    #[cfg(test)]
+    #[cfg(all(test, feature = "sqlite-provider", feature = "libcrux-provider"))]
     pub(crate) fn timestamp(&self) -> Option<SystemTime> {
         self.message_secrets.timestamp()
     }
@@ -328,7 +328,7 @@ impl MessageSecretsStore {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "sqlite-provider", feature = "libcrux-provider"))]
     /// Helper function for testing, to iterate over all past epoch secrets
     pub(crate) fn iter_past_epoch_trees(&self) -> impl Iterator<Item = &EpochTree> {
         self.past_epoch_trees.iter()

@@ -4,6 +4,12 @@
 //! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 
+// Several imports below are used only by `generate_test_vector`, which is
+// gated behind the `generate-kats` feature. Keep the imports unconditional
+// so the writer keeps working, and silence the resulting warnings when the
+// feature is off.
+#![cfg_attr(not(feature = "generate-kats"), allow(unused_imports))]
+
 use frankenstein::{FrankenFramedContentBody, FrankenPublicMessage};
 use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
@@ -116,6 +122,7 @@ pub struct MessagesTestVector {
     private_message: Vec<u8>,
 }
 
+#[cfg(feature = "generate-kats")]
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let provider = OpenMlsRustCrypto::default();
 
@@ -313,6 +320,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     }
 }
 
+#[cfg(feature = "generate-kats")]
 #[test]
 fn write_test_vectors_msg() {
     use openmls_traits::crypto::OpenMlsCrypto;
