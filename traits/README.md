@@ -28,7 +28,9 @@ This [trait](./src/crypto.rs) defines all cryptographic functions required by Op
 
 ### StorageProvider
 
-This [trait](./src/storage.rs) defines a CRUD API for a key store that is used to store long-term key material from OpenMLS.
+This [trait](./src/storage.rs) defines a CRUD API for a key store that is used to store long-term key material from OpenMLS. It is also used to store state for groups.
+
+OpenMLS APIs should be used with StorageProviders that guarantee that group operations are performed atomically, and that access to each single group's data in the storage provider (for both reads and writes) is exclusive. However, the OpenMLS library does not guarantee that these properties hold.
 
 ### OpenMlsCryptoProvider
 
