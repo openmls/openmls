@@ -1,6 +1,6 @@
 # Key Packages
 
-The MLS protocol is designed in a way that allows members to be added to groups without the said members being online (because more generally: MLS communication is entirely designed to be asynchronous).
+The MLS protocol is designed to be asynchronous: It allows members to be added to groups without said members being online.
 
 The general flow is like this:
 
