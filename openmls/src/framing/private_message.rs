@@ -58,6 +58,21 @@ pub(crate) struct MlsMessageHeader {
 }
 
 impl PrivateMessage {
+    /// Returns the [`GroupId`] of the group this message was sent in
+    pub fn group_id(&self) -> &GroupId {
+        &self.group_id
+    }
+
+    /// Returns the [`GroupEpoch`] of the group this message was sent in
+    pub fn epoch(&self) -> GroupEpoch {
+        self.epoch
+    }
+
+    /// Returns the [`ContentType`] of the payload of this message
+    pub fn content_type(&self) -> ContentType {
+        self.content_type
+    }
+
     #[cfg(test)]
     pub(crate) fn new(
         group_id: GroupId,
@@ -269,11 +284,6 @@ impl PrivateMessage {
             generation,
             private_message,
         })
-    }
-
-    /// Returns the epoch of the message.
-    pub fn epoch(&self) -> GroupEpoch {
-        self.epoch
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.
