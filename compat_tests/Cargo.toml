@@ -4,11 +4,28 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[features]
+compat_0_7_1 = ["dep:openmls_0_7_1"]
+compat_0_8_1 = ["dep:openmls_0_8_1", "openmls/0-8-1-storage-format"]
+compat_0_8_1_extensions = [
+    "compat_0_8_1",
+    "openmls_0_8_1/extensions-draft-08",
+    "openmls/extensions-draft-08",
+]
+
 [dependencies]
-serde = { workspace = true }
-thiserror = { workspace = true }
+serde = { version = "^1.0" }
+thiserror = { version = "^2.0" }
+openmls_0_7_1 = { package = "openmls", version = "=0.7.1", optional = true }
+openmls_0_8_1 = { package = "openmls", version = "=0.8.1", optional = true }
+openmls = { path = "../openmls" }
 
 [dev-dependencies]
 serde_json = "1.0"
-openmls = { workspace = true }
-openmls_0_7_1 = { package = "openmls", version = "=0.7.1" }
+
+# XXX: workaround for incompatible dependencies between
+# `main` and `openmls=0.8.1` when the `extensions-draft-08`
+# feature is enabled
+[patch.crates-io]
+openmls_libcrux_crypto = { path = "../libcrux_crypto" }
+openmls_sqlite_storage = { path = "../sqlite_storage" }

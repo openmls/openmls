@@ -37,6 +37,9 @@ jobs:
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: release, mode_arg: --release, features_name: fork-resolution, features_arg: "-F fork-resolution" }
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: debug, mode_arg: "", features_name: extensions-draft-08, features_arg: "-F extensions-draft-08,extensions-draft-08-test-dependencies" }
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: release, mode_arg: --release, features_name: extensions-draft-08, features_arg: "-F extensions-draft-08,extensions-draft-08-test-dependencies" }
+          # Test the storage compatibility feature with and without extensions draft feature
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: release, mode_arg: --release, features_name: 0-8-1-storage-format, features_arg: "-F 0-8-1-storage-format" }
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: release, mode_arg: --release, features_name: 0-8-1-storage-format-extensions-draft-08, features_arg: "-F 0-8-1-storage-format,extensions-draft-08,extensions-draft-08-test-dependencies" }
           # Other platforms: debug + default features only.
           - { os: windows-latest, target: x86_64-pc-windows-msvc, mode_name: debug, mode_arg: "", features_name: default, features_arg: "" }
           - { os: macos-latest, target: aarch64-apple-darwin, mode_name: debug, mode_arg: "", features_name: default, features_arg: "" }
@@ -52,6 +55,23 @@ jobs:
 
       - name: Tests
         run: cargo test ${{ matrix.mode_arg }} -p openmls --verbose --no-default-features ${{ matrix.features_arg }}
+
+  compat_tests:
+    runs-on: "ubuntu-latest"
+    defaults:
+      run:
+        working-directory: "compat_tests"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Tests
+        run: ./test.sh
+
+
 
   wasm:
     runs-on: "ubuntu-latest"
