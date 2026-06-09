@@ -2,14 +2,14 @@
 
 The MLS protocol is designed to be asynchronous: It allows members to be added to groups without said members being online.
 
-The general flow is like this:
+The general flow is as follows:
 
 1. **Client A** generates key packages and registers them with the Delivery Service
 2. **Client B** decides to add **Client A** to a group, so it contacts the Delivery Service and downloads one of **Client A**'s key packages
 3. The delivery service marks the `KeyPackage` as consumed (more on this below)
 4. **Client B** uses the **KeyPackage** to generate a commit that adds **Client A** to the group
 
-Each key package has corresponding private keys that are meant to be stored locally only. Therefore OpenMLS defines a struct called `KeyPackageBundle`, which consists of:
+Each key package has corresponding private keys; The `KeyPackageBundle` structure encapsulates a key package and its private keys:
 
 - `key_package` (`KeyPackage`): Public key material and information required to add the client to a group
 - `private_init_key` (`HpkePrivateKey`): The private key required to decrypt the `Welcome` message that adds the client to a group
@@ -25,16 +25,16 @@ Finally, a key package is identified within the protocol by a ["hash reference"]
 
 ## Creating `KeyPackageBundle`s
 
-You need to choose a few parameters when creating `KeyPackageBundle`s:
+A few parameters need to be determined in order to generate a `KeyPackageBundle`:
 
 - `ciphersuites: &[CiphersuiteName]`: A list of ciphersuites supported by the client.
-- `extensions: Vec<Extensions>`: A list of supported extensions.
+- `extensions: Vec<Extensions>`: A list of extensions supported by the client.
 
-The client must specify at least one ciphersuite per KeyPackage and not advertise ciphersuites it does not support.
+The client must specify at least one ciphersuite per KeyPackage and it must not advertise ciphersuites it does not support.
 
-You should specify all extensions they support. See the documentation of extensions for more details.
+The client should advertise all extensions it supports. See the documentation of extensions for more details.
 
-Here's how you can generate a `KeyPackageBundle`:
+A `KeyPackageBundle` can be generated through the `KeyPackage::builder()`:
 
 ```rust
 // The following needs to be pre-defined:
