@@ -625,7 +625,7 @@ mod virtual_clients_draft {
     }
 
     /// Errors returned by
-    /// [`MlsGroup::register_vc_emulation_epoch`](super::MlsGroup::register_vc_emulation_epoch).
+    /// [`MlsGroup::register_vc_emulation_epoch`](crate::group::MlsGroup::register_vc_emulation_epoch).
     #[derive(Error, Debug, PartialEq, Clone)]
     pub enum RegisterVcEmulationEpochError<StorageError> {
         /// See [`SafeExportSecretError`] for more details.
