@@ -321,7 +321,7 @@ impl LeafNode {
     ///
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
-    #[cfg(test)]
+    #[cfg(all(test, feature = "generate-kats"))]
     pub(crate) fn generate_update<Provider: OpenMlsProvider>(
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
@@ -1022,7 +1022,7 @@ impl SignedStruct<LeafNodeTbs> for LeafNode {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum LeafNodeGenerationError<StorageError> {
     /// See [`LibraryError`] for more details.

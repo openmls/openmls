@@ -1,3 +1,9 @@
+// Several imports below are used only by `generate_test_vector` and its
+// helpers, which are gated behind the `generate-kats` feature. Keep the
+// imports unconditional so the writer keeps working, and silence the
+// resulting warnings when the feature is off.
+#![cfg_attr(not(feature = "generate-kats"), allow(unused_imports))]
+
 use log::{debug, info, warn};
 use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
@@ -24,7 +30,9 @@ const TEST_VECTORS_PATH_READ: &[&str] = &[
     "test_vectors/passive-client-random.json",
     "test_vectors/passive-client-handling-commit.json",
 ];
+#[cfg(feature = "generate-kats")]
 const TEST_VECTOR_PATH_WRITE: &[&str] = &["test_vectors/passive-client-welcome-new.json"];
+#[cfg(feature = "generate-kats")]
 const NUM_TESTS: usize = 25;
 
 /// ```json
@@ -181,6 +189,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     }
 }
 
+#[cfg(feature = "generate-kats")]
 #[test]
 fn test_write_vectors() {
     crate::skip_validation::checks::leaf_node_lifetime::handle().with_disabled(|| {
@@ -328,6 +337,7 @@ impl PassiveClient {
     }
 }
 
+#[cfg(feature = "generate-kats")]
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTestVector {
     let group_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
@@ -507,6 +517,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTes
 
 // -------------------------------------------------------------------------------------------------
 
+#[cfg(feature = "generate-kats")]
 fn propose_add(
     cipher_suite: Ciphersuite,
     provider: &OpenMlsRustCrypto,
@@ -533,6 +544,7 @@ fn propose_add(
     TestProposal(mls_message_out_proposal.tls_serialize_detached().unwrap())
 }
 
+#[cfg(feature = "generate-kats")]
 fn propose_remove(
     provider: &OpenMlsRustCrypto,
     candidate: &GroupCandidate,
@@ -552,6 +564,7 @@ fn propose_remove(
     TestProposal(mls_message_out_proposal.tls_serialize_detached().unwrap())
 }
 
+#[cfg(feature = "generate-kats")]
 fn commit(provider: &OpenMlsRustCrypto, creator: &GroupCandidate, group: &mut MlsGroup) -> Vec<u8> {
     let (mls_message_out_commit, _, _) = group
         .commit_to_pending_proposals(provider, &creator.signature_keypair)
@@ -561,6 +574,7 @@ fn commit(provider: &OpenMlsRustCrypto, creator: &GroupCandidate, group: &mut Ml
     mls_message_out_commit.tls_serialize_detached().unwrap()
 }
 
+#[cfg(feature = "generate-kats")]
 fn update_inline(
     provider: &OpenMlsRustCrypto,
     candidate: &GroupCandidate,
