@@ -249,10 +249,7 @@ where
 mod tests {
     use super::*;
     use openmls_test::openmls_test;
-    use rand::{
-        rngs::{OsRng, StdRng},
-        Rng, SeedableRng, TryRngCore,
-    };
+    use rand::{rngs::StdRng, Rng, RngExt, SeedableRng};
 
     fn random_vec(rng: &mut impl Rng, len: usize) -> Vec<u8> {
         let mut bytes = vec![0u8; len];
@@ -271,7 +268,7 @@ mod tests {
     #[openmls_test]
     fn evaluates_single_path() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.unwrap_mut().random();
+        let seed: [u8; 32] = rand::rng().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
@@ -287,7 +284,7 @@ mod tests {
     #[openmls_test]
     fn re_evaluation_of_same_index_returns_error() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.unwrap_mut().random();
+        let seed: [u8; 32] = rand::rng().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
@@ -306,7 +303,7 @@ mod tests {
     #[openmls_test]
     fn different_indices_produce_different_results() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.unwrap_mut().random();
+        let seed: [u8; 32] = rand::rng().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
@@ -324,7 +321,7 @@ mod tests {
     #[openmls_test]
     fn rejects_out_of_bounds_index() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.unwrap_mut().random();
+        let seed: [u8; 32] = rand::rng().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
@@ -340,7 +337,7 @@ mod tests {
     #[openmls_test]
     fn pprf_serialization() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.unwrap_mut().random();
+        let seed: [u8; 32] = rand::rng().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
