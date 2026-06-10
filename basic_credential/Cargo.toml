@@ -12,7 +12,7 @@ readme = "README.md"
 [dependencies]
 openmls_traits = { workspace = true }
 tls_codec = { workspace = true }
-serde = "1.0"
+serde = { workspace = true }
 
 # Rust Crypto
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }

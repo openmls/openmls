@@ -77,15 +77,30 @@ pub mod errors;
 /// | 0xDADA           | GREASE                   | Y | RFC XXXX |
 /// | 0xEAEA           | GREASE                   | Y | RFC XXXX |
 /// | 0xF000  - 0xFFFF | Reserved for Private Use | - | RFC XXXX |
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(
+    feature = "0-8-1-storage-format",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[cfg_attr(
+    not(feature = "0-8-1-storage-format"),
+    derive(
+        openmls_serialization_helpers::Serialize,
+        openmls_serialization_helpers::Deserialize,
+    )
+)]
 #[repr(u16)]
 pub enum CredentialType {
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 0)]
     /// A [`BasicCredential`]
     Basic = 1,
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 1)]
     /// An X.509 [`Certificate`]
     X509 = 2,
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 3)]
     /// A GREASE credential type for ensuring extensibility.
     Grease(u16),
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 2)]
     /// Another type of credential that is not in the MLS protocol spec.
     Other(u16),
 }
