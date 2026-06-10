@@ -34,13 +34,13 @@ use crate::{
     messages::*,
     treesync::{node::Node, LeafNode, RatchetTree, RatchetTreeIn},
 };
-use ::rand::{rngs::OsRng, RngCore, TryRngCore};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsProvider as _,
 };
+use rand::Rng;
 
 use std::{collections::HashMap, sync::RwLock};
 use tls_codec::{Deserialize, Serialize};
@@ -69,7 +69,7 @@ pub struct Group {
 impl Group {
     /// Return the identity of a random member of the group.
     pub fn random_group_member(&self) -> (u32, Vec<u8>) {
-        let index = (OsRng.unwrap_mut().next_u32() as usize) % self.members.len();
+        let index = (rand::rng().next_u32() as usize) % self.members.len();
         let (i, identity) = self.members[index].clone();
         (i as u32, identity)
     }
@@ -465,7 +465,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
     ) -> Result<GroupId, SetupError<Provider::StorageError>> {
         // Pick a random group creator.
         let clients = self.clients.read().expect("An unexpected error occurred.");
-        let group_creator_id = ((OsRng.unwrap_mut().next_u32() as usize) % clients.len())
+        let group_creator_id = ((rand::rng().next_u32() as usize) % clients.len())
             .to_be_bytes()
             .to_vec();
         let group_creator = clients
@@ -521,8 +521,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
             // Pick a random adder.
             let adder_id = group.random_group_member();
             // Add between 1 and 5 new members.
-            let number_of_adds =
-                ((OsRng.unwrap_mut().next_u32() as usize) % 5 % new_members.len()) + 1;
+            let number_of_adds = ((rand::rng().next_u32() as usize) % 5 % new_members.len()) + 1;
             let members_to_add = new_members.drain(0..number_of_adds).collect();
             self.add_clients(
                 ActionType::Commit,
@@ -656,8 +655,7 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
         group: &mut Group,
         authentication_service: &AS,
     ) -> Result<(), SetupError<Provider::StorageError>> {
-        let mut rng = OsRng;
-        let mut rng = rng.unwrap_mut();
+        let mut rng = rand::rng();
 
         // Who's going to do it?
         let member_id = group.random_group_member();
