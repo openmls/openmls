@@ -794,8 +794,8 @@ impl LeafNodeIn {
 
     /// Assume that signature is valid and return the corresponding [`LeafNode`].
     ///
-    /// Use with caution, the client must guarantee that the leaf node is verified.
-    pub fn unwrap_verified(self) -> LeafNode {
+    /// The caller must guarantee that the leaf node is verified.
+    pub fn into_unchecked(self) -> LeafNode {
         LeafNode {
             payload: self.payload,
             signature: self.signature,

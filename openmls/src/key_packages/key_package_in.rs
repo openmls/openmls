@@ -212,13 +212,13 @@ impl KeyPackageIn {
 
     /// Assume that the signature is valid and return the [`KeyPackage`].
     ///
-    /// Use with caution, the client must guarantee that the key package is verified.
-    pub fn unwrap_verified(self) -> Result<KeyPackage, KeyPackageVerifyError> {
+    /// The caller must guarantee that the key package is verified.
+    pub fn into_unchecked(self) -> Result<KeyPackage, KeyPackageVerifyError> {
         let payload = KeyPackageTbs {
             protocol_version: self.payload.protocol_version,
             ciphersuite: self.payload.ciphersuite,
             init_key: self.payload.init_key,
-            leaf_node: self.payload.leaf_node.unwrap_verified(),
+            leaf_node: self.payload.leaf_node.into_unchecked(),
             extensions: self.payload.extensions.try_into()?,
         };
         Ok(KeyPackage {
