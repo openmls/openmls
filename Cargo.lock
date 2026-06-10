@@ -1114,7 +1114,7 @@ dependencies = [
  "openmls_memory_storage",
  "openmls_rust_crypto",
  "openmls_traits",
- "rand 0.9.4",
+ "rand 0.10.1",
  "serde",
 ]
 
