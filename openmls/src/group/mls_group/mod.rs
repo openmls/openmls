@@ -251,6 +251,11 @@ pub struct MlsGroup {
     // is ephemeral and will be reset by every API call that successfully
     // returns an [`MlsMessageOut`].
     aad: Vec<u8>,
+    // Safe AAD items to attach to the next outgoing message. Ephemeral, reset
+    // alongside `aad`. Only consulted when the group's GroupContext requires
+    // Safe AAD framing.
+    #[cfg(feature = "extensions-draft-08")]
+    safe_aad: SafeAad,
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
     group_state: MlsGroupState,
@@ -290,6 +295,28 @@ impl MlsGroup {
     /// message.
     pub fn aad(&self) -> &[u8] {
         &self.aad
+    }
+
+    /// Stage Safe AAD items for the next outgoing message. Items must be
+    /// sorted by [`ComponentId`] in strictly-increasing order and contain no
+    /// duplicates; otherwise the call fails and the previously staged items
+    /// are left untouched.
+    ///
+    /// Ephemeral, like [`Self::set_aad`]: cleared whenever an outgoing message
+    /// is produced.
+    ///
+    /// [`ComponentId`]: crate::component::ComponentId
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn set_safe_aad(&mut self, items: Vec<SafeAadItem>) -> Result<(), SafeAadError> {
+        self.safe_aad = SafeAad::from_items(items)?;
+        Ok(())
+    }
+
+    /// Returns the currently staged Safe AAD items for the next outgoing
+    /// message.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn safe_aad_items(&self) -> &[SafeAadItem] {
+        self.safe_aad.items()
     }
 
     // === Advanced functions ===
@@ -456,6 +483,8 @@ impl MlsGroup {
                 mls_group_config: mls_group_config?,
                 own_leaf_nodes,
                 aad: vec![],
+                #[cfg(feature = "extensions-draft-08")]
+                safe_aad: SafeAad::empty(),
                 group_state: group_state?,
                 #[cfg(feature = "extensions-draft-08")]
                 application_export_tree,
@@ -709,12 +738,38 @@ impl MlsGroup {
         Ok(msg)
     }
 
-    /// Group framing parameters
-    pub(crate) fn framing_parameters(&self) -> FramingParameters<'_> {
-        FramingParameters::new(
-            &self.aad,
-            self.mls_group_config.wire_format_policy().outgoing(),
-        )
+    /// Outgoing wire format derived from the group's configured policy.
+    pub(crate) fn outgoing_wire_format(&self) -> WireFormat {
+        self.mls_group_config.wire_format_policy().outgoing().into()
+    }
+
+    /// Owned `authenticated_data` bytes for the next outgoing message, taking
+    /// the GroupContext's Safe AAD requirement into account.
+    ///
+    /// Callers borrow the returned buffer into a [`FramingParameters`] for the
+    /// duration of message construction.
+    pub(crate) fn outgoing_authenticated_data(&self) -> Result<Vec<u8>, LibraryError> {
+        #[cfg(feature = "extensions-draft-08")]
+        {
+            self.assembled_authenticated_data()
+        }
+        #[cfg(not(feature = "extensions-draft-08"))]
+        {
+            Ok(self.aad.clone())
+        }
+    }
+
+    /// Build the bytes that go into `authenticated_data` for the next outgoing
+    /// message. When the GroupContext requires Safe AAD framing, the result is
+    /// the TLS serialization of the staged [`SafeAad`] followed by the bytes of
+    /// `self.aad`. Otherwise, the result is `self.aad` unchanged.
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn assembled_authenticated_data(&self) -> Result<Vec<u8>, LibraryError> {
+        if !self.context().safe_aad_required() {
+            return Ok(self.aad.clone());
+        }
+        crate::framing::safe_aad::assemble_authenticated_data(&self.safe_aad, &self.aad)
+            .map_err(|_| LibraryError::custom("SafeAad serialization failed"))
     }
 
     /// Delete all past epoch secrets.
@@ -755,10 +810,14 @@ impl MlsGroup {
         self.public_group.version()
     }
 
-    /// Resets the AAD.
+    /// Resets the AAD, including any staged Safe AAD items.
     #[inline]
     pub(crate) fn reset_aad(&mut self) {
         self.aad.clear();
+        #[cfg(feature = "extensions-draft-08")]
+        {
+            self.safe_aad = SafeAad::empty();
+        }
     }
 
     /// Returns a reference to the public group.

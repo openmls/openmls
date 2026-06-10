@@ -161,6 +161,7 @@ impl PrivateMessageIn {
     /// When called with `emulator_ctx = Some(_)`, also inverts the
     /// virtual-clients reuse guard to recover the sender's emulation-group
     /// leaf index.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn to_verifiable_content(
         &self,
         ciphersuite: Ciphersuite,
@@ -208,7 +209,9 @@ impl PrivateMessageIn {
             )
             .map_err(|e| {
                 log::error!("vc: FF1 inversion of reuse_guard failed: {e:?}");
-                crate::components::vc_derivation_info::VirtualClientsError::CryptoError
+                crate::components::vc_derivation_info::VirtualClientsError::CryptoError(
+                    openmls_traits::types::CryptoError::CryptoLibraryError,
+                )
             })?;
             let n_e = u64::from(ctx.emulation_group_size.leaf_count());
             if n_e == 0 {
@@ -255,17 +258,17 @@ impl PrivateMessageIn {
     }
 
     /// Get the `group_id` in the `PrivateMessage`.
-    pub(crate) fn group_id(&self) -> &GroupId {
+    pub fn group_id(&self) -> &GroupId {
         &self.group_id
     }
 
     /// Get the `epoch` in the `PrivateMessage`.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
+    pub fn epoch(&self) -> GroupEpoch {
         self.epoch
     }
 
     /// Get the `content_type` in the `PrivateMessage`.
-    pub(crate) fn content_type(&self) -> ContentType {
+    pub fn content_type(&self) -> ContentType {
         self.content_type
     }
 

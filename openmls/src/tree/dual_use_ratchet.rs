@@ -58,11 +58,9 @@ impl DualUsePastSecret {
         ) {
             Self::AwaitingConfirmation(ratchet_secret)
             | Self::RetainedForDecryption(RetainedDecryptionSecret::Available(ratchet_secret)) => {
-                *self = Self::RetainedForDecryption(RetainedDecryptionSecret::Consumed);
                 Ok(ratchet_secret)
             }
             Self::RetainedForDecryption(RetainedDecryptionSecret::Consumed) => {
-                *self = Self::RetainedForDecryption(RetainedDecryptionSecret::Consumed);
                 Err(SecretTreeError::SecretReuseError)
             }
         }
@@ -105,7 +103,9 @@ impl DualUseRatchet {
     }
 
     /// Gets a secret for encryption. The secret is also recorded in the
-    /// past-secrets window so the caller can later confirm and drop it.
+    /// past-secrets window so the caller can later confirm and drop it. This
+    /// requires cloning the [`RatchetKeyMaterial`] with one clone returned and
+    /// the other retained until confirmation or use for decryption.
     ///
     /// The cache is not pruned here: emitted encryption secrets are only
     /// cleared by an explicit call to [`Self::delete_secret_for_generation`]
@@ -186,12 +186,8 @@ impl DualUseRatchet {
         if self
             .past_secrets
             .iter()
-            .find_map(|(retained_generation, entry)| {
-                entry
-                    .is_retained_for_decryption()
-                    .then_some(*retained_generation)
-            })
-            .is_some_and(|oldest_generation| generation < oldest_generation)
+            .find(|(_, entry)| entry.is_retained_for_decryption())
+            .is_some_and(|(oldest_generation, _)| generation < *oldest_generation)
         {
             log::error!("  Generation is too far in the past (not in the window).");
             SecretTreeError::TooDistantInThePast

@@ -10,7 +10,7 @@ use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 use crate::test_utils::write;
 use crate::{
     ciphersuite::*,
@@ -248,6 +248,7 @@ pub fn generate_test_vector(
     }
 }
 
+#[cfg(feature = "generate-kats")]
 #[test]
 fn write_test_vectors() {
     const NUM_EPOCHS: u64 = 2;

@@ -535,7 +535,8 @@ impl MlsGroup {
         let verified =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        match verified.content.sender() {
+        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        let mut processed = match verified.content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
                 .process_internal_authenticated_content_with_app_data_updates(
                     provider,
@@ -544,13 +545,20 @@ impl MlsGroup {
                     app_data_dict_updates,
                     #[cfg(feature = "virtual-clients-draft")]
                     verified.emulator_sender_leaf_index,
-                ),
+                )?,
             Sender::External(_) => self.process_external_authenticated_content(
                 provider,
                 verified.content,
                 verified.credential,
-            ),
+            )?,
+        };
+        #[cfg(feature = "extensions-draft-08")]
+        if self.context().safe_aad_required() {
+            processed
+                .try_attach_safe_aad()
+                .map_err(|_| ProcessMessageError::MalformedSafeAad)?;
         }
+        Ok(processed)
     }
 
     /// This processing function does most of the semantic verifications.
@@ -593,7 +601,8 @@ impl MlsGroup {
         let verified =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        match verified.content.sender() {
+        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        let mut processed = match verified.content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
                 .process_internal_authenticated_content(
                     provider,
@@ -601,13 +610,20 @@ impl MlsGroup {
                     verified.credential,
                     #[cfg(feature = "virtual-clients-draft")]
                     verified.emulator_sender_leaf_index,
-                ),
+                )?,
             Sender::External(_) => self.process_external_authenticated_content(
                 provider,
                 verified.content,
                 verified.credential,
-            ),
+            )?,
+        };
+        #[cfg(feature = "extensions-draft-08")]
+        if self.context().safe_aad_required() {
+            processed
+                .try_attach_safe_aad()
+                .map_err(|_| ProcessMessageError::MalformedSafeAad)?;
         }
+        Ok(processed)
     }
 
     /// This processing function does most of the semantic verifications.

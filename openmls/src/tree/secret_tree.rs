@@ -301,8 +301,8 @@ impl SecretTree {
             #[cfg(feature = "virtual-clients-draft")]
             {
                 (
-                    SenderRatchet::DualUseRatchet(DualUseRatchet::new(handshake_ratchet_secret)),
-                    SenderRatchet::DualUseRatchet(DualUseRatchet::new(application_ratchet_secret)),
+                    SenderRatchet::DualUse(DualUseRatchet::new(handshake_ratchet_secret)),
+                    SenderRatchet::DualUse(DualUseRatchet::new(application_ratchet_secret)),
                 )
             }
         } else {
@@ -361,7 +361,7 @@ impl SecretTree {
                 dec_ratchet.secret_for_decryption(ciphersuite, crypto, generation, configuration)
             }
             #[cfg(feature = "virtual-clients-draft")]
-            SenderRatchet::DualUseRatchet(dual_ratchet) => {
+            SenderRatchet::DualUse(dual_ratchet) => {
                 log::trace!("   getting secret for decryption (own dual-use ratchet)");
                 dual_ratchet.secret_for_decryption(ciphersuite, crypto, generation, configuration)
             }
@@ -389,7 +389,7 @@ impl SecretTree {
                 enc_ratchet.ratchet_forward(crypto, ciphersuite)
             }
             #[cfg(feature = "virtual-clients-draft")]
-            SenderRatchet::DualUseRatchet(dual_ratchet) => {
+            SenderRatchet::DualUse(dual_ratchet) => {
                 dual_ratchet.secret_for_encryption(ciphersuite, crypto)
             }
         }
@@ -402,7 +402,7 @@ impl SecretTree {
         generation: Generation,
     ) -> Result<(), SecretTreeError> {
         match self.ratchet_mut(self.own_index, secret_type)? {
-            SenderRatchet::DualUseRatchet(dual_ratchet) => {
+            SenderRatchet::DualUse(dual_ratchet) => {
                 dual_ratchet.delete_secret_for_generation(generation);
                 Ok(())
             }

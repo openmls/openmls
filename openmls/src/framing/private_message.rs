@@ -171,6 +171,7 @@ impl PrivateMessage {
 
     /// Internal function to encrypt content. The extra message header is only used
     /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
+    #[allow(clippy::too_many_arguments)]
     fn encrypt_content<T>(
         crypto: &impl OpenMlsCrypto,
         rand: &impl OpenMlsRand,

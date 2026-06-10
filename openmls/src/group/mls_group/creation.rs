@@ -561,6 +561,8 @@ impl StagedWelcome {
             mls_group_config: self.mls_group_config,
             own_leaf_nodes: vec![],
             aad: vec![],
+            #[cfg(feature = "extensions-draft-08")]
+            safe_aad: crate::framing::SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group: self.public_group,
             group_epoch_secrets: self.group_epoch_secrets,

@@ -35,6 +35,7 @@ use super::node::leaf_node::UpdateLeafNodeParams;
 /// This is the hook for the virtual-clients-draft sender flow.
 pub(crate) struct OwnUpdatePathOverride {
     pub(crate) path_secret: PathSecret,
+    #[cfg(feature = "virtual-clients-draft")]
     pub(crate) leaf_encryption_keypair: EncryptionKeyPair,
 }
 use super::{
@@ -362,6 +363,7 @@ impl TreeSyncDiff<'_> {
             self.add_leaf(leaf_node)?;
         }
 
+        #[cfg(feature = "virtual-clients-draft")]
         let (path_secret_override, leaf_keypair_override) = match vc_override {
             Some(OwnUpdatePathOverride {
                 path_secret,
@@ -369,6 +371,8 @@ impl TreeSyncDiff<'_> {
             }) => (Some(path_secret), Some(leaf_encryption_keypair)),
             None => (None, None),
         };
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        let path_secret_override = vc_override.map(|o| o.path_secret);
 
         // We calculate the parent hash so that we can use it for a fresh leaf
         let (path, update_path_nodes, parent_keypairs, commit_secret) =
@@ -392,6 +396,7 @@ impl TreeSyncDiff<'_> {
             group_id,
             leaf_index,
             signer,
+            #[cfg(feature = "virtual-clients-draft")]
             leaf_keypair_override,
         )?;
 

@@ -212,6 +212,7 @@ impl MlsGroup {
     }
 
     #[cfg(feature = "extensions-draft-08")]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn stage_commit_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,
