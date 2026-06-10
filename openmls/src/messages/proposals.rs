@@ -72,22 +72,47 @@ use crate::component::ComponentId;
 /// |:=======|:==============|:============|:==============|:==========|:=============================|
 /// | 0x0009 | app_ephemeral | Y           | N             | RFC XXXX  | draft-ietf-mls-extensions-08 |
 /// | 0x000a | self_remove   | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-07 |
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash)]
+#[cfg_attr(
+    feature = "0-8-1-storage-format",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[cfg_attr(
+    not(feature = "0-8-1-storage-format"),
+    derive(
+        openmls_serialization_helpers::Serialize,
+        openmls_serialization_helpers::Deserialize,
+    )
+)]
 #[allow(missing_docs)]
+#[repr(u16)]
 pub enum ProposalType {
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 0)]
     Add,
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 1)]
     Update,
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 2)]
     Remove,
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 3)]
     PreSharedKey,
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 4)]
     Reinit,
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 5)]
     ExternalInit,
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
     GroupContextExtensions,
+    // AppAck = 7,
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 8)]
     SelfRemove,
     #[cfg(feature = "extensions-draft-08")]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 11)]
     AppEphemeral,
     #[cfg(feature = "extensions-draft-08")]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 12)]
     AppDataUpdate,
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 10)]
     Grease(u16),
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 9)]
     Custom(u16),
 }
 
@@ -231,24 +256,46 @@ impl From<ProposalType> for u16 {
 ///     };
 /// } Proposal;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(
+    feature = "0-8-1-storage-format",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[cfg_attr(
+    not(feature = "0-8-1-storage-format"),
+    derive(
+        openmls_serialization_helpers::Serialize,
+        openmls_serialization_helpers::Deserialize,
+    )
+)]
 #[allow(missing_docs)]
-#[repr(u16)]
 pub enum Proposal {
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 0)]
     Add(Box<AddProposal>),
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 1)]
     Update(Box<UpdateProposal>),
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 2)]
     Remove(Box<RemoveProposal>),
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 3)]
     PreSharedKey(Box<PreSharedKeyProposal>),
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 4)]
     ReInit(Box<ReInitProposal>),
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 5)]
     ExternalInit(Box<ExternalInitProposal>),
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
+    // AppAck = 7,
     // # Extensions
     #[cfg(feature = "extensions-draft-08")]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 10)]
     AppDataUpdate(Box<AppDataUpdateProposal>),
     // A SelfRemove proposal is an empty struct.
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 8)]
     SelfRemove,
     #[cfg(feature = "extensions-draft-08")]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 11)]
     AppEphemeral(Box<AppEphemeralProposal>),
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 9)]
     Custom(Box<CustomProposal>),
 }
 

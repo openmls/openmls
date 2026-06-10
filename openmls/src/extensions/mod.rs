@@ -85,39 +85,59 @@ mod tests;
 /// | 0xff00  - 0xffff | Reserved for Private Use | N/A        | N/A         | RFC XXXX  |
 ///
 /// Note: OpenMLS does not provide a `Reserved` variant in [ExtensionType].
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[cfg_attr(
+    feature = "0-8-1-storage-format",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[cfg_attr(
+    not(feature = "0-8-1-storage-format"),
+    derive(
+        openmls_serialization_helpers::Serialize,
+        openmls_serialization_helpers::Deserialize,
+    )
+)]
 pub enum ExtensionType {
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 0)]
     /// The application id extension allows applications to add an explicit,
     /// application-defined identifier to a KeyPackage.
     ApplicationId,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 1)]
     /// The ratchet tree extensions provides the whole public state of the
     /// ratchet tree.
     RatchetTree,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 2)]
     /// The required capabilities extension defines the configuration of a group
     /// that imposes certain requirements on clients in the group.
     RequiredCapabilities,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 3)]
     /// To join a group via an External Commit, a new member needs a GroupInfo
     /// with an ExternalPub extension present in its extensions field.
     ExternalPub,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 4)]
     /// Group context extension that contains the credentials and signature keys
     /// of senders that are permitted to send external proposals to the group.
     ExternalSenders,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 5)]
     /// KeyPackage extension that marks a KeyPackage for use in a last resort
     /// scenario.
     LastResort,
 
     #[cfg(feature = "extensions-draft-08")]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 8)]
     /// AppDataDictionary extension
     AppDataDictionary,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 7)]
     /// A GREASE extension type for ensuring extensibility.
     Grease(u16),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
     /// A currently unknown extension type.
     Unknown(u16),
 }
@@ -290,30 +310,49 @@ impl From<ExtensionType> for u16 {
 ///     opaque extension_data<V>;
 /// } Extension;
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "0-8-1-storage-format",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[cfg_attr(
+    not(feature = "0-8-1-storage-format"),
+    derive(
+        openmls_serialization_helpers::Serialize,
+        openmls_serialization_helpers::Deserialize,
+    )
+)]
 pub enum Extension {
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 0)]
     /// An [`ApplicationIdExtension`]
     ApplicationId(ApplicationIdExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 1)]
     /// A [`RatchetTreeExtension`]
     RatchetTree(RatchetTreeExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 2)]
     /// A [`RequiredCapabilitiesExtension`]
     RequiredCapabilities(RequiredCapabilitiesExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 3)]
     /// An [`ExternalPubExtension`]
     ExternalPub(ExternalPubExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 4)]
     /// An [`ExternalSendersExtension`]
     ExternalSenders(ExternalSendersExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 7)]
     /// An [`AppDataDictionaryExtension`]
     #[cfg(feature = "extensions-draft-08")]
     AppDataDictionary(AppDataDictionaryExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 5)]
     /// A [`LastResortExtension`]
     LastResort(LastResortExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
     /// A currently unknown extension.
     Unknown(u16, UnknownExtension),
 }

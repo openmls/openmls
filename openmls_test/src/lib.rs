@@ -4,27 +4,27 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, ItemFn};
 
-/// Limit the post-quantum ciphersuites (enabled via the `draft-ietf-mls-pq-ciphersuites` feature)
-/// to a single representative variant to keep the number of generated tests and their runtime
-/// manageable. The variant is chosen such that both the ML-KEM and the ML-DSA code paths are
-/// exercised.
-fn test_ciphersuites(supported: Vec<Ciphersuite>) -> Vec<Ciphersuite> {
-    supported
-        .into_iter()
-        .filter(|ciphersuite| match ciphersuite {
-            // RFC 9420 Ciphersuites
-            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-            | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
-            | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-            | Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448
-            | Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521
-            | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448
-            | Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384
-            // One of the PQ Ciphersuites covering ML-KEM and ML-DSA
-            | Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65 => true,
-            _ => false,
-        })
-        .collect()
+/// Mandatory-to-implement ciphersuite per RFC 9420.
+/// Used as the sole default when the `all-ciphersuites` feature is off.
+const MTI_CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+
+/// Returns the ciphersuites a provider's tests should be expanded over.
+///
+/// Without the `all-ciphersuites` feature, this collapses to the MTI
+/// ciphersuite so each `#[openmls_test]` produces one test per provider.
+/// With the feature enabled, every supported ciphersuite is emitted, which
+/// matches the historical behaviour and is intended for on-demand runs
+/// (nightly CI, release validation).
+fn filter_ciphersuites(provider_supported: Vec<Ciphersuite>) -> Vec<Ciphersuite> {
+    if cfg!(feature = "all-ciphersuites") {
+        provider_supported
+    } else if provider_supported.contains(&MTI_CIPHERSUITE) {
+        vec![MTI_CIPHERSUITE]
+    } else {
+        // The provider does not advertise the MTI ciphersuite. Emit no
+        // tests for it rather than silently using something else.
+        Vec::new()
+    }
 }
 
 #[proc_macro_attribute]
@@ -38,7 +38,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let rc = OpenMlsRustCrypto::default();
 
-    let rc_ciphersuites = test_ciphersuites(rc.crypto().supported_ciphersuites());
+    let rc_ciphersuites = filter_ciphersuites(rc.crypto().supported_ciphersuites());
 
     let mut test_funs = Vec::new();
 
@@ -72,7 +72,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     #[cfg(all(feature = "sqlite-provider", not(target_arch = "wasm32",)))]
     {
-        let rc_ciphersuites = test_ciphersuites(rc.crypto().supported_ciphersuites());
+        let rc_ciphersuites = filter_ciphersuites(rc.crypto().supported_ciphersuites());
         for ciphersuite in rc_ciphersuites {
             let val = ciphersuite as u16;
             let ciphersuite_name = format!("{ciphersuite:?}");
@@ -159,7 +159,7 @@ pub fn openmls_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     ))]
     {
         let libcrux = openmls_libcrux_crypto::Provider::default();
-        let libcrux_ciphersuites = test_ciphersuites(libcrux.crypto().supported_ciphersuites());
+        let libcrux_ciphersuites = filter_ciphersuites(libcrux.crypto().supported_ciphersuites());
 
         for ciphersuite in libcrux_ciphersuites {
             let val = ciphersuite as u16;

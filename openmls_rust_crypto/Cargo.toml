@@ -33,9 +33,9 @@ rand_chacha = { version = "0.3" }
 hpke-rs-crypto = { version = "0.6.1" }
 hpke-rs-rust-crypto = { version = "0.6.1", features = ["experimental"] }
 tls_codec = { workspace = true }
-thiserror = "2.0"
-serde = { version = "^1.0", features = ["derive"] }
 ml-dsa = "0.1.0"
+thiserror = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 
 [features]
 test-utils = ["openmls_memory_storage/test-utils"]

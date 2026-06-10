@@ -1,0 +1,43 @@
+name: Nightly full-matrix tests
+
+# Runs the openmls test suite with every provider and every supported
+# ciphersuite enabled. The per-PR `tests.yml` job runs only against
+# RustCrypto and the MTI ciphersuite to keep CI fast, so this job exists
+# to catch regressions in the rest of the matrix.
+
+on:
+  schedule:
+    # 02:00 UTC every day. Cron syntax: minute hour dom month dow.
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        mode:
+          - { name: debug, arg: "" }
+          - { name: release, arg: --release }
+        features:
+          - { name: base, arg: "" }
+          - { name: fork-resolution, arg: "-F fork-resolution" }
+          - { name: extensions-draft-08, arg: "-F extensions-draft-08,extensions-draft-08-test-dependencies" }
+    runs-on: ubuntu-latest
+    name: full matrix (${{ matrix.mode.name }}/${{ matrix.features.name }})
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Tests with all providers and ciphersuites
+        run: |
+          cargo test ${{ matrix.mode.arg }} -p openmls --verbose --no-default-features \
+            -F all-ciphersuites,sqlite-provider,libcrux-provider ${{ matrix.features.arg }}

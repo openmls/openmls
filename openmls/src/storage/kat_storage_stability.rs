@@ -340,15 +340,17 @@ fn generate_kats() {
     helper_generate_kat::<Provider>(ciphersuite);
 }
 
-#[test]
-#[ignore]
-#[cfg(not(all(
-    feature = "libcrux-provider",
-    not(any(
-        target_arch = "wasm32",
-        all(target_arch = "x86", target_os = "windows")
+#[cfg(all(
+    feature = "generate-kats",
+    not(all(
+        feature = "libcrux-provider",
+        not(any(
+            target_arch = "wasm32",
+            all(target_arch = "x86", target_os = "windows")
+        ))
     ))
-)))]
+))]
+#[test]
 fn write_kats() {
     // setup
     let rustcrypto_provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
@@ -371,15 +373,15 @@ fn write_kats() {
     helper_write_kats(kat_data);
 }
 
-#[test]
-#[ignore]
 #[cfg(all(
+    feature = "generate-kats",
     feature = "libcrux-provider",
     not(any(
         target_arch = "wasm32",
         all(target_arch = "x86", target_os = "windows")
     ))
 ))]
+#[test]
 fn write_kats() {
     // setup
     let libcrux_provider = openmls_libcrux_crypto::Provider::default();
@@ -411,6 +413,7 @@ fn write_kats() {
     helper_write_kats(kat_data);
 }
 
+#[cfg(feature = "generate-kats")]
 fn helper_write_kats(kat_data: Vec<(Ciphersuite, GroupId, Vec<Vec<u8>>)>) {
     let base64_engine = base64::engine::GeneralPurpose::new(
         &base64::alphabet::URL_SAFE,
