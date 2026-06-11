@@ -318,6 +318,51 @@ impl DerivationInfo {
 )]
 pub struct EpochId(Vec<u8>);
 
+/// Per-higher-level-group record of which emulation-group epoch produced the
+/// virtual-client LeafNode that was active at each recent epoch of that
+/// group.
+///
+/// Reuse guards must be resolved with the emulation epoch that was bound at
+/// the higher-level epoch a message was sent in, not the latest one: a
+/// delayed PrivateMessage from a past higher-level epoch has to be
+/// deprotected with the state that was active then. Entries are written at
+/// commit merge and retained for as many past epochs as the group's message
+/// secrets store keeps, since a binding is only useful while the matching
+/// message secrets still exist.
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VcEmulationBindings {
+    // In order of insertion, oldest at the front.
+    bindings: std::collections::VecDeque<(crate::group::GroupEpoch, EpochId)>,
+}
+
+impl VcEmulationBindings {
+    /// Look up the emulation epoch bound at the given higher-level epoch.
+    pub fn get(&self, epoch: crate::group::GroupEpoch) -> Option<&EpochId> {
+        for (bound_epoch, epoch_id) in &self.bindings {
+            if *bound_epoch == epoch {
+                return Some(epoch_id);
+            }
+        }
+        None
+    }
+
+    /// Record `epoch_id` as the binding for `epoch`, keeping at most
+    /// `max_entries` entries by dropping the oldest ones.
+    pub(crate) fn insert(
+        &mut self,
+        epoch: crate::group::GroupEpoch,
+        epoch_id: EpochId,
+        max_entries: usize,
+    ) {
+        self.bindings
+            .retain(|(bound_epoch, _)| *bound_epoch != epoch);
+        self.bindings.push_back((epoch, epoch_id));
+        while self.bindings.len() > max_entries {
+            self.bindings.pop_front();
+        }
+    }
+}
+
 /// AEAD key used by the sender to wrap the [`EpochInfoTbe`] in the leaf's
 /// `app_data_dictionary` entry, and by the receiver to unwrap it. Its
 /// length is exactly [`Ciphersuite::aead_key_length`] for the emulation

@@ -514,12 +514,12 @@ impl MlsGroup {
         #[cfg(feature = "extensions-draft-08")]
         storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
 
-        // Drop this group's emulation-epoch binding. `EmulationEpochState`
+        // Drop this group's emulation-epoch bindings. `EmulationEpochState`
         // and `VcPprf` are keyed on the emulation epoch and may still be
         // referenced by other higher-level groups, so they're not
         // deleted here.
         #[cfg(feature = "virtual-clients-draft")]
-        storage.delete_vc_emulation_binding(self.group_id())?;
+        storage.delete_vc_emulation_bindings(self.group_id())?;
 
         self.proposal_store_mut().empty();
         storage.delete_encryption_epoch_key_pairs(
@@ -686,16 +686,19 @@ impl MlsGroup {
     ) -> Result<EncryptionOutput, MessageEncryptionError<Provider::StorageError>> {
         let padding_size = self.configuration().padding_size();
 
-        // If this group is bound to an emulation epoch, load the state so
-        // the framing layer can derive a deterministic reuse guard.
+        // If this group is bound to an emulation epoch at its current epoch,
+        // load the state so the framing layer can derive a deterministic
+        // reuse guard.
         #[cfg(feature = "virtual-clients-draft")]
         let emulation_state: Option<
             crate::components::vc_derivation_info::EmulationEpochState,
         > = {
-            let binding: Option<crate::components::vc_derivation_info::EpochId> = provider
-                .storage()
-                .vc_emulation_binding(self.group_id())
-                .map_err(MessageEncryptionError::StorageError)?;
+            let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> =
+                provider
+                    .storage()
+                    .vc_emulation_bindings(self.group_id())
+                    .map_err(MessageEncryptionError::StorageError)?;
+            let binding = bindings.and_then(|bindings| bindings.get(self.epoch()).cloned());
             match binding {
                 Some(epoch_id) => Some(
                     provider

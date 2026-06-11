@@ -177,14 +177,18 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
     }
 }
 
-/// Binding from higher-level-group to emulation-epoch binding. One row per
-/// higher-level group. Written on every VC commit merge.
-pub(super) struct StorableEmulationBindingRef<'a, EpochId: EntityTrait<STORAGE_PROVIDER_VERSION>>(
-    pub &'a EpochId,
-);
+/// Per-epoch bindings from a higher-level group to emulation epochs. One row
+/// per higher-level group, holding the serialized binding record. Written on
+/// every commit merge.
+pub(super) struct StorableEmulationBindingRef<
+    'a,
+    VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>,
+>(pub &'a VcEmulationBindings);
 
-impl<'a, EpochId: EntityTrait<STORAGE_PROVIDER_VERSION>> StorableEmulationBindingRef<'a, EpochId> {
-    pub(super) fn store_vc_emulation_binding<
+impl<'a, VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>>
+    StorableEmulationBindingRef<'a, VcEmulationBindings>
+{
+    pub(super) fn store_vc_emulation_bindings<
         C: Codec,
         GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>,
     >(
@@ -193,10 +197,10 @@ impl<'a, EpochId: EntityTrait<STORAGE_PROVIDER_VERSION>> StorableEmulationBindin
         group_id: &GroupId,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO vc_emulation_bindings (provider_version, group_id, epoch_id)
+            "INSERT INTO vc_emulation_bindings (provider_version, group_id, bindings)
             VALUES (?1, ?2, ?3)
             ON CONFLICT(group_id) DO UPDATE SET
-                epoch_id = excluded.epoch_id,
+                bindings = excluded.bindings,
                 provider_version = excluded.provider_version",
             params![
                 STORAGE_PROVIDER_VERSION,
@@ -209,16 +213,16 @@ impl<'a, EpochId: EntityTrait<STORAGE_PROVIDER_VERSION>> StorableEmulationBindin
 }
 
 impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId> {
-    pub(super) fn load_vc_emulation_binding<
+    pub(super) fn load_vc_emulation_bindings<
         C: Codec,
-        EpochId: EntityTrait<STORAGE_PROVIDER_VERSION>,
+        VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         connection: &rusqlite::Connection,
-    ) -> Result<Option<EpochId>, rusqlite::Error> {
+    ) -> Result<Option<VcEmulationBindings>, rusqlite::Error> {
         let Self(group_id) = self;
         let mut stmt = connection.prepare(
-            "SELECT epoch_id
+            "SELECT bindings
             FROM vc_emulation_bindings
             WHERE group_id = ?1
                 AND provider_version = ?2",
@@ -229,14 +233,14 @@ impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId
                 STORAGE_PROVIDER_VERSION
             ],
             |row| {
-                let EntityWrapper::<C, EpochId>(epoch_id, ..) = row.get(0)?;
-                Ok(epoch_id)
+                let EntityWrapper::<C, VcEmulationBindings>(bindings, ..) = row.get(0)?;
+                Ok(bindings)
             },
         )
         .optional()
     }
 
-    pub(super) fn delete_vc_emulation_binding<C: Codec>(
+    pub(super) fn delete_vc_emulation_bindings<C: Codec>(
         &self,
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {

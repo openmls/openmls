@@ -3,8 +3,6 @@ use std::{
     marker::PhantomData,
 };
 
-#[cfg(feature = "virtual-clients-draft")]
-use openmls_traits::storage::Entity;
 use openmls_traits::storage::{traits, Key, StorageProvider};
 use rusqlite::Connection;
 
@@ -808,34 +806,35 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_emulation_binding<
+    fn write_vc_emulation_bindings<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION> + Entity<STORAGE_PROVIDER_VERSION>,
+        VcEmulationBindings: traits::VcEmulationBindings<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-        epoch_id: &EpochId,
+        bindings: &VcEmulationBindings,
     ) -> Result<(), Self::Error> {
-        crate::vc_secrets::StorableEmulationBindingRef(epoch_id)
-            .store_vc_emulation_binding::<C, _>(self.connection.borrow(), group_id)
+        crate::vc_secrets::StorableEmulationBindingRef(bindings)
+            .store_vc_emulation_bindings::<C, _>(self.connection.borrow(), group_id)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_emulation_binding<
+    fn vc_emulation_bindings<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
-        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION> + Entity<STORAGE_PROVIDER_VERSION>,
+        VcEmulationBindings: traits::VcEmulationBindings<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<EpochId>, Self::Error> {
-        StorableKeyRef(group_id).load_vc_emulation_binding::<C, EpochId>(self.connection.borrow())
+    ) -> Result<Option<VcEmulationBindings>, Self::Error> {
+        StorableKeyRef(group_id)
+            .load_vc_emulation_bindings::<C, VcEmulationBindings>(self.connection.borrow())
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_binding<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+    fn delete_vc_emulation_bindings<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        StorableKeyRef(group_id).delete_vc_emulation_binding::<C>(self.connection.borrow())
+        StorableKeyRef(group_id).delete_vc_emulation_bindings::<C>(self.connection.borrow())
     }
 }

@@ -1117,29 +1117,29 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_emulation_binding<
+    fn write_vc_emulation_bindings<
         GroupId: traits::GroupId<CURRENT_VERSION>,
-        EpochId: traits::VcEpochId<CURRENT_VERSION> + Entity<CURRENT_VERSION>,
+        VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-        epoch_id: &EpochId,
+        bindings: &VcEmulationBindings,
     ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
             VC_EMULATION_BINDING_LABEL,
             &serde_json::to_vec(group_id).unwrap(),
-            serde_json::to_vec(epoch_id).unwrap(),
+            serde_json::to_vec(bindings).unwrap(),
         )
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_emulation_binding<
+    fn vc_emulation_bindings<
         GroupId: traits::GroupId<CURRENT_VERSION>,
-        EpochId: traits::VcEpochId<CURRENT_VERSION> + Entity<CURRENT_VERSION>,
+        VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<EpochId>, Self::Error> {
+    ) -> Result<Option<VcEmulationBindings>, Self::Error> {
         let values = self.values.read().unwrap();
         let key = build_key::<CURRENT_VERSION, &GroupId>(VC_EMULATION_BINDING_LABEL, group_id);
         let Some(value) = values.get(&key) else {
@@ -1149,7 +1149,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_binding<GroupId: traits::GroupId<CURRENT_VERSION>>(
+    fn delete_vc_emulation_bindings<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
