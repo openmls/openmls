@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d6eea6bf.js";
+            window.path_to_searchindex_js = "searchindex-c515c17a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-15f15180.js"></script>
@@ -2549,54 +2549,54 @@ pub enum SignatureScheme {
 <p>The HPKE implementation is part of the crypto provider as well.
 The crate, therefore, defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
-<pre><code class="language-rust no_run noplayground">#[derive(Debug)]
+<pre><code class="language-rust no_run noplayground">    fn fmt(&amp;self, f: &amp;mut std::fmt::Formatter&lt;'_&gt;) -&gt; std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
+impl std::error::Error for CryptoError {}
+
+// === HPKE === //
+
+/// Convenience tuple struct for an HPKE configuration.
+#[derive(Debug)]
 pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
 
 /// KEM Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
-#[repr(u16)]
-pub enum HpkeKemType {
-    /// DH KEM on P256
-    DhKemP256 = 0x0010,
-
-    /// DH KEM on P384
+#[repr(u16)]</code></pre>
+<pre><code class="language-rust no_run noplayground">    /// DH KEM on P384
     DhKemP384 = 0x0011,
 
     /// DH KEM on P521
     DhKemP521 = 0x0012,
-</code></pre>
-<pre><code class="language-rust no_run noplayground">    DhKem448 = 0x0021,
+
+    /// DH KEM on x25519
+    DhKem25519 = 0x0020,
+
+    /// DH KEM on x448</code></pre>
+<pre><code class="language-rust no_run noplayground">    MlKem768 = 0x0041,
+
+    /// ML-KEM-1024
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    MlKem1024 = 0x0042,
 
     /// XWing combiner for ML-KEM and X25519
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
     XWingKemDraft6 = 0x004D,
 }
 
 /// KDF Types for HPKE
-#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
-#[repr(u16)]
-pub enum HpkeKdfType {</code></pre>
-<pre><code class="language-rust no_run noplayground">    HkdfSha384 = 0x0002,
-
-    /// HKDF SHA 512
-    HkdfSha512 = 0x0003,
-}
-
-/// AEAD Types for HPKE.
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]</code></pre>
+<p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
+<pre><code class="language-rust no_run noplayground">/// AEAD Types for HPKE.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u16)]
-pub enum HpkeAeadType {
-    /// AES GCM 128
-    AesGcm128 = 0x0001,
-</code></pre>
-<p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">/// ```text
-/// struct {
-///     opaque kem_output&lt;V&gt;;
-///     opaque ciphertext&lt;V&gt;;</code></pre>
-<pre><code class="language-rust no_run noplayground">    Debug,
-    PartialEq,
-    Eq,
-    Clone,</code></pre>
+pub enum HpkeAeadType {</code></pre>
+<pre><code class="language-rust no_run noplayground">    /// AES GCM 256
+    AesGcm256 = 0x0002,
+
+    /// ChaCha20 Poly1305</code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
 <p>OpenMLS implements a variety of syntactical and semantical checks, both when parsing and processing incoming commits and when creating own commits.</p>
