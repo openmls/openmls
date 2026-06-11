@@ -33,7 +33,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: i686-pc-windows-msvc, i686-unknown-linux-gnu
+          targets: x86_64-pc-windows-msvc, x86_64-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2
 
       - name: Toggle rustc mode
@@ -49,16 +49,16 @@ jobs:
         run: cargo test $TEST_MODE -p openmls --verbose
 
       # Test 32 bit builds on windows
-      - name: Tests 32bit windows debug
+      - name: Tests 64bit windows debug
         if: matrix.mode == 'debug' && matrix.os == 'windows-latest'
-        run: cargo test -p openmls --verbose --target i686-pc-windows-msvc
-      - name: Tests 32bit windows release
+        run: cargo test -p openmls --verbose --target x86_64-pc-windows-msvc
+      - name: Tests 64bit windows release
         if: matrix.mode == 'release' && matrix.os == 'windows-latest'
-        run: cargo test --release -p openmls --verbose --target i686-pc-windows-msvc
+        run: cargo test --release -p openmls --verbose --target x86_64-pc-windows-msvc
 
         # Test 32 bit builds on linux
-      - name: Tests 32bit linux
+      - name: Tests 64bit linux
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update && sudo apt install gcc-multilib
-          cargo test $TEST_MODE -p openmls --verbose --target i686-unknown-linux-gnu
+          cargo test $TEST_MODE -p openmls --verbose --target x86_64-unknown-linux-gnu
