@@ -41,8 +41,7 @@ fn test_serialization_deserialization_postcard() {
         // NOTE: `postcard` uses a variable-length encoding for integers,
         // so the discriminant is serialized as a plain `u32`
         // and then compared to the first bytes of the serialized variant
-        let serialized_discriminant =
-            &postcard::to_allocvec(&(*expected_discriminant as u32)).unwrap();
+        let serialized_discriminant = &postcard::to_allocvec(expected_discriminant).unwrap();
         assert!(serialized.starts_with(serialized_discriminant));
 
         // deserialize the variant
