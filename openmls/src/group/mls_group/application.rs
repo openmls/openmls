@@ -69,9 +69,10 @@ impl MlsGroup {
             return Err(MlsGroupStateError::PendingProposal.into());
         }
 
+        let aad = self.outgoing_authenticated_data()?;
         let authenticated_content = AuthenticatedContent::new_application(
             self.own_leaf_index(),
-            &self.aad,
+            &aad,
             message,
             self.context(),
             signer,

@@ -157,8 +157,10 @@ impl MlsGroup {
             return Err(ProposeSelfUpdateError::UnsupportedGroupContextExtensions);
         }
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let update_proposal =
-            self.create_update_proposal(self.framing_parameters(), own_leaf.clone(), old_signer)?;
+            self.create_update_proposal(framing_parameters, own_leaf.clone(), old_signer)?;
 
         provider
             .storage()

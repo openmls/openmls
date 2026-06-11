@@ -23,21 +23,22 @@ openmls_memory_storage = { workspace = true, features = [
 ], optional = true }
 openmls_sqlite_storage = { workspace = true, optional = true }
 openmls_test = { workspace = true, optional = true }
+openmls_serialization_helpers = { workspace = true }
 openmls_libcrux_crypto = { workspace = true, optional = true }
 
-serde = { version = "^1.0", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 log = { version = "0.4", features = ["std"] }
 tls_codec = { workspace = true }
 rayon = "^1.12.0"
-thiserror = "^2.0"
+thiserror = { workspace = true }
 backtrace = { version = "0.3", optional = true }
 # Only required for tests.
-rand = { version = "0.9", optional = true }
+rand = { version = "0.10", optional = true }
 serde_json = { version = "1.0", optional = true }
 # Crypto providers required for KAT and testing - "test-utils" feature
 itertools = { version = "0.14", optional = true }
 wasm-bindgen-test = { version = "0.3.50", optional = true }
-getrandom = { version = "0.3.4", optional = true }
+getrandom = { version = "0.4.2", optional = true }
 getrandom_old = { package = "getrandom", version = "0.2.15", optional = true }
 web-time = { version = "1.1", optional = true, features = ["serde"] }
 once_cell = { version = "1.19.0", optional = true }
@@ -45,6 +46,8 @@ zeroize = "1.8.1"
 serde_bytes = "0.11.17"
 
 [features]
+# enable for compatibility with openmls=0.8.1
+0-8-1-storage-format = []
 test-utils = [
     "dep:serde_json",
     "dep:itertools",
@@ -66,6 +69,14 @@ sqlite-provider = [
     "dep:openmls_sqlite_storage",
     "openmls_test?/sqlite-provider",
 ]
+# Expand every `#[openmls_test]` over all ciphersuites supported by each
+# enabled provider. Without this feature, each provider emits a single
+# test per source function using the MTI ciphersuite. Opt in for nightly
+# CI or release validation.
+all-ciphersuites = ["openmls_test?/all-ciphersuites"]
+# Compile the KAT regenerators. Opt in when refreshing the bundled JSON test
+# vectors.
+generate-kats = []
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 js = [
@@ -120,6 +131,7 @@ extensions-draft-08-test-dependencies = [
     "openmls_libcrux_crypto?/extensions-draft-08",
     "openmls_memory_storage?/extensions-draft-08",
 ]
+# experimental feature implementing the virtual-clients draft
 # enable randomness source
 fork-resolution = []
 
@@ -137,16 +149,13 @@ base64 = "0.22.1"
 flate2 = "1.0"
 indicatif = "0.18.3"
 
-# Disable for wasm32 and Win32
-[target.'cfg(not(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows"))))'.dev-dependencies]
-openmls = { path = ".", features = [
-    "test-utils",
-    "sqlite-provider",
-    "libcrux-provider",
-] }
-
-[target.'cfg(any(target_arch = "wasm32", all(target_arch = "x86", target_os = "windows")))'.dev-dependencies]
-openmls = { path = ".", features = ["test-utils"] }
+# Default test build is rustcrypto-only and MTI-ciphersuite-only.
+# Enable `sqlite-provider`, `libcrux-provider`, and/or `all-ciphersuites`
+# explicitly (for example on a nightly CI run) to exercise more of the
+# matrix.
+[dev-dependencies.openmls]
+path = "."
+features = ["test-utils"]
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 web-time = "1.1"
@@ -154,6 +163,9 @@ web-time = "1.1"
 [[bench]]
 name = "benchmark"
 harness = false
+# Uses the libcrux provider directly, so skip the build when that
+# provider is not enabled (e.g. on the default test build).
+required-features = ["libcrux-provider"]
 
 [package.metadata.docs.rs]
 all-features = true

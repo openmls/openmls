@@ -44,6 +44,9 @@ pub enum PprfError {
     /// Error deriving child node.
     #[error("Error deriving child node: {0}")]
     ChildDerivationError(#[from] CryptoError),
+    /// Prefix exceeded its maximum depth.
+    #[error("Prefix length exceeds maximum depth")]
+    PrefixMaxDepthExceeded,
 }
 
 /// A Node in the PPRF tree that contains the node's secret.
@@ -167,24 +170,24 @@ impl<P: Prefix> Pprf<P> {
             }
 
             let bit = get_bit(&leaf_index, depth);
-            prefix.push_bit(bit);
+            prefix.push_bit(bit)?;
             depth += 1;
         }
 
         // Step 2: Derive and walk the rest of the path
         for d in depth..P::MAX_DEPTH {
-            let (left, right) = current_node.derive_children(crypto, ciphersuite).unwrap();
+            let (left, right) = current_node.derive_children(crypto, ciphersuite)?;
             let bit = get_bit(&leaf_index, d);
 
             let (next_node, copath_node) = if bit { (right, left) } else { (left, right) };
 
             let mut copath_prefix = prefix.clone();
-            copath_prefix.push_bit(!bit);
+            copath_prefix.push_bit(!bit)?;
             let node_at_copath_prefix = self.nodes.insert(copath_prefix.clone(), copath_node);
             debug_assert!(node_at_copath_prefix.is_none());
 
             current_node = next_node;
-            prefix.push_bit(bit);
+            prefix.push_bit(bit)?;
         }
 
         Ok(current_node.0)
@@ -246,10 +249,7 @@ where
 mod tests {
     use super::*;
     use openmls_test::openmls_test;
-    use rand::{
-        rngs::{OsRng, StdRng},
-        Rng, SeedableRng, TryRngCore,
-    };
+    use rand::{rngs::StdRng, Rng, RngExt, SeedableRng};
 
     fn random_vec(rng: &mut impl Rng, len: usize) -> Vec<u8> {
         let mut bytes = vec![0u8; len];
@@ -268,7 +268,7 @@ mod tests {
     #[openmls_test]
     fn evaluates_single_path() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.unwrap_mut().random();
+        let seed: [u8; 32] = rand::rng().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
@@ -284,7 +284,7 @@ mod tests {
     #[openmls_test]
     fn re_evaluation_of_same_index_returns_error() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.unwrap_mut().random();
+        let seed: [u8; 32] = rand::rng().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
@@ -303,7 +303,7 @@ mod tests {
     #[openmls_test]
     fn different_indices_produce_different_results() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.unwrap_mut().random();
+        let seed: [u8; 32] = rand::rng().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
@@ -321,7 +321,7 @@ mod tests {
     #[openmls_test]
     fn rejects_out_of_bounds_index() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.unwrap_mut().random();
+        let seed: [u8; 32] = rand::rng().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);
@@ -337,7 +337,7 @@ mod tests {
     #[openmls_test]
     fn pprf_serialization() {
         let provider = &Provider::default();
-        let seed: [u8; 32] = OsRng.unwrap_mut().random();
+        let seed: [u8; 32] = rand::rng().random();
         println!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
         let root_secret = dummy_secret(&mut rng, ciphersuite);

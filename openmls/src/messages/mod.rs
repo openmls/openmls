@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, *};
 
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 use crate::schedule::psk::{ExternalPsk, Psk};
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
@@ -30,7 +30,7 @@ use crate::{
     },
     versions::ProtocolVersion,
 };
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 use openmls_traits::random::OpenMlsRand;
 
 pub(crate) mod codec;
@@ -510,7 +510,7 @@ impl GroupSecrets {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 impl GroupSecrets {
     pub fn random_encoded(
         ciphersuite: Ciphersuite,

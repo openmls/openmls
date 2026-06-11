@@ -83,7 +83,7 @@ pub(crate) enum SenderRatchet {
     EncryptionRatchet(RatchetSecret),
     DecryptionRatchet(DecryptionRatchet),
     #[cfg(feature = "virtual-clients-draft")]
-    DualUseRatchet(DualUseRatchet),
+    DualUse(DualUseRatchet),
 }
 
 impl SenderRatchet {
@@ -93,7 +93,7 @@ impl SenderRatchet {
             SenderRatchet::EncryptionRatchet(enc_ratchet) => enc_ratchet.generation(),
             SenderRatchet::DecryptionRatchet(dec_ratchet) => dec_ratchet.generation(),
             #[cfg(feature = "virtual-clients-draft")]
-            SenderRatchet::DualUseRatchet(dual_ratchet) => dual_ratchet.generation(),
+            SenderRatchet::DualUse(dual_ratchet) => dual_ratchet.generation(),
         }
     }
 }

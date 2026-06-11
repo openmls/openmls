@@ -183,6 +183,8 @@ impl MlsGroupBuilder {
             mls_group_config: mls_group_create_config.join_config.clone(),
             own_leaf_nodes: vec![],
             aad: vec![],
+            #[cfg(feature = "extensions-draft-08")]
+            safe_aad: crate::framing::SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group,
             group_epoch_secrets,

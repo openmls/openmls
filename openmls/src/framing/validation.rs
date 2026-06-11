@@ -36,7 +36,9 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::{component::ComponentId, messages::proposals_in::ProposalOrRefIn};
+use crate::{
+    component::ComponentId, framing::safe_aad::SafeAad, messages::proposals_in::ProposalOrRefIn,
+};
 
 use super::{
     mls_auth_content::AuthenticatedContent,
@@ -282,6 +284,14 @@ pub struct ProcessedMessage {
     authenticated_data: Vec<u8>,
     content: ProcessedMessageContent,
     credential: Credential,
+    /// Parsed Safe AAD prefix, populated only when the message's GroupContext
+    /// required Safe AAD framing. `None` otherwise.
+    #[cfg(feature = "extensions-draft-08")]
+    safe_aad: Option<SafeAad>,
+    /// Length in bytes of the Safe AAD prefix at the start of
+    /// `authenticated_data`. Zero when [`Self::safe_aad`] is `None`.
+    #[cfg(feature = "extensions-draft-08")]
+    safe_aad_prefix_len: usize,
 }
 
 impl ProcessedMessage {
@@ -301,7 +311,47 @@ impl ProcessedMessage {
             authenticated_data,
             content,
             credential,
+            #[cfg(feature = "extensions-draft-08")]
+            safe_aad: None,
+            #[cfg(feature = "extensions-draft-08")]
+            safe_aad_prefix_len: 0,
         }
+    }
+
+    /// Parse the Safe AAD prefix at the start of `authenticated_data` and
+    /// attach it to this message. Callers should invoke this only when the receiving
+    /// group's GroupContext requires Safe AAD framing. Otherwise, `safe_aad`
+    /// stays `None` and `authenticated_data` is the caller-supplied bytes
+    /// untouched.
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn try_attach_safe_aad(&mut self) -> Result<(), crate::framing::SafeAadError> {
+        let (safe_aad, prefix_len) =
+            crate::framing::safe_aad::parse_authenticated_data_prefix(&self.authenticated_data)?;
+        self.safe_aad = Some(safe_aad);
+        self.safe_aad_prefix_len = prefix_len;
+        Ok(())
+    }
+
+    /// Returns the parsed Safe AAD struct, or `None` if Safe AAD was not
+    /// active for the group this message belongs to.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn safe_aad(&self) -> Option<&SafeAad> {
+        self.safe_aad.as_ref()
+    }
+
+    /// Look up a Safe AAD item by [`ComponentId`].
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn safe_aad_item(&self, component_id: crate::component::ComponentId) -> Option<&[u8]> {
+        self.safe_aad
+            .as_ref()
+            .and_then(|safe_aad| safe_aad.get(component_id))
+    }
+
+    /// Returns the bytes of `authenticated_data` after any Safe AAD prefix.
+    /// Equal to [`Self::aad`] when no Safe AAD prefix is present.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn tail_aad(&self) -> &[u8] {
+        &self.authenticated_data[self.safe_aad_prefix_len..]
     }
 
     /// Returns the group ID of the message.
