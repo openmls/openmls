@@ -212,6 +212,8 @@ impl KeyPackageIn {
 
     /// Assume that the signature is valid and return the [`KeyPackage`].
     ///
+    /// # Safety
+    ///
     /// The caller must guarantee that the key package is verified.
     pub fn into_unchecked(self) -> Result<KeyPackage, KeyPackageVerifyError> {
         let payload = KeyPackageTbs {

@@ -794,6 +794,8 @@ impl LeafNodeIn {
 
     /// Assume that signature is valid and return the corresponding [`LeafNode`].
     ///
+    /// # Safety
+    ///
     /// The caller must guarantee that the leaf node is verified.
     pub fn into_unchecked(self) -> LeafNode {
         LeafNode {
