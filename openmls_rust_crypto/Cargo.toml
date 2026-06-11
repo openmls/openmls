@@ -14,8 +14,9 @@ openmls_traits = { workspace = true }
 openmls_memory_storage = { workspace = true }
 
 hpke = { version = "0.6.1", package = "hpke-rs", default-features = false, features = [
-    "hazmat",
-    "serialization",
+  "hazmat",
+  "serialization",
+  "experimental",
 ] }
 # Rust Crypto dependencies
 sha2 = { version = "0.11" }
@@ -24,14 +25,20 @@ chacha20poly1305 = { version = "0.10" }
 hmac = { version = "0.13" }
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
+rand_core_0_10 = { package = "rand_core", version = "0.10" }
 p256 = { version = "0.13" }
+p384 = { version = "0.13" }
 hkdf = { version = "0.13" }
 rand_chacha = { version = "0.3" }
 hpke-rs-crypto = { version = "0.6.1" }
-hpke-rs-rust-crypto = { version = "0.6.1" }
+hpke-rs-rust-crypto = { version = "0.6.1", features = ["experimental"] }
 tls_codec = { workspace = true }
+ml-dsa = "0.1.0"
 thiserror = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 
 [features]
 test-utils = ["openmls_memory_storage/test-utils"]
+draft-ietf-mls-pq-ciphersuites = [
+  "openmls_traits/draft-ietf-mls-pq-ciphersuites",
+]

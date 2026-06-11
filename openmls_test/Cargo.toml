@@ -16,6 +16,11 @@ proc-macro = true
 # This needs to be enabled explicity to allow disabling on some platforms
 libcrux-provider = ["dep:openmls_libcrux_crypto"]
 sqlite-provider = ["dep:openmls_sqlite_storage"]
+draft-ietf-mls-pq-ciphersuites = [
+    "openmls_rust_crypto/draft-ietf-mls-pq-ciphersuites",
+    "openmls_libcrux_crypto?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_sqlite_storage?/draft-ietf-mls-pq-ciphersuites",
+]
 # When set, every `#[openmls_test]` expands to one test per supported
 # ciphersuite of each enabled provider. When unset (the default), each
 # enabled provider emits a single test using the mandatory-to-implement

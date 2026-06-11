@@ -10,6 +10,8 @@ mod provider;
 pub use provider::*;
 
 mod hmac;
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+mod rand_shim;
 
 #[derive(Default, Debug)]
 #[cfg_attr(feature = "test-utils", derive(Clone))]

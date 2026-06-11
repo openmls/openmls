@@ -101,7 +101,7 @@ impl Welcome {
     }
 
     /// Returns a reference to the ciphersuite in this Welcome message.
-    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
+    pub fn ciphersuite(&self) -> Ciphersuite {
         self.cipher_suite
     }
 
