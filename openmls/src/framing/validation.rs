@@ -183,14 +183,6 @@ impl DecryptedMessage {
         })
     }
 
-    /// Recovered sender emulation-group leaf index, if the message came
-    /// from a sibling emulator client.
-    #[cfg(feature = "virtual-clients-draft")]
-    #[allow(dead_code)]
-    pub(crate) fn emulator_sender_leaf_index(&self) -> Option<LeafNodeIndex> {
-        self.emulator_sender_leaf_index
-    }
-
     /// Gets the correct credential from the message depending on the sender type.
     ///
     /// The closure argument is used to look up the credential and signature key. If the epoch of
