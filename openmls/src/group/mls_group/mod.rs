@@ -500,6 +500,13 @@ impl MlsGroup {
     /// Remove the persisted state of this group from storage. Note that
     /// signature key material is not managed by OpenMLS and has to be removed
     /// from the storage provider separately (if desired).
+    ///
+    /// With the `virtual-clients-draft` feature, the group's
+    /// emulation-epoch bindings are removed, but the emulation-epoch
+    /// state and PPRF they point to are not: they are keyed by emulation
+    /// epoch and may still be referenced by other higher-level groups.
+    /// Deleting them is the application's responsibility, see
+    /// `MlsGroup::register_vc_emulation_epoch`.
     pub fn delete<Storage: crate::storage::StorageProvider>(
         &mut self,
         storage: &Storage,

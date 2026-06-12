@@ -654,12 +654,24 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
+    /// Delete the emulation-epoch state stored under the given epoch id.
+    ///
+    /// Never called by OpenMLS: the state is keyed by emulation epoch and
+    /// may be referenced by several higher-level groups, so the
+    /// application must call this once the emulation epoch is no longer
+    /// referenced by any group.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error>;
 
+    /// Delete the virtual-clients PPRF stored under the given epoch id.
+    ///
+    /// Never called by OpenMLS: like the emulation-epoch state, the PPRF
+    /// is keyed by emulation epoch and may be referenced by several
+    /// higher-level groups, so the application must call this once the
+    /// emulation epoch is no longer referenced by any group.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_vc_pprf<EpochId: traits::VcEpochId<VERSION>>(
         &self,

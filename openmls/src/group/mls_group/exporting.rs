@@ -121,6 +121,20 @@ impl MlsGroup {
     /// `AppDataDictionary` capability/extension wiring); otherwise this
     /// returns [`SafeExportSecretError::Unsupported`] via
     /// [`RegisterVcEmulationEpochError::SafeExportSecret`].
+    ///
+    /// # Key-material lifecycle
+    ///
+    /// The persisted per-epoch state ([`EmulationEpochState`] and the
+    /// PPRF) is keyed by the returned [`EpochId`] and shared by all
+    /// higher-level groups bound to this emulation epoch. OpenMLS never
+    /// deletes it, not even when such a group is deleted. Once no
+    /// higher-level group references the emulation epoch anymore, the
+    /// application must remove the state via
+    /// [`delete_vc_emulation_epoch_state`] and [`delete_vc_pprf`].
+    ///
+    /// [`delete_vc_emulation_epoch_state`]:
+    ///     openmls_traits::storage::StorageProvider::delete_vc_emulation_epoch_state
+    /// [`delete_vc_pprf`]: openmls_traits::storage::StorageProvider::delete_vc_pprf
     #[cfg(feature = "virtual-clients-draft")]
     pub fn register_vc_emulation_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         &mut self,
