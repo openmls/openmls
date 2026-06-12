@@ -409,7 +409,7 @@ impl ProcessedMessage {
     }
 
     /// Returns the sender's leaf index in the emulation group when this
-    /// message is an application message from a sibling emulator client.
+    /// message is a private message from a sibling emulator client.
     #[cfg(feature = "virtual-clients-draft")]
     pub fn emulator_sender_leaf_index(&self) -> Option<LeafNodeIndex> {
         self.emulator_sender_leaf_index

@@ -232,7 +232,7 @@ impl ReuseGuardSecret {
         Self(secret)
     }
 
-    /// Derive the 16-byte FF1 PRP key for a single application message:
+    /// Derive the 16-byte FF1 PRP key for a single private message:
     ///
     /// ```text
     /// prp_key = ExpandWithLabel(reuse_guard_secret, "reuse guard",
@@ -385,7 +385,7 @@ impl std::fmt::Debug for EpochEncryptionKey {
 /// Per-emulation-epoch state persisted by
 /// [`MlsGroup::register_vc_emulation_epoch`] alongside the per-epoch PPRF,
 /// keyed by [`EpochId`]. Bundles everything the library needs to emit a VC
-/// commit for this epoch and to XOR application message nonces with
+/// commit for this epoch and to XOR private-message nonces with
 /// deterministic reuse guards.
 ///
 /// [`MlsGroup::register_vc_emulation_epoch`]:
