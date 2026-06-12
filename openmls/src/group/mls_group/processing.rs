@@ -316,23 +316,18 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(MergeCommitError::StorageError)?;
 
-        // Update the per-epoch emulation bindings. Self-removal drops them.
-        // Otherwise the epoch the commit moves the group into is bound to
-        // the emulation epoch of the commit's VC leaf, or, if the commit
-        // does not install a new VC leaf, to the binding of the current
-        // epoch, since the VC leaf stays active across commits by other
-        // members.
+        // Resolve the emulation-binding update for the new epoch now,
+        // while `staged_commit` and the pre-merge `self.epoch()` are
+        // still available. It is persisted only after the merge has
+        // succeeded, so a failed merge does not leave a binding for an
+        // epoch the group never entered.
         #[cfg(feature = "virtual-clients-draft")]
-        if staged_commit.self_removed() {
-            provider
-                .storage()
-                .delete_vc_emulation_bindings(self.group_id())
-                .map_err(|e| {
-                    log::error!("vc: drop emulation bindings on self-removal failed: {e:?}");
-                    MergeCommitError::StorageError(e)
-                })?;
+        let self_removed = staged_commit.self_removed();
+        #[cfg(feature = "virtual-clients-draft")]
+        let vc_bindings_update = if self_removed {
+            None
         } else {
-            let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
+            let bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
                 .storage()
                 .vc_emulation_bindings(self.group_id())
                 .map_err(MergeCommitError::StorageError)?
@@ -341,24 +336,41 @@ impl MlsGroup {
                 .vc_emulation_epoch_id
                 .clone()
                 .or_else(|| bindings.get(self.epoch()).cloned());
-            if let Some(epoch_id) = epoch_id {
-                // Keep one entry per retained message-secrets epoch plus
-                // the new current one, so bindings age out in lockstep
-                // with the message secrets they are needed for.
-                let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
-                bindings.insert(staged_commit.epoch(), epoch_id, max_entries);
-                provider
-                    .storage()
-                    .write_vc_emulation_bindings(self.group_id(), &bindings)
-                    .map_err(|e| {
-                        log::error!("vc: persist emulation bindings at merge failed: {e:?}");
-                        MergeCommitError::StorageError(e)
-                    })?;
-            }
-        }
+            epoch_id.map(|epoch_id| (bindings, staged_commit.epoch(), epoch_id))
+        };
 
         // Merge staged commit
         self.merge_commit(provider, staged_commit)?;
+
+        // Update the per-epoch emulation bindings. Self-removal drops them.
+        // Otherwise the epoch the commit moves the group into is bound to
+        // the emulation epoch of the commit's VC leaf, or, if the commit
+        // does not install a new VC leaf, to the binding of the previous
+        // epoch, since the VC leaf stays active across commits by other
+        // members.
+        #[cfg(feature = "virtual-clients-draft")]
+        if self_removed {
+            provider
+                .storage()
+                .delete_vc_emulation_bindings(self.group_id())
+                .map_err(|e| {
+                    log::error!("vc: drop emulation bindings on self-removal failed: {e:?}");
+                    MergeCommitError::StorageError(e)
+                })?;
+        } else if let Some((mut bindings, new_epoch, epoch_id)) = vc_bindings_update {
+            // Keep one entry per retained message-secrets epoch plus
+            // the new current one, so bindings age out in lockstep
+            // with the message secrets they are needed for.
+            let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
+            bindings.insert(new_epoch, epoch_id, max_entries);
+            provider
+                .storage()
+                .write_vc_emulation_bindings(self.group_id(), &bindings)
+                .map_err(|e| {
+                    log::error!("vc: persist emulation bindings at merge failed: {e:?}");
+                    MergeCommitError::StorageError(e)
+                })?;
+        }
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group_epoch_secrets().resumption_psk();
