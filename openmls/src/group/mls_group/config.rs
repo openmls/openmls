@@ -85,17 +85,29 @@ impl Serialize for PastEpochDeletionPolicy {
 }
 
 impl<'de> Deserialize<'de> for PastEpochDeletionPolicy {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let epochs = u64::deserialize(deserializer)?;
-        let epochs = usize::try_from(epochs).map_err(serde::de::Error::custom)?;
-        if epochs == usize::MAX {
-            Ok(Self::KeepAll)
-        } else {
-            Ok(Self::MaxEpochs(epochs))
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        // Previously supported format (changed to plain integer in 8bdba6f)
+        #[derive(Deserialize)]
+        enum Tagged {
+            MaxEpochs(usize),
+            KeepAll,
         }
+
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Format {
+            Int(u64),
+            Tagged(Tagged),
+        }
+
+        Ok(match Format::deserialize(deserializer)? {
+            Format::Int(u64::MAX) => Self::KeepAll,
+            Format::Int(n) => {
+                Self::MaxEpochs(usize::try_from(n).map_err(serde::de::Error::custom)?)
+            }
+            Format::Tagged(Tagged::MaxEpochs(n)) => Self::MaxEpochs(n),
+            Format::Tagged(Tagged::KeepAll) => Self::KeepAll,
+        })
     }
 }
 
@@ -679,3 +691,47 @@ pub const MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPoli
     outgoing: OutgoingWireFormatPolicy::AlwaysCiphertext,
     incoming: IncomingWireFormatPolicy::Mixed,
 };
+
+#[cfg(test)]
+mod tests {
+    use super::PastEpochDeletionPolicy;
+
+    #[test]
+    fn past_epoch_deletion_policy_roundtrip() {
+        for policy in [
+            PastEpochDeletionPolicy::MaxEpochs(0),
+            PastEpochDeletionPolicy::MaxEpochs(42),
+            PastEpochDeletionPolicy::KeepAll,
+        ] {
+            let json = serde_json::to_string(&policy).unwrap();
+            let deserialized: PastEpochDeletionPolicy = serde_json::from_str(&json).unwrap();
+            assert_eq!(deserialized, policy);
+        }
+
+        // MaxEpochs(usize::MAX) is indistinguishable from KeepAll after serialization.
+        let json = serde_json::to_string(&PastEpochDeletionPolicy::MaxEpochs(usize::MAX)).unwrap();
+        let deserialized: PastEpochDeletionPolicy = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized, PastEpochDeletionPolicy::KeepAll);
+    }
+
+    #[test]
+    fn past_epoch_deletion_policy_deserializes_plain_integer() {
+        let deserialized: PastEpochDeletionPolicy = serde_json::from_str("42").unwrap();
+        assert_eq!(deserialized, PastEpochDeletionPolicy::MaxEpochs(42));
+
+        let deserialized: PastEpochDeletionPolicy =
+            serde_json::from_str(&u64::MAX.to_string()).unwrap();
+        assert_eq!(deserialized, PastEpochDeletionPolicy::KeepAll);
+    }
+
+    #[test]
+    fn past_epoch_deletion_policy_deserializes_legacy_tagged_format() {
+        // Externally tagged enum format used before 8bdba6f.
+        let deserialized: PastEpochDeletionPolicy =
+            serde_json::from_str(r#"{"MaxEpochs":42}"#).unwrap();
+        assert_eq!(deserialized, PastEpochDeletionPolicy::MaxEpochs(42));
+
+        let deserialized: PastEpochDeletionPolicy = serde_json::from_str(r#""KeepAll""#).unwrap();
+        assert_eq!(deserialized, PastEpochDeletionPolicy::KeepAll);
+    }
+}

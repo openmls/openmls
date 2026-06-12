@@ -16,6 +16,7 @@ path = "src/traits.rs"
 default = []
 test-utils = []
 extensions-draft-08 = []
+draft-ietf-mls-pq-ciphersuites = []
 virtual-clients-draft = ["extensions-draft-08"]
 
 [dependencies]

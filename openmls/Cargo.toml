@@ -136,6 +136,15 @@ extensions-draft-08-test-dependencies = [
     "openmls_libcrux_crypto?/extensions-draft-08",
     "openmls_memory_storage?/extensions-draft-08",
 ]
+draft-ietf-mls-pq-ciphersuites = [
+    "openmls_traits/draft-ietf-mls-pq-ciphersuites",
+    "openmls_memory_storage?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_sqlite_storage?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_libcrux_crypto?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_rust_crypto?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_basic_credential?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_test?/draft-ietf-mls-pq-ciphersuites",
+]
 # experimental feature implementing the virtual-clients draft
 # enable randomness source
 fork-resolution = []

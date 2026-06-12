@@ -444,10 +444,17 @@ fn test() {
         base64::engine::GeneralPurposeConfig::new(),
     );
 
-    // load data
+    // load data — skip unknown ciphersuite keys (e.g. PQ suites when that feature is off)
     let mut data: HashMap<Ciphersuite, KatData> = {
         let file = std::fs::File::open("test_vectors/storage-stability.json").unwrap();
-        serde_json::from_reader(file).unwrap()
+        let raw: HashMap<String, KatData> = serde_json::from_reader(file).unwrap();
+        raw.into_iter()
+            .filter_map(|(k, v)| {
+                serde_json::from_value::<Ciphersuite>(serde_json::Value::String(k))
+                    .ok()
+                    .map(|cs| (cs, v))
+            })
+            .collect()
     };
 
     let KatData { group_id, storages } = data.remove(&ciphersuite).unwrap();
