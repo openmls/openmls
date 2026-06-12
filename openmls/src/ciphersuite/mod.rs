@@ -20,8 +20,6 @@ mod kdf_label;
 mod mac;
 mod reuse_guard;
 mod secret;
-#[cfg(feature = "virtual-clients-draft")]
-pub(crate) mod small_space_prp;
 
 // Public
 pub mod hash_ref;

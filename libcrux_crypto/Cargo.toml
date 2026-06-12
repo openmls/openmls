@@ -28,6 +28,12 @@ hpke-rs = { version = "0.6.1", features = ["hazmat", "serialization"] }
 hpke-rs-crypto = { version = "0.6.1" }
 hpke-rs-libcrux = { version = "0.6.1" }
 
+# FF1-AES128 backing for the virtual-clients-draft reuse-guard PRP.
+# libcrux has no FF1 implementation, so this provider also uses the
+# RustCrypto-based `fpe` crate.
+fpe = { version = "0.6", optional = true }
+aes = { version = "0.8", optional = true }
+
 [features]
 extensions-draft-08 = [
     "openmls_traits/extensions-draft-08",
@@ -36,4 +42,11 @@ extensions-draft-08 = [
 draft-ietf-mls-pq-ciphersuites = [
     "openmls_traits/draft-ietf-mls-pq-ciphersuites",
     "openmls_memory_storage/draft-ietf-mls-pq-ciphersuites",
+]
+virtual-clients-draft = [
+    "extensions-draft-08",
+    "openmls_traits/virtual-clients-draft",
+    "openmls_memory_storage/virtual-clients-draft",
+    "dep:fpe",
+    "dep:aes",
 ]

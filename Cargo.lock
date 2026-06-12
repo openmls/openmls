@@ -2805,13 +2805,11 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 name = "openmls"
 version = "0.8.1"
 dependencies = [
- "aes",
  "backtrace",
  "base64",
  "clap",
  "criterion",
  "flate2",
- "fpe",
  "getrandom 0.2.17",
  "getrandom 0.4.2",
  "hex",
@@ -2888,6 +2886,8 @@ dependencies = [
 name = "openmls_libcrux_crypto"
 version = "0.3.1"
 dependencies = [
+ "aes",
+ "fpe",
  "hpke-rs",
  "hpke-rs-crypto",
  "hpke-rs-libcrux",
@@ -2922,9 +2922,11 @@ dependencies = [
 name = "openmls_rust_crypto"
 version = "0.5.1"
 dependencies = [
+ "aes",
  "aes-gcm",
  "chacha20poly1305",
  "ed25519-dalek",
+ "fpe",
  "hkdf 0.13.0",
  "hmac 0.13.0",
  "hpke-rs",

@@ -203,16 +203,17 @@ impl PrivateMessageIn {
                 ctx.emulation_ciphersuite,
                 ratchet_nonce.raw_bytes(),
             )?;
-            let x = crate::ciphersuite::small_space_prp::decrypt(
-                &prp_key,
-                sender_data.reuse_guard.bytes(),
-            )
-            .map_err(|e| {
-                log::error!("vc: FF1 inversion of reuse_guard failed: {e:?}");
-                crate::components::vc_derivation_info::VirtualClientsError::CryptoError(
-                    openmls_traits::types::CryptoError::CryptoLibraryError,
+            let x = crypto
+                .ff1_aes128_decrypt(
+                    &prp_key,
+                    u32::from_be_bytes(sender_data.reuse_guard.bytes()),
                 )
-            })?;
+                .map_err(|e| {
+                    log::error!("vc: FF1 inversion of reuse_guard failed: {e:?}");
+                    crate::components::vc_derivation_info::VirtualClientsError::CryptoError(
+                        openmls_traits::types::CryptoError::CryptoLibraryError,
+                    )
+                })?;
             let n_e = u64::from(ctx.emulation_group_size.leaf_count());
             if n_e == 0 {
                 log::error!("vc: emulation_group_size is zero (corrupt state)");

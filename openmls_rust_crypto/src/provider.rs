@@ -549,6 +549,16 @@ impl OpenMlsCrypto for RustCrypto {
             public: kp.1.as_slice().into(),
         })
     }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn ff1_aes128_encrypt(&self, key: &[u8; 16], plaintext: u32) -> Result<u32, CryptoError> {
+        crate::ff1::encrypt(key, plaintext)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn ff1_aes128_decrypt(&self, key: &[u8; 16], ciphertext: u32) -> Result<u32, CryptoError> {
+        crate::ff1::decrypt(key, ciphertext)
+    }
 }
 
 fn hpke_from_config(config: HpkeConfig) -> Hpke<HpkeRustCrypto> {

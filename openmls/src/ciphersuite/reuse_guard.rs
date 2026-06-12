@@ -3,7 +3,7 @@ use super::*;
 #[cfg(feature = "virtual-clients-draft")]
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
-    ciphersuite::{aead::AeadNonce, small_space_prp},
+    ciphersuite::aead::AeadNonce,
     components::vc_derivation_info::{ReuseGuardSecret, VirtualClientsError},
     error::LibraryError,
 };
@@ -94,10 +94,13 @@ impl ReuseGuard {
             emulation_ciphersuite,
             ratchet_nonce.raw_bytes(),
         )?;
-        let bytes = small_space_prp::encrypt(&prp_key, x).map_err(|_| {
+        let permuted = crypto.ff1_aes128_encrypt(&prp_key, x).map_err(|e| {
+            log::error!("vc: FF1 encryption of reuse_guard failed: {e:?}");
             ReuseGuardDerivationError::Library(LibraryError::custom("FF1 encrypt failed"))
         })?;
-        Ok(Self { value: bytes })
+        Ok(Self {
+            value: permuted.to_be_bytes(),
+        })
     }
 }
 

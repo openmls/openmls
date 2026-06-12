@@ -1,6 +1,8 @@
 use openmls_traits::{types::CryptoError, OpenMlsProvider};
 
 mod crypto;
+#[cfg(feature = "virtual-clients-draft")]
+mod ff1;
 mod rand;
 
 pub use crypto::CryptoProvider;
