@@ -48,6 +48,9 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::C
 #[cfg(feature = "extensions-draft-08")]
 use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
 
+#[cfg(feature = "virtual-clients-draft")]
+use errors::VcEmulationStateError;
+
 // Private
 mod application;
 mod exporting;
@@ -678,6 +681,39 @@ impl MlsGroup {
         .map_err(|e| e.into())
     }
 
+    /// Resolve the [`EmulationEpochState`] this group is bound to at
+    /// `epoch`, if any.
+    ///
+    /// Returns `Ok(None)` if the group has no emulation-epoch binding at
+    /// `epoch`. Returns an error if a binding exists but the state is
+    /// missing from storage.
+    ///
+    /// [`EmulationEpochState`]: crate::components::vc_derivation_info::EmulationEpochState
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn vc_emulation_state_at_epoch<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+        epoch: GroupEpoch,
+    ) -> Result<
+        Option<crate::components::vc_derivation_info::EmulationEpochState>,
+        VcEmulationStateError<Storage::Error>,
+    > {
+        let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> = storage
+            .vc_emulation_bindings(self.group_id())
+            .map_err(VcEmulationStateError::Storage)?;
+        let Some(epoch_id) = bindings.and_then(|bindings| bindings.get(epoch).cloned()) else {
+            return Ok(None);
+        };
+        let state = storage
+            .vc_emulation_epoch_state(&epoch_id)
+            .map_err(VcEmulationStateError::Storage)?
+            .ok_or_else(|| {
+                log::error!("vc: group is bound to emulation epoch, but state is missing");
+                VcEmulationStateError::MissingEmulationEpochState
+            })?;
+        Ok(Some(state))
+    }
+
     // Encrypt an AuthenticatedContent into an PrivateMessage
     pub(crate) fn encrypt<Provider: OpenMlsProvider>(
         &mut self,
@@ -690,33 +726,16 @@ impl MlsGroup {
         // load the state so the framing layer can derive a deterministic
         // reuse guard.
         #[cfg(feature = "virtual-clients-draft")]
-        let emulation_state: Option<
-            crate::components::vc_derivation_info::EmulationEpochState,
-        > = {
-            let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> =
-                provider
-                    .storage()
-                    .vc_emulation_bindings(self.group_id())
-                    .map_err(MessageEncryptionError::StorageError)?;
-            let binding = bindings.and_then(|bindings| bindings.get(self.epoch()).cloned());
-            match binding {
-                Some(epoch_id) => Some(
-                    provider
-                        .storage()
-                        .vc_emulation_epoch_state(&epoch_id)
-                        .map_err(MessageEncryptionError::StorageError)?
-                        .ok_or_else(|| {
-                            log::error!(
-                                "vc: group is bound to emulation epoch, but state is missing"
-                            );
-                            MessageEncryptionError::VirtualClientsError(
-                                crate::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState,
-                            )
-                        })?,
-                ),
-                None => None,
-            }
-        };
+        let emulation_state = self
+            .vc_emulation_state_at_epoch(provider.storage(), self.epoch())
+            .map_err(|e| match e {
+                VcEmulationStateError::Storage(e) => MessageEncryptionError::StorageError(e),
+                VcEmulationStateError::MissingEmulationEpochState => {
+                    MessageEncryptionError::VirtualClientsError(
+                        crate::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState,
+                    )
+                }
+            })?;
         #[cfg(feature = "virtual-clients-draft")]
         let emulator_ctx: Option<crate::framing::EmulatorReuseGuardCtx<'_>> = emulation_state
             .as_ref()

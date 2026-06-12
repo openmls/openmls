@@ -2,6 +2,8 @@
 
 use std::mem;
 
+#[cfg(feature = "virtual-clients-draft")]
+use errors::VcEmulationStateError;
 use errors::{CommitToPendingProposalsError, MergePendingCommitError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
 
@@ -189,37 +191,20 @@ impl MlsGroup {
         // from a past epoch must be deprotected with the emulation state
         // that was bound then, not the latest one.
         #[cfg(feature = "virtual-clients-draft")]
-        let emulation_state: Option<
-            crate::components::vc_derivation_info::EmulationEpochState,
-        > = if let ProtocolMessage::PrivateMessage(private_message) = &message {
-            let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> =
-                provider
-                    .storage()
-                    .vc_emulation_bindings(self.group_id())
-                    .map_err(ProcessMessageError::StorageError)?;
-            let binding =
-                bindings.and_then(|bindings| bindings.get(private_message.epoch()).cloned());
-            match binding {
-                Some(epoch_id) => Some(
-                    provider
-                        .storage()
-                        .vc_emulation_epoch_state(&epoch_id)
-                        .map_err(ProcessMessageError::StorageError)?
-                        .ok_or_else(|| {
-                            log::error!(
-                                "vc: group is bound to emulation epoch, but state is missing"
-                            );
-                            ProcessMessageError::ValidationError(
-                                crate::group::ValidationError::UnableToDecrypt(
-                                    crate::framing::errors::MessageDecryptionError::VirtualClientsError(
-                                        crate::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState,
-                                    ),
+        let emulation_state = if let ProtocolMessage::PrivateMessage(private_message) = &message {
+            self.vc_emulation_state_at_epoch(provider.storage(), private_message.epoch())
+                .map_err(|e| match e {
+                    VcEmulationStateError::Storage(e) => ProcessMessageError::StorageError(e),
+                    VcEmulationStateError::MissingEmulationEpochState => {
+                        ProcessMessageError::ValidationError(
+                            crate::group::ValidationError::UnableToDecrypt(
+                                crate::framing::errors::MessageDecryptionError::VirtualClientsError(
+                                    crate::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState,
                                 ),
-                            )
-                        })?,
-                ),
-                None => None,
-            }
+                            ),
+                        )
+                    }
+                })?
         } else {
             None
         };
