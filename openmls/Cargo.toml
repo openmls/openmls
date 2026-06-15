@@ -98,6 +98,11 @@ js-test = [
 virtual-clients-draft = [
     "extensions-draft-08",
     "openmls_traits/virtual-clients-draft",
+    # The crypto providers implement the trait's FF1 small-space PRP, so
+    # their `OpenMlsCrypto` impls only compile against a
+    # `virtual-clients-draft` `openmls_traits` with their own feature on.
+    "openmls_rust_crypto?/virtual-clients-draft",
+    "openmls_libcrux_crypto?/virtual-clients-draft",
 ]
 
 # Same XXX as for `extensions-draft-08-test-dependencies`: the storage-backend
@@ -130,6 +135,15 @@ extensions-draft-08-test-dependencies = [
     "openmls_sqlite_storage?/extensions-draft-08",
     "openmls_libcrux_crypto?/extensions-draft-08",
     "openmls_memory_storage?/extensions-draft-08",
+]
+draft-ietf-mls-pq-ciphersuites = [
+    "openmls_traits/draft-ietf-mls-pq-ciphersuites",
+    "openmls_memory_storage?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_sqlite_storage?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_libcrux_crypto?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_rust_crypto?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_basic_credential?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_test?/draft-ietf-mls-pq-ciphersuites",
 ]
 # experimental feature implementing the virtual-clients draft
 # enable randomness source

@@ -163,6 +163,9 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")] vc_material: Option<
             crate::components::vc_derivation_info::OperationSecret,
         >,
+        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
+            crate::components::vc_derivation_info::EpochId,
+        >,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
         #[cfg(not(feature = "virtual-clients-draft"))]
@@ -202,10 +205,13 @@ impl MlsGroup {
             provider,
             #[cfg(feature = "virtual-clients-draft")]
             vc_material,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_emulation_epoch_id,
         )
     }
 
     #[cfg(feature = "extensions-draft-08")]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn stage_commit_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,
@@ -215,6 +221,9 @@ impl MlsGroup {
         provider: &impl OpenMlsProvider,
         #[cfg(feature = "virtual-clients-draft")] vc_material: Option<
             crate::components::vc_derivation_info::OperationSecret,
+        >,
+        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
+            crate::components::vc_derivation_info::EpochId,
         >,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
@@ -251,6 +260,8 @@ impl MlsGroup {
             provider,
             #[cfg(feature = "virtual-clients-draft")]
             vc_material,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_emulation_epoch_id,
         )
     }
 
@@ -268,6 +279,9 @@ impl MlsGroup {
         provider: &impl OpenMlsProvider,
         #[cfg(feature = "virtual-clients-draft")] vc_material: Option<
             crate::components::vc_derivation_info::OperationSecret,
+        >,
+        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
+            crate::components::vc_derivation_info::EpochId,
         >,
     ) -> Result<StagedCommit, StageCommitError> {
         let ciphersuite = self.ciphersuite();
@@ -331,6 +345,8 @@ impl MlsGroup {
                     let staged_commit = StagedCommit::new(
                         proposal_queue,
                         StagedCommitState::PublicState(Box::new(staged_state)),
+                        #[cfg(feature = "virtual-clients-draft")]
+                        None,
                     );
                     return Ok(staged_commit);
                 }
@@ -512,7 +528,12 @@ impl MlsGroup {
                 #[cfg(feature = "virtual-clients-draft")]
                 new_own_leaf_index,
             )));
-        let staged_commit = StagedCommit::new(proposal_queue, staged_commit_state);
+        let staged_commit = StagedCommit::new(
+            proposal_queue,
+            staged_commit_state,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_emulation_epoch_id,
+        );
 
         Ok(staged_commit)
     }
@@ -741,15 +762,28 @@ pub struct StagedCommit {
     pub staged_proposal_queue: ProposalQueue,
     /// The staged commit state.
     pub(super) state: StagedCommitState,
+    /// Emulation epoch this commit binds the group to on merge, when
+    /// the commit was built via `CommitBuilder::vc_emulation`.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[serde(default)]
+    pub(super) vc_emulation_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
 }
 
 impl StagedCommit {
     /// Create a new [`StagedCommit`] from the provisional group state created
     /// during the commit process.
-    pub(crate) fn new(staged_proposal_queue: ProposalQueue, state: StagedCommitState) -> Self {
+    pub(crate) fn new(
+        staged_proposal_queue: ProposalQueue,
+        state: StagedCommitState,
+        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
+            crate::components::vc_derivation_info::EpochId,
+        >,
+    ) -> Self {
         StagedCommit {
             staged_proposal_queue,
             state,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_emulation_epoch_id,
         }
     }
 

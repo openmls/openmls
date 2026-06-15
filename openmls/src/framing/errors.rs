@@ -31,6 +31,10 @@ pub enum MessageDecryptionError {
     /// See [`SecretTreeError`] for more details.
     #[error(transparent)]
     SecretTreeError(#[from] SecretTreeError),
+    /// Virtual-clients reuse-guard inversion failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
 }
 
 /// Message encryption error
@@ -48,6 +52,10 @@ pub enum MessageEncryptionError<StorageError> {
     /// Error reading from or writing to storage
     #[error("Error reading from or writing to storage: {0}")]
     StorageError(StorageError),
+    /// Virtual-clients reuse-guard derivation failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
 }
 
 /// MlsMessage error

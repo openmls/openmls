@@ -30,6 +30,7 @@ jobs:
           - { name: base, arg: "" }
           - { name: fork-resolution, arg: "-F fork-resolution" }
           - { name: extensions-draft-08, arg: "-F extensions-draft-08,extensions-draft-08-test-dependencies" }
+          - { name: pq-ciphersuites, arg: "-F draft-ietf-mls-pq-ciphersuites" }
     runs-on: ubuntu-latest
     name: full matrix (${{ matrix.mode.name }}/${{ matrix.features.name }})
     steps:

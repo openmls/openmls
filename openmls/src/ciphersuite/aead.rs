@@ -123,6 +123,12 @@ impl AeadNonce {
         &self.0
     }
 
+    /// Get a reference to the raw nonce bytes.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn raw_bytes(&self) -> &[u8; NONCE_BYTES] {
+        &self.0
+    }
+
     /// Xor the first bytes of the nonce with the reuse_guard.
     pub(crate) fn xor_with_reuse_guard(mut self, reuse_guard: &ReuseGuard) -> Self {
         log_crypto!(

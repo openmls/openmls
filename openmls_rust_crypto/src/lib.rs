@@ -9,7 +9,11 @@ use openmls_traits::OpenMlsProvider;
 mod provider;
 pub use provider::*;
 
+#[cfg(feature = "virtual-clients-draft")]
+mod ff1;
 mod hmac;
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+mod rand_shim;
 
 #[derive(Default, Debug)]
 #[cfg_attr(feature = "test-utils", derive(Clone))]

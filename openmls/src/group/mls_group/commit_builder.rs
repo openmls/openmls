@@ -62,6 +62,7 @@ struct VcLoaded {
     emulation_leaf_index: LeafNodeIndex,
     pprf: VcPprf,
     epoch_encryption_key: EpochEncryptionKey,
+    emulation_ciphersuite: openmls_traits::types::Ciphersuite,
 }
 
 pub(crate) mod external_commits;
@@ -465,13 +466,15 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                     log::error!("vc: load emulation epoch state in load_psks failed: {e:?}");
                     CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
                 })?
-                .ok_or(VirtualClientsError::MissingEpochEncryptionKey)?;
-            let (emulation_leaf_index, epoch_encryption_key) = state.into_parts();
+                .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+            let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) =
+                state.into_parts();
             Some(VcLoaded {
                 epoch_id: emulation.epoch_id.clone(),
                 emulation_leaf_index,
                 pprf,
                 epoch_encryption_key,
+                emulation_ciphersuite,
             })
         } else {
             None
@@ -1060,6 +1063,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let staged_commit = StagedCommit::new(
             proposal_queue,
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
+            #[cfg(feature = "virtual-clients-draft")]
+            cur_stage
+                .vc_loaded
+                .as_ref()
+                .map(|loaded| loaded.epoch_id.clone()),
         );
 
         Ok(builder.into_stage(Complete {
@@ -1197,12 +1205,14 @@ fn apply_vc_emulation(
     resolved_dictionary: AppDataDictionary,
     rand: &impl OpenMlsRand,
     crypto: &impl OpenMlsCrypto,
-    ciphersuite: openmls_traits::types::Ciphersuite,
+    group_ciphersuite: openmls_traits::types::Ciphersuite,
 ) -> Result<crate::treesync::diff::OwnUpdatePathOverride, CreateCommitError> {
+    let emulation_ciphersuite = loaded.emulation_ciphersuite;
     // Build the encrypted EpochInfoTbe payload the receiver will decrypt
-    // with `epoch_encryption_key`. The same struct is hashed to produce
-    // the PPRF input so that sender and receiver derive the same
-    // per-commit secret.
+    // with `epoch_encryption_key`. EpochInfo wrapping and PPRF evaluation
+    // stay in the emulation epoch's ciphersuite; the resulting operation
+    // secret is then expanded under the higher-level group ciphersuite to
+    // produce MLS path material for this group.
     const VC_RANDOMNESS_SIZE: usize = 32;
     let random = rand.random_vec(VC_RANDOMNESS_SIZE).map_err(|e| {
         log::error!("vc: per-commit randomness failed: {e:?}");
@@ -1217,17 +1227,17 @@ fn apply_vc_emulation(
         random,
     };
 
-    let pprf_input_bytes = pprf_input(crypto, ciphersuite, &epoch_info)?;
+    let pprf_input_bytes = pprf_input(crypto, emulation_ciphersuite, &epoch_info)?;
     let operation_secret: OperationSecret = loaded
         .pprf
-        .evaluate(crypto, ciphersuite, &pprf_input_bytes)
+        .evaluate(crypto, emulation_ciphersuite, &pprf_input_bytes)
         .map_err(VirtualClientsError::from)?
         .into();
 
     let encrypted_epoch_info = epoch_info.encrypt(
         crypto,
         rand,
-        ciphersuite,
+        emulation_ciphersuite,
         &loaded.epoch_encryption_key,
         &loaded.epoch_id,
     )?;
@@ -1243,11 +1253,11 @@ fn apply_vc_emulation(
     )?;
 
     let path_secret = operation_secret
-        .derive_path_generation_secret(crypto, ciphersuite)?
+        .derive_path_generation_secret(crypto, group_ciphersuite)?
         .into();
     let leaf_encryption_keypair = operation_secret
-        .derive_encryption_key_secret(crypto, ciphersuite)?
-        .generate_encryption_key_pair(crypto, ciphersuite)?;
+        .derive_encryption_key_secret(crypto, group_ciphersuite)?
+        .generate_encryption_key_pair(crypto, group_ciphersuite)?;
     Ok(crate::treesync::diff::OwnUpdatePathOverride {
         path_secret,
         leaf_encryption_keypair,

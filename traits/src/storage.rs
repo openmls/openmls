@@ -193,6 +193,25 @@ pub trait StorageProvider<const VERSION: u16> {
         vc_pprf: &VcPprf,
     ) -> Result<(), Self::Error>;
 
+    /// Store the record binding each recent epoch of a higher-level group to
+    /// the emulation-group epoch whose virtual-client LeafNode was active at
+    /// that epoch. Used by the reuse-guard derivation path to look up the
+    /// per-message `ReuseGuardSecret` for the epoch a message was sent in.
+    ///
+    /// The record is updated on every commit merged on the higher-level
+    /// group and prunes its own entries in lockstep with the group's
+    /// message-secrets retention. A subsequent write replaces any previously
+    /// stored record.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_bindings<
+        GroupId: traits::GroupId<VERSION>,
+        VcEmulationBindings: traits::VcEmulationBindings<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        bindings: &VcEmulationBindings,
+    ) -> Result<(), Self::Error>;
+
     //
     //    ---   setters/writers/enqueuers for crypto objects  ---
     //
@@ -474,6 +493,18 @@ pub trait StorageProvider<const VERSION: u16> {
         epoch_id: &EpochId,
     ) -> Result<Option<VcPprf>, Self::Error>;
 
+    /// Load the per-epoch emulation bindings of a higher-level group (see
+    /// [`Self::write_vc_emulation_bindings`]). Returns `None` if no VC
+    /// commit has been merged on this higher-level group.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_bindings<
+        GroupId: traits::GroupId<VERSION>,
+        VcEmulationBindings: traits::VcEmulationBindings<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<VcEmulationBindings>, Self::Error>;
+
     //
     //     ---    deleters for group state    ---
     //
@@ -623,16 +654,36 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
+    /// Delete the emulation-epoch state stored under the given epoch id.
+    ///
+    /// Never called by OpenMLS: the state is keyed by emulation epoch and
+    /// may be referenced by several higher-level groups, so the
+    /// application must call this once the emulation epoch is no longer
+    /// referenced by any group.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error>;
 
+    /// Delete the virtual-clients PPRF stored under the given epoch id.
+    ///
+    /// Never called by OpenMLS: like the emulation-epoch state, the PPRF
+    /// is keyed by emulation epoch and may be referenced by several
+    /// higher-level groups, so the application must call this once the
+    /// emulation epoch is no longer referenced by any group.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_vc_pprf<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
+    ) -> Result<(), Self::Error>;
+
+    /// Remove the per-epoch emulation bindings of the given group. Called
+    /// when the group is being deleted.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_bindings<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 }
 
@@ -695,6 +746,8 @@ pub mod traits {
     pub trait VcEmulationEpochState<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcPprf<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEmulationBindings<const VERSION: u16>: Entity<VERSION> {}
 
     // traits for types that implement both
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}

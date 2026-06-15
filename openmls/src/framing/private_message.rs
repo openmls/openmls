@@ -9,7 +9,22 @@ use crate::{
     tree::secret_tree::SecretType, tree::sender_ratchet::Generation,
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::{
+    binary_tree::array_representation::TreeSize, components::vc_derivation_info::ReuseGuardSecret,
+};
+
 use super::*;
+
+/// Inputs the framing layer needs to derive (or invert) a virtual-clients
+/// reuse guard for a single message.
+#[cfg(feature = "virtual-clients-draft")]
+pub(crate) struct EmulatorReuseGuardCtx<'a> {
+    pub(crate) reuse_guard_secret: &'a ReuseGuardSecret,
+    pub(crate) emulation_ciphersuite: Ciphersuite,
+    pub(crate) emulation_group_size: TreeSize,
+    pub(crate) emulation_leaf_index: LeafNodeIndex,
+}
 
 /// The result of encrypting an [`AuthenticatedContent`] into a
 /// [`PrivateMessage`].
@@ -103,6 +118,7 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
+        #[cfg(feature = "virtual-clients-draft")] emulator_ctx: Option<&EmulatorReuseGuardCtx<'_>>,
     ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         log::debug!("PrivateMessage::try_from_authenticated_content");
         log::trace!("  ciphersuite: {ciphersuite}");
@@ -118,6 +134,8 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulator_ctx,
         )
     }
 
@@ -138,6 +156,8 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         )
     }
 
@@ -159,11 +179,14 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         )
     }
 
     /// Internal function to encrypt content. The extra message header is only used
     /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
+    #[allow(clippy::too_many_arguments)]
     fn encrypt_content<T>(
         crypto: &impl OpenMlsCrypto,
         rand: &impl OpenMlsRand,
@@ -172,6 +195,7 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
+        #[cfg(feature = "virtual-clients-draft")] emulator_ctx: Option<&EmulatorReuseGuardCtx<'_>>,
     ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         // https://validation.openmls.tech/#valn1305
         let sender_index = if let Some(index) = public_message.sender().as_member() {
@@ -204,7 +228,31 @@ impl PrivateMessage {
             .secret_tree_mut()
             // Even in tests we want to use the real sender index, so we have a key to encrypt.
             .secret_for_encryption(ciphersuite, crypto, sender_index, secret_type)?;
-        // Sample reuse guard uniformly at random.
+        // Derive the reuse guard deterministically when the group is
+        // bound to an emulation epoch, otherwise sample at random.
+        #[cfg(feature = "virtual-clients-draft")]
+        let reuse_guard: ReuseGuard = if let Some(ctx) = emulator_ctx {
+            ReuseGuard::for_emulator_sender(
+                crypto,
+                rand,
+                ctx.reuse_guard_secret,
+                ctx.emulation_ciphersuite,
+                &ratchet_nonce,
+                ctx.emulation_leaf_index,
+                ctx.emulation_group_size,
+            )
+            .map_err(|e| match e {
+                ReuseGuardDerivationError::VirtualClients(inner) => {
+                    MessageEncryptionError::VirtualClientsError(inner)
+                }
+                ReuseGuardDerivationError::Library(inner) => {
+                    MessageEncryptionError::LibraryError(inner)
+                }
+            })?
+        } else {
+            ReuseGuard::try_from_random(rand).map_err(LibraryError::unexpected_crypto_error)?
+        };
+        #[cfg(not(feature = "virtual-clients-draft"))]
         let reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(rand).map_err(LibraryError::unexpected_crypto_error)?;
         // Prepare the nonce by xoring with the reuse guard.

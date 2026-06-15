@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use openmls_traits::storage::{
-    traits::VcEmulationEpochState as VcEmulationEpochStateTrait,
+    traits::GroupId as GroupIdTrait, traits::VcEmulationEpochState as VcEmulationEpochStateTrait,
     traits::VcEpochId as VcEpochIdTrait, traits::VcPprf as VcPprfTrait, Entity as EntityTrait, Key,
 };
 use rusqlite::{params, OptionalExtension as _, ToSql};
@@ -171,6 +171,87 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
                 KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
                 STORAGE_PROVIDER_VERSION,
                 SecretType::Pprf
+            ],
+        )?;
+        Ok(())
+    }
+}
+
+/// Per-epoch bindings from a higher-level group to emulation epochs. One row
+/// per higher-level group, holding the serialized binding record. Written on
+/// every commit merge.
+pub(super) struct StorableEmulationBindingRef<
+    'a,
+    VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>,
+>(pub &'a VcEmulationBindings);
+
+impl<'a, VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>>
+    StorableEmulationBindingRef<'a, VcEmulationBindings>
+{
+    pub(super) fn store_vc_emulation_bindings<
+        C: Codec,
+        GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        connection: &rusqlite::Connection,
+        group_id: &GroupId,
+    ) -> Result<(), rusqlite::Error> {
+        connection.execute(
+            "INSERT INTO vc_emulation_bindings (provider_version, group_id, bindings)
+            VALUES (?1, ?2, ?3)
+            ON CONFLICT(group_id) DO UPDATE SET
+                bindings = excluded.bindings,
+                provider_version = excluded.provider_version",
+            params![
+                STORAGE_PROVIDER_VERSION,
+                KeyRefWrapper::<C, _>(group_id, PhantomData),
+                EntityRefWrapper::<C, _>(self.0, PhantomData)
+            ],
+        )?;
+        Ok(())
+    }
+}
+
+impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId> {
+    pub(super) fn load_vc_emulation_bindings<
+        C: Codec,
+        VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        connection: &rusqlite::Connection,
+    ) -> Result<Option<VcEmulationBindings>, rusqlite::Error> {
+        let Self(group_id) = self;
+        let mut stmt = connection.prepare(
+            "SELECT bindings
+            FROM vc_emulation_bindings
+            WHERE group_id = ?1
+                AND provider_version = ?2",
+        )?;
+        stmt.query_row(
+            params![
+                KeyRefWrapper::<C, GroupId>(group_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+            |row| {
+                let EntityWrapper::<C, VcEmulationBindings>(bindings, ..) = row.get(0)?;
+                Ok(bindings)
+            },
+        )
+        .optional()
+    }
+
+    pub(super) fn delete_vc_emulation_bindings<C: Codec>(
+        &self,
+        connection: &rusqlite::Connection,
+    ) -> Result<(), rusqlite::Error> {
+        let Self(group_id) = self;
+        connection.execute(
+            "DELETE FROM vc_emulation_bindings
+            WHERE group_id = ?1
+                AND provider_version = ?2",
+            params![
+                KeyRefWrapper::<C, GroupId>(group_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
             ],
         )?;
         Ok(())
