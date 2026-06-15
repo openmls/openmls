@@ -48,6 +48,9 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::C
 #[cfg(feature = "extensions-draft-08")]
 use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
 
+#[cfg(feature = "virtual-clients-draft")]
+use errors::VcEmulationStateError;
+
 // Private
 mod application;
 mod exporting;
@@ -497,6 +500,13 @@ impl MlsGroup {
     /// Remove the persisted state of this group from storage. Note that
     /// signature key material is not managed by OpenMLS and has to be removed
     /// from the storage provider separately (if desired).
+    ///
+    /// With the `virtual-clients-draft` feature, the group's
+    /// emulation-epoch bindings are removed, but the emulation-epoch
+    /// state and PPRF they point to are not: they are keyed by emulation
+    /// epoch and may still be referenced by other higher-level groups.
+    /// Deleting them is the application's responsibility, see
+    /// `MlsGroup::register_vc_emulation_epoch`.
     pub fn delete<Storage: crate::storage::StorageProvider>(
         &mut self,
         storage: &Storage,
@@ -513,6 +523,13 @@ impl MlsGroup {
 
         #[cfg(feature = "extensions-draft-08")]
         storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
+
+        // Drop this group's emulation-epoch bindings. `EmulationEpochState`
+        // and `VcPprf` are keyed on the emulation epoch and may still be
+        // referenced by other higher-level groups, so they're not
+        // deleted here.
+        #[cfg(feature = "virtual-clients-draft")]
+        storage.delete_vc_emulation_bindings(self.group_id())?;
 
         self.proposal_store_mut().empty();
         storage.delete_encryption_epoch_key_pairs(
@@ -671,6 +688,39 @@ impl MlsGroup {
         .map_err(|e| e.into())
     }
 
+    /// Resolve the [`EmulationEpochState`] this group is bound to at
+    /// `epoch`, if any.
+    ///
+    /// Returns `Ok(None)` if the group has no emulation-epoch binding at
+    /// `epoch`. Returns an error if a binding exists but the state is
+    /// missing from storage.
+    ///
+    /// [`EmulationEpochState`]: crate::components::vc_derivation_info::EmulationEpochState
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn vc_emulation_state_at_epoch<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+        epoch: GroupEpoch,
+    ) -> Result<
+        Option<crate::components::vc_derivation_info::EmulationEpochState>,
+        VcEmulationStateError<Storage::Error>,
+    > {
+        let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> = storage
+            .vc_emulation_bindings(self.group_id())
+            .map_err(VcEmulationStateError::Storage)?;
+        let Some(epoch_id) = bindings.and_then(|bindings| bindings.get(epoch).cloned()) else {
+            return Ok(None);
+        };
+        let state = storage
+            .vc_emulation_epoch_state(&epoch_id)
+            .map_err(VcEmulationStateError::Storage)?
+            .ok_or_else(|| {
+                log::error!("vc: group is bound to emulation epoch, but state is missing");
+                VcEmulationStateError::MissingEmulationEpochState
+            })?;
+        Ok(Some(state))
+    }
+
     // Encrypt an AuthenticatedContent into an PrivateMessage
     pub(crate) fn encrypt<Provider: OpenMlsProvider>(
         &mut self,
@@ -678,6 +728,26 @@ impl MlsGroup {
         provider: &Provider,
     ) -> Result<EncryptionOutput, MessageEncryptionError<Provider::StorageError>> {
         let padding_size = self.configuration().padding_size();
+
+        // If this group is bound to an emulation epoch at its current epoch,
+        // load the state so the framing layer can derive a deterministic
+        // reuse guard.
+        #[cfg(feature = "virtual-clients-draft")]
+        let emulation_state = self
+            .vc_emulation_state_at_epoch(provider.storage(), self.epoch())
+            .map_err(|e| match e {
+                VcEmulationStateError::Storage(e) => MessageEncryptionError::StorageError(e),
+                VcEmulationStateError::MissingEmulationEpochState => {
+                    MessageEncryptionError::VirtualClientsError(
+                        crate::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState,
+                    )
+                }
+            })?;
+        #[cfg(feature = "virtual-clients-draft")]
+        let emulator_ctx: Option<crate::framing::EmulatorReuseGuardCtx<'_>> = emulation_state
+            .as_ref()
+            .map(|state| state.reuse_guard_inputs());
+
         let msg = PrivateMessage::try_from_authenticated_content(
             provider.crypto(),
             provider.rand(),
@@ -685,6 +755,8 @@ impl MlsGroup {
             self.ciphersuite(),
             self.message_secrets_store.message_secrets_mut(),
             padding_size,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulator_ctx.as_ref(),
         )?;
 
         provider
@@ -820,15 +892,27 @@ impl MlsGroup {
     /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
     /// the `provider`'s key store.
     ///
+    /// With the `virtual-clients-draft` feature, the caller passes the leaf
+    /// index under which the previous-epoch keypairs are stored. This is
+    /// needed for the sibling-resync flow, where `merge_commit` installs the
+    /// joiner's leaf as our own leaf before it filters and stores the new
+    /// epoch keypairs, so `self.own_leaf_index()` no longer points at the
+    /// previous epoch's leaf.
+    ///
     /// Returns an error if access to the key store fails.
     pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
+        #[cfg(feature = "virtual-clients-draft")] previous_own_leaf_index: LeafNodeIndex,
     ) -> Result<(), Storage::Error> {
+        #[cfg(feature = "virtual-clients-draft")]
+        let leaf_index = previous_own_leaf_index.u32();
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        let leaf_index = self.own_leaf_index().u32();
         store.delete_encryption_epoch_key_pairs(
             self.group_id(),
             &GroupEpoch::from(self.context().epoch().as_u64() - 1),
-            self.own_leaf_index().u32(),
+            leaf_index,
         )
     }
 

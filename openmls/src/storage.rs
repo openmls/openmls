@@ -154,9 +154,13 @@ impl traits::ApplicationExportTree<CURRENT_VERSION> for ApplicationExportTree {}
 #[cfg(feature = "virtual-clients-draft")]
 mod virtual_clients_storage {
     use super::*;
-    use crate::components::vc_derivation_info::{EmulationEpochState, EpochId, VcPprf};
+    use crate::components::vc_derivation_info::{
+        EmulationEpochState, EpochId, VcEmulationBindings, VcPprf,
+    };
 
+    // EpochId is both used as a key and a value, so it implements both traits.
     impl Key<CURRENT_VERSION> for EpochId {}
+    impl Entity<CURRENT_VERSION> for EpochId {}
     impl traits::VcEpochId<CURRENT_VERSION> for EpochId {}
 
     impl Entity<CURRENT_VERSION> for EmulationEpochState {}
@@ -164,6 +168,9 @@ mod virtual_clients_storage {
 
     impl Entity<CURRENT_VERSION> for VcPprf {}
     impl traits::VcPprf<CURRENT_VERSION> for VcPprf {}
+
+    impl Entity<CURRENT_VERSION> for VcEmulationBindings {}
+    impl traits::VcEmulationBindings<CURRENT_VERSION> for VcEmulationBindings {}
 }
 
 #[cfg(test)]

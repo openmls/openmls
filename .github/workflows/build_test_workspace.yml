@@ -52,9 +52,9 @@ jobs:
       - name: Test workspace
         run: |
           cargo test --workspace --all-targets --exclude=openmls --exclude openmls-fuzz
-      - name: Build workspace with `extensions-draft-08` feature
+      - name: Build workspace with experimental features
         run: |
-          cargo build --workspace -F extensions-draft-08 --all-targets --exclude openmls-fuzz
-      - name: Test workspace with `extensions-draft-08` feature
+          cargo build --workspace -F extensions-draft-08,draft-ietf-mls-pq-ciphersuites --all-targets --exclude openmls-fuzz
+      - name: Test workspace with experimental features
         run: |
-          cargo test --workspace -F extensions-draft-08 --all-targets --exclude=openmls --exclude openmls-fuzz
+          cargo test --workspace -F extensions-draft-08,draft-ietf-mls-pq-ciphersuites --all-targets --exclude=openmls --exclude openmls-fuzz

@@ -213,8 +213,11 @@ fn wire_format_checks() {
             sender_index,
             configuration,
             sender_data,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         )
-        .expect("Could not decrypt PrivateMessage.");
+        .expect("Could not decrypt PrivateMessage.")
+        .verifiable;
 
     assert_eq!(
         verifiable_plaintext.wire_format(),
@@ -259,8 +262,11 @@ fn wire_format_checks() {
             sender_index,
             configuration,
             sender_data,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         )
-        .expect("Could not decrypt PrivateMessage.");
+        .expect("Could not decrypt PrivateMessage.")
+        .verifiable;
 
     // We expect the signature to fail since the original content was signed with a different wire format.
     let result: Result<AuthenticatedContentIn, SignatureError> =
@@ -282,6 +288,8 @@ fn wire_format_checks() {
             ciphersuite,
             &mut message_secrets,
             0,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         )
         .expect_err("Could encrypt despite wrong wire format."),
         MessageEncryptionError::WrongWireFormat

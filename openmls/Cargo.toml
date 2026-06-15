@@ -33,12 +33,12 @@ rayon = "^1.12.0"
 thiserror = { workspace = true }
 backtrace = { version = "0.3", optional = true }
 # Only required for tests.
-rand = { version = "0.9", optional = true }
+rand = { version = "0.10", optional = true }
 serde_json = { version = "1.0", optional = true }
 # Crypto providers required for KAT and testing - "test-utils" feature
 itertools = { version = "0.14", optional = true }
 wasm-bindgen-test = { version = "0.3.50", optional = true }
-getrandom = { version = "0.3.4", optional = true }
+getrandom = { version = "0.4.2", optional = true }
 getrandom_old = { package = "getrandom", version = "0.2.15", optional = true }
 web-time = { version = "1.1", optional = true, features = ["serde"] }
 once_cell = { version = "1.19.0", optional = true }
@@ -98,6 +98,11 @@ js-test = [
 virtual-clients-draft = [
     "extensions-draft-08",
     "openmls_traits/virtual-clients-draft",
+    # The crypto providers implement the trait's FF1 small-space PRP, so
+    # their `OpenMlsCrypto` impls only compile against a
+    # `virtual-clients-draft` `openmls_traits` with their own feature on.
+    "openmls_rust_crypto?/virtual-clients-draft",
+    "openmls_libcrux_crypto?/virtual-clients-draft",
 ]
 
 # Same XXX as for `extensions-draft-08-test-dependencies`: the storage-backend
@@ -130,6 +135,15 @@ extensions-draft-08-test-dependencies = [
     "openmls_sqlite_storage?/extensions-draft-08",
     "openmls_libcrux_crypto?/extensions-draft-08",
     "openmls_memory_storage?/extensions-draft-08",
+]
+draft-ietf-mls-pq-ciphersuites = [
+    "openmls_traits/draft-ietf-mls-pq-ciphersuites",
+    "openmls_memory_storage?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_sqlite_storage?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_libcrux_crypto?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_rust_crypto?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_basic_credential?/draft-ietf-mls-pq-ciphersuites",
+    "openmls_test?/draft-ietf-mls-pq-ciphersuites",
 ]
 # experimental feature implementing the virtual-clients draft
 # enable randomness source

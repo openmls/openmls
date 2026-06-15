@@ -624,8 +624,21 @@ mod virtual_clients_draft {
         }
     }
 
+    /// Errors when resolving the emulation-epoch state a group is bound
+    /// to at a given epoch.
+    #[derive(Error, Debug, PartialEq, Clone)]
+    pub(crate) enum VcEmulationStateError<StorageError> {
+        /// Error reading the virtual-clients state from storage.
+        #[error("Error reading virtual-clients state from storage")]
+        Storage(StorageError),
+        /// The group is bound to an emulation epoch, but the state is
+        /// missing from storage.
+        #[error("The group is bound to an emulation epoch, but the state is missing from storage")]
+        MissingEmulationEpochState,
+    }
+
     /// Errors returned by
-    /// [`MlsGroup::register_vc_emulation_epoch`](super::MlsGroup::register_vc_emulation_epoch).
+    /// [`MlsGroup::register_vc_emulation_epoch`](crate::group::MlsGroup::register_vc_emulation_epoch).
     #[derive(Error, Debug, PartialEq, Clone)]
     pub enum RegisterVcEmulationEpochError<StorageError> {
         /// See [`SafeExportSecretError`] for more details.

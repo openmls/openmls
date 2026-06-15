@@ -26,8 +26,19 @@ impl MlsGroup {
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError> {
-        let (_, output) =
-            self.create_message_internal::<_, CreateMessageError>(provider, signer, message)?;
+        self.check_can_create_message()?;
+        let (_, output) = self
+            .create_message_internal(provider, signer, message)
+            .map_err(|e| match e {
+                MessageEncryptionError::LibraryError(e) => e,
+                // We know the application message is wellformed and we have
+                // the key material of the current epoch
+                MessageEncryptionError::WrongWireFormat
+                | MessageEncryptionError::SecretTreeError(_)
+                | MessageEncryptionError::StorageError(_) => {
+                    LibraryError::custom("Malformed plaintext")
+                }
+            })?;
         Ok(output)
     }
 
@@ -45,30 +56,31 @@ impl MlsGroup {
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError<Provider::StorageError>> {
-        let (generation, output) = self
-            .create_message_internal::<_, CreateMessageError<Provider::StorageError>>(
-                provider, signer, message,
-            )?;
+        let (generation, output) = self.create_unconfirmed_message(provider, signer, message)?;
         self.confirm_message(provider.storage(), generation)?;
         Ok(output)
     }
 
-    fn create_message_internal<Provider: OpenMlsProvider, E>(
+    /// Checks the group state preconditions for creating an application
+    /// message.
+    fn check_can_create_message(&self) -> Result<(), MlsGroupStateError> {
+        if !self.is_active() {
+            return Err(MlsGroupStateError::UseAfterEviction);
+        }
+        if !self.proposal_store().is_empty() {
+            return Err(MlsGroupStateError::PendingProposal);
+        }
+        Ok(())
+    }
+
+    /// Builds and encrypts an application message. Callers must run
+    /// [`Self::check_can_create_message`] first.
+    fn create_message_internal<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
-    ) -> Result<(u32, MlsMessageOut), E>
-    where
-        E: From<LibraryError> + From<MlsGroupStateError>,
-    {
-        if !self.is_active() {
-            return Err(MlsGroupStateError::UseAfterEviction.into());
-        }
-        if !self.proposal_store().is_empty() {
-            return Err(MlsGroupStateError::PendingProposal.into());
-        }
-
+    ) -> Result<(u32, MlsMessageOut), MessageEncryptionError<Provider::StorageError>> {
         let aad = self.outgoing_authenticated_data()?;
         let authenticated_content = AuthenticatedContent::new_application(
             self.own_leaf_index(),
@@ -80,10 +92,7 @@ impl MlsGroup {
         let EncryptionOutput {
             generation,
             private_message,
-        } = self
-            .encrypt(authenticated_content, provider)
-            // We know the application message is wellformed and we have the key material of the current epoch
-            .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
+        } = self.encrypt(authenticated_content, provider)?;
 
         let output = MlsMessageOut::from_private_message(private_message, self.version());
         self.reset_aad();
@@ -106,7 +115,8 @@ impl MlsGroup {
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<(u32, MlsMessageOut), CreateMessageError<Provider::StorageError>> {
-        self.create_message_internal(provider, signer, message)
+        self.check_can_create_message()?;
+        Ok(self.create_message_internal(provider, signer, message)?)
     }
 
     /// Confirms that a message has been successfully sent without a generation
