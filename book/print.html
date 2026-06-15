@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c515c17a.js";
+            window.path_to_searchindex_js = "searchindex-ffb37a5f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-15f15180.js"></script>
@@ -2420,6 +2420,8 @@ pub mod traits {
     pub trait VcEmulationEpochState&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcPprf&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEmulationBindings&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
 
     // traits for types that implement both
     pub trait ProposalRef&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; + Key&lt;VERSION&gt; {}

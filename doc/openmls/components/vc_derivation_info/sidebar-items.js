@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["VC_COMPONENT_ID"],"enum":["VirtualClientsError"],"struct":["EmulationEpochState","EpochId","VcEmulation"]};
+window.SIDEBAR_ITEMS = {"constant":["VC_COMPONENT_ID"],"enum":["VirtualClientsError"],"struct":["EmulationEpochState","EpochId","VcEmulation","VcEmulationBindings"]};
