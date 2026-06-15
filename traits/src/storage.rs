@@ -185,14 +185,6 @@ pub trait StorageProvider<const VERSION: u16> {
         vc_emulation_epoch_state: &VcEmulationEpochState,
     ) -> Result<(), Self::Error>;
 
-    /// Write the virtual clients PPRF for the given epoch.
-    #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_pprf<EpochId: traits::VcEpochId<VERSION>, VcPprf: traits::VcPprf<VERSION>>(
-        &self,
-        epoch_id: &EpochId,
-        vc_pprf: &VcPprf,
-    ) -> Result<(), Self::Error>;
-
     /// Store the record binding each recent epoch of a higher-level group to
     /// the emulation-group epoch whose virtual-client LeafNode was active at
     /// that epoch. Used by the reuse-guard derivation path to look up the
@@ -210,6 +202,22 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         bindings: &VcEmulationBindings,
+    ) -> Result<(), Self::Error>;
+
+    /// Write the per-emulation-epoch Virtual Client Operation Secret Tree
+    /// (the lazily derived node secrets plus the per-leaf operation
+    /// ratchets) for the given epoch. The tree is written back after every
+    /// ratchet advance. It is stored separately from the static
+    /// `EmulationEpochState` so that per-operation writes do not rewrite
+    /// the static fields.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_operation_tree<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcOperationTree: traits::VcOperationTree<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_operation_tree: &VcOperationTree,
     ) -> Result<(), Self::Error>;
 
     //
@@ -486,13 +494,6 @@ pub trait StorageProvider<const VERSION: u16> {
         epoch_id: &EpochId,
     ) -> Result<Option<VcEmulationEpochState>, Self::Error>;
 
-    #[cfg(feature = "virtual-clients-draft")]
-    /// Get the virtual clients PPRF for the given epoch.
-    fn vc_pprf<EpochId: traits::VcEpochId<VERSION>, VcPprf: traits::VcPprf<VERSION>>(
-        &self,
-        epoch_id: &EpochId,
-    ) -> Result<Option<VcPprf>, Self::Error>;
-
     /// Load the per-epoch emulation bindings of a higher-level group (see
     /// [`Self::write_vc_emulation_bindings`]). Returns `None` if no VC
     /// commit has been merged on this higher-level group.
@@ -504,6 +505,18 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
     ) -> Result<Option<VcEmulationBindings>, Self::Error>;
+
+    /// Get the per-emulation-epoch Virtual Client Operation Secret Tree for
+    /// the given epoch (the lazily derived node secrets plus the per-leaf
+    /// operation ratchets).
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_operation_tree<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcOperationTree: traits::VcOperationTree<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcOperationTree>, Self::Error>;
 
     //
     //     ---    deleters for group state    ---
@@ -654,26 +667,8 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
-    /// Delete the emulation-epoch state stored under the given epoch id.
-    ///
-    /// Never called by OpenMLS: the state is keyed by emulation epoch and
-    /// may be referenced by several higher-level groups, so the
-    /// application must call this once the emulation epoch is no longer
-    /// referenced by any group.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<VERSION>>(
-        &self,
-        epoch_id: &EpochId,
-    ) -> Result<(), Self::Error>;
-
-    /// Delete the virtual-clients PPRF stored under the given epoch id.
-    ///
-    /// Never called by OpenMLS: like the emulation-epoch state, the PPRF
-    /// is keyed by emulation epoch and may be referenced by several
-    /// higher-level groups, so the application must call this once the
-    /// emulation epoch is no longer referenced by any group.
-    #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_pprf<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error>;
@@ -684,6 +679,14 @@ pub trait StorageProvider<const VERSION: u16> {
     fn delete_vc_emulation_bindings<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Delete the Virtual Client Operation Secret Tree of the given epoch.
+    /// Called when the emulation epoch's state is being removed.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_operation_tree<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
     ) -> Result<(), Self::Error>;
 }
 
@@ -745,9 +748,9 @@ pub mod traits {
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcEmulationEpochState<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
-    pub trait VcPprf<const VERSION: u16>: Entity<VERSION> {}
-    #[cfg(feature = "virtual-clients-draft")]
     pub trait VcEmulationBindings<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcOperationTree<const VERSION: u16>: Entity<VERSION> {}
 
     // traits for types that implement both
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}
