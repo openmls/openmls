@@ -209,60 +209,81 @@
 <a href=#209 id=209 data-nosnippet>209</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>version_is_supported(<span class="kw-2">&amp;</span><span class="self">self</span>, protocol_version: ProtocolVersion) -&gt; bool {
 <a href=#210 id=210 data-nosnippet>210</a>        <span class="self">self</span>.payload.protocol_version == protocol_version
 <a href=#211 id=211 data-nosnippet>211</a>    }
-<a href=#212 id=212 data-nosnippet>212</a>}
-<a href=#213 id=213 data-nosnippet>213</a>
-<a href=#214 id=214 data-nosnippet>214</a><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-<a href=#215 id=215 data-nosnippet>215</a></span><span class="kw">impl </span>From&lt;KeyPackageTbsIn&gt; <span class="kw">for </span>KeyPackageTbs {
-<a href=#216 id=216 data-nosnippet>216</a>    <span class="kw">fn </span>from(value: KeyPackageTbsIn) -&gt; <span class="self">Self </span>{
-<a href=#217 id=217 data-nosnippet>217</a>        KeyPackageTbs {
-<a href=#218 id=218 data-nosnippet>218</a>            protocol_version: value.protocol_version,
-<a href=#219 id=219 data-nosnippet>219</a>            ciphersuite: value.ciphersuite,
-<a href=#220 id=220 data-nosnippet>220</a>            init_key: value.init_key,
-<a href=#221 id=221 data-nosnippet>221</a>            leaf_node: value.leaf_node.into(),
-<a href=#222 id=222 data-nosnippet>222</a>            extensions: value.extensions.coerce(),
-<a href=#223 id=223 data-nosnippet>223</a>        }
-<a href=#224 id=224 data-nosnippet>224</a>    }
-<a href=#225 id=225 data-nosnippet>225</a>}
-<a href=#226 id=226 data-nosnippet>226</a>
-<a href=#227 id=227 data-nosnippet>227</a><span class="kw">impl </span>From&lt;KeyPackageTbs&gt; <span class="kw">for </span>KeyPackageTbsIn {
-<a href=#228 id=228 data-nosnippet>228</a>    <span class="kw">fn </span>from(value: KeyPackageTbs) -&gt; <span class="self">Self </span>{
-<a href=#229 id=229 data-nosnippet>229</a>        <span class="self">Self </span>{
-<a href=#230 id=230 data-nosnippet>230</a>            protocol_version: value.protocol_version,
-<a href=#231 id=231 data-nosnippet>231</a>            ciphersuite: value.ciphersuite,
-<a href=#232 id=232 data-nosnippet>232</a>            init_key: value.init_key,
-<a href=#233 id=233 data-nosnippet>233</a>            leaf_node: value.leaf_node.into(),
-<a href=#234 id=234 data-nosnippet>234</a>            extensions: value.extensions.into(),
-<a href=#235 id=235 data-nosnippet>235</a>        }
-<a href=#236 id=236 data-nosnippet>236</a>    }
-<a href=#237 id=237 data-nosnippet>237</a>}
-<a href=#238 id=238 data-nosnippet>238</a>
-<a href=#239 id=239 data-nosnippet>239</a><span class="kw">impl </span>From&lt;KeyPackage&gt; <span class="kw">for </span>KeyPackageIn {
-<a href=#240 id=240 data-nosnippet>240</a>    <span class="kw">fn </span>from(value: KeyPackage) -&gt; <span class="self">Self </span>{
-<a href=#241 id=241 data-nosnippet>241</a>        <span class="self">Self </span>{
-<a href=#242 id=242 data-nosnippet>242</a>            payload: value.payload.into(),
-<a href=#243 id=243 data-nosnippet>243</a>            signature: value.signature,
+<a href=#212 id=212 data-nosnippet>212</a>
+<a href=#213 id=213 data-nosnippet>213</a>    <span class="doccomment">/// Assume that the signature is valid and return the [`KeyPackage`].
+<a href=#214 id=214 data-nosnippet>214</a>    ///
+<a href=#215 id=215 data-nosnippet>215</a>    /// # Safety
+<a href=#216 id=216 data-nosnippet>216</a>    ///
+<a href=#217 id=217 data-nosnippet>217</a>    /// The caller must guarantee that the key package is verified.
+<a href=#218 id=218 data-nosnippet>218</a>    </span><span class="attr">#[cfg(feature = <span class="string">"unchecked-conversions"</span>)]
+<a href=#219 id=219 data-nosnippet>219</a>    </span><span class="kw">pub fn </span>into_unchecked(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackage, KeyPackageVerifyError&gt; {
+<a href=#220 id=220 data-nosnippet>220</a>        <span class="kw">let </span>payload = KeyPackageTbs {
+<a href=#221 id=221 data-nosnippet>221</a>            protocol_version: <span class="self">self</span>.payload.protocol_version,
+<a href=#222 id=222 data-nosnippet>222</a>            ciphersuite: <span class="self">self</span>.payload.ciphersuite,
+<a href=#223 id=223 data-nosnippet>223</a>            init_key: <span class="self">self</span>.payload.init_key,
+<a href=#224 id=224 data-nosnippet>224</a>            leaf_node: <span class="self">self</span>.payload.leaf_node.into_unchecked(),
+<a href=#225 id=225 data-nosnippet>225</a>            extensions: <span class="self">self</span>.payload.extensions.into_unchecked(),
+<a href=#226 id=226 data-nosnippet>226</a>        };
+<a href=#227 id=227 data-nosnippet>227</a>        <span class="prelude-val">Ok</span>(KeyPackage {
+<a href=#228 id=228 data-nosnippet>228</a>            payload,
+<a href=#229 id=229 data-nosnippet>229</a>            signature: <span class="self">self</span>.signature,
+<a href=#230 id=230 data-nosnippet>230</a>            serialized_payload: <span class="prelude-val">None</span>,
+<a href=#231 id=231 data-nosnippet>231</a>        })
+<a href=#232 id=232 data-nosnippet>232</a>    }
+<a href=#233 id=233 data-nosnippet>233</a>}
+<a href=#234 id=234 data-nosnippet>234</a>
+<a href=#235 id=235 data-nosnippet>235</a><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+<a href=#236 id=236 data-nosnippet>236</a></span><span class="kw">impl </span>From&lt;KeyPackageTbsIn&gt; <span class="kw">for </span>KeyPackageTbs {
+<a href=#237 id=237 data-nosnippet>237</a>    <span class="kw">fn </span>from(value: KeyPackageTbsIn) -&gt; <span class="self">Self </span>{
+<a href=#238 id=238 data-nosnippet>238</a>        KeyPackageTbs {
+<a href=#239 id=239 data-nosnippet>239</a>            protocol_version: value.protocol_version,
+<a href=#240 id=240 data-nosnippet>240</a>            ciphersuite: value.ciphersuite,
+<a href=#241 id=241 data-nosnippet>241</a>            init_key: value.init_key,
+<a href=#242 id=242 data-nosnippet>242</a>            leaf_node: value.leaf_node.into(),
+<a href=#243 id=243 data-nosnippet>243</a>            extensions: value.extensions.coerce(),
 <a href=#244 id=244 data-nosnippet>244</a>        }
 <a href=#245 id=245 data-nosnippet>245</a>    }
 <a href=#246 id=246 data-nosnippet>246</a>}
 <a href=#247 id=247 data-nosnippet>247</a>
-<a href=#248 id=248 data-nosnippet>248</a><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-<a href=#249 id=249 data-nosnippet>249</a></span><span class="kw">impl </span>From&lt;KeyPackageBundle&gt; <span class="kw">for </span>KeyPackageIn {
-<a href=#250 id=250 data-nosnippet>250</a>    <span class="kw">fn </span>from(value: KeyPackageBundle) -&gt; <span class="self">Self </span>{
-<a href=#251 id=251 data-nosnippet>251</a>        <span class="self">Self </span>{
-<a href=#252 id=252 data-nosnippet>252</a>            payload: value.key_package.payload.into(),
-<a href=#253 id=253 data-nosnippet>253</a>            signature: value.key_package.signature,
-<a href=#254 id=254 data-nosnippet>254</a>        }
-<a href=#255 id=255 data-nosnippet>255</a>    }
-<a href=#256 id=256 data-nosnippet>256</a>}
-<a href=#257 id=257 data-nosnippet>257</a>
-<a href=#258 id=258 data-nosnippet>258</a><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-<a href=#259 id=259 data-nosnippet>259</a></span><span class="kw">impl </span>From&lt;KeyPackageIn&gt; <span class="kw">for </span>KeyPackage {
-<a href=#260 id=260 data-nosnippet>260</a>    <span class="kw">fn </span>from(value: KeyPackageIn) -&gt; <span class="self">Self </span>{
-<a href=#261 id=261 data-nosnippet>261</a>        <span class="self">Self </span>{
-<a href=#262 id=262 data-nosnippet>262</a>            payload: value.payload.into(),
-<a href=#263 id=263 data-nosnippet>263</a>            signature: value.signature,
-<a href=#264 id=264 data-nosnippet>264</a>            serialized_payload: <span class="prelude-val">None</span>,
+<a href=#248 id=248 data-nosnippet>248</a><span class="kw">impl </span>From&lt;KeyPackageTbs&gt; <span class="kw">for </span>KeyPackageTbsIn {
+<a href=#249 id=249 data-nosnippet>249</a>    <span class="kw">fn </span>from(value: KeyPackageTbs) -&gt; <span class="self">Self </span>{
+<a href=#250 id=250 data-nosnippet>250</a>        <span class="self">Self </span>{
+<a href=#251 id=251 data-nosnippet>251</a>            protocol_version: value.protocol_version,
+<a href=#252 id=252 data-nosnippet>252</a>            ciphersuite: value.ciphersuite,
+<a href=#253 id=253 data-nosnippet>253</a>            init_key: value.init_key,
+<a href=#254 id=254 data-nosnippet>254</a>            leaf_node: value.leaf_node.into(),
+<a href=#255 id=255 data-nosnippet>255</a>            extensions: value.extensions.into(),
+<a href=#256 id=256 data-nosnippet>256</a>        }
+<a href=#257 id=257 data-nosnippet>257</a>    }
+<a href=#258 id=258 data-nosnippet>258</a>}
+<a href=#259 id=259 data-nosnippet>259</a>
+<a href=#260 id=260 data-nosnippet>260</a><span class="kw">impl </span>From&lt;KeyPackage&gt; <span class="kw">for </span>KeyPackageIn {
+<a href=#261 id=261 data-nosnippet>261</a>    <span class="kw">fn </span>from(value: KeyPackage) -&gt; <span class="self">Self </span>{
+<a href=#262 id=262 data-nosnippet>262</a>        <span class="self">Self </span>{
+<a href=#263 id=263 data-nosnippet>263</a>            payload: value.payload.into(),
+<a href=#264 id=264 data-nosnippet>264</a>            signature: value.signature,
 <a href=#265 id=265 data-nosnippet>265</a>        }
 <a href=#266 id=266 data-nosnippet>266</a>    }
 <a href=#267 id=267 data-nosnippet>267</a>}
+<a href=#268 id=268 data-nosnippet>268</a>
+<a href=#269 id=269 data-nosnippet>269</a><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+<a href=#270 id=270 data-nosnippet>270</a></span><span class="kw">impl </span>From&lt;KeyPackageBundle&gt; <span class="kw">for </span>KeyPackageIn {
+<a href=#271 id=271 data-nosnippet>271</a>    <span class="kw">fn </span>from(value: KeyPackageBundle) -&gt; <span class="self">Self </span>{
+<a href=#272 id=272 data-nosnippet>272</a>        <span class="self">Self </span>{
+<a href=#273 id=273 data-nosnippet>273</a>            payload: value.key_package.payload.into(),
+<a href=#274 id=274 data-nosnippet>274</a>            signature: value.key_package.signature,
+<a href=#275 id=275 data-nosnippet>275</a>        }
+<a href=#276 id=276 data-nosnippet>276</a>    }
+<a href=#277 id=277 data-nosnippet>277</a>}
+<a href=#278 id=278 data-nosnippet>278</a>
+<a href=#279 id=279 data-nosnippet>279</a><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+<a href=#280 id=280 data-nosnippet>280</a></span><span class="kw">impl </span>From&lt;KeyPackageIn&gt; <span class="kw">for </span>KeyPackage {
+<a href=#281 id=281 data-nosnippet>281</a>    <span class="kw">fn </span>from(value: KeyPackageIn) -&gt; <span class="self">Self </span>{
+<a href=#282 id=282 data-nosnippet>282</a>        <span class="self">Self </span>{
+<a href=#283 id=283 data-nosnippet>283</a>            payload: value.payload.into(),
+<a href=#284 id=284 data-nosnippet>284</a>            signature: value.signature,
+<a href=#285 id=285 data-nosnippet>285</a>            serialized_payload: <span class="prelude-val">None</span>,
+<a href=#286 id=286 data-nosnippet>286</a>        }
+<a href=#287 id=287 data-nosnippet>287</a>    }
+<a href=#288 id=288 data-nosnippet>288</a>}
 </code></pre></div></section></main></body></html>
