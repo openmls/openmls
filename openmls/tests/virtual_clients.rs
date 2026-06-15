@@ -311,7 +311,10 @@ fn join_sibling_emulator<P: OpenMlsProvider>(
     let epoch_id_b = emulator_b
         .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
         .expect("alice_b register vc epoch");
-    assert_eq!(epoch_id, epoch_id_b, "siblings must derive the same EpochId");
+    assert_eq!(
+        epoch_id, epoch_id_b,
+        "siblings must derive the same EpochId"
+    );
 
     // alice_b resyncs into the higher-level group via an external commit.
     let verifiable_group_info = {
@@ -1556,8 +1559,12 @@ fn reuse_guard_recovers_emulator_leaf_index() {
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
-    let mut alice_a_main =
-        new_vc_main_group(ciphersuite, &alice_a_provider, &vc_signer, vc_credential.clone());
+    let mut alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+    );
 
     let (sib, resync_commit) = join_sibling_emulator(
         ciphersuite,
@@ -1698,8 +1705,11 @@ fn reuse_guard_recovery_across_mismatched_ciphersuites() {
 
     let alice_a_provider = OpenMlsRustCrypto::default();
     let alice_b_provider = OpenMlsRustCrypto::default();
-    let (vc_signer, vc_credential) =
-        shared_vc_identity(higher_level_ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) = shared_vc_identity(
+        higher_level_ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+    );
 
     let mut alice_a_main = new_vc_main_group(
         higher_level_ciphersuite,
@@ -1935,8 +1945,12 @@ fn vc_binding_carries_forward_across_foreign_commits() {
 
     // alice (the virtual client) founds the group on the shared leaf and adds
     // Bob, a regular member.
-    let mut alice_a_main =
-        new_vc_main_group(ciphersuite, &alice_a_provider, &vc_signer, vc_credential.clone());
+    let mut alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+    );
     let (bob_credential, bob_signer) =
         new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
     let bob_kp = KeyPackage::builder()
