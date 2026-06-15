@@ -146,9 +146,9 @@ impl ResumptionPsk {
     }
 }
 
-/// Application PSK according to the [draft-ietf-mls-extensions-09]
+/// Application PSK according to the [draft-ietf-mls-extensions]
 ///
-/// [draft-ietf-mls-protocol-08]: https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions-09#name-pre-shared-keys-psks
+/// [draft-ietf-mls-protocol]: https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions-09#name-pre-shared-keys-psks
 #[cfg(feature = "extensions-draft-08")]
 #[derive(
     Clone,
@@ -284,7 +284,7 @@ pub struct PreSharedKeyId {
 }
 
 impl PreSharedKeyId {
-    /// Construct a `PreSharedKeyID` with a random nonce.
+    /// Construct a [`PreSharedKeyId`] with a random nonce.
     pub fn new(
         ciphersuite: Ciphersuite,
         rand: &impl OpenMlsRand,
@@ -298,7 +298,7 @@ impl PreSharedKeyId {
         Ok(Self { psk, psk_nonce })
     }
 
-    /// Construct an external `PreSharedKeyID`.
+    /// Construct an external [`PreSharedKeyId`].
     pub fn external(psk_id: Vec<u8>, psk_nonce: Vec<u8>) -> Self {
         let psk = Psk::External(ExternalPsk::new(psk_id));
 
@@ -308,7 +308,7 @@ impl PreSharedKeyId {
         }
     }
 
-    /// Construct a resumption `PreSharedKeyID`.
+    /// Construct a resumption [`PreSharedKeyId`].
     pub fn resumption(
         usage: ResumptionPskUsage,
         psk_group_id: GroupId,
@@ -316,6 +316,17 @@ impl PreSharedKeyId {
         psk_nonce: Vec<u8>,
     ) -> Self {
         let psk = Psk::Resumption(ResumptionPsk::new(usage, psk_group_id, psk_epoch));
+
+        Self {
+            psk,
+            psk_nonce: psk_nonce.into(),
+        }
+    }
+
+    /// Construct an application [`PreSharedKeyId`].
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn application(component_id: ComponentId, psk_id: Vec<u8>, psk_nonce: Vec<u8>) -> Self {
+        let psk = Psk::Application(ApplicationPsk::new(component_id, psk_id.into()));
 
         Self {
             psk,
