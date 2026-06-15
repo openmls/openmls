@@ -148,6 +148,7 @@ impl MlsGroup {
         ProposalOrRefType::Proposal
     );
 
+    /// Creates proposals to add a non-resumption PSK to the key schedule.
     #[deprecated(
         note = "Renamed to `propose_pre_shared_key`; works for any non-resumption PSK, not just external"
     )]
@@ -160,6 +161,7 @@ impl MlsGroup {
         self.propose_pre_shared_key(provider, signer, value)
     }
 
+    /// Creates proposals to add a non-resumption PSK to the key schedule by value.
     #[deprecated(
         note = "Renamed to `propose_pre_shared_key_by_value`; works for any non-resumption PSK, not just external"
     )]
