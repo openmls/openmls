@@ -215,13 +215,14 @@ impl KeyPackageIn {
     /// # Safety
     ///
     /// The caller must guarantee that the key package is verified.
+    #[cfg(feature = "unchecked-conversions")]
     pub fn into_unchecked(self) -> Result<KeyPackage, KeyPackageVerifyError> {
         let payload = KeyPackageTbs {
             protocol_version: self.payload.protocol_version,
             ciphersuite: self.payload.ciphersuite,
             init_key: self.payload.init_key,
             leaf_node: self.payload.leaf_node.into_unchecked(),
-            extensions: self.payload.extensions.try_into()?,
+            extensions: self.payload.extensions.into_unchecked(),
         };
         Ok(KeyPackage {
             payload,

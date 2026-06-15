@@ -797,6 +797,7 @@ impl LeafNodeIn {
     /// # Safety
     ///
     /// The caller must guarantee that the leaf node is verified.
+    #[cfg(feature = "unchecked-conversions")]
     pub fn into_unchecked(self) -> LeafNode {
         LeafNode {
             payload: self.payload,

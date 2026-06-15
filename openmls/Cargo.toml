@@ -135,6 +135,9 @@ extensions-draft-08-test-dependencies = [
 # enable randomness source
 fork-resolution = []
 
+# Enable unchecked conversions for types that need to be verified or validated.
+unchecked-conversions = []
+
 [dev-dependencies]
 criterion = { version = "^0.8", default-features = false }       # need to disable default features for wasm
 hex = { version = "0.4", features = ["serde"] }
