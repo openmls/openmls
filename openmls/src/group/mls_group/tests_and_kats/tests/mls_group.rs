@@ -2712,7 +2712,7 @@ fn psks() {
     // === Alice creates a PSK proposal ===
     log::info!(" >>> Creating psk proposal ...");
     let (_psk_proposal, _proposal_ref) = alice_group
-        .propose_external_psk(alice_provider, &alice_signature_keys, preshared_key_id)
+        .propose_pre_shared_key(alice_provider, &alice_signature_keys, preshared_key_id)
         .expect("Could not create PSK proposal");
 
     // === Alice adds Bob (and commits to PSK proposal) ===

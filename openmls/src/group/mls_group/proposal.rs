@@ -135,18 +135,42 @@ impl MlsGroup {
     );
 
     impl_propose_fun!(
-        propose_external_psk,
+        propose_pre_shared_key,
         PreSharedKeyId,
         create_presharedkey_proposal,
         ProposalOrRefType::Reference
     );
 
     impl_propose_fun!(
-        propose_external_psk_by_value,
+        propose_pre_shared_key_by_value,
         PreSharedKeyId,
         create_presharedkey_proposal,
         ProposalOrRefType::Proposal
     );
+
+    #[deprecated(
+        note = "Renamed to `propose_pre_shared_key`; works for any non-resumption PSK, not just external"
+    )]
+    pub fn propose_external_psk<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        value: PreSharedKeyId,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        self.propose_pre_shared_key(provider, signer, value)
+    }
+
+    #[deprecated(
+        note = "Renamed to `propose_pre_shared_key_by_value`; works for any non-resumption PSK, not just external"
+    )]
+    pub fn propose_external_psk_by_value<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        value: PreSharedKeyId,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        self.propose_pre_shared_key_by_value(provider, signer, value)
+    }
 
     impl_propose_fun!(
         propose_custom_proposal_by_value,
@@ -208,29 +232,26 @@ impl MlsGroup {
                     .propose_remove_member_by_credential(provider, signer, &credential)
                     .map_err(|e| e.into()),
             },
-            Propose::PreSharedKey(psk_id) => match psk_id.psk() {
-                crate::schedule::Psk::External(_) => match ref_or_value {
+            Propose::PreSharedKey(psk_id) => {
+                match psk_id.psk() {
+                    crate::schedule::Psk::External(_) => {}
+                    #[cfg(feature = "extensions-draft-08")]
+                    crate::schedule::Psk::Application(_) => {}
+                    crate::schedule::Psk::Resumption(_) => {
+                        return Err(ProposalError::LibraryError(LibraryError::custom(
+                            "Invalid PSk argument",
+                        )))
+                    }
+                };
+                match ref_or_value {
                     ProposalOrRefType::Proposal => {
-                        self.propose_external_psk_by_value(provider, signer, psk_id)
+                        self.propose_pre_shared_key_by_value(provider, signer, psk_id)
                     }
                     ProposalOrRefType::Reference => {
-                        self.propose_external_psk(provider, signer, psk_id)
+                        self.propose_pre_shared_key(provider, signer, psk_id)
                     }
-                },
-                #[cfg(feature = "extensions-draft-08")]
-                crate::schedule::Psk::Application(_) => match ref_or_value {
-                    ProposalOrRefType::Proposal => {
-                        self.propose_external_psk_by_value(provider, signer, psk_id)
-                    }
-                    ProposalOrRefType::Reference => {
-                        self.propose_external_psk(provider, signer, psk_id)
-                    }
-                },
-
-                crate::schedule::Psk::Resumption(_) => Err(ProposalError::LibraryError(
-                    LibraryError::custom("Invalid PSk argument"),
-                )),
-            },
+                }
+            }
             Propose::ReInit {
                 group_id: _,
                 version: _,
