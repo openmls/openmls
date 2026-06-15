@@ -284,7 +284,7 @@ pub struct PreSharedKeyId {
 }
 
 impl PreSharedKeyId {
-    /// Construct a [`PreSharedKeyId`] with a random nonce.
+    /// Construct a `PreSharedKeyID` with a random nonce.
     pub fn new(
         ciphersuite: Ciphersuite,
         rand: &impl OpenMlsRand,
@@ -298,7 +298,7 @@ impl PreSharedKeyId {
         Ok(Self { psk, psk_nonce })
     }
 
-    /// Construct an external [`PreSharedKeyId`].
+    /// Construct an external `PreSharedKeyID`.
     pub fn external(psk_id: Vec<u8>, psk_nonce: Vec<u8>) -> Self {
         let psk = Psk::External(ExternalPsk::new(psk_id));
 
@@ -308,7 +308,7 @@ impl PreSharedKeyId {
         }
     }
 
-    /// Construct a resumption [`PreSharedKeyId`].
+    /// Construct a resumption `PreSharedKeyID`.
     pub fn resumption(
         usage: ResumptionPskUsage,
         psk_group_id: GroupId,
@@ -323,7 +323,7 @@ impl PreSharedKeyId {
         }
     }
 
-    /// Construct an application [`PreSharedKeyId`].
+    /// Construct an application `PreSharedKeyID`.
     #[cfg(feature = "extensions-draft-08")]
     pub fn application(component_id: ComponentId, psk_id: Vec<u8>, psk_nonce: Vec<u8>) -> Self {
         let psk = Psk::Application(ApplicationPsk::new(component_id, psk_id.into()));
