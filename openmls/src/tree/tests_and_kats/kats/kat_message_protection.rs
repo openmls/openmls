@@ -361,6 +361,8 @@ pub fn run_test_vector(
                     provider.crypto(),
                     commit_pub.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 )
                 .unwrap();
 
@@ -371,7 +373,7 @@ pub fn run_test_vector(
             let processed_message: AuthenticatedContent = processed_unverified_message
                 .verify(ciphersuite, provider.crypto(), ProtocolVersion::Mls10)
                 .unwrap()
-                .0;
+                .content;
             match processed_message.content().to_owned() {
                 FramedContentBody::Commit(c) => {
                     assert_eq!(commit, CommitIn::from(*c))

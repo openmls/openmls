@@ -375,6 +375,16 @@ impl OpenMlsCrypto for CryptoProvider {
             public: pk.as_slice().to_vec(),
         })
     }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn ff1_aes128_encrypt(&self, key: &[u8; 16], plaintext: u32) -> Result<u32, CryptoError> {
+        crate::ff1::encrypt(key, plaintext)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn ff1_aes128_decrypt(&self, key: &[u8; 16], ciphertext: u32) -> Result<u32, CryptoError> {
+        crate::ff1::decrypt(key, ciphertext)
+    }
 }
 
 fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {

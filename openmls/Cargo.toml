@@ -98,6 +98,11 @@ js-test = [
 virtual-clients-draft = [
     "extensions-draft-08",
     "openmls_traits/virtual-clients-draft",
+    # The crypto providers implement the trait's FF1 small-space PRP, so
+    # their `OpenMlsCrypto` impls only compile against a
+    # `virtual-clients-draft` `openmls_traits` with their own feature on.
+    "openmls_rust_crypto?/virtual-clients-draft",
+    "openmls_libcrux_crypto?/virtual-clients-draft",
 ]
 
 # Same XXX as for `extensions-draft-08-test-dependencies`: the storage-backend

@@ -36,9 +36,18 @@ tls_codec = { workspace = true }
 ml-dsa = "0.1.0"
 thiserror = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+# FF1-AES128 backing for the virtual-clients-draft reuse-guard PRP.
+fpe = { version = "0.6", optional = true }
+aes = { version = "0.8", optional = true }
 
 [features]
 test-utils = ["openmls_memory_storage/test-utils"]
 draft-ietf-mls-pq-ciphersuites = [
   "openmls_traits/draft-ietf-mls-pq-ciphersuites",
+]
+virtual-clients-draft = [
+  "openmls_traits/virtual-clients-draft",
+  "openmls_memory_storage/virtual-clients-draft",
+  "dep:fpe",
+  "dep:aes",
 ]

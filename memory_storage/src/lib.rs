@@ -263,6 +263,8 @@ const APPLICATION_EXPORT_TREE_LABEL: &[u8] = b"ApplicationExportTree";
 const VC_EMULATION_EPOCH_STATE_LABEL: &[u8] = b"VcEmulationEpochState";
 #[cfg(feature = "virtual-clients-draft")]
 const VC_PPRF_LABEL: &[u8] = b"VcPprf";
+#[cfg(feature = "virtual-clients-draft")]
+const VC_EMULATION_BINDING_LABEL: &[u8] = b"VcEmulationBinding";
 const INTERIM_TRANSCRIPT_HASH_LABEL: &[u8] = b"InterimTranscriptHash";
 const CONFIRMATION_TAG_LABEL: &[u8] = b"ConfirmationTag";
 
@@ -1112,6 +1114,49 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(VC_PPRF_LABEL, &serde_json::to_vec(epoch_id).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_bindings<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        bindings: &VcEmulationBindings,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            VC_EMULATION_BINDING_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+            serde_json::to_vec(bindings).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_bindings<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<VcEmulationBindings>, Self::Error> {
+        let values = self.values.read().unwrap();
+        let key = build_key::<CURRENT_VERSION, &GroupId>(VC_EMULATION_BINDING_LABEL, group_id);
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        Ok(serde_json::from_slice(value).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_bindings<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(
+            VC_EMULATION_BINDING_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+        )
     }
 }
 
