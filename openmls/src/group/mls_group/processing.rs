@@ -1015,7 +1015,7 @@ impl MlsGroup {
 /// Returns `true` for:
 ///   * own-leaf commits (`Sender::Member(idx)` with `idx == own_leaf_index`),
 ///     where receiver and sender share the higher-level leaf
-///   * sibling-resync external commits (`Sender::NewMemberCommit` whose
+///   * sibling-resync external commits (`Sender::NewMemberCommit`) whose
 ///     proposal list inlines a `Remove` of `own_leaf_index`.
 ///
 /// `false` for everything else.

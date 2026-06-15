@@ -892,34 +892,27 @@ impl MlsGroup {
     /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
     /// the `provider`'s key store.
     ///
+    /// With the `virtual-clients-draft` feature, the caller passes the leaf
+    /// index under which the previous-epoch keypairs are stored. This is
+    /// needed for the sibling-resync flow, where `merge_commit` installs the
+    /// joiner's leaf as our own leaf before it filters and stores the new
+    /// epoch keypairs, so `self.own_leaf_index()` no longer points at the
+    /// previous epoch's leaf.
+    ///
     /// Returns an error if access to the key store fails.
-    #[cfg(not(feature = "virtual-clients-draft"))]
     pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
+        #[cfg(feature = "virtual-clients-draft")] previous_own_leaf_index: LeafNodeIndex,
     ) -> Result<(), Storage::Error> {
+        #[cfg(feature = "virtual-clients-draft")]
+        let leaf_index = previous_own_leaf_index.u32();
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        let leaf_index = self.own_leaf_index().u32();
         store.delete_encryption_epoch_key_pairs(
             self.group_id(),
             &GroupEpoch::from(self.context().epoch().as_u64() - 1),
-            self.own_leaf_index().u32(),
-        )
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
-    pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
-        &self,
-        store: &Storage,
-        previous_own_leaf_index: LeafNodeIndex,
-    ) -> Result<(), Storage::Error> {
-        // In the sibling-resync flow, `merge_commit` installs the joiner's
-        // leaf as our own leaf before it filters and stores the new epoch
-        // keypairs. Previous-epoch keypairs are still stored under the leaf
-        // index from that previous epoch, so the caller must pass that index
-        // explicitly instead of having this helper read `self.own_leaf_index()`.
-        store.delete_encryption_epoch_key_pairs(
-            self.group_id(),
-            &GroupEpoch::from(self.context().epoch().as_u64() - 1),
-            previous_own_leaf_index.u32(),
+            leaf_index,
         )
     }
 
