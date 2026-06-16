@@ -31,7 +31,7 @@ use std::collections::BTreeMap;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
-use tls_codec::{Serialize as _, TlsSerialize, TlsSize};
+use tls_codec::{Serialize as _, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
     binary_tree::{
@@ -178,7 +178,7 @@ impl OperationSecretTree {
             leaf_index,
             generation,
             operation_type,
-            operation_context: operation_context.to_vec(),
+            operation_context: operation_context.to_vec().into(),
         };
         // `operation_generation_secret` is dropped when this function
         // returns, deleting it as required by the spec.
@@ -548,7 +548,7 @@ struct OperationContext {
     leaf_index: LeafNodeIndex,
     generation: u32,
     operation_type: VirtualClientOperationType,
-    operation_context: Vec<u8>,
+    operation_context: VLBytes,
 }
 
 impl OperationContext {

@@ -4,7 +4,9 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::{DeserializeBytes, Serialize as _, TlsDeserializeBytes, TlsSerialize, TlsSize};
+use tls_codec::{
+    DeserializeBytes, Serialize as _, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
+};
 
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
@@ -154,7 +156,7 @@ impl EmulatorEpochSecret {
         ciphersuite: Ciphersuite,
     ) -> Result<EpochId, VirtualClientsError> {
         let secret = self.0.derive_secret(crypto, ciphersuite, EPOCH_ID_LABEL)?;
-        Ok(EpochId(secret.as_slice().to_vec()))
+        Ok(EpochId(secret.as_slice().to_vec().into()))
     }
 
     /// Derive the per-epoch [`EpochEncryptionKey`]. The key is a KDF
@@ -296,7 +298,7 @@ impl std::fmt::Debug for GenerationIdSecret {
 #[derive(Debug, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub(crate) struct DerivationInfo {
     epoch_id: EpochId,
-    ciphertext: Vec<u8>,
+    ciphertext: VLBytes,
 }
 
 impl DerivationInfo {
@@ -324,7 +326,7 @@ impl DerivationInfo {
         )?;
         Ok(Self {
             epoch_id,
-            ciphertext,
+            ciphertext: ciphertext.into(),
         })
     }
 
@@ -369,7 +371,7 @@ impl DerivationInfo {
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserializeBytes,
 )]
-pub struct EpochId(Vec<u8>);
+pub struct EpochId(VLBytes);
 
 /// Per-higher-level-group record of which emulation-group epoch produced the
 /// virtual-client LeafNode that was active at each recent epoch of that
