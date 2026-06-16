@@ -791,6 +791,19 @@ impl LeafNodeIn {
     pub fn credential(&self) -> &Credential {
         &self.payload.credential
     }
+
+    /// Assume that signature is valid and return the corresponding [`LeafNode`].
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that the leaf node is verified.
+    #[cfg(feature = "unchecked-conversions")]
+    pub fn into_unchecked(self) -> LeafNode {
+        LeafNode {
+            payload: self.payload,
+            signature: self.signature,
+        }
+    }
 }
 
 impl From<LeafNode> for LeafNodeIn {

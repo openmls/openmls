@@ -525,6 +525,21 @@ where
     }
 }
 
+impl Extensions<AnyObject> {
+    /// Assume that the extensions contain the given extension type.
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that the extensions are of the correct type.
+    #[cfg(feature = "unchecked-conversions")]
+    pub fn into_unchecked<T>(self) -> Extensions<T> {
+        Extensions {
+            unique: self.unique,
+            _object: PhantomData,
+        }
+    }
+}
+
 /// Can be implemented by a type to validate extensions.
 pub trait ExtensionValidator {
     /// The error returned by the validator
