@@ -222,7 +222,7 @@ pub enum Psk {
 }
 
 /// ```c
-/// // draft-ietf-mls-protocol-19 and draft-ietf-mls-extensions-09
+/// // RFC 9420 and draft-ietf-mls-extensions-09
 /// enum {
 ///   reserved(0),
 ///   external(1),
