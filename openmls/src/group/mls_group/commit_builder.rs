@@ -70,6 +70,10 @@ struct VcLoaded {
     emulation_ciphersuite: openmls_traits::types::Ciphersuite,
     generation: u32,
     operation_secret: OperationSecret,
+    /// The resolved `AppDataDictionary` produced by the leaf-configuration
+    /// pre-check in `vc_emulation`, carried to `build` so the VC
+    /// derivation-info injection preserves every other entry.
+    resolved_dictionary: AppDataDictionary,
 }
 
 pub(crate) mod external_commits;
@@ -358,9 +362,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// emulation epoch (see
     /// [`MlsGroup::register_vc_emulation_epoch`]). This method loads the
     /// per-epoch operation secret tree and AEAD key from the storage
-    /// provider, advances the own `LeafNode` operation ratchet by one
-    /// generation, and immediately persists the advanced tree. `build`
-    /// then:
+    /// provider, validates the leaf configuration (see the preconditions
+    /// below), then advances the own `LeafNode` operation ratchet by one
+    /// generation and immediately persists the advanced tree. `build` then:
     ///
     /// - derives the path secret and the new leaf's encryption keypair
     ///   from the allocated `OperationSecret`, so a sibling virtual
@@ -374,18 +378,20 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// skip over a burned generation, retaining the skipped generation
     /// secrets inside their copy of the operation secret tree.
     ///
-    /// The application is responsible for ensuring the new leaf:
+    /// The leaf configuration is validated against the
+    /// `leaf_node_parameters` set on the builder so far, so call this after
+    /// configuring the self-update leaf. The application must ensure the new
+    /// leaf:
     ///
     /// - lists [`ExtensionType::AppDataDictionary`](crate::extensions::ExtensionType::AppDataDictionary)
     ///   in its `Capabilities.extensions`, and
     /// - signals support for [`VC_COMPONENT_ID`].
     ///
-    /// If those preconditions are not met the build fails with
+    /// If those preconditions are not met this method fails with
     /// `VirtualClientsError::AppDataDictionaryNotSupported` or
     /// `VirtualClientsError::VcComponentNotListed` (wrapped in
-    /// [`CreateCommitError::VirtualClientsError`]). The generation
-    /// allocated here stays burned in that case, which is harmless for the
-    /// reason above.
+    /// [`CreateCommitError::VirtualClientsError`]) before allocating a
+    /// generation, so no operation secret is burned in that case.
     ///
     /// Fails with `VirtualClientsError::MissingEmulationEpochState` or
     /// `VirtualClientsError::MissingOperationTree` if the epoch was never
@@ -421,6 +427,21 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) =
             state.into_parts();
 
+        // Validate the leaf configuration before allocating a generation, so
+        // a deterministic precondition failure (the new leaf not declaring
+        // `AppDataDictionary` or not listing `VC_COMPONENT_ID`) does not burn
+        // an operation secret. Returns the resolved `AppDataDictionary`, which
+        // `build` reuses so the injection preserves the AppComponents entry
+        // across commits.
+        let own_leaf_index = self.group.borrow().own_leaf_index();
+        let is_external_commit = self.stage.external_commit_info.is_some();
+        let resolved_dictionary = check_vc_leaf_configuration(
+            &self.stage.leaf_node_parameters,
+            self.group.borrow(),
+            own_leaf_index,
+            is_external_commit,
+        )?;
+
         // Update-path leaf-node derivations are the only operation type
         // wired up so far. KeyPackage / Application will get their own
         // allocation entry points when emitted. The operation context for
@@ -449,6 +470,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             emulation_ciphersuite,
             generation,
             operation_secret,
+            resolved_dictionary,
         });
         Ok(self)
     }
@@ -730,21 +752,15 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let vc_loaded = builder.vc_loaded.take();
         #[cfg(feature = "virtual-clients-draft")]
         let own_update_override = if let Some(loaded) = vc_loaded.as_ref() {
-            // Run the leaf-configuration pre-check. Returns the resolved
-            // `AppDataDictionary` so the inject step can preserve every other
-            // entry the application registered, including the AppComponents
-            // entry that survives across multiple VC commits.
-            let resolved_dictionary = check_vc_leaf_configuration(
-                &cur_stage.leaf_node_parameters,
-                group,
-                own_leaf_index,
-                is_external_commit,
-            )?;
-
+            // The leaf-configuration pre-check already ran in `vc_emulation`,
+            // before the generation was allocated. Reuse the resolved
+            // `AppDataDictionary` it produced so the inject step preserves
+            // every other entry, including the AppComponents entry that
+            // survives across multiple VC commits.
             Some(apply_vc_emulation(
                 loaded,
                 &mut cur_stage.leaf_node_parameters,
-                resolved_dictionary,
+                loaded.resolved_dictionary.clone(),
                 crypto,
                 ciphersuite,
             )?)

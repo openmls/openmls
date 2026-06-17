@@ -1668,8 +1668,8 @@ fn bound_group_fails_closed_when_emulation_state_missing_on_send() {
     );
     provider
         .storage()
-        .delete_vc_emulation_epoch_state(&epoch_id)
-        .expect("delete emulation epoch state");
+        .delete_vc_emulation_state(&epoch_id)
+        .expect("delete emulation state");
 
     let err = alice_group
         .create_message(&provider, &alice_signer, b"must not send")
@@ -1682,6 +1682,51 @@ fn bound_group_fails_closed_when_emulation_state_missing_on_send() {
                 openmls::framing::errors::MessageEncryptionError::VirtualClientsError(
                     openmls::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState
                 )
+            )
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
+/// `vc_emulation` validates the leaf configuration before allocating an
+/// operation secret. A leaf that supports `AppDataDictionary` but does not
+/// list `VC_COMPONENT_ID` is rejected at the builder step rather than at
+/// `build`, so no generation is burned on this deterministic failure.
+#[test]
+fn vc_emulation_rejects_misconfigured_leaf_before_allocating() {
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let provider = OpenMlsRustCrypto::default();
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+
+    // The leaf advertises `AppDataDictionary` support but carries no
+    // `AppComponents` entry, so `VC_COMPONENT_ID` is not listed.
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .build();
+    let mut alice_group = MlsGroup::new(&provider, &alice_signer, &group_config, alice_credential)
+        .expect("create alice group");
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+
+    let epoch_id = emulator_group
+        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
+        .expect("register vc epoch");
+
+    let err = alice_group
+        .commit_builder()
+        .vc_emulation(provider.crypto(), provider.storage(), epoch_id)
+        .expect_err("misconfigured leaf must be rejected at the builder step");
+
+    assert!(
+        matches!(
+            err,
+            openmls::group::CreateCommitError::VirtualClientsError(
+                openmls::components::vc_derivation_info::VirtualClientsError::VcComponentNotListed
             )
         ),
         "unexpected error: {err:?}"
