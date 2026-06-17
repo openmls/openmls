@@ -160,7 +160,7 @@ impl OperationSecretTree {
     /// consumed generation and reuses key material, the reuse the draft
     /// forbids. See the type-level `# Concurrency` note.
     #[allow(clippy::too_many_arguments)]
-    pub fn derive_operation_secret(
+    pub(crate) fn derive_operation_secret(
         &mut self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
@@ -199,7 +199,7 @@ impl OperationSecretTree {
     /// observed on the wire. Allocating from a stale copy, or persisting
     /// late, lets two operations share a generation and reuse key material,
     /// the reuse the draft forbids. See the type-level `# Concurrency` note.
-    pub fn next_operation_secret(
+    pub(crate) fn next_operation_secret(
         &mut self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
