@@ -45,7 +45,7 @@ use crate::{
     extensions::{AppDataDictionary, AppDataDictionaryExtension},
     treesync::node::leaf_node::LeafNode,
 };
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     messages::proposals::AppDataUpdateProposal,
     prelude::processing::{AppDataDictionaryUpdater, AppDataUpdates},
@@ -144,7 +144,7 @@ pub struct LoadedPsks {
     /// The GroupInfo creation config
     group_info_config: GroupInfoConfig,
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     app_data_dictionary_updates: Option<AppDataUpdates>,
 
     /// Per-emulation-epoch PPRF + AEAD key loaded from the storage
@@ -492,7 +492,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         consume_proposal_store: stage.consume_proposal_store,
                         group_info_config,
                         external_commit_info: stage.external_commit_info,
-                        #[cfg(feature = "extensions-draft-08")]
+                        #[cfg(feature = "extensions-draft")]
                         app_data_dictionary_updates: None,
                         #[cfg(feature = "virtual-clients-draft")]
                         vc_loaded,
@@ -677,7 +677,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .public_group
             .validate_group_context_extensions_proposal(&proposal_queue)?;
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         group
             .public_group
             .validate_app_data_update_proposals_and_group_context(&proposal_queue)?;
@@ -694,13 +694,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let mut diff = group.public_group.empty_diff();
 
         // Apply proposals to tree
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let apply_proposals_values = diff.apply_proposals_with_app_data_updates(
             &proposal_queue,
             own_leaf_index,
             cur_stage.app_data_dictionary_updates,
         )?;
-        #[cfg(not(feature = "extensions-draft-08"))]
+        #[cfg(not(feature = "extensions-draft"))]
         let apply_proposals_values = diff.apply_proposals(&proposal_queue, own_leaf_index)?;
         if apply_proposals_values.self_removed && !is_external_commit {
             return Err(CreateCommitError::CannotRemoveSelf);
@@ -851,7 +851,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     // The spec requires the SafeAAD prefix even with zero items
                     // when the target GroupContext has `safe_aad` present, so a
                     // bare `aad` would be rejected by SafeAAD-aware receivers.
-                    #[cfg(feature = "extensions-draft-08")]
+                    #[cfg(feature = "extensions-draft")]
                     let aad_bytes = if group.context().safe_aad_required() {
                         crate::framing::safe_aad::assemble_authenticated_data(
                             &crate::framing::SafeAad::empty(),
@@ -861,7 +861,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     } else {
                         aad.clone()
                     };
-                    #[cfg(not(feature = "extensions-draft-08"))]
+                    #[cfg(not(feature = "extensions-draft"))]
                     let aad_bytes = aad.clone();
                     (aad_bytes, WireFormat::PublicMessage)
                 }
@@ -913,7 +913,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let EpochSecretsResult {
             epoch_secrets: provisional_epoch_secrets,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_exporter,
         } = key_schedule
             .epoch_secrets(crypto, ciphersuite)
@@ -1041,7 +1041,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 own_leaf_index,
             );
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let application_export_tree = ApplicationExportTree::new(application_exporter);
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
@@ -1052,7 +1052,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             // proposal, so there is no extra keypair to store here.
             None,
             update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_export_tree,
             // The committer's `own_leaf_index` is already set to the new
             // leaf (in `build_group` for external commits, or unchanged for
@@ -1093,13 +1093,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// [`AppDataDictionary`] of the group.
     ///
     /// [`AppDataDictionary`]: crate::extensions::AppDataDictionary
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn app_data_dictionary_updater(&self) -> AppDataDictionaryUpdater<'_> {
         AppDataDictionaryUpdater::new(self.group.borrow().context().app_data_dict())
     }
 
     /// Sets the [`AppDataUpdates`] that contain the changes made by the AppDataUpdate proposals
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn with_app_data_dictionary_updates(
         &mut self,
         app_data_dictionary_updates: Option<AppDataUpdates>,
@@ -1108,7 +1108,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     }
 
     /// Returns an iterator over all AppDataUpdate proposals in the proposal store of the group
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn app_data_update_proposals(&self) -> impl Iterator<Item = &AppDataUpdateProposal> {
         let proposal_store_proposals = self
             .group

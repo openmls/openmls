@@ -21,7 +21,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     component::ComponentId,
     messages::proposals::{AppDataUpdateOperation, AppDataUpdateProposal},
@@ -59,7 +59,7 @@ pub enum Propose {
     /// Propose adding new group context extensions.
     GroupContextExtensions(Extensions<GroupContext>),
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Propose an update to a component in the [`AppDataDictionary`]
     UpdateAppDataComponent {
         /// The component_id to update in the dictionary
@@ -67,7 +67,7 @@ pub enum Propose {
         /// The data representing the update
         update: Vec<u8>,
     },
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Propose removal of a component in the [`AppDataDictionary`]
     RemoveAppDataComponent {
         /// The component_id to remove in the dictionary
@@ -237,7 +237,7 @@ impl MlsGroup {
             Propose::PreSharedKey(psk_id) => {
                 match psk_id.psk() {
                     crate::schedule::Psk::External(_) => {}
-                    #[cfg(feature = "extensions-draft-08")]
+                    #[cfg(feature = "extensions-draft")]
                     crate::schedule::Psk::Application(_) => {}
                     crate::schedule::Psk::Resumption(_) => {
                         return Err(ProposalError::LibraryError(LibraryError::custom(
@@ -269,7 +269,7 @@ impl MlsGroup {
                 LibraryError::custom("Unsupported proposal type GroupContextExtensions"),
             )),
             // extensions-draft-08
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Propose::UpdateAppDataComponent {
                 component_id,
                 update,
@@ -279,7 +279,7 @@ impl MlsGroup {
                 component_id,
                 AppDataUpdateOperation::Update(update.into()),
             ),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Propose::RemoveAppDataComponent { component_id } => self.propose_app_data_update(
                 provider,
                 signer,
@@ -501,7 +501,7 @@ impl MlsGroup {
     }
 
     /// Updates the AppDataDictionary
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn propose_app_data_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -675,7 +675,7 @@ impl MlsGroup {
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn create_app_data_update_proposal(
         &self,
         framing_parameters: FramingParameters,

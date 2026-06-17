@@ -24,7 +24,7 @@ use crate::{
     },
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
 #[cfg(doc)]
@@ -144,7 +144,7 @@ pub enum PublicProcessMessageError {
 
     /// The group's GroupContext requires Safe AAD framing, but the message's
     /// `authenticated_data` did not start with a well-formed `SafeAad`.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[error("malformed SafeAAD prefix in authenticated_data")]
     MalformedSafeAad,
 }
@@ -181,13 +181,13 @@ pub enum ProcessMessageError<StorageError> {
     UnsupportedProposalType,
 
     /// Use `_with_app_data_update` functions for handling AppDataUpdate proposals
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[error("Use `_with_app_data_update` functions for handling AppDataUpdate proposals")]
     FoundAppDataUpdateProposal,
 
     /// The group's GroupContext requires Safe AAD framing, but the message's
     /// `authenticated_data` did not start with a well-formed `SafeAad`.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[error("malformed SafeAAD prefix in authenticated_data")]
     MalformedSafeAad,
 }
@@ -434,7 +434,7 @@ pub enum ExportGroupInfoError {
 }
 
 /// Export secret error
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum SafeExportSecretError<StorageError> {
     /// See [`MlsGroupStateError`] for more details.
@@ -452,7 +452,7 @@ pub enum SafeExportSecretError<StorageError> {
 }
 
 /// Export secret error
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ProcessedMessageSafeExportSecretError {
     /// See [`StagedSafeExportSecretError`] for more details.
@@ -464,7 +464,7 @@ pub enum ProcessedMessageSafeExportSecretError {
 }
 
 /// Export secret error
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum PendingSafeExportSecretError<StorageError> {
     /// See [`StagedSafeExportSecretError`] for more details.
@@ -482,7 +482,7 @@ pub enum PendingSafeExportSecretError<StorageError> {
 }
 
 /// Export secret from a pending commit
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum StagedSafeExportSecretError {
     /// Only group members can export secrets.

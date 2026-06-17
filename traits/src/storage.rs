@@ -162,7 +162,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Write the ApplicationExportTree for the group with the given id.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn write_application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
@@ -464,7 +464,7 @@ pub trait StorageProvider<const VERSION: u16> {
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error>;
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Get the application export tree for the group with the given id.
     fn application_export_tree<
         GroupId: traits::GroupId<VERSION>,
@@ -645,7 +645,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Delete the application export tree for the group with the given id.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn delete_application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,

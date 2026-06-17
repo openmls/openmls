@@ -18,19 +18,19 @@ use crate::{
 #[cfg(feature = "virtual-clients-draft")]
 use crate::messages::Commit;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     component::{ComponentData, ComponentId},
     extensions::AppDataDictionary,
     messages::proposals_in::{ProposalIn, ProposalOrRefIn},
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use std::collections::BTreeMap;
 
 use super::{errors::ProcessMessageError, *};
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 /// Keeps the old dictionary as well as the values that are being overwritten
 pub struct AppDataDictionaryUpdater<'a> {
     old_dict: Option<&'a AppDataDictionary>,
@@ -40,11 +40,11 @@ pub struct AppDataDictionaryUpdater<'a> {
 /// A diff of update values that can be provided to [`MlsGroup::process_unverified_message_with_app_data_updates`] or [`CommitBuilder::with_app_data_dictionary_updates`]
 ///
 /// [`CommitBuilder::with_app_data_dictionary_updates`]: crate::group::CommitBuilder::with_app_data_dictionary_updates
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Default, Debug)]
 pub struct AppDataUpdates(BTreeMap<ComponentId, Option<Vec<u8>>>);
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl IntoIterator for AppDataUpdates {
     type Item = (ComponentId, Option<Vec<u8>>);
 
@@ -55,7 +55,7 @@ impl IntoIterator for AppDataUpdates {
     }
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl AppDataUpdates {
     /// Returns the number of changes.
     pub fn len(&self) -> usize {
@@ -68,7 +68,7 @@ impl AppDataUpdates {
     }
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl<'a> AppDataDictionaryUpdater<'a> {
     /// Creates a new [`AppDataDictionaryUpdater`].
     pub fn new(old_dict: Option<&'a AppDataDictionary>) -> Self {
@@ -130,7 +130,7 @@ impl MlsGroup {
 
         // Check if the commit contains AppDataUpdate proposals - if so, the caller
         // must use process_unverified_message_with_app_data_updates instead
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         if let Some(proposals) = unverified_message.committed_proposals() {
             for proposal_or_ref in proposals {
                 if let ProposalOrRefIn::Proposal(proposal) = proposal_or_ref {
@@ -143,7 +143,7 @@ impl MlsGroup {
         self.process_unverified_message(provider, unverified_message)
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Returns a new helper struct for updating the app data
     pub fn app_data_dictionary_updater<'a>(&'a self) -> AppDataDictionaryUpdater<'a> {
         AppDataDictionaryUpdater::new(self.context().app_data_dict())
@@ -558,7 +558,7 @@ impl MlsGroup {
 
     /// This function processes a message that may contain AppDataUpdate proposals.
     /// Process these first an create an AppDataUpdates, then pass that into this function.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn process_unverified_message_with_app_data_updates<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
@@ -573,7 +573,7 @@ impl MlsGroup {
         let verified =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
         let mut processed = match verified.content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
                 .process_internal_authenticated_content_with_app_data_updates(
@@ -590,7 +590,7 @@ impl MlsGroup {
                 verified.credential,
             )?,
         };
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         if self.context().safe_aad_required() {
             processed
                 .try_attach_safe_aad()
@@ -639,7 +639,7 @@ impl MlsGroup {
         let verified =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
         let mut processed = match verified.content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
                 .process_internal_authenticated_content(
@@ -655,7 +655,7 @@ impl MlsGroup {
                 verified.credential,
             )?,
         };
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         if self.context().safe_aad_required() {
             processed
                 .try_attach_safe_aad()
@@ -687,7 +687,7 @@ impl MlsGroup {
     ///  - ValSem204: Public keys from Path must be verified and match the
     ///    private keys from the direct path
     ///  - ValSem205
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn process_internal_authenticated_content_with_app_data_updates<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,

@@ -696,7 +696,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorablePskIdRef(psk_id).delete::<C>(self.connection.borrow())
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn write_application_export_tree<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
@@ -712,7 +712,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn application_export_tree<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
@@ -727,7 +727,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn delete_application_export_tree<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,

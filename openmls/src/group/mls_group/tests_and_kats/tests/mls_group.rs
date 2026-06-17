@@ -356,7 +356,7 @@ fn export_secret() {
     )
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[openmls_test]
 fn safe_export_secret() {
     use crate::schedule::application_export_tree::ApplicationExportTreeError;
@@ -2754,7 +2754,7 @@ fn psks() {
 }
 
 // Test that application PSKs can be proposed (by reference and by value) and committed in a group
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[openmls_test::openmls_test]
 fn application_psks() {
     use crate::{group::mls_group::proposal::Propose, schedule::psk::ApplicationPsk};

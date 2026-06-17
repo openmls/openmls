@@ -35,16 +35,16 @@ fpe = { version = "0.6", optional = true }
 aes = { version = "0.8", optional = true }
 
 [features]
-extensions-draft-08 = [
-    "openmls_traits/extensions-draft-08",
-    "openmls_memory_storage/extensions-draft-08",
+extensions-draft = [
+    "openmls_traits/extensions-draft",
+    "openmls_memory_storage/extensions-draft",
 ]
 draft-ietf-mls-pq-ciphersuites = [
     "openmls_traits/draft-ietf-mls-pq-ciphersuites",
     "openmls_memory_storage/draft-ietf-mls-pq-ciphersuites",
 ]
 virtual-clients-draft = [
-    "extensions-draft-08",
+    "extensions-draft",
     "openmls_traits/virtual-clients-draft",
     "openmls_memory_storage/virtual-clients-draft",
     "dep:fpe",
