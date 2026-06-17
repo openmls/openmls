@@ -76,11 +76,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-hack
 
-      # Group all features except fork-resolution and extensions-draft-08
+      # Group all features except fork-resolution and extensions-draft
       - name: Cargo hack
         run: |
           cargo hack check --feature-powerset --no-dev-deps --verbose -p openmls \
           --group-features test-utils,crypto-debug,content-debug,backtrace,libcrux-provider,sqlite-provider \
-          --group-features extensions-draft-08,extensions-draft-08-test-dependencies \
+          --group-features extensions-draft,extensions-draft-test-dependencies \
           --group-features js,js-test \
           --group-features virtual-clients-draft,virtual-clients-draft-test-dependencies
