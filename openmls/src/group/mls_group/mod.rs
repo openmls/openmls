@@ -545,10 +545,13 @@ impl MlsGroup {
 ///
 /// [`EmulationEpochState`]: crate::components::vc_derivation_info::EmulationEpochState
 #[cfg(feature = "virtual-clients-draft")]
+#[derive(thiserror::Error, Debug, PartialEq, Clone)]
 pub(crate) enum VcEmulationStateError<StorageError> {
     /// Reading the binding or the emulation-epoch state from storage failed.
+    #[error("Error reading the binding or emulation-epoch state from storage: {0}")]
     Storage(StorageError),
     /// The group is bound to an emulation epoch, but its state is missing.
+    #[error("The group is bound to an emulation epoch, but its state is missing.")]
     MissingEmulationEpochState,
 }
 
