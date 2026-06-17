@@ -268,7 +268,7 @@ impl MlsGroup {
             Propose::GroupContextExtensions(_) => Err(ProposalError::LibraryError(
                 LibraryError::custom("Unsupported proposal type GroupContextExtensions"),
             )),
-            // extensions-draft-08
+            // extensions-draft
             #[cfg(feature = "extensions-draft")]
             Propose::UpdateAppDataComponent {
                 component_id,

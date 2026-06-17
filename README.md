@@ -59,7 +59,7 @@ details.
 ## Features
 OpenMLS provides the following features
 
-- **extensions-draft-08**: enable features defined in [MLS extensions draft-08](https://messaginglayersecurity.rocks/mls-extensions/draft-ietf-mls-extensions.html)
+- **extensions-draft**: enable features defined in [MLS extensions draft](https://messaginglayersecurity.rocks/mls-extensions/draft-ietf-mls-extensions.html)
 - **fork-resolution**: helper functionality for [resolving forks](https://book.openmls.tech/user_manual/fork-resolution.html).
 - **js**: enable compilation to wasm
 
