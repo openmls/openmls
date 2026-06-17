@@ -667,8 +667,11 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
+    /// Delete all per-epoch state for the given emulation epoch: both the
+    /// emulation epoch state and the Virtual Client Operation Secret Tree.
+    /// Called by the application when it removes an emulation epoch.
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<VERSION>>(
+    fn delete_vc_emulation_state<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error>;
@@ -679,14 +682,6 @@ pub trait StorageProvider<const VERSION: u16> {
     fn delete_vc_emulation_bindings<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
-
-    /// Delete the Virtual Client Operation Secret Tree of the given epoch.
-    /// Called when the emulation epoch's state is being removed.
-    #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_operation_tree<EpochId: traits::VcEpochId<VERSION>>(
-        &self,
-        epoch_id: &EpochId,
     ) -> Result<(), Self::Error>;
 }
 

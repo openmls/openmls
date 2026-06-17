@@ -1066,14 +1066,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+    fn delete_vc_emulation_state<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(
-            VC_EMULATION_EPOCH_STATE_LABEL,
-            &serde_json::to_vec(epoch_id).unwrap(),
-        )
+        let serialized_epoch_id = serde_json::to_vec(epoch_id).unwrap();
+        self.delete::<CURRENT_VERSION>(VC_EMULATION_EPOCH_STATE_LABEL, &serialized_epoch_id)?;
+        self.delete::<CURRENT_VERSION>(VC_OPERATION_TREE_LABEL, &serialized_epoch_id)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -1149,17 +1148,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             return Ok(None);
         };
         Ok(serde_json::from_slice(value).unwrap())
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_operation_tree<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
-        &self,
-        epoch_id: &EpochId,
-    ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(
-            VC_OPERATION_TREE_LABEL,
-            &serde_json::to_vec(epoch_id).unwrap(),
-        )
     }
 }
 

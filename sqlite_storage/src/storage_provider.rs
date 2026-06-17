@@ -767,11 +767,12 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
+    fn delete_vc_emulation_state<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error> {
-        StorableKeyRef(epoch_id).delete_vc_emulation_epoch_state::<C>(self.connection.borrow())
+        StorableKeyRef(epoch_id).delete_vc_emulation_epoch_state::<C>(self.connection.borrow())?;
+        StorableKeyRef(epoch_id).delete_vc_operation_tree::<C>(self.connection.borrow())
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -830,13 +831,5 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     ) -> Result<Option<VcOperationTree>, Self::Error> {
         StorableKeyRef(epoch_id)
             .load_vc_operation_tree::<C, VcOperationTree>(self.connection.borrow())
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_operation_tree<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
-        &self,
-        epoch_id: &EpochId,
-    ) -> Result<(), Self::Error> {
-        StorableKeyRef(epoch_id).delete_vc_operation_tree::<C>(self.connection.borrow())
     }
 }

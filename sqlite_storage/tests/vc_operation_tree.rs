@@ -72,8 +72,8 @@ fn operation_tree_read_write_delete() {
     let read: Option<TestOperationTree> = storage.vc_operation_tree(&other_epoch_id).unwrap();
     assert_eq!(read, None);
 
-    // Delete and read None.
-    storage.delete_vc_operation_tree(&epoch_id).unwrap();
+    // Deleting the emulation state removes the operation tree too.
+    storage.delete_vc_emulation_state(&epoch_id).unwrap();
     let read: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();
     assert_eq!(read, None);
 }
