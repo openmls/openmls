@@ -47,7 +47,7 @@ impl MlsGroup {
     /// proposals exist. In that case `.process_pending_proposals()` must be
     /// called first and incoming messages from the DS must be processed
     /// afterwards.
-    #[cfg(all(feature = "virtual-clients-draft"))]
+    #[cfg(feature = "virtual-clients-draft")]
     pub fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
