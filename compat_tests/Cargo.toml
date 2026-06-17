@@ -9,7 +9,7 @@ compat_0_7_1 = ["dep:openmls_0_7_1"]
 compat_0_8_1 = ["dep:openmls_0_8_1", "openmls/0-8-1-storage-format"]
 compat_0_8_1_extensions = [
     "compat_0_8_1",
-    "openmls_0_8_1/extensions-draft",
+    "openmls_0_8_1/extensions-draft-08",
     "openmls/extensions-draft",
 ]
 
