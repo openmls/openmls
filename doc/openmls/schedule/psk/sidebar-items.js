@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Psk","PskType","ResumptionPskUsage"],"mod":["store"],"struct":["ExternalPsk","PreSharedKeyId","PskSecret","ResumptionPsk"]};
+window.SIDEBAR_ITEMS = {"enum":["Psk","PskType","ResumptionPskUsage"],"mod":["store"],"struct":["ApplicationPsk","ExternalPsk","PreSharedKeyId","PskSecret","ResumptionPsk"]};
