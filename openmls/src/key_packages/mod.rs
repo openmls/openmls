@@ -594,6 +594,11 @@ impl KeyPackageBundle {
         &self.key_package
     }
 
+    /// Extract the key package from the bundle.
+    pub fn into_key_package(self) -> KeyPackage {
+        self.key_package
+    }
+
     /// Get a reference to the private init key.
     pub fn init_private_key(&self) -> &HpkePrivateKey {
         &self.private_init_key

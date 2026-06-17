@@ -2712,7 +2712,7 @@ fn psks() {
     // === Alice creates a PSK proposal ===
     log::info!(" >>> Creating psk proposal ...");
     let (_psk_proposal, _proposal_ref) = alice_group
-        .propose_external_psk(alice_provider, &alice_signature_keys, preshared_key_id)
+        .propose_pre_shared_key(alice_provider, &alice_signature_keys, preshared_key_id)
         .expect("Could not create PSK proposal");
 
     // === Alice adds Bob (and commits to PSK proposal) ===
@@ -2751,6 +2751,146 @@ fn psks() {
         )
         .expect("An unexpected error occurred.")
         .into_contents();
+}
+
+// Test that application PSKs can be proposed (by reference and by value) and committed in a group
+#[cfg(feature = "extensions-draft-08")]
+#[openmls_test::openmls_test]
+fn application_psks() {
+    use crate::{group::mls_group::proposal::Propose, schedule::psk::ApplicationPsk};
+
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    // Basic group setup.
+    let (
+        alice_credential_with_key,
+        alice_signature_keys,
+        bob_key_package_bundle,
+        _bob_signature_keys,
+    ) = setup_alice_bob(ciphersuite, alice_provider, bob_provider);
+
+    let component_id = 0x8000;
+
+    // === Alice creates a group with an application PSK ===
+    let secret =
+        Secret::random(ciphersuite, alice_provider.rand()).expect("Not enough randomness.");
+    let application_psk = ApplicationPsk::new(component_id, vec![1, 2, 3].into());
+    let preshared_key_id = PreSharedKeyId::new(
+        ciphersuite,
+        alice_provider.rand(),
+        Psk::Application(application_psk),
+    )
+    .expect("An unexpected error occured.");
+    preshared_key_id
+        .store(alice_provider, secret.as_slice())
+        .unwrap();
+    preshared_key_id
+        .store(bob_provider, secret.as_slice())
+        .unwrap();
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential_with_key,
+        )
+        .expect("Error creating group.");
+
+    // === Alice proposes the application PSK by reference ===
+    let (_psk_proposal, _proposal_ref) = alice_group
+        .propose(
+            alice_provider,
+            &alice_signature_keys,
+            Propose::PreSharedKey(preshared_key_id),
+            ProposalOrRefType::Reference,
+        )
+        .expect("Could not create PSK proposal");
+
+    // === Alice adds Bob (and commits to the PSK proposal) ===
+    let (_commit, welcome, _group_info_option) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signature_keys,
+            from_ref(bob_key_package_bundle.key_package()),
+        )
+        .expect("Could not create commit");
+
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("Could not merge commit");
+
+    let ratchet_tree = alice_group.export_ratchet_tree();
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &MlsGroupJoinConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .build(),
+        welcome.into_welcome().unwrap(),
+        Some(ratchet_tree.into()),
+    )
+    .expect("Could not stage welcome")
+    .into_group(bob_provider)
+    .expect("Could not create group from welcome");
+
+    assert_eq!(
+        alice_group.epoch_authenticator().as_slice(),
+        bob_group.epoch_authenticator().as_slice()
+    );
+
+    // === Alice proposes a second application PSK by value and commits ===
+    let second_secret =
+        Secret::random(ciphersuite, alice_provider.rand()).expect("Not enough randomness.");
+    let second_psk_id = PreSharedKeyId::new(
+        ciphersuite,
+        alice_provider.rand(),
+        Psk::Application(ApplicationPsk::new(component_id, vec![4, 5, 6].into())),
+    )
+    .expect("An unexpected error occured.");
+    second_psk_id
+        .store(alice_provider, second_secret.as_slice())
+        .unwrap();
+    second_psk_id
+        .store(bob_provider, second_secret.as_slice())
+        .unwrap();
+
+    let (_psk_proposal, _proposal_ref) = alice_group
+        .propose(
+            alice_provider,
+            &alice_signature_keys,
+            Propose::PreSharedKey(second_psk_id),
+            ProposalOrRefType::Proposal,
+        )
+        .expect("Could not create PSK proposal");
+
+    let (commit, _welcome_option, _group_info_option) = alice_group
+        .commit_to_pending_proposals(alice_provider, &alice_signature_keys)
+        .expect("Could not create commit");
+
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("Could not merge commit");
+
+    // === Bob processes the commit ===
+    let processed_message = bob_group
+        .process_message(bob_provider, commit.into_protocol_message().unwrap())
+        .expect("Could not process commit");
+
+    match processed_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
+            bob_group
+                .merge_staged_commit(bob_provider, *staged_commit)
+                .expect("Could not merge staged commit");
+        }
+        _ => unreachable!(),
+    }
+
+    assert_eq!(
+        alice_group.epoch_authenticator().as_slice(),
+        bob_group.epoch_authenticator().as_slice()
+    );
 }
 
 // Test several scenarios when PSKs are used in a group
