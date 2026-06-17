@@ -1,80 +1,56 @@
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    random::OpenMlsRand,
     types::{Ciphersuite, CryptoError},
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::{DeserializeBytes, Serialize as _, TlsDeserializeBytes, TlsSerialize, TlsSize};
+use tls_codec::{
+    DeserializeBytes, Serialize as _, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
+};
 
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::Secret,
     messages::PathSecret,
-    schedule::pprf::{Pprf, PprfError, Prefix256},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
 /// Component ID under which the virtual-clients derivation info is carried in
 /// the leaf node's `app_data_dictionary` extension.
 ///
-/// `0x000D` is a placeholder until the IETF draft is assigned an IANA value.
-pub const VC_COMPONENT_ID: u16 = 0x000D;
+/// `0x0006` is the value the draft suggests for IANA registration, which is
+/// still pending.
+pub const VC_COMPONENT_ID: u16 = 0x0006;
 
-// Operation-secret child labels. Each child is derived from the per-commit
-// operation secret produced by evaluating the per-epoch PPRF on the per-commit
-// input. Only `Encryption Key` and `Path Generation` are wired up at the
-// moment; the remaining ones are reserved so that `key_package` / `application`
-// derivation can be added without churning the constants.
+// Operation-secret child labels. Each child is derived from the per-operation
+// secret produced by the per-epoch operation secret tree. Only
+// `Encryption Key` and `Path Generation` are wired up at the moment, which is
+// all the `leaf_node` commit path needs. The spec also defines
+// `Signature Key` and `Init Key` children. Those, together with the
+// `key_package` and `application` operation paths that consume them, are
+// deferred to a follow-up PR.
 const ENCRYPTION_KEY_LABEL: &str = "Encryption Key";
 const PATH_GENERATION_LABEL: &str = "Path Generation";
 
+/// `ExpandWithLabel` label for the [`DerivationInfoTbe`] AEAD key derived
+/// from the per-epoch [`EpochEncryptionKey`].
+const DERIVATION_INFO_KEY_LABEL: &str = "key";
+/// `ExpandWithLabel` label for the [`DerivationInfoTbe`] AEAD nonce derived
+/// from the per-epoch [`EpochEncryptionKey`].
+const DERIVATION_INFO_NONCE_LABEL: &str = "nonce";
+
 const EPOCH_ID_LABEL: &str = "Epoch ID";
 const EPOCH_ENCRYPTION_KEY_LABEL: &str = "Encryption Key";
-const EPOCH_SECRET_LABEL: &str = "Base Secret";
+const EPOCH_BASE_SECRET_LABEL: &str = "Base Secret";
 /// `DeriveSecret` label for [`ReuseGuardSecret`].
 const REUSE_GUARD_LABEL: &str = "Reuse Guard";
+/// `DeriveSecret` label for [`GenerationIdSecret`].
+const GENERATION_ID_LABEL: &str = "Generation ID Secret";
 /// `ExpandWithLabel` label for the 16-byte FF1 PRP key derived from a
 /// [`ReuseGuardSecret`] (mls-virtual-clients draft, Reuse Guard section).
 const REUSE_GUARD_PRP_KEY_LABEL: &str = "reuse guard";
 /// FF1 PRP key length in bytes (AES-128).
 const PRP_KEY_LEN: usize = 16;
-
-/// PPRF instance keyed on a 32-byte input. One of these is registered per
-/// emulation-group epoch by
-/// [`MlsGroup::register_vc_emulation_epoch`](crate::group::MlsGroup::register_vc_emulation_epoch).
-pub(crate) type VcPprf = Pprf<Prefix256>;
-
-/// Per-commit virtual-clients material that the application supplies to
-/// [`CommitBuilder::vc_emulation`] when sending a commit on a virtual-clients
-/// group.
-///
-/// The PPRF, per-epoch AEAD key, and the registering client's
-/// emulation-group leaf index live in the storage provider — the
-/// application registers them once per emulation epoch via
-/// [`MlsGroup::register_vc_emulation_epoch`], which sources the
-/// per-emulation-epoch root secret from the emulation group's
-/// `safe_export_secret(VC_COMPONENT_ID)`. When creating a commit, the
-/// application supplies just the `epoch_id`; the library hashes
-/// `(stored leaf_index, fresh random)` to produce the PPRF input,
-/// evaluates the PPRF, and persists the punctured state.
-///
-/// The leaf carrying a VC commit must declare
-/// [`ExtensionType::AppDataDictionary`](crate::extensions::ExtensionType::AppDataDictionary)
-/// in its capabilities and must include an `AppComponents` entry (component
-/// id `1`) listing [`VC_COMPONENT_ID`] in its `AppDataDictionary` extension;
-/// otherwise the sender pre-check rejects the commit with
-/// `VirtualClientsError::AppDataDictionaryNotSupported` or
-/// `VirtualClientsError::VcComponentNotListed`.
-///
-/// [`CommitBuilder::vc_emulation`]: crate::group::CommitBuilder::vc_emulation
-/// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
-#[derive(Debug)]
-pub struct VcEmulation {
-    /// Identifier of the emulation epoch whose registered PPRF + AEAD key
-    /// the library should use for this commit.
-    pub epoch_id: EpochId,
-}
 
 /// Errors that can occur while processing virtual-clients derivation info.
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -82,16 +58,14 @@ pub enum VirtualClientsError {
     /// The derivation-info bytes failed to deserialize.
     #[error("Failed to deserialize derivation info.")]
     DerivationInfoMalformed,
-    /// AEAD decryption of the encrypted epoch info failed (wrong key,
+    /// AEAD decryption of the encrypted derivation info failed (wrong key,
     /// tampered ciphertext, or mismatched AAD).
-    #[error("Failed to decrypt epoch info.")]
-    EpochInfoDecryptionFailed,
-    /// No virtual-clients epoch encryption key was registered for this epoch.
-    #[error("No virtual-clients epoch encryption key for this epoch.")]
-    MissingEpochEncryptionKey,
-    /// No virtual-clients PPRF was registered for this epoch.
-    #[error("No virtual-clients PPRF for this epoch.")]
-    MissingPprf,
+    #[error("Failed to decrypt derivation info.")]
+    DerivationInfoDecryptionFailed,
+    /// No virtual-clients operation secret tree was registered for this
+    /// epoch.
+    #[error("No virtual-clients operation secret tree for this epoch.")]
+    MissingOperationTree,
     /// No virtual-clients `EmulationEpochState` was registered for this
     /// epoch, or it has been deleted.
     #[error("No virtual-clients emulation-epoch state for this epoch.")]
@@ -104,10 +78,6 @@ pub enum VirtualClientsError {
     /// from the path secret.
     #[error("Leaf encryption key from path does not match the derived key.")]
     EncryptionKeyMismatch,
-    /// PPRF evaluation failed (e.g. the input was already punctured or
-    /// out of bounds).
-    #[error("PPRF evaluation failed: {0}")]
-    PprfError(#[from] PprfError),
     /// A cryptographic operation failed during virtual-clients processing.
     #[error("Cryptographic operation failed.")]
     CryptoError(#[from] CryptoError),
@@ -121,12 +91,9 @@ pub enum VirtualClientsError {
         /// The required number of bytes in the hash output.
         expected_length: usize,
     },
-    /// Random byte generation failed.
-    #[error("Random byte generation failed.")]
-    RandError,
     /// TLS encoding/decoding of a virtual-clients structure failed. Covers
     /// both serialization on the sender side and deserialization of the
-    /// decrypted `EpochInfoTbe` on the receiver side.
+    /// decrypted `DerivationInfoTbe` on the receiver side.
     #[error("TLS codec error: {0}")]
     Tls(#[from] tls_codec::Error),
     /// The leaf carrying (or about to carry) a VC derivation-info entry
@@ -138,6 +105,25 @@ pub enum VirtualClientsError {
     /// [`VC_COMPONENT_ID`].
     #[error("Leaf's AppComponents entry does not list the virtual-clients component id.")]
     VcComponentNotListed,
+    /// The requested leaf index lies outside the operation secret tree.
+    #[error("Leaf index is outside the operation secret tree.")]
+    IndexOutOfBounds,
+    /// The operation secret for the requested generation was already derived
+    /// and deleted for forward secrecy.
+    #[error("The operation secret for this generation was already consumed.")]
+    OperationGenerationConsumed,
+    /// The requested operation generation lies too far beyond the current
+    /// ratchet head (see `MAXIMUM_FORWARD_DISTANCE` in the operation secret
+    /// tree).
+    #[error("The requested operation generation is too far beyond the ratchet head.")]
+    OperationGenerationTooDistant,
+    /// An operation ratchet has reached the maximum generation.
+    #[error("Operation ratchet generation has reached `u32::MAX`.")]
+    OperationRatchetTooLong,
+    /// An unrecoverable error has occurred due to a bug in the
+    /// implementation.
+    #[error("An unrecoverable error has occurred due to a bug in the implementation.")]
+    LibraryError,
 }
 
 /// Per-emulation-epoch root secret. Sourced internally by
@@ -170,32 +156,31 @@ impl EmulatorEpochSecret {
         ciphersuite: Ciphersuite,
     ) -> Result<EpochId, VirtualClientsError> {
         let secret = self.0.derive_secret(crypto, ciphersuite, EPOCH_ID_LABEL)?;
-        Ok(EpochId(secret.as_slice().to_vec()))
+        Ok(EpochId(secret.as_slice().to_vec().into()))
     }
 
+    /// Derive the per-epoch [`EpochEncryptionKey`]. The key is a KDF
+    /// secret (the per-leaf AEAD key and nonce are expanded from it), so
+    /// it is derived at the KDF's hash length.
     pub(crate) fn derive_epoch_encryption_key(
         &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<EpochEncryptionKey, VirtualClientsError> {
-        let secret = self.0.kdf_expand_label(
-            crypto,
-            ciphersuite,
-            EPOCH_ENCRYPTION_KEY_LABEL,
-            &[],
-            ciphersuite.aead_key_length(),
-        )?;
+        let secret = self
+            .0
+            .derive_secret(crypto, ciphersuite, EPOCH_ENCRYPTION_KEY_LABEL)?;
         Ok(EpochEncryptionKey(secret))
     }
 
-    pub(crate) fn derive_epoch_secret(
+    pub(crate) fn derive_epoch_base_secret(
         &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<Secret, VirtualClientsError> {
         Ok(self
             .0
-            .derive_secret(crypto, ciphersuite, EPOCH_SECRET_LABEL)?)
+            .derive_secret(crypto, ciphersuite, EPOCH_BASE_SECRET_LABEL)?)
     }
 
     /// Derive the per-emulation-epoch [`ReuseGuardSecret`].
@@ -208,6 +193,18 @@ impl EmulatorEpochSecret {
             .0
             .derive_secret(crypto, ciphersuite, REUSE_GUARD_LABEL)?;
         Ok(ReuseGuardSecret(secret))
+    }
+
+    /// Derive the per-emulation-epoch [`GenerationIdSecret`].
+    pub(crate) fn derive_generation_id_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+    ) -> Result<GenerationIdSecret, VirtualClientsError> {
+        let secret = self
+            .0
+            .derive_secret(crypto, ciphersuite, GENERATION_ID_LABEL)?;
+        Ok(GenerationIdSecret(secret))
     }
 }
 
@@ -232,7 +229,7 @@ impl ReuseGuardSecret {
         Self(secret)
     }
 
-    /// Derive the 16-byte FF1 PRP key for a single private message:
+    /// Derive the 16-byte FF1 PRP key for a single application message:
     ///
     /// ```text
     /// prp_key = ExpandWithLabel(reuse_guard_secret, "reuse guard",
@@ -263,47 +260,105 @@ impl ReuseGuardSecret {
     }
 }
 
-/// Build the per-emulation-epoch [`VcPprf`] root from the emulator epoch
-/// secret. Used by [`MlsGroup::register_vc_emulation_epoch`] together with
-/// the derived [`EpochId`] / [`EpochEncryptionKey`].
+/// Per-emulation-epoch secret used to derive generation IDs for DS
+/// collision detection (mls-virtual-clients draft, "Coordinating ratchet
+/// generations with the DS" section). Derived from [`EmulatorEpochSecret`]
+/// via [`EmulatorEpochSecret::derive_generation_id_secret`].
 ///
-/// The PPRF tree's logical capacity is `2^256` (set by `Prefix256`'s
-/// depth). `TreeSize` is informational metadata stored alongside the
-/// root and is capped at `u32`; the actual input space is determined by
-/// the prefix, not by `width`, so we pass a safely representable
-/// placeholder.
-///
-/// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
-pub(crate) fn build_vc_pprf(epoch_secret: Secret) -> VcPprf {
-    VcPprf::new_with_size(epoch_secret, TreeSize::from_leaf_count(u16::MAX as u32))
+/// Derived and persisted now so the per-epoch state is complete, but not yet
+/// consumed: the `generation_id` derivation and its `PrivateMessageContext`
+/// input land in a follow-up PR. It is stored here so older emulation epochs
+/// remain usable once that path exists.
+#[derive(Serialize, Deserialize)]
+pub(crate) struct GenerationIdSecret(Secret);
+
+impl std::fmt::Debug for GenerationIdSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GenerationIdSecret")
+            .field("secret", &"<redacted>")
+            .finish()
+    }
 }
 
+/// The virtual-clients derivation info carried in the leaf node's
+/// `app_data_dictionary` extension under [`VC_COMPONENT_ID`]
+/// (mls-virtual-clients draft):
+///
+/// ```text
+/// struct {
+///   opaque epoch_id<V>;
+///   opaque ciphertext<V>;
+/// } DerivationInfo
+/// ```
+///
+/// `ciphertext` is the AEAD-wrapped [`DerivationInfoTbe`], encrypted in the
+/// emulation group's ciphersuite with key and nonce derived from the
+/// per-epoch [`EpochEncryptionKey`] and the carrying leaf's serialized
+/// `encryption_key`, with `epoch_id` as AAD.
 #[derive(Debug, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub(crate) struct DerivationInfo {
     epoch_id: EpochId,
-    ciphertext: EncryptedEpochInfo,
+    ciphertext: VLBytes,
 }
 
 impl DerivationInfo {
-    pub(crate) fn new(epoch_id: EpochId, ciphertext: EncryptedEpochInfo) -> Self {
-        Self {
+    /// Encrypt `tbe` under the per-epoch AEAD key, binding it to the leaf
+    /// that carries the resulting derivation info via the leaf's serialized
+    /// `encryption_key` (the key/nonce derivation context) and to
+    /// `epoch_id` (the AAD).
+    pub(crate) fn encrypt(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        key: &EpochEncryptionKey,
+        epoch_id: EpochId,
+        leaf_encryption_key: &[u8],
+        tbe: &DerivationInfoTbe,
+    ) -> Result<Self, VirtualClientsError> {
+        let (aead_key, aead_nonce) =
+            key.derive_key_nonce(crypto, ciphersuite, leaf_encryption_key)?;
+        let payload = tbe.tls_serialize_detached()?;
+        let ciphertext = crypto.aead_encrypt(
+            ciphersuite.aead_algorithm(),
+            aead_key.as_slice(),
+            payload.as_slice(),
+            aead_nonce.as_slice(),
+            epoch_id.0.as_slice(),
+        )?;
+        Ok(Self {
             epoch_id,
-            ciphertext,
-        }
+            ciphertext: ciphertext.into(),
+        })
     }
 
     pub(crate) fn epoch_id(&self) -> &EpochId {
         &self.epoch_id
     }
 
+    /// Decrypt the wrapped [`DerivationInfoTbe`]. `leaf_encryption_key` is
+    /// the serialized `encryption_key` of the leaf node that carries this
+    /// derivation info.
     pub(crate) fn decrypt(
         &self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         key: &EpochEncryptionKey,
-    ) -> Result<EpochInfoTbe, VirtualClientsError> {
-        self.ciphertext
-            .decrypt(crypto, ciphersuite, key, &self.epoch_id)
+        leaf_encryption_key: &[u8],
+    ) -> Result<DerivationInfoTbe, VirtualClientsError> {
+        let (aead_key, aead_nonce) =
+            key.derive_key_nonce(crypto, ciphersuite, leaf_encryption_key)?;
+        let plaintext = crypto
+            .aead_decrypt(
+                ciphersuite.aead_algorithm(),
+                aead_key.as_slice(),
+                self.ciphertext.as_slice(),
+                aead_nonce.as_slice(),
+                self.epoch_id.0.as_slice(),
+            )
+            .map_err(|e| {
+                log::error!("vc: aead decrypt derivation info failed: {e:?}");
+                VirtualClientsError::DerivationInfoDecryptionFailed
+            })?;
+        Ok(DerivationInfoTbe::tls_deserialize_exact_bytes(&plaintext)?)
     }
 }
 
@@ -316,7 +371,7 @@ impl DerivationInfo {
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserializeBytes,
 )]
-pub struct EpochId(Vec<u8>);
+pub struct EpochId(VLBytes);
 
 /// Per-higher-level-group record of which emulation-group epoch produced the
 /// virtual-client LeafNode that was active at each recent epoch of that
@@ -363,12 +418,22 @@ impl VcEmulationBindings {
     }
 }
 
-/// AEAD key used by the sender to wrap the [`EpochInfoTbe`] in the leaf's
-/// `app_data_dictionary` entry, and by the receiver to unwrap it. Its
-/// length is exactly [`Ciphersuite::aead_key_length`] for the emulation
-/// group's ciphersuite. Derived from the emulation group's
-/// `safe_export_secret(VC_COMPONENT_ID)` by
-/// [`MlsGroup::register_vc_emulation_epoch`].
+/// Per-epoch secret from which the sender derives the AEAD key and nonce
+/// that wrap the [`DerivationInfoTbe`] in the leaf's `app_data_dictionary`
+/// entry, and the receiver the same pair to unwrap it:
+///
+/// ```text
+/// derivation_info_key = ExpandWithLabel(epoch_encryption_key, "key",
+///                                       encryption_key, AEAD.Nk)
+/// derivation_info_nonce = ExpandWithLabel(epoch_encryption_key, "nonce",
+///                                         encryption_key, AEAD.Nn)
+/// ```
+///
+/// where `encryption_key` is the serialized `encryption_key` field of the
+/// LeafNode carrying the derivation info. Every operation produces a fresh
+/// leaf encryption key, so each wrap uses a distinct key-nonce pair.
+/// Derived from the emulation group's `safe_export_secret(VC_COMPONENT_ID)`
+/// by [`MlsGroup::register_vc_emulation_epoch`].
 ///
 /// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
 #[derive(Serialize, Deserialize)]
@@ -382,22 +447,53 @@ impl std::fmt::Debug for EpochEncryptionKey {
     }
 }
 
+impl EpochEncryptionKey {
+    /// Derive the AEAD key and nonce for one [`DerivationInfoTbe`] wrap,
+    /// using the serialized `encryption_key` of the carrying leaf as the
+    /// `ExpandWithLabel` context.
+    fn derive_key_nonce(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        leaf_encryption_key: &[u8],
+    ) -> Result<(Secret, Secret), VirtualClientsError> {
+        let key = self.0.kdf_expand_label(
+            crypto,
+            ciphersuite,
+            DERIVATION_INFO_KEY_LABEL,
+            leaf_encryption_key,
+            ciphersuite.aead_key_length(),
+        )?;
+        let nonce = self.0.kdf_expand_label(
+            crypto,
+            ciphersuite,
+            DERIVATION_INFO_NONCE_LABEL,
+            leaf_encryption_key,
+            ciphersuite.aead_nonce_length(),
+        )?;
+        Ok((key, nonce))
+    }
+}
+
 /// Per-emulation-epoch state persisted by
-/// [`MlsGroup::register_vc_emulation_epoch`] alongside the per-epoch PPRF,
-/// keyed by [`EpochId`]. Bundles everything the library needs to emit a VC
-/// commit for this epoch and to XOR private-message nonces with
-/// deterministic reuse guards.
+/// [`MlsGroup::register_vc_emulation_epoch`] alongside the per-epoch
+/// operation secret tree, keyed by [`EpochId`]. Bundles everything the
+/// library needs to emit a VC commit for this epoch and to XOR application
+/// message nonces with deterministic reuse guards.
 ///
 /// [`MlsGroup::register_vc_emulation_epoch`]:
 ///     crate::group::MlsGroup::register_vc_emulation_epoch
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EmulationEpochState {
     /// The registering client's leaf index in the emulation group at
-    /// registration time. Hashed into `EpochInfoTbe` and used as the
+    /// registration time. Sent in `DerivationInfoTbe` and used as the
     /// sender's `leaf_index_e` in the reuse-guard derivation.
     pub(crate) leaf_index: LeafNodeIndex,
     pub(crate) epoch_encryption_key: EpochEncryptionKey,
     pub(crate) reuse_guard_secret: ReuseGuardSecret,
+    /// Stored now but not yet read. The generation-ID derivation that
+    /// consumes it is deferred to a follow-up PR (see [`GenerationIdSecret`]).
+    pub(crate) generation_id_secret: GenerationIdSecret,
     /// Number of leaves `N_e` in the emulation group at registration time.
     pub(crate) emulation_group_size: TreeSize,
     /// Ciphersuite of the emulation group at registration time. Used by
@@ -410,6 +506,7 @@ impl EmulationEpochState {
         leaf_index: LeafNodeIndex,
         epoch_encryption_key: EpochEncryptionKey,
         reuse_guard_secret: ReuseGuardSecret,
+        generation_id_secret: GenerationIdSecret,
         emulation_group_size: TreeSize,
         emulation_ciphersuite: Ciphersuite,
     ) -> Self {
@@ -417,6 +514,7 @@ impl EmulationEpochState {
             leaf_index,
             epoch_encryption_key,
             reuse_guard_secret,
+            generation_id_secret,
             emulation_group_size,
             emulation_ciphersuite,
         }
@@ -444,11 +542,23 @@ impl EmulationEpochState {
     }
 }
 
-/// Per-commit secret produced by evaluating the per-epoch PPRF on the
-/// per-commit hash input. Sender and receiver derive the same value by
-/// evaluating the same registered PPRF on the same input.
+/// Per-operation secret from which the material for a single virtual-clients
+/// operation (commit path, key package, application message) is derived.
+/// Produced by the per-epoch Virtual Client Operation Secret Tree
+/// ([`OperationSecretTree`]). Sender and receiver derive the same value
+/// from the same per-epoch state.
+///
+/// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
 #[derive(Serialize, Deserialize)]
-pub(crate) struct OperationSecret(Secret);
+pub struct OperationSecret(Secret);
+
+impl std::fmt::Debug for OperationSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OperationSecret")
+            .field("secret", &"<redacted>")
+            .finish()
+    }
+}
 
 impl From<Secret> for OperationSecret {
     fn from(secret: Secret) -> Self {
@@ -457,6 +567,12 @@ impl From<Secret> for OperationSecret {
 }
 
 impl OperationSecret {
+    /// Test-only accessor for comparing derived operation secrets.
+    #[cfg(test)]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+
     pub(crate) fn derive_encryption_key_secret(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -502,193 +618,136 @@ impl From<PathGenerationSecret> for PathSecret {
     }
 }
 
-#[derive(Debug, TlsSize, TlsSerialize, TlsDeserializeBytes)]
-pub(crate) struct EncryptedEpochInfo {
-    nonce: Vec<u8>,
-    ciphertext: Vec<u8>,
-}
-
-impl EncryptedEpochInfo {
-    pub fn decrypt(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
-        key: &EpochEncryptionKey,
-        epoch_id: &EpochId,
-    ) -> Result<EpochInfoTbe, VirtualClientsError> {
-        let plaintext = crypto
-            .aead_decrypt(
-                ciphersuite.aead_algorithm(),
-                key.0.as_slice(),
-                self.ciphertext.as_slice(),
-                self.nonce.as_slice(),
-                epoch_id.0.as_slice(),
-            )
-            .map_err(|e| {
-                log::error!("vc: aead decrypt epoch info failed: {e:?}");
-                VirtualClientsError::EpochInfoDecryptionFailed
-            })?;
-        Ok(EpochInfoTbe::tls_deserialize_exact_bytes(&plaintext)?)
-    }
-}
-
-/// What virtual-clients operation this per-commit input is being derived
-/// for, per draft PR #11. Mixed into the PPRF input via TLS-serialized
-/// [`EpochInfoTbe`] so that secrets derived for different operations
-/// cannot collide even if the other fields happen to match.
+/// What virtual-clients operation a per-operation secret is being derived
+/// for (mls-virtual-clients draft `VirtualClientOperationType`). Mixed into
+/// the `OperationContext` of every operation-secret derivation so that
+/// secrets derived for different operations cannot collide even if the other
+/// fields happen to match.
+///
+/// The operation type does not travel on the wire. Receivers infer it from
+/// the carrying LeafNode's `leaf_node_source`: `key_package` maps to
+/// [`KeyPackage`](Self::KeyPackage), `update` and `commit` map to
+/// [`LeafNode`](Self::LeafNode).
 ///
 /// Only `LeafNode` is wired into a sender path today (see `apply_vc_emulation`
-/// in the commit builder); `KeyPackage` and `Application` are reserved
-/// variants that future code paths will emit.
+/// in the commit builder). `KeyPackage` and `Application` are reserved
+/// variants that a follow-up PR will emit, once the KeyPackage and
+/// application-message operation paths exist.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 #[repr(u8)]
-pub(crate) enum VirtualClientOperationType {
-    LeafNode = 1,
-    #[allow(dead_code)] // reserved
-    KeyPackage = 2,
-    #[allow(dead_code)] // reserved
+pub enum VirtualClientOperationType {
+    /// Derivation of KeyPackage material for the virtual client.
+    KeyPackage = 1,
+    /// Derivation of LeafNode material for the virtual client (e.g. the
+    /// leaf carried by a commit).
+    LeafNode = 2,
+    /// Derivation of application-message material for the virtual client.
     Application = 3,
 }
 
-/// Per-commit AEAD plaintext attached to the leaf via the VC component.
-/// Per the spec, the same struct is hashed (under the emulation group's
-/// ciphersuite) to produce the PPRF input. See [`pprf_input`].
+/// AEAD plaintext attached to the leaf via the VC component
+/// (mls-virtual-clients draft):
+///
+/// ```text
+/// struct {
+///   uint32 leaf_index;
+///   uint32 generation;
+/// } DerivationInfoTBE
+/// ```
 ///
 /// `leaf_index` is the *emulation*-group leaf index of the sending virtual
 /// client, *not* the leaf index in the group that carries this commit.
+/// `generation` is the operation-ratchet generation the sender consumed for
+/// this operation.
 #[derive(Debug, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
-pub(crate) struct EpochInfoTbe {
-    pub operation_type: VirtualClientOperationType,
+pub(crate) struct DerivationInfoTbe {
     pub leaf_index: LeafNodeIndex,
-    pub random: Vec<u8>,
-}
-
-impl EpochInfoTbe {
-    pub fn encrypt(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        rand: &impl OpenMlsRand,
-        ciphersuite: Ciphersuite,
-        key: &EpochEncryptionKey,
-        epoch_id: &EpochId,
-    ) -> Result<EncryptedEpochInfo, VirtualClientsError> {
-        let nonce = rand
-            .random_vec(ciphersuite.aead_nonce_length())
-            .map_err(|e| {
-                log::error!("vc: aead nonce randomness failed: {e:?}");
-                VirtualClientsError::RandError
-            })?;
-        let payload = self.tls_serialize_detached()?;
-        let ciphertext = crypto.aead_encrypt(
-            ciphersuite.aead_algorithm(),
-            key.0.as_slice(),
-            payload.as_slice(),
-            nonce.as_slice(),
-            epoch_id.0.as_slice(),
-        )?;
-        Ok(EncryptedEpochInfo { nonce, ciphertext })
-    }
-}
-
-/// Compute the 32-byte PPRF input as `Hash(tls_serialize(epoch_info))`,
-/// truncating to 32 bytes when the ciphersuite's hash is wider (the
-/// PPRF's `Prefix256` indexes into the first 256 bits).
-pub(crate) fn pprf_input(
-    crypto: &impl OpenMlsCrypto,
-    ciphersuite: Ciphersuite,
-    epoch_info: &EpochInfoTbe,
-) -> Result<[u8; Prefix256::PPRF_INPUT_LEN], VirtualClientsError> {
-    let serialized = epoch_info.tls_serialize_detached()?;
-    let hash = crypto.hash(ciphersuite.hash_algorithm(), &serialized)?;
-    if hash.len() < Prefix256::PPRF_INPUT_LEN {
-        log::error!(
-            "vc: pprf input hash too short: got {} bytes, need {}",
-            hash.len(),
-            Prefix256::PPRF_INPUT_LEN
-        );
-        return Err(VirtualClientsError::HashOutputLengthMismatch {
-            actual_length: hash.len(),
-            expected_length: Prefix256::PPRF_INPUT_LEN,
-        });
-    }
-    let mut input = [0u8; Prefix256::PPRF_INPUT_LEN];
-    input.copy_from_slice(&hash[..Prefix256::PPRF_INPUT_LEN]);
-    Ok(input)
+    pub generation: u32,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use openmls_rust_crypto::OpenMlsRustCrypto;
-    use openmls_traits::OpenMlsProvider;
+    use openmls_traits::{random::OpenMlsRand, OpenMlsProvider};
 
-    /// Round-trip an `EpochInfoTbe` through `encrypt` ↔ `decrypt`. Catches
-    /// any disagreement between the two methods on the AAD/key/nonce layout
-    /// and any silent regression in the AEAD wrapping.
-    #[test]
-    fn epoch_info_tbe_roundtrip() {
-        let provider = OpenMlsRustCrypto::default();
-        let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+
+    fn setup_key_and_epoch_id(provider: &OpenMlsRustCrypto) -> (EpochEncryptionKey, EpochId) {
         let emulator = EmulatorEpochSecret::new(
             &provider
                 .rand()
-                .random_vec(ciphersuite.hash_length())
+                .random_vec(CIPHERSUITE.hash_length())
                 .expect("randomness"),
         );
         let key = emulator
-            .derive_epoch_encryption_key(provider.crypto(), ciphersuite)
+            .derive_epoch_encryption_key(provider.crypto(), CIPHERSUITE)
             .expect("derive ek");
         let epoch_id = emulator
-            .derive_epoch_id(provider.crypto(), ciphersuite)
+            .derive_epoch_id(provider.crypto(), CIPHERSUITE)
             .expect("derive epoch id");
-        let original = EpochInfoTbe {
-            operation_type: VirtualClientOperationType::LeafNode,
+        (key, epoch_id)
+    }
+
+    /// Round-trip a `DerivationInfoTbe` through `encrypt` and `decrypt`.
+    /// Catches any disagreement between the two methods on the derived
+    /// key/nonce, the AAD, or the TLS layout of the plaintext.
+    #[test]
+    fn derivation_info_tbe_roundtrip() {
+        let provider = OpenMlsRustCrypto::default();
+        let (key, epoch_id) = setup_key_and_epoch_id(&provider);
+        let leaf_encryption_key = provider.rand().random_vec(32).expect("randomness");
+        let original = DerivationInfoTbe {
             leaf_index: LeafNodeIndex::new(7),
-            random: provider.rand().random_vec(32).expect("randomness"),
+            generation: 3,
         };
-        let encrypted = original
-            .encrypt(
-                provider.crypto(),
-                provider.rand(),
-                ciphersuite,
-                &key,
-                &epoch_id,
-            )
-            .expect("encrypt");
-        let decrypted = encrypted
-            .decrypt(provider.crypto(), ciphersuite, &key, &epoch_id)
+        let derivation_info = DerivationInfo::encrypt(
+            provider.crypto(),
+            CIPHERSUITE,
+            &key,
+            epoch_id.clone(),
+            &leaf_encryption_key,
+            &original,
+        )
+        .expect("encrypt");
+        assert_eq!(derivation_info.epoch_id(), &epoch_id);
+        let decrypted = derivation_info
+            .decrypt(provider.crypto(), CIPHERSUITE, &key, &leaf_encryption_key)
             .expect("decrypt");
         assert_eq!(original, decrypted);
     }
 
-    /// Two `EpochInfoTbe`s with identical `(leaf_index, random)` but
-    /// different `operation_type` must produce different PPRF inputs;
-    /// otherwise, sharing a PPRF across operation contexts would be
-    /// unsafe.
+    /// Decryption must fail when the leaf encryption key used as the
+    /// key/nonce derivation context does not match the one used for
+    /// encryption. This is what binds the derivation info to the leaf
+    /// that carries it.
     #[test]
-    fn pprf_input_changes_with_operation_type() {
+    fn decryption_fails_with_wrong_leaf_encryption_key() {
         let provider = OpenMlsRustCrypto::default();
-        let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-        let leaf_node = EpochInfoTbe {
-            operation_type: VirtualClientOperationType::LeafNode,
-            leaf_index: LeafNodeIndex::new(3),
-            random: vec![0xAA; 32],
+        let (key, epoch_id) = setup_key_and_epoch_id(&provider);
+        let leaf_encryption_key = provider.rand().random_vec(32).expect("randomness");
+        let tbe = DerivationInfoTbe {
+            leaf_index: LeafNodeIndex::new(1),
+            generation: 0,
         };
-        let key_package = EpochInfoTbe {
-            operation_type: VirtualClientOperationType::KeyPackage,
-            leaf_index: LeafNodeIndex::new(3),
-            random: vec![0xAA; 32],
-        };
-        let application = EpochInfoTbe {
-            operation_type: VirtualClientOperationType::Application,
-            leaf_index: LeafNodeIndex::new(3),
-            random: vec![0xAA; 32],
-        };
-        let in_leaf = pprf_input(provider.crypto(), ciphersuite, &leaf_node).unwrap();
-        let in_kp = pprf_input(provider.crypto(), ciphersuite, &key_package).unwrap();
-        let in_app = pprf_input(provider.crypto(), ciphersuite, &application).unwrap();
-        assert_ne!(in_leaf, in_kp);
-        assert_ne!(in_leaf, in_app);
-        assert_ne!(in_kp, in_app);
+        let derivation_info = DerivationInfo::encrypt(
+            provider.crypto(),
+            CIPHERSUITE,
+            &key,
+            epoch_id,
+            &leaf_encryption_key,
+            &tbe,
+        )
+        .expect("encrypt");
+        let other_leaf_encryption_key = provider.rand().random_vec(32).expect("randomness");
+        let err = derivation_info
+            .decrypt(
+                provider.crypto(),
+                CIPHERSUITE,
+                &key,
+                &other_leaf_encryption_key,
+            )
+            .expect_err("decryption with the wrong context must fail");
+        assert_eq!(err, VirtualClientsError::DerivationInfoDecryptionFailed);
     }
 }

@@ -27,7 +27,7 @@ use crate::{
 use input::AsIndexBytes;
 use prefix::Prefix;
 
-pub use prefix::{Prefix16, Prefix256};
+pub use prefix::Prefix16;
 
 mod input;
 mod prefix;

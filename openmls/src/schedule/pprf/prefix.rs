@@ -6,7 +6,6 @@
 //! an empty prefix, which then grows in size with each step down the tree.
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use serde_bytes::ByteArray;
 
 use super::PprfError;
 
@@ -137,62 +136,6 @@ impl From<SerdePrefix16> for Prefix16 {
     }
 }
 
-/// A prefix in a PPRF whose inputs are 32-byte (256-bit) strings.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(from = "SerdePrefix256", into = "SerdePrefix256")]
-pub struct Prefix256 {
-    bits: [u8; Self::PPRF_INPUT_LEN],
-    len: PrefixLen<{ Self::MAX_DEPTH }, u16>,
-}
-
-impl Prefix256 {
-    pub const PPRF_INPUT_LEN: usize = Self::MAX_DEPTH / 8; // 32 bytes
-}
-
-impl Prefix for Prefix256 {
-    const MAX_DEPTH: usize = 256;
-
-    fn new() -> Self {
-        Self {
-            bits: [0; Self::PPRF_INPUT_LEN],
-            len: PrefixLen::zero(),
-        }
-    }
-
-    fn push_bit(&mut self, bit: bool) -> Result<(), PprfError> {
-        let len = self.len.as_usize();
-        let next_len = self.len.incremented()?;
-        if bit {
-            let byte_idx = len / 8;
-            let bit_idx = 7 - (len % 8) as u8;
-            self.bits[byte_idx] |= 1 << bit_idx;
-        }
-        self.len = next_len;
-        Ok(())
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-struct SerdePrefix256(
-    ByteArray<{ Prefix256::PPRF_INPUT_LEN }>,
-    PrefixLen<{ Prefix256::MAX_DEPTH }, u16>,
-);
-
-impl From<Prefix256> for SerdePrefix256 {
-    fn from(prefix: Prefix256) -> Self {
-        SerdePrefix256(ByteArray::new(prefix.bits), prefix.len)
-    }
-}
-
-impl From<SerdePrefix256> for Prefix256 {
-    fn from(prefix: SerdePrefix256) -> Self {
-        Prefix256 {
-            bits: prefix.0.into_array(),
-            len: prefix.1,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -220,21 +163,6 @@ mod tests {
         assert_eq!(result, Err(PprfError::PrefixMaxDepthExceeded));
         assert_eq!(prefix.len.len, max_depth);
         assert_eq!(prefix.bits, u16::MAX);
-    }
-
-    #[test]
-    fn prefix256_rejects_push_at_max_depth() {
-        let max_depth = Prefix256::MAX_DEPTH as u16;
-        let mut prefix = Prefix256 {
-            bits: [0xff; 32],
-            len: prefix_len(max_depth),
-        };
-
-        let result = prefix.push_bit(true);
-
-        assert_eq!(result, Err(PprfError::PrefixMaxDepthExceeded));
-        assert_eq!(prefix.len.len, max_depth);
-        assert_eq!(prefix.bits, [0xff; 32]);
     }
 
     #[test]

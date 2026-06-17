@@ -1,10 +1,15 @@
 use super::*;
-use actix_web::{body::MessageBody, http::StatusCode, test, web, web::Bytes, App};
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
+use http_body_util::BodyExt;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsProvider;
 use tls_codec::{TlsByteVecU8, TlsVecU16};
+use tower::ServiceExt;
 
 fn generate_credential(
     identity: Vec<u8>,
@@ -33,27 +38,21 @@ fn generate_key_package(
         .unwrap()
 }
 
-#[actix_rt::test]
+async fn body_bytes(response: axum::response::Response) -> Bytes {
+    response.into_body().collect().await.unwrap().to_bytes()
+}
+
+#[tokio::test]
 async fn test_list_clients() {
-    let data = web::Data::new(DsData::default());
-    let app = test::init_service(
-        App::new()
-            .app_data(data.clone())
-            .service(get_key_packages)
-            .service(consume_key_package)
-            .service(publish_key_packages)
-            .service(list_clients)
-            .service(register_client),
-    )
-    .await;
+    let app = app(Arc::new(DsData::default()));
 
     // There is no client. So the response body is empty.
-    let req = test::TestRequest::with_uri("/clients/list").to_request();
+    let req = Request::get("/clients/list").body(Body::empty()).unwrap();
 
-    let response = test::call_service(&app, req).await;
+    let response = app.clone().oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
-    let bytes = response.into_body().try_into_bytes().unwrap();
+    let bytes = body_bytes(response).await;
     let client_info =
         TlsVecU32::<ClientInfo>::tls_deserialize(&mut bytes.as_ref()).expect("Invalid client list");
 
@@ -100,28 +99,23 @@ async fn test_list_clients() {
         ),
     };
 
-    let req = test::TestRequest::post()
-        .uri("/clients/register")
-        .set_payload(Bytes::copy_from_slice(
-            &body.tls_serialize_detached().unwrap(),
-        ))
-        .to_request();
+    let req = Request::post("/clients/register")
+        .body(Body::from(body.tls_serialize_detached().unwrap()))
+        .unwrap();
 
-    let response = test::call_service(&app, req).await;
+    let response = app.clone().oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
-    let response_body = RegisterClientSuccessResponse::tls_deserialize_exact(
-        response.into_body().try_into_bytes().unwrap(),
-    )
-    .unwrap();
+    let response_body =
+        RegisterClientSuccessResponse::tls_deserialize_exact(body_bytes(response).await).unwrap();
     client_data.auth_token = response_body.auth_token;
 
     // There should be Client1 now.
-    let req = test::TestRequest::with_uri("/clients/list").to_request();
+    let req = Request::get("/clients/list").body(Body::empty()).unwrap();
 
-    let response = test::call_service(&app, req).await;
+    let response = app.clone().oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
-    let bytes = response.into_body().try_into_bytes().unwrap();
+    let bytes = body_bytes(response).await;
     let client_ids =
         TlsVecU32::<Vec<u8>>::tls_deserialize(&mut bytes.as_ref()).expect("Invalid client list");
 
@@ -135,12 +129,12 @@ async fn test_list_clients() {
     // Get Client1 key packages.
     let path = "/clients/key_packages/".to_owned()
         + &base64::engine::general_purpose::URL_SAFE.encode(client_id);
-    let req = test::TestRequest::with_uri(&path).to_request();
+    let req = Request::get(&path).body(Body::empty()).unwrap();
 
-    let response = test::call_service(&app, req).await;
+    let response = app.clone().oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
-    let bytes = response.into_body().try_into_bytes().unwrap();
+    let bytes = body_bytes(response).await;
     let mut key_packages =
         TlsVecU32::<(TlsByteVecU8, KeyPackageIn)>::tls_deserialize(&mut bytes.as_ref())
             .expect("Invalid key package response")
@@ -154,24 +148,11 @@ async fn test_list_clients() {
     assert_eq!(client_key_package, key_packages);
 }
 
-#[actix_rt::test]
+#[tokio::test]
 async fn test_group() {
     let crypto = &OpenMlsRustCrypto::default();
     let mls_group_create_config = MlsGroupCreateConfig::default();
-    let data = web::Data::new(DsData::default());
-    let app = test::init_service(
-        App::new()
-            .app_data(data.clone())
-            .service(register_client)
-            .service(list_clients)
-            .service(get_key_packages)
-            .service(consume_key_package)
-            .service(publish_key_packages)
-            .service(send_welcome)
-            .service(msg_recv)
-            .service(msg_send),
-    )
-    .await;
+    let app = app(Arc::new(DsData::default()));
 
     // Add two clients.
     let clients = ["Client1", "Client2"];
@@ -221,18 +202,14 @@ async fn test_group() {
             ),
         };
 
-        let req = test::TestRequest::post()
-            .uri("/clients/register")
-            .set_payload(Bytes::copy_from_slice(
-                &body.tls_serialize_detached().unwrap(),
-            ))
-            .to_request();
-        let response = test::call_service(&app, req).await;
+        let req = Request::post("/clients/register")
+            .body(Body::from(body.tls_serialize_detached().unwrap()))
+            .unwrap();
+        let response = app.clone().oneshot(req).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        let response_body = RegisterClientSuccessResponse::tls_deserialize_exact(
-            response.into_body().try_into_bytes().unwrap(),
-        )
-        .unwrap();
+        let response_body =
+            RegisterClientSuccessResponse::tls_deserialize_exact(body_bytes(response).await)
+                .unwrap();
         client_data.auth_token = response_body.auth_token;
         client_data_vec.push(client_data);
     }
@@ -272,15 +249,12 @@ async fn test_group() {
         key_packages: ckp,
         auth_token: client_data_vec[1].auth_token.clone(),
     };
-    let req = test::TestRequest::post()
-        .uri(&path)
-        .set_payload(Bytes::copy_from_slice(
-            &body.tls_serialize_detached().unwrap(),
-        ))
-        .to_request();
+    let req = Request::post(&path)
+        .body(Body::from(body.tls_serialize_detached().unwrap()))
+        .unwrap();
 
     // The response should be empty.
-    let response = test::call_service(&app, req).await;
+    let response = app.clone().oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
     // Client1 creates MyFirstGroup
@@ -302,12 +276,12 @@ async fn test_group() {
     let path = "/clients/key_package/".to_owned()
         + &base64::engine::general_purpose::URL_SAFE.encode(&client_ids[1]);
 
-    let req = test::TestRequest::with_uri(&path).to_request();
+    let req = Request::get(&path).body(Body::empty()).unwrap();
 
-    let response = test::call_service(&app, req).await;
+    let response = app.clone().oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
-    let bytes = response.into_body().try_into_bytes().unwrap();
+    let bytes = body_bytes(response).await;
     let client2_key_package =
         KeyPackageIn::tls_deserialize(&mut bytes.as_ref()).expect("Invalid key package response");
 
@@ -321,13 +295,10 @@ async fn test_group() {
         .expect("error merging pending commit");
 
     // Send welcome message for Client2
-    let req = test::TestRequest::post()
-        .uri("/send/welcome")
-        .set_payload(Bytes::copy_from_slice(
-            &welcome_msg.tls_serialize_detached().unwrap(),
-        ))
-        .to_request();
-    let response = test::call_service(&app, req).await;
+    let req = Request::post("/send/welcome")
+        .body(Body::from(welcome_msg.tls_serialize_detached().unwrap()))
+        .unwrap();
+    let response = app.clone().oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
     // There should be a welcome message now for Client2.
@@ -335,15 +306,13 @@ async fn test_group() {
         auth_token: client_data_vec[1].auth_token.clone(),
     };
     let path = "/recv/".to_owned() + &base64::engine::general_purpose::URL_SAFE.encode(clients[1]);
-    let req = test::TestRequest::with_uri(&path)
-        .set_payload(Bytes::copy_from_slice(
-            &body.tls_serialize_detached().unwrap(),
-        ))
-        .to_request();
-    let response = test::call_service(&app, req).await;
+    let req = Request::get(&path)
+        .body(Body::from(body.tls_serialize_detached().unwrap()))
+        .unwrap();
+    let response = app.clone().oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
-    let bytes = response.into_body().try_into_bytes().unwrap();
+    let bytes = body_bytes(response).await;
     let mut messages = TlsVecU16::<MlsMessageIn>::tls_deserialize(&mut bytes.as_ref())
         .expect("Invalid message list")
         .into_vec();
@@ -389,13 +358,10 @@ async fn test_group() {
 
     // Send private_message to the group
     let msg = GroupMessage::new(out_messages.into(), &client_ids);
-    let req = test::TestRequest::post()
-        .uri("/send/message")
-        .set_payload(Bytes::copy_from_slice(
-            &msg.tls_serialize_detached().unwrap(),
-        ))
-        .to_request();
-    let response = test::call_service(&app, req).await;
+    let req = Request::post("/send/message")
+        .body(Body::from(msg.tls_serialize_detached().unwrap()))
+        .unwrap();
+    let response = app.clone().oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
     // Client1 retrieves messages from the DS
@@ -403,15 +369,13 @@ async fn test_group() {
         auth_token: client_data_vec[0].auth_token.clone(),
     };
     let path = "/recv/".to_owned() + &base64::engine::general_purpose::URL_SAFE.encode(clients[0]);
-    let req = test::TestRequest::with_uri(&path)
-        .set_payload(Bytes::copy_from_slice(
-            &body.tls_serialize_detached().unwrap(),
-        ))
-        .to_request();
-    let response = test::call_service(&app, req).await;
+    let req = Request::get(&path)
+        .body(Body::from(body.tls_serialize_detached().unwrap()))
+        .unwrap();
+    let response = app.clone().oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
-    let bytes = response.into_body().try_into_bytes().unwrap();
+    let bytes = body_bytes(response).await;
     let mut messages = TlsVecU16::<MlsMessageIn>::tls_deserialize(&mut bytes.as_ref())
         .expect("Invalid message list");
 

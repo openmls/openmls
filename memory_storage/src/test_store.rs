@@ -587,32 +587,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<V_TEST>>(
-        &self,
-        _epoch_id: &EpochId,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_pprf<EpochId: traits::VcEpochId<V_TEST>, VcPprf: traits::VcPprf<V_TEST>>(
-        &self,
-        _epoch_id: &EpochId,
-        _vc_pprf: &VcPprf,
-    ) -> Result<(), Self::Error> {
-        todo!()
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
-    fn vc_pprf<EpochId: traits::VcEpochId<V_TEST>, VcPprf: traits::VcPprf<V_TEST>>(
-        &self,
-        _epoch_id: &EpochId,
-    ) -> Result<Option<VcPprf>, Self::Error> {
-        todo!()
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_pprf<EpochId: traits::VcEpochId<V_TEST>>(
+    fn delete_vc_emulation_state<EpochId: traits::VcEpochId<V_TEST>>(
         &self,
         _epoch_id: &EpochId,
     ) -> Result<(), Self::Error> {
@@ -647,6 +622,29 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_operation_tree<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcOperationTree: traits::VcOperationTree<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+        _vc_operation_tree: &VcOperationTree,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_operation_tree<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcOperationTree: traits::VcOperationTree<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<Option<VcOperationTree>, Self::Error> {
         todo!()
     }
 }
