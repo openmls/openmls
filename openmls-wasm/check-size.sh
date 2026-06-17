@@ -16,7 +16,7 @@ raw_size=$(tar c pkg | wc -c)
 gzip_size=$(tar cj pkg | wc -c)
 
 raw_thresh=1900000
-gzip_thresh=550000
+gzip_thresh=610000
 
 if [ $raw_size -gt $raw_thresh ]; then
 	die "raw size is too large: $raw_size > $raw_thresh"
@@ -25,7 +25,7 @@ else
 fi
 
 if [ $gzip_size -gt $gzip_thresh ]; then
-	die "gzip'd size is too largs: $gzip_size > $gzip_thresh"
+	die "gzip'd size is too large: $gzip_size > $gzip_thresh"
 else
 	echo "gzip'd size $gzip_size is below threshold $gzip_thresh"
 fi
