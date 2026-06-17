@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1972](https://github.com/openmls/openmls/pull/1972): The method `MlsGroup::max_past_epochs()` now returns an `Option<usize>`, rather than a `usize`
 - [#1963](https://github.com/openmls/openmls/pull/1963): `MessageEncryptionError` is now part of the public API, but only surfaces if the `virtual-clients-draft` feature flag is enabled.
 - [#2043](https://github.com/openmls/openmls/pull/2043): Renamed and deprecated `MlsGroup::propose_external_psk` to `MlsGroup::propose_pre_shared_key`. Same for the `_by_value` variant.
+- [#2060](https://github.com/openmls/openmls/pull/2060) Renamed `extensions-draft-08` feature flag to `extensions-draft`.
 
 ## 0.8.1 (2026-02-13)
 
