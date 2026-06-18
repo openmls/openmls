@@ -8,10 +8,10 @@
 //! from the RFC 9420 secret tree in two ways: the root is the
 //! per-emulation-epoch `epoch_base_secret` rather than a secret derived
 //! from `encryption_secret`, and each leaf expands into one operation
-//! ratchet per [`VirtualClientOperationType`] instead of a handshake and an
+//! ratchet per `VirtualClientOperationType` instead of a handshake and an
 //! application sender ratchet.
 //!
-//! Each ratchet hands out one [`OperationSecret`] per generation, bound to
+//! Each ratchet hands out one `OperationSecret` per generation, bound to
 //! the spec's `OperationContext`
 //! `(epoch_id, leaf_index, generation, operation_type, operation_context)`.
 //!
@@ -25,7 +25,7 @@
 //! generation, since the final operation secret also binds the (then still
 //! unknown) operation context. The retained entry is deleted when the
 //! operation for that generation arrives. Retention is bounded by
-//! [`MAXIMUM_FORWARD_DISTANCE`] and [`OUT_OF_ORDER_TOLERANCE`].
+//! `MAXIMUM_FORWARD_DISTANCE` and `OUT_OF_ORDER_TOLERANCE`.
 
 use std::collections::BTreeMap;
 
