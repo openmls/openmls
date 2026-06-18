@@ -39,9 +39,6 @@ impl MlsGroup {
 
     /// Creates a new group with the creator as the only member (and a random
     /// group ID).
-    ///
-    /// This function removes the private key corresponding to the
-    /// `key_package` from the key store.
     pub fn new<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
