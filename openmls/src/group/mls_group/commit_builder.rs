@@ -1241,7 +1241,10 @@ fn apply_vc_emulation(
         .public_key()
         .tls_serialize_detached()
         .map_err(VirtualClientsError::from)?;
-    let tbe = DerivationInfoTbe {
+    // leaf_node operations are not batched, so the TBE carries no
+    // key_package_index: the select resolves to the empty `update`/`commit`
+    // case and the field is absent on the wire.
+    let tbe = DerivationInfoTbe::LeafNode {
         leaf_index: loaded.emulation_leaf_index,
         generation: loaded.generation,
     };
@@ -1287,12 +1290,6 @@ fn check_vc_leaf_configuration(
     own_leaf_index: LeafNodeIndex,
     is_external_commit: bool,
 ) -> Result<AppDataDictionary, CreateCommitError> {
-    use crate::{
-        component::{ComponentId, ComponentType},
-        extensions::ExtensionType,
-    };
-    use tls_codec::DeserializeBytes as _;
-
     let current_leaf = if is_external_commit {
         None
     } else {
@@ -1301,62 +1298,12 @@ fn check_vc_leaf_configuration(
         })?)
     };
 
-    let supports_app_data_dictionary = match leaf_node_parameters.capabilities() {
-        Some(c) => c.extensions().contains(&ExtensionType::AppDataDictionary),
-        None => current_leaf
-            .map(|leaf| {
-                leaf.capabilities()
-                    .extensions()
-                    .contains(&ExtensionType::AppDataDictionary)
-            })
-            .unwrap_or(false),
-    };
-    if !supports_app_data_dictionary {
-        return Err(CreateCommitError::VirtualClientsError(
-            VirtualClientsError::AppDataDictionaryNotSupported,
-        ));
-    }
-
-    // Merge the dictionary from the current leaf with anything the
-    // caller passed in `leaf_node_parameters`, with the caller winning.
-    // For external commits there's no current leaf to merge from.
-    let mut resolved_dictionary = current_leaf
-        .and_then(|leaf| leaf.extensions().app_data_dictionary())
-        .map(|ext| ext.dictionary().clone())
-        .unwrap_or_default();
-    if let Some(caller_dict) = leaf_node_parameters
-        .extensions()
-        .and_then(|exts| exts.app_data_dictionary())
-    {
-        for entry in caller_dict.dictionary().entries() {
-            resolved_dictionary.insert(entry.id(), entry.data().to_vec());
-        }
-    }
-
-    let app_components_bytes = resolved_dictionary
-        .get(&ComponentId::from(ComponentType::AppComponents))
-        .map(|bytes| bytes.to_vec());
-    let Some(app_components_bytes) = app_components_bytes else {
-        return Err(CreateCommitError::VirtualClientsError(
-            VirtualClientsError::VcComponentNotListed,
-        ));
-    };
-
-    // The AppComponents body is `ComponentID supported_components<V>`,
-    // i.e. a TLS-encoded variable-length vector of u16. `Vec<u16>`'s
-    // `DeserializeBytes` impl handles the length prefix.
-    let supported_components = Vec::<u16>::tls_deserialize_exact_bytes(&app_components_bytes)
-        .map_err(|e| {
-            log::error!("vc: AppComponents body failed to deserialize: {e:?}");
-            CreateCommitError::VirtualClientsError(VirtualClientsError::VcComponentNotListed)
-        })?;
-    if !supported_components.contains(&VC_COMPONENT_ID) {
-        return Err(CreateCommitError::VirtualClientsError(
-            VirtualClientsError::VcComponentNotListed,
-        ));
-    }
-
-    Ok(resolved_dictionary)
+    crate::components::vc_derivation_info::resolve_vc_leaf_dictionary(
+        leaf_node_parameters.capabilities(),
+        leaf_node_parameters.extensions(),
+        current_leaf,
+    )
+    .map_err(CreateCommitError::VirtualClientsError)
 }
 
 /// Merge a virtual-clients derivation info blob into

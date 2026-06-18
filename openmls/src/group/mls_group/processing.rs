@@ -498,18 +498,12 @@ impl MlsGroup {
             .encryption_key()
             .tls_serialize_detached()
             .map_err(VirtualClientsError::from)?;
-        let tbe = derivation_info.decrypt(
-            crypto,
-            emulation_ciphersuite,
-            &epoch_encryption_key,
-            &leaf_encryption_key,
-        )?;
-
         // The operation type is not on the wire. It is inferred from the
         // carrying leaf's source: key-package leaves map to `KeyPackage`,
         // update and commit leaves map to `LeafNode`. Only `LeafNode` is
         // wired up today, and an update-path leaf always has a commit
-        // source.
+        // source. It selects the tagless `DerivationInfoTbe` variant the
+        // plaintext decodes into.
         let operation_type = match path.leaf_node().leaf_node_source() {
             LeafNodeSource::KeyPackage(_) => {
                 log::error!("vc: key-package leaf on an update path");
@@ -519,6 +513,13 @@ impl MlsGroup {
                 VirtualClientOperationType::LeafNode
             }
         };
+        let tbe = derivation_info.decrypt(
+            crypto,
+            emulation_ciphersuite,
+            &epoch_encryption_key,
+            &leaf_encryption_key,
+            operation_type,
+        )?;
         // The operation context for `LeafNode` operations is the
         // higher-level group's id.
         let operation_context = self.group_id().as_slice().to_vec();
@@ -530,9 +531,9 @@ impl MlsGroup {
             crypto,
             emulation_ciphersuite,
             epoch_id,
-            tbe.leaf_index,
+            tbe.leaf_index(),
             operation_type,
-            tbe.generation,
+            tbe.generation(),
             &operation_context,
         )?;
         // Persist the advanced tree immediately, before any key material is
