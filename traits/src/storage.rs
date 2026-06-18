@@ -643,9 +643,6 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Delete a key package based on the hash reference.
-    ///
-    /// This function only deletes the key package.
-    /// The corresponding encryption keys must be deleted separately.
     fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
