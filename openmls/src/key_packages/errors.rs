@@ -67,4 +67,8 @@ pub enum KeyPackageNewError {
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
+    /// A virtual-clients operation failed while building the key package.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
 }

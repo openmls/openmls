@@ -219,6 +219,13 @@ impl SignedStruct<KeyPackageTbs> for KeyPackage {
 
 const SIGNATURE_KEY_PACKAGE_LABEL: &str = "KeyPackageTBS";
 
+/// The leaf-node-specific parameters used when creating a [`KeyPackage`].
+pub(crate) struct KeyPackageLeafNodeParams {
+    pub(crate) lifetime: Lifetime,
+    pub(crate) capabilities: Capabilities,
+    pub(crate) extensions: Extensions<LeafNode>,
+}
+
 /// Helper struct containing the results of building a new [`KeyPackage`].
 pub(crate) struct KeyPackageCreationResult {
     pub key_package: KeyPackage,
@@ -277,17 +284,14 @@ impl KeyPackage {
         KeyPackageBuilder::new()
     }
 
-    #[allow(clippy::too_many_arguments)]
     /// Create a new key package for the given `ciphersuite` and `identity`.
     pub(crate) fn create(
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
-        lifetime: Lifetime,
         extensions: Extensions<KeyPackage>,
-        leaf_node_capabilities: Capabilities,
-        leaf_node_extensions: Extensions<LeafNode>,
+        leaf_node_params: KeyPackageLeafNodeParams,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError> {
         if ciphersuite.signature_algorithm() != signer.signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
@@ -307,10 +311,8 @@ impl KeyPackage {
             provider,
             signer,
             credential_with_key,
-            lifetime,
             extensions,
-            leaf_node_capabilities,
-            leaf_node_extensions,
+            leaf_node_params,
             init_key.public.into(),
         )?;
 
@@ -330,25 +332,28 @@ impl KeyPackage {
     /// encryption key ([`HpkeKeyPair`]) of the leaf node.
     ///
     /// The caller is responsible for storing the new values.
-    #[allow(clippy::too_many_arguments)]
     fn new_from_keys(
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
-        lifetime: Lifetime,
         extensions: Extensions<KeyPackage>,
-        capabilities: Capabilities,
-        leaf_node_extensions: Extensions<LeafNode>,
+        leaf_node_params: KeyPackageLeafNodeParams,
         init_key: InitKey,
     ) -> Result<(Self, EncryptionKeyPair), KeyPackageNewError> {
         // We don't need the private key here. It's stored in the key store for
         // use later when creating a group with this key package.
 
+        let KeyPackageLeafNodeParams {
+            lifetime,
+            capabilities,
+            extensions: leaf_node_extensions,
+        } = leaf_node_params;
+
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
-            leaf_node_source: LeafNodeSource::KeyPackage(lifetime),
             credential_with_key,
+            leaf_node_source: LeafNodeSource::KeyPackage(lifetime),
             capabilities,
             extensions: leaf_node_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
@@ -356,6 +361,56 @@ impl KeyPackage {
 
         let (leaf_node, encryption_key_pair) =
             LeafNode::new(provider, signer, new_leaf_node_params)?;
+
+        let key_package_tbs = KeyPackageTbs {
+            protocol_version: ProtocolVersion::default(),
+            ciphersuite,
+            init_key,
+            leaf_node,
+            extensions,
+        };
+
+        let key_package = key_package_tbs.sign(signer)?;
+
+        Ok((key_package, encryption_key_pair))
+    }
+
+    /// Create a new KeyPackage from caller-provided init and encryption keys.
+    ///
+    /// Mirrors [`KeyPackage::new_from_keys`] but takes a caller-provided
+    /// encryption key pair for the leaf instead of generating a fresh one.
+    /// Used by the virtual-clients KeyPackage build path, where both keys are
+    /// derived from a per-operation secret so a sibling can reproduce them.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn new_from_vc_keys(
+        ciphersuite: Ciphersuite,
+        signer: &impl Signer,
+        credential_with_key: CredentialWithKey,
+        extensions: Extensions<KeyPackage>,
+        leaf_node_params: KeyPackageLeafNodeParams,
+        init_key: InitKey,
+        encryption_key_pair: EncryptionKeyPair,
+    ) -> Result<(Self, EncryptionKeyPair), KeyPackageNewError> {
+        let KeyPackageLeafNodeParams {
+            lifetime,
+            capabilities,
+            extensions: leaf_node_extensions,
+        } = leaf_node_params;
+
+        let new_leaf_node_params = NewLeafNodeParams {
+            ciphersuite,
+            credential_with_key,
+            leaf_node_source: LeafNodeSource::KeyPackage(lifetime),
+            capabilities,
+            extensions: leaf_node_extensions,
+            tree_info_tbs: TreeInfoTbs::KeyPackage,
+        };
+
+        let (leaf_node, encryption_key_pair) = LeafNode::new_with_encryption_key_pair(
+            signer,
+            new_leaf_node_params,
+            encryption_key_pair,
+        )?;
 
         let key_package_tbs = KeyPackageTbs {
             protocol_version: ProtocolVersion::default(),
@@ -522,15 +577,18 @@ impl KeyPackageBuilder {
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError> {
         self.ensure_last_resort();
+        let leaf_node_params = KeyPackageLeafNodeParams {
+            lifetime: self.key_package_lifetime.unwrap_or_default(),
+            capabilities: self.leaf_node_capabilities.unwrap_or_default(),
+            extensions: self.leaf_node_extensions.unwrap_or_default(),
+        };
         KeyPackage::create(
             ciphersuite,
             provider,
             signer,
             credential_with_key,
-            self.key_package_lifetime.unwrap_or_default(),
             self.key_package_extensions.unwrap_or_default(),
-            self.leaf_node_capabilities.unwrap_or_default(),
-            self.leaf_node_extensions.unwrap_or_default(),
+            leaf_node_params,
         )
     }
 
@@ -544,6 +602,11 @@ impl KeyPackageBuilder {
     ) -> Result<KeyPackageBundle, KeyPackageNewError> {
         self.ensure_last_resort();
 
+        let leaf_node_params = KeyPackageLeafNodeParams {
+            lifetime: self.key_package_lifetime.unwrap_or_default(),
+            capabilities: self.leaf_node_capabilities.unwrap_or_default(),
+            extensions: self.leaf_node_extensions.unwrap_or_default(),
+        };
         let KeyPackageCreationResult {
             key_package,
             encryption_keypair,
@@ -553,10 +616,8 @@ impl KeyPackageBuilder {
             provider,
             signer,
             credential_with_key,
-            self.key_package_lifetime.unwrap_or_default(),
             self.key_package_extensions.unwrap_or_default(),
-            self.leaf_node_capabilities.unwrap_or_default(),
-            self.leaf_node_extensions.unwrap_or_default(),
+            leaf_node_params,
         )?;
 
         // Store the key package in the key store with the hash reference as id
@@ -573,6 +634,298 @@ impl KeyPackageBuilder {
 
         Ok(full_kp)
     }
+
+    /// Build a batch of virtual-client KeyPackages a sibling can reproduce.
+    ///
+    /// Allocates a single generation of the `key_package` operation ratchet
+    /// for the emulation epoch identified by `epoch_id` and persists the
+    /// advanced tree once. For each `key_package_index` in `0..count` it
+    /// derives a per-KeyPackage seed secret from that one operation secret and
+    /// derives the KeyPackage's init key and leaf encryption key from the
+    /// seed. Each leaf carries an encrypted `DerivationInfo` under
+    /// [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
+    /// so a sibling can recover the emulation leaf index,
+    /// generation, and index.
+    ///
+    /// The operation secret and the seeds are derived under the emulation
+    /// epoch's ciphersuite (the operation tree's ciphersuite). The init and
+    /// leaf-encryption keys are derived from each seed under the KeyPackage's
+    /// own `ciphersuite`.
+    ///
+    /// Each leaf must declare `AppDataDictionary` support and list
+    /// [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
+    /// in its `AppComponents` entry, otherwise this
+    /// returns
+    /// [`VirtualClientsError::AppDataDictionaryNotSupported`](crate::components::vc_derivation_info::VirtualClientsError::AppDataDictionaryNotSupported)
+    /// or
+    /// [`VirtualClientsError::VcComponentNotListed`](crate::components::vc_derivation_info::VirtualClientsError::VcComponentNotListed).
+    ///
+    /// The advanced operation tree is persisted immediately, so a discarded
+    /// builder burns a generation. That is harmless: sibling ratchets skip
+    /// over a burned generation.
+    ///
+    /// Returns the batch's `generation` and one
+    /// `(KeyPackageBundle, KeyPackageInfo)` per KeyPackage. Each bundle is also
+    /// written to storage so the creating client can process its own Welcomes,
+    /// and each [`KeyPackageInfo`](crate::components::vc_derivation_info::KeyPackageInfo)
+    /// carries the index the client hands to its
+    /// sibling.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn build_vc_batch(
+        self,
+        ciphersuite: Ciphersuite,
+        provider: &impl OpenMlsProvider,
+        signer: &impl Signer,
+        credential_with_key: CredentialWithKey,
+        epoch_id: crate::components::vc_derivation_info::EpochId,
+        count: u32,
+    ) -> Result<
+        (
+            u32,
+            Vec<(
+                KeyPackageBundle,
+                crate::components::vc_derivation_info::KeyPackageInfo,
+            )>,
+        ),
+        KeyPackageNewError,
+    > {
+        use crate::components::vc_derivation_info::{
+            EmulationEpochState, VirtualClientOperationType, VirtualClientsError,
+        };
+        use crate::components::vc_operation_tree::OperationSecretTree;
+
+        if ciphersuite.signature_algorithm() != signer.signature_scheme() {
+            return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
+        }
+
+        // Allocate a single generation of the key_package operation ratchet
+        // for the whole batch and persist the advanced tree right away,
+        // mirroring the commit builder's persist-on-allocate.
+        let state: EmulationEpochState = provider
+            .storage()
+            .vc_emulation_epoch_state(&epoch_id)
+            .map_err(|e| {
+                log::error!("vc: load emulation epoch state in build_vc_batch failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?
+            .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+        let mut operation_tree: OperationSecretTree = provider
+            .storage()
+            .vc_operation_tree(&epoch_id)
+            .map_err(|e| {
+                log::error!("vc: load operation tree in build_vc_batch failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?
+            .ok_or(VirtualClientsError::MissingOperationTree)?;
+        let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) =
+            state.into_parts();
+
+        // The operation context for KeyPackage operations is empty, since a
+        // KeyPackage is not tied to a higher-level group at build time.
+        let (generation, operation_secret) = operation_tree.next_operation_secret(
+            provider.crypto(),
+            emulation_ciphersuite,
+            &epoch_id,
+            emulation_leaf_index,
+            VirtualClientOperationType::KeyPackage,
+            b"",
+        )?;
+        provider
+            .storage()
+            .write_vc_operation_tree(&epoch_id, &operation_tree)
+            .map_err(|e| {
+                log::error!("vc: persist advanced operation tree in build_vc_batch failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?;
+
+        let batch_ctx = VcBatchContext {
+            ciphersuite,
+            epoch_id,
+            emulation_ciphersuite,
+            epoch_encryption_key,
+            emulation_leaf_index,
+            generation,
+            operation_secret,
+        };
+
+        let mut built = Vec::with_capacity(count as usize);
+        for key_package_index in 0..count {
+            let entry = self.build_vc_key_package_for_index(
+                provider,
+                signer,
+                credential_with_key.clone(),
+                &batch_ctx,
+                key_package_index,
+            )?;
+            built.push(entry);
+        }
+
+        Ok((generation, built))
+    }
+
+    /// Derive and build a single KeyPackage at `key_package_index` from the
+    /// batch's shared `operation_secret`. Used by [`Self::build_vc_batch`].
+    #[cfg(feature = "virtual-clients-draft")]
+    fn build_vc_key_package_for_index(
+        &self,
+        provider: &impl OpenMlsProvider,
+        signer: &impl Signer,
+        credential_with_key: CredentialWithKey,
+        batch_ctx: &VcBatchContext,
+        key_package_index: u32,
+    ) -> Result<
+        (
+            KeyPackageBundle,
+            crate::components::vc_derivation_info::KeyPackageInfo,
+        ),
+        KeyPackageNewError,
+    > {
+        use crate::components::vc_derivation_info::{
+            DerivationInfo, DerivationInfoTbe, KeyPackageInfo, VirtualClientsError,
+        };
+        use tls_codec::Serialize as _;
+
+        let ciphersuite = batch_ctx.ciphersuite;
+
+        // Derive the per-index seed under the emulation ciphersuite, then the
+        // init and leaf encryption keys from the seed under the KeyPackage's
+        // own ciphersuite.
+        let seed = batch_ctx.operation_secret.derive_key_package_seed_secret(
+            provider.crypto(),
+            batch_ctx.emulation_ciphersuite,
+            key_package_index,
+        )?;
+        let init_key_pair = seed
+            .derive_init_key_secret(provider.crypto(), ciphersuite)?
+            .generate_init_key_pair(provider.crypto(), ciphersuite)?;
+        let encryption_key_pair = seed
+            .derive_encryption_key_secret(provider.crypto(), ciphersuite)?
+            .generate_encryption_key_pair(provider.crypto(), ciphersuite)?;
+
+        // Enforce the capability check and resolve the dictionary, then wrap
+        // the TBE bound to the new leaf via its serialized encryption key.
+        let resolved_dictionary =
+            crate::components::vc_derivation_info::resolve_vc_leaf_dictionary(
+                self.leaf_node_capabilities.as_ref(),
+                self.leaf_node_extensions.as_ref(),
+                None,
+            )?;
+        let leaf_encryption_key = encryption_key_pair
+            .public_key()
+            .tls_serialize_detached()
+            .map_err(VirtualClientsError::from)?;
+        let tbe = DerivationInfoTbe::KeyPackage {
+            leaf_index: batch_ctx.emulation_leaf_index,
+            generation: batch_ctx.generation,
+            key_package_index,
+        };
+        let derivation_info = DerivationInfo::encrypt(
+            provider.crypto(),
+            batch_ctx.emulation_ciphersuite,
+            &batch_ctx.epoch_encryption_key,
+            batch_ctx.epoch_id.clone(),
+            &leaf_encryption_key,
+            &tbe,
+        )?;
+        let derivation_info_bytes = derivation_info
+            .tls_serialize_detached()
+            .map_err(VirtualClientsError::from)?;
+        let mut builder = self.clone();
+        builder.ensure_last_resort();
+        let leaf_node_extensions = inject_vc_derivation_info(
+            builder.leaf_node_extensions.as_ref(),
+            resolved_dictionary,
+            derivation_info_bytes,
+        )?;
+
+        let leaf_node_params = KeyPackageLeafNodeParams {
+            lifetime: builder.key_package_lifetime.unwrap_or_default(),
+            capabilities: builder.leaf_node_capabilities.unwrap_or_default(),
+            extensions: leaf_node_extensions,
+        };
+        let (key_package, encryption_key_pair) = KeyPackage::new_from_vc_keys(
+            ciphersuite,
+            signer,
+            credential_with_key,
+            builder.key_package_extensions.unwrap_or_default(),
+            leaf_node_params,
+            init_key_pair.public.into(),
+            encryption_key_pair,
+        )?;
+
+        let key_package_ref = key_package.hash_ref(provider.crypto())?;
+        let full_kp = KeyPackageBundle {
+            key_package,
+            private_init_key: init_key_pair.private,
+            private_encryption_key: encryption_key_pair.private_key().clone(),
+        };
+        provider
+            .storage()
+            .write_key_package(&key_package_ref, &full_kp)
+            .map_err(|_| KeyPackageNewError::StorageError)?;
+
+        Ok((
+            full_kp,
+            KeyPackageInfo {
+                key_package_ref,
+                key_package_index,
+            },
+        ))
+    }
+}
+
+/// Shared inputs for building each KeyPackage in a `build_vc_batch` call:
+/// the batch's single operation secret plus the epoch material every
+/// KeyPackage in the batch derives against.
+#[cfg(feature = "virtual-clients-draft")]
+struct VcBatchContext {
+    ciphersuite: Ciphersuite,
+    epoch_id: crate::components::vc_derivation_info::EpochId,
+    emulation_ciphersuite: Ciphersuite,
+    epoch_encryption_key: crate::components::vc_derivation_info::EpochEncryptionKey,
+    emulation_leaf_index: crate::binary_tree::LeafNodeIndex,
+    generation: u32,
+    operation_secret: crate::components::vc_derivation_info::OperationSecret,
+}
+
+/// Merge a virtual-clients derivation-info blob into `resolved_dictionary`
+/// under [`VC_COMPONENT_ID`] and build the resulting leaf-node extensions.
+/// The dictionary already carries every other component id (notably
+/// `AppComponents`), so injecting the derivation info preserves them.
+#[cfg(feature = "virtual-clients-draft")]
+fn inject_vc_derivation_info(
+    caller_extensions: Option<&Extensions<LeafNode>>,
+    mut resolved_dictionary: crate::extensions::AppDataDictionary,
+    derivation_info_bytes: Vec<u8>,
+) -> Result<Extensions<LeafNode>, KeyPackageNewError> {
+    use crate::{
+        components::vc_derivation_info::VC_COMPONENT_ID,
+        extensions::{AppDataDictionaryExtension, Extension},
+    };
+
+    resolved_dictionary.insert(VC_COMPONENT_ID, derivation_info_bytes);
+    let vc_extension =
+        Extension::AppDataDictionary(AppDataDictionaryExtension::new(resolved_dictionary));
+
+    // Keep every non-AppDataDictionary extension the caller supplied and
+    // append the merged dictionary.
+    let other_extensions = caller_extensions
+        .map(|exts| {
+            exts.iter()
+                .filter(|ext| !matches!(ext, Extension::AppDataDictionary(_)))
+                .cloned()
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let new_extensions: Vec<Extension> = other_extensions
+        .into_iter()
+        .chain(std::iter::once(vc_extension))
+        .collect();
+    Extensions::<LeafNode>::from_vec(new_extensions).map_err(|_| {
+        KeyPackageNewError::LibraryError(LibraryError::custom(
+            "Failed to build VC leaf-node extensions",
+        ))
+    })
 }
 
 /// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the init and encryption
