@@ -637,15 +637,15 @@ impl KeyPackageBuilder {
 
     /// Build a batch of virtual-client KeyPackages a sibling can reproduce.
     ///
-    /// Allocates a single generation of the `key_package` operation ratchet
-    /// for the emulation epoch identified by `epoch_id` and persists the
-    /// advanced tree once. For each `key_package_index` in `0..count` it
-    /// derives a per-KeyPackage seed secret from that one operation secret and
-    /// derives the KeyPackage's init key and leaf encryption key from the
-    /// seed. Each leaf carries an encrypted `DerivationInfo` under
+    /// Allocates a single generation of the `key_package` operation ratchet for
+    /// the emulation epoch identified by `epoch_id`. For each
+    /// `key_package_index` in `0..count` it derives a per-KeyPackage seed
+    /// secret from that one operation secret and derives the KeyPackage's init
+    /// key and leaf encryption key from the seed. Each leaf carries an
+    /// encrypted `DerivationInfo` under
     /// [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
-    /// so a sibling can recover the emulation leaf index,
-    /// generation, and index.
+    /// so a sibling can recover the emulation leaf index, generation, and
+    /// index.
     ///
     /// The operation secret and the seeds are derived under the emulation
     /// epoch's ciphersuite (the operation tree's ciphersuite). The init and
@@ -654,22 +654,17 @@ impl KeyPackageBuilder {
     ///
     /// Each leaf must declare `AppDataDictionary` support and list
     /// [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
-    /// in its `AppComponents` entry, otherwise this
-    /// returns
+    /// in its `AppComponents` entry, otherwise this returns
     /// [`VirtualClientsError::AppDataDictionaryNotSupported`](crate::components::vc_derivation_info::VirtualClientsError::AppDataDictionaryNotSupported)
     /// or
     /// [`VirtualClientsError::VcComponentNotListed`](crate::components::vc_derivation_info::VirtualClientsError::VcComponentNotListed).
     ///
-    /// The advanced operation tree is persisted immediately, so a discarded
-    /// builder burns a generation. That is harmless: sibling ratchets skip
-    /// over a burned generation.
-    ///
     /// Returns a [`VcKeyPackageBatch`] holding the batch's `generation` and one
     /// `(KeyPackageBundle, KeyPackageInfo)` per KeyPackage. Each bundle is also
     /// written to storage so the creating client can process its own Welcomes,
-    /// and each [`KeyPackageInfo`](crate::components::vc_derivation_info::KeyPackageInfo)
-    /// carries the index the client hands to its
-    /// sibling.
+    /// and each
+    /// [`KeyPackageInfo`](crate::components::vc_derivation_info::KeyPackageInfo)
+    /// carries the index the client hands to its sibling.
     ///
     /// Returns [`KeyPackageNewError::EmptyBatch`] when `count` is 0, before
     /// loading any state or consuming a generation.
@@ -708,8 +703,9 @@ impl KeyPackageBuilder {
             )?;
 
         // Allocate a single generation of the key_package operation ratchet
-        // for the whole batch and persist the advanced tree right away,
-        // mirroring the commit builder's persist-on-allocate.
+        // for the whole batch. The advanced tree is held in memory and only
+        // persisted once every KeyPackage has been built, so a failure during
+        // building consumes no generation.
         let state: EmulationEpochState = provider
             .storage()
             .vc_emulation_epoch_state(&epoch_id)
@@ -739,13 +735,6 @@ impl KeyPackageBuilder {
             VirtualClientOperationType::KeyPackage,
             b"",
         )?;
-        provider
-            .storage()
-            .write_vc_operation_tree(&epoch_id, &operation_tree)
-            .map_err(|e| {
-                log::error!("vc: persist advanced operation tree in build_vc_batch failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?;
 
         let batch_ctx = VcBatchContext {
             ciphersuite,
@@ -768,6 +757,24 @@ impl KeyPackageBuilder {
                 key_package_index,
             )?;
             key_packages.push(entry);
+        }
+
+        // Persist the advanced operation tree before the KeyPackages it backs.
+        // If a KeyPackage write fails after this, the burned generation is
+        // harmless, but writing KeyPackages first would let the next batch
+        // reuse the same key material under an unconsumed generation.
+        provider
+            .storage()
+            .write_vc_operation_tree(&batch_ctx.epoch_id, &operation_tree)
+            .map_err(|e| {
+                log::error!("vc: persist advanced operation tree in build_vc_batch failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?;
+        for (full_kp, info) in &key_packages {
+            provider
+                .storage()
+                .write_key_package(&info.key_package_ref, full_kp)
+                .map_err(|_| KeyPackageNewError::StorageError)?;
         }
 
         Ok(VcKeyPackageBatch {
@@ -869,10 +876,6 @@ impl KeyPackageBuilder {
             private_init_key: init_key_pair.private,
             private_encryption_key: encryption_key_pair.private_key().clone(),
         };
-        provider
-            .storage()
-            .write_key_package(&key_package_ref, &full_kp)
-            .map_err(|_| KeyPackageNewError::StorageError)?;
 
         Ok((
             full_kp,
