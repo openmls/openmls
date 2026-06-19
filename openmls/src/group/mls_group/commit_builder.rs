@@ -368,7 +368,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// - derives the path secret and the new leaf's encryption keypair
     ///   from the allocated `OperationSecret`, so a sibling virtual
     ///   client can rederive them on the receiver side, and
-    /// - embeds an encrypted `DerivationInfo` blob under [`VC_COMPONENT_ID`]
+    /// - embeds an encrypted `DerivationInfo` blob under
+    ///   [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
     ///   in the new leaf's `app_data_dictionary` extension.
     ///
     /// Because the ratchet advance is persisted here, a builder that is
@@ -384,7 +385,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     ///
     /// - lists [`ExtensionType::AppDataDictionary`](crate::extensions::ExtensionType::AppDataDictionary)
     ///   in its `Capabilities.extensions`, and
-    /// - signals support for [`VC_COMPONENT_ID`].
+    /// - signals support for
+    ///   [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID).
     ///
     /// If those preconditions are not met this method fails with
     /// `VirtualClientsError::AppDataDictionaryNotSupported` or

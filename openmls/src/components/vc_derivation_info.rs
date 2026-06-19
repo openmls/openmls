@@ -325,7 +325,7 @@ impl GenerationIdSecret {
     }
 }
 
-/// Which ratchet a [`PrivateMessageContext`] refers to
+/// Which ratchet a `PrivateMessageContext` refers to
 /// (mls-virtual-clients draft `RatchetType`):
 ///
 /// ```text
@@ -378,8 +378,8 @@ pub(crate) struct PrivateMessageContext<'a> {
 /// collisions between siblings, per higher-level group, per higher-level
 /// group epoch, and per ratchet type (mls-virtual-clients draft).
 ///
-/// Derived from the emulation epoch's [`GenerationIdSecret`] over a
-/// [`PrivateMessageContext`]. The value is opaque to the application: it is
+/// Derived from the emulation epoch's `GenerationIdSecret` over a
+/// `PrivateMessageContext`. The value is opaque to the application: it is
 /// produced by [`MlsGroup::create_unconfirmed_message`] and handed to the DS,
 /// which compares it for equality across siblings.
 ///
