@@ -6,7 +6,8 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{
-    DeserializeBytes, Serialize as _, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
+    DeserializeBytes, Serialize as _, Size as _, TlsDeserializeBytes, TlsSerialize, TlsSize,
+    VLBytes,
 };
 
 use crate::{
@@ -1073,26 +1074,34 @@ impl DerivationInfoTbe {
     /// the `DerivationInfoTBE` select. The TLS derive macros cannot express a
     /// tagless select, so this codec is written by hand.
     fn tls_serialize_detached(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        let mut out = Vec::new();
         match self {
             Self::LeafNode {
                 leaf_index,
                 generation,
             } => {
+                let mut out = Vec::with_capacity(
+                    leaf_index.tls_serialized_len() + generation.tls_serialized_len(),
+                );
                 leaf_index.tls_serialize(&mut out)?;
                 generation.tls_serialize(&mut out)?;
+                Ok(out)
             }
             Self::KeyPackage {
                 leaf_index,
                 generation,
                 key_package_index,
             } => {
+                let mut out = Vec::with_capacity(
+                    leaf_index.tls_serialized_len()
+                        + generation.tls_serialized_len()
+                        + key_package_index.tls_serialized_len(),
+                );
                 leaf_index.tls_serialize(&mut out)?;
                 generation.tls_serialize(&mut out)?;
                 key_package_index.tls_serialize(&mut out)?;
+                Ok(out)
             }
         }
-        Ok(out)
     }
 
     /// Deserialize the tagless select for the given operation type. The
