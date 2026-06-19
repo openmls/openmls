@@ -696,9 +696,6 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Delete a key package based on the hash reference.
     ///
-    /// This function only deletes the key package.
-    /// The corresponding encryption keys must be deleted separately.
-    ///
     /// Under the `virtual-clients-draft` feature, an implementation must also
     /// delete the retained virtual clients KeyPackage material stored for the
     /// same reference (see [`Self::delete_retained_key_package_material`]).
