@@ -1487,7 +1487,7 @@ fn vc_sibling_joins_higher_level_group_via_key_package_welcome() {
     // alice_a publishes a virtual-client KeyPackage and hands the upload to
     // alice_b. alice_b only learns about the KeyPackage through the upload, it
     // never stores the bundle.
-    let (generation, mut batch) = KeyPackage::builder()
+    let mut batch = KeyPackage::builder()
         .leaf_node_capabilities(vc_capabilities())
         .leaf_node_extensions(vc_leaf_extensions())
         .build_vc_batch(
@@ -1499,7 +1499,8 @@ fn vc_sibling_joins_higher_level_group_via_key_package_welcome() {
             1,
         )
         .expect("alice_a build_vc_batch");
-    let (vc_key_package_bundle, kp_info) = batch.remove(0);
+    let generation = batch.generation;
+    let (vc_key_package_bundle, kp_info) = batch.key_packages.remove(0);
     let upload = assemble_vc_key_package_upload(
         alice_a_provider.storage(),
         epoch_id_a.clone(),
@@ -1668,7 +1669,7 @@ fn vc_batch_key_packages_join_in_any_order() {
 
     // One batch of 40 KeyPackages, larger than OUT_OF_ORDER_TOLERANCE (32).
     let count: u32 = 40;
-    let (generation, batch) = KeyPackage::builder()
+    let batch = KeyPackage::builder()
         .leaf_node_capabilities(vc_capabilities())
         .leaf_node_extensions(vc_leaf_extensions())
         .build_vc_batch(
@@ -1680,10 +1681,12 @@ fn vc_batch_key_packages_join_in_any_order() {
             count,
         )
         .expect("alice_a build_vc_batch");
+    let generation = batch.generation;
     assert_eq!(generation, 0, "the batch consumes a single generation");
-    assert_eq!(batch.len(), count as usize);
+    assert_eq!(batch.key_packages.len(), count as usize);
 
     let kp_infos = batch
+        .key_packages
         .iter()
         .map(|(_bundle, info)| info)
         .map(
@@ -1704,8 +1707,11 @@ fn vc_batch_key_packages_join_in_any_order() {
 
     // The sibling joins via a HIGH batch index first and a LOW one second,
     // each through a separate higher-level group.
-    let high_bundle = batch[(count - 1) as usize].0.key_package().clone();
-    let low_bundle = batch[0].0.key_package().clone();
+    let high_bundle = batch.key_packages[(count - 1) as usize]
+        .0
+        .key_package()
+        .clone();
+    let low_bundle = batch.key_packages[0].0.key_package().clone();
 
     for (label, kp) in [
         (b"BobHigh".as_slice(), high_bundle),

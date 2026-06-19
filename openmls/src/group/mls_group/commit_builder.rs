@@ -39,11 +39,10 @@ use crate::{
 use crate::{
     components::vc_derivation_info::{
         DerivationInfo, DerivationInfoTbe, EmulationEpochState, EpochEncryptionKey, EpochId,
-        OperationSecret, VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
+        OperationSecret, VirtualClientOperationType, VirtualClientsError,
     },
     components::vc_operation_tree::OperationSecretTree,
-    extensions::{AppDataDictionary, AppDataDictionaryExtension},
-    treesync::node::leaf_node::LeafNode,
+    extensions::AppDataDictionary,
 };
 #[cfg(feature = "extensions-draft-08")]
 use crate::{
@@ -1313,32 +1312,14 @@ fn check_vc_leaf_configuration(
 #[cfg(feature = "virtual-clients-draft")]
 fn inject_vc_derivation_info(
     leaf_node_parameters: &mut LeafNodeParameters,
-    mut resolved_dictionary: AppDataDictionary,
+    resolved_dictionary: AppDataDictionary,
     derivation_info_bytes: Vec<u8>,
 ) -> Result<(), CreateCommitError> {
-    resolved_dictionary.insert(VC_COMPONENT_ID, derivation_info_bytes);
-    let vc_extension =
-        Extension::AppDataDictionary(AppDataDictionaryExtension::new(resolved_dictionary));
-
-    // Drop any pre-existing AppDataDictionary entry from the caller-
-    // supplied extension list (we just rebuilt it) and append the merged
-    // one.
-    let other_extensions = leaf_node_parameters
-        .extensions()
-        .map(|exts| {
-            exts.iter()
-                .filter(|ext| !matches!(ext, Extension::AppDataDictionary(_)))
-                .cloned()
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    let new_extensions: Vec<Extension> = other_extensions
-        .into_iter()
-        .chain(std::iter::once(vc_extension))
-        .collect();
-    let extensions = crate::extensions::Extensions::<LeafNode>::from_vec(new_extensions)
-        .map_err(|_| LibraryError::custom("Failed to build leaf-node extensions"))?;
-
+    let extensions = crate::components::vc_derivation_info::merge_vc_derivation_info(
+        leaf_node_parameters.extensions(),
+        resolved_dictionary,
+        derivation_info_bytes,
+    )?;
     leaf_node_parameters.set_extensions(extensions);
     Ok(())
 }

@@ -1213,6 +1213,45 @@ pub(crate) fn resolve_vc_leaf_dictionary(
     Ok(resolved_dictionary)
 }
 
+/// Merge a virtual-clients derivation-info blob into `resolved_dictionary`
+/// under [`VC_COMPONENT_ID`] and build the resulting leaf-node extensions.
+///
+/// Every other component id in `resolved_dictionary` (notably `AppComponents`)
+/// is preserved, as is every non-`AppDataDictionary` extension the caller
+/// supplied in `caller_extensions`. The rebuilt dictionary replaces any
+/// `AppDataDictionary` entry already in that list.
+pub(crate) fn merge_vc_derivation_info(
+    caller_extensions: Option<
+        &crate::extensions::Extensions<crate::treesync::node::leaf_node::LeafNode>,
+    >,
+    mut resolved_dictionary: crate::extensions::AppDataDictionary,
+    derivation_info_bytes: Vec<u8>,
+) -> Result<
+    crate::extensions::Extensions<crate::treesync::node::leaf_node::LeafNode>,
+    crate::error::LibraryError,
+> {
+    use crate::extensions::{AppDataDictionaryExtension, Extension, Extensions};
+
+    resolved_dictionary.insert(VC_COMPONENT_ID, derivation_info_bytes);
+    let vc_extension =
+        Extension::AppDataDictionary(AppDataDictionaryExtension::new(resolved_dictionary));
+
+    let other_extensions = caller_extensions
+        .map(|exts| {
+            exts.iter()
+                .filter(|ext| !matches!(ext, Extension::AppDataDictionary(_)))
+                .cloned()
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let new_extensions: Vec<Extension> = other_extensions
+        .into_iter()
+        .chain(std::iter::once(vc_extension))
+        .collect();
+    Extensions::from_vec(new_extensions)
+        .map_err(|_| crate::error::LibraryError::custom("Failed to build VC leaf-node extensions"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

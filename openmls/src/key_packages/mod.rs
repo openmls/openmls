@@ -664,12 +664,15 @@ impl KeyPackageBuilder {
     /// builder burns a generation. That is harmless: sibling ratchets skip
     /// over a burned generation.
     ///
-    /// Returns the batch's `generation` and one
+    /// Returns a [`VcKeyPackageBatch`] holding the batch's `generation` and one
     /// `(KeyPackageBundle, KeyPackageInfo)` per KeyPackage. Each bundle is also
     /// written to storage so the creating client can process its own Welcomes,
     /// and each [`KeyPackageInfo`](crate::components::vc_derivation_info::KeyPackageInfo)
     /// carries the index the client hands to its
     /// sibling.
+    ///
+    /// Returns [`KeyPackageNewError::EmptyBatch`] when `count` is 0, before
+    /// loading any state or consuming a generation.
     #[cfg(feature = "virtual-clients-draft")]
     pub fn build_vc_batch(
         self,
@@ -679,16 +682,7 @@ impl KeyPackageBuilder {
         credential_with_key: CredentialWithKey,
         epoch_id: crate::components::vc_derivation_info::EpochId,
         count: u32,
-    ) -> Result<
-        (
-            u32,
-            Vec<(
-                KeyPackageBundle,
-                crate::components::vc_derivation_info::KeyPackageInfo,
-            )>,
-        ),
-        KeyPackageNewError,
-    > {
+    ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
         use crate::components::vc_derivation_info::{
             EmulationEpochState, VirtualClientOperationType, VirtualClientsError,
         };
@@ -697,6 +691,21 @@ impl KeyPackageBuilder {
         if ciphersuite.signature_algorithm() != signer.signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
+
+        // Reject an empty batch before loading state or consuming a generation.
+        if count == 0 {
+            return Err(KeyPackageNewError::EmptyBatch);
+        }
+
+        // Resolve and validate the leaf configuration once for the whole batch
+        // (it does not depend on the per-KeyPackage index) before consuming a
+        // generation, so a misconfigured leaf fails without burning one.
+        let resolved_dictionary =
+            crate::components::vc_derivation_info::resolve_vc_leaf_dictionary(
+                self.leaf_node_capabilities.as_ref(),
+                self.leaf_node_extensions.as_ref(),
+                None,
+            )?;
 
         // Allocate a single generation of the key_package operation ratchet
         // for the whole batch and persist the advanced tree right away,
@@ -746,9 +755,10 @@ impl KeyPackageBuilder {
             emulation_leaf_index,
             generation,
             operation_secret,
+            resolved_dictionary,
         };
 
-        let mut built = Vec::with_capacity(count as usize);
+        let mut key_packages = Vec::with_capacity(count as usize);
         for key_package_index in 0..count {
             let entry = self.build_vc_key_package_for_index(
                 provider,
@@ -757,10 +767,13 @@ impl KeyPackageBuilder {
                 &batch_ctx,
                 key_package_index,
             )?;
-            built.push(entry);
+            key_packages.push(entry);
         }
 
-        Ok((generation, built))
+        Ok(VcKeyPackageBatch {
+            generation,
+            key_packages,
+        })
     }
 
     /// Derive and build a single KeyPackage at `key_package_index` from the
@@ -802,14 +815,10 @@ impl KeyPackageBuilder {
             .derive_encryption_key_secret(provider.crypto(), ciphersuite)?
             .generate_encryption_key_pair(provider.crypto(), ciphersuite)?;
 
-        // Enforce the capability check and resolve the dictionary, then wrap
-        // the TBE bound to the new leaf via its serialized encryption key.
-        let resolved_dictionary =
-            crate::components::vc_derivation_info::resolve_vc_leaf_dictionary(
-                self.leaf_node_capabilities.as_ref(),
-                self.leaf_node_extensions.as_ref(),
-                None,
-            )?;
+        // Wrap the TBE bound to the new leaf via its serialized encryption key.
+        // The leaf dictionary was resolved and validated once for the whole
+        // batch, so reuse a clone here.
+        let resolved_dictionary = batch_ctx.resolved_dictionary.clone();
         let leaf_encryption_key = encryption_key_pair
             .public_key()
             .tls_serialize_detached()
@@ -832,11 +841,12 @@ impl KeyPackageBuilder {
             .map_err(VirtualClientsError::from)?;
         let mut builder = self.clone();
         builder.ensure_last_resort();
-        let leaf_node_extensions = inject_vc_derivation_info(
+        let leaf_node_extensions = crate::components::vc_derivation_info::merge_vc_derivation_info(
             builder.leaf_node_extensions.as_ref(),
             resolved_dictionary,
             derivation_info_bytes,
-        )?;
+        )
+        .map_err(KeyPackageNewError::LibraryError)?;
 
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: builder.key_package_lifetime.unwrap_or_default(),
@@ -886,46 +896,22 @@ struct VcBatchContext {
     emulation_leaf_index: crate::binary_tree::LeafNodeIndex,
     generation: u32,
     operation_secret: crate::components::vc_derivation_info::OperationSecret,
+    resolved_dictionary: crate::extensions::AppDataDictionary,
 }
 
-/// Merge a virtual-clients derivation-info blob into `resolved_dictionary`
-/// under [`VC_COMPONENT_ID`] and build the resulting leaf-node extensions.
-/// The dictionary already carries every other component id (notably
-/// `AppComponents`), so injecting the derivation info preserves them.
+/// The result of [`KeyPackageBuilder::build_vc_batch`]: the single
+/// `key_package` operation generation the batch consumed, and one
+/// `(KeyPackageBundle, KeyPackageInfo)` per KeyPackage built.
 #[cfg(feature = "virtual-clients-draft")]
-fn inject_vc_derivation_info(
-    caller_extensions: Option<&Extensions<LeafNode>>,
-    mut resolved_dictionary: crate::extensions::AppDataDictionary,
-    derivation_info_bytes: Vec<u8>,
-) -> Result<Extensions<LeafNode>, KeyPackageNewError> {
-    use crate::{
-        components::vc_derivation_info::VC_COMPONENT_ID,
-        extensions::{AppDataDictionaryExtension, Extension},
-    };
-
-    resolved_dictionary.insert(VC_COMPONENT_ID, derivation_info_bytes);
-    let vc_extension =
-        Extension::AppDataDictionary(AppDataDictionaryExtension::new(resolved_dictionary));
-
-    // Keep every non-AppDataDictionary extension the caller supplied and
-    // append the merged dictionary.
-    let other_extensions = caller_extensions
-        .map(|exts| {
-            exts.iter()
-                .filter(|ext| !matches!(ext, Extension::AppDataDictionary(_)))
-                .cloned()
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    let new_extensions: Vec<Extension> = other_extensions
-        .into_iter()
-        .chain(std::iter::once(vc_extension))
-        .collect();
-    Extensions::<LeafNode>::from_vec(new_extensions).map_err(|_| {
-        KeyPackageNewError::LibraryError(LibraryError::custom(
-            "Failed to build VC leaf-node extensions",
-        ))
-    })
+#[derive(Debug)]
+pub struct VcKeyPackageBatch {
+    /// The `key_package` operation generation consumed for the whole batch.
+    pub generation: u32,
+    /// One entry per KeyPackage built, in batch-index order. Never empty.
+    pub key_packages: Vec<(
+        KeyPackageBundle,
+        crate::components::vc_derivation_info::KeyPackageInfo,
+    )>,
 }
 
 /// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the init and encryption

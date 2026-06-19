@@ -71,4 +71,8 @@ pub enum KeyPackageNewError {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// A virtual-clients KeyPackage batch was requested with a count of 0.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error("A virtual-clients KeyPackage batch must request at least one KeyPackage.")]
+    EmptyBatch,
 }

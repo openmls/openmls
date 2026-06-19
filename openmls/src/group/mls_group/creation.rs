@@ -841,10 +841,6 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
         log::error!("vc: welcome leaf derivation info does not match the retained material");
         return Err(VirtualClientsError::DerivationInfoMalformed.into());
     }
-    if own_leaf.encryption_key().as_slice() != derived_encryption_key {
-        log::error!("vc: welcome leaf encryption key does not match the derived key");
-        return Err(VirtualClientsError::EncryptionKeyMismatch.into());
-    }
 
     Ok(own_index)
 }

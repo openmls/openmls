@@ -224,7 +224,8 @@ fn last_resort_key_package() {
 /// `app_data_dictionary`, and that the embedded `DerivationInfo` decrypts
 /// (with the epoch's encryption key) to a `DerivationInfoTbe` whose
 /// `leaf_index`, `generation`, and `key_package_index` match the emulator
-/// leaf, the consumed generation, and the batch index.
+/// leaf, the consumed generation, and the batch index. Also checks that a
+/// count of 0 is rejected with `EmptyBatch`.
 #[cfg(feature = "virtual-clients-draft")]
 #[openmls_test::openmls_test]
 fn build_vc_key_package_carries_reproducible_derivation_info() {
@@ -236,6 +237,7 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
         credentials::test_utils::new_credential,
         extensions::{AppDataDictionary, AppDataDictionaryExtension},
         group::{MlsGroup, MlsGroupCreateConfig, PURE_PLAINTEXT_WIRE_FORMAT_POLICY},
+        key_packages::errors::KeyPackageNewError,
         treesync::node::leaf_node::Capabilities,
     };
     use tls_codec::{DeserializeBytes as _, Serialize as _};
@@ -289,7 +291,18 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
         ciphersuite.signature_algorithm(),
     );
 
-    let (generation, mut batch) = KeyPackage::builder()
+    // A count of 0 is rejected before any state is loaded or consumed.
+    let empty = KeyPackage::builder().build_vc_batch(
+        ciphersuite,
+        &provider,
+        &vc_signer,
+        vc_credential.clone(),
+        epoch_id.clone(),
+        0,
+    );
+    assert_eq!(empty.unwrap_err(), KeyPackageNewError::EmptyBatch);
+
+    let mut batch = KeyPackage::builder()
         .leaf_node_capabilities(capabilities)
         .leaf_node_extensions(vc_leaf_extensions)
         .build_vc_batch(
@@ -303,11 +316,15 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
         .expect("build_vc_batch must succeed");
 
     assert_eq!(
-        generation, 0,
+        batch.generation, 0,
         "the first key_package operation must consume generation 0"
     );
-    assert_eq!(batch.len(), 1, "a count of 1 must produce one KeyPackage");
-    let (bundle, key_package_info) = batch.remove(0);
+    assert_eq!(
+        batch.key_packages.len(),
+        1,
+        "a count of 1 must produce one KeyPackage"
+    );
+    let (bundle, key_package_info) = batch.key_packages.remove(0);
     assert_eq!(
         key_package_info.key_package_index, 0,
         "the only KeyPackage in the batch has index 0"
@@ -356,6 +373,6 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
         panic!("a key-package leaf must decode to the KeyPackage variant");
     };
     assert_eq!(leaf_index, emulation_leaf_index);
-    assert_eq!(tbe_generation, generation);
+    assert_eq!(tbe_generation, batch.generation);
     assert_eq!(key_package_index, key_package_info.key_package_index);
 }
