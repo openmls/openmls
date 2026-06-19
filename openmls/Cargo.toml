@@ -48,6 +48,8 @@ serde_bytes = "0.11.17"
 [features]
 # enable for compatibility with openmls=0.8.1
 0-8-1-storage-format = []
+# compat structs for migration from openmls=0.7.0 and earlier
+compat = []
 test-utils = [
     "dep:serde_json",
     "dep:itertools",

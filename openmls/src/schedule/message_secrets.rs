@@ -24,6 +24,31 @@ pub(crate) struct MessageSecrets {
     added_at: Option<SystemTime>,
 }
 
+/// Combined message secrets that need to be stored for later decryption/verification
+#[derive(Serialize, Deserialize)]
+#[cfg(feature = "compat")]
+pub(crate) struct MessageSecretsCompat {
+    sender_data_secret: SenderDataSecret,
+    membership_key: MembershipKey,
+    confirmation_key: ConfirmationKey,
+    serialized_context: Vec<u8>,
+    secret_tree: SecretTree,
+}
+
+#[cfg(feature = "compat")]
+impl From<MessageSecretsCompat> for MessageSecrets {
+    fn from(compat: MessageSecretsCompat) -> Self {
+        Self {
+            sender_data_secret: compat.sender_data_secret,
+            membership_key: compat.membership_key,
+            confirmation_key: compat.confirmation_key,
+            serialized_context: compat.serialized_context,
+            secret_tree: compat.secret_tree,
+            added_at: None,
+        }
+    }
+}
+
 #[cfg(not(feature = "crypto-debug"))]
 impl core::fmt::Debug for MessageSecrets {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

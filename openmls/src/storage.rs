@@ -30,6 +30,9 @@ use crate::{
     treesync::{node::encryption_keys::EncryptionKeyPair, EncryptionKey},
 };
 
+#[cfg(feature = "compat")]
+use crate::group::MlsGroupStateCompat;
+
 #[cfg(test)]
 pub mod kat_storage_stability;
 
@@ -131,6 +134,11 @@ impl traits::MlsGroupJoinConfig<CURRENT_VERSION> for MlsGroupJoinConfig {}
 
 impl Entity<CURRENT_VERSION> for MlsGroupState {}
 impl traits::GroupState<CURRENT_VERSION> for MlsGroupState {}
+
+#[cfg(feature = "compat")]
+impl Entity<CURRENT_VERSION> for MlsGroupStateCompat {}
+#[cfg(feature = "compat")]
+impl traits::GroupState<CURRENT_VERSION> for MlsGroupStateCompat {}
 
 impl Entity<CURRENT_VERSION> for LeafNode {}
 impl traits::LeafNode<CURRENT_VERSION> for LeafNode {}
