@@ -368,6 +368,28 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<Option<GroupState>, Self::Error>;
 
+    /// Returns the group state for the group with group id `group_id`,
+    /// retrying deserialization with a provided compatibility format
+    /// if the initial deserialization fails.
+    fn group_state_compat<
+        GroupState: traits::GroupState<VERSION> + From<GroupStateCompat>,
+        GroupStateCompat: traits::GroupState<VERSION>,
+        GroupId: traits::GroupId<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<GroupState>, Self::Error> {
+        // try to load as the expected format first
+        if let Ok(group_state) = self.group_state::<GroupState, _>(group_id) {
+            return Ok(group_state);
+        }
+
+        // load as the compat format
+        Ok(self
+            .group_state::<GroupStateCompat, _>(group_id)?
+            .map(GroupState::from))
+    }
+
     /// Returns the MessageSecretsStore for the group with the given id.
     fn message_secrets<
         GroupId: traits::GroupId<VERSION>,
