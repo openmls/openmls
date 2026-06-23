@@ -1020,7 +1020,18 @@ impl StagedCommit {
 }
 
 /// This struct is used internally by [`StagedCommit`] to encapsulate all the modified group state.
-#[derive(Debug, Serialize, Deserialize)]
+//
+// IMPORTANT: this struct is reachable from the persisted on-disk format
+// (`MlsGroupState::PendingCommit(...)` → `PendingCommitState::Member(...)` →
+// `StagedCommit::state` → `StagedCommitState::GroupMember(...)`). The first
+// six fields are the openmls-0.7.x shape and MUST NOT be reordered or have
+// fields inserted between them. The trailing `application_export_tree` field
+// is gated by `extensions-draft-08` and is deserialized *tolerantly*: see the
+// custom `Deserialize` impl below for the EOF-tolerant fallback rationale.
+// The same caveat as `MessageSecrets` applies: this must remain the last
+// field of any containing struct for non-self-describing formats to handle
+// the absence of the field cleanly.
+#[derive(Debug)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
 pub(crate) struct MemberStagedCommitState {
     group_epoch_secrets: GroupEpochSecrets,
@@ -1030,7 +1041,6 @@ pub(crate) struct MemberStagedCommitState {
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
     update_path_leaf_node: Option<LeafNode>,
     #[cfg(feature = "extensions-draft-08")]
-    #[serde(default)]
     // This is `None` only if the group was stored using an older version of
     // OpenMLS that did not support the application exporter.
     application_export_tree: Option<ApplicationExportTree>,
@@ -1041,6 +1051,187 @@ pub(crate) struct MemberStagedCommitState {
     #[cfg(feature = "virtual-clients-draft")]
     #[serde(default)]
     new_own_leaf_index: Option<LeafNodeIndex>,
+}
+
+const MEMBER_STAGED_COMMIT_STATE_FIELDS: &[&str] = &[
+    "group_epoch_secrets",
+    "message_secrets",
+    "staged_diff",
+    "new_keypairs",
+    "new_leaf_keypair_option",
+    "update_path_leaf_node",
+    #[cfg(feature = "extensions-draft-08")]
+    "application_export_tree",
+];
+
+impl Serialize for MemberStagedCommitState {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+
+        let mut s = serializer.serialize_struct(
+            "MemberStagedCommitState",
+            MEMBER_STAGED_COMMIT_STATE_FIELDS.len(),
+        )?;
+        s.serialize_field("group_epoch_secrets", &self.group_epoch_secrets)?;
+        s.serialize_field("message_secrets", &self.message_secrets)?;
+        s.serialize_field("staged_diff", &self.staged_diff)?;
+        s.serialize_field("new_keypairs", &self.new_keypairs)?;
+        s.serialize_field("new_leaf_keypair_option", &self.new_leaf_keypair_option)?;
+        s.serialize_field("update_path_leaf_node", &self.update_path_leaf_node)?;
+        #[cfg(feature = "extensions-draft-08")]
+        s.serialize_field("application_export_tree", &self.application_export_tree)?;
+        s.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for MemberStagedCommitState {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_struct(
+            "MemberStagedCommitState",
+            MEMBER_STAGED_COMMIT_STATE_FIELDS,
+            MemberStagedCommitStateVisitor,
+        )
+    }
+}
+
+struct MemberStagedCommitStateVisitor;
+
+impl<'de> serde::de::Visitor<'de> for MemberStagedCommitStateVisitor {
+    type Value = MemberStagedCommitState;
+
+    fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("struct MemberStagedCommitState")
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(
+        self,
+        mut seq: A,
+    ) -> Result<MemberStagedCommitState, A::Error> {
+        use serde::de::Error;
+
+        let group_epoch_secrets = seq
+            .next_element::<GroupEpochSecrets>()?
+            .ok_or_else(|| Error::missing_field("group_epoch_secrets"))?;
+        let message_secrets = seq
+            .next_element::<MessageSecrets>()?
+            .ok_or_else(|| Error::missing_field("message_secrets"))?;
+        let staged_diff = seq
+            .next_element::<StagedPublicGroupDiff>()?
+            .ok_or_else(|| Error::missing_field("staged_diff"))?;
+        let new_keypairs = seq
+            .next_element::<Vec<EncryptionKeyPair>>()?
+            .ok_or_else(|| Error::missing_field("new_keypairs"))?;
+        let new_leaf_keypair_option = seq
+            .next_element::<Option<EncryptionKeyPair>>()?
+            .ok_or_else(|| Error::missing_field("new_leaf_keypair_option"))?;
+        let update_path_leaf_node = seq
+            .next_element::<Option<LeafNode>>()?
+            .ok_or_else(|| Error::missing_field("update_path_leaf_node"))?;
+
+        // Tolerant tail read for `application_export_tree`: feature-gated and
+        // possibly absent in data written by openmls < 0.8 (when the feature
+        // did not yet exist) or by builds without the feature enabled. Any
+        // error from `next_element` (e.g. bincode EOF) is treated as "field
+        // absent" and falls back to `None`.
+        #[cfg(feature = "extensions-draft-08")]
+        let application_export_tree = seq
+            .next_element::<Option<ApplicationExportTree>>()
+            .unwrap_or(None)
+            .flatten();
+
+        Ok(MemberStagedCommitState {
+            group_epoch_secrets,
+            message_secrets,
+            staged_diff,
+            new_keypairs,
+            new_leaf_keypair_option,
+            update_path_leaf_node,
+            #[cfg(feature = "extensions-draft-08")]
+            application_export_tree,
+        })
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(
+        self,
+        mut map: A,
+    ) -> Result<MemberStagedCommitState, A::Error> {
+        use serde::de::Error;
+
+        let mut group_epoch_secrets: Option<GroupEpochSecrets> = None;
+        let mut message_secrets: Option<MessageSecrets> = None;
+        let mut staged_diff: Option<StagedPublicGroupDiff> = None;
+        let mut new_keypairs: Option<Vec<EncryptionKeyPair>> = None;
+        let mut new_leaf_keypair_option: Option<Option<EncryptionKeyPair>> = None;
+        let mut update_path_leaf_node: Option<Option<LeafNode>> = None;
+        #[cfg(feature = "extensions-draft-08")]
+        let mut application_export_tree: Option<Option<ApplicationExportTree>> = None;
+
+        while let Some(key) = map.next_key::<String>()? {
+            match key.as_str() {
+                "group_epoch_secrets" => {
+                    if group_epoch_secrets.is_some() {
+                        return Err(Error::duplicate_field("group_epoch_secrets"));
+                    }
+                    group_epoch_secrets = Some(map.next_value()?);
+                }
+                "message_secrets" => {
+                    if message_secrets.is_some() {
+                        return Err(Error::duplicate_field("message_secrets"));
+                    }
+                    message_secrets = Some(map.next_value()?);
+                }
+                "staged_diff" => {
+                    if staged_diff.is_some() {
+                        return Err(Error::duplicate_field("staged_diff"));
+                    }
+                    staged_diff = Some(map.next_value()?);
+                }
+                "new_keypairs" => {
+                    if new_keypairs.is_some() {
+                        return Err(Error::duplicate_field("new_keypairs"));
+                    }
+                    new_keypairs = Some(map.next_value()?);
+                }
+                "new_leaf_keypair_option" => {
+                    if new_leaf_keypair_option.is_some() {
+                        return Err(Error::duplicate_field("new_leaf_keypair_option"));
+                    }
+                    new_leaf_keypair_option = Some(map.next_value()?);
+                }
+                "update_path_leaf_node" => {
+                    if update_path_leaf_node.is_some() {
+                        return Err(Error::duplicate_field("update_path_leaf_node"));
+                    }
+                    update_path_leaf_node = Some(map.next_value()?);
+                }
+                #[cfg(feature = "extensions-draft-08")]
+                "application_export_tree" => {
+                    if application_export_tree.is_some() {
+                        return Err(Error::duplicate_field("application_export_tree"));
+                    }
+                    application_export_tree = Some(map.next_value()?);
+                }
+                _ => {
+                    let _: serde::de::IgnoredAny = map.next_value()?;
+                }
+            }
+        }
+
+        Ok(MemberStagedCommitState {
+            group_epoch_secrets: group_epoch_secrets
+                .ok_or_else(|| Error::missing_field("group_epoch_secrets"))?,
+            message_secrets: message_secrets
+                .ok_or_else(|| Error::missing_field("message_secrets"))?,
+            staged_diff: staged_diff.ok_or_else(|| Error::missing_field("staged_diff"))?,
+            new_keypairs: new_keypairs.ok_or_else(|| Error::missing_field("new_keypairs"))?,
+            new_leaf_keypair_option: new_leaf_keypair_option
+                .ok_or_else(|| Error::missing_field("new_leaf_keypair_option"))?,
+            update_path_leaf_node: update_path_leaf_node
+                .ok_or_else(|| Error::missing_field("update_path_leaf_node"))?,
+            #[cfg(feature = "extensions-draft-08")]
+            application_export_tree: application_export_tree.unwrap_or(None),
+        })
+    }
 }
 
 impl MemberStagedCommitState {
