@@ -34,8 +34,7 @@ use crate::{
 ///
 /// The `-In` suffix of this struct is to separate it from the [`MlsMessageOut`]
 /// which is commonly returned by functions of the [`MlsGroup`] API.
-#[derive(PartialEq, Debug, Clone, TlsSize)]
-#[cfg_attr(feature = "test-utils", derive(TlsSerialize))]
+#[derive(PartialEq, Debug, Clone, TlsSize, TlsSerialize)]
 pub struct MlsMessageIn {
     pub(crate) version: ProtocolVersion,
     pub(crate) body: MlsMessageBodyIn,
