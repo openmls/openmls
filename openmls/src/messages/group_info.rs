@@ -208,7 +208,8 @@ impl GroupInfo {
         &self.payload.confirmation_tag
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    /// Returns the GroupInfo with a type that signals it is unverified.
+    /// A form of downcasting to an equivalent type with a weaker type invariant.
     pub(crate) fn into_verifiable_group_info(self) -> VerifiableGroupInfo {
         VerifiableGroupInfo {
             payload: GroupInfoTBS {
