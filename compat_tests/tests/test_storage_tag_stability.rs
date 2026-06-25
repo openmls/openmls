@@ -11,7 +11,7 @@ static TEST_DATA: OnceLock<TestData> = OnceLock::new();
 #[allow(nonstandard_style)]
 #[derive(PartialEq, Debug, serde::Deserialize)]
 enum SupportedVersion {
-    OpenMls_0_7_1,
+    OpenMls_0_7_0,
     OpenMls_0_8_1,
     OpenMls_0_8_1_Extensions,
 }
@@ -153,12 +153,12 @@ macro_rules! compat_tests {
 }
 
 // check the storage tag stability for openmls=0.7.1 => `main`
-#[cfg(feature = "compat_0_7_1")]
+#[cfg(feature = "compat_0_7_0")]
 compat_tests!(
-    test_storage_tags_0_7_1,
-    openmls_0_7_1,
+    test_storage_tags_0_7_0,
+    openmls_0_7_0,
     openmls,
-    SupportedVersion::OpenMls_0_7_1
+    SupportedVersion::OpenMls_0_7_0
 );
 // check the storage tag stability for openmls=0.8.1 => `main`
 #[cfg(all(feature = "compat_0_8_1", not(feature = "compat_0_8_1_extensions")))]
