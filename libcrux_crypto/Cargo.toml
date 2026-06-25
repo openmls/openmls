@@ -10,19 +10,19 @@ repository = "https://github.com/openmls/openmls/tree/main/openmls_libcrux_crypt
 readme = "../README.md"
 
 [dependencies]
-libcrux-aead = { version = "0.0.7" }
-libcrux-ed25519 = { version = "0.0.7", features = ["rand"] }
-libcrux-hkdf = { version = "0.0.6" }
-libcrux-sha2 = { version = "0.0.6" }
-libcrux-hmac = { version = "0.0.6" }
-libcrux-traits = { version = "0.0.6" }
+libcrux-aead = { version = "0.0.8" }
+libcrux-ed25519 = { version = "0.0.8", features = ["rand"] }
+libcrux-hkdf = { version = "0.0.7" }
+libcrux-sha2 = { version = "0.0.7" }
+libcrux-hmac = { version = "0.0.7" }
+libcrux-traits = { version = "0.0.7" }
 
 openmls_traits = { workspace = true }
 openmls_memory_storage = { workspace = true }
 
-rand = "0.9"
+rand = "0.10"
 tls_codec.workspace = true
-rand_chacha = "0.9"
+rand_chacha = "0.10"
 
 hpke-rs = { version = "0.6.1", features = ["hazmat", "serialization"] }
 hpke-rs-crypto = { version = "0.6.1" }
@@ -32,7 +32,7 @@ hpke-rs-libcrux = { version = "0.6.1" }
 # libcrux has no FF1 implementation, so this provider also uses the
 # RustCrypto-based `fpe` crate.
 fpe = { version = "0.6", optional = true }
-aes = { version = "0.8", optional = true }
+aes = { version = "0.9", optional = true }
 
 [features]
 extensions-draft-08 = [
