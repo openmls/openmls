@@ -1,0 +1,7 @@
+[package]
+name = "openmls_storage_migration"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+openmls_traits = { workspace = true }
