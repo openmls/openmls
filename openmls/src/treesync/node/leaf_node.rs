@@ -220,6 +220,40 @@ impl LeafNode {
         Ok((leaf_node, encryption_key_pair))
     }
 
+    /// Create a new [`LeafNode`] from a caller-provided encryption key pair.
+    ///
+    /// Mirrors [`LeafNode::new`] but uses `encryption_key_pair` instead of
+    /// generating a fresh one. This is the virtual-clients KeyPackage build
+    /// hook: the encryption key is derived from the per-operation secret so a
+    /// sibling can reproduce it.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn new_with_encryption_key_pair(
+        signer: &impl Signer,
+        new_leaf_node_params: NewLeafNodeParams,
+        encryption_key_pair: EncryptionKeyPair,
+    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+        let NewLeafNodeParams {
+            ciphersuite: _,
+            credential_with_key,
+            leaf_node_source,
+            capabilities,
+            extensions,
+            tree_info_tbs,
+        } = new_leaf_node_params;
+
+        let leaf_node = Self::new_with_key(
+            encryption_key_pair.public_key().clone(),
+            credential_with_key,
+            leaf_node_source,
+            capabilities,
+            extensions,
+            tree_info_tbs,
+            signer,
+        )?;
+
+        Ok((leaf_node, encryption_key_pair))
+    }
+
     /// Creates a new placeholder [`LeafNode`] that is used to build external
     /// commits.
     ///

@@ -43,7 +43,9 @@ use crate::{
     },
     versions::ProtocolVersion,
 };
-use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _, types::Ciphersuite,
+};
 
 #[cfg(feature = "extensions-draft-08")]
 use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
@@ -1164,8 +1166,8 @@ pub struct StagedWelcome {
     /// The [`VerifiableGroupInfo`] from the [`Welcome`] message.
     verifiable_group_info: VerifiableGroupInfo,
 
-    /// The key package bundle used for this welcome.
-    key_package_bundle: KeyPackageBundle,
+    /// The key material used to join via this welcome.
+    key_material: WelcomeKeyMaterial,
 
     /// If we got a path secret, these are the derived path keys.
     path_keypairs: Option<Vec<EncryptionKeyPair>>,
@@ -1188,5 +1190,71 @@ pub struct ProcessedWelcome {
     key_schedule: crate::schedule::KeySchedule,
     verifiable_group_info: crate::messages::group_info::VerifiableGroupInfo,
     resumption_psk_store: crate::schedule::psk::store::ResumptionPskStore,
-    key_package_bundle: KeyPackageBundle,
+    key_material: WelcomeKeyMaterial,
+}
+
+/// The key material a client uses to process a [`Welcome`] message.
+///
+/// A regular member holds a local [`KeyPackageBundle`]. A sibling emulator
+/// joining a higher-level group as a virtual client has no local bundle: it
+/// derives the init and leaf-encryption keys from the operation secret tree of
+/// the emulation epoch the KeyPackage belongs to.
+///
+/// [`Welcome`]: crate::messages::Welcome
+#[derive(Debug)]
+pub(crate) enum WelcomeKeyMaterial {
+    /// A locally stored [`KeyPackageBundle`]. Boxed to keep the enum small,
+    /// since the virtual-client variant is much smaller.
+    KeyPackage(Box<KeyPackageBundle>),
+    /// Virtual-client material derived from an emulation epoch's operation
+    /// secret tree.
+    #[cfg(feature = "virtual-clients-draft")]
+    VirtualClient(crate::components::vc_derivation_info::VcWelcomeMaterial),
+}
+
+impl WelcomeKeyMaterial {
+    /// The [`KeyPackageRef`] addressed by the welcome's encrypted group
+    /// secrets. The bundle computes it from its KeyPackage, the virtual-client
+    /// material carries the ref it was matched on.
+    ///
+    /// [`KeyPackageRef`]: crate::ciphersuite::hash_ref::KeyPackageRef
+    fn key_package_ref(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<crate::ciphersuite::hash_ref::KeyPackageRef, LibraryError> {
+        match self {
+            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.key_package().hash_ref(crypto),
+            #[cfg(feature = "virtual-clients-draft")]
+            WelcomeKeyMaterial::VirtualClient(material) => Ok(material.key_package_ref.clone()),
+        }
+    }
+
+    /// The init private key used to decrypt the encrypted group secrets.
+    fn init_private_key(&self) -> &crate::ciphersuite::HpkePrivateKey {
+        match self {
+            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.init_private_key(),
+            #[cfg(feature = "virtual-clients-draft")]
+            WelcomeKeyMaterial::VirtualClient(material) => &material.init_private_key,
+        }
+    }
+
+    /// The local [`KeyPackageBundle`] on the regular path, or `None` on the
+    /// virtual-client path. Checks that only apply when there is a local
+    /// KeyPackage to compare against branch on this.
+    fn key_package_bundle(&self) -> Option<&KeyPackageBundle> {
+        match self {
+            WelcomeKeyMaterial::KeyPackage(bundle) => Some(bundle),
+            #[cfg(feature = "virtual-clients-draft")]
+            WelcomeKeyMaterial::VirtualClient(_) => None,
+        }
+    }
+
+    /// The joiner's leaf encryption keypair.
+    fn encryption_key_pair(&self) -> EncryptionKeyPair {
+        match self {
+            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.encryption_key_pair(),
+            #[cfg(feature = "virtual-clients-draft")]
+            WelcomeKeyMaterial::VirtualClient(material) => material.encryption_keypair.clone(),
+        }
+    }
 }
