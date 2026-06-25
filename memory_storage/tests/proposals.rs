@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 struct TestGroupId(Vec<u8>);
 impl traits::GroupId<CURRENT_VERSION> for TestGroupId {}
 impl Key<CURRENT_VERSION> for TestGroupId {}
+impl Entity<CURRENT_VERSION> for TestGroupId {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Copy)]
 struct ProposalRef(usize);
