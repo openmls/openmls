@@ -30,6 +30,12 @@ use crate::{
     treesync::{node::encryption_keys::EncryptionKeyPair, EncryptionKey},
 };
 
+#[cfg(feature = "migration")]
+use crate::group::{past_secrets::MessageSecretsStoreCompat, MlsGroupStateCompat};
+
+#[cfg(feature = "migration")]
+pub mod migration;
+
 #[cfg(test)]
 pub mod kat_storage_stability;
 
@@ -89,6 +95,7 @@ impl Entity<CURRENT_VERSION> for TreeSync {}
 impl traits::TreeSync<CURRENT_VERSION> for TreeSync {}
 
 impl Key<CURRENT_VERSION> for GroupId {}
+impl Entity<CURRENT_VERSION> for GroupId {}
 impl traits::GroupId<CURRENT_VERSION> for GroupId {}
 
 impl Key<CURRENT_VERSION> for ProposalRef {}
@@ -123,6 +130,11 @@ impl traits::GroupEpochSecrets<CURRENT_VERSION> for GroupEpochSecrets {}
 impl Entity<CURRENT_VERSION> for MessageSecretsStore {}
 impl traits::MessageSecrets<CURRENT_VERSION> for MessageSecretsStore {}
 
+#[cfg(feature = "migration")]
+impl Entity<CURRENT_VERSION> for MessageSecretsStoreCompat {}
+#[cfg(feature = "migration")]
+impl traits::MessageSecrets<CURRENT_VERSION> for MessageSecretsStoreCompat {}
+
 impl Entity<CURRENT_VERSION> for ResumptionPskStore {}
 impl traits::ResumptionPskStore<CURRENT_VERSION> for ResumptionPskStore {}
 
@@ -131,6 +143,11 @@ impl traits::MlsGroupJoinConfig<CURRENT_VERSION> for MlsGroupJoinConfig {}
 
 impl Entity<CURRENT_VERSION> for MlsGroupState {}
 impl traits::GroupState<CURRENT_VERSION> for MlsGroupState {}
+
+#[cfg(feature = "migration")]
+impl Entity<CURRENT_VERSION> for MlsGroupStateCompat {}
+#[cfg(feature = "migration")]
+impl traits::GroupState<CURRENT_VERSION> for MlsGroupStateCompat {}
 
 impl Entity<CURRENT_VERSION> for LeafNode {}
 impl traits::LeafNode<CURRENT_VERSION> for LeafNode {}
