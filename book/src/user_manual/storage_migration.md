@@ -10,7 +10,8 @@ keys in the provider.
 {{#include ../../../compat_tests/src/test_storage_provider.rs:migration_helper_impl}}
 ```
 
-Then, `migrate_group_state` can be called to migrate records from the previous version
+Then, the migration methods available in `openmls::storage::migration`
+(behind the `migration` feature flag) can be called in order to migrate records from the previous version
 to the current version. Records that have already been migrated are not modified.
 
 ```rust,no_run,noplayground
