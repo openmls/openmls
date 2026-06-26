@@ -17,14 +17,14 @@ compat_0_8_1_extensions = [
 # enable features on the underlying `openmls` crate,
 # and on the StorageProvider implementation in `test_storage_provider`
 extensions-draft-08 = [
-    "openmls/extensions-draft-08"
+    "openmls/extensions-draft-08",
 ]
 virtual-clients-draft = [
     "openmls/virtual-clients-draft"
 ]
 
-# enable features required for `test_optional_field_stability` test
-optional_field_stability = [
+# enable features required for `test_storage_migration` test
+storage_migration = [
     "compat_0_7_0",
     "openmls_traits_0_4_1",
     "openmls/migration",

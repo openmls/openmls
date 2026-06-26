@@ -1609,6 +1609,7 @@ name = "openmls_storage_migration"
 version = "0.1.0"
 dependencies = [
  "openmls_traits 0.5.0",
+ "thiserror",
 ]
 
 [[package]]

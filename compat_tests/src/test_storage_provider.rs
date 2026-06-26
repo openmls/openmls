@@ -853,10 +853,10 @@ mod current {
         impl_storage_provider_feature_flagged!();
     }
 
-    impl openmls_storage_migration::StorageMigrationHelper for TestStorageProvider {
+    impl openmls_storage_migration::StorageMigrationHelper<VERSION> for TestStorageProvider {
         fn group_ids<GroupId: traits::GroupId<VERSION>>(
             &self,
-        ) -> Result<Vec<GroupId>, Self::Error> {
+        ) -> Result<Vec<GroupId>, postcard::Error> {
             let data = self.0.lock().unwrap();
 
             data.group_state
