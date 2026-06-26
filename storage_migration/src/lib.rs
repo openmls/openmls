@@ -8,6 +8,8 @@ pub enum StorageMigrationError<LegacyError, CurrentError> {
     Current(CurrentError),
 }
 
+/// A trait that enables storage migrations from `PREVIOUS_VERSION` formats to `CURRENT_VERSION`
+/// formats to be performed on a storage provider.
 pub trait StorageMigrationHelper<const PREVIOUS_VERSION: u16, const CURRENT_VERSION: u16>:
     StorageProvider<PREVIOUS_VERSION> + StorageProvider<CURRENT_VERSION>
 {

@@ -865,7 +865,7 @@ macro_rules! impl_storage_provider_feature_flagged {
 use openmls_traits::storage::CURRENT_VERSION;
 
 mod current {
-    use super::{TestStorageProvider as Storage, *};
+    use super::{TestStorageProvider as Storage, CURRENT_VERSION as PREVIOUS_VERSION, *};
     use openmls_traits::storage::{traits, StorageProvider};
 
     impl StorageProvider<CURRENT_VERSION> for TestStorageProvider {
@@ -887,10 +887,10 @@ mod current {
     }
 
     // ANCHOR: migration_helper_impl
-    impl openmls_storage_migration::StorageMigrationHelper<CURRENT_VERSION, CURRENT_VERSION>
+    impl openmls_storage_migration::StorageMigrationHelper<PREVIOUS_VERSION, CURRENT_VERSION>
         for Storage
     {
-        fn group_ids<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        fn group_ids<GroupId: traits::GroupId<PREVIOUS_VERSION>>(
             &self,
         ) -> Result<Vec<GroupId>, postcard::Error> {
             // return a Vec of all `GroupId`s available as keys
