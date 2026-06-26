@@ -2,7 +2,7 @@
 
 [comment]: <> (TODO: add overview)
 
-For the storage migration, the `openmls_storage_migration::StorageMigrationHelper` trait must be implemented on the
+The `openmls_storage_migration::StorageMigrationHelper` trait must be implemented on the
 `StorageProvider`. The `group_ids()` method enumerates all stored `GroupId`s that are used as
 keys in the provider.
 
