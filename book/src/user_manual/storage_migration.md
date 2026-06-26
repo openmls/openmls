@@ -11,7 +11,7 @@ keys in the provider.
 ```
 
 Then, the migration methods available in `openmls::storage::migration`
-(behind the `migration` feature flag) can be called in order to migrate records from the previous version
+(behind the `storage_migration` feature flag) can be called in order to migrate records from the previous version
 to the current version. Records that have already been migrated are not modified.
 
 ```rust,no_run,noplayground

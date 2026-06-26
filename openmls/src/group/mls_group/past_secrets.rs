@@ -7,7 +7,7 @@ use web_time::SystemTime;
 
 use crate::schedule::message_secrets::MessageSecrets;
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 use crate::schedule::message_secrets::MessageSecretsCompat;
 
 use super::*;
@@ -29,7 +29,7 @@ pub(crate) struct EpochTree {
     leaves: Vec<Member>,
 }
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 #[derive(Serialize, Deserialize)]
 pub(crate) struct EpochTreeCompat {
     epoch: u64,
@@ -37,7 +37,7 @@ pub(crate) struct EpochTreeCompat {
     leaves: Vec<Member>,
 }
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 impl From<EpochTreeCompat> for EpochTree {
     fn from(compat: EpochTreeCompat) -> Self {
         Self {
@@ -48,7 +48,7 @@ impl From<EpochTreeCompat> for EpochTree {
     }
 }
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 #[derive(Serialize, Deserialize)]
 pub(crate) struct MessageSecretsStoreCompat {
     pub(crate) max_epochs: usize,
@@ -56,7 +56,7 @@ pub(crate) struct MessageSecretsStoreCompat {
     message_secrets: MessageSecretsCompat,
 }
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 impl From<MessageSecretsStoreCompat> for MessageSecretsStore {
     fn from(compat: MessageSecretsStoreCompat) -> Self {
         Self {

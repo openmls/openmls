@@ -26,7 +26,7 @@ pub(crate) struct MessageSecrets {
 
 /// Combined message secrets that need to be stored for later decryption/verification
 #[derive(Serialize, Deserialize)]
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 pub(crate) struct MessageSecretsCompat {
     sender_data_secret: SenderDataSecret,
     membership_key: MembershipKey,
@@ -35,7 +35,7 @@ pub(crate) struct MessageSecretsCompat {
     secret_tree: SecretTree,
 }
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 impl From<MessageSecretsCompat> for MessageSecrets {
     fn from(compat: MessageSecretsCompat) -> Self {
         Self {

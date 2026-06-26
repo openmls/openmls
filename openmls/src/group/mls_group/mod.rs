@@ -48,7 +48,7 @@ use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::C
 #[cfg(feature = "extensions-draft-08")]
 use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 use crate::group::mls_group::staged_commit::StagedCommitCompat;
 
 #[cfg(feature = "virtual-clients-draft")]
@@ -131,7 +131,7 @@ pub enum PendingCommitState {
 }
 
 /// Compatibility version of [`PendingGroupState`] for openmls v0.7.0
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 #[derive(Serialize, Deserialize)]
 pub enum PendingCommitStateCompat {
     /// Commit from a group member
@@ -140,7 +140,7 @@ pub enum PendingCommitStateCompat {
     External(StagedCommitCompat),
 }
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 impl From<PendingCommitStateCompat> for PendingCommitState {
     fn from(compat: PendingCommitStateCompat) -> Self {
         match compat {
@@ -226,7 +226,7 @@ pub enum MlsGroupState {
 }
 
 /// Compatibility version of [`MlsGroupState`] for openmls v0.7.0
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 #[derive(Serialize, Deserialize)]
 pub enum MlsGroupStateCompat {
     /// There is currently a pending Commit that hasn't been merged yet.
@@ -237,7 +237,7 @@ pub enum MlsGroupStateCompat {
     Inactive,
 }
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 impl From<MlsGroupStateCompat> for MlsGroupState {
     fn from(compat: MlsGroupStateCompat) -> Self {
         match compat {

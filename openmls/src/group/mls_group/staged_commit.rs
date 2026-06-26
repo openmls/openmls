@@ -755,14 +755,14 @@ pub(crate) enum StagedCommitState {
 }
 
 #[derive(Serialize, Deserialize)]
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 pub(crate) enum StagedCommitStateCompat {
     PublicState(Box<PublicStagedCommitState>),
     /// The group member variant of the staged commit state.
     GroupMember(Box<MemberStagedCommitStateCompat>),
 }
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 impl From<StagedCommitStateCompat> for StagedCommitState {
     fn from(compat: StagedCommitStateCompat) -> Self {
         match compat {
@@ -790,7 +790,7 @@ pub struct StagedCommit {
 }
 
 #[derive(Serialize, Deserialize)]
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 pub struct StagedCommitCompat {
     /// A queue containing the proposals associated with the commit.
     pub staged_proposal_queue: ProposalQueue,
@@ -798,7 +798,7 @@ pub struct StagedCommitCompat {
     pub(super) state: StagedCommitStateCompat,
 }
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 impl From<StagedCommitCompat> for StagedCommit {
     fn from(compat: StagedCommitCompat) -> Self {
         Self {
@@ -1058,7 +1058,7 @@ impl StagedCommit {
 }
 
 #[derive(Serialize, Deserialize)]
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 pub(crate) struct MemberStagedCommitStateCompat {
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: crate::schedule::message_secrets::MessageSecretsCompat,
@@ -1068,7 +1068,7 @@ pub(crate) struct MemberStagedCommitStateCompat {
     update_path_leaf_node: Option<LeafNode>,
 }
 
-#[cfg(feature = "migration")]
+#[cfg(feature = "storage_migration")]
 impl From<MemberStagedCommitStateCompat> for MemberStagedCommitState {
     fn from(compat: MemberStagedCommitStateCompat) -> Self {
         Self {
