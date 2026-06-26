@@ -4,7 +4,7 @@ use openmls_storage_migration::*;
 use openmls_traits::storage::{traits, Entity, StorageProvider, CURRENT_VERSION};
 
 /// Migrate all stored `MlsGroupState`s  for each `GroupId` key
-pub fn migrate_group_state<S: StorageMigrationHelper<CURRENT_VERSION>>(
+pub fn migrate_group_state<S: StorageMigrationHelper<CURRENT_VERSION, CURRENT_VERSION>>(
     storage: &S,
 ) -> Result<
     (),

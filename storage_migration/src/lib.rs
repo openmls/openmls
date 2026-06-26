@@ -1,4 +1,4 @@
-use openmls_traits::storage::{CURRENT_VERSION, StorageProvider, traits};
+use openmls_traits::storage::{StorageProvider, traits};
 
 #[derive(Debug, thiserror::Error)]
 pub enum StorageMigrationError<LegacyError, CurrentError> {
@@ -8,7 +8,7 @@ pub enum StorageMigrationError<LegacyError, CurrentError> {
     Current(CurrentError),
 }
 
-pub trait StorageMigrationHelper<const PREVIOUS_VERSION: u16>:
+pub trait StorageMigrationHelper<const PREVIOUS_VERSION: u16, const CURRENT_VERSION: u16>:
     StorageProvider<PREVIOUS_VERSION> + StorageProvider<CURRENT_VERSION>
 {
     /// Iterate over all GroupIds in the storage provider

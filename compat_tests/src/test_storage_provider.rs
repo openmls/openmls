@@ -25,8 +25,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Writes the MlsGroupJoinConfig for the group with given id to storage
         fn write_mls_join_config<
-            GroupId: traits::GroupId<VERSION>,
-            MlsGroupJoinConfig: traits::MlsGroupJoinConfig<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            MlsGroupJoinConfig: traits::MlsGroupJoinConfig<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -37,8 +37,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Adds an own leaf node for the group with given id to storage
         fn append_own_leaf_node<
-            GroupId: traits::GroupId<VERSION>,
-            LeafNode: traits::LeafNode<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            LeafNode: traits::LeafNode<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -52,9 +52,9 @@ macro_rules! impl_storage_provider_basic {
         /// A good way to implement this could be to add a proposal to a proposal store, indexed by the
         /// proposal reference, and adding the reference to a per-group proposal queue list.
         fn queue_proposal<
-            GroupId: traits::GroupId<VERSION>,
-            ProposalRef: traits::ProposalRef<VERSION>,
-            QueuedProposal: traits::QueuedProposal<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
+            QueuedProposal: traits::QueuedProposal<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -65,7 +65,10 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Write the TreeSync tree.
-        fn write_tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
+        fn write_tree<
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            TreeSync: traits::TreeSync<CURRENT_VERSION>,
+        >(
             &self,
             group_id: &GroupId,
             tree: &TreeSync,
@@ -75,8 +78,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Write the interim transcript hash.
         fn write_interim_transcript_hash<
-            GroupId: traits::GroupId<VERSION>,
-            InterimTranscriptHash: traits::InterimTranscriptHash<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            InterimTranscriptHash: traits::InterimTranscriptHash<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -87,8 +90,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Write the group context.
         fn write_context<
-            GroupId: traits::GroupId<VERSION>,
-            GroupContext: traits::GroupContext<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            GroupContext: traits::GroupContext<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -99,8 +102,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Write the confirmation tag.
         fn write_confirmation_tag<
-            GroupId: traits::GroupId<VERSION>,
-            ConfirmationTag: traits::ConfirmationTag<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ConfirmationTag: traits::ConfirmationTag<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -111,8 +114,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Writes the MlsGroupState for group with given id.
         fn write_group_state<
-            GroupState: traits::GroupState<VERSION>,
-            GroupId: traits::GroupId<VERSION>,
+            GroupState: traits::GroupState<CURRENT_VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -128,8 +131,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Writes the MessageSecretsStore for the group with the given id.
         fn write_message_secrets<
-            GroupId: traits::GroupId<VERSION>,
-            MessageSecrets: traits::MessageSecrets<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            MessageSecrets: traits::MessageSecrets<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -145,8 +148,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Writes the ResumptionPskStore for the group with the given id.
         fn write_resumption_psk_store<
-            GroupId: traits::GroupId<VERSION>,
-            ResumptionPskStore: traits::ResumptionPskStore<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ResumptionPskStore: traits::ResumptionPskStore<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -157,8 +160,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Writes the own leaf index inside the group for the group with the given id.
         fn write_own_leaf_index<
-            GroupId: traits::GroupId<VERSION>,
-            LeafNodeIndex: traits::LeafNodeIndex<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            LeafNodeIndex: traits::LeafNodeIndex<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -169,8 +172,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Writes the GroupEpochSecrets for the group with the given id.
         fn write_group_epoch_secrets<
-            GroupId: traits::GroupId<VERSION>,
-            GroupEpochSecrets: traits::GroupEpochSecrets<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -185,8 +188,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Removes an individual proposal from the proposal queue of the group with the provided id
         fn remove_proposal<
-            GroupId: traits::GroupId<VERSION>,
-            ProposalRef: traits::ProposalRef<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -196,7 +199,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Deletes own leaf nodes for the given id from storage
-        fn delete_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
+        fn delete_own_leaf_nodes<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -204,7 +207,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Deletes the MlsGroupJoinConfig for the given id from storage
-        fn delete_group_config<GroupId: traits::GroupId<VERSION>>(
+        fn delete_group_config<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -212,7 +215,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Deletes the tree from storage
-        fn delete_tree<GroupId: traits::GroupId<VERSION>>(
+        fn delete_tree<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -220,7 +223,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Deletes the confirmation tag from storage
-        fn delete_confirmation_tag<GroupId: traits::GroupId<VERSION>>(
+        fn delete_confirmation_tag<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -228,7 +231,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Deletes the MlsGroupState for group with given id.
-        fn delete_group_state<GroupId: traits::GroupId<VERSION>>(
+        fn delete_group_state<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -236,7 +239,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Deletes the group context for the group with given id
-        fn delete_context<GroupId: traits::GroupId<VERSION>>(
+        fn delete_context<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -244,7 +247,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Deletes the interim transcript hash for the group with given id
-        fn delete_interim_transcript_hash<GroupId: traits::GroupId<VERSION>>(
+        fn delete_interim_transcript_hash<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -252,7 +255,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Deletes the MessageSecretsStore for the group with the given id.
-        fn delete_message_secrets<GroupId: traits::GroupId<VERSION>>(
+        fn delete_message_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -260,7 +263,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Deletes the ResumptionPskStore for the group with the given id.
-        fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<VERSION>>(
+        fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -268,7 +271,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Deletes the own leaf index inside the group for the group with the given id.
-        fn delete_own_leaf_index<GroupId: traits::GroupId<VERSION>>(
+        fn delete_own_leaf_index<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -276,7 +279,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Deletes the GroupEpochSecrets for the group with the given id.
-        fn delete_group_epoch_secrets<GroupId: traits::GroupId<VERSION>>(
+        fn delete_group_epoch_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -285,8 +288,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Clear the proposal queue for the group with the given id.
         fn clear_proposal_queue<
-            GroupId: traits::GroupId<VERSION>,
-            ProposalRef: traits::ProposalRef<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -302,7 +305,9 @@ macro_rules! impl_storage_provider_basic {
         ///
         /// The signature key pair is not known to OpenMLS. This may be used by the
         /// application
-        fn delete_signature_key_pair<SignaturePublicKey: traits::SignaturePublicKey<VERSION>>(
+        fn delete_signature_key_pair<
+            SignaturePublicKey: traits::SignaturePublicKey<CURRENT_VERSION>,
+        >(
             &self,
             public_key: &SignaturePublicKey,
         ) -> Result<(), Self::Error> {
@@ -314,7 +319,7 @@ macro_rules! impl_storage_provider_basic {
         /// This is only be used for encryption key pairs that are generated for
         /// update leaf nodes. All other encryption key pairs are stored as part
         /// of the key package or the epoch encryption key pairs.
-        fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<VERSION>>(
+        fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>>(
             &self,
             public_key: &EncryptionKey,
         ) -> Result<(), Self::Error> {
@@ -324,8 +329,8 @@ macro_rules! impl_storage_provider_basic {
         /// Delete a list of HPKE encryption key pairs for a given epoch.
         /// This includes the private and public keys.
         fn delete_encryption_epoch_key_pairs<
-            GroupId: traits::GroupId<VERSION>,
-            EpochKey: traits::EpochKey<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            EpochKey: traits::EpochKey<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -339,7 +344,7 @@ macro_rules! impl_storage_provider_basic {
         ///
         /// This function only deletes the key package.
         /// The corresponding encryption keys must be deleted separately.
-        fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
+        fn delete_key_package<KeyPackageRef: traits::HashReference<CURRENT_VERSION>>(
             &self,
             hash_ref: &KeyPackageRef,
         ) -> Result<(), Self::Error> {
@@ -347,7 +352,7 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Delete a PSK based on an identifier.
-        fn delete_psk<PskKey: traits::PskId<VERSION>>(
+        fn delete_psk<PskKey: traits::PskId<CURRENT_VERSION>>(
             &self,
             psk_id: &PskKey,
         ) -> Result<(), Self::Error> {
@@ -363,8 +368,8 @@ macro_rules! impl_storage_provider_basic {
         /// The signature key pair is not known to OpenMLS. This may be used by the
         /// application
         fn write_signature_key_pair<
-            SignaturePublicKey: traits::SignaturePublicKey<VERSION>,
-            SignatureKeyPair: traits::SignatureKeyPair<VERSION>,
+            SignaturePublicKey: traits::SignaturePublicKey<CURRENT_VERSION>,
+            SignatureKeyPair: traits::SignatureKeyPair<CURRENT_VERSION>,
         >(
             &self,
             public_key: &SignaturePublicKey,
@@ -380,8 +385,8 @@ macro_rules! impl_storage_provider_basic {
         /// update leaf nodes. All other encryption key pairs are stored as part
         /// of the key package or the epoch encryption key pairs.
         fn write_encryption_key_pair<
-            EncryptionKey: traits::EncryptionKey<VERSION>,
-            HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
+            EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>,
+            HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
         >(
             &self,
             public_key: &EncryptionKey,
@@ -393,9 +398,9 @@ macro_rules! impl_storage_provider_basic {
         /// Store a list of HPKE encryption key pairs for a given epoch.
         /// This includes the private and public keys.
         fn write_encryption_epoch_key_pairs<
-            GroupId: traits::GroupId<VERSION>,
-            EpochKey: traits::EpochKey<VERSION>,
-            HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            EpochKey: traits::EpochKey<CURRENT_VERSION>,
+            HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -416,8 +421,8 @@ macro_rules! impl_storage_provider_basic {
         /// for them.
         // ANCHOR: write_key_package
         fn write_key_package<
-            HashReference: traits::HashReference<VERSION>,
-            KeyPackage: traits::KeyPackage<VERSION>,
+            HashReference: traits::HashReference<CURRENT_VERSION>,
+            KeyPackage: traits::KeyPackage<CURRENT_VERSION>,
         >(
             &self,
             hash_ref: &HashReference,
@@ -433,7 +438,10 @@ macro_rules! impl_storage_provider_basic {
         ///
         /// PSKs are only read by OpenMLS. The application is responsible for managing
         /// and storing PSKs.
-        fn write_psk<PskId: traits::PskId<VERSION>, PskBundle: traits::PskBundle<VERSION>>(
+        fn write_psk<
+            PskId: traits::PskId<CURRENT_VERSION>,
+            PskBundle: traits::PskBundle<CURRENT_VERSION>,
+        >(
             &self,
             psk_id: &PskId,
             psk: &PskBundle,
@@ -447,8 +455,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Returns the MlsGroupJoinConfig for the group with given id
         fn mls_group_join_config<
-            GroupId: traits::GroupId<VERSION>,
-            MlsGroupJoinConfig: traits::MlsGroupJoinConfig<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            MlsGroupJoinConfig: traits::MlsGroupJoinConfig<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -459,8 +467,8 @@ macro_rules! impl_storage_provider_basic {
         // ANCHOR: own_leaf_nodes
         /// Returns the own leaf nodes for the group with given id
         fn own_leaf_nodes<
-            GroupId: traits::GroupId<VERSION>,
-            LeafNode: traits::LeafNode<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            LeafNode: traits::LeafNode<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -471,8 +479,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Returns references of all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
         fn queued_proposal_refs<
-            GroupId: traits::GroupId<VERSION>,
-            ProposalRef: traits::ProposalRef<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -482,9 +490,9 @@ macro_rules! impl_storage_provider_basic {
 
         /// Returns all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
         fn queued_proposals<
-            GroupId: traits::GroupId<VERSION>,
-            ProposalRef: traits::ProposalRef<VERSION>,
-            QueuedProposal: traits::QueuedProposal<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ProposalRef: traits::ProposalRef<CURRENT_VERSION>,
+            QueuedProposal: traits::QueuedProposal<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -493,7 +501,10 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Returns the TreeSync tree for the group with group id `group_id`.
-        fn tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
+        fn tree<
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            TreeSync: traits::TreeSync<CURRENT_VERSION>,
+        >(
             &self,
             group_id: &GroupId,
         ) -> Result<Option<TreeSync>, Self::Error> {
@@ -502,8 +513,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Returns the group context for the group with group id `group_id`.
         fn group_context<
-            GroupId: traits::GroupId<VERSION>,
-            GroupContext: traits::GroupContext<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            GroupContext: traits::GroupContext<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -513,8 +524,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Returns the interim transcript hash for the group with group id `group_id`.
         fn interim_transcript_hash<
-            GroupId: traits::GroupId<VERSION>,
-            InterimTranscriptHash: traits::InterimTranscriptHash<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            InterimTranscriptHash: traits::InterimTranscriptHash<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -524,8 +535,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Returns the confirmation tag for the group with group id `group_id`.
         fn confirmation_tag<
-            GroupId: traits::GroupId<VERSION>,
-            ConfirmationTag: traits::ConfirmationTag<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ConfirmationTag: traits::ConfirmationTag<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -535,8 +546,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Returns the group state for the group with group id `group_id`.
         fn group_state<
-            GroupState: traits::GroupState<VERSION>,
-            GroupId: traits::GroupId<VERSION>,
+            GroupState: traits::GroupState<CURRENT_VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -556,8 +567,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Returns the MessageSecretsStore for the group with the given id.
         fn message_secrets<
-            GroupId: traits::GroupId<VERSION>,
-            MessageSecrets: traits::MessageSecrets<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            MessageSecrets: traits::MessageSecrets<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -580,8 +591,8 @@ macro_rules! impl_storage_provider_basic {
         /// Returning `None` here is considered an error because the store is needed
         /// by OpenMLS when loading a group.
         fn resumption_psk_store<
-            GroupId: traits::GroupId<VERSION>,
-            ResumptionPskStore: traits::ResumptionPskStore<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ResumptionPskStore: traits::ResumptionPskStore<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -591,8 +602,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Returns the own leaf index inside the group for the group with the given id.
         fn own_leaf_index<
-            GroupId: traits::GroupId<VERSION>,
-            LeafNodeIndex: traits::LeafNodeIndex<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            LeafNodeIndex: traits::LeafNodeIndex<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -602,8 +613,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Returns the GroupEpochSecrets for the group with the given id.
         fn group_epoch_secrets<
-            GroupId: traits::GroupId<VERSION>,
-            GroupEpochSecrets: traits::GroupEpochSecrets<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            GroupEpochSecrets: traits::GroupEpochSecrets<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -620,8 +631,8 @@ macro_rules! impl_storage_provider_basic {
         /// The signature key pair is not known to OpenMLS. This may be used by the
         /// application
         fn signature_key_pair<
-            SignaturePublicKey: traits::SignaturePublicKey<VERSION>,
-            SignatureKeyPair: traits::SignatureKeyPair<VERSION>,
+            SignaturePublicKey: traits::SignaturePublicKey<CURRENT_VERSION>,
+            SignatureKeyPair: traits::SignatureKeyPair<CURRENT_VERSION>,
         >(
             &self,
             public_key: &SignaturePublicKey,
@@ -635,8 +646,8 @@ macro_rules! impl_storage_provider_basic {
         /// update leaf nodes. All other encryption key pairs are stored as part
         /// of the key package or the epoch encryption key pairs.
         fn encryption_key_pair<
-            HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
-            EncryptionKey: traits::EncryptionKey<VERSION>,
+            HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
+            EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>,
         >(
             &self,
             public_key: &EncryptionKey,
@@ -647,9 +658,9 @@ macro_rules! impl_storage_provider_basic {
         /// Get a list of HPKE encryption key pairs for a given epoch.
         /// This includes the private and public keys.
         fn encryption_epoch_key_pairs<
-            GroupId: traits::GroupId<VERSION>,
-            EpochKey: traits::EpochKey<VERSION>,
-            HpkeKeyPair: traits::HpkeKeyPair<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            EpochKey: traits::EpochKey<CURRENT_VERSION>,
+            HpkeKeyPair: traits::HpkeKeyPair<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -661,8 +672,8 @@ macro_rules! impl_storage_provider_basic {
 
         /// Get a key package based on its hash reference.
         fn key_package<
-            KeyPackageRef: traits::HashReference<VERSION>,
-            KeyPackage: traits::KeyPackage<VERSION>,
+            KeyPackageRef: traits::HashReference<CURRENT_VERSION>,
+            KeyPackage: traits::KeyPackage<CURRENT_VERSION>,
         >(
             &self,
             hash_ref: &KeyPackageRef,
@@ -671,7 +682,10 @@ macro_rules! impl_storage_provider_basic {
         }
 
         /// Get a PSK based on the PSK identifier.
-        fn psk<PskBundle: traits::PskBundle<VERSION>, PskId: traits::PskId<VERSION>>(
+        fn psk<
+            PskBundle: traits::PskBundle<CURRENT_VERSION>,
+            PskId: traits::PskId<CURRENT_VERSION>,
+        >(
             &self,
             psk_id: &PskId,
         ) -> Result<Option<PskBundle>, Self::Error> {
@@ -685,8 +699,8 @@ macro_rules! impl_storage_provider_feature_flagged {
         /// Write the ApplicationExportTree for the group with the given id.
         #[cfg(feature = "extensions-draft-08")]
         fn write_application_export_tree<
-            GroupId: traits::GroupId<VERSION>,
-            ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -700,8 +714,8 @@ macro_rules! impl_storage_provider_feature_flagged {
         /// given epoch.
         #[cfg(feature = "virtual-clients-draft")]
         fn write_vc_emulation_epoch_state<
-            EpochId: traits::VcEpochId<VERSION>,
-            VcEmulationEpochState: traits::VcEmulationEpochState<VERSION>,
+            EpochId: traits::VcEpochId<CURRENT_VERSION>,
+            VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
         >(
             &self,
             epoch_id: &EpochId,
@@ -712,7 +726,10 @@ macro_rules! impl_storage_provider_feature_flagged {
 
         /// Write the virtual clients PPRF for the given epoch.
         #[cfg(feature = "virtual-clients-draft")]
-        fn write_vc_pprf<EpochId: traits::VcEpochId<VERSION>, VcPprf: traits::VcPprf<VERSION>>(
+        fn write_vc_pprf<
+            EpochId: traits::VcEpochId<CURRENT_VERSION>,
+            VcPprf: traits::VcPprf<CURRENT_VERSION>,
+        >(
             &self,
             epoch_id: &EpochId,
             vc_pprf: &VcPprf,
@@ -731,8 +748,8 @@ macro_rules! impl_storage_provider_feature_flagged {
         /// stored record.
         #[cfg(feature = "virtual-clients-draft")]
         fn write_vc_emulation_bindings<
-            GroupId: traits::GroupId<VERSION>,
-            VcEmulationBindings: traits::VcEmulationBindings<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -744,8 +761,8 @@ macro_rules! impl_storage_provider_feature_flagged {
         #[cfg(feature = "extensions-draft-08")]
         /// Get the application export tree for the group with the given id.
         fn application_export_tree<
-            GroupId: traits::GroupId<VERSION>,
-            ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -758,8 +775,8 @@ macro_rules! impl_storage_provider_feature_flagged {
         /// epoch (the AEAD key plus the registering client's
         /// emulation-group leaf index).
         fn vc_emulation_epoch_state<
-            EpochId: traits::VcEpochId<VERSION>,
-            VcEmulationEpochState: traits::VcEmulationEpochState<VERSION>,
+            EpochId: traits::VcEpochId<CURRENT_VERSION>,
+            VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
         >(
             &self,
             epoch_id: &EpochId,
@@ -769,7 +786,10 @@ macro_rules! impl_storage_provider_feature_flagged {
 
         #[cfg(feature = "virtual-clients-draft")]
         /// Get the virtual clients PPRF for the given epoch.
-        fn vc_pprf<EpochId: traits::VcEpochId<VERSION>, VcPprf: traits::VcPprf<VERSION>>(
+        fn vc_pprf<
+            EpochId: traits::VcEpochId<CURRENT_VERSION>,
+            VcPprf: traits::VcPprf<CURRENT_VERSION>,
+        >(
             &self,
             epoch_id: &EpochId,
         ) -> Result<Option<VcPprf>, Self::Error> {
@@ -781,8 +801,8 @@ macro_rules! impl_storage_provider_feature_flagged {
         /// commit has been merged on this higher-level group.
         #[cfg(feature = "virtual-clients-draft")]
         fn vc_emulation_bindings<
-            GroupId: traits::GroupId<VERSION>,
-            VcEmulationBindings: traits::VcEmulationBindings<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -793,8 +813,8 @@ macro_rules! impl_storage_provider_feature_flagged {
         /// Delete the application export tree for the group with the given id.
         #[cfg(feature = "extensions-draft-08")]
         fn delete_application_export_tree<
-            GroupId: traits::GroupId<VERSION>,
-            ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
         >(
             &self,
             group_id: &GroupId,
@@ -809,7 +829,7 @@ macro_rules! impl_storage_provider_feature_flagged {
         /// application must call this once the emulation epoch is no longer
         /// referenced by any group.
         #[cfg(feature = "virtual-clients-draft")]
-        fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<VERSION>>(
+        fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
             &self,
             epoch_id: &EpochId,
         ) -> Result<(), Self::Error> {
@@ -823,7 +843,7 @@ macro_rules! impl_storage_provider_feature_flagged {
         /// higher-level groups, so the application must call this once the
         /// emulation epoch is no longer referenced by any group.
         #[cfg(feature = "virtual-clients-draft")]
-        fn delete_vc_pprf<EpochId: traits::VcEpochId<VERSION>>(
+        fn delete_vc_pprf<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
             &self,
             epoch_id: &EpochId,
         ) -> Result<(), Self::Error> {
@@ -833,7 +853,7 @@ macro_rules! impl_storage_provider_feature_flagged {
         /// Remove the per-epoch emulation bindings of the given group. Called
         /// when the group is being deleted.
         #[cfg(feature = "virtual-clients-draft")]
-        fn delete_vc_emulation_bindings<GroupId: traits::GroupId<VERSION>>(
+        fn delete_vc_emulation_bindings<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), Self::Error> {
@@ -842,19 +862,19 @@ macro_rules! impl_storage_provider_feature_flagged {
     };
 }
 
-use openmls_traits::storage::CURRENT_VERSION as VERSION;
+use openmls_traits::storage::CURRENT_VERSION;
 
 mod current {
     use super::{TestStorageProvider as Storage, *};
     use openmls_traits::storage::{traits, StorageProvider};
 
-    impl StorageProvider<VERSION> for TestStorageProvider {
+    impl StorageProvider<CURRENT_VERSION> for TestStorageProvider {
         impl_storage_provider_basic!();
         impl_storage_provider_feature_flagged!();
     }
 
     impl Storage {
-        fn all_group_ids<GroupId: traits::GroupId<VERSION>>(
+        fn all_group_ids<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
         ) -> Result<Vec<GroupId>, postcard::Error> {
             let data = self.0.lock().unwrap();
@@ -867,8 +887,10 @@ mod current {
     }
 
     // ANCHOR: migration_helper_impl
-    impl openmls_storage_migration::StorageMigrationHelper<VERSION> for Storage {
-        fn group_ids<GroupId: traits::GroupId<VERSION>>(
+    impl openmls_storage_migration::StorageMigrationHelper<CURRENT_VERSION, CURRENT_VERSION>
+        for Storage
+    {
+        fn group_ids<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
         ) -> Result<Vec<GroupId>, postcard::Error> {
             // return a Vec of all `GroupId`s available as keys
@@ -883,7 +905,7 @@ mod compat {
     use super::*;
     use openmls_traits_0_4_1::storage::{traits, StorageProvider};
 
-    impl StorageProvider<VERSION> for TestStorageProvider {
+    impl StorageProvider<CURRENT_VERSION> for TestStorageProvider {
         impl_storage_provider_basic!();
     }
 }
