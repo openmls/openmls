@@ -276,12 +276,9 @@ impl TlsSerializeTrait for PublicMessageIn {
     }
 }
 
-// The following `From` implementation( breaks abstraction layers and MUST
-// NOT be made available outside of tests or "test-utils".
-#[cfg(any(feature = "test-utils", test))]
-impl From<PublicMessageIn> for PublicMessage {
-    fn from(v: PublicMessageIn) -> Self {
-        PublicMessage {
+impl From<PublicMessage> for PublicMessageIn {
+    fn from(v: PublicMessage) -> Self {
+        PublicMessageIn {
             content: v.content.into(),
             auth: v.auth,
             membership_tag: v.membership_tag,
@@ -289,10 +286,12 @@ impl From<PublicMessageIn> for PublicMessage {
     }
 }
 
+// The following `From` implementation( breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
 #[cfg(any(feature = "test-utils", test))]
-impl From<PublicMessage> for PublicMessageIn {
-    fn from(v: PublicMessage) -> Self {
-        PublicMessageIn {
+impl From<PublicMessageIn> for PublicMessage {
+    fn from(v: PublicMessageIn) -> Self {
+        PublicMessage {
             content: v.content.into(),
             auth: v.auth,
             membership_tag: v.membership_tag,

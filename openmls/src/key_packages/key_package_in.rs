@@ -216,7 +216,7 @@ impl KeyPackageIn {
     ///
     /// The caller must guarantee that the key package is verified.
     #[cfg(feature = "unchecked-conversions")]
-    pub fn into_unchecked(self) -> Result<KeyPackage, KeyPackageVerifyError> {
+    pub fn into_unchecked(self) -> KeyPackage {
         let payload = KeyPackageTbs {
             protocol_version: self.payload.protocol_version,
             ciphersuite: self.payload.ciphersuite,
@@ -224,11 +224,11 @@ impl KeyPackageIn {
             leaf_node: self.payload.leaf_node.into_unchecked(),
             extensions: self.payload.extensions.into_unchecked(),
         };
-        Ok(KeyPackage {
+        KeyPackage {
             payload,
             signature: self.signature,
             serialized_payload: None,
-        })
+        }
     }
 }
 

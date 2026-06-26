@@ -10,7 +10,6 @@ publish = false
 openmls = { workspace = true, features = ["test-utils"] }
 openmls_traits = { workspace = true }
 openmls_rust_crypto = { workspace = true }
-openmls_memory_storage = { workspace = true }
 openmls_basic_credential = { workspace = true }
 
 rand = { version = "0.10" }

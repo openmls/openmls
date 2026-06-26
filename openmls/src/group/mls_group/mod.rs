@@ -43,16 +43,15 @@ use crate::{
     },
     versions::ProtocolVersion,
 };
-use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _, types::Ciphersuite,
+};
 
 #[cfg(feature = "extensions-draft-08")]
 use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
 
 #[cfg(feature = "storage_migration")]
 use crate::group::mls_group::staged_commit::StagedCommitCompat;
-
-#[cfg(feature = "virtual-clients-draft")]
-use errors::VcEmulationStateError;
 
 // Private
 mod application;
@@ -548,13 +547,6 @@ impl MlsGroup {
     /// Remove the persisted state of this group from storage. Note that
     /// signature key material is not managed by OpenMLS and has to be removed
     /// from the storage provider separately (if desired).
-    ///
-    /// With the `virtual-clients-draft` feature, the group's
-    /// emulation-epoch bindings are removed, but the emulation-epoch
-    /// state and PPRF they point to are not: they are keyed by emulation
-    /// epoch and may still be referenced by other higher-level groups.
-    /// Deleting them is the application's responsibility, see
-    /// `MlsGroup::register_vc_emulation_epoch`.
     pub fn delete<Storage: crate::storage::StorageProvider>(
         &mut self,
         storage: &Storage,
@@ -573,9 +565,9 @@ impl MlsGroup {
         storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
 
         // Drop this group's emulation-epoch bindings. `EmulationEpochState`
-        // and `VcPprf` are keyed on the emulation epoch and may still be
-        // referenced by other higher-level groups, so they're not
-        // deleted here.
+        // and the operation secret tree are keyed on the emulation epoch
+        // and may still be referenced by other higher-level groups, so
+        // they're not deleted here.
         #[cfg(feature = "virtual-clients-draft")]
         storage.delete_vc_emulation_bindings(self.group_id())?;
 
@@ -595,6 +587,22 @@ impl MlsGroup {
     pub fn export_ratchet_tree(&self) -> RatchetTree {
         self.public_group().export_ratchet_tree()
     }
+}
+
+/// Error resolving the [`EmulationEpochState`] bound to a group at a given
+/// epoch via [`MlsGroup::vc_emulation_state_at_epoch`]. Callers map it to
+/// their own error type.
+///
+/// [`EmulationEpochState`]: crate::components::vc_derivation_info::EmulationEpochState
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(thiserror::Error, Debug, PartialEq, Clone)]
+pub(crate) enum VcEmulationStateError<StorageError> {
+    /// Reading the binding or the emulation-epoch state from storage failed.
+    #[error("Error reading the binding or emulation-epoch state from storage: {0}")]
+    Storage(StorageError),
+    /// The group is bound to an emulation epoch, but its state is missing.
+    #[error("The group is bound to an emulation epoch, but its state is missing.")]
+    MissingEmulationEpochState,
 }
 
 // Crate-public functions
@@ -736,12 +744,11 @@ impl MlsGroup {
         .map_err(|e| e.into())
     }
 
-    /// Resolve the [`EmulationEpochState`] this group is bound to at
-    /// `epoch`, if any.
-    ///
-    /// Returns `Ok(None)` if the group has no emulation-epoch binding at
-    /// `epoch`. Returns an error if a binding exists but the state is
-    /// missing from storage.
+    /// Load the [`EmulationEpochState`] this group is bound to at `epoch`, if
+    /// any. Returns `None` when the group has no virtual-clients binding for
+    /// that epoch. The binding is resolved at the epoch a message was sent in,
+    /// so a delayed message from a past epoch deprotects with the state that
+    /// was bound then, not the latest one.
     ///
     /// [`EmulationEpochState`]: crate::components::vc_derivation_info::EmulationEpochState
     #[cfg(feature = "virtual-clients-draft")]
@@ -940,27 +947,34 @@ impl MlsGroup {
     /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
     /// the `provider`'s key store.
     ///
-    /// With the `virtual-clients-draft` feature, the caller passes the leaf
-    /// index under which the previous-epoch keypairs are stored. This is
-    /// needed for the sibling-resync flow, where `merge_commit` installs the
-    /// joiner's leaf as our own leaf before it filters and stores the new
-    /// epoch keypairs, so `self.own_leaf_index()` no longer points at the
-    /// previous epoch's leaf.
-    ///
     /// Returns an error if access to the key store fails.
+    #[cfg(not(feature = "virtual-clients-draft"))]
     pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
-        #[cfg(feature = "virtual-clients-draft")] previous_own_leaf_index: LeafNodeIndex,
     ) -> Result<(), Storage::Error> {
-        #[cfg(feature = "virtual-clients-draft")]
-        let leaf_index = previous_own_leaf_index.u32();
-        #[cfg(not(feature = "virtual-clients-draft"))]
-        let leaf_index = self.own_leaf_index().u32();
         store.delete_encryption_epoch_key_pairs(
             self.group_id(),
             &GroupEpoch::from(self.context().epoch().as_u64() - 1),
-            leaf_index,
+            self.own_leaf_index().u32(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
+        &self,
+        store: &Storage,
+        previous_own_leaf_index: LeafNodeIndex,
+    ) -> Result<(), Storage::Error> {
+        // In the sibling-resync flow, `merge_commit` installs the joiner's
+        // leaf as our own leaf before it filters and stores the new epoch
+        // keypairs. Previous-epoch keypairs are still stored under the leaf
+        // index from that previous epoch, so the caller must pass that index
+        // explicitly instead of having this helper read `self.own_leaf_index()`.
+        store.delete_encryption_epoch_key_pairs(
+            self.group_id(),
+            &GroupEpoch::from(self.context().epoch().as_u64() - 1),
+            previous_own_leaf_index.u32(),
         )
     }
 
@@ -1200,8 +1214,8 @@ pub struct StagedWelcome {
     /// The [`VerifiableGroupInfo`] from the [`Welcome`] message.
     verifiable_group_info: VerifiableGroupInfo,
 
-    /// The key package bundle used for this welcome.
-    key_package_bundle: KeyPackageBundle,
+    /// The key material used to join via this welcome.
+    key_material: WelcomeKeyMaterial,
 
     /// If we got a path secret, these are the derived path keys.
     path_keypairs: Option<Vec<EncryptionKeyPair>>,
@@ -1224,5 +1238,71 @@ pub struct ProcessedWelcome {
     key_schedule: crate::schedule::KeySchedule,
     verifiable_group_info: crate::messages::group_info::VerifiableGroupInfo,
     resumption_psk_store: crate::schedule::psk::store::ResumptionPskStore,
-    key_package_bundle: KeyPackageBundle,
+    key_material: WelcomeKeyMaterial,
+}
+
+/// The key material a client uses to process a [`Welcome`] message.
+///
+/// A regular member holds a local [`KeyPackageBundle`]. A sibling emulator
+/// joining a higher-level group as a virtual client has no local bundle: it
+/// derives the init and leaf-encryption keys from the operation secret tree of
+/// the emulation epoch the KeyPackage belongs to.
+///
+/// [`Welcome`]: crate::messages::Welcome
+#[derive(Debug)]
+pub(crate) enum WelcomeKeyMaterial {
+    /// A locally stored [`KeyPackageBundle`]. Boxed to keep the enum small,
+    /// since the virtual-client variant is much smaller.
+    KeyPackage(Box<KeyPackageBundle>),
+    /// Virtual-client material derived from an emulation epoch's operation
+    /// secret tree.
+    #[cfg(feature = "virtual-clients-draft")]
+    VirtualClient(crate::components::vc_derivation_info::VcWelcomeMaterial),
+}
+
+impl WelcomeKeyMaterial {
+    /// The [`KeyPackageRef`] addressed by the welcome's encrypted group
+    /// secrets. The bundle computes it from its KeyPackage, the virtual-client
+    /// material carries the ref it was matched on.
+    ///
+    /// [`KeyPackageRef`]: crate::ciphersuite::hash_ref::KeyPackageRef
+    fn key_package_ref(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<crate::ciphersuite::hash_ref::KeyPackageRef, LibraryError> {
+        match self {
+            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.key_package().hash_ref(crypto),
+            #[cfg(feature = "virtual-clients-draft")]
+            WelcomeKeyMaterial::VirtualClient(material) => Ok(material.key_package_ref.clone()),
+        }
+    }
+
+    /// The init private key used to decrypt the encrypted group secrets.
+    fn init_private_key(&self) -> &crate::ciphersuite::HpkePrivateKey {
+        match self {
+            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.init_private_key(),
+            #[cfg(feature = "virtual-clients-draft")]
+            WelcomeKeyMaterial::VirtualClient(material) => &material.init_private_key,
+        }
+    }
+
+    /// The local [`KeyPackageBundle`] on the regular path, or `None` on the
+    /// virtual-client path. Checks that only apply when there is a local
+    /// KeyPackage to compare against branch on this.
+    fn key_package_bundle(&self) -> Option<&KeyPackageBundle> {
+        match self {
+            WelcomeKeyMaterial::KeyPackage(bundle) => Some(bundle),
+            #[cfg(feature = "virtual-clients-draft")]
+            WelcomeKeyMaterial::VirtualClient(_) => None,
+        }
+    }
+
+    /// The joiner's leaf encryption keypair.
+    fn encryption_key_pair(&self) -> EncryptionKeyPair {
+        match self {
+            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.encryption_key_pair(),
+            #[cfg(feature = "virtual-clients-draft")]
+            WelcomeKeyMaterial::VirtualClient(material) => material.encryption_keypair.clone(),
+        }
+    }
 }

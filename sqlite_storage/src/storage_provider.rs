@@ -686,6 +686,9 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         &self,
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
+        #[cfg(feature = "virtual-clients-draft")]
+        StorableKeyRef(hash_ref)
+            .delete_retained_key_package_material::<C>(self.connection.borrow())?;
         StorableHashRef(hash_ref).delete_key_package::<C>(self.connection.borrow())
     }
 
@@ -767,42 +770,23 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
-        &self,
-        epoch_id: &EpochId,
-    ) -> Result<(), Self::Error> {
-        StorableKeyRef(epoch_id).delete_vc_emulation_epoch_state::<C>(self.connection.borrow())
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_pprf<
+    fn delete_vc_emulation_state_if_unreferenced<
         EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
-        VcPprf: traits::VcPprf<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-        vc_pprf: &VcPprf,
-    ) -> Result<(), Self::Error> {
-        StorableVcSecretRef(vc_pprf).store_vc_pprf::<C, _>(self.connection.borrow(), epoch_id)
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
-    fn vc_pprf<
-        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
-        VcPprf: traits::VcPprf<STORAGE_PROVIDER_VERSION>,
-    >(
-        &self,
-        epoch_id: &EpochId,
-    ) -> Result<Option<VcPprf>, Self::Error> {
-        StorableKeyRef(epoch_id).load_vc_pprf::<C, VcPprf>(self.connection.borrow())
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_pprf<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
-        &self,
-        epoch_id: &EpochId,
-    ) -> Result<(), Self::Error> {
-        StorableKeyRef(epoch_id).delete_vc_pprf::<C>(self.connection.borrow())
+    ) -> Result<bool, Self::Error> {
+        // The application should call this within a transaction so the liveness
+        // check and the deletions apply atomically and a material stored
+        // concurrently cannot be orphaned.
+        if StorableKeyRef(epoch_id)
+            .has_retained_key_package_material_for_epoch::<C>(self.connection.borrow())?
+        {
+            return Ok(false);
+        }
+        StorableKeyRef(epoch_id).delete_vc_emulation_epoch_state::<C>(self.connection.borrow())?;
+        StorableKeyRef(epoch_id).delete_vc_operation_tree::<C>(self.connection.borrow())?;
+        Ok(true)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -836,5 +820,93 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableKeyRef(group_id).delete_vc_emulation_bindings::<C>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_operation_tree<
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
+        VcOperationTree: traits::VcOperationTree<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_operation_tree: &VcOperationTree,
+    ) -> Result<(), Self::Error> {
+        crate::vc_secrets::StorableOperationTreeRef(vc_operation_tree)
+            .store_vc_operation_tree::<C, _>(self.connection.borrow(), epoch_id)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_operation_tree<
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
+        VcOperationTree: traits::VcOperationTree<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcOperationTree>, Self::Error> {
+        StorableKeyRef(epoch_id)
+            .load_vc_operation_tree::<C, VcOperationTree>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_retained_key_package_material_batch<
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
+        VcOperationTree: traits::VcOperationTree<STORAGE_PROVIDER_VERSION>,
+        KeyPackageRef: traits::HashReference<STORAGE_PROVIDER_VERSION>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        operation_tree: &VcOperationTree,
+        materials: &[(KeyPackageRef, RetainedKeyPackageMaterial)],
+    ) -> Result<(), Self::Error> {
+        // The application should call this within a transaction so the advanced
+        // tree and all materials are written together and roll back together on
+        // error, leaving the tree unadvanced.
+        crate::vc_secrets::StorableOperationTreeRef(operation_tree)
+            .store_vc_operation_tree::<C, _>(self.connection.borrow(), epoch_id)?;
+        for (hash_ref, record) in materials {
+            crate::vc_secrets::StorableRetainedKeyPackageMaterialRef(record)
+                .store_retained_key_package_material::<C, _, _>(
+                    self.connection.borrow(),
+                    epoch_id,
+                    hash_ref,
+                )?;
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn retained_key_package_material<
+        KeyPackageRef: traits::HashReference<STORAGE_PROVIDER_VERSION>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        hash_ref: &KeyPackageRef,
+    ) -> Result<Option<RetainedKeyPackageMaterial>, Self::Error> {
+        StorableKeyRef(hash_ref)
+            .load_retained_key_package_material::<C, RetainedKeyPackageMaterial>(
+                self.connection.borrow(),
+            )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_retained_key_package_material_for_epoch<
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error> {
+        StorableKeyRef(epoch_id)
+            .has_retained_key_package_material_for_epoch::<C>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_retained_key_package_material<
+        KeyPackageRef: traits::HashReference<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        hash_ref: &KeyPackageRef,
+    ) -> Result<(), Self::Error> {
+        StorableKeyRef(hash_ref).delete_retained_key_package_material::<C>(self.connection.borrow())
     }
 }

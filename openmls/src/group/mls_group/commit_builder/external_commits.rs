@@ -362,8 +362,6 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
                 super::Complete {
                     result: create_commit_result,
                     original_wire_format_policy,
-                    #[cfg(feature = "virtual-clients-draft")]
-                    vc_punctured,
                 },
             ..
         } = self;
@@ -382,19 +380,6 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
         group
             .store(provider.storage())
             .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
-
-        // Persist the punctured PPRF (mirrors the regular `stage_commit`
-        // path). Without this, an external VC commit's puncture would be
-        // lost and the same per-commit input could be reused by a sibling
-        // emulator, breaking forward secrecy.
-        #[cfg(feature = "virtual-clients-draft")]
-        if let Some(super::VcPunctured { epoch_id, pprf }) = vc_punctured {
-            use openmls_traits::storage::StorageProvider as _;
-            provider
-                .storage()
-                .write_vc_pprf(&epoch_id, &pprf)
-                .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
-        }
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results

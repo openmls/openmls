@@ -355,26 +355,29 @@ impl MlsGroup {
                 // (either our own leaf, or a sibling-resync external commit
                 // onto a new leaf), we have no HPKE recipient on the path.
                 // Re-derive the path from the per-commit `OperationSecret`
-                // the receiver computed by evaluating the per-epoch PPRF, and
-                // verify the resulting public keys against the commit. The
-                // non-VC `decrypt_path` is the fallback for everyone else.
+                // the receiver derived from the per-epoch operation secret
+                // tree, and verify the resulting public keys against the
+                // commit. The non-VC `decrypt_path` is the fallback for
+                // everyone else.
                 #[cfg(feature = "virtual-clients-draft")]
-                let vc_path: Option<(Vec<EncryptionKeyPair>, CommitSecret)> =
-                    if sender_index == self.own_leaf_index() || is_sibling_resync {
-                        let operation_secret = vc_material.ok_or(
-                            crate::components::vc_derivation_info::VirtualClientsError::MissingPprf,
+                let vc_path: Option<(Vec<EncryptionKeyPair>, CommitSecret)> = if sender_index
+                    == self.own_leaf_index()
+                    || is_sibling_resync
+                {
+                    let operation_secret = vc_material.ok_or(
+                            crate::components::vc_derivation_info::VirtualClientsError::MissingOperationTree,
                         )?;
-                        Some(self.recreate_path_for_own_commit(
-                            &diff,
-                            &path,
-                            ciphersuite,
-                            provider.crypto(),
-                            sender_index,
-                            operation_secret,
-                        )?)
-                    } else {
-                        None
-                    };
+                    Some(self.recreate_path_for_own_commit(
+                        &diff,
+                        &path,
+                        ciphersuite,
+                        provider.crypto(),
+                        sender_index,
+                        operation_secret,
+                    )?)
+                } else {
+                    None
+                };
                 #[cfg(not(feature = "virtual-clients-draft"))]
                 let vc_path: Option<(Vec<EncryptionKeyPair>, CommitSecret)> = None;
 

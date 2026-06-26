@@ -35,7 +35,6 @@ hpke-rs-rust-crypto = { version = "0.6.1", features = ["experimental"] }
 tls_codec = { workspace = true }
 ml-dsa = "0.1.0"
 thiserror = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
 # FF1-AES128 backing for the virtual-clients-draft reuse-guard PRP.
 fpe = { version = "0.6", optional = true }
 aes = { version = "0.8", optional = true }

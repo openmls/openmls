@@ -2,8 +2,6 @@
 
 use std::mem;
 
-#[cfg(feature = "virtual-clients-draft")]
-use errors::VcEmulationStateError;
 use errors::{CommitToPendingProposalsError, MergePendingCommitError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
 
@@ -194,8 +192,10 @@ impl MlsGroup {
         let emulation_state = if let ProtocolMessage::PrivateMessage(private_message) = &message {
             self.vc_emulation_state_at_epoch(provider.storage(), private_message.epoch())
                 .map_err(|e| match e {
-                    VcEmulationStateError::Storage(e) => ProcessMessageError::StorageError(e),
-                    VcEmulationStateError::MissingEmulationEpochState => {
+                    super::VcEmulationStateError::Storage(e) => {
+                        ProcessMessageError::StorageError(e)
+                    }
+                    super::VcEmulationStateError::MissingEmulationEpochState => {
                         ProcessMessageError::ValidationError(
                             crate::group::ValidationError::UnableToDecrypt(
                                 crate::framing::errors::MessageDecryptionError::VirtualClientsError(
@@ -316,18 +316,23 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(MergeCommitError::StorageError)?;
 
-        // Resolve the emulation-binding update for the new epoch now,
-        // while `staged_commit` and the pre-merge `self.epoch()` are
-        // still available. It is persisted only after the merge has
-        // succeeded, so a failed merge does not leave a binding for an
-        // epoch the group never entered.
+        // Update the per-epoch emulation bindings. Self-removal drops them.
+        // Otherwise the epoch the commit moves the group into is bound to
+        // the emulation epoch of the commit's VC leaf, or, if the commit
+        // does not install a new VC leaf, to the binding of the current
+        // epoch, since the VC leaf stays active across commits by other
+        // members.
         #[cfg(feature = "virtual-clients-draft")]
-        let self_removed = staged_commit.self_removed();
-        #[cfg(feature = "virtual-clients-draft")]
-        let vc_bindings_update = if self_removed {
-            None
+        if staged_commit.self_removed() {
+            provider
+                .storage()
+                .delete_vc_emulation_bindings(self.group_id())
+                .map_err(|e| {
+                    log::error!("vc: drop emulation bindings on self-removal failed: {e:?}");
+                    MergeCommitError::StorageError(e)
+                })?;
         } else {
-            let bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
+            let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
                 .storage()
                 .vc_emulation_bindings(self.group_id())
                 .map_err(MergeCommitError::StorageError)?
@@ -336,41 +341,24 @@ impl MlsGroup {
                 .vc_emulation_epoch_id
                 .clone()
                 .or_else(|| bindings.get(self.epoch()).cloned());
-            epoch_id.map(|epoch_id| (bindings, staged_commit.epoch(), epoch_id))
-        };
+            if let Some(epoch_id) = epoch_id {
+                // Keep one entry per retained message-secrets epoch plus
+                // the new current one, so bindings age out in lockstep
+                // with the message secrets they are needed for.
+                let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
+                bindings.insert(staged_commit.epoch(), epoch_id, max_entries);
+                provider
+                    .storage()
+                    .write_vc_emulation_bindings(self.group_id(), &bindings)
+                    .map_err(|e| {
+                        log::error!("vc: persist emulation bindings at merge failed: {e:?}");
+                        MergeCommitError::StorageError(e)
+                    })?;
+            }
+        }
 
         // Merge staged commit
         self.merge_commit(provider, staged_commit)?;
-
-        // Update the per-epoch emulation bindings. Self-removal drops them.
-        // Otherwise the epoch the commit moves the group into is bound to
-        // the emulation epoch of the commit's VC leaf, or, if the commit
-        // does not install a new VC leaf, to the binding of the previous
-        // epoch, since the VC leaf stays active across commits by other
-        // members.
-        #[cfg(feature = "virtual-clients-draft")]
-        if self_removed {
-            provider
-                .storage()
-                .delete_vc_emulation_bindings(self.group_id())
-                .map_err(|e| {
-                    log::error!("vc: drop emulation bindings on self-removal failed: {e:?}");
-                    MergeCommitError::StorageError(e)
-                })?;
-        } else if let Some((mut bindings, new_epoch, epoch_id)) = vc_bindings_update {
-            // Keep one entry per retained message-secrets epoch plus
-            // the new current one, so bindings age out in lockstep
-            // with the message secrets they are needed for.
-            let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
-            bindings.insert(new_epoch, epoch_id, max_entries);
-            provider
-                .storage()
-                .write_vc_emulation_bindings(self.group_id(), &bindings)
-                .map_err(|e| {
-                    log::error!("vc: persist emulation bindings at merge failed: {e:?}");
-                    MergeCommitError::StorageError(e)
-                })?;
-        }
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group_epoch_secrets().resumption_psk();
@@ -416,8 +404,8 @@ impl MlsGroup {
 
     /// Resolve a commit's virtual-clients derivation info to the per-commit
     /// `OperationSecret` the receiver needs in order to recreate the path of a
-    /// commit sent by a sibling emulator client, plus the `EpochId` the commit
-    /// binds the group to on merge.
+    /// commit sent by a sibling emulator client, plus the `EpochId` the
+    /// commit binds the group to on merge.
     ///
     /// See [`is_sibling_vc_commit`] for the precondition the caller must
     /// check before invoking this helper. Sibling commits come in two
@@ -432,13 +420,19 @@ impl MlsGroup {
     /// Returns `Ok(None)` when the commit carries no virtual-clients
     /// derivation-info entry on its update-path leaf (path-less commits, or
     /// commits without an `app_data_dictionary`). Otherwise:
-    ///   - looks up the per-epoch `VcPprf` and `EpochEncryptionKey` the
-    ///     application registered via `register_vc_emulation_epoch`,
-    ///   - decrypts the wrapped `EpochInfoTbe` with the AEAD key,
-    ///   - hashes the decrypted `EpochInfoTbe` to produce the PPRF input,
-    ///   - evaluates the PPRF (puncturing it) and persists the punctured state
-    ///     back to storage,
-    ///   - returns the resulting `OperationSecret` together with the `EpochId`.
+    ///   - looks up the per-epoch `EmulationEpochState` and operation secret
+    ///     tree the application registered via `register_vc_emulation_epoch`,
+    ///   - decrypts the wrapped `DerivationInfoTbe` with the AEAD key/nonce
+    ///     derived from the epoch encryption key and the path leaf's
+    ///     serialized encryption key,
+    ///   - derives the operation secret positionally from the tree at the
+    ///     sender's emulation-leaf coordinates and persists the advanced
+    ///     tree,
+    ///   - returns the resulting `OperationSecret` and `EpochId`.
+    ///
+    /// A generation the tree reports as already consumed fails with
+    /// `OperationGenerationConsumed`. Operation secrets are consume-once,
+    /// matching the semantics of regular PrivateMessage decryption.
     #[cfg(feature = "virtual-clients-draft")]
     fn load_vc_commit_material<Provider: OpenMlsProvider>(
         &self,
@@ -451,11 +445,15 @@ impl MlsGroup {
         )>,
         StageCommitError,
     > {
-        use tls_codec::DeserializeBytes;
+        use tls_codec::{DeserializeBytes, Serialize as _};
 
-        use crate::components::vc_derivation_info::{
-            pprf_input, DerivationInfo, EmulationEpochState, OperationSecret, VcPprf,
-            VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
+        use crate::{
+            components::vc_derivation_info::{
+                DerivationInfo, EmulationEpochState, VirtualClientOperationType,
+                VirtualClientsError, VC_COMPONENT_ID,
+            },
+            components::vc_operation_tree::OperationSecretTree,
+            treesync::node::leaf_node::LeafNodeSource,
         };
 
         let Some(path) = commit.path.as_ref() else {
@@ -475,13 +473,6 @@ impl MlsGroup {
 
         let epoch_id = derivation_info.epoch_id();
         let storage = provider.storage();
-        let mut pprf: VcPprf = storage
-            .vc_pprf(epoch_id)
-            .map_err(|e| {
-                log::error!("vc: load pprf failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?
-            .ok_or(VirtualClientsError::MissingPprf)?;
         let state: EmulationEpochState = storage
             .vc_emulation_epoch_state(epoch_id)
             .map_err(|e| {
@@ -489,43 +480,70 @@ impl MlsGroup {
                 VirtualClientsError::StorageError
             })?
             .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
-        // Receiver uses the emulation epoch's AEAD key and ciphersuite for
-        // `EpochInfoTbe`; the leaf index travels on the wire (sender's view),
-        // so it doesn't have to come from storage on this side.
+        let mut operation_tree: OperationSecretTree = storage
+            .vc_operation_tree(epoch_id)
+            .map_err(|e| {
+                log::error!("vc: load operation tree failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?
+            .ok_or(VirtualClientsError::MissingOperationTree)?;
+        // The receiver uses the emulation epoch's AEAD key and ciphersuite
+        // for `DerivationInfoTbe`. The sender's emulation leaf index travels
+        // on the wire, so it doesn't have to come from storage on this side.
         let (_state_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
 
         let crypto = provider.crypto();
-        let epoch_info =
-            derivation_info.decrypt(crypto, emulation_ciphersuite, &epoch_encryption_key)?;
+        let leaf_encryption_key = path
+            .leaf_node()
+            .encryption_key()
+            .tls_serialize_detached()
+            .map_err(VirtualClientsError::from)?;
+        // The operation type is not on the wire. It is inferred from the
+        // carrying leaf's source: key-package leaves map to `KeyPackage`,
+        // update and commit leaves map to `LeafNode`. Only `LeafNode` is
+        // wired up today, and an update-path leaf always has a commit
+        // source. It selects the tagless `DerivationInfoTbe` variant the
+        // plaintext decodes into.
+        let operation_type = match path.leaf_node().leaf_node_source() {
+            LeafNodeSource::KeyPackage(_) => {
+                log::error!("vc: key-package leaf on an update path");
+                return Err(VirtualClientsError::DerivationInfoMalformed.into());
+            }
+            LeafNodeSource::Update | LeafNodeSource::Commit(_) => {
+                VirtualClientOperationType::LeafNode
+            }
+        };
+        let tbe = derivation_info.decrypt(
+            crypto,
+            emulation_ciphersuite,
+            &epoch_encryption_key,
+            &leaf_encryption_key,
+            operation_type,
+        )?;
+        // The operation context for `LeafNode` operations is the
+        // higher-level group's id.
+        let operation_context = self.group_id().as_slice().to_vec();
 
-        // We only know how to consume `LeafNode` operation type for an
-        // update-path commit — anything else here is a sender bug or a
-        // cross-context replay. Treat it as malformed rather than silently
-        // deriving a secret in the wrong domain.
-        if !matches!(
-            epoch_info.operation_type,
-            VirtualClientOperationType::LeafNode
-        ) {
-            log::error!(
-                "vc: unexpected operation_type on update-path leaf: {:?}",
-                epoch_info.operation_type
-            );
-            return Err(VirtualClientsError::DerivationInfoMalformed.into());
-        }
-
-        let pprf_input_bytes = pprf_input(crypto, emulation_ciphersuite, &epoch_info)?;
-        let operation_secret: OperationSecret = pprf
-            .evaluate(crypto, emulation_ciphersuite, &pprf_input_bytes)
-            .map_err(VirtualClientsError::from)?
-            .into();
-
-        // Persist puncture immediately. Reprocessing the same commit will
-        // fail with `PprfError::PuncturedInput`, which is exactly what we
-        // want for forward secrecy.
-        storage.write_vc_pprf(epoch_id, &pprf).map_err(|e| {
-            log::error!("vc: persist punctured pprf failed: {e:?}");
-            VirtualClientsError::StorageError
-        })?;
+        // An already-consumed generation propagates as a hard error here:
+        // operation secrets are consume-once, like the per-generation keys
+        // of regular PrivateMessage decryption.
+        let operation_secret = operation_tree.derive_operation_secret(
+            crypto,
+            emulation_ciphersuite,
+            epoch_id,
+            tbe.leaf_index(),
+            operation_type,
+            tbe.generation(),
+            &operation_context,
+        )?;
+        // Persist the advanced tree immediately, before any key material is
+        // derived from the secret.
+        storage
+            .write_vc_operation_tree(epoch_id, &operation_tree)
+            .map_err(|e| {
+                log::error!("vc: persist advanced operation tree failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?;
 
         Ok(Some((epoch_id.clone(), operation_secret)))
     }
@@ -805,6 +823,7 @@ impl MlsGroup {
                     ProcessedMessageContent::ProposalMessage(proposal)
                 }
             }
+            #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_variables))]
             FramedContentBody::Commit(commit) => {
                 // Since this is a commit, we need to load the private key material we need for decryption.
                 let (old_epoch_keypairs, leaf_node_keypairs) =
@@ -825,8 +844,6 @@ impl MlsGroup {
                     } else {
                         (None, None)
                     };
-                #[cfg(not(feature = "virtual-clients-draft"))]
-                let _ = commit;
 
                 let staged_commit = self.stage_commit(
                     &content,
@@ -1015,7 +1032,7 @@ impl MlsGroup {
 /// Returns `true` for:
 ///   * own-leaf commits (`Sender::Member(idx)` with `idx == own_leaf_index`),
 ///     where receiver and sender share the higher-level leaf
-///   * sibling-resync external commits (`Sender::NewMemberCommit`) whose
+///   * sibling-resync external commits (`Sender::NewMemberCommit` whose
 ///     proposal list inlines a `Remove` of `own_leaf_index`.
 ///
 /// `false` for everything else.
