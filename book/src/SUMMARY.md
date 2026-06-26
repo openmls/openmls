@@ -33,4 +33,5 @@
 - [Performance](./performance.md)
 - [Forward Secrecy](./forward_secrecy.md)
   - [Past epoch secret deletion](./user_manual/past_epoch_secret_deletion.md)
+- [Virtual Clients (draft)](./virtual_clients.md)
 - [Release management](./release_management.md)
