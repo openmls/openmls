@@ -19,6 +19,7 @@
   - [Committing to pending proposals](user_manual/commit_to_proposals.md)
   - [Processing incoming messages](user_manual/processing.md)
   - [Persistence of group state](user_manual/persistence.md)
+  - [Storage migration](user_manual/storage_migration.md)
   - [Discarding commits](user_manual/discarding_commits.md)
   - [Credential validation](user_manual/credential_validation.md)
   - [AppData handling](user_manual/app_data_updates.md)

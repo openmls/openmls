@@ -845,7 +845,7 @@ macro_rules! impl_storage_provider_feature_flagged {
 use openmls_traits::storage::CURRENT_VERSION as VERSION;
 
 mod current {
-    use super::*;
+    use super::{TestStorageProvider as Storage, *};
     use openmls_traits::storage::{traits, StorageProvider};
 
     impl StorageProvider<VERSION> for TestStorageProvider {
@@ -853,8 +853,8 @@ mod current {
         impl_storage_provider_feature_flagged!();
     }
 
-    impl openmls_storage_migration::StorageMigrationHelper<VERSION> for TestStorageProvider {
-        fn group_ids<GroupId: traits::GroupId<VERSION>>(
+    impl Storage {
+        fn all_group_ids<GroupId: traits::GroupId<VERSION>>(
             &self,
         ) -> Result<Vec<GroupId>, postcard::Error> {
             let data = self.0.lock().unwrap();
@@ -865,6 +865,18 @@ mod current {
                 .collect::<Result<Vec<_>, _>>()
         }
     }
+
+    // ANCHOR: migration_helper_impl
+    impl openmls_storage_migration::StorageMigrationHelper<VERSION> for Storage {
+        fn group_ids<GroupId: traits::GroupId<VERSION>>(
+            &self,
+        ) -> Result<Vec<GroupId>, postcard::Error> {
+            // return a Vec of all `GroupId`s available as keys
+            // in the storage provider
+            self.all_group_ids()
+        }
+    }
+    // ANCHOR_END: migration_helper_impl
 }
 
 mod compat {
