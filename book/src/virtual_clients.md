@@ -9,8 +9,7 @@ clients can speak for it.
 > **This feature is a moving draft.** Everything described here lives behind the
 > `virtual-clients-draft` cargo feature and is not part of the stable API. Wire
 > formats, storage layout, and method names can change between releases with no
-> migration path. Do not use it in production. Do not assume interoperability
-> with other implementations.
+> migration path. Do not assume interoperability with other implementations.
 
 ## The idea
 
