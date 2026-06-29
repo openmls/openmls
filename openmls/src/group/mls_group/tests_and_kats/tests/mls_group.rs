@@ -2981,13 +2981,102 @@ fn own_commit_processing() {
 
     let commit_in = MlsMessageIn::from(commit_out);
 
-    // Alice attempts to process her own commit
-    let error = alice_group
+    // Alice processes her own commit: it matches the pending commit, so it is
+    // surfaced as `OwnPendingCommit` rather than staged.
+    let processed = alice_group
         .process_message(alice_provider, commit_in.into_protocol_message().unwrap())
-        .expect_err("no error while processing own commit");
+        .expect("error while processing own commit");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+
+    // The pending commit is untouched and can still be merged.
+    assert!(alice_group.pending_commit().is_some());
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("error merging pending commit after processing own commit");
+}
+
+#[cfg(not(feature = "virtual-clients-draft"))]
+// Test that an own commit which no longer matches a pending commit is rejected.
+#[openmls_test::openmls_test]
+fn own_commit_mismatch() {
+    // Basic group setup.
+    let alice_provider = &Provider::default();
+    let (alice_credential_with_key, alice_signature_keys) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential_with_key,
+        )
+        .expect("Error creating group.");
+
+    // Alice creates a commit
+    let (commit_out, _welcome_option, _group_info_option) = alice_group
+        .self_update(
+            alice_provider,
+            &alice_signature_keys,
+            LeafNodeParameters::default(),
+        )
+        .expect("Could not create commit")
+        .into_contents();
+
+    let first_commit = MlsMessageIn::from(commit_out)
+        .into_protocol_message()
+        .unwrap();
+
+    // Happy path: the echoed commit matches the pending commit, so it is
+    // surfaced as `OwnPendingCommit`.
+    let processed = alice_group
+        .process_message(alice_provider, first_commit.clone())
+        .expect("error while processing own commit");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+
+    // Alice discards the pending commit without advancing the epoch. The
+    // echoed commit is still validly signed by her own leaf at the current
+    // epoch, so it reaches the own-commit check, but there is no pending
+    // commit to match against.
+    alice_group
+        .clear_pending_commit(alice_provider.storage())
+        .expect("error clearing pending commit");
+    assert!(alice_group.pending_commit().is_none());
+
+    let error = alice_group
+        .process_message(alice_provider, first_commit.clone())
+        .expect_err("no error while processing own commit without pending commit");
     assert_eq!(
         error,
-        ProcessMessageError::InvalidCommit(StageCommitError::OwnCommit)
+        ProcessMessageError::InvalidCommit(StageCommitError::OwnCommitMismatch)
+    );
+
+    // Alice creates a second commit at the same epoch. The first commit is now
+    // stale: it is still validly signed by her own leaf, but its confirmation
+    // tag no longer matches the new pending commit.
+    let _ = alice_group
+        .self_update(
+            alice_provider,
+            &alice_signature_keys,
+            LeafNodeParameters::default(),
+        )
+        .expect("Could not create second commit");
+    assert!(alice_group.pending_commit().is_some());
+
+    let error = alice_group
+        .process_message(alice_provider, first_commit)
+        .expect_err("no error while processing stale own commit");
+    assert_eq!(
+        error,
+        ProcessMessageError::InvalidCommit(StageCommitError::OwnCommitMismatch)
     );
 }
 

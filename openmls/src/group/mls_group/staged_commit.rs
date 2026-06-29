@@ -9,12 +9,15 @@ use super::proposal_store::{
     QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
 };
 
+#[cfg(feature = "virtual-clients-draft")]
 use super::Sender;
 use super::{
     super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
     Proposal, ProposalQueue, PskSecret, QueuedProposal,
 };
+#[cfg(not(feature = "virtual-clients-draft"))]
+use super::{errors::ProcessMessageError, MlsGroupState, PendingCommitState};
 use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;
 use crate::prelude::{Commit, LeafNodeIndex};
@@ -43,6 +46,49 @@ use super::proposal_store::{QueuedAppDataUpdateProposal, QueuedAppEphemeralPropo
 use crate::prelude::processing::AppDataUpdates;
 
 impl MlsGroup {
+    /// Confirms that an incoming Commit authored by this client matches the
+    /// group's pending commit, by recomputing the confirmation tag from the
+    /// pending commit and comparing it against the tag carried by the message.
+    ///
+    /// We deliberately do not compare the full contents of the incoming Commit
+    /// against the pending commit. The message signature has already been
+    /// verified, which authenticates the Commit as ours, and a matching
+    /// confirmation tag binds the confirmed transcript hash of the new epoch.
+    /// We never adopt the incoming Commit's state: the caller applies the
+    /// locally built pending commit via [`MlsGroup::merge_pending_commit()`].
+    #[cfg(not(feature = "virtual-clients-draft"))]
+    pub(crate) fn check_own_pending_commit<StorageError>(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        content: &AuthenticatedContent,
+    ) -> Result<(), ProcessMessageError<StorageError>> {
+        let received_tag = content
+            .confirmation_tag()
+            .ok_or(StageCommitError::ConfirmationTagMissing)?;
+        let MlsGroupState::PendingCommit(pending_commit_state) = &self.group_state else {
+            return Err(StageCommitError::OwnCommitMismatch.into());
+        };
+        let PendingCommitState::Member(staged_commit) = pending_commit_state.as_ref() else {
+            return Err(StageCommitError::OwnCommitMismatch.into());
+        };
+        let StagedCommitState::GroupMember(member_state) = &staged_commit.state else {
+            return Err(StageCommitError::OwnCommitMismatch.into());
+        };
+        let expected_tag = member_state
+            .message_secrets
+            .confirmation_key()
+            .tag(
+                crypto,
+                self.ciphersuite(),
+                member_state.group_context().confirmed_transcript_hash(),
+            )
+            .map_err(LibraryError::unexpected_crypto_error)?;
+        if &expected_tag != received_tag {
+            return Err(StageCommitError::OwnCommitMismatch.into());
+        }
+        Ok(())
+    }
+
     fn derive_epoch_secrets(
         &self,
         provider: &impl OpenMlsProvider,
@@ -152,8 +198,7 @@ impl MlsGroup {
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
-    ///  - ValSem244 Returns an error if the given commit was sent by the owner
-    ///    of this group.
+    ///  - ValSem244
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
@@ -167,14 +212,6 @@ impl MlsGroup {
             crate::components::vc_derivation_info::EpochId,
         >,
     ) -> Result<StagedCommit, StageCommitError> {
-        // Check that the sender is another member of the group
-        #[cfg(not(feature = "virtual-clients-draft"))]
-        if let Sender::Member(member) = mls_content.sender() {
-            if member == &self.own_leaf_index() {
-                return Err(StageCommitError::OwnCommit);
-            }
-        }
-
         let (commit, proposal_queue, sender_index) = self
             .public_group
             .validate_commit(mls_content, provider.crypto())?;
@@ -226,14 +263,6 @@ impl MlsGroup {
             crate::components::vc_derivation_info::EpochId,
         >,
     ) -> Result<StagedCommit, StageCommitError> {
-        // Check that the sender is another member of the group
-        #[cfg(not(feature = "virtual-clients-draft"))]
-        if let Sender::Member(member) = mls_content.sender() {
-            if member == &self.own_leaf_index() {
-                return Err(StageCommitError::OwnCommit);
-            }
-        }
-
         let (commit, proposal_queue, sender_index) = self
             .public_group
             .validate_commit(mls_content, provider.crypto())?;

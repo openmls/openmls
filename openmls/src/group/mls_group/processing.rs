@@ -738,6 +738,22 @@ impl MlsGroup {
                 }
             }
             FramedContentBody::Commit(commit) => {
+                // The Commit was authored by this client. We check that it
+                // matches the pending commit and signal the caller to merge
+                // that instead.
+                #[cfg(not(feature = "virtual-clients-draft"))]
+                if matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index()) {
+                    self.check_own_pending_commit(provider.crypto(), &content)?;
+                    return Ok(ProcessedMessage::new(
+                        self.group_id().clone(),
+                        epoch,
+                        sender,
+                        authenticated_data,
+                        ProcessedMessageContent::OwnPendingCommit,
+                        credential,
+                    ));
+                }
+
                 // Since this is a commit, we need to load the private key material we need for decryption.
                 let (old_epoch_keypairs, leaf_node_keypairs) =
                     self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
@@ -825,6 +841,22 @@ impl MlsGroup {
             }
             #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_variables))]
             FramedContentBody::Commit(commit) => {
+                // The Commit was authored by this client. We check that it
+                // matches the pending commit and signal the caller to merge
+                // that instead.
+                #[cfg(not(feature = "virtual-clients-draft"))]
+                if matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index()) {
+                    self.check_own_pending_commit(provider.crypto(), &content)?;
+                    return Ok(ProcessedMessage::new(
+                        self.group_id().clone(),
+                        epoch,
+                        sender,
+                        authenticated_data,
+                        ProcessedMessageContent::OwnPendingCommit,
+                        credential,
+                    ));
+                }
+
                 // Since this is a commit, we need to load the private key material we need for decryption.
                 let (old_epoch_keypairs, leaf_node_keypairs) =
                     self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
