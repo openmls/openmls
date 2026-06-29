@@ -45,6 +45,13 @@ pub struct PrivateMessageIn {
     ciphertext: VLBytes,
 }
 
+/// Return value of [`PrivateMessageIn::to_verifiable_content`].
+pub(crate) struct DecryptedContent {
+    pub(crate) verifiable: VerifiableAuthenticatedContentIn,
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) emulator_sender_leaf_index: Option<LeafNodeIndex>,
+}
+
 impl PrivateMessageIn {
     /// Retrieve the additional authenticated data (AAD) from the [`PrivateMessageIn`].
     ///
@@ -150,6 +157,11 @@ impl PrivateMessageIn {
     /// This function decrypts a [`PrivateMessage`] into a
     /// [`VerifiableAuthenticatedContent`]. In order to get an
     /// [`FramedContent`] the result must be verified.
+    ///
+    /// When called with `emulator_ctx = Some(_)`, also inverts the
+    /// virtual-clients reuse guard to recover the sender's emulation-group
+    /// leaf index.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn to_verifiable_content(
         &self,
         ciphersuite: Ciphersuite,
@@ -158,7 +170,10 @@ impl PrivateMessageIn {
         sender_index: LeafNodeIndex,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         sender_data: MlsSenderData,
-    ) -> Result<VerifiableAuthenticatedContentIn, MessageDecryptionError> {
+        #[cfg(feature = "virtual-clients-draft")] emulator_ctx: Option<
+            &crate::framing::private_message::EmulatorReuseGuardCtx<'_>,
+        >,
+    ) -> Result<DecryptedContent, MessageDecryptionError> {
         let secret_type = SecretType::from(&self.content_type);
         // Extract generation and key material for encryption
         let (ratchet_key, ratchet_nonce) = message_secrets
@@ -178,6 +193,40 @@ impl PrivateMessageIn {
                 );
                 MessageDecryptionError::SecretTreeError(e)
             })?;
+
+        // Reuse-guard inversion. Uses the pre-XOR ratchet nonce as the
+        // `key_schedule_nonce` input to `ExpandWithLabel`.
+        #[cfg(feature = "virtual-clients-draft")]
+        let emulator_sender_leaf_index = if let Some(ctx) = emulator_ctx {
+            let prp_key = ctx.reuse_guard_secret.derive_prp_key(
+                crypto,
+                ctx.emulation_ciphersuite,
+                ratchet_nonce.raw_bytes(),
+            )?;
+            let x = crypto
+                .ff1_aes128_decrypt(
+                    &prp_key,
+                    u32::from_be_bytes(sender_data.reuse_guard.bytes()),
+                )
+                .map_err(|e| {
+                    log::error!("vc: FF1 inversion of reuse_guard failed: {e:?}");
+                    crate::components::vc_derivation_info::VirtualClientsError::CryptoError(
+                        openmls_traits::types::CryptoError::CryptoLibraryError,
+                    )
+                })?;
+            let n_e = u64::from(ctx.emulation_group_size.leaf_count());
+            if n_e == 0 {
+                log::error!("vc: emulation_group_size is zero (corrupt state)");
+                return Err(LibraryError::custom(
+                    "EmulationEpochState has zero emulation_group_size",
+                )
+                .into());
+            }
+            Some(LeafNodeIndex::new((u64::from(x) % n_e) as u32))
+        } else {
+            None
+        };
+
         // Prepare the nonce by xoring with the reuse guard.
         let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
         let private_message_content = self.decrypt(crypto, ratchet_key, &prepared_nonce)?;
@@ -202,21 +251,25 @@ impl PrivateMessageIn {
             Some(message_secrets.serialized_context().to_vec()),
             private_message_content.auth,
         );
-        Ok(verifiable)
+        Ok(DecryptedContent {
+            verifiable,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulator_sender_leaf_index,
+        })
     }
 
     /// Get the `group_id` in the `PrivateMessage`.
-    pub(crate) fn group_id(&self) -> &GroupId {
+    pub fn group_id(&self) -> &GroupId {
         &self.group_id
     }
 
     /// Get the `epoch` in the `PrivateMessage`.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
+    pub fn epoch(&self) -> GroupEpoch {
         self.epoch
     }
 
     /// Get the `content_type` in the `PrivateMessage`.
-    pub(crate) fn content_type(&self) -> ContentType {
+    pub fn content_type(&self) -> ContentType {
         self.content_type
     }
 
@@ -259,11 +312,8 @@ pub(crate) struct PrivateMessageContentIn {
     pub(crate) auth: FramedContentAuthData,
 }
 
-// The following `From` implementation( breaks abstraction layers and MUST
-// NOT be made available outside of tests or "test-utils".
-#[cfg(any(feature = "test-utils", test))]
-impl From<PrivateMessageIn> for PrivateMessage {
-    fn from(value: PrivateMessageIn) -> Self {
+impl From<PrivateMessage> for PrivateMessageIn {
+    fn from(value: PrivateMessage) -> Self {
         Self {
             group_id: value.group_id,
             epoch: value.epoch,
@@ -275,9 +325,11 @@ impl From<PrivateMessageIn> for PrivateMessage {
     }
 }
 
+// The following `From` implementation( breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
 #[cfg(any(feature = "test-utils", test))]
-impl From<PrivateMessage> for PrivateMessageIn {
-    fn from(value: PrivateMessage) -> Self {
+impl From<PrivateMessageIn> for PrivateMessage {
+    fn from(value: PrivateMessageIn) -> Self {
         Self {
             group_id: value.group_id,
             epoch: value.epoch,

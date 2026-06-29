@@ -28,20 +28,19 @@ It has a safe and easy-to-use interface that hides the complexity of the underly
 OpenMLS is built and tested on the Github CI for the following rust targets.
 
 - x86_64-unknown-linux-gnu
-- i686-unknown-linux-gnu
 - x86_64-pc-windows-msvc
-- i686-pc-windows-msvc
-- x86_64-apple-darwin
+- aarch64-apple-darwin
+- aarch64-unknown-linux-gnu
 
 ### Unsupported, but built on CI
 
 The Github CI also builds (but doesn't test) the following rust targets.
 
-- aarch64-apple-darwin
-- aarch64-unknown-linux-gnu
+- i686-unknown-linux-gnu
+- i686-pc-windows-msvc
+- x86_64-apple-darwin
 - aarch64-linux-android
 - aarch64-apple-ios
-- aarch64-apple-ios-sim
 - wasm32-unknown-unknown
 - armv7-linux-androideabi
 - x86_64-linux-android

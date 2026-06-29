@@ -36,7 +36,9 @@ use crate::{
 };
 
 #[cfg(feature = "extensions-draft-08")]
-use crate::{component::ComponentId, messages::proposals_in::ProposalOrRefIn};
+use crate::{
+    component::ComponentId, framing::safe_aad::SafeAad, messages::proposals_in::ProposalOrRefIn,
+};
 
 use super::{
     mls_auth_content::AuthenticatedContent,
@@ -55,6 +57,10 @@ use super::{
 #[derive(Debug)]
 pub(crate) struct DecryptedMessage {
     verifiable_content: VerifiableAuthenticatedContentIn,
+    /// Recovered sender emulation-group leaf index for an application
+    /// message from a sibling emulator client.
+    #[cfg(feature = "virtual-clients-draft")]
+    emulator_sender_leaf_index: Option<LeafNodeIndex>,
 }
 
 impl DecryptedMessage {
@@ -88,7 +94,13 @@ impl DecryptedMessage {
 
         let verifiable_content = public_message.into_verifiable_content(serialized_context);
 
-        Self::from_verifiable_content(verifiable_content)
+        // Public messages don't carry a reuse_guard, so no emulator
+        // sender leaf index to recover.
+        Self::from_verifiable_content(
+            verifiable_content,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
+        )
     }
 
     /// Constructs a [DecryptedMessage] from a [PrivateMessage] by attempting to decrypt it
@@ -98,6 +110,9 @@ impl DecryptedMessage {
         crypto: &impl OpenMlsCrypto,
         group: &mut MlsGroup,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
+        #[cfg(feature = "virtual-clients-draft")] emulator_ctx: Option<
+            &crate::framing::private_message::EmulatorReuseGuardCtx<'_>,
+        >,
     ) -> Result<Self, ValidationError> {
         // This will be refactored with #265.
         let ciphersuite = group.ciphersuite();
@@ -107,22 +122,35 @@ impl DecryptedMessage {
             .message_secrets_and_leaves(ciphertext.epoch())
             .map_err(MessageDecryptionError::SecretTreeError)?;
         let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
-        // Check if we are the sender
+        // Check if we are the sender. With the `virtual-clients` feature,
+        // decrypting own messages is allowed, so we skip this check
+        #[cfg(not(feature = "virtual-clients-draft"))]
         if sender_data.leaf_index == group.own_leaf_index() {
             return Err(ValidationError::CannotDecryptOwnMessage);
         }
+        #[cfg(feature = "virtual-clients-draft")]
+        let effective_emulator_ctx = match emulator_ctx {
+            Some(ctx) if sender_data.leaf_index == group.own_leaf_index() => Some(ctx),
+            _ => None,
+        };
         let message_secrets = group
             .message_secrets_for_epoch_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        let verifiable_content = ciphertext.to_verifiable_content(
+        let decrypted = ciphertext.to_verifiable_content(
             ciphersuite,
             crypto,
             message_secrets,
             sender_data.leaf_index,
             sender_ratchet_configuration,
             sender_data,
+            #[cfg(feature = "virtual-clients-draft")]
+            effective_emulator_ctx,
         )?;
-        Self::from_verifiable_content(verifiable_content)
+        Self::from_verifiable_content(
+            decrypted.verifiable,
+            #[cfg(feature = "virtual-clients-draft")]
+            decrypted.emulator_sender_leaf_index,
+        )
     }
 
     // Internal constructor function. Does the following checks:
@@ -131,6 +159,7 @@ impl DecryptedMessage {
     // - Ensures application messages were originally PrivateMessage messages
     fn from_verifiable_content(
         verifiable_content: VerifiableAuthenticatedContentIn,
+        #[cfg(feature = "virtual-clients-draft")] emulator_sender_leaf_index: Option<LeafNodeIndex>,
     ) -> Result<Self, ValidationError> {
         // ValSem009
         if verifiable_content.content_type() == ContentType::Commit
@@ -147,7 +176,19 @@ impl DecryptedMessage {
                 return Err(LibraryError::custom("Expected sender to be member.").into());
             }
         }
-        Ok(DecryptedMessage { verifiable_content })
+        Ok(DecryptedMessage {
+            verifiable_content,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulator_sender_leaf_index,
+        })
+    }
+
+    /// Recovered sender emulation-group leaf index, if the message came
+    /// from a sibling emulator client.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[allow(dead_code)]
+    pub(crate) fn emulator_sender_leaf_index(&self) -> Option<LeafNodeIndex> {
+        self.emulator_sender_leaf_index
     }
 
     /// Gets the correct credential from the message depending on the sender type.
@@ -204,6 +245,14 @@ impl DecryptedMessage {
     }
 }
 
+/// Result of [`UnverifiedMessage::verify`].
+pub(crate) struct VerifiedMessage {
+    pub(crate) content: AuthenticatedContent,
+    pub(crate) credential: Credential,
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) emulator_sender_leaf_index: Option<LeafNodeIndex>,
+}
+
 /// Context that is needed to verify the signature of a the leaf node of an
 /// UpdatePath or an update proposal.
 #[derive(Debug, Clone)]
@@ -227,6 +276,9 @@ pub struct UnverifiedMessage {
     credential: Credential,
     sender_pk: OpenMlsSignaturePublicKey,
     sender_context: Option<SenderContext>,
+    /// See [`DecryptedMessage::emulator_sender_leaf_index`].
+    #[cfg(feature = "virtual-clients-draft")]
+    emulator_sender_leaf_index: Option<LeafNodeIndex>,
 }
 
 impl UnverifiedMessage {
@@ -237,22 +289,25 @@ impl UnverifiedMessage {
         sender_pk: OpenMlsSignaturePublicKey,
         sender_context: Option<SenderContext>,
     ) -> Self {
+        #[cfg(feature = "virtual-clients-draft")]
+        let emulator_sender_leaf_index = decrypted_message.emulator_sender_leaf_index;
         UnverifiedMessage {
             verifiable_content: decrypted_message.verifiable_content,
             credential,
             sender_pk,
             sender_context,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulator_sender_leaf_index,
         }
     }
 
-    /// Verify the [`UnverifiedMessage`]. Returns the [`AuthenticatedContent`]
-    /// and the internal [`Credential`].
+    /// Verify the [`UnverifiedMessage`].
     pub(crate) fn verify(
         self,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
         protocol_version: ProtocolVersion,
-    ) -> Result<(AuthenticatedContent, Credential), ValidationError> {
+    ) -> Result<VerifiedMessage, ValidationError> {
         let content: AuthenticatedContentIn = self
             .verifiable_content
             .verify(crypto, &self.sender_pk)
@@ -261,7 +316,12 @@ impl UnverifiedMessage {
         // https://validation.openmls.tech/#valn1304
         let content =
             content.validate(ciphersuite, crypto, self.sender_context, protocol_version)?;
-        Ok((content, self.credential))
+        Ok(VerifiedMessage {
+            content,
+            credential: self.credential,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulator_sender_leaf_index: self.emulator_sender_leaf_index,
+        })
     }
 
     /// Get the proposals of the commit, if it is one. If not, return `None`.
@@ -280,6 +340,17 @@ pub struct ProcessedMessage {
     authenticated_data: Vec<u8>,
     content: ProcessedMessageContent,
     credential: Credential,
+    /// See [`Self::emulator_sender_leaf_index`].
+    #[cfg(feature = "virtual-clients-draft")]
+    emulator_sender_leaf_index: Option<LeafNodeIndex>,
+    /// Parsed Safe AAD prefix, populated only when the message's GroupContext
+    /// required Safe AAD framing. `None` otherwise.
+    #[cfg(feature = "extensions-draft-08")]
+    safe_aad: Option<SafeAad>,
+    /// Length in bytes of the Safe AAD prefix at the start of
+    /// `authenticated_data`. Zero when [`Self::safe_aad`] is `None`.
+    #[cfg(feature = "extensions-draft-08")]
+    safe_aad_prefix_len: usize,
 }
 
 impl ProcessedMessage {
@@ -291,6 +362,7 @@ impl ProcessedMessage {
         authenticated_data: Vec<u8>,
         content: ProcessedMessageContent,
         credential: Credential,
+        #[cfg(feature = "virtual-clients-draft")] emulator_sender_leaf_index: Option<LeafNodeIndex>,
     ) -> Self {
         Self {
             group_id,
@@ -299,7 +371,56 @@ impl ProcessedMessage {
             authenticated_data,
             content,
             credential,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulator_sender_leaf_index,
+            #[cfg(feature = "extensions-draft-08")]
+            safe_aad: None,
+            #[cfg(feature = "extensions-draft-08")]
+            safe_aad_prefix_len: 0,
         }
+    }
+
+    /// Parse the Safe AAD prefix at the start of `authenticated_data` and
+    /// attach it to this message. Callers should invoke this only when the receiving
+    /// group's GroupContext requires Safe AAD framing. Otherwise, `safe_aad`
+    /// stays `None` and `authenticated_data` is the caller-supplied bytes
+    /// untouched.
+    #[cfg(feature = "extensions-draft-08")]
+    pub(crate) fn try_attach_safe_aad(&mut self) -> Result<(), crate::framing::SafeAadError> {
+        let (safe_aad, prefix_len) =
+            crate::framing::safe_aad::parse_authenticated_data_prefix(&self.authenticated_data)?;
+        self.safe_aad = Some(safe_aad);
+        self.safe_aad_prefix_len = prefix_len;
+        Ok(())
+    }
+
+    /// Returns the parsed Safe AAD struct, or `None` if Safe AAD was not
+    /// active for the group this message belongs to.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn safe_aad(&self) -> Option<&SafeAad> {
+        self.safe_aad.as_ref()
+    }
+
+    /// Look up a Safe AAD item by [`ComponentId`].
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn safe_aad_item(&self, component_id: crate::component::ComponentId) -> Option<&[u8]> {
+        self.safe_aad
+            .as_ref()
+            .and_then(|safe_aad| safe_aad.get(component_id))
+    }
+
+    /// Returns the bytes of `authenticated_data` after any Safe AAD prefix.
+    /// Equal to [`Self::aad`] when no Safe AAD prefix is present.
+    #[cfg(feature = "extensions-draft-08")]
+    pub fn tail_aad(&self) -> &[u8] {
+        &self.authenticated_data[self.safe_aad_prefix_len..]
+    }
+
+    /// Returns the sender's leaf index in the emulation group when this
+    /// message is an application message from a sibling emulator client.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulator_sender_leaf_index(&self) -> Option<LeafNodeIndex> {
+        self.emulator_sender_leaf_index
     }
 
     /// Returns the group ID of the message.

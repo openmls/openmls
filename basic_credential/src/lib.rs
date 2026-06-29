@@ -73,11 +73,41 @@ impl Signer for SignatureKeyPair {
                 let signature: Signature = k.sign(payload);
                 Ok(signature.to_der().to_bytes().into())
             }
+            SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+                let k = p384::ecdsa::SigningKey::from_bytes(self.private.as_slice().into())
+                    .map_err(|_| SignerError::SigningError)?;
+                let signature: p384::ecdsa::Signature = k.sign(payload);
+                Ok(signature.to_der().to_bytes().into())
+            }
             SignatureScheme::ED25519 => {
                 let k = ed25519_dalek::SigningKey::try_from(self.private.as_slice())
                     .map_err(|_| SignerError::SigningError)?;
                 let signature = k.sign(payload);
                 Ok(signature.to_bytes().into())
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA65 => {
+                use ml_dsa::Signer;
+                let seed: &ml_dsa::Seed = self
+                    .private
+                    .as_slice()
+                    .try_into()
+                    .map_err(|_| SignerError::SigningError)?;
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa65>::from_seed(seed);
+                let signature = k.sign(payload);
+                Ok(signature.encode().to_vec())
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA87 => {
+                use ml_dsa::Signer;
+                let seed: &ml_dsa::Seed = self
+                    .private
+                    .as_slice()
+                    .try_into()
+                    .map_err(|_| SignerError::SigningError)?;
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::from_seed(seed);
+                let signature = k.sign(payload);
+                Ok(signature.encode().to_vec())
             }
             _ => Err(SignerError::SigningError),
         }
@@ -111,12 +141,33 @@ impl SignatureKeyPair {
                 key_bytes.zeroize();
                 (private, pk)
             }
+            SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+                let k = p384::ecdsa::SigningKey::random(&mut OsRng);
+                let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
+                (k.to_bytes().as_slice().into(), pk)
+            }
             SignatureScheme::ED25519 => {
                 let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
                 let pk = sk.verifying_key().to_bytes().into();
                 // Use as_bytes() to avoid an unzeroed stack copy from to_bytes().
                 // sk itself implements ZeroizeOnDrop.
                 (sk.as_bytes().as_slice().into(), pk)
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA65 => {
+                use ml_dsa::{Generate, Keypair};
+                let sk = ml_dsa::SigningKey::<ml_dsa::MlDsa65>::generate();
+                let pk = sk.verifying_key().encode().to_vec();
+                let sk = sk.to_seed().to_vec();
+                (sk.into(), pk)
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA87 => {
+                use ml_dsa::{Generate, Keypair};
+                let sk = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::generate();
+                let pk = sk.verifying_key().encode().to_vec();
+                let sk = sk.to_seed().to_vec();
+                (sk.into(), pk)
             }
             _ => return Err(CryptoError::UnsupportedSignatureScheme),
         };

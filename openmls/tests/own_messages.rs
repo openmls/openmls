@@ -1,3 +1,5 @@
+#![cfg(not(feature = "virtual-clients-draft"))]
+
 //! Test that decryption of own messages fails.
 use openmls::prelude::*;
 use openmls_test::openmls_test;

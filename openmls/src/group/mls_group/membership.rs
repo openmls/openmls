@@ -233,8 +233,10 @@ impl MlsGroup {
         self.is_operational()?;
 
         let removed = self.own_leaf_index();
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let remove_proposal = self
-            .create_remove_proposal(self.framing_parameters(), removed, signer)
+            .create_remove_proposal(framing_parameters, removed, signer)
             .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
         let ciphersuite = self.ciphersuite();
@@ -283,8 +285,8 @@ impl MlsGroup {
         ) {
             return Err(LeaveGroupError::CannotSelfRemoveWithPureCiphertext);
         }
-        let self_remove_proposal =
-            self.create_self_remove_proposal(self.framing_parameters().aad(), signer)?;
+        let aad = self.outgoing_authenticated_data()?;
+        let self_remove_proposal = self.create_self_remove_proposal(&aad, signer)?;
 
         let ciphersuite = self.ciphersuite();
         let queued_self_remove_proposal = QueuedProposal::from_authenticated_content_by_ref(

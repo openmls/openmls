@@ -562,4 +562,131 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     ) -> Result<(), Self::Error> {
         todo!()
     }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_epoch_state<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+        _vc_emulation_epoch_state: &VcEmulationEpochState,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_epoch_state<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_state_if_unreferenced<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_bindings<
+        GroupId: traits::GroupId<V_TEST>,
+        VcEmulationBindings: traits::VcEmulationBindings<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _bindings: &VcEmulationBindings,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_bindings<
+        GroupId: traits::GroupId<V_TEST>,
+        VcEmulationBindings: traits::VcEmulationBindings<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<Option<VcEmulationBindings>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_bindings<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_operation_tree<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcOperationTree: traits::VcOperationTree<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+        _vc_operation_tree: &VcOperationTree,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_operation_tree<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcOperationTree: traits::VcOperationTree<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<Option<VcOperationTree>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_retained_key_package_material_batch<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcOperationTree: traits::VcOperationTree<V_TEST>,
+        KeyPackageRef: traits::HashReference<V_TEST>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+        _operation_tree: &VcOperationTree,
+        _materials: &[(KeyPackageRef, RetainedKeyPackageMaterial)],
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn retained_key_package_material<
+        KeyPackageRef: traits::HashReference<V_TEST>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<V_TEST>,
+    >(
+        &self,
+        _hash_ref: &KeyPackageRef,
+    ) -> Result<Option<RetainedKeyPackageMaterial>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<V_TEST>>(
+        &self,
+        _hash_ref: &KeyPackageRef,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
 }

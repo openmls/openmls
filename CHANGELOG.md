@@ -12,10 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1972](https://github.com/openmls/openmls/pull/1972): Add APIs for time-based deletion of past epoch secrets, and for setting the past epoch deletion policy for an `MlsGroup`.
 - [#2010](https://github.com/openmls/openmls/pull/2010): Added `MlsGroup::propose_self_update_with_new_signer`, a variant of `propose_self_update` that stages an `Update` proposal carrying a new signature key.
 
+### Fixed
+- [#2034](https://github.com/openmls/openmls/pull/2034): Fixes a bug where the integer storage tags for `serde` non-self-describing serializations were changed, leading to incorrect deserializations. By default, storage format compatibility with `openmls` v0.7.1 and earlier is now restored. Enabling the `0-8-1-storage-format` feature maintains storage format compatibility with `openmls` v0.8.1 (the previous `openmls` release).
+
 ### Changed
 
 - [#1980](https://github.com/openmls/openmls/pull/1980): Enrich limetime related errors returned during leaf node validation with more information
 - [#1972](https://github.com/openmls/openmls/pull/1972): The method `MlsGroup::max_past_epochs()` now returns an `Option<usize>`, rather than a `usize`
+- [#1963](https://github.com/openmls/openmls/pull/1963): `MessageEncryptionError` is now part of the public API, but only surfaces if the `virtual-clients-draft` feature flag is enabled.
+- [#2043](https://github.com/openmls/openmls/pull/2043): Renamed and deprecated `MlsGroup::propose_external_psk` to `MlsGroup::propose_pre_shared_key`. Same for the `_by_value` variant.
 
 ## 0.8.1 (2026-02-13)
 

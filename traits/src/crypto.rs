@@ -156,4 +156,22 @@ pub trait OpenMlsCrypto: Send + Sync {
         config: HpkeConfig,
         ikm: &[u8],
     ) -> Result<HpkeKeyPair, CryptoError>;
+
+    /// FF1-AES128 encryption of a 32-bit value under a 16-byte key.
+    ///
+    /// FF1 ([NIST SP 800-38G]) instantiated with AES-128, radix 2, an empty
+    /// tweak, and an input-output space of 32-bit integers, as specified by
+    /// the mls-virtual-clients draft (Small-Space PRP section). Used to
+    /// derive `PrivateMessage` reuse guards. Inverse of
+    /// [`OpenMlsCrypto::ff1_aes128_decrypt`].
+    ///
+    /// [NIST SP 800-38G]: https://csrc.nist.gov/pubs/sp/800/38/g/final
+    #[cfg(feature = "virtual-clients-draft")]
+    fn ff1_aes128_encrypt(&self, key: &[u8; 16], plaintext: u32) -> Result<u32, CryptoError>;
+
+    /// FF1-AES128 decryption of a 32-bit value under a 16-byte key.
+    ///
+    /// Inverse of [`OpenMlsCrypto::ff1_aes128_encrypt`].
+    #[cfg(feature = "virtual-clients-draft")]
+    fn ff1_aes128_decrypt(&self, key: &[u8; 16], ciphertext: u32) -> Result<u32, CryptoError>;
 }

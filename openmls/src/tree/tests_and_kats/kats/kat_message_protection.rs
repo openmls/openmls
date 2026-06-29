@@ -294,7 +294,9 @@ pub fn run_test_vector(
         .unwrap();
         let my_proposal_priv = sender_group
             .encrypt(proposal_authenticated_content, provider)
-            .unwrap();
+            .unwrap()
+            .private_message;
+
         let my_proposal_priv_out = MlsMessageOut::from_private_message(
             my_proposal_priv,
             group.export_group_context().protocol_version(),
@@ -359,6 +361,8 @@ pub fn run_test_vector(
                     provider.crypto(),
                     commit_pub.into_protocol_message().unwrap(),
                     &sender_ratchet_config,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 )
                 .unwrap();
 
@@ -369,7 +373,7 @@ pub fn run_test_vector(
             let processed_message: AuthenticatedContent = processed_unverified_message
                 .verify(ciphersuite, provider.crypto(), ProtocolVersion::Mls10)
                 .unwrap()
-                .0;
+                .content;
             match processed_message.content().to_owned() {
                 FramedContentBody::Commit(c) => {
                     assert_eq!(commit, CommitIn::from(*c))
@@ -410,7 +414,9 @@ pub fn run_test_vector(
         }));
         let my_commit_pub = sender_group
             .encrypt(commit_authenticated_content, provider)
-            .unwrap();
+            .unwrap()
+            .private_message;
+
         let my_commit_priv_out = MlsMessageOut::from_private_message(
             my_commit_pub,
             group.export_group_context().protocol_version(),

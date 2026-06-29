@@ -137,7 +137,8 @@ fn codec_ciphertext() {
         &mut message_secrets,
         0,
     )
-    .expect("Could not encrypt PublicMessage.");
+    .expect("Could not encrypt PublicMessage.")
+    .private_message;
 
     let enc = orig
         .tls_serialize_detached()
@@ -179,22 +180,23 @@ fn wire_format_checks() {
     message_secrets.replace_secret_tree(sender_secret_tree);
 
     let sender_index = LeafNodeIndex::new(0);
-    let ciphertext: PrivateMessageIn =
-        PrivateMessage::encrypt_with_different_header::<StorageError>(
-            provider.crypto(),
-            provider.rand(),
-            &plaintext,
-            ciphersuite,
-            MlsMessageHeader {
-                group_id: plaintext.group_id().clone(),
-                epoch: plaintext.epoch(),
-                sender: sender_index,
-            },
-            &mut message_secrets,
-            0,
-        )
-        .expect("Could not encrypt PublicMessage.")
-        .into();
+    let ciphertext = PrivateMessage::encrypt_with_different_header::<StorageError>(
+        provider.crypto(),
+        provider.rand(),
+        &plaintext,
+        ciphersuite,
+        MlsMessageHeader {
+            group_id: plaintext.group_id().clone(),
+            epoch: plaintext.epoch(),
+            sender: sender_index,
+        },
+        &mut message_secrets,
+        0,
+    )
+    .expect("Could not encrypt PublicMessage.")
+    .private_message;
+
+    let ciphertext = PrivateMessageIn::from(ciphertext);
 
     // Decrypt the ciphertext and expect the correct wire format
 
@@ -211,8 +213,11 @@ fn wire_format_checks() {
             sender_index,
             configuration,
             sender_data,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         )
-        .expect("Could not decrypt PrivateMessage.");
+        .expect("Could not decrypt PrivateMessage.")
+        .verifiable;
 
     assert_eq!(
         verifiable_plaintext.wire_format(),
@@ -230,7 +235,7 @@ fn wire_format_checks() {
 
     let receiver_secret_tree = message_secrets.replace_secret_tree(sender_secret_tree);
     // Bypass wire format check during encryption
-    let ciphertext: PrivateMessageIn = PrivateMessage::encrypt_without_check::<StorageError>(
+    let ciphertext = PrivateMessage::encrypt_without_check::<StorageError>(
         provider.crypto(),
         provider.rand(),
         &plaintext,
@@ -239,7 +244,9 @@ fn wire_format_checks() {
         0,
     )
     .expect("Could not encrypt PublicMessage.")
-    .into();
+    .private_message;
+
+    let ciphertext = PrivateMessageIn::from(ciphertext);
 
     // Try to process a ciphertext with the wrong wire format
     let sender_secret_tree = message_secrets.replace_secret_tree(receiver_secret_tree);
@@ -255,8 +262,11 @@ fn wire_format_checks() {
             sender_index,
             configuration,
             sender_data,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         )
-        .expect("Could not decrypt PrivateMessage.");
+        .expect("Could not decrypt PrivateMessage.")
+        .verifiable;
 
     // We expect the signature to fail since the original content was signed with a different wire format.
     let result: Result<AuthenticatedContentIn, SignatureError> =
@@ -278,6 +288,8 @@ fn wire_format_checks() {
             ciphersuite,
             &mut message_secrets,
             0,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         )
         .expect_err("Could encrypt despite wrong wire format."),
         MessageEncryptionError::WrongWireFormat
@@ -489,7 +501,8 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
         alice_group.message_secrets_test_mut(),
         0,
     )
-    .expect("Encryption error");
+    .expect("Encryption error")
+    .private_message;
 
     let received_message = charlie_group.process_message(
         charlie_provider,

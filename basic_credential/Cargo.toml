@@ -12,17 +12,22 @@ readme = "README.md"
 [dependencies]
 openmls_traits = { workspace = true }
 tls_codec = { workspace = true }
-serde = "1.0"
+serde = { workspace = true }
 
 # Rust Crypto
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 p256 = { version = "0.13" }
+p384 = { version = "0.13" }
+ml-dsa = "0.1.0"
 rand_core = { version = "0.6", features = ["getrandom"] }
 zeroize = "1.8.2"
 
 [features]
-clonable = []   # Make the keys clonable
+clonable = [] # Make the keys clonable
 test-utils = [] # Only use for tests!
+draft-ietf-mls-pq-ciphersuites = [
+    "openmls_traits/draft-ietf-mls-pq-ciphersuites",
+]
 
 [dev-dependencies]
 serde_json = "1.0.149"

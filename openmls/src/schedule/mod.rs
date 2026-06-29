@@ -133,7 +133,7 @@ use crate::{
 // Public
 pub mod errors;
 #[cfg(feature = "extensions-draft-08")]
-mod pprf;
+pub(crate) mod pprf;
 pub mod psk;
 
 #[cfg(feature = "extensions-draft-08")]

@@ -57,6 +57,7 @@ impl OpenMlsCrypto for CryptoProvider {
         vec![
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
             // TODO: enable
             //Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
@@ -374,6 +375,16 @@ impl OpenMlsCrypto for CryptoProvider {
             public: pk.as_slice().to_vec(),
         })
     }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn ff1_aes128_encrypt(&self, key: &[u8; 16], plaintext: u32) -> Result<u32, CryptoError> {
+        crate::ff1::encrypt(key, plaintext)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn ff1_aes128_decrypt(&self, key: &[u8; 16], ciphertext: u32) -> Result<u32, CryptoError> {
+        crate::ff1::decrypt(key, ciphertext)
+    }
 }
 
 fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
@@ -399,7 +410,12 @@ fn hpke_kem(kem: HpkeKemType) -> hpke_rs_crypto::types::KemAlgorithm {
         HpkeKemType::DhKemP521 => hpke_rs_crypto::types::KemAlgorithm::DhKemP521,
         HpkeKemType::DhKem25519 => hpke_rs_crypto::types::KemAlgorithm::DhKem25519,
         HpkeKemType::DhKem448 => hpke_rs_crypto::types::KemAlgorithm::DhKem448,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         HpkeKemType::XWingKemDraft6 => hpke_rs_crypto::types::KemAlgorithm::XWingDraft06,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem768 => hpke_rs_crypto::types::KemAlgorithm::MlKem768,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem1024 => hpke_rs_crypto::types::KemAlgorithm::MlKem1024,
     }
 }
 

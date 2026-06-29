@@ -39,9 +39,6 @@ impl MlsGroup {
 
     /// Creates a new group with the creator as the only member (and a random
     /// group ID).
-    ///
-    /// This function removes the private key corresponding to the
-    /// `key_package` from the key store.
     pub fn new<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
@@ -148,28 +145,29 @@ impl ProcessedWelcome {
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
-        let (resumption_psk_store, key_package_bundle) =
+        let (resumption_psk_store, key_material) =
             keys_for_welcome(mls_group_config, &welcome, provider)?;
 
         let ciphersuite = welcome.ciphersuite();
-        let Some(egs) = welcome.find_encrypted_group_secret(
-            key_package_bundle
-                .key_package()
-                .hash_ref(provider.crypto())?,
-        ) else {
+        let Some(egs) =
+            welcome.find_encrypted_group_secret(key_material.key_package_ref(provider.crypto())?)
+        else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
 
         // This check seems to be superfluous from the perspective of the RFC, but still doesn't
-        // seem like a bad idea.
-        if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
-            let e = WelcomeError::CiphersuiteMismatch;
-            log::debug!("new_from_welcome {e:?}");
-            return Err(e);
+        // seem like a bad idea. There is no local KeyPackage to compare against on the
+        // virtual-client path, where the derived material is implicitly the welcome's ciphersuite.
+        if let Some(key_package_bundle) = key_material.key_package_bundle() {
+            if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+                let e = WelcomeError::CiphersuiteMismatch;
+                log::debug!("new_from_welcome {e:?}");
+                return Err(e);
+            }
         }
 
         let group_secrets = GroupSecrets::try_from_ciphertext(
-            key_package_bundle.init_private_key(),
+            key_material.init_private_key(),
             egs.encrypted_group_secrets(),
             welcome.encrypted_group_info(),
             ciphersuite,
@@ -207,25 +205,32 @@ impl ProcessedWelcome {
             provider.crypto(),
         )?;
 
-        if let Some(required_capabilities) =
-            verifiable_group_info.extensions().required_capabilities()
-        {
-            // Also check that our key package actually supports the extensions.
-            // As per the spec, the sender must have checked this. But you never know.
-            key_package_bundle
-                .key_package()
-                .leaf_node()
-                .capabilities()
-                .supports_required_capabilities(required_capabilities)?;
-        }
+        // On the bundle path, check the required capabilities and the
+        // ciphersuite against the local KeyPackage. On the virtual-client path
+        // there is no local KeyPackage: these are checked in staging against
+        // the own tree leaf instead.
+        if let Some(key_package_bundle) = key_material.key_package_bundle() {
+            if let Some(required_capabilities) =
+                verifiable_group_info.extensions().required_capabilities()
+            {
+                // Also check that our key package actually supports the extensions.
+                // As per the spec, the sender must have checked this. But you never know.
+                key_package_bundle
+                    .key_package()
+                    .leaf_node()
+                    .capabilities()
+                    .supports_required_capabilities(required_capabilities)?;
+            }
 
-        // https://validation.openmls.tech/#valn1404
-        // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
-        // KeyPackage.
-        if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
-            let e = WelcomeError::CiphersuiteMismatch;
-            log::debug!("new_from_welcome {e:?}");
-            return Err(e);
+            // https://validation.openmls.tech/#valn1404
+            // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
+            // KeyPackage.
+            if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite()
+            {
+                let e = WelcomeError::CiphersuiteMismatch;
+                log::debug!("new_from_welcome {e:?}");
+                return Err(e);
+            }
         }
 
         Ok(Self {
@@ -235,7 +240,7 @@ impl ProcessedWelcome {
             key_schedule,
             verifiable_group_info,
             resumption_psk_store,
-            key_package_bundle,
+            key_material,
         })
     }
 
@@ -310,43 +315,54 @@ impl ProcessedWelcome {
             validate_lifetimes,
         )?;
 
-        // Check that the leaf node of the added key package supports all extensions in the group
-        // context.
-        // https://validation.openmls.tech/#valn1415
-        let added_leaf_supports_all_group_context_extensions = public_group
-            .group_context()
-            .extensions()
-            .iter()
-            .all(|extension| {
-                self.key_package_bundle
-                    .key_package
-                    .leaf_node()
-                    .supports_extension(&extension.extension_type())
-            });
-        if !added_leaf_supports_all_group_context_extensions {
-            return Err(WelcomeError::UnsupportedExtensions);
-        }
-
-        // Find our own leaf in the tree.
-        let own_leaf_index = public_group
-            .members()
-            .find_map(|m| {
-                if m.signature_key
-                    == self
-                        .key_package_bundle
-                        .key_package()
-                        .leaf_node()
-                        .signature_key()
-                        .as_slice()
-                {
-                    Some(m.index)
-                } else {
-                    None
+        // Find our own leaf in the tree. On the bundle path this is the leaf
+        // whose signature key matches the local KeyPackage. On the
+        // virtual-client path there is no local signature key, so the leaf is
+        // located by its derived encryption key and validated against the
+        // emulation epoch's derivation info.
+        let own_leaf_index = match &self.key_material {
+            WelcomeKeyMaterial::KeyPackage(key_package_bundle) => {
+                // Check that the leaf node of the added key package supports all extensions in
+                // the group context.
+                // https://validation.openmls.tech/#valn1415
+                let added_leaf_supports_all_group_context_extensions = public_group
+                    .group_context()
+                    .extensions()
+                    .iter()
+                    .all(|extension| {
+                        key_package_bundle
+                            .key_package
+                            .leaf_node()
+                            .supports_extension(&extension.extension_type())
+                    });
+                if !added_leaf_supports_all_group_context_extensions {
+                    return Err(WelcomeError::UnsupportedExtensions);
                 }
-            })
-            .ok_or(WelcomeError::PublicTreeError(
-                PublicTreeError::MalformedTree,
-            ))?;
+
+                public_group
+                    .members()
+                    .find_map(|m| {
+                        if m.signature_key
+                            == key_package_bundle
+                                .key_package()
+                                .leaf_node()
+                                .signature_key()
+                                .as_slice()
+                        {
+                            Some(m.index)
+                        } else {
+                            None
+                        }
+                    })
+                    .ok_or(WelcomeError::PublicTreeError(
+                        PublicTreeError::MalformedTree,
+                    ))?
+            }
+            #[cfg(feature = "virtual-clients-draft")]
+            WelcomeKeyMaterial::VirtualClient(material) => {
+                find_and_validate_vc_own_leaf(provider, &public_group, material)?
+            }
+        };
 
         struct KeyScheduleResult {
             group_epoch_secrets: GroupEpochSecrets,
@@ -457,7 +473,7 @@ impl ProcessedWelcome {
             application_export_secret,
             resumption_psk_store: self.resumption_psk_store,
             verifiable_group_info: self.verifiable_group_info,
-            key_package_bundle: self.key_package_bundle,
+            key_material: self.key_material,
             path_keypairs,
         };
 
@@ -545,11 +561,11 @@ impl StagedWelcome {
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
         let group_keypairs = if let Some(path_keypairs) = self.path_keypairs {
-            let mut keypairs = vec![self.key_package_bundle.encryption_key_pair()];
+            let mut keypairs = vec![self.key_material.encryption_key_pair()];
             keypairs.extend_from_slice(&path_keypairs);
             keypairs
         } else {
-            vec![self.key_package_bundle.encryption_key_pair()]
+            vec![self.key_material.encryption_key_pair()]
         };
 
         #[cfg(feature = "extensions-draft-08")]
@@ -561,6 +577,8 @@ impl StagedWelcome {
             mls_group_config: self.mls_group_config,
             own_leaf_nodes: vec![],
             aad: vec![],
+            #[cfg(feature = "extensions-draft-08")]
+            safe_aad: crate::framing::SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group: self.public_group,
             group_epoch_secrets: self.group_epoch_secrets,
@@ -619,32 +637,212 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
     welcome: &Welcome,
     provider: &Provider,
 ) -> Result<
-    (ResumptionPskStore, KeyPackageBundle),
+    (ResumptionPskStore, WelcomeKeyMaterial),
     WelcomeError<<Provider as OpenMlsProvider>::StorageError>,
 > {
     let resumption_psk_store = ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
-    let key_package_bundle: KeyPackageBundle = welcome
-        .secrets()
-        .iter()
-        .find_map(|egs| {
-            let hash_ref = egs.new_member();
 
-            provider
-                .storage()
-                .key_package(&hash_ref)
-                .map_err(WelcomeError::StorageError)
-                .transpose()
-        })
-        .ok_or(WelcomeError::NoMatchingKeyPackage)??;
-    if !key_package_bundle.key_package().last_resort() {
-        provider
+    for egs in welcome.secrets() {
+        let hash_ref = egs.new_member();
+        if let Some(key_package_bundle) = provider
             .storage()
-            .delete_key_package(&key_package_bundle.key_package.hash_ref(provider.crypto())?)
-            .map_err(WelcomeError::StorageError)?;
-    } else {
-        log::debug!("Key package has last resort extension, not deleting");
+            .key_package(&hash_ref)
+            .map_err(WelcomeError::StorageError)?
+        {
+            let key_package_bundle: KeyPackageBundle = key_package_bundle;
+            if !key_package_bundle.key_package().last_resort() {
+                provider
+                    .storage()
+                    .delete_key_package(
+                        &key_package_bundle.key_package.hash_ref(provider.crypto())?,
+                    )
+                    .map_err(WelcomeError::StorageError)?;
+            } else {
+                log::debug!("Key package has last resort extension, not deleting");
+            }
+            return Ok((
+                resumption_psk_store,
+                WelcomeKeyMaterial::KeyPackage(Box::new(key_package_bundle)),
+            ));
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some(material) = vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref)? {
+            return Ok((
+                resumption_psk_store,
+                WelcomeKeyMaterial::VirtualClient(material),
+            ));
+        }
     }
-    Ok((resumption_psk_store, key_package_bundle))
+
+    Err(WelcomeError::NoMatchingKeyPackage)
+}
+
+/// Try to derive virtual-client welcome material for `hash_ref`. Returns
+/// `None` if no [`RetainedKeyPackageMaterial`] is stored for the ref, so the
+/// caller can keep scanning the welcome's encrypted group secrets.
+///
+/// On a match this reconstructs the per-KeyPackage seed pinned in the retained
+/// material at upload-processing time, deletes the consumed material, and
+/// derives the init and leaf-encryption keypairs from the seed under the
+/// Welcome's ciphersuite. It does not touch the operation tree: the batch
+/// generation was already consumed once when the upload was processed, and the
+/// seed is enough to reproduce the keys.
+///
+/// [`RetainedKeyPackageMaterial`]: crate::components::vc_derivation_info::RetainedKeyPackageMaterial
+#[cfg(feature = "virtual-clients-draft")]
+fn vc_welcome_material<Provider: OpenMlsProvider>(
+    provider: &Provider,
+    ciphersuite: Ciphersuite,
+    hash_ref: &crate::ciphersuite::hash_ref::KeyPackageRef,
+) -> Result<
+    Option<crate::components::vc_derivation_info::VcWelcomeMaterial>,
+    WelcomeError<<Provider as OpenMlsProvider>::StorageError>,
+> {
+    use crate::components::vc_derivation_info::{
+        RetainedKeyPackageMaterial, VcWelcomeMaterial, VirtualClientsError,
+    };
+
+    let storage = provider.storage();
+    let Some(material) = storage
+        .retained_key_package_material::<_, RetainedKeyPackageMaterial>(hash_ref)
+        .map_err(WelcomeError::StorageError)?
+    else {
+        return Ok(None);
+    };
+
+    let crypto = provider.crypto();
+    // The material is consumed once, mirroring the non-last-resort
+    // `delete_key_package` on the bundle path.
+    storage
+        .delete_retained_key_package_material(hash_ref)
+        .map_err(|e| {
+            log::error!("vc: delete retained key package material in welcome failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?;
+
+    // The seed was derived under the emulation ciphersuite at
+    // upload-processing time. The init and leaf-encryption keys are derived
+    // from it under the KeyPackage's own (the welcome's) ciphersuite.
+    let init_key_pair = material
+        .key_package_seed_secret
+        .derive_init_key_secret(crypto, ciphersuite)?
+        .generate_init_key_pair(crypto, ciphersuite)?;
+    let encryption_keypair = material
+        .key_package_seed_secret
+        .derive_encryption_key_secret(crypto, ciphersuite)?
+        .generate_encryption_key_pair(crypto, ciphersuite)?;
+
+    Ok(Some(VcWelcomeMaterial {
+        key_package_ref: hash_ref.clone(),
+        epoch_id: material.epoch_id,
+        leaf_index: material.leaf_index,
+        generation: material.generation,
+        key_package_index: material.key_package_index,
+        init_private_key: init_key_pair.private,
+        encryption_keypair,
+    }))
+}
+
+/// Find and validate the virtual client's own leaf in the ratchet tree.
+///
+/// A virtual client has no signature key of its own, so the leaf is located by
+/// the derivation info the VC sender embedded under [`VC_COMPONENT_ID`]: the
+/// leaf whose cleartext `epoch_id` equals the material's and whose
+/// `encryption_key` equals the key derived in the first welcome stage. That
+/// leaf's encrypted [`DerivationInfoTbe`] is then decrypted with the emulation
+/// epoch state and its `leaf_index`, `generation`, and `key_package_index`
+/// must equal the material's.
+///
+/// [`VC_COMPONENT_ID`]: crate::components::vc_derivation_info::VC_COMPONENT_ID
+/// [`DerivationInfoTbe`]: crate::components::vc_derivation_info::DerivationInfoTbe
+#[cfg(feature = "virtual-clients-draft")]
+fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
+    provider: &Provider,
+    public_group: &PublicGroup,
+    material: &crate::components::vc_derivation_info::VcWelcomeMaterial,
+) -> Result<LeafNodeIndex, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
+    use tls_codec::{DeserializeBytes as _, Serialize as _};
+
+    use crate::components::vc_derivation_info::{
+        DerivationInfo, DerivationInfoTbe, EmulationEpochState, VirtualClientOperationType,
+        VirtualClientsError, VC_COMPONENT_ID,
+    };
+
+    let crypto = provider.crypto();
+    let derived_encryption_key = material.encryption_keypair.public_key().as_slice().to_vec();
+
+    let own_index = public_group
+        .members()
+        .find(|m| m.encryption_key == derived_encryption_key)
+        .map(|m| m.index)
+        .ok_or(WelcomeError::PublicTreeError(
+            PublicTreeError::MalformedTree,
+        ))?;
+
+    let own_leaf = public_group
+        .leaf(own_index)
+        .ok_or(WelcomeError::PublicTreeError(
+            PublicTreeError::MalformedTree,
+        ))?;
+
+    let derivation_info_bytes = own_leaf
+        .extensions()
+        .app_data_dictionary()
+        .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+        .ok_or(VirtualClientsError::VcComponentNotListed)?;
+    let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
+        .map_err(|e| {
+            log::error!("vc: welcome leaf derivation info deserialize failed: {e:?}");
+            VirtualClientsError::DerivationInfoMalformed
+        })?;
+    if derivation_info.epoch_id() != &material.epoch_id {
+        log::error!("vc: welcome leaf epoch id does not match the retained material");
+        return Err(VirtualClientsError::DerivationInfoMalformed.into());
+    }
+
+    let state: EmulationEpochState = provider
+        .storage()
+        .vc_emulation_epoch_state(&material.epoch_id)
+        .map_err(|e| {
+            log::error!("vc: load emulation epoch state in welcome staging failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?
+        .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+    let (_state_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
+
+    let leaf_encryption_key = own_leaf
+        .encryption_key()
+        .tls_serialize_detached()
+        .map_err(VirtualClientsError::from)?;
+    // A KeyPackage leaf carries the `KeyPackage` variant of the tagless
+    // select, so it decodes with `key_package_index` present.
+    let tbe = derivation_info.decrypt(
+        crypto,
+        emulation_ciphersuite,
+        &epoch_encryption_key,
+        &leaf_encryption_key,
+        VirtualClientOperationType::KeyPackage,
+    )?;
+
+    let DerivationInfoTbe::KeyPackage {
+        leaf_index,
+        generation,
+        key_package_index,
+    } = tbe
+    else {
+        log::error!("vc: welcome leaf derivation info is not a key-package variant");
+        return Err(VirtualClientsError::DerivationInfoMalformed.into());
+    };
+    if leaf_index != material.leaf_index
+        || generation != material.generation
+        || key_package_index != material.key_package_index
+    {
+        log::error!("vc: welcome leaf derivation info does not match the retained material");
+        return Err(VirtualClientsError::DerivationInfoMalformed.into());
+    }
+
+    Ok(own_index)
 }
 
 /// Verify or skip the validation of leaf node lifetimes in the ratchet tree

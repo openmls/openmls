@@ -4,6 +4,8 @@ use thiserror::Error;
 use tls_codec::{Error as TlsCodecError, TlsSerialize, TlsSize};
 
 use super::*;
+#[cfg(feature = "virtual-clients-draft")]
+use crate::tree::dual_use_ratchet::DualUseRatchet;
 use crate::{
     binary_tree::{
         array_representation::{
@@ -279,25 +281,37 @@ impl SecretTree {
             "application ratchet secret {application_ratchet_secret:x?}"
         );
 
-        // Initialize SenderRatchets, we differentiate between the own SenderRatchets
-        // and the SenderRatchets of other members
+        // Initialize SenderRatchets. We differentiate between the own
+        // SenderRatchets and the SenderRatchets of other members. With the
+        // `virtual-clients-draft` feature, the own SenderRatchets are
+        // [`DualUseRatchet`]s, which can produce key material for both
+        // encryption and decryption.
         let (handshake_sender_ratchet, application_sender_ratchet) = if index == self.own_index {
-            let handshake_sender_ratchet = SenderRatchet::EncryptionRatchet(
-                RatchetSecret::initial_ratchet_secret(handshake_ratchet_secret),
-            );
-            let application_sender_ratchet = SenderRatchet::EncryptionRatchet(
-                RatchetSecret::initial_ratchet_secret(application_ratchet_secret),
-            );
-
-            (handshake_sender_ratchet, application_sender_ratchet)
+            #[cfg(not(feature = "virtual-clients-draft"))]
+            {
+                (
+                    SenderRatchet::EncryptionRatchet(RatchetSecret::initial_ratchet_secret(
+                        handshake_ratchet_secret,
+                    )),
+                    SenderRatchet::EncryptionRatchet(RatchetSecret::initial_ratchet_secret(
+                        application_ratchet_secret,
+                    )),
+                )
+            }
+            #[cfg(feature = "virtual-clients-draft")]
+            {
+                (
+                    SenderRatchet::DualUse(DualUseRatchet::new(handshake_ratchet_secret)),
+                    SenderRatchet::DualUse(DualUseRatchet::new(application_ratchet_secret)),
+                )
+            }
         } else {
-            let handshake_sender_ratchet =
-                SenderRatchet::DecryptionRatchet(DecryptionRatchet::new(handshake_ratchet_secret));
-            let application_sender_ratchet = SenderRatchet::DecryptionRatchet(
-                DecryptionRatchet::new(application_ratchet_secret),
-            );
-
-            (handshake_sender_ratchet, application_sender_ratchet)
+            (
+                SenderRatchet::DecryptionRatchet(DecryptionRatchet::new(handshake_ratchet_secret)),
+                SenderRatchet::DecryptionRatchet(DecryptionRatchet::new(
+                    application_ratchet_secret,
+                )),
+            )
         };
 
         *self
@@ -346,6 +360,11 @@ impl SecretTree {
                 log::trace!("   getting secret for decryption");
                 dec_ratchet.secret_for_decryption(ciphersuite, crypto, generation, configuration)
             }
+            #[cfg(feature = "virtual-clients-draft")]
+            SenderRatchet::DualUse(dual_ratchet) => {
+                log::trace!("   getting secret for decryption (own dual-use ratchet)");
+                dual_ratchet.secret_for_decryption(ciphersuite, crypto, generation, configuration)
+            }
         }
     }
 
@@ -368,6 +387,27 @@ impl SecretTree {
             }
             SenderRatchet::EncryptionRatchet(enc_ratchet) => {
                 enc_ratchet.ratchet_forward(crypto, ciphersuite)
+            }
+            #[cfg(feature = "virtual-clients-draft")]
+            SenderRatchet::DualUse(dual_ratchet) => {
+                dual_ratchet.secret_for_encryption(ciphersuite, crypto)
+            }
+        }
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn delete_own_secret_for_generation(
+        &mut self,
+        secret_type: SecretType,
+        generation: Generation,
+    ) -> Result<(), SecretTreeError> {
+        match self.ratchet_mut(self.own_index, secret_type)? {
+            SenderRatchet::DualUse(dual_ratchet) => {
+                dual_ratchet.delete_secret_for_generation(generation);
+                Ok(())
+            }
+            SenderRatchet::EncryptionRatchet(_) | SenderRatchet::DecryptionRatchet(_) => {
+                Err(SecretTreeError::RatchetTypeError)
             }
         }
     }
