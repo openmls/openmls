@@ -20,6 +20,7 @@ impl Codec for JsonCodec {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct TestGroupId(pub Vec<u8>);
 impl Key<CURRENT_VERSION> for TestGroupId {}
+impl Entity<CURRENT_VERSION> for TestGroupId {}
 impl traits::GroupId<CURRENT_VERSION> for TestGroupId {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Copy)]

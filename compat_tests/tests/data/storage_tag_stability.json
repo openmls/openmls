@@ -3,7 +3,7 @@
     {
       "input": "Basic",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -11,7 +11,7 @@
     {
       "input": "X509",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -30,7 +30,7 @@
         "Other": 20
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -40,7 +40,7 @@
     {
       "input": "ApplicationId",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -48,7 +48,7 @@
     {
       "input": "RatchetTree",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -56,7 +56,7 @@
     {
       "input": "RequiredCapabilities",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -64,7 +64,7 @@
     {
       "input": "ExternalPub",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -72,7 +72,7 @@
     {
       "input": "ExternalSenders",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -80,7 +80,7 @@
     {
       "input": "LastResort",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -105,7 +105,7 @@
         "Unknown": 20
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -121,7 +121,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -133,7 +133,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -147,7 +147,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -161,7 +161,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -171,7 +171,7 @@
         "ExternalSenders": []
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -193,7 +193,7 @@
         "LastResort": {}
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -206,7 +206,7 @@
         ]
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -216,7 +216,7 @@
     {
       "input": "Add",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -224,7 +224,7 @@
     {
       "input": "Update",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -232,7 +232,7 @@
     {
       "input": "Remove",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -240,7 +240,7 @@
     {
       "input": "PreSharedKey",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -248,7 +248,7 @@
     {
       "input": "Reinit",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -256,7 +256,7 @@
     {
       "input": "ExternalInit",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -264,7 +264,7 @@
     {
       "input": "GroupContextExtensions",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -272,7 +272,7 @@
     {
       "input": "SelfRemove",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -303,7 +303,7 @@
         "Custom": 20
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -376,7 +376,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -423,7 +423,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -435,7 +435,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -458,7 +458,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -479,7 +479,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -493,7 +493,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -507,7 +507,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -530,7 +530,7 @@
     {
       "input": "SelfRemove",
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]
@@ -556,7 +556,7 @@
         }
       },
       "supported": [
-        "OpenMls_0_7_1",
+        "OpenMls_0_7_0",
         "OpenMls_0_8_1",
         "OpenMls_0_8_1_Extensions"
       ]

@@ -25,6 +25,7 @@ impl Codec for JsonCodec {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 struct TestGroupId(Vec<u8>);
 impl traits::GroupId<1> for TestGroupId {}
+impl Entity<1> for TestGroupId {}
 impl Key<1> for TestGroupId {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Copy)]

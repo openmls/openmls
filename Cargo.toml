@@ -15,6 +15,7 @@ members = [
     "openmls_test",
     "sqlite_storage",
     "serialization_helpers",
+    "storage_migration",
 ]
 exclude = ["compat_tests", "sqlx_storage"]
 resolver = "2"
@@ -36,4 +37,5 @@ openmls_libcrux_crypto = { version = "0.3.1", path = "libcrux_crypto" }
 
 openmls_memory_storage = { version = "0.5.0", path = "memory_storage" }
 openmls_serialization_helpers = { version = "0.1.0", path = "serialization_helpers" }
+openmls_storage_migration = { version = "0.1.0", path = "storage_migration" }
 openmls_sqlite_storage = { version = "0.2.0", path = "sqlite_storage" }
