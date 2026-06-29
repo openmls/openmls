@@ -89,3 +89,15 @@ jobs:
           --group-features js,js-test \
           --group-features 0-8-1-storage-format,generate-kats,unchecked-conversions,fork-resolution \
           --exclude-features all-ciphersuites
+
+  # Verify the crates build with the declared MSRV (specified in rust-version in Cargo.toml)
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get -y install protobuf-compiler # Needed to build the interop client
+      - uses: actions/checkout@v7
+      # keep in sync with rust-version in Cargo.toml
+      - uses: dtolnay/rust-toolchain@1.91.0
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --locked --workspace --all-features --all-targets

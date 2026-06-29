@@ -3,6 +3,7 @@ name = "openmls_test"
 version = "0.2.1"
 authors = ["OpenMLS Authors"]
 edition = "2021"
+rust-version.workspace = true
 description = "Test utility used by OpenMLS"
 license = "MIT"
 documentation = "https://docs.rs/openmls_test"

@@ -3,6 +3,7 @@ name = "openmls_memory_storage"
 authors = ["OpenMLS Authors"]
 version = "0.5.0"
 edition = "2021"
+rust-version.workspace = true
 description = "A very basic storage for OpenMLS implementing openmls_traits."
 license = "MIT"
 documentation = "https://docs.rs/openmls_memory_storage"
