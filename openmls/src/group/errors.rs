@@ -101,6 +101,11 @@ pub enum WelcomeError<StorageError> {
     /// A group with this [`GroupId`] already exists.
     #[error("A group with this [`GroupId`] already exists.")]
     GroupAlreadyExists,
+    /// A virtual-clients error occurred while deriving or validating the
+    /// virtual client's join material.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
 }
 
 /// External Commit error

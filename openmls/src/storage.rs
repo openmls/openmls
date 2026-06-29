@@ -155,7 +155,7 @@ impl traits::ApplicationExportTree<CURRENT_VERSION> for ApplicationExportTree {}
 mod virtual_clients_storage {
     use super::*;
     use crate::components::vc_derivation_info::{
-        EmulationEpochState, EpochId, VcEmulationBindings,
+        EmulationEpochState, EpochId, RetainedKeyPackageMaterial, VcEmulationBindings,
     };
     use crate::components::vc_operation_tree::OperationSecretTree;
 
@@ -172,6 +172,9 @@ mod virtual_clients_storage {
 
     impl Entity<CURRENT_VERSION> for OperationSecretTree {}
     impl traits::VcOperationTree<CURRENT_VERSION> for OperationSecretTree {}
+
+    impl Entity<CURRENT_VERSION> for RetainedKeyPackageMaterial {}
+    impl traits::RetainedKeyPackageMaterial<CURRENT_VERSION> for RetainedKeyPackageMaterial {}
 }
 
 #[cfg(test)]

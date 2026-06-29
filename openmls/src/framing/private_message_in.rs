@@ -312,11 +312,8 @@ pub(crate) struct PrivateMessageContentIn {
     pub(crate) auth: FramedContentAuthData,
 }
 
-// The following `From` implementation( breaks abstraction layers and MUST
-// NOT be made available outside of tests or "test-utils".
-#[cfg(any(feature = "test-utils", test))]
-impl From<PrivateMessageIn> for PrivateMessage {
-    fn from(value: PrivateMessageIn) -> Self {
+impl From<PrivateMessage> for PrivateMessageIn {
+    fn from(value: PrivateMessage) -> Self {
         Self {
             group_id: value.group_id,
             epoch: value.epoch,
@@ -328,9 +325,11 @@ impl From<PrivateMessageIn> for PrivateMessage {
     }
 }
 
+// The following `From` implementation( breaks abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
 #[cfg(any(feature = "test-utils", test))]
-impl From<PrivateMessage> for PrivateMessageIn {
-    fn from(value: PrivateMessage) -> Self {
+impl From<PrivateMessageIn> for PrivateMessage {
+    fn from(value: PrivateMessageIn) -> Self {
         Self {
             group_id: value.group_id,
             epoch: value.epoch,
