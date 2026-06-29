@@ -3,6 +3,7 @@ name = "openmls"
 version = "0.8.1"
 authors = ["OpenMLS Authors"]
 edition = "2021"
+rust-version.workspace = true
 description = "A Rust implementation of the Messaging Layer Security (MLS) protocol, as defined in RFC 9420."
 license = "MIT"
 documentation = "https://docs.rs/openmls"
