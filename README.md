@@ -82,7 +82,7 @@ For more details when working on OpenMLS itself please see the [Developer.md].
 
 ## Maintenance & Support
 
-OpenMLS is maintained and developed by [Phoenix R&D] and [Cryspen].
+OpenMLS is maintained and developed by [Phoenix R&D] and [CE Labs].
 
 ## Acknowledgements
 
@@ -103,5 +103,5 @@ OpenMLS is maintained and developed by [Phoenix R&D] and [Cryspen].
 [gh-deploy-docs-image]: https://img.shields.io/github/workflow/status/openmls/openmls/Deploy%20Docs/main?label=Deploy%20Docs&logo=github&style=for-the-badge
 [Developer.md]: https://github.com/openmls/openmls/blob/main/Developer.md
 [Phoenix R&D]: https://phnx.im
-[Cryspen]: https://cryspen.com
+[CE Labs]: https://celabs.eu
 [Zulip]: https://zulip.com/
