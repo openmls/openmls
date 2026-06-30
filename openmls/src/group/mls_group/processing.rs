@@ -738,28 +738,17 @@ impl MlsGroup {
                 }
             }
             FramedContentBody::Commit(commit) => {
-                // The Commit was authored by this client. We check that it
+                // A Commit from our own leaf that carries no virtual-client
+                // derivation info is our own commit echoed back. We confirm it
                 // matches the pending commit and signal the caller to merge
-                // that instead.
-                #[cfg(not(feature = "virtual-clients-draft"))]
-                if matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index()) {
-                    self.check_own_pending_commit(provider.crypto(), &content)?;
-                    return Ok(ProcessedMessage::new(
-                        self.group_id().clone(),
-                        epoch,
-                        sender,
-                        authenticated_data,
-                        ProcessedMessageContent::OwnPendingCommit,
-                        credential,
-                    ));
-                }
-
-                // Since this is a commit, we need to load the private key material we need for decryption.
-                let (old_epoch_keypairs, leaf_node_keypairs) =
-                    self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
-
-                // The receiver only takes the VC path when it can
-                // identify itself as a sibling from the commit shape:
+                // that instead of staging the incoming Commit. When the commit
+                // does carry VC material it is a sibling virtual-client commit
+                // and must be staged via the VC path below. We branch on the
+                // presence of VC material rather than the feature flag so that
+                // own commits are recognized in both configurations.
+                //
+                // The receiver only loads VC material when it can identify
+                // itself as a sibling from the commit shape:
                 //
                 // * `Sender::Member(idx)` with `idx == own_leaf_index`: the
                 //   sender committed through our shared higher-level leaf, so
@@ -780,6 +769,29 @@ impl MlsGroup {
                     };
                 #[cfg(not(feature = "virtual-clients-draft"))]
                 let _ = commit;
+
+                let is_own_pending_commit =
+                    matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
+                #[cfg(feature = "virtual-clients-draft")]
+                let is_own_pending_commit = is_own_pending_commit && vc_material.is_none();
+
+                if is_own_pending_commit {
+                    self.check_own_pending_commit(provider.crypto(), &content)?;
+                    return Ok(ProcessedMessage::new(
+                        self.group_id().clone(),
+                        epoch,
+                        sender,
+                        authenticated_data,
+                        ProcessedMessageContent::OwnPendingCommit,
+                        credential,
+                        #[cfg(feature = "virtual-clients-draft")]
+                        emulator_sender_leaf_index,
+                    ));
+                }
+
+                // Since this is a commit, we need to load the private key material we need for decryption.
+                let (old_epoch_keypairs, leaf_node_keypairs) =
+                    self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
 
                 let staged_commit = self.stage_commit_with_app_data_updates(
                     &content,
@@ -839,32 +851,14 @@ impl MlsGroup {
                     ProcessedMessageContent::ProposalMessage(proposal)
                 }
             }
-            #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_variables))]
             FramedContentBody::Commit(commit) => {
-                // The Commit was authored by this client. We check that it
-                // matches the pending commit and signal the caller to merge
-                // that instead.
-                #[cfg(not(feature = "virtual-clients-draft"))]
-                if matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index()) {
-                    self.check_own_pending_commit(provider.crypto(), &content)?;
-                    return Ok(ProcessedMessage::new(
-                        self.group_id().clone(),
-                        epoch,
-                        sender,
-                        authenticated_data,
-                        ProcessedMessageContent::OwnPendingCommit,
-                        credential,
-                    ));
-                }
-
-                // Since this is a commit, we need to load the private key material we need for decryption.
-                let (old_epoch_keypairs, leaf_node_keypairs) =
-                    self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
-
                 // See `process_internal_authenticated_content_with_app_data_updates`
-                // for the rationale. The receiver only takes the VC path when
-                // it can identify itself as a sibling of the
-                // sender from the commit shape: own-leaf sender, or external
+                // for the rationale. A Commit from our own leaf that carries no
+                // VC derivation info is our own commit echoed back and signals
+                // the caller to merge the pending commit; one that does carry VC
+                // material is a sibling virtual-client commit and is staged. The
+                // receiver only loads VC material when it can identify itself as
+                // a sibling from the commit shape: own-leaf sender, or external
                 // commit with an inline `Remove(own_leaf)`.
                 #[cfg(feature = "virtual-clients-draft")]
                 let (vc_material, vc_emulation_epoch_id) =
@@ -876,6 +870,31 @@ impl MlsGroup {
                     } else {
                         (None, None)
                     };
+                #[cfg(not(feature = "virtual-clients-draft"))]
+                let _ = commit;
+
+                let is_own_pending_commit =
+                    matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
+                #[cfg(feature = "virtual-clients-draft")]
+                let is_own_pending_commit = is_own_pending_commit && vc_material.is_none();
+
+                if is_own_pending_commit {
+                    self.check_own_pending_commit(provider.crypto(), &content)?;
+                    return Ok(ProcessedMessage::new(
+                        self.group_id().clone(),
+                        epoch,
+                        sender,
+                        authenticated_data,
+                        ProcessedMessageContent::OwnPendingCommit,
+                        credential,
+                        #[cfg(feature = "virtual-clients-draft")]
+                        emulator_sender_leaf_index,
+                    ));
+                }
+
+                // Since this is a commit, we need to load the private key material we need for decryption.
+                let (old_epoch_keypairs, leaf_node_keypairs) =
+                    self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
 
                 let staged_commit = self.stage_commit(
                     &content,

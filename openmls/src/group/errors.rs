@@ -215,7 +215,6 @@ pub enum StageCommitError {
     /// The epoch of the group context and PublicMessage didn't match.
     #[error("The epoch of the group context and PublicMessage didn't match.")]
     EpochMismatch,
-    #[cfg(not(feature = "virtual-clients-draft"))]
     /// The Commit was created by this client but does not match the pending commit.
     #[error("The Commit was created by this client but does not match the pending commit.")]
     OwnCommitMismatch,

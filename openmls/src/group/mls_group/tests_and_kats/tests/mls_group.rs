@@ -2949,7 +2949,6 @@ fn staged_commit_creation() {
     )
 }
 
-#[cfg(not(feature = "virtual-clients-draft"))]
 // Test processing of own commits
 #[openmls_test::openmls_test]
 fn own_commit_processing() {
@@ -2998,7 +2997,6 @@ fn own_commit_processing() {
         .expect("error merging pending commit after processing own commit");
 }
 
-#[cfg(not(feature = "virtual-clients-draft"))]
 // Test that an own commit which no longer matches a pending commit is rejected.
 #[openmls_test::openmls_test]
 fn own_commit_mismatch() {

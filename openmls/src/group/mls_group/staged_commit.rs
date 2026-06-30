@@ -12,12 +12,11 @@ use super::proposal_store::{
 #[cfg(feature = "virtual-clients-draft")]
 use super::Sender;
 use super::{
-    super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
-    JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
-    Proposal, ProposalQueue, PskSecret, QueuedProposal,
+    super::errors::*, errors::ProcessMessageError, load_psks, Credential, Extension, GroupContext,
+    GroupEpochSecrets, GroupId, JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets,
+    MlsGroup, MlsGroupState, OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue,
+    PskSecret, QueuedProposal,
 };
-#[cfg(not(feature = "virtual-clients-draft"))]
-use super::{errors::ProcessMessageError, MlsGroupState, PendingCommitState};
 use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;
 use crate::prelude::{Commit, LeafNodeIndex};
@@ -56,7 +55,6 @@ impl MlsGroup {
     /// confirmation tag binds the confirmed transcript hash of the new epoch.
     /// We never adopt the incoming Commit's state: the caller applies the
     /// locally built pending commit via [`MlsGroup::merge_pending_commit()`].
-    #[cfg(not(feature = "virtual-clients-draft"))]
     pub(crate) fn check_own_pending_commit<StorageError>(
         &self,
         crypto: &impl OpenMlsCrypto,
