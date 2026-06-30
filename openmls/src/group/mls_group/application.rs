@@ -13,7 +13,7 @@ use super::{errors::CreateMessageError, *};
 /// message together with the bookkeeping a virtual client needs to coordinate
 /// the send with the DS.
 #[cfg(feature = "virtual-clients-draft")]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnconfirmedMessage {
     /// The encrypted application message to fan out.
     pub message: MlsMessageOut,
