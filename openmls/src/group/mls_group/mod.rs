@@ -55,6 +55,9 @@ mod application;
 mod exporting;
 mod updates;
 
+#[cfg(feature = "virtual-clients-draft")]
+pub use application::UnconfirmedMessage;
+
 use config::*;
 
 // Crate
@@ -765,6 +768,30 @@ impl MlsGroup {
             #[cfg(feature = "virtual-clients-draft")]
             emulator_ctx.as_ref(),
         )?;
+
+        // When the group is bound to an emulation epoch, derive the generation
+        // ID the application hands to the DS to detect generation collisions
+        // between siblings. Only application messages carry one for now,
+        // matching the deferral of handshake VC framing in higher-level groups.
+        #[cfg(feature = "virtual-clients-draft")]
+        let msg = {
+            let mut msg = msg;
+            if let Some(state) = &emulation_state {
+                if public_message.content().content_type() == ContentType::Application {
+                    let generation_id = state
+                        .derive_generation_id(
+                            provider.crypto(),
+                            self.group_id(),
+                            self.epoch(),
+                            msg.generation,
+                            crate::components::vc_derivation_info::RatchetType::Application,
+                        )
+                        .map_err(MessageEncryptionError::VirtualClientsError)?;
+                    msg.generation_id = Some(generation_id);
+                }
+            }
+            msg
+        };
 
         provider
             .storage()

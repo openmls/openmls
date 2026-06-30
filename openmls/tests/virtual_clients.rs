@@ -1775,9 +1775,14 @@ fn processing_own_application_message() {
 
     // Alice sends an application message and decrypts it herself
     let alice_message = b"Hello, this is Alice!";
-    let (_generation, ciphertext) = alice_group
+    let unconfirmed = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
         .unwrap();
+    assert!(
+        unconfirmed.generation_id.is_none(),
+        "a group with no emulation binding must not produce a generation id"
+    );
+    let ciphertext = unconfirmed.message;
 
     let processed_message = alice_group
         .process_message(
@@ -1800,11 +1805,12 @@ fn processing_own_application_message() {
     // Alice sends another application message and confirms it. Trying to
     // decrypt it should then fail.
     let alice_message = b"Hello, this is Alice again!";
-    let (generation, ciphertext) = alice_group
+    let unconfirmed = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
         .unwrap();
+    let ciphertext = unconfirmed.message;
     alice_group
-        .confirm_message(alice_provider.storage(), generation)
+        .confirm_message(alice_provider.storage(), unconfirmed.generation)
         .unwrap();
 
     let _ = alice_group
@@ -1828,24 +1834,24 @@ fn unconfirmed_message_decrypts_after_next_message_is_confirmed() {
         .expect("An unexpected error occurred.");
 
     let first_message = b"first unconfirmed message";
-    let (first_generation, first_ciphertext) = alice_group
+    let first = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, first_message)
         .expect("Could not create first unconfirmed message.");
-    assert_eq!(first_generation, 0);
+    assert_eq!(first.generation, 0);
 
     let second_message = b"second confirmed message";
-    let (second_generation, _second_ciphertext) = alice_group
+    let second = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, second_message)
         .expect("Could not create second message.");
-    assert_eq!(second_generation, 1);
+    assert_eq!(second.generation, 1);
     alice_group
-        .confirm_message(alice_provider.storage(), second_generation)
+        .confirm_message(alice_provider.storage(), second.generation)
         .expect("Could not confirm second message.");
 
     let processed_message = alice_group
         .process_message(
             alice_provider,
-            first_ciphertext.into_protocol_message().unwrap(),
+            first.message.into_protocol_message().unwrap(),
         )
         .expect("Expected first unconfirmed message to decrypt.");
 
@@ -1868,7 +1874,7 @@ fn old_unconfirmed_own_message_survives_later_confirmations() {
         .expect("An unexpected error occurred.");
 
     let first_message = b"first unconfirmed message";
-    let (_first_generation, first_ciphertext) = alice_group
+    let first = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, first_message)
         .expect("Could not create first unconfirmed message.");
 
@@ -1878,7 +1884,7 @@ fn old_unconfirmed_own_message_survives_later_confirmations() {
         .out_of_order_tolerance();
 
     for i in 0..tolerance + 2 {
-        let (generation, _) = alice_group
+        let later = alice_group
             .create_unconfirmed_message(
                 alice_provider,
                 &alice_signer,
@@ -1886,14 +1892,14 @@ fn old_unconfirmed_own_message_survives_later_confirmations() {
             )
             .expect("Could not create later unconfirmed message.");
         alice_group
-            .confirm_message(alice_provider.storage(), generation)
+            .confirm_message(alice_provider.storage(), later.generation)
             .expect("Could not confirm later message.");
     }
 
     let processed_message = alice_group
         .process_message(
             alice_provider,
-            first_ciphertext.into_protocol_message().unwrap(),
+            first.message.into_protocol_message().unwrap(),
         )
         .expect("Expected old unconfirmed own message to decrypt.");
 
@@ -2048,6 +2054,57 @@ fn bound_group_fails_closed_when_emulation_state_missing_on_send() {
             )
         ),
         "unexpected error: {err:?}"
+    );
+}
+
+/// On a group bound to an emulation epoch, `create_unconfirmed_message`
+/// returns a generation ID, and consecutive ratchet generations produce
+/// distinct generation IDs.
+#[test]
+fn create_unconfirmed_message_returns_generation_id_when_bound() {
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let provider = OpenMlsRustCrypto::default();
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group =
+        new_vc_main_group(ciphersuite, &provider, &alice_signer, alice_credential);
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+
+    // Bind alice_group's current epoch to the emulation epoch.
+    let _ = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        &provider,
+        &alice_signer,
+    );
+
+    let first = alice_group
+        .create_unconfirmed_message(&provider, &alice_signer, b"first")
+        .expect("create first unconfirmed message");
+    let generation_id_first = first
+        .generation_id
+        .expect("a bound group must produce a generation id");
+    assert_eq!(
+        generation_id_first.as_slice().len(),
+        ciphersuite.hash_length()
+    );
+    alice_group
+        .confirm_message(provider.storage(), first.generation)
+        .expect("confirm first message");
+
+    let second = alice_group
+        .create_unconfirmed_message(&provider, &alice_signer, b"second")
+        .expect("create second unconfirmed message");
+    let generation_id_second = second
+        .generation_id
+        .expect("a bound group must produce a generation id");
+
+    assert_ne!(
+        generation_id_first, generation_id_second,
+        "distinct ratchet generations must yield distinct generation ids"
     );
 }
 
