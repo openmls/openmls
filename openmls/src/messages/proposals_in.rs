@@ -26,7 +26,7 @@ use super::{
     CustomProposal,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use super::proposals::{AppDataUpdateProposal, AppEphemeralProposal};
 
 /// Proposal.
@@ -60,12 +60,12 @@ pub enum ProposalIn {
     ExternalInit(Box<ExternalInitProposal>),
     GroupContextExtensions(Box<GroupContextExtensionProposalIn>),
     // # Extensions
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     AppDataUpdate(Box<AppDataUpdateProposal>),
 
     // A SelfRemove proposal is an empty struct.
     SelfRemove,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     AppEphemeral(Box<AppEphemeralProposal>),
     Custom(Box<CustomProposal>),
 }
@@ -81,10 +81,10 @@ impl ProposalIn {
             ProposalIn::ReInit(_) => ProposalType::Reinit,
             ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
             ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalIn::AppDataUpdate(_) => ProposalType::AppDataUpdate,
             ProposalIn::SelfRemove => ProposalType::SelfRemove,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalIn::AppEphemeral(_) => ProposalType::AppEphemeral,
             ProposalIn::Custom(custom_proposal) => {
                 ProposalType::Custom(custom_proposal.proposal_type())
@@ -127,10 +127,10 @@ impl ProposalIn {
             ProposalIn::GroupContextExtensions(group_context_extension) => {
                 Proposal::group_context_extensions(group_context_extension.validate()?)
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalIn::AppDataUpdate(app_data_update) => Proposal::AppDataUpdate(app_data_update),
             ProposalIn::SelfRemove => Proposal::SelfRemove,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalIn::AppEphemeral(app_ephemeral) => Proposal::AppEphemeral(app_ephemeral),
             ProposalIn::Custom(custom) => Proposal::Custom(custom),
         })
@@ -393,10 +393,10 @@ impl From<ProposalIn> for crate::messages::proposals::Proposal {
             ProposalIn::GroupContextExtensions(group_context_extension) => {
                 Self::GroupContextExtensions((*group_context_extension).into())
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalIn::AppDataUpdate(app_data_update) => Self::AppDataUpdate(app_data_update),
             ProposalIn::SelfRemove => Self::SelfRemove,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalIn::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),
             ProposalIn::Custom(other) => Self::Custom(other),
         }
@@ -415,10 +415,10 @@ impl From<crate::messages::proposals::Proposal> for ProposalIn {
             Proposal::GroupContextExtensions(group_context_extension) => {
                 Self::GroupContextExtensions((*group_context_extension).into())
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Proposal::AppDataUpdate(app_data_update) => Self::AppDataUpdate(app_data_update),
             Proposal::SelfRemove => Self::SelfRemove,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Proposal::AppEphemeral(app_ephemeral) => Self::AppEphemeral(app_ephemeral),
             Proposal::Custom(other) => Self::Custom(other),
         }

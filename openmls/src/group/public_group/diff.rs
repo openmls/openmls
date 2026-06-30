@@ -9,7 +9,7 @@ use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use super::errors::ApplyAppDataUpdateError;
 
 #[cfg(feature = "virtual-clients-draft")]

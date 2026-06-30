@@ -13,7 +13,7 @@ use super::{
     FrankenRemoveProposal, FrankenUpdateProposal,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use super::{FrankenAppDataUpdateProposal, FrankenAppEphemeralProposal};
 
 fn vlbytes_len_len(length: usize) -> usize {
@@ -77,9 +77,9 @@ impl Size for FrankenProposal {
                 FrankenProposal::ReInit(p) => p.tls_serialized_len(),
                 FrankenProposal::ExternalInit(p) => p.tls_serialized_len(),
                 FrankenProposal::GroupContextExtensions(p) => p.tls_serialized_len(),
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 FrankenProposal::AppEphemeral(p) => p.tls_serialized_len(),
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 FrankenProposal::AppDataUpdate(p) => p.tls_serialized_len(),
                 FrankenProposal::Custom(p) => p.tls_serialized_len(),
             }
@@ -97,9 +97,9 @@ impl Serialize for FrankenProposal {
             FrankenProposal::ReInit(p) => p.tls_serialize(writer),
             FrankenProposal::ExternalInit(p) => p.tls_serialize(writer),
             FrankenProposal::GroupContextExtensions(p) => p.tls_serialize(writer),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             FrankenProposal::AppEphemeral(p) => p.tls_serialize(writer),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             FrankenProposal::AppDataUpdate(p) => p.tls_serialize(writer),
             FrankenProposal::Custom(p) => p.payload.tls_serialize(writer),
         }
@@ -135,11 +135,11 @@ impl Deserialize for FrankenProposal {
             FrankenProposalType::GroupContextExtensions => FrankenProposal::GroupContextExtensions(
                 Vec::<FrankenExtension>::tls_deserialize(bytes)?,
             ),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             FrankenProposalType::AppEphemeral => {
                 FrankenProposal::AppEphemeral(FrankenAppEphemeralProposal::tls_deserialize(bytes)?)
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             FrankenProposalType::AppDataUpdate => FrankenProposal::AppDataUpdate(
                 FrankenAppDataUpdateProposal::tls_deserialize(bytes)?,
             ),

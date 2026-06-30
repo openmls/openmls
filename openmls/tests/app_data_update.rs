@@ -1,4 +1,4 @@
-#![cfg(feature = "extensions-draft-08")]
+#![cfg(feature = "extensions-draft")]
 
 use openmls::component::*;
 use openmls::extensions::*;

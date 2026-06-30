@@ -367,13 +367,13 @@ impl ProcessedWelcome {
         struct KeyScheduleResult {
             group_epoch_secrets: GroupEpochSecrets,
             message_secrets: MessageSecrets,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_exporter: ApplicationExportSecret,
         }
         let KeyScheduleResult {
             group_epoch_secrets,
             message_secrets,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
                 application_exporter: application_export_secret,
         } = {
             let serialized_group_context = public_group
@@ -388,7 +388,7 @@ impl ProcessedWelcome {
 
             let EpochSecretsResult {
                 epoch_secrets,
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 application_exporter,
             } = self
                 .key_schedule
@@ -404,7 +404,7 @@ impl ProcessedWelcome {
             KeyScheduleResult {
                 group_epoch_secrets,
                 message_secrets,
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 application_exporter,
             }
         };
@@ -469,7 +469,7 @@ impl ProcessedWelcome {
             group_epoch_secrets,
             own_leaf_index,
             message_secrets_store,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_export_secret,
             resumption_psk_store: self.resumption_psk_store,
             verifiable_group_info: self.verifiable_group_info,
@@ -548,7 +548,7 @@ impl StagedWelcome {
     }
 
     /// Get the [`ApplicationExportSecret`] of this welcome.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn application_export_secret(&self) -> &ApplicationExportSecret {
         &self.application_export_secret
     }
@@ -568,7 +568,7 @@ impl StagedWelcome {
             vec![self.key_material.encryption_key_pair()]
         };
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let application_export_tree = ApplicationExportTree::new(self.application_export_secret);
 
         let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();
@@ -577,7 +577,7 @@ impl StagedWelcome {
             mls_group_config: self.mls_group_config,
             own_leaf_nodes: vec![],
             aad: vec![],
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             safe_aad: crate::framing::SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group: self.public_group,
@@ -585,7 +585,7 @@ impl StagedWelcome {
             own_leaf_index: self.own_leaf_index,
             message_secrets_store: self.message_secrets_store,
             resumption_psk_store: self.resumption_psk_store,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_export_tree: Some(application_export_tree),
         };
 

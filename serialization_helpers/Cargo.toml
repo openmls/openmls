@@ -3,6 +3,7 @@ name = "openmls_serialization_helpers"
 version = "0.1.0"
 authors = ["OpenMLS Authors"]
 edition = "2021"
+rust-version.workspace = true
 description = "Serialization helpers used by OpenMLS"
 license = "MIT"
 documentation = "https://docs.rs/openmls_serialization_helpers"

@@ -257,7 +257,7 @@ const EPOCH_KEY_PAIRS_LABEL: &[u8] = b"EpochKeyPairs";
 // related to PublicGroup
 const TREE_LABEL: &[u8] = b"Tree";
 const GROUP_CONTEXT_LABEL: &[u8] = b"GroupContext";
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 const APPLICATION_EXPORT_TREE_LABEL: &[u8] = b"ApplicationExportTree";
 #[cfg(feature = "virtual-clients-draft")]
 const VC_EMULATION_EPOCH_STATE_LABEL: &[u8] = b"VcEmulationEpochState";
@@ -994,7 +994,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         self.delete::<CURRENT_VERSION>(QUEUED_PROPOSAL_LABEL, &key)
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn write_application_export_tree<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
@@ -1010,7 +1010,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn application_export_tree<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
@@ -1029,7 +1029,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         Ok(value)
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn delete_application_export_tree<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,

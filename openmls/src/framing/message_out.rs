@@ -193,6 +193,30 @@ impl MlsMessageOut {
     }
 }
 
+impl From<MlsMessageBodyOut> for MlsMessageBodyIn {
+    fn from(value: MlsMessageBodyOut) -> Self {
+        match value {
+            MlsMessageBodyOut::PublicMessage(pm) => MlsMessageBodyIn::PublicMessage(pm.into()),
+            MlsMessageBodyOut::PrivateMessage(pm) => MlsMessageBodyIn::PrivateMessage(pm.into()),
+            MlsMessageBodyOut::Welcome(w) => MlsMessageBodyIn::Welcome(w),
+            MlsMessageBodyOut::GroupInfo(gi) => {
+                MlsMessageBodyIn::GroupInfo(gi.into_verifiable_group_info())
+            }
+            MlsMessageBodyOut::KeyPackage(kp) => MlsMessageBodyIn::KeyPackage(kp.into()),
+        }
+    }
+}
+
+impl From<MlsMessageOut> for MlsMessageIn {
+    fn from(mls_message_out: MlsMessageOut) -> Self {
+        let MlsMessageOut { version, body } = mls_message_out;
+        Self {
+            version,
+            body: body.into(),
+        }
+    }
+}
+
 // The following two `From` implementations break abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
 
@@ -206,23 +230,6 @@ impl From<MlsMessageIn> for MlsMessageOut {
             MlsMessageBodyIn::KeyPackage(kp) => MlsMessageBodyOut::KeyPackage(kp.into()),
             MlsMessageBodyIn::PublicMessage(pm) => MlsMessageBodyOut::PublicMessage(pm.into()),
             MlsMessageBodyIn::PrivateMessage(pm) => MlsMessageBodyOut::PrivateMessage(pm.into()),
-        };
-        Self { version, body }
-    }
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl From<MlsMessageOut> for MlsMessageIn {
-    fn from(mls_message_out: MlsMessageOut) -> Self {
-        let version = mls_message_out.version;
-        let body = match mls_message_out.body {
-            MlsMessageBodyOut::PublicMessage(pm) => MlsMessageBodyIn::PublicMessage(pm.into()),
-            MlsMessageBodyOut::PrivateMessage(pm) => MlsMessageBodyIn::PrivateMessage(pm.into()),
-            MlsMessageBodyOut::Welcome(w) => MlsMessageBodyIn::Welcome(w),
-            MlsMessageBodyOut::GroupInfo(gi) => {
-                MlsMessageBodyIn::GroupInfo(gi.into_verifiable_group_info())
-            }
-            MlsMessageBodyOut::KeyPackage(kp) => MlsMessageBodyIn::KeyPackage(kp.into()),
         };
         Self { version, body }
     }

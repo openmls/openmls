@@ -21,7 +21,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::messages::proposals_in::ProposalOrRefIn;
 
 #[cfg(doc)]
@@ -193,7 +193,7 @@ impl VerifiableAuthenticatedContentIn {
 
     /// If this message is a commit, this returns the unverified list of committed porposals.
     /// Otherwise it returns `None`.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
         self.tbs.content.proposals()
     }

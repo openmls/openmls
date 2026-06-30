@@ -19,6 +19,9 @@ members = [
 exclude = ["compat_tests", "sqlx_storage"]
 resolver = "2"
 
+[workspace.package]
+rust-version = "1.91.0"
+
 # Central dependency management for some crates
 [workspace.dependencies]
 tls_codec = { version = "0.4.2", features = ["derive", "serde", "mls"] }

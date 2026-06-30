@@ -1,9 +1,9 @@
 //! Unit tests for the core group
 
 mod aad;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 mod app_data_update_proposal_validation;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 mod safe_aad;
 
 mod capabilities_check;

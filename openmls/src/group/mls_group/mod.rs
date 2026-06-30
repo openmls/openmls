@@ -47,7 +47,7 @@ use openmls_traits::{
     crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _, types::Ciphersuite,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
 
 // Private
@@ -73,7 +73,7 @@ pub(crate) mod proposal;
 pub(crate) mod proposal_store;
 pub(crate) mod staged_commit;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub(crate) mod app_ephemeral;
 
 // Tests
@@ -259,7 +259,7 @@ pub struct MlsGroup {
     // Safe AAD items to attach to the next outgoing message. Ephemeral, reset
     // alongside `aad`. Only consulted when the group's GroupContext requires
     // Safe AAD framing.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     safe_aad: SafeAad,
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
@@ -267,7 +267,7 @@ pub struct MlsGroup {
     /// The state of the Application Exporter. See the MLS Extensions Draft 08
     /// for more information. This is `None` if an old OpenMLS group state was
     /// loaded and has not yet merged a commit.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     application_export_tree: Option<ApplicationExportTree>,
 }
 
@@ -311,7 +311,7 @@ impl MlsGroup {
     /// is produced.
     ///
     /// [`ComponentId`]: crate::component::ComponentId
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn set_safe_aad(&mut self, items: Vec<SafeAadItem>) -> Result<(), SafeAadError> {
         self.safe_aad = SafeAad::from_items(items)?;
         Ok(())
@@ -319,7 +319,7 @@ impl MlsGroup {
 
     /// Returns the currently staged Safe AAD items for the next outgoing
     /// message.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_aad_items(&self) -> &[SafeAadItem] {
         self.safe_aad.items()
     }
@@ -475,7 +475,7 @@ impl MlsGroup {
         let mls_group_config = storage.mls_group_join_config(group_id)?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
         let group_state = storage.group_state(group_id)?;
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let application_export_tree = storage.application_export_tree(group_id)?;
 
         let build = || -> Option<Self> {
@@ -488,10 +488,10 @@ impl MlsGroup {
                 mls_group_config: mls_group_config?,
                 own_leaf_nodes,
                 aad: vec![],
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 safe_aad: SafeAad::empty(),
                 group_state: group_state?,
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 application_export_tree,
             })
         };
@@ -516,7 +516,7 @@ impl MlsGroup {
         storage.delete_group_state(self.group_id())?;
         storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
 
         // Drop this group's emulation-epoch bindings. `EmulationEpochState`
@@ -812,11 +812,11 @@ impl MlsGroup {
     /// Callers borrow the returned buffer into a [`FramingParameters`] for the
     /// duration of message construction.
     pub(crate) fn outgoing_authenticated_data(&self) -> Result<Vec<u8>, LibraryError> {
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         {
             self.assembled_authenticated_data()
         }
-        #[cfg(not(feature = "extensions-draft-08"))]
+        #[cfg(not(feature = "extensions-draft"))]
         {
             Ok(self.aad.clone())
         }
@@ -826,7 +826,7 @@ impl MlsGroup {
     /// message. When the GroupContext requires Safe AAD framing, the result is
     /// the TLS serialization of the staged [`SafeAad`] followed by the bytes of
     /// `self.aad`. Otherwise, the result is `self.aad` unchanged.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn assembled_authenticated_data(&self) -> Result<Vec<u8>, LibraryError> {
         if !self.context().safe_aad_required() {
             return Ok(self.aad.clone());
@@ -877,7 +877,7 @@ impl MlsGroup {
     #[inline]
     pub(crate) fn reset_aad(&mut self) {
         self.aad.clear();
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         {
             self.safe_aad = SafeAad::empty();
         }
@@ -970,7 +970,7 @@ impl MlsGroup {
         storage.write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)?;
         storage.write_mls_join_config(self.group_id(), &self.mls_group_config)?;
         storage.write_group_state(self.group_id(), &self.group_state)?;
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         if let Some(application_export_tree) = &self.application_export_tree {
             storage.write_application_export_tree(self.group_id(), application_export_tree)?;
         }
@@ -1141,7 +1141,7 @@ impl MlsGroup {
                     self.group_state, other.group_state
                 ));
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             if self.application_export_tree != other.application_export_tree {
                 diagnostics.push(format!(
                     "application_export_tree:\n  Current: {:?}\n  Loaded:  {:?}",
@@ -1184,7 +1184,7 @@ pub struct StagedWelcome {
 
     /// A secret that is not stored as part of the [`MlsGroup`] after the group is created.
     /// It can be used by the application to derive forward secure secrets.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     application_export_secret: ApplicationExportSecret,
 
     /// Resumption psk store. This is where the resumption psks are kept in a rollover list.

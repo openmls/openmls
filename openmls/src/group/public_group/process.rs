@@ -20,7 +20,7 @@ use crate::{
     messages::proposals::Proposal,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     component::ComponentData,
     messages::{
@@ -199,7 +199,7 @@ impl PublicGroup {
     /// This is equivalent to [`Self::process_message`] for messages without app-data update
     /// proposals. If app-data update proposals are committed by value, their resulting dictionary
     /// changes are computed and supplied during staged commit validation.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn process_message_with_app_data_updates(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -236,7 +236,7 @@ impl PublicGroup {
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn extract_app_data_updates(&self, unverified: &UnverifiedMessage) -> Option<AppDataUpdates> {
         let mut updater = AppDataDictionaryUpdater::new(self.group_context().app_data_dict());
         let mut updated = false;
@@ -302,7 +302,7 @@ impl PublicGroup {
         let content = verified.content;
         let credential = verified.credential;
 
-        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
         let mut processed = match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 self.process_internal_authenticated_content(crypto, content, credential)?
@@ -311,7 +311,7 @@ impl PublicGroup {
                 self.process_external_authenticated_content(crypto, content, credential)?
             }
         };
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         if self.group_context().safe_aad_required() {
             processed
                 .try_attach_safe_aad()
@@ -346,7 +346,7 @@ impl PublicGroup {
     ///  - ValSem242
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn process_unverified_message_with_app_data_updates(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -361,7 +361,7 @@ impl PublicGroup {
         let content = verified.content;
         let credential = verified.credential;
 
-        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
         let mut processed = match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => self
                 .process_internal_authenticated_content_with_app_data_updates(
@@ -374,7 +374,7 @@ impl PublicGroup {
                 self.process_external_authenticated_content(crypto, content, credential)?
             }
         };
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         if self.group_context().safe_aad_required() {
             processed
                 .try_attach_safe_aad()
@@ -428,7 +428,7 @@ impl PublicGroup {
         ))
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn process_internal_authenticated_content_with_app_data_updates(
         &self,
         crypto: &impl OpenMlsCrypto,

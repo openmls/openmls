@@ -34,7 +34,7 @@ jobs:
           - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -46,9 +46,9 @@ jobs:
       - name: Test openmls_sqlx_storage
         run: |
           cargo test --manifest-path sqlx_storage/Cargo.toml
-      - name: Build openmls_sqlx_storage with `extensions-draft-08` feature
+      - name: Build openmls_sqlx_storage with `extensions-draft` feature
         run: |
-          cargo build -F extensions-draft-08 --manifest-path sqlx_storage/Cargo.toml
-      - name: Test openmls_sqlx_storage with `extensions-draft-08` feature
+          cargo build -F extensions-draft --manifest-path sqlx_storage/Cargo.toml
+      - name: Test openmls_sqlx_storage with `extensions-draft` feature
         run: |
-          cargo test -F extensions-draft-08 --manifest-path sqlx_storage/Cargo.toml
+          cargo test -F extensions-draft --manifest-path sqlx_storage/Cargo.toml
