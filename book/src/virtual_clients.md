@@ -67,6 +67,7 @@ Every leaf that carries virtual-client material must declare support for the
 accordingly when you create or join an emulation group or a higher-level group:
 
 ```rust,no_run,noplayground
+use openmls::component::{ComponentId, ComponentType};
 use openmls::components::vc_derivation_info::VC_COMPONENT_ID;
 use openmls::extensions::{
     AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
@@ -78,11 +79,10 @@ let capabilities = Capabilities::builder()
     .extensions(vec![ExtensionType::AppDataDictionary])
     .build();
 
-let supported_components: Vec<u16> = vec![VC_COMPONENT_ID];
+let supported_components: Vec<ComponentId> = vec![VC_COMPONENT_ID];
 let app_components_body = supported_components.tls_serialize_detached().unwrap();
 let mut dictionary = AppDataDictionary::new();
-// ComponentType::AppComponents == 1
-dictionary.insert(1, app_components_body);
+dictionary.insert(ComponentType::AppComponents.into(), app_components_body);
 let leaf_extensions = Extensions::from_vec(vec![Extension::AppDataDictionary(
     AppDataDictionaryExtension::new(dictionary),
 )])
