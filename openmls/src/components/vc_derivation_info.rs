@@ -6,8 +6,8 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{
-    DeserializeBytes, Serialize as _, Size as _, TlsDeserializeBytes, TlsSerialize, TlsSize,
-    VLByteSlice, VLBytes,
+    DeserializeBytes, SecretVLBytes, Serialize as _, Size as _, TlsDeserializeBytes, TlsSerialize,
+    TlsSize, VLByteSlice, VLBytes,
 };
 
 use crate::{
@@ -1140,6 +1140,57 @@ pub enum VirtualClientOperationType {
     Application = 3,
 }
 
+/// The external init secret carried by an external-commit LeafNode's
+/// `DerivationInfoTBE` (mls-virtual-clients draft):
+///
+/// ```text
+/// struct { opaque init_secret<V>; } ExternalInitSecret;
+/// ```
+///
+/// It is the `init_secret` produced by external initialization
+/// ({{Section 8.3 of RFC9420}}). A sibling emulator client processing the
+/// external commit uses it as the new epoch's external init secret instead of
+/// decapsulating from the previous epoch's `external_secret`, which it may not
+/// hold.
+#[derive(Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+pub(crate) struct ExternalInitSecret(SecretVLBytes);
+
+impl std::fmt::Debug for ExternalInitSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExternalInitSecret")
+            .field("init_secret", &"<redacted>")
+            .finish()
+    }
+}
+
+impl ExternalInitSecret {
+    pub(crate) fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes.to_vec().into())
+    }
+
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+}
+
+/// What a receiver derives from a sibling virtual client's commit in order to
+/// recreate it: the emulation `epoch_id` the commit binds to, the per-commit
+/// `operation_secret` the path is rederived from, and, for an external commit,
+/// the carried `external_init_secret` (`None` for a regular commit).
+///
+/// Produced by `MlsGroup::load_vc_commit_material` and threaded into commit
+/// staging as a single `Option`: either all three are present (a sibling VC
+/// commit) or none are.
+#[derive(Debug)]
+pub(crate) struct VcCommitMaterial {
+    /// Emulation epoch the commit's derivation info references.
+    pub(crate) epoch_id: EpochId,
+    /// Per-commit operation secret the receiver rederives the path from.
+    pub(crate) operation_secret: OperationSecret,
+    /// External init secret carried by an external commit, `None` otherwise.
+    pub(crate) external_init_secret: Option<ExternalInitSecret>,
+}
+
 /// AEAD plaintext attached to the leaf via the VC component
 /// (mls-virtual-clients draft):
 ///
@@ -1148,9 +1199,9 @@ pub enum VirtualClientOperationType {
 ///   uint32 leaf_index;
 ///   uint32 generation;
 ///   select (LeafNode.leaf_node_source) {
-///     case key_package:  uint32 key_package_index;
-///     case update:
-///     case commit:       struct{};
+///     case key_package: uint32 key_package_index;
+///     case update:      struct{};
+///     case commit:      optional<ExternalInitSecret> external_init_secret;
 ///   };
 /// } DerivationInfoTBE
 /// ```
@@ -1160,13 +1211,20 @@ pub enum VirtualClientOperationType {
 /// `generation` is the operation-ratchet generation the sender consumed for
 /// this operation. `key_package_index`, present only for the `KeyPackage`
 /// variant, is the KeyPackage's position within its `key_package` operation
-/// batch.
+/// batch. `external_init_secret`, present only for the commit variant, carries
+/// the external init secret of an external commit (`Some`) and is absent
+/// (`None`) for a regular commit.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum DerivationInfoTbe {
-    /// Carried by `update` and `commit` leaves. No `key_package_index`.
+    /// Carried by `update` and `commit` leaves. No `key_package_index`. The
+    /// codec treats the `LeafNode` operation type as the `commit` case (the
+    /// only LeafNode-source leaf emitted today). `update`-proposal leaves are
+    /// deferred and would need their own (field-less) codec branch.
     LeafNode {
         leaf_index: LeafNodeIndex,
         generation: u32,
+        /// `Some` for an external commit, `None` for a regular commit.
+        external_init_secret: Option<ExternalInitSecret>,
     },
     /// Carried by `key_package` leaves. Adds the position within the batch.
     KeyPackage {
@@ -1191,6 +1249,18 @@ impl DerivationInfoTbe {
         }
     }
 
+    /// The external init secret carried by an external-commit LeafNode, if any.
+    /// Always `None` for `KeyPackage` and for regular (non-external) commits.
+    pub(crate) fn external_init_secret(&self) -> Option<&ExternalInitSecret> {
+        match self {
+            Self::LeafNode {
+                external_init_secret,
+                ..
+            } => external_init_secret.as_ref(),
+            Self::KeyPackage { .. } => None,
+        }
+    }
+
     /// Serialize the variant's fields in order, with no variant tag, matching
     /// the `DerivationInfoTBE` select. The TLS derive macros cannot express a
     /// tagless select, so this codec is written by hand.
@@ -1199,12 +1269,16 @@ impl DerivationInfoTbe {
             Self::LeafNode {
                 leaf_index,
                 generation,
+                external_init_secret,
             } => {
                 let mut out = Vec::with_capacity(
-                    leaf_index.tls_serialized_len() + generation.tls_serialized_len(),
+                    leaf_index.tls_serialized_len()
+                        + generation.tls_serialized_len()
+                        + external_init_secret.tls_serialized_len(),
                 );
                 leaf_index.tls_serialize(&mut out)?;
                 generation.tls_serialize(&mut out)?;
+                external_init_secret.tls_serialize(&mut out)?;
                 Ok(out)
             }
             Self::KeyPackage {
@@ -1236,31 +1310,40 @@ impl DerivationInfoTbe {
     ) -> Result<Self, VirtualClientsError> {
         let (leaf_index, rest) = LeafNodeIndex::tls_deserialize_bytes(bytes)?;
         let (generation, rest) = u32::tls_deserialize_bytes(rest)?;
-        let tbe = match operation_type {
+        let (tbe, rest) = match operation_type {
             VirtualClientOperationType::KeyPackage => {
                 let (key_package_index, rest) = u32::tls_deserialize_bytes(rest)?;
-                if !rest.is_empty() {
-                    return Err(VirtualClientsError::DerivationInfoMalformed);
-                }
-                Self::KeyPackage {
-                    leaf_index,
-                    generation,
-                    key_package_index,
-                }
+                (
+                    Self::KeyPackage {
+                        leaf_index,
+                        generation,
+                        key_package_index,
+                    },
+                    rest,
+                )
             }
+            // The `LeafNode` operation type is the `commit` case: it carries an
+            // `optional<ExternalInitSecret>`. (`update`-proposal leaves are
+            // deferred and would decode a field-less body instead.)
             VirtualClientOperationType::LeafNode => {
-                if !rest.is_empty() {
-                    return Err(VirtualClientsError::DerivationInfoMalformed);
-                }
-                Self::LeafNode {
-                    leaf_index,
-                    generation,
-                }
+                let (external_init_secret, rest) =
+                    Option::<ExternalInitSecret>::tls_deserialize_bytes(rest)?;
+                (
+                    Self::LeafNode {
+                        leaf_index,
+                        generation,
+                        external_init_secret,
+                    },
+                    rest,
+                )
             }
             VirtualClientOperationType::Application => {
                 return Err(VirtualClientsError::DerivationInfoMalformed);
             }
         };
+        if !rest.is_empty() {
+            return Err(VirtualClientsError::DerivationInfoMalformed);
+        }
         Ok(tbe)
     }
 }
@@ -1604,21 +1687,29 @@ mod tests {
         let leaf_node_tbe = DerivationInfoTbe::LeafNode {
             leaf_index: LeafNodeIndex::new(7),
             generation: 3,
+            external_init_secret: None,
+        };
+        let external_commit_tbe = DerivationInfoTbe::LeafNode {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            external_init_secret: Some(ExternalInitSecret::from_slice(b"external init secret")),
         };
 
-        // The leaf_node form omits the trailing key_package_index, so its
-        // plaintext is exactly four bytes shorter.
+        // The key_package form carries the trailing key_package_index (u32),
+        // while the leaf_node (commit) form carries an absent
+        // optional<ExternalInitSecret> (one presence octet).
         let key_package_bytes = key_package_tbe
             .tls_serialize_detached()
             .expect("serialize key package tbe");
         let leaf_node_bytes = leaf_node_tbe
             .tls_serialize_detached()
             .expect("serialize leaf node tbe");
-        assert_eq!(key_package_bytes.len(), leaf_node_bytes.len() + 4);
+        assert_eq!(key_package_bytes.len(), leaf_node_bytes.len() + 3);
 
         for (original, operation_type) in [
             (key_package_tbe, VirtualClientOperationType::KeyPackage),
             (leaf_node_tbe, VirtualClientOperationType::LeafNode),
+            (external_commit_tbe, VirtualClientOperationType::LeafNode),
         ] {
             let derivation_info = DerivationInfo::encrypt(
                 provider.crypto(),
@@ -1643,6 +1734,96 @@ mod tests {
         }
     }
 
+    /// Pin the serialized `DerivationInfoTBE` layout to the spec's select,
+    /// byte for byte: `uint32 leaf_index`, `uint32 generation`, then the
+    /// `key_package_index` (key_package case) or the
+    /// `optional<ExternalInitSecret>` (commit case) with nothing trailing.
+    /// Catches conventions drift that the roundtrip test cannot see.
+    #[test]
+    fn derivation_info_tbe_wire_format_matches_spec() {
+        let absent = DerivationInfoTbe::LeafNode {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            external_init_secret: None,
+        }
+        .tls_serialize_detached()
+        .expect("serialize");
+        assert_eq!(
+            absent,
+            [0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x03, 0x00]
+        );
+
+        let present = DerivationInfoTbe::LeafNode {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            external_init_secret: Some(ExternalInitSecret::from_slice(b"init")),
+        }
+        .tls_serialize_detached()
+        .expect("serialize");
+        assert_eq!(
+            present,
+            [0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x03, 0x01, 0x04, b'i', b'n', b'i', b't']
+        );
+
+        let key_package = DerivationInfoTbe::KeyPackage {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            key_package_index: 5,
+        }
+        .tls_serialize_detached()
+        .expect("serialize");
+        assert_eq!(
+            key_package,
+            [0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x05]
+        );
+    }
+
+    /// The TBE plaintext must be consumed exactly. A trailing octet, which is
+    /// what a peer implementing the superseded draft revision with its
+    /// trailing `optional<GroupCreationSecret>` would produce, is rejected
+    /// for both variants.
+    #[test]
+    fn derivation_info_tbe_rejects_trailing_data() {
+        let variants = [
+            (
+                DerivationInfoTbe::LeafNode {
+                    leaf_index: LeafNodeIndex::new(7),
+                    generation: 3,
+                    external_init_secret: None,
+                },
+                VirtualClientOperationType::LeafNode,
+            ),
+            (
+                DerivationInfoTbe::KeyPackage {
+                    leaf_index: LeafNodeIndex::new(7),
+                    generation: 3,
+                    key_package_index: 5,
+                },
+                VirtualClientOperationType::KeyPackage,
+            ),
+        ];
+        for (tbe, operation_type) in variants {
+            let mut bytes = tbe.tls_serialize_detached().expect("serialize");
+            bytes.push(0x00);
+            let result = DerivationInfoTbe::deserialize_for_operation(&bytes, operation_type);
+            assert_eq!(result, Err(VirtualClientsError::DerivationInfoMalformed));
+        }
+    }
+
+    /// Debug output of the TBE must not leak the carried init secret.
+    #[test]
+    fn external_init_secret_debug_is_redacted() {
+        let tbe = DerivationInfoTbe::LeafNode {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            external_init_secret: Some(ExternalInitSecret::from_slice(b"very secret bytes")),
+        };
+        let debug = format!("{tbe:?}");
+        assert!(debug.contains("<redacted>"));
+        assert!(!debug.contains("secret bytes"));
+        assert!(!debug.to_lowercase().contains("76657279"));
+    }
+
     /// Decryption must fail when the leaf encryption key used as the
     /// key/nonce derivation context does not match the one used for
     /// encryption. This is what binds the derivation info to the leaf
@@ -1655,6 +1836,7 @@ mod tests {
         let tbe = DerivationInfoTbe::LeafNode {
             leaf_index: LeafNodeIndex::new(1),
             generation: 0,
+            external_init_secret: None,
         };
         let derivation_info = DerivationInfo::encrypt(
             provider.crypto(),

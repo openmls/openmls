@@ -434,17 +434,12 @@ impl MlsGroup {
     /// `OperationGenerationConsumed`. Operation secrets are consume-once,
     /// matching the semantics of regular PrivateMessage decryption.
     #[cfg(feature = "virtual-clients-draft")]
-    fn load_vc_commit_material<Provider: OpenMlsProvider>(
+    pub(super) fn load_vc_commit_material<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         commit: &Commit,
-    ) -> Result<
-        Option<(
-            crate::components::vc_derivation_info::EpochId,
-            crate::components::vc_derivation_info::OperationSecret,
-        )>,
-        StageCommitError,
-    > {
+    ) -> Result<Option<crate::components::vc_derivation_info::VcCommitMaterial>, StageCommitError>
+    {
         use tls_codec::{DeserializeBytes, Serialize as _};
 
         use crate::{
@@ -520,6 +515,11 @@ impl MlsGroup {
             &leaf_encryption_key,
             operation_type,
         )?;
+        // Carried by an external commit's leaf only; `None` for own-leaf
+        // (regular) VC commits. A sibling uses it as the new epoch's external
+        // init secret instead of decapsulating from the previous epoch's
+        // `external_secret`.
+        let external_init_secret = tbe.external_init_secret().cloned();
         // The operation context for `LeafNode` operations is the
         // higher-level group's id.
         let operation_context = self.group_id().as_slice().to_vec();
@@ -545,7 +545,13 @@ impl MlsGroup {
                 VirtualClientsError::StorageError
             })?;
 
-        Ok(Some((epoch_id.clone(), operation_secret)))
+        Ok(Some(
+            crate::components::vc_derivation_info::VcCommitMaterial {
+                epoch_id: epoch_id.clone(),
+                operation_secret,
+                external_init_secret,
+            },
+        ))
     }
 
     /// Helper function to read decryption keypairs.
@@ -758,14 +764,11 @@ impl MlsGroup {
                 //   auto-Remove targets our previous leaf, so we are the
                 //   sibling being resynced.
                 #[cfg(feature = "virtual-clients-draft")]
-                let (vc_material, vc_emulation_epoch_id) =
+                let vc_commit_material =
                     if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
-                        match self.load_vc_commit_material(provider, commit)? {
-                            Some((epoch_id, op)) => (Some(op), Some(epoch_id)),
-                            None => (None, None),
-                        }
+                        self.load_vc_commit_material(provider, commit)?
                     } else {
-                        (None, None)
+                        None
                     };
                 #[cfg(not(feature = "virtual-clients-draft"))]
                 let _ = commit;
@@ -773,7 +776,7 @@ impl MlsGroup {
                 let is_own_pending_commit =
                     matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
                 #[cfg(feature = "virtual-clients-draft")]
-                let is_own_pending_commit = is_own_pending_commit && vc_material.is_none();
+                let is_own_pending_commit = is_own_pending_commit && vc_commit_material.is_none();
 
                 if is_own_pending_commit {
                     self.check_own_pending_commit(provider.crypto(), &content)?;
@@ -800,9 +803,7 @@ impl MlsGroup {
                     app_data_dict_updates,
                     provider,
                     #[cfg(feature = "virtual-clients-draft")]
-                    vc_material,
-                    #[cfg(feature = "virtual-clients-draft")]
-                    vc_emulation_epoch_id,
+                    vc_commit_material,
                 )?;
 
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
@@ -861,14 +862,11 @@ impl MlsGroup {
                 // a sibling from the commit shape: own-leaf sender, or external
                 // commit with an inline `Remove(own_leaf)`.
                 #[cfg(feature = "virtual-clients-draft")]
-                let (vc_material, vc_emulation_epoch_id) =
+                let vc_commit_material =
                     if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
-                        match self.load_vc_commit_material(provider, commit)? {
-                            Some((epoch_id, op)) => (Some(op), Some(epoch_id)),
-                            None => (None, None),
-                        }
+                        self.load_vc_commit_material(provider, commit)?
                     } else {
-                        (None, None)
+                        None
                     };
                 #[cfg(not(feature = "virtual-clients-draft"))]
                 let _ = commit;
@@ -876,7 +874,7 @@ impl MlsGroup {
                 let is_own_pending_commit =
                     matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
                 #[cfg(feature = "virtual-clients-draft")]
-                let is_own_pending_commit = is_own_pending_commit && vc_material.is_none();
+                let is_own_pending_commit = is_own_pending_commit && vc_commit_material.is_none();
 
                 if is_own_pending_commit {
                     self.check_own_pending_commit(provider.crypto(), &content)?;
@@ -902,9 +900,7 @@ impl MlsGroup {
                     leaf_node_keypairs,
                     provider,
                     #[cfg(feature = "virtual-clients-draft")]
-                    vc_material,
-                    #[cfg(feature = "virtual-clients-draft")]
-                    vc_emulation_epoch_id,
+                    vc_commit_material,
                 )?;
 
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))

@@ -44,6 +44,27 @@ use super::proposal_store::{QueuedAppDataUpdateProposal, QueuedAppEphemeralPropo
 #[cfg(feature = "extensions-draft")]
 use crate::prelude::processing::AppDataUpdates;
 
+#[cfg(feature = "virtual-clients-draft")]
+fn validate_vc_external_init_secret(
+    is_sibling_resync: bool,
+    has_external_init_proposal: bool,
+    has_vc_external_init_secret: bool,
+) -> Result<(), StageCommitError> {
+    if is_sibling_resync && !has_vc_external_init_secret {
+        return Err(
+            crate::components::vc_derivation_info::VirtualClientsError::DerivationInfoMalformed
+                .into(),
+        );
+    }
+    if has_vc_external_init_secret && !has_external_init_proposal {
+        return Err(
+            crate::components::vc_derivation_info::VirtualClientsError::DerivationInfoMalformed
+                .into(),
+        );
+    }
+    Ok(())
+}
+
 impl MlsGroup {
     /// Confirms that an incoming Commit authored by this client matches the
     /// group's pending commit, by recomputing the confirmation tag from the
@@ -94,25 +115,44 @@ impl MlsGroup {
         epoch_secrets: &GroupEpochSecrets,
         commit_secret: CommitSecret,
         serialized_provisional_group_context: &[u8],
+        #[cfg(feature = "virtual-clients-draft")] vc_external_init_secret: Option<
+            &crate::components::vc_derivation_info::ExternalInitSecret,
+        >,
     ) -> Result<EpochSecretsResult, StageCommitError> {
         // Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
         let joiner_secret = if let Some(ref external_init_proposal) =
             apply_proposals_values.external_init_proposal_option
         {
-            // Decrypt the content and derive the external init secret.
-            let external_priv = epoch_secrets
-                .external_secret()
-                .derive_external_keypair(provider.crypto(), self.ciphersuite())
-                .map_err(LibraryError::unexpected_crypto_error)?
-                .private;
-            let init_secret = InitSecret::from_kem_output(
-                provider.crypto(),
-                self.ciphersuite(),
-                self.version(),
-                &external_priv,
-                external_init_proposal.kem_output(),
-            )?;
+            // A sibling emulator client processing the virtual client's
+            // external commit uses the external init secret carried in the
+            // commit's derivation info, since it may not hold the previous
+            // epoch's `external_secret` (always absent without the feature).
+            // Everyone else (ordinary external commits) decapsulates the
+            // carried `kem_output` as usual.
+            #[cfg(feature = "virtual-clients-draft")]
+            let carried_init_secret = vc_external_init_secret
+                .map(|carried| InitSecret::from(Secret::from_slice(carried.as_slice())));
+            #[cfg(not(feature = "virtual-clients-draft"))]
+            let carried_init_secret: Option<InitSecret> = None;
+
+            let init_secret = match carried_init_secret {
+                Some(init_secret) => init_secret,
+                None => {
+                    let external_priv = epoch_secrets
+                        .external_secret()
+                        .derive_external_keypair(provider.crypto(), self.ciphersuite())
+                        .map_err(LibraryError::unexpected_crypto_error)?
+                        .private;
+                    InitSecret::from_kem_output(
+                        provider.crypto(),
+                        self.ciphersuite(),
+                        self.version(),
+                        &external_priv,
+                        external_init_proposal.kem_output(),
+                    )?
+                }
+            };
             JoinerSecret::new(
                 provider.crypto(),
                 self.ciphersuite(),
@@ -203,11 +243,8 @@ impl MlsGroup {
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         provider: &impl OpenMlsProvider,
-        #[cfg(feature = "virtual-clients-draft")] vc_material: Option<
-            crate::components::vc_derivation_info::OperationSecret,
-        >,
-        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
-            crate::components::vc_derivation_info::EpochId,
+        #[cfg(feature = "virtual-clients-draft")] vc_commit_material: Option<
+            crate::components::vc_derivation_info::VcCommitMaterial,
         >,
     ) -> Result<StagedCommit, StageCommitError> {
         let (commit, proposal_queue, sender_index) = self
@@ -239,9 +276,7 @@ impl MlsGroup {
             leaf_node_keypairs,
             provider,
             #[cfg(feature = "virtual-clients-draft")]
-            vc_material,
-            #[cfg(feature = "virtual-clients-draft")]
-            vc_emulation_epoch_id,
+            vc_commit_material,
         )
     }
 
@@ -254,11 +289,8 @@ impl MlsGroup {
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         app_data_dict_updates: Option<AppDataUpdates>,
         provider: &impl OpenMlsProvider,
-        #[cfg(feature = "virtual-clients-draft")] vc_material: Option<
-            crate::components::vc_derivation_info::OperationSecret,
-        >,
-        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
-            crate::components::vc_derivation_info::EpochId,
+        #[cfg(feature = "virtual-clients-draft")] vc_commit_material: Option<
+            crate::components::vc_derivation_info::VcCommitMaterial,
         >,
     ) -> Result<StagedCommit, StageCommitError> {
         let (commit, proposal_queue, sender_index) = self
@@ -286,9 +318,7 @@ impl MlsGroup {
             leaf_node_keypairs,
             provider,
             #[cfg(feature = "virtual-clients-draft")]
-            vc_material,
-            #[cfg(feature = "virtual-clients-draft")]
-            vc_emulation_epoch_id,
+            vc_commit_material,
         )
     }
 
@@ -304,14 +334,26 @@ impl MlsGroup {
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         provider: &impl OpenMlsProvider,
-        #[cfg(feature = "virtual-clients-draft")] vc_material: Option<
-            crate::components::vc_derivation_info::OperationSecret,
-        >,
-        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
-            crate::components::vc_derivation_info::EpochId,
+        #[cfg(feature = "virtual-clients-draft")] vc_commit_material: Option<
+            crate::components::vc_derivation_info::VcCommitMaterial,
         >,
     ) -> Result<StagedCommit, StageCommitError> {
         let ciphersuite = self.ciphersuite();
+
+        // Unbundle the sibling-VC commit material: the per-commit operation
+        // secret recreates the path, the emulation `epoch_id` is recorded on
+        // the staged commit, and the external init secret (external commits
+        // only) feeds the key schedule.
+        #[cfg(feature = "virtual-clients-draft")]
+        let (vc_material, vc_emulation_epoch_id, vc_external_init_secret) = match vc_commit_material
+        {
+            Some(material) => (
+                Some(material.operation_secret),
+                Some(material.epoch_id),
+                material.external_init_secret,
+            ),
+            None => (None, None, None),
+        };
 
         // A sibling-resync external commit is a VC external commit sent by a
         // sibling emulator client to onboard itself into this higher-level
@@ -338,6 +380,19 @@ impl MlsGroup {
             vc_material.is_some() && matches!(mls_content.sender(), Sender::NewMemberCommit);
         #[cfg(not(feature = "virtual-clients-draft"))]
         let is_sibling_resync = false;
+
+        // A sibling-resync external commit MUST carry the external init secret
+        // in its derivation info (mls-virtual-clients draft): the
+        // sibling uses it as the new epoch's external init secret. Reject the
+        // commit if it is absent.
+        #[cfg(feature = "virtual-clients-draft")]
+        validate_vc_external_init_secret(
+            is_sibling_resync,
+            apply_proposals_values
+                .external_init_proposal_option
+                .is_some(),
+            vc_external_init_secret.is_some(),
+        )?;
 
         // Determine if Commit has a path
         let (commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =
@@ -506,6 +561,8 @@ impl MlsGroup {
             self.group_epoch_secrets(),
             commit_secret,
             &serialized_provisional_group_context,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_external_init_secret.as_ref(),
         )?;
         let (provisional_group_secrets, provisional_message_secrets) = epoch_secrets.split_secrets(
             serialized_provisional_group_context,
@@ -1099,5 +1156,47 @@ impl MemberStagedCommitState {
     /// Get the staged [`GroupContext`].
     pub(crate) fn group_context(&self) -> &GroupContext {
         self.staged_diff.group_context()
+    }
+}
+
+#[cfg(all(test, feature = "virtual-clients-draft"))]
+mod tests {
+    use super::validate_vc_external_init_secret;
+    use crate::{
+        components::vc_derivation_info::VirtualClientsError, group::errors::StageCommitError,
+    };
+
+    /// The two spec MUSTs behind `validate_vc_external_init_secret`: a
+    /// sibling external commit whose derivation info omits the external init
+    /// secret is rejected, and a carried init secret on a commit without an
+    /// ExternalInit proposal is rejected. The conforming combinations pass.
+    #[test]
+    fn external_init_secret_presence_is_validated() {
+        let malformed: Result<(), StageCommitError> =
+            Err(VirtualClientsError::DerivationInfoMalformed.into());
+
+        // Sibling external commit without a carried init secret.
+        assert_eq!(
+            validate_vc_external_init_secret(true, true, false),
+            malformed
+        );
+        // Carried init secret on a commit without an ExternalInit proposal.
+        assert_eq!(
+            validate_vc_external_init_secret(false, false, true),
+            malformed
+        );
+        assert_eq!(
+            validate_vc_external_init_secret(true, false, true),
+            malformed
+        );
+
+        // Conforming: external commit carrying the secret, and a regular
+        // commit carrying none.
+        assert_eq!(validate_vc_external_init_secret(true, true, true), Ok(()));
+        assert_eq!(validate_vc_external_init_secret(false, true, false), Ok(()));
+        assert_eq!(
+            validate_vc_external_init_secret(false, false, false),
+            Ok(())
+        );
     }
 }
