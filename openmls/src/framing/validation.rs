@@ -508,6 +508,32 @@ pub enum ProcessedMessageContent {
     /// the commit should be merged into the group's state using
     /// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).
     StagedCommitMessage(Box<StagedCommit>),
+    /// A Commit authored by this client and echoed back to it, matching the
+    /// group's pending commit.
+    ///
+    /// This is returned instead of
+    /// [`StagedCommitMessage`](Self::StagedCommitMessage) when the processed
+    /// Commit was created by this client. Since this client already holds the
+    /// corresponding pending commit, the incoming Commit is not staged. To
+    /// apply it, merge the pending commit using
+    /// [`MlsGroup::merge_pending_commit()`](crate::group::mls_group::MlsGroup::merge_pending_commit()).
+    ///
+    /// The match against the pending commit is established by comparing the
+    /// confirmation tag of the incoming Commit against one recomputed from the
+    /// pending commit. The message signature has already been verified, which
+    /// authenticates the Commit as ours, and a matching confirmation tag binds
+    /// the confirmed transcript hash of the new epoch. We do not otherwise
+    /// compare the contents of the incoming Commit against the pending commit,
+    /// and the incoming Commit's state is never adopted.
+    ///
+    /// This is only produced for Commits framed as
+    /// [`PublicMessage`](crate::framing::MlsMessageBodyIn::PublicMessage). A
+    /// Commit framed as a
+    /// [`PrivateMessage`](crate::framing::MlsMessageBodyIn::PrivateMessage)
+    /// cannot be decrypted by its own author and will be rejected during
+    /// decryption with
+    /// [`ValidationError::CannotDecryptOwnMessage`](crate::group::errors::ValidationError::CannotDecryptOwnMessage).
+    OwnPendingCommit,
 }
 
 /// Application message received through a [ProcessedMessage].
