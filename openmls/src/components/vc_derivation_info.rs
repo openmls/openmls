@@ -1140,6 +1140,62 @@ pub enum VirtualClientOperationType {
     Application = 3,
 }
 
+/// The external init secret carried by an external-commit LeafNode's
+/// `DerivationInfoTBE` (mls-virtual-clients draft):
+///
+/// ```text
+/// struct { opaque init_secret<V>; } ExternalInitSecret;
+/// ```
+///
+/// It is the `init_secret` produced by external initialization
+/// ({{Section 8.3 of RFC9420}}). A sibling emulator client processing the
+/// external commit uses it as the new epoch's external init secret instead of
+/// decapsulating from the previous epoch's `external_secret`, which it may not
+/// hold.
+#[derive(Debug, Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+pub(crate) struct ExternalInitSecret(VLBytes);
+
+impl ExternalInitSecret {
+    pub(crate) fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes.to_vec().into())
+    }
+
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+}
+
+/// The initial epoch secret carried by the creator LeafNode of a newly created
+/// higher-level group (mls-virtual-clients draft):
+///
+/// ```text
+/// struct { opaque epoch_secret<V>; } GroupCreationSecret;
+/// ```
+///
+/// Group creation is not implemented here. The field is decoded purely for
+/// wire-format fidelity and rejected if present, since this build never emits
+/// or consumes it.
+#[derive(Debug, Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+pub(crate) struct GroupCreationSecret(VLBytes);
+
+/// What a receiver derives from a sibling virtual client's commit in order to
+/// recreate it: the emulation `epoch_id` the commit binds to, the per-commit
+/// `operation_secret` the path is rederived from, and, for an external commit,
+/// the carried `external_init_secret` (`None` for a regular commit).
+///
+/// Produced by `MlsGroup::load_vc_commit_material` and threaded into commit
+/// staging as a single `Option`: either all three are present (a sibling VC
+/// commit) or none are.
+#[derive(Debug)]
+pub(crate) struct VcCommitMaterial {
+    /// Emulation epoch the commit's derivation info references.
+    pub(crate) epoch_id: EpochId,
+    /// Per-commit operation secret the receiver rederives the path from.
+    pub(crate) operation_secret: OperationSecret,
+    /// External init secret carried by an external commit, `None` otherwise.
+    pub(crate) external_init_secret: Option<ExternalInitSecret>,
+}
+
 /// AEAD plaintext attached to the leaf via the VC component
 /// (mls-virtual-clients draft):
 ///
@@ -1148,10 +1204,11 @@ pub enum VirtualClientOperationType {
 ///   uint32 leaf_index;
 ///   uint32 generation;
 ///   select (LeafNode.leaf_node_source) {
-///     case key_package:  uint32 key_package_index;
-///     case update:
-///     case commit:       struct{};
+///     case key_package: uint32 key_package_index;
+///     case update:      struct{};
+///     case commit:      optional<ExternalInitSecret> external_init_secret;
 ///   };
+///   optional<GroupCreationSecret> group_creation_secret;
 /// } DerivationInfoTBE
 /// ```
 ///
@@ -1160,13 +1217,21 @@ pub enum VirtualClientOperationType {
 /// `generation` is the operation-ratchet generation the sender consumed for
 /// this operation. `key_package_index`, present only for the `KeyPackage`
 /// variant, is the KeyPackage's position within its `key_package` operation
-/// batch.
+/// batch. `external_init_secret`, present only for the commit variant, carries
+/// the external init secret of an external commit (`Some`) and is absent
+/// (`None`) for a regular commit. The trailing `group_creation_secret` is
+/// always absent here (group creation is deferred).
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum DerivationInfoTbe {
-    /// Carried by `update` and `commit` leaves. No `key_package_index`.
+    /// Carried by `update` and `commit` leaves. No `key_package_index`. The
+    /// codec treats the `LeafNode` operation type as the `commit` case (the
+    /// only LeafNode-source leaf emitted today). `update`-proposal leaves are
+    /// deferred and would need their own (field-less) codec branch.
     LeafNode {
         leaf_index: LeafNodeIndex,
         generation: u32,
+        /// `Some` for an external commit, `None` for a regular commit.
+        external_init_secret: Option<ExternalInitSecret>,
     },
     /// Carried by `key_package` leaves. Adds the position within the batch.
     KeyPackage {
@@ -1191,20 +1256,41 @@ impl DerivationInfoTbe {
         }
     }
 
+    /// The external init secret carried by an external-commit LeafNode, if any.
+    /// Always `None` for `KeyPackage` and for regular (non-external) commits.
+    pub(crate) fn external_init_secret(&self) -> Option<&ExternalInitSecret> {
+        match self {
+            Self::LeafNode {
+                external_init_secret,
+                ..
+            } => external_init_secret.as_ref(),
+            Self::KeyPackage { .. } => None,
+        }
+    }
+
     /// Serialize the variant's fields in order, with no variant tag, matching
     /// the `DerivationInfoTBE` select. The TLS derive macros cannot express a
     /// tagless select, so this codec is written by hand.
     fn tls_serialize_detached(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        // Every variant ends with the trailing `optional<GroupCreationSecret>`,
+        // which this build always emits as absent (group creation is deferred).
+        let no_group_creation_secret: Option<GroupCreationSecret> = None;
         match self {
             Self::LeafNode {
                 leaf_index,
                 generation,
+                external_init_secret,
             } => {
                 let mut out = Vec::with_capacity(
-                    leaf_index.tls_serialized_len() + generation.tls_serialized_len(),
+                    leaf_index.tls_serialized_len()
+                        + generation.tls_serialized_len()
+                        + external_init_secret.tls_serialized_len()
+                        + no_group_creation_secret.tls_serialized_len(),
                 );
                 leaf_index.tls_serialize(&mut out)?;
                 generation.tls_serialize(&mut out)?;
+                external_init_secret.tls_serialize(&mut out)?;
+                no_group_creation_secret.tls_serialize(&mut out)?;
                 Ok(out)
             }
             Self::KeyPackage {
@@ -1215,11 +1301,13 @@ impl DerivationInfoTbe {
                 let mut out = Vec::with_capacity(
                     leaf_index.tls_serialized_len()
                         + generation.tls_serialized_len()
-                        + key_package_index.tls_serialized_len(),
+                        + key_package_index.tls_serialized_len()
+                        + no_group_creation_secret.tls_serialized_len(),
                 );
                 leaf_index.tls_serialize(&mut out)?;
                 generation.tls_serialize(&mut out)?;
                 key_package_index.tls_serialize(&mut out)?;
+                no_group_creation_secret.tls_serialize(&mut out)?;
                 Ok(out)
             }
         }
@@ -1236,31 +1324,45 @@ impl DerivationInfoTbe {
     ) -> Result<Self, VirtualClientsError> {
         let (leaf_index, rest) = LeafNodeIndex::tls_deserialize_bytes(bytes)?;
         let (generation, rest) = u32::tls_deserialize_bytes(rest)?;
-        let tbe = match operation_type {
+        let (tbe, rest) = match operation_type {
             VirtualClientOperationType::KeyPackage => {
                 let (key_package_index, rest) = u32::tls_deserialize_bytes(rest)?;
-                if !rest.is_empty() {
-                    return Err(VirtualClientsError::DerivationInfoMalformed);
-                }
-                Self::KeyPackage {
-                    leaf_index,
-                    generation,
-                    key_package_index,
-                }
+                (
+                    Self::KeyPackage {
+                        leaf_index,
+                        generation,
+                        key_package_index,
+                    },
+                    rest,
+                )
             }
+            // The `LeafNode` operation type is the `commit` case: it carries an
+            // `optional<ExternalInitSecret>`. (`update`-proposal leaves are
+            // deferred and would decode a field-less body instead.)
             VirtualClientOperationType::LeafNode => {
-                if !rest.is_empty() {
-                    return Err(VirtualClientsError::DerivationInfoMalformed);
-                }
-                Self::LeafNode {
-                    leaf_index,
-                    generation,
-                }
+                let (external_init_secret, rest) =
+                    Option::<ExternalInitSecret>::tls_deserialize_bytes(rest)?;
+                (
+                    Self::LeafNode {
+                        leaf_index,
+                        generation,
+                        external_init_secret,
+                    },
+                    rest,
+                )
             }
             VirtualClientOperationType::Application => {
                 return Err(VirtualClientsError::DerivationInfoMalformed);
             }
         };
+        // The trailing `optional<GroupCreationSecret>` is decoded for wire
+        // fidelity but must be absent: group creation is not implemented here,
+        // so a present value is rejected.
+        let (group_creation_secret, rest) =
+            Option::<GroupCreationSecret>::tls_deserialize_bytes(rest)?;
+        if group_creation_secret.is_some() || !rest.is_empty() {
+            return Err(VirtualClientsError::DerivationInfoMalformed);
+        }
         Ok(tbe)
     }
 }
@@ -1604,21 +1706,30 @@ mod tests {
         let leaf_node_tbe = DerivationInfoTbe::LeafNode {
             leaf_index: LeafNodeIndex::new(7),
             generation: 3,
+            external_init_secret: None,
+        };
+        let external_commit_tbe = DerivationInfoTbe::LeafNode {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            external_init_secret: Some(ExternalInitSecret::from_slice(b"external init secret")),
         };
 
-        // The leaf_node form omits the trailing key_package_index, so its
-        // plaintext is exactly four bytes shorter.
+        // The key_package form carries the trailing key_package_index (u32),
+        // while the leaf_node (commit) form carries an absent
+        // optional<ExternalInitSecret> (one presence octet). Both end with the
+        // absent optional<GroupCreationSecret> (one presence octet).
         let key_package_bytes = key_package_tbe
             .tls_serialize_detached()
             .expect("serialize key package tbe");
         let leaf_node_bytes = leaf_node_tbe
             .tls_serialize_detached()
             .expect("serialize leaf node tbe");
-        assert_eq!(key_package_bytes.len(), leaf_node_bytes.len() + 4);
+        assert_eq!(key_package_bytes.len(), leaf_node_bytes.len() + 3);
 
         for (original, operation_type) in [
             (key_package_tbe, VirtualClientOperationType::KeyPackage),
             (leaf_node_tbe, VirtualClientOperationType::LeafNode),
+            (external_commit_tbe, VirtualClientOperationType::LeafNode),
         ] {
             let derivation_info = DerivationInfo::encrypt(
                 provider.crypto(),
@@ -1655,6 +1766,7 @@ mod tests {
         let tbe = DerivationInfoTbe::LeafNode {
             leaf_index: LeafNodeIndex::new(1),
             generation: 0,
+            external_init_secret: None,
         };
         let derivation_info = DerivationInfo::encrypt(
             provider.crypto(),
