@@ -284,7 +284,7 @@ impl ExternalCommitBuilder {
             mls_group_config: config,
             own_leaf_nodes: vec![],
             aad: vec![],
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             safe_aad: crate::framing::SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group,
@@ -294,7 +294,7 @@ impl ExternalCommitBuilder {
             resumption_psk_store: ResumptionPskStore::new(32),
             // This is set to `None` for now. It will be set once the external
             // commit is merged.
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_export_tree: None,
         };
 

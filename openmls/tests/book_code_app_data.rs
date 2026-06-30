@@ -4,7 +4,7 @@
 //! The examples demonstrate how to use AppDataUpdate proposals to efficiently
 //! update application state in an MLS group.
 
-#![cfg(feature = "extensions-draft-08")]
+#![cfg(feature = "extensions-draft")]
 
 use openmls::test_utils::single_group_test_framework::*;
 use openmls::{component::ComponentId, prelude::*};

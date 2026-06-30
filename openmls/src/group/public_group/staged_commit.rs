@@ -11,7 +11,7 @@ use crate::{
     treesync::errors::LeafNodeValidationError,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::prelude::processing::AppDataUpdates;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -187,7 +187,7 @@ impl PublicGroup {
         // ValSem209
         self.validate_group_context_extensions_proposal(&proposal_queue)?;
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         self.validate_app_data_update_proposals_and_group_context(&proposal_queue)?;
 
         // ValSem401
@@ -311,7 +311,7 @@ impl PublicGroup {
         ))
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn stage_commit_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,
@@ -362,7 +362,7 @@ impl PublicGroup {
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn stage_diff_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,
