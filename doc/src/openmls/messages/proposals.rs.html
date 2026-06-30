@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/messages/proposals.rs`."><title>proposals.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (9e2abe0c6 2026-06-16)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/messages/</div>proposals.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Proposals
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/messages/proposals.rs`."><title>proposals.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (096694416 2026-06-29)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/messages/</div>proposals.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Proposals
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! This module defines all the different types of Proposals.
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -27,7 +27,7 @@
 <a href=#27 id=27 data-nosnippet>27</a>    versions::ProtocolVersion,
 <a href=#28 id=28 data-nosnippet>28</a>};
 <a href=#29 id=29 data-nosnippet>29</a>
-<a href=#30 id=30 data-nosnippet>30</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#30 id=30 data-nosnippet>30</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#31 id=31 data-nosnippet>31</a></span><span class="kw">use </span><span class="kw">crate</span>::component::ComponentId;
 <a href=#32 id=32 data-nosnippet>32</a>
 <a href=#33 id=33 data-nosnippet>33</a><span class="doccomment">/// ## MLS Proposal Types
@@ -104,10 +104,10 @@
 <a href=#104 id=104 data-nosnippet>104</a>    <span class="comment">// AppAck = 7,
 <a href=#105 id=105 data-nosnippet>105</a>    </span><span class="attr">#[cfg_attr(not(feature = <span class="string">"0-8-1-storage-format"</span>), storage_tag = <span class="number">8</span>)]
 <a href=#106 id=106 data-nosnippet>106</a>    </span>SelfRemove,
-<a href=#107 id=107 data-nosnippet>107</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#107 id=107 data-nosnippet>107</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#108 id=108 data-nosnippet>108</a>    #[cfg_attr(not(feature = <span class="string">"0-8-1-storage-format"</span>), storage_tag = <span class="number">11</span>)]
 <a href=#109 id=109 data-nosnippet>109</a>    </span>AppEphemeral,
-<a href=#110 id=110 data-nosnippet>110</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#110 id=110 data-nosnippet>110</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#111 id=111 data-nosnippet>111</a>    #[cfg_attr(not(feature = <span class="string">"0-8-1-storage-format"</span>), storage_tag = <span class="number">12</span>)]
 <a href=#112 id=112 data-nosnippet>112</a>    </span>AppDataUpdate,
 <a href=#113 id=113 data-nosnippet>113</a>    <span class="attr">#[cfg_attr(not(feature = <span class="string">"0-8-1-storage-format"</span>), storage_tag = <span class="number">10</span>)]
@@ -129,7 +129,7 @@
 <a href=#129 id=129 data-nosnippet>129</a>            | ProposalType::ExternalInit
 <a href=#130 id=130 data-nosnippet>130</a>            | ProposalType::GroupContextExtensions =&gt; <span class="bool-val">true</span>,
 <a href=#131 id=131 data-nosnippet>131</a>            ProposalType::SelfRemove | ProposalType::Grease(<span class="kw">_</span>) | ProposalType::Custom(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#132 id=132 data-nosnippet>132</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#132 id=132 data-nosnippet>132</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#133 id=133 data-nosnippet>133</a>            </span>ProposalType::AppEphemeral | ProposalType::AppDataUpdate =&gt; <span class="bool-val">false</span>,
 <a href=#134 id=134 data-nosnippet>134</a>        }
 <a href=#135 id=135 data-nosnippet>135</a>    }
@@ -205,9 +205,9 @@
 <a href=#205 id=205 data-nosnippet>205</a>            <span class="number">5 </span>=&gt; ProposalType::Reinit,
 <a href=#206 id=206 data-nosnippet>206</a>            <span class="number">6 </span>=&gt; ProposalType::ExternalInit,
 <a href=#207 id=207 data-nosnippet>207</a>            <span class="number">7 </span>=&gt; ProposalType::GroupContextExtensions,
-<a href=#208 id=208 data-nosnippet>208</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#208 id=208 data-nosnippet>208</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#209 id=209 data-nosnippet>209</a>            </span><span class="number">8 </span>=&gt; ProposalType::AppDataUpdate,
-<a href=#210 id=210 data-nosnippet>210</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#210 id=210 data-nosnippet>210</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#211 id=211 data-nosnippet>211</a>            </span><span class="number">0x0009 </span>=&gt; ProposalType::AppEphemeral,
 <a href=#212 id=212 data-nosnippet>212</a>            <span class="number">0x000a </span>=&gt; ProposalType::SelfRemove,
 <a href=#213 id=213 data-nosnippet>213</a>            other <span class="kw">if </span><span class="kw">crate</span>::grease::is_grease_value(other) =&gt; ProposalType::Grease(other),
@@ -226,9 +226,9 @@
 <a href=#226 id=226 data-nosnippet>226</a>            ProposalType::Reinit =&gt; <span class="number">5</span>,
 <a href=#227 id=227 data-nosnippet>227</a>            ProposalType::ExternalInit =&gt; <span class="number">6</span>,
 <a href=#228 id=228 data-nosnippet>228</a>            ProposalType::GroupContextExtensions =&gt; <span class="number">7</span>,
-<a href=#229 id=229 data-nosnippet>229</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#229 id=229 data-nosnippet>229</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#230 id=230 data-nosnippet>230</a>            </span>ProposalType::AppDataUpdate =&gt; <span class="number">8</span>,
-<a href=#231 id=231 data-nosnippet>231</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#231 id=231 data-nosnippet>231</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#232 id=232 data-nosnippet>232</a>            </span>ProposalType::AppEphemeral =&gt; <span class="number">0x0009</span>,
 <a href=#233 id=233 data-nosnippet>233</a>            ProposalType::SelfRemove =&gt; <span class="number">0x000a</span>,
 <a href=#234 id=234 data-nosnippet>234</a>            ProposalType::Grease(id) =&gt; id,
@@ -286,13 +286,13 @@
 <a href=#286 id=286 data-nosnippet>286</a>    </span>GroupContextExtensions(Box&lt;GroupContextExtensionProposal&gt;),
 <a href=#287 id=287 data-nosnippet>287</a>    <span class="comment">// AppAck = 7,
 <a href=#288 id=288 data-nosnippet>288</a>    // # Extensions
-<a href=#289 id=289 data-nosnippet>289</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#289 id=289 data-nosnippet>289</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#290 id=290 data-nosnippet>290</a>    #[cfg_attr(not(feature = <span class="string">"0-8-1-storage-format"</span>), storage_tag = <span class="number">10</span>)]
 <a href=#291 id=291 data-nosnippet>291</a>    </span>AppDataUpdate(Box&lt;AppDataUpdateProposal&gt;),
 <a href=#292 id=292 data-nosnippet>292</a>    <span class="comment">// A SelfRemove proposal is an empty struct.
 <a href=#293 id=293 data-nosnippet>293</a>    </span><span class="attr">#[cfg_attr(not(feature = <span class="string">"0-8-1-storage-format"</span>), storage_tag = <span class="number">8</span>)]
 <a href=#294 id=294 data-nosnippet>294</a>    </span>SelfRemove,
-<a href=#295 id=295 data-nosnippet>295</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#295 id=295 data-nosnippet>295</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#296 id=296 data-nosnippet>296</a>    #[cfg_attr(not(feature = <span class="string">"0-8-1-storage-format"</span>), storage_tag = <span class="number">11</span>)]
 <a href=#297 id=297 data-nosnippet>297</a>    </span>AppEphemeral(Box&lt;AppEphemeralProposal&gt;),
 <a href=#298 id=298 data-nosnippet>298</a>    <span class="attr">#[cfg_attr(not(feature = <span class="string">"0-8-1-storage-format"</span>), storage_tag = <span class="number">9</span>)]
@@ -351,10 +351,10 @@
 <a href=#351 id=351 data-nosnippet>351</a>            Proposal::ReInit(<span class="kw">_</span>) =&gt; ProposalType::Reinit,
 <a href=#352 id=352 data-nosnippet>352</a>            Proposal::ExternalInit(<span class="kw">_</span>) =&gt; ProposalType::ExternalInit,
 <a href=#353 id=353 data-nosnippet>353</a>            Proposal::GroupContextExtensions(<span class="kw">_</span>) =&gt; ProposalType::GroupContextExtensions,
-<a href=#354 id=354 data-nosnippet>354</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#354 id=354 data-nosnippet>354</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#355 id=355 data-nosnippet>355</a>            </span>Proposal::AppDataUpdate(<span class="kw">_</span>) =&gt; ProposalType::AppDataUpdate,
 <a href=#356 id=356 data-nosnippet>356</a>            Proposal::SelfRemove =&gt; ProposalType::SelfRemove,
-<a href=#357 id=357 data-nosnippet>357</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#357 id=357 data-nosnippet>357</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#358 id=358 data-nosnippet>358</a>            </span>Proposal::AppEphemeral(<span class="kw">_</span>) =&gt; ProposalType::AppEphemeral,
 <a href=#359 id=359 data-nosnippet>359</a>            Proposal::Custom(custom) =&gt; ProposalType::Custom(custom.proposal_type.to_owned()),
 <a href=#360 id=360 data-nosnippet>360</a>        }
@@ -609,7 +609,7 @@
 <a href=#609 id=609 data-nosnippet>609</a>    }
 <a href=#610 id=610 data-nosnippet>610</a>}
 <a href=#611 id=611 data-nosnippet>611</a>
-<a href=#612 id=612 data-nosnippet>612</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#612 id=612 data-nosnippet>612</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#613 id=613 data-nosnippet>613</a></span><span class="doccomment">/// AppAck object.
 <a href=#614 id=614 data-nosnippet>614</a>///
 <a href=#615 id=615 data-nosnippet>615</a>/// This is not yet supported.
@@ -628,7 +628,7 @@
 <a href=#628 id=628 data-nosnippet>628</a>    received_ranges: Vec&lt;MessageRange&gt;,
 <a href=#629 id=629 data-nosnippet>629</a>}
 <a href=#630 id=630 data-nosnippet>630</a>
-<a href=#631 id=631 data-nosnippet>631</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#631 id=631 data-nosnippet>631</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#632 id=632 data-nosnippet>632</a></span><span class="doccomment">/// AppEphemeral proposal.
 <a href=#633 id=633 data-nosnippet>633</a></span><span class="attr">#[derive(
 <a href=#634 id=634 data-nosnippet>634</a>    Debug,
@@ -648,7 +648,7 @@
 <a href=#648 id=648 data-nosnippet>648</a>    </span>data: VLBytes,
 <a href=#649 id=649 data-nosnippet>649</a>}
 <a href=#650 id=650 data-nosnippet>650</a>
-<a href=#651 id=651 data-nosnippet>651</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#651 id=651 data-nosnippet>651</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#652 id=652 data-nosnippet>652</a></span><span class="kw">impl </span>AppEphemeralProposal {
 <a href=#653 id=653 data-nosnippet>653</a>    <span class="doccomment">/// Create a new [`AppEphemeralProposal`].
 <a href=#654 id=654 data-nosnippet>654</a>    </span><span class="kw">pub fn </span>new(component_id: ComponentId, data: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
@@ -883,9 +883,9 @@
 <a href=#883 id=883 data-nosnippet>883</a>    last_generation: u32,
 <a href=#884 id=884 data-nosnippet>884</a>}
 <a href=#885 id=885 data-nosnippet>885</a>
-<a href=#886 id=886 data-nosnippet>886</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#886 id=886 data-nosnippet>886</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#887 id=887 data-nosnippet>887</a></span><span class="kw">mod </span>app_data_update;
-<a href=#888 id=888 data-nosnippet>888</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#888 id=888 data-nosnippet>888</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#889 id=889 data-nosnippet>889</a></span><span class="kw">pub use </span>app_data_update::<span class="kw-2">*</span>;
 <a href=#890 id=890 data-nosnippet>890</a>
 <a href=#891 id=891 data-nosnippet>891</a><span class="doccomment">/// A custom proposal with semantics to be implemented by the application.

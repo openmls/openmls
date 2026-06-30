@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/commit_builder/external_commits.rs`."><title>external_commits.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (9e2abe0c6 2026-06-16)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../src-files.js"></script><script defer src="../../../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/commit_builder/</div>external_commits.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>thiserror::Error;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/commit_builder/external_commits.rs`."><title>external_commits.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (096694416 2026-06-29)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../src-files.js"></script><script defer src="../../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/commit_builder/</div>external_commits.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>thiserror::Error;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>tls_codec::Serialize <span class="kw">as _</span>;
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a><span class="attr">#[cfg(doc)]
@@ -284,7 +284,7 @@
 <a href=#284 id=284 data-nosnippet>284</a>            mls_group_config: config,
 <a href=#285 id=285 data-nosnippet>285</a>            own_leaf_nodes: <span class="macro">vec!</span>[],
 <a href=#286 id=286 data-nosnippet>286</a>            aad: <span class="macro">vec!</span>[],
-<a href=#287 id=287 data-nosnippet>287</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#287 id=287 data-nosnippet>287</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#288 id=288 data-nosnippet>288</a>            </span>safe_aad: <span class="kw">crate</span>::framing::SafeAad::empty(),
 <a href=#289 id=289 data-nosnippet>289</a>            group_state: MlsGroupState::Operational,
 <a href=#290 id=290 data-nosnippet>290</a>            public_group,
@@ -294,7 +294,7 @@
 <a href=#294 id=294 data-nosnippet>294</a>            resumption_psk_store: ResumptionPskStore::new(<span class="number">32</span>),
 <a href=#295 id=295 data-nosnippet>295</a>            <span class="comment">// This is set to `None` for now. It will be set once the external
 <a href=#296 id=296 data-nosnippet>296</a>            // commit is merged.
-<a href=#297 id=297 data-nosnippet>297</a>            </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#297 id=297 data-nosnippet>297</a>            </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#298 id=298 data-nosnippet>298</a>            </span>application_export_tree: <span class="prelude-val">None</span>,
 <a href=#299 id=299 data-nosnippet>299</a>        };
 <a href=#300 id=300 data-nosnippet>300</a>
@@ -362,56 +362,41 @@
 <a href=#362 id=362 data-nosnippet>362</a>                <span class="kw">super</span>::Complete {
 <a href=#363 id=363 data-nosnippet>363</a>                    result: create_commit_result,
 <a href=#364 id=364 data-nosnippet>364</a>                    original_wire_format_policy,
-<a href=#365 id=365 data-nosnippet>365</a>                    <span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#366 id=366 data-nosnippet>366</a>                    </span>vc_punctured,
-<a href=#367 id=367 data-nosnippet>367</a>                },
-<a href=#368 id=368 data-nosnippet>368</a>            ..
-<a href=#369 id=369 data-nosnippet>369</a>        } = <span class="self">self</span>;
-<a href=#370 id=370 data-nosnippet>370</a>
-<a href=#371 id=371 data-nosnippet>371</a>        <span class="comment">// Convert AuthenticatedContent messages to MLSMessage.
-<a href=#372 id=372 data-nosnippet>372</a>        </span><span class="kw">let </span>mls_message = group.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
+<a href=#365 id=365 data-nosnippet>365</a>                },
+<a href=#366 id=366 data-nosnippet>366</a>            ..
+<a href=#367 id=367 data-nosnippet>367</a>        } = <span class="self">self</span>;
+<a href=#368 id=368 data-nosnippet>368</a>
+<a href=#369 id=369 data-nosnippet>369</a>        <span class="comment">// Convert AuthenticatedContent messages to MLSMessage.
+<a href=#370 id=370 data-nosnippet>370</a>        </span><span class="kw">let </span>mls_message = group.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
+<a href=#371 id=371 data-nosnippet>371</a>
+<a href=#372 id=372 data-nosnippet>372</a>        group.reset_aad();
 <a href=#373 id=373 data-nosnippet>373</a>
-<a href=#374 id=374 data-nosnippet>374</a>        group.reset_aad();
-<a href=#375 id=375 data-nosnippet>375</a>
-<a href=#376 id=376 data-nosnippet>376</a>        <span class="comment">// Restore the original wire format policy.
-<a href=#377 id=377 data-nosnippet>377</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(wire_format_policy) = original_wire_format_policy {
-<a href=#378 id=378 data-nosnippet>378</a>            group.mls_group_config.wire_format_policy = wire_format_policy;
-<a href=#379 id=379 data-nosnippet>379</a>        }
-<a href=#380 id=380 data-nosnippet>380</a>
-<a href=#381 id=381 data-nosnippet>381</a>        <span class="comment">// Store the group in storage.
-<a href=#382 id=382 data-nosnippet>382</a>        </span>group
-<a href=#383 id=383 data-nosnippet>383</a>            .store(provider.storage())
-<a href=#384 id=384 data-nosnippet>384</a>            .map_err(ExternalCommitBuilderFinalizeError::StorageError)<span class="question-mark">?</span>;
-<a href=#385 id=385 data-nosnippet>385</a>
-<a href=#386 id=386 data-nosnippet>386</a>        <span class="comment">// Persist the punctured PPRF (mirrors the regular `stage_commit`
-<a href=#387 id=387 data-nosnippet>387</a>        // path). Without this, an external VC commit's puncture would be
-<a href=#388 id=388 data-nosnippet>388</a>        // lost and the same per-commit input could be reused by a sibling
-<a href=#389 id=389 data-nosnippet>389</a>        // emulator, breaking forward secrecy.
-<a href=#390 id=390 data-nosnippet>390</a>        </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#391 id=391 data-nosnippet>391</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw">super</span>::VcPunctured { epoch_id, pprf }) = vc_punctured {
-<a href=#392 id=392 data-nosnippet>392</a>            <span class="kw">use </span>openmls_traits::storage::StorageProvider <span class="kw">as _</span>;
-<a href=#393 id=393 data-nosnippet>393</a>            provider
-<a href=#394 id=394 data-nosnippet>394</a>                .storage()
-<a href=#395 id=395 data-nosnippet>395</a>                .write_vc_pprf(<span class="kw-2">&amp;</span>epoch_id, <span class="kw-2">&amp;</span>pprf)
-<a href=#396 id=396 data-nosnippet>396</a>                .map_err(ExternalCommitBuilderFinalizeError::StorageError)<span class="question-mark">?</span>;
-<a href=#397 id=397 data-nosnippet>397</a>        }
+<a href=#374 id=374 data-nosnippet>374</a>        <span class="comment">// Restore the original wire format policy.
+<a href=#375 id=375 data-nosnippet>375</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(wire_format_policy) = original_wire_format_policy {
+<a href=#376 id=376 data-nosnippet>376</a>            group.mls_group_config.wire_format_policy = wire_format_policy;
+<a href=#377 id=377 data-nosnippet>377</a>        }
+<a href=#378 id=378 data-nosnippet>378</a>
+<a href=#379 id=379 data-nosnippet>379</a>        <span class="comment">// Store the group in storage.
+<a href=#380 id=380 data-nosnippet>380</a>        </span>group
+<a href=#381 id=381 data-nosnippet>381</a>            .store(provider.storage())
+<a href=#382 id=382 data-nosnippet>382</a>            .map_err(ExternalCommitBuilderFinalizeError::StorageError)<span class="question-mark">?</span>;
+<a href=#383 id=383 data-nosnippet>383</a>
+<a href=#384 id=384 data-nosnippet>384</a>        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
+<a href=#385 id=385 data-nosnippet>385</a>        // storing the current [`StagedCommit`] from the commit results
+<a href=#386 id=386 data-nosnippet>386</a>        </span>group.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+<a href=#387 id=387 data-nosnippet>387</a>            create_commit_result.staged_commit,
+<a href=#388 id=388 data-nosnippet>388</a>        )));
+<a href=#389 id=389 data-nosnippet>389</a>
+<a href=#390 id=390 data-nosnippet>390</a>        group.merge_pending_commit(provider)<span class="question-mark">?</span>;
+<a href=#391 id=391 data-nosnippet>391</a>
+<a href=#392 id=392 data-nosnippet>392</a>        <span class="kw">let </span>bundle = <span class="kw">super</span>::CommitMessageBundle {
+<a href=#393 id=393 data-nosnippet>393</a>            version: group.version(),
+<a href=#394 id=394 data-nosnippet>394</a>            commit: mls_message,
+<a href=#395 id=395 data-nosnippet>395</a>            welcome: create_commit_result.welcome_option,
+<a href=#396 id=396 data-nosnippet>396</a>            group_info: create_commit_result.group_info,
+<a href=#397 id=397 data-nosnippet>397</a>        };
 <a href=#398 id=398 data-nosnippet>398</a>
-<a href=#399 id=399 data-nosnippet>399</a>        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
-<a href=#400 id=400 data-nosnippet>400</a>        // storing the current [`StagedCommit`] from the commit results
-<a href=#401 id=401 data-nosnippet>401</a>        </span>group.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-<a href=#402 id=402 data-nosnippet>402</a>            create_commit_result.staged_commit,
-<a href=#403 id=403 data-nosnippet>403</a>        )));
-<a href=#404 id=404 data-nosnippet>404</a>
-<a href=#405 id=405 data-nosnippet>405</a>        group.merge_pending_commit(provider)<span class="question-mark">?</span>;
-<a href=#406 id=406 data-nosnippet>406</a>
-<a href=#407 id=407 data-nosnippet>407</a>        <span class="kw">let </span>bundle = <span class="kw">super</span>::CommitMessageBundle {
-<a href=#408 id=408 data-nosnippet>408</a>            version: group.version(),
-<a href=#409 id=409 data-nosnippet>409</a>            commit: mls_message,
-<a href=#410 id=410 data-nosnippet>410</a>            welcome: create_commit_result.welcome_option,
-<a href=#411 id=411 data-nosnippet>411</a>            group_info: create_commit_result.group_info,
-<a href=#412 id=412 data-nosnippet>412</a>        };
-<a href=#413 id=413 data-nosnippet>413</a>
-<a href=#414 id=414 data-nosnippet>414</a>        <span class="prelude-val">Ok</span>((group, bundle))
-<a href=#415 id=415 data-nosnippet>415</a>    }
-<a href=#416 id=416 data-nosnippet>416</a>}
+<a href=#399 id=399 data-nosnippet>399</a>        <span class="prelude-val">Ok</span>((group, bundle))
+<a href=#400 id=400 data-nosnippet>400</a>    }
+<a href=#401 id=401 data-nosnippet>401</a>}
 </code></pre></div></section></main></body></html>

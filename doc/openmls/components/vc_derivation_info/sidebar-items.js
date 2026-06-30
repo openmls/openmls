@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["VC_COMPONENT_ID"],"enum":["VirtualClientsError"],"struct":["EmulationEpochState","EpochId","VcEmulation","VcEmulationBindings"]};
+window.SIDEBAR_ITEMS = {"constant":["VC_COMPONENT_ID"],"enum":["RatchetType","VirtualClientOperationType","VirtualClientsError"],"fn":["assemble_vc_key_package_upload","process_vc_key_package_upload"],"struct":["EmulationEpochState","EpochId","GenerationId","KeyPackageInfo","KeyPackageSeedSecret","KeyPackageUpload","OperationSecret","RetainedKeyPackageMaterial","VcEmulationBindings"]};

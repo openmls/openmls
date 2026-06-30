@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/proposal.rs`."><title>proposal.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (9e2abe0c6 2026-06-16)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>proposal.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>, types::Ciphersuite};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/proposal.rs`."><title>proposal.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (096694416 2026-06-29)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>proposal.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>openmls_traits::{signatures::Signer, storage::StorageProvider <span class="kw">as _</span>, types::Ciphersuite};
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use super</span>::{
 <a href=#4 id=4 data-nosnippet>4</a>    errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError, RemoveProposalError},
@@ -21,7 +21,7 @@
 <a href=#21 id=21 data-nosnippet>21</a>    versions::ProtocolVersion,
 <a href=#22 id=22 data-nosnippet>22</a>};
 <a href=#23 id=23 data-nosnippet>23</a>
-<a href=#24 id=24 data-nosnippet>24</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#24 id=24 data-nosnippet>24</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#25 id=25 data-nosnippet>25</a></span><span class="kw">use crate</span>::{
 <a href=#26 id=26 data-nosnippet>26</a>    component::ComponentId,
 <a href=#27 id=27 data-nosnippet>27</a>    messages::proposals::{AppDataUpdateOperation, AppDataUpdateProposal},
@@ -59,7 +59,7 @@
 <a href=#59 id=59 data-nosnippet>59</a>    <span class="doccomment">/// Propose adding new group context extensions.
 <a href=#60 id=60 data-nosnippet>60</a>    </span>GroupContextExtensions(Extensions&lt;GroupContext&gt;),
 <a href=#61 id=61 data-nosnippet>61</a>
-<a href=#62 id=62 data-nosnippet>62</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#62 id=62 data-nosnippet>62</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#63 id=63 data-nosnippet>63</a>    </span><span class="doccomment">/// Propose an update to a component in the [`AppDataDictionary`]
 <a href=#64 id=64 data-nosnippet>64</a>    </span>UpdateAppDataComponent {
 <a href=#65 id=65 data-nosnippet>65</a>        <span class="doccomment">/// The component_id to update in the dictionary
@@ -67,7 +67,7 @@
 <a href=#67 id=67 data-nosnippet>67</a>        <span class="doccomment">/// The data representing the update
 <a href=#68 id=68 data-nosnippet>68</a>        </span>update: Vec&lt;u8&gt;,
 <a href=#69 id=69 data-nosnippet>69</a>    },
-<a href=#70 id=70 data-nosnippet>70</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#70 id=70 data-nosnippet>70</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#71 id=71 data-nosnippet>71</a>    </span><span class="doccomment">/// Propose removal of a component in the [`AppDataDictionary`]
 <a href=#72 id=72 data-nosnippet>72</a>    </span>RemoveAppDataComponent {
 <a href=#73 id=73 data-nosnippet>73</a>        <span class="doccomment">/// The component_id to remove in the dictionary
@@ -237,7 +237,7 @@
 <a href=#237 id=237 data-nosnippet>237</a>            Propose::PreSharedKey(psk_id) =&gt; {
 <a href=#238 id=238 data-nosnippet>238</a>                <span class="kw">match </span>psk_id.psk() {
 <a href=#239 id=239 data-nosnippet>239</a>                    <span class="kw">crate</span>::schedule::Psk::External(<span class="kw">_</span>) =&gt; {}
-<a href=#240 id=240 data-nosnippet>240</a>                    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#240 id=240 data-nosnippet>240</a>                    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#241 id=241 data-nosnippet>241</a>                    </span><span class="kw">crate</span>::schedule::Psk::Application(<span class="kw">_</span>) =&gt; {}
 <a href=#242 id=242 data-nosnippet>242</a>                    <span class="kw">crate</span>::schedule::Psk::Resumption(<span class="kw">_</span>) =&gt; {
 <a href=#243 id=243 data-nosnippet>243</a>                        <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalError::LibraryError(LibraryError::custom(
@@ -268,8 +268,8 @@
 <a href=#268 id=268 data-nosnippet>268</a>            Propose::GroupContextExtensions(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(ProposalError::LibraryError(
 <a href=#269 id=269 data-nosnippet>269</a>                LibraryError::custom(<span class="string">"Unsupported proposal type GroupContextExtensions"</span>),
 <a href=#270 id=270 data-nosnippet>270</a>            )),
-<a href=#271 id=271 data-nosnippet>271</a>            <span class="comment">// extensions-draft-08
-<a href=#272 id=272 data-nosnippet>272</a>            </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#271 id=271 data-nosnippet>271</a>            <span class="comment">// extensions-draft
+<a href=#272 id=272 data-nosnippet>272</a>            </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#273 id=273 data-nosnippet>273</a>            </span>Propose::UpdateAppDataComponent {
 <a href=#274 id=274 data-nosnippet>274</a>                component_id,
 <a href=#275 id=275 data-nosnippet>275</a>                update,
@@ -279,7 +279,7 @@
 <a href=#279 id=279 data-nosnippet>279</a>                component_id,
 <a href=#280 id=280 data-nosnippet>280</a>                AppDataUpdateOperation::Update(update.into()),
 <a href=#281 id=281 data-nosnippet>281</a>            ),
-<a href=#282 id=282 data-nosnippet>282</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#282 id=282 data-nosnippet>282</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#283 id=283 data-nosnippet>283</a>            </span>Propose::RemoveAppDataComponent { component_id } =&gt; <span class="self">self</span>.propose_app_data_update(
 <a href=#284 id=284 data-nosnippet>284</a>                provider,
 <a href=#285 id=285 data-nosnippet>285</a>                signer,
@@ -501,7 +501,7 @@
 <a href=#501 id=501 data-nosnippet>501</a>    }
 <a href=#502 id=502 data-nosnippet>502</a>
 <a href=#503 id=503 data-nosnippet>503</a>    <span class="doccomment">/// Updates the AppDataDictionary
-<a href=#504 id=504 data-nosnippet>504</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#504 id=504 data-nosnippet>504</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#505 id=505 data-nosnippet>505</a>    </span><span class="kw">pub fn </span>propose_app_data_update&lt;Provider: OpenMlsProvider&gt;(
 <a href=#506 id=506 data-nosnippet>506</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#507 id=507 data-nosnippet>507</a>        provider: <span class="kw-2">&amp;</span>Provider,
@@ -675,7 +675,7 @@
 <a href=#675 id=675 data-nosnippet>675</a>        )
 <a href=#676 id=676 data-nosnippet>676</a>    }
 <a href=#677 id=677 data-nosnippet>677</a>
-<a href=#678 id=678 data-nosnippet>678</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#678 id=678 data-nosnippet>678</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#679 id=679 data-nosnippet>679</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_app_data_update_proposal(
 <a href=#680 id=680 data-nosnippet>680</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#681 id=681 data-nosnippet>681</a>        framing_parameters: FramingParameters,

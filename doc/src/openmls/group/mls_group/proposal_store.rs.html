@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/proposal_store.rs`."><title>proposal_store.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (9e2abe0c6 2026-06-16)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>proposal_store.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/proposal_store.rs`."><title>proposal_store.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (096694416 2026-06-29)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>proposal_store.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>openmls_traits::types::Ciphersuite;
@@ -18,7 +18,7 @@
 <a href=#18 id=18 data-nosnippet>18</a>    utils::vector_converter,
 <a href=#19 id=19 data-nosnippet>19</a>};
 <a href=#20 id=20 data-nosnippet>20</a>
-<a href=#21 id=21 data-nosnippet>21</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#21 id=21 data-nosnippet>21</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#22 id=22 data-nosnippet>22</a></span><span class="kw">use </span><span class="kw">crate</span>::messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal};
 <a href=#23 id=23 data-nosnippet>23</a>
 <a href=#24 id=24 data-nosnippet>24</a><span class="attr">#[derive(Debug, Clone)]
@@ -461,7 +461,7 @@
 <a href=#461 id=461 data-nosnippet>461</a>        })
 <a href=#462 id=462 data-nosnippet>462</a>    }
 <a href=#463 id=463 data-nosnippet>463</a>
-<a href=#464 id=464 data-nosnippet>464</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#464 id=464 data-nosnippet>464</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#465 id=465 data-nosnippet>465</a>    </span><span class="doccomment">/// Returns an iterator over all AppEphemeral proposals in the queue
 <a href=#466 id=466 data-nosnippet>466</a>    /// in the order of the Commit message
 <a href=#467 id=467 data-nosnippet>467</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>app_ephemeral_proposals(
@@ -479,7 +479,7 @@
 <a href=#479 id=479 data-nosnippet>479</a>            </span>}
 <a href=#480 id=480 data-nosnippet>480</a>        })
 <a href=#481 id=481 data-nosnippet>481</a>    }
-<a href=#482 id=482 data-nosnippet>482</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#482 id=482 data-nosnippet>482</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#483 id=483 data-nosnippet>483</a>    </span><span class="doccomment">/// Returns an iterator over all AppDataUpdate proposals in the queue, sorted by Component ID
 <a href=#484 id=484 data-nosnippet>484</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>app_data_update_proposals(
 <a href=#485 id=485 data-nosnippet>485</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -618,7 +618,7 @@
 <a href=#618 id=618 data-nosnippet>618</a>                Proposal::GroupContextExtensions(<span class="kw">_</span>) =&gt; {
 <a href=#619 id=619 data-nosnippet>619</a>                    valid_proposals.add(queued_proposal.proposal_reference());
 <a href=#620 id=620 data-nosnippet>620</a>                }
-<a href=#621 id=621 data-nosnippet>621</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#621 id=621 data-nosnippet>621</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#622 id=622 data-nosnippet>622</a>                </span>Proposal::AppDataUpdate(<span class="kw">_</span>) =&gt; {
 <a href=#623 id=623 data-nosnippet>623</a>                    valid_proposals.add(queued_proposal.proposal_reference())
 <a href=#624 id=624 data-nosnippet>624</a>                }
@@ -628,7 +628,7 @@
 <a href=#628 id=628 data-nosnippet>628</a>                    };
 <a href=#629 id=629 data-nosnippet>629</a>                    register_member_specific_proposal(<span class="kw-2">*</span>removed, queued_proposal);
 <a href=#630 id=630 data-nosnippet>630</a>                }
-<a href=#631 id=631 data-nosnippet>631</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#631 id=631 data-nosnippet>631</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#632 id=632 data-nosnippet>632</a>                </span>Proposal::AppEphemeral(<span class="kw">_</span>) =&gt; {
 <a href=#633 id=633 data-nosnippet>633</a>                    valid_proposals.add(queued_proposal.proposal_reference());
 <a href=#634 id=634 data-nosnippet>634</a>                }
@@ -802,14 +802,14 @@
 <a href=#802 id=802 data-nosnippet>802</a>    }
 <a href=#803 id=803 data-nosnippet>803</a>}
 <a href=#804 id=804 data-nosnippet>804</a>
-<a href=#805 id=805 data-nosnippet>805</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#805 id=805 data-nosnippet>805</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#806 id=806 data-nosnippet>806</a></span><span class="doccomment">/// A queued Add proposal
 <a href=#807 id=807 data-nosnippet>807</a></span><span class="attr">#[derive(PartialEq, Debug)]
 <a href=#808 id=808 data-nosnippet>808</a></span><span class="kw">pub struct </span>QueuedAppEphemeralProposal&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#809 id=809 data-nosnippet>809</a>    app_ephemeral_proposal: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>AppEphemeralProposal,
 <a href=#810 id=810 data-nosnippet>810</a>    sender: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Sender,
 <a href=#811 id=811 data-nosnippet>811</a>}
-<a href=#812 id=812 data-nosnippet>812</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#812 id=812 data-nosnippet>812</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#813 id=813 data-nosnippet>813</a></span><span class="doccomment">/// A queued AppDataUpdate proposal
 <a href=#814 id=814 data-nosnippet>814</a></span><span class="attr">#[derive(PartialEq, Debug)]
 <a href=#815 id=815 data-nosnippet>815</a></span><span class="kw">pub struct </span>QueuedAppDataUpdateProposal&lt;<span class="lifetime">'a</span>&gt; {
@@ -817,7 +817,7 @@
 <a href=#817 id=817 data-nosnippet>817</a>    sender: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Sender,
 <a href=#818 id=818 data-nosnippet>818</a>}
 <a href=#819 id=819 data-nosnippet>819</a>
-<a href=#820 id=820 data-nosnippet>820</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#820 id=820 data-nosnippet>820</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#821 id=821 data-nosnippet>821</a></span><span class="kw">impl </span>QueuedAppEphemeralProposal&lt;<span class="lifetime">'_</span>&gt; {
 <a href=#822 id=822 data-nosnippet>822</a>    <span class="doccomment">/// Returns a reference to the proposal
 <a href=#823 id=823 data-nosnippet>823</a>    </span><span class="kw">pub fn </span>app_ephemeral_proposal(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AppEphemeralProposal {
@@ -829,7 +829,7 @@
 <a href=#829 id=829 data-nosnippet>829</a>        <span class="self">self</span>.sender
 <a href=#830 id=830 data-nosnippet>830</a>    }
 <a href=#831 id=831 data-nosnippet>831</a>}
-<a href=#832 id=832 data-nosnippet>832</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#832 id=832 data-nosnippet>832</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#833 id=833 data-nosnippet>833</a></span><span class="kw">impl </span>QueuedAppDataUpdateProposal&lt;<span class="lifetime">'_</span>&gt; {
 <a href=#834 id=834 data-nosnippet>834</a>    <span class="doccomment">/// Returns a reference to the proposal
 <a href=#835 id=835 data-nosnippet>835</a>    </span><span class="kw">pub fn </span>app_data_update_proposal(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AppDataUpdateProposal {

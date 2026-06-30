@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/process.rs`."><title>process.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (9e2abe0c6 2026-06-16)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/public_group/</div>process.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module contains the implementation of the processing functions for
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/process.rs`."><title>process.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (096694416 2026-06-29)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/public_group/</div>process.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module contains the implementation of the processing functions for
 <a href=#2 id=2 data-nosnippet>2</a>//! public groups.
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a></span><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
@@ -20,7 +20,7 @@
 <a href=#20 id=20 data-nosnippet>20</a>    messages::proposals::Proposal,
 <a href=#21 id=21 data-nosnippet>21</a>};
 <a href=#22 id=22 data-nosnippet>22</a>
-<a href=#23 id=23 data-nosnippet>23</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#23 id=23 data-nosnippet>23</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#24 id=24 data-nosnippet>24</a></span><span class="kw">use crate</span>::{
 <a href=#25 id=25 data-nosnippet>25</a>    component::ComponentData,
 <a href=#26 id=26 data-nosnippet>26</a>    messages::{
@@ -199,7 +199,7 @@
 <a href=#199 id=199 data-nosnippet>199</a>    /// This is equivalent to [`Self::process_message`] for messages without app-data update
 <a href=#200 id=200 data-nosnippet>200</a>    /// proposals. If app-data update proposals are committed by value, their resulting dictionary
 <a href=#201 id=201 data-nosnippet>201</a>    /// changes are computed and supplied during staged commit validation.
-<a href=#202 id=202 data-nosnippet>202</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#202 id=202 data-nosnippet>202</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#203 id=203 data-nosnippet>203</a>    </span><span class="kw">pub fn </span>process_message_with_app_data_updates(
 <a href=#204 id=204 data-nosnippet>204</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#205 id=205 data-nosnippet>205</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
@@ -236,7 +236,7 @@
 <a href=#236 id=236 data-nosnippet>236</a>        )
 <a href=#237 id=237 data-nosnippet>237</a>    }
 <a href=#238 id=238 data-nosnippet>238</a>
-<a href=#239 id=239 data-nosnippet>239</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#239 id=239 data-nosnippet>239</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#240 id=240 data-nosnippet>240</a>    </span><span class="kw">fn </span>extract_app_data_updates(<span class="kw-2">&amp;</span><span class="self">self</span>, unverified: <span class="kw-2">&amp;</span>UnverifiedMessage) -&gt; <span class="prelude-ty">Option</span>&lt;AppDataUpdates&gt; {
 <a href=#241 id=241 data-nosnippet>241</a>        <span class="kw">let </span><span class="kw-2">mut </span>updater = AppDataDictionaryUpdater::new(<span class="self">self</span>.group_context().app_data_dict());
 <a href=#242 id=242 data-nosnippet>242</a>        <span class="kw">let </span><span class="kw-2">mut </span>updated = <span class="bool-val">false</span>;
@@ -302,7 +302,7 @@
 <a href=#302 id=302 data-nosnippet>302</a>        <span class="kw">let </span>content = verified.content;
 <a href=#303 id=303 data-nosnippet>303</a>        <span class="kw">let </span>credential = verified.credential;
 <a href=#304 id=304 data-nosnippet>304</a>
-<a href=#305 id=305 data-nosnippet>305</a>        <span class="attr">#[cfg_attr(not(feature = <span class="string">"extensions-draft-08"</span>), allow(unused_mut))]
+<a href=#305 id=305 data-nosnippet>305</a>        <span class="attr">#[cfg_attr(not(feature = <span class="string">"extensions-draft"</span>), allow(unused_mut))]
 <a href=#306 id=306 data-nosnippet>306</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>processed = <span class="kw">match </span>content.sender() {
 <a href=#307 id=307 data-nosnippet>307</a>            Sender::Member(<span class="kw">_</span>) | Sender::NewMemberCommit | Sender::NewMemberProposal =&gt; {
 <a href=#308 id=308 data-nosnippet>308</a>                <span class="self">self</span>.process_internal_authenticated_content(crypto, content, credential)<span class="question-mark">?
@@ -311,7 +311,7 @@
 <a href=#311 id=311 data-nosnippet>311</a>                <span class="self">self</span>.process_external_authenticated_content(crypto, content, credential)<span class="question-mark">?
 <a href=#312 id=312 data-nosnippet>312</a>            </span>}
 <a href=#313 id=313 data-nosnippet>313</a>        };
-<a href=#314 id=314 data-nosnippet>314</a>        <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#314 id=314 data-nosnippet>314</a>        <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#315 id=315 data-nosnippet>315</a>        </span><span class="kw">if </span><span class="self">self</span>.group_context().safe_aad_required() {
 <a href=#316 id=316 data-nosnippet>316</a>            processed
 <a href=#317 id=317 data-nosnippet>317</a>                .try_attach_safe_aad()
@@ -346,7 +346,7 @@
 <a href=#346 id=346 data-nosnippet>346</a>    ///  - ValSem242
 <a href=#347 id=347 data-nosnippet>347</a>    ///  - ValSem244
 <a href=#348 id=348 data-nosnippet>348</a>    ///  - ValSem246 (as part of ValSem010)
-<a href=#349 id=349 data-nosnippet>349</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#349 id=349 data-nosnippet>349</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#350 id=350 data-nosnippet>350</a>    </span><span class="kw">pub fn </span>process_unverified_message_with_app_data_updates(
 <a href=#351 id=351 data-nosnippet>351</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#352 id=352 data-nosnippet>352</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
@@ -361,7 +361,7 @@
 <a href=#361 id=361 data-nosnippet>361</a>        <span class="kw">let </span>content = verified.content;
 <a href=#362 id=362 data-nosnippet>362</a>        <span class="kw">let </span>credential = verified.credential;
 <a href=#363 id=363 data-nosnippet>363</a>
-<a href=#364 id=364 data-nosnippet>364</a>        <span class="attr">#[cfg_attr(not(feature = <span class="string">"extensions-draft-08"</span>), allow(unused_mut))]
+<a href=#364 id=364 data-nosnippet>364</a>        <span class="attr">#[cfg_attr(not(feature = <span class="string">"extensions-draft"</span>), allow(unused_mut))]
 <a href=#365 id=365 data-nosnippet>365</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>processed = <span class="kw">match </span>content.sender() {
 <a href=#366 id=366 data-nosnippet>366</a>            Sender::Member(<span class="kw">_</span>) | Sender::NewMemberCommit | Sender::NewMemberProposal =&gt; <span class="self">self
 <a href=#367 id=367 data-nosnippet>367</a>                </span>.process_internal_authenticated_content_with_app_data_updates(
@@ -374,7 +374,7 @@
 <a href=#374 id=374 data-nosnippet>374</a>                <span class="self">self</span>.process_external_authenticated_content(crypto, content, credential)<span class="question-mark">?
 <a href=#375 id=375 data-nosnippet>375</a>            </span>}
 <a href=#376 id=376 data-nosnippet>376</a>        };
-<a href=#377 id=377 data-nosnippet>377</a>        <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#377 id=377 data-nosnippet>377</a>        <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#378 id=378 data-nosnippet>378</a>        </span><span class="kw">if </span><span class="self">self</span>.group_context().safe_aad_required() {
 <a href=#379 id=379 data-nosnippet>379</a>            processed
 <a href=#380 id=380 data-nosnippet>380</a>                .try_attach_safe_aad()
@@ -428,7 +428,7 @@
 <a href=#428 id=428 data-nosnippet>428</a>        ))
 <a href=#429 id=429 data-nosnippet>429</a>    }
 <a href=#430 id=430 data-nosnippet>430</a>
-<a href=#431 id=431 data-nosnippet>431</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#431 id=431 data-nosnippet>431</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#432 id=432 data-nosnippet>432</a>    </span><span class="kw">fn </span>process_internal_authenticated_content_with_app_data_updates(
 <a href=#433 id=433 data-nosnippet>433</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#434 id=434 data-nosnippet>434</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,

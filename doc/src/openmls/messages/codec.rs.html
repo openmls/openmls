@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/messages/codec.rs`."><title>codec.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (9e2abe0c6 2026-06-16)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/messages/</div>codec.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Codec
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/messages/codec.rs`."><title>codec.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (096694416 2026-06-29)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/messages/</div>codec.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Codec
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! This module contains the encoding and decoding logic for Proposals.
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -15,7 +15,7 @@
 <a href=#15 id=15 data-nosnippet>15</a>    CustomProposal,
 <a href=#16 id=16 data-nosnippet>16</a>};
 <a href=#17 id=17 data-nosnippet>17</a>
-<a href=#18 id=18 data-nosnippet>18</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#18 id=18 data-nosnippet>18</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#19 id=19 data-nosnippet>19</a></span><span class="kw">use </span><span class="kw">super</span>::proposals::{AppDataUpdateProposal, AppEphemeralProposal};
 <a href=#20 id=20 data-nosnippet>20</a>
 <a href=#21 id=21 data-nosnippet>21</a><span class="kw">impl </span>Size <span class="kw">for </span>Proposal {
@@ -29,10 +29,10 @@
 <a href=#29 id=29 data-nosnippet>29</a>                Proposal::ReInit(p) =&gt; p.tls_serialized_len(),
 <a href=#30 id=30 data-nosnippet>30</a>                Proposal::ExternalInit(p) =&gt; p.tls_serialized_len(),
 <a href=#31 id=31 data-nosnippet>31</a>                Proposal::GroupContextExtensions(p) =&gt; p.tls_serialized_len(),
-<a href=#32 id=32 data-nosnippet>32</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#32 id=32 data-nosnippet>32</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#33 id=33 data-nosnippet>33</a>                </span>Proposal::AppDataUpdate(p) =&gt; p.tls_serialized_len(),
 <a href=#34 id=34 data-nosnippet>34</a>                Proposal::SelfRemove =&gt; <span class="number">0</span>,
-<a href=#35 id=35 data-nosnippet>35</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#35 id=35 data-nosnippet>35</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#36 id=36 data-nosnippet>36</a>                </span>Proposal::AppEphemeral(p) =&gt; p.tls_serialized_len(),
 <a href=#37 id=37 data-nosnippet>37</a>                Proposal::Custom(p) =&gt; p.payload().tls_serialized_len(),
 <a href=#38 id=38 data-nosnippet>38</a>            }
@@ -50,10 +50,10 @@
 <a href=#50 id=50 data-nosnippet>50</a>            Proposal::ReInit(p) =&gt; p.tls_serialize(writer),
 <a href=#51 id=51 data-nosnippet>51</a>            Proposal::ExternalInit(p) =&gt; p.tls_serialize(writer),
 <a href=#52 id=52 data-nosnippet>52</a>            Proposal::GroupContextExtensions(p) =&gt; p.tls_serialize(writer),
-<a href=#53 id=53 data-nosnippet>53</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#53 id=53 data-nosnippet>53</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#54 id=54 data-nosnippet>54</a>            </span>Proposal::AppDataUpdate(p) =&gt; p.tls_serialize(writer),
 <a href=#55 id=55 data-nosnippet>55</a>            Proposal::SelfRemove =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
-<a href=#56 id=56 data-nosnippet>56</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#56 id=56 data-nosnippet>56</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#57 id=57 data-nosnippet>57</a>            </span>Proposal::AppEphemeral(p) =&gt; p.tls_serialize(writer),
 <a href=#58 id=58 data-nosnippet>58</a>            Proposal::Custom(p) =&gt; p.payload().tls_serialize(writer),
 <a href=#59 id=59 data-nosnippet>59</a>        }
@@ -72,10 +72,10 @@
 <a href=#72 id=72 data-nosnippet>72</a>                ProposalIn::ReInit(p) =&gt; p.tls_serialized_len(),
 <a href=#73 id=73 data-nosnippet>73</a>                ProposalIn::ExternalInit(p) =&gt; p.tls_serialized_len(),
 <a href=#74 id=74 data-nosnippet>74</a>                ProposalIn::GroupContextExtensions(p) =&gt; p.tls_serialized_len(),
-<a href=#75 id=75 data-nosnippet>75</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#75 id=75 data-nosnippet>75</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#76 id=76 data-nosnippet>76</a>                </span>ProposalIn::AppDataUpdate(p) =&gt; p.tls_serialized_len(),
 <a href=#77 id=77 data-nosnippet>77</a>                ProposalIn::SelfRemove =&gt; <span class="number">0</span>,
-<a href=#78 id=78 data-nosnippet>78</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#78 id=78 data-nosnippet>78</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#79 id=79 data-nosnippet>79</a>                </span>ProposalIn::AppEphemeral(p) =&gt; p.tls_serialized_len(),
 <a href=#80 id=80 data-nosnippet>80</a>                ProposalIn::Custom(p) =&gt; p.payload().tls_serialized_len(),
 <a href=#81 id=81 data-nosnippet>81</a>            }
@@ -99,10 +99,10 @@
 <a href=#99 id=99 data-nosnippet>99</a>            ProposalIn::ReInit(p) =&gt; p.tls_serialize(writer),
 <a href=#100 id=100 data-nosnippet>100</a>            ProposalIn::ExternalInit(p) =&gt; p.tls_serialize(writer),
 <a href=#101 id=101 data-nosnippet>101</a>            ProposalIn::GroupContextExtensions(p) =&gt; p.tls_serialize(writer),
-<a href=#102 id=102 data-nosnippet>102</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#102 id=102 data-nosnippet>102</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#103 id=103 data-nosnippet>103</a>            </span>ProposalIn::AppDataUpdate(p) =&gt; p.tls_serialize(writer),
 <a href=#104 id=104 data-nosnippet>104</a>            ProposalIn::SelfRemove =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
-<a href=#105 id=105 data-nosnippet>105</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#105 id=105 data-nosnippet>105</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#106 id=106 data-nosnippet>106</a>            </span>ProposalIn::AppEphemeral(p) =&gt; p.tls_serialize(writer),
 <a href=#107 id=107 data-nosnippet>107</a>            ProposalIn::Custom(p) =&gt; p.payload().tls_serialize(writer),
 <a href=#108 id=108 data-nosnippet>108</a>        }
@@ -142,12 +142,12 @@
 <a href=#142 id=142 data-nosnippet>142</a>            ProposalType::GroupContextExtensions =&gt; ProposalIn::GroupContextExtensions(Box::new(
 <a href=#143 id=143 data-nosnippet>143</a>                GroupContextExtensionProposalIn::tls_deserialize(bytes)<span class="question-mark">?</span>,
 <a href=#144 id=144 data-nosnippet>144</a>            )),
-<a href=#145 id=145 data-nosnippet>145</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#145 id=145 data-nosnippet>145</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#146 id=146 data-nosnippet>146</a>            </span>ProposalType::AppDataUpdate =&gt; {
 <a href=#147 id=147 data-nosnippet>147</a>                ProposalIn::AppDataUpdate(Box::new(AppDataUpdateProposal::tls_deserialize(bytes)<span class="question-mark">?</span>))
 <a href=#148 id=148 data-nosnippet>148</a>            }
 <a href=#149 id=149 data-nosnippet>149</a>            ProposalType::SelfRemove =&gt; ProposalIn::SelfRemove,
-<a href=#150 id=150 data-nosnippet>150</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft-08"</span>)]
+<a href=#150 id=150 data-nosnippet>150</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
 <a href=#151 id=151 data-nosnippet>151</a>            </span>ProposalType::AppEphemeral =&gt; {
 <a href=#152 id=152 data-nosnippet>152</a>                ProposalIn::AppEphemeral(Box::new(AppEphemeralProposal::tls_deserialize(bytes)<span class="question-mark">?</span>))
 <a href=#153 id=153 data-nosnippet>153</a>            }

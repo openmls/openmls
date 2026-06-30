@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["vc_derivation_info"]};
+window.SIDEBAR_ITEMS = {"mod":["vc_derivation_info","vc_operation_tree"]};

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/private_message_in.rs`."><title>private_message_in.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (9e2abe0c6 2026-06-16)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/framing/</div>private_message_in.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/private_message_in.rs`."><title>private_message_in.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (096694416 2026-06-29)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/framing/</div>private_message_in.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>openmls_traits::types::Ciphersuite;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>tls_codec::{
 <a href=#4 id=4 data-nosnippet>4</a>    Deserialize, Serialize, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize,
@@ -312,33 +312,32 @@
 <a href=#312 id=312 data-nosnippet>312</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) auth: FramedContentAuthData,
 <a href=#313 id=313 data-nosnippet>313</a>}
 <a href=#314 id=314 data-nosnippet>314</a>
-<a href=#315 id=315 data-nosnippet>315</a><span class="comment">// The following `From` implementation( breaks abstraction layers and MUST
-<a href=#316 id=316 data-nosnippet>316</a>// NOT be made available outside of tests or "test-utils".
-<a href=#317 id=317 data-nosnippet>317</a></span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-<a href=#318 id=318 data-nosnippet>318</a></span><span class="kw">impl </span>From&lt;PrivateMessageIn&gt; <span class="kw">for </span>PrivateMessage {
-<a href=#319 id=319 data-nosnippet>319</a>    <span class="kw">fn </span>from(value: PrivateMessageIn) -&gt; <span class="self">Self </span>{
-<a href=#320 id=320 data-nosnippet>320</a>        <span class="self">Self </span>{
-<a href=#321 id=321 data-nosnippet>321</a>            group_id: value.group_id,
-<a href=#322 id=322 data-nosnippet>322</a>            epoch: value.epoch,
-<a href=#323 id=323 data-nosnippet>323</a>            content_type: value.content_type,
-<a href=#324 id=324 data-nosnippet>324</a>            authenticated_data: value.authenticated_data,
-<a href=#325 id=325 data-nosnippet>325</a>            encrypted_sender_data: value.encrypted_sender_data,
-<a href=#326 id=326 data-nosnippet>326</a>            ciphertext: value.ciphertext,
-<a href=#327 id=327 data-nosnippet>327</a>        }
-<a href=#328 id=328 data-nosnippet>328</a>    }
-<a href=#329 id=329 data-nosnippet>329</a>}
-<a href=#330 id=330 data-nosnippet>330</a>
-<a href=#331 id=331 data-nosnippet>331</a><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-<a href=#332 id=332 data-nosnippet>332</a></span><span class="kw">impl </span>From&lt;PrivateMessage&gt; <span class="kw">for </span>PrivateMessageIn {
-<a href=#333 id=333 data-nosnippet>333</a>    <span class="kw">fn </span>from(value: PrivateMessage) -&gt; <span class="self">Self </span>{
-<a href=#334 id=334 data-nosnippet>334</a>        <span class="self">Self </span>{
-<a href=#335 id=335 data-nosnippet>335</a>            group_id: value.group_id,
-<a href=#336 id=336 data-nosnippet>336</a>            epoch: value.epoch,
-<a href=#337 id=337 data-nosnippet>337</a>            content_type: value.content_type,
-<a href=#338 id=338 data-nosnippet>338</a>            authenticated_data: value.authenticated_data,
-<a href=#339 id=339 data-nosnippet>339</a>            encrypted_sender_data: value.encrypted_sender_data,
-<a href=#340 id=340 data-nosnippet>340</a>            ciphertext: value.ciphertext,
-<a href=#341 id=341 data-nosnippet>341</a>        }
-<a href=#342 id=342 data-nosnippet>342</a>    }
-<a href=#343 id=343 data-nosnippet>343</a>}
+<a href=#315 id=315 data-nosnippet>315</a><span class="kw">impl </span>From&lt;PrivateMessage&gt; <span class="kw">for </span>PrivateMessageIn {
+<a href=#316 id=316 data-nosnippet>316</a>    <span class="kw">fn </span>from(value: PrivateMessage) -&gt; <span class="self">Self </span>{
+<a href=#317 id=317 data-nosnippet>317</a>        <span class="self">Self </span>{
+<a href=#318 id=318 data-nosnippet>318</a>            group_id: value.group_id,
+<a href=#319 id=319 data-nosnippet>319</a>            epoch: value.epoch,
+<a href=#320 id=320 data-nosnippet>320</a>            content_type: value.content_type,
+<a href=#321 id=321 data-nosnippet>321</a>            authenticated_data: value.authenticated_data,
+<a href=#322 id=322 data-nosnippet>322</a>            encrypted_sender_data: value.encrypted_sender_data,
+<a href=#323 id=323 data-nosnippet>323</a>            ciphertext: value.ciphertext,
+<a href=#324 id=324 data-nosnippet>324</a>        }
+<a href=#325 id=325 data-nosnippet>325</a>    }
+<a href=#326 id=326 data-nosnippet>326</a>}
+<a href=#327 id=327 data-nosnippet>327</a>
+<a href=#328 id=328 data-nosnippet>328</a><span class="comment">// The following `From` implementation( breaks abstraction layers and MUST
+<a href=#329 id=329 data-nosnippet>329</a>// NOT be made available outside of tests or "test-utils".
+<a href=#330 id=330 data-nosnippet>330</a></span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+<a href=#331 id=331 data-nosnippet>331</a></span><span class="kw">impl </span>From&lt;PrivateMessageIn&gt; <span class="kw">for </span>PrivateMessage {
+<a href=#332 id=332 data-nosnippet>332</a>    <span class="kw">fn </span>from(value: PrivateMessageIn) -&gt; <span class="self">Self </span>{
+<a href=#333 id=333 data-nosnippet>333</a>        <span class="self">Self </span>{
+<a href=#334 id=334 data-nosnippet>334</a>            group_id: value.group_id,
+<a href=#335 id=335 data-nosnippet>335</a>            epoch: value.epoch,
+<a href=#336 id=336 data-nosnippet>336</a>            content_type: value.content_type,
+<a href=#337 id=337 data-nosnippet>337</a>            authenticated_data: value.authenticated_data,
+<a href=#338 id=338 data-nosnippet>338</a>            encrypted_sender_data: value.encrypted_sender_data,
+<a href=#339 id=339 data-nosnippet>339</a>            ciphertext: value.ciphertext,
+<a href=#340 id=340 data-nosnippet>340</a>        }
+<a href=#341 id=341 data-nosnippet>341</a>    }
+<a href=#342 id=342 data-nosnippet>342</a>}
 </code></pre></div></section></main></body></html>
