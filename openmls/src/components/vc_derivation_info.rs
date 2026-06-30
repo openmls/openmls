@@ -7,12 +7,13 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{
     DeserializeBytes, Serialize as _, Size as _, TlsDeserializeBytes, TlsSerialize, TlsSize,
-    VLBytes,
+    VLByteSlice, VLBytes,
 };
 
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::{hash_ref::KeyPackageRef, Secret},
+    group::{GroupEpoch, GroupId},
     messages::PathSecret,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
@@ -54,6 +55,10 @@ const EPOCH_BASE_SECRET_LABEL: &str = "Base Secret";
 const REUSE_GUARD_LABEL: &str = "Reuse Guard";
 /// `DeriveSecret` label for [`GenerationIdSecret`].
 const GENERATION_ID_LABEL: &str = "Generation ID Secret";
+/// `ExpandWithLabel` label for a [`GenerationId`] derived from a
+/// [`GenerationIdSecret`] over a serialized [`PrivateMessageContext`]
+/// (mls-virtual-clients draft, generation-ID section).
+const GENERATION_ID_EXPAND_LABEL: &str = "generation id";
 /// `ExpandWithLabel` label for the 16-byte FF1 PRP key derived from a
 /// [`ReuseGuardSecret`] (mls-virtual-clients draft, Reuse Guard section).
 const REUSE_GUARD_PRP_KEY_LABEL: &str = "reuse guard";
@@ -280,11 +285,6 @@ impl ReuseGuardSecret {
 /// collision detection (mls-virtual-clients draft, "Coordinating ratchet
 /// generations with the DS" section). Derived from [`EmulatorEpochSecret`]
 /// via [`EmulatorEpochSecret::derive_generation_id_secret`].
-///
-/// Derived and persisted now so the per-epoch state is complete, but not yet
-/// consumed: the `generation_id` derivation and its `PrivateMessageContext`
-/// input land in a follow-up PR. It is stored here so older emulation epochs
-/// remain usable once that path exists.
 #[derive(Serialize, Deserialize)]
 pub(crate) struct GenerationIdSecret(Secret);
 
@@ -293,6 +293,104 @@ impl std::fmt::Debug for GenerationIdSecret {
         f.debug_struct("GenerationIdSecret")
             .field("secret", &"<redacted>")
             .finish()
+    }
+}
+
+impl GenerationIdSecret {
+    /// Derive the [`GenerationId`] for a message sent with the given
+    /// [`PrivateMessageContext`]:
+    ///
+    /// ```text
+    /// generation_id = ExpandWithLabel(generation_id_secret, "generation id",
+    ///                                 PrivateMessageContext, Kdf.Nh)
+    /// ```
+    ///
+    /// `ciphersuite` is the emulation group's ciphersuite, the same one the
+    /// `generation_id_secret` was derived under.
+    fn derive_generation_id(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        context: &PrivateMessageContext<'_>,
+    ) -> Result<GenerationId, VirtualClientsError> {
+        let context_bytes = context.tls_serialize_detached()?;
+        let generation_id = self.0.kdf_expand_label(
+            crypto,
+            ciphersuite,
+            GENERATION_ID_EXPAND_LABEL,
+            &context_bytes,
+            ciphersuite.hash_length(),
+        )?;
+        Ok(GenerationId(generation_id.as_slice().to_vec().into()))
+    }
+}
+
+/// Which ratchet a `PrivateMessageContext` refers to
+/// (mls-virtual-clients draft `RatchetType`):
+///
+/// ```text
+/// enum {
+///   reserved(0),
+///   application(1),
+///   handshake(2),
+///   (255)
+/// } RatchetType
+/// ```
+///
+/// Only [`Application`](Self::Application) is produced today: handshake
+/// messages framed as PrivateMessages in higher-level groups are deferred, so
+/// no generation ID is derived for the handshake ratchet yet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, TlsSize, TlsSerialize)]
+#[repr(u8)]
+pub enum RatchetType {
+    /// The per-leaf application-message ratchet.
+    Application = 1,
+    /// The per-leaf handshake-message ratchet.
+    Handshake = 2,
+}
+
+/// Context a [`GenerationId`] is derived over (mls-virtual-clients draft):
+///
+/// ```text
+/// struct {
+///   opaque group_id<V>;
+///   uint64 epoch;
+///   uint32 generation;
+///   RatchetType ratchet_type;
+/// } PrivateMessageContext
+/// ```
+///
+/// `group_id` and `epoch` identify the higher-level group and its epoch at
+/// the time the message is sent, `generation` is the ratchet generation used
+/// for encryption, and `ratchet_type` distinguishes the application and
+/// handshake ratchets. Only ever serialized as a derivation context, never
+/// parsed back, so it borrows its `group_id` and needs serialization only.
+#[derive(Debug, TlsSize, TlsSerialize)]
+pub(crate) struct PrivateMessageContext<'a> {
+    group_id: VLByteSlice<'a>,
+    epoch: u64,
+    generation: u32,
+    ratchet_type: RatchetType,
+}
+
+/// A per-message generation ID a virtual client attaches to a fanned-out
+/// PrivateMessage so a strongly-consistent DS can detect generation
+/// collisions between siblings, per higher-level group, per higher-level
+/// group epoch, and per ratchet type (mls-virtual-clients draft).
+///
+/// Derived from the emulation epoch's `GenerationIdSecret` over a
+/// `PrivateMessageContext`. The value is opaque to the application: it is
+/// produced by [`MlsGroup::create_unconfirmed_message`] and handed to the DS,
+/// which compares it for equality across siblings.
+///
+/// [`MlsGroup::create_unconfirmed_message`]: crate::group::MlsGroup::create_unconfirmed_message
+#[derive(Debug, Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+pub struct GenerationId(VLBytes);
+
+impl GenerationId {
+    /// The raw generation-ID bytes the application hands to the DS.
+    pub fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
     }
 }
 
@@ -766,8 +864,8 @@ pub struct EmulationEpochState {
     pub(crate) leaf_index: LeafNodeIndex,
     pub(crate) epoch_encryption_key: EpochEncryptionKey,
     pub(crate) reuse_guard_secret: ReuseGuardSecret,
-    /// Stored now but not yet read. The generation-ID derivation that
-    /// consumes it is deferred to a follow-up PR (see [`GenerationIdSecret`]).
+    /// Used to derive the per-message [`GenerationId`] handed to the DS, via
+    /// [`EmulationEpochState::derive_generation_id`].
     pub(crate) generation_id_secret: GenerationIdSecret,
     /// Number of leaves `N_e` in the emulation group at registration time.
     pub(crate) emulation_group_size: TreeSize,
@@ -803,6 +901,29 @@ impl EmulationEpochState {
             self.epoch_encryption_key,
             self.emulation_ciphersuite,
         )
+    }
+
+    /// Derive the [`GenerationId`] for an application message sent in
+    /// `group_id` at `epoch` with ratchet `generation`. The
+    /// [`PrivateMessageContext`] is assembled from these inputs and the
+    /// emulation epoch's [`GenerationIdSecret`], using the emulation group's
+    /// ciphersuite.
+    pub(crate) fn derive_generation_id(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        group_id: &GroupId,
+        epoch: GroupEpoch,
+        generation: u32,
+        ratchet_type: RatchetType,
+    ) -> Result<GenerationId, VirtualClientsError> {
+        let context = PrivateMessageContext {
+            group_id: VLByteSlice(group_id.as_slice()),
+            epoch: epoch.as_u64(),
+            generation,
+            ratchet_type,
+        };
+        self.generation_id_secret
+            .derive_generation_id(crypto, self.emulation_ciphersuite, &context)
     }
 
     /// Borrow the per-message inputs the framing layer needs to derive
@@ -1731,5 +1852,92 @@ mod tests {
         .expect("read material b")
         .expect("material b present");
         assert_eq!(material_b.key_package_index, 1);
+    }
+
+    /// Build an `EmulationEpochState` from raw emulator-epoch-secret bytes, so
+    /// two siblings sharing the same bytes can be compared.
+    fn state_from_secret_bytes(
+        provider: &OpenMlsRustCrypto,
+        secret_bytes: &[u8],
+        leaf_index: LeafNodeIndex,
+    ) -> EmulationEpochState {
+        let emulator = EmulatorEpochSecret::new(secret_bytes);
+        let epoch_encryption_key = emulator
+            .derive_epoch_encryption_key(provider.crypto(), CIPHERSUITE)
+            .expect("derive epoch encryption key");
+        let reuse_guard_secret = emulator
+            .derive_reuse_guard_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive reuse guard secret");
+        let generation_id_secret = emulator
+            .derive_generation_id_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive generation id secret");
+        EmulationEpochState::new(
+            leaf_index,
+            epoch_encryption_key,
+            reuse_guard_secret,
+            generation_id_secret,
+            TreeSize::new(2),
+            CIPHERSUITE,
+        )
+    }
+
+    /// The generation ID is deterministic for fixed inputs, changes when any
+    /// `PrivateMessageContext` field changes, and two siblings that share the
+    /// same emulator epoch secret derive the same value (so a DS can compare
+    /// them for equality across siblings).
+    #[test]
+    fn generation_id_is_deterministic_and_context_sensitive() {
+        let provider = OpenMlsRustCrypto::default();
+        let secret_bytes = provider
+            .rand()
+            .random_vec(CIPHERSUITE.hash_length())
+            .expect("randomness");
+        let state = state_from_secret_bytes(&provider, &secret_bytes, LeafNodeIndex::new(0));
+
+        let group_id = GroupId::from_slice(b"higher-level-group");
+        let epoch = GroupEpoch::from(7);
+        let derive = |group_id: &GroupId, epoch, generation, ratchet_type| {
+            state
+                .derive_generation_id(provider.crypto(), group_id, epoch, generation, ratchet_type)
+                .expect("derive generation id")
+        };
+
+        let base = derive(&group_id, epoch, 3, RatchetType::Application);
+        // The generation ID is `Kdf.Nh` bytes long.
+        assert_eq!(base.as_slice().len(), CIPHERSUITE.hash_length());
+        // Deterministic for fixed inputs.
+        assert_eq!(base, derive(&group_id, epoch, 3, RatchetType::Application));
+        // Sensitive to the generation, the epoch, the group id, and the
+        // ratchet type.
+        assert_ne!(base, derive(&group_id, epoch, 4, RatchetType::Application));
+        assert_ne!(
+            base,
+            derive(&group_id, GroupEpoch::from(8), 3, RatchetType::Application)
+        );
+        assert_ne!(
+            base,
+            derive(
+                &GroupId::from_slice(b"other-group"),
+                epoch,
+                3,
+                RatchetType::Application
+            )
+        );
+        assert_ne!(base, derive(&group_id, epoch, 3, RatchetType::Handshake));
+
+        // A sibling sharing the same emulator epoch secret derives the same
+        // generation ID, even from a different leaf index: the leaf index is
+        // not part of the PrivateMessageContext.
+        let sibling = state_from_secret_bytes(&provider, &secret_bytes, LeafNodeIndex::new(5));
+        let sibling_id = sibling
+            .derive_generation_id(
+                provider.crypto(),
+                &group_id,
+                epoch,
+                3,
+                RatchetType::Application,
+            )
+            .expect("sibling derive generation id");
+        assert_eq!(base, sibling_id);
     }
 }

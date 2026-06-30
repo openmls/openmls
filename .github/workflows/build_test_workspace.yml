@@ -54,7 +54,7 @@ jobs:
           cargo test --workspace --all-targets --exclude=openmls --exclude openmls-fuzz
       - name: Build workspace with experimental features
         run: |
-          cargo build --workspace -F extensions-draft-08,draft-ietf-mls-pq-ciphersuites --all-targets --exclude openmls-fuzz
+          cargo build --workspace -F extensions-draft,draft-ietf-mls-pq-ciphersuites --all-targets --exclude openmls-fuzz
       - name: Test workspace with experimental features
         run: |
-          cargo test --workspace -F extensions-draft-08,draft-ietf-mls-pq-ciphersuites --all-targets --exclude=openmls --exclude openmls-fuzz
+          cargo test --workspace -F extensions-draft,draft-ietf-mls-pq-ciphersuites --all-targets --exclude=openmls --exclude openmls-fuzz

@@ -6,7 +6,7 @@ use crate::{
     extensions::errors::InvalidExtensionError,
     schedule::{EpochAuthenticator, ResumptionPskSecret},
 };
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     component::ComponentId,
     group::{PendingSafeExportSecretError, SafeExportSecretError},
@@ -58,7 +58,7 @@ impl MlsGroup {
 
     /// Export a secret from the forward secure exporter for the component with
     /// the given component ID.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_export_secret<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         &mut self,
         crypto: &Crypto,
@@ -86,7 +86,7 @@ impl MlsGroup {
 
     /// Export a secret from the forward secure exporter of the pending commit
     /// state for the component with the given component ID.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_export_secret_from_pending<Provider: StorageProvider>(
         &mut self,
         crypto: &impl OpenMlsCrypto,

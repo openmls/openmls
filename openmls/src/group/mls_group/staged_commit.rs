@@ -20,7 +20,7 @@ use super::{
 use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;
 use crate::prelude::{Commit, LeafNodeIndex};
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{component::ComponentId, schedule::application_export_tree::ApplicationExportTree};
 
 use crate::treesync::errors::TreeSyncFromNodesError;
@@ -39,9 +39,9 @@ use crate::{
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use super::proposal_store::{QueuedAppDataUpdateProposal, QueuedAppEphemeralProposal};
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::prelude::processing::AppDataUpdates;
 
 impl MlsGroup {
@@ -218,11 +218,11 @@ impl MlsGroup {
         // group context) and apply proposals.
         let mut diff = self.public_group.empty_diff();
 
-        #[cfg(not(feature = "extensions-draft-08"))]
+        #[cfg(not(feature = "extensions-draft"))]
         let apply_proposals_values =
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let apply_proposals_values = diff.apply_proposals_with_app_data_updates(
             &proposal_queue,
             self.own_leaf_index(),
@@ -245,7 +245,7 @@ impl MlsGroup {
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn stage_commit_with_app_data_updates(
         &self,
@@ -498,7 +498,7 @@ impl MlsGroup {
 
         let EpochSecretsResult {
             epoch_secrets,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_exporter,
         } = self.derive_epoch_secrets(
             provider,
@@ -541,7 +541,7 @@ impl MlsGroup {
         diff.update_interim_transcript_hash(ciphersuite, provider.crypto(), own_confirmation_tag)?;
 
         let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let application_export_tree = ApplicationExportTree::new(application_exporter);
         #[cfg(feature = "virtual-clients-draft")]
         let new_own_leaf_index = is_sibling_resync.then_some(provisional_own_leaf_index);
@@ -553,7 +553,7 @@ impl MlsGroup {
                 new_keypairs,
                 new_leaf_keypair_option,
                 update_path_leaf_node,
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 application_export_tree,
                 #[cfg(feature = "virtual-clients-draft")]
                 new_own_leaf_index,
@@ -668,7 +668,7 @@ impl MlsGroup {
                 );
 
                 // Replace the previous exporter tree with the new one.
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 {
                     // The application exporter is only None if the group was
                     // stored using an older version of OpenMLS that did not
@@ -860,7 +860,7 @@ impl StagedCommit {
         self.staged_proposal_queue.psk_proposals()
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Returns the AppEphemeral proposals that are covered by the Commit message as an iterator
     /// over [`QueuedAppEphemeralProposal`].
     pub fn queued_app_ephemeral_proposals(
@@ -869,7 +869,7 @@ impl StagedCommit {
         self.staged_proposal_queue.app_ephemeral_proposals()
     }
     // NOTE: this is not a default proposal type
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Returns the AppDataUpdate proposals that are covered by the Commit message as an iterator
     /// over [`QueuedAppDataUpdateProposal`].
     pub fn app_data_update_proposals(
@@ -988,7 +988,7 @@ impl StagedCommit {
         }
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn safe_export_secret(
         &mut self,
         crypto: &impl OpenMlsCrypto,
@@ -1056,7 +1056,7 @@ pub(crate) struct MemberStagedCommitState {
     new_keypairs: Vec<EncryptionKeyPair>,
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
     update_path_leaf_node: Option<LeafNode>,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[serde(default)]
     // This is `None` only if the group was stored using an older version of
     // OpenMLS that did not support the application exporter.
@@ -1079,7 +1079,7 @@ impl MemberStagedCommitState {
         new_keypairs: Vec<EncryptionKeyPair>,
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
         update_path_leaf_node: Option<LeafNode>,
-        #[cfg(feature = "extensions-draft-08")] application_export_tree: ApplicationExportTree,
+        #[cfg(feature = "extensions-draft")] application_export_tree: ApplicationExportTree,
         #[cfg(feature = "virtual-clients-draft")] new_own_leaf_index: Option<LeafNodeIndex>,
     ) -> Self {
         Self {
@@ -1089,7 +1089,7 @@ impl MemberStagedCommitState {
             new_keypairs,
             new_leaf_keypair_option,
             update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_export_tree: Some(application_export_tree),
             #[cfg(feature = "virtual-clients-draft")]
             new_own_leaf_index,

@@ -35,7 +35,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     component::ComponentId, framing::safe_aad::SafeAad, messages::proposals_in::ProposalOrRefIn,
 };
@@ -325,7 +325,7 @@ impl UnverifiedMessage {
     }
 
     /// Get the proposals of the commit, if it is one. If not, return `None`.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
         self.verifiable_content.committed_proposals()
     }
@@ -345,11 +345,11 @@ pub struct ProcessedMessage {
     emulator_sender_leaf_index: Option<LeafNodeIndex>,
     /// Parsed Safe AAD prefix, populated only when the message's GroupContext
     /// required Safe AAD framing. `None` otherwise.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     safe_aad: Option<SafeAad>,
     /// Length in bytes of the Safe AAD prefix at the start of
     /// `authenticated_data`. Zero when [`Self::safe_aad`] is `None`.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     safe_aad_prefix_len: usize,
 }
 
@@ -373,9 +373,9 @@ impl ProcessedMessage {
             credential,
             #[cfg(feature = "virtual-clients-draft")]
             emulator_sender_leaf_index,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             safe_aad: None,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             safe_aad_prefix_len: 0,
         }
     }
@@ -385,7 +385,7 @@ impl ProcessedMessage {
     /// group's GroupContext requires Safe AAD framing. Otherwise, `safe_aad`
     /// stays `None` and `authenticated_data` is the caller-supplied bytes
     /// untouched.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn try_attach_safe_aad(&mut self) -> Result<(), crate::framing::SafeAadError> {
         let (safe_aad, prefix_len) =
             crate::framing::safe_aad::parse_authenticated_data_prefix(&self.authenticated_data)?;
@@ -396,13 +396,13 @@ impl ProcessedMessage {
 
     /// Returns the parsed Safe AAD struct, or `None` if Safe AAD was not
     /// active for the group this message belongs to.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_aad(&self) -> Option<&SafeAad> {
         self.safe_aad.as_ref()
     }
 
     /// Look up a Safe AAD item by [`ComponentId`].
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_aad_item(&self, component_id: crate::component::ComponentId) -> Option<&[u8]> {
         self.safe_aad
             .as_ref()
@@ -411,7 +411,7 @@ impl ProcessedMessage {
 
     /// Returns the bytes of `authenticated_data` after any Safe AAD prefix.
     /// Equal to [`Self::aad`] when no Safe AAD prefix is present.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn tail_aad(&self) -> &[u8] {
         &self.authenticated_data[self.safe_aad_prefix_len..]
     }
@@ -460,7 +460,7 @@ impl ProcessedMessage {
 
     /// Safely export a value if the content of the processed message is a
     /// [`StagedCommit`].
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_export_secret<Crypto: OpenMlsCrypto>(
         &mut self,
         crypto: &Crypto,

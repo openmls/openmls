@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::component::ComponentId;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::messages::proposals::AppDataUpdateOperation;
 
 use super::{extensions::FrankenExtension, FrankenKeyPackage, FrankenLeafNode};
@@ -17,9 +17,9 @@ pub enum FrankenProposalType {
     Reinit,
     ExternalInit,
     GroupContextExtensions,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     AppEphemeral,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     AppDataUpdate,
     Custom(u16),
 }
@@ -34,9 +34,9 @@ impl From<u16> for FrankenProposalType {
             5 => FrankenProposalType::Reinit,
             6 => FrankenProposalType::ExternalInit,
             7 => FrankenProposalType::GroupContextExtensions,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             8 => FrankenProposalType::AppDataUpdate,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             0x0009 => FrankenProposalType::AppEphemeral,
             other => FrankenProposalType::Custom(other),
         }
@@ -53,9 +53,9 @@ impl From<FrankenProposalType> for u16 {
             FrankenProposalType::Reinit => 5,
             FrankenProposalType::ExternalInit => 6,
             FrankenProposalType::GroupContextExtensions => 7,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             FrankenProposalType::AppDataUpdate => 8,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             FrankenProposalType::AppEphemeral => 0x0009,
             FrankenProposalType::Custom(id) => id,
         }
@@ -74,9 +74,9 @@ impl FrankenProposal {
             FrankenProposal::GroupContextExtensions(_) => {
                 FrankenProposalType::GroupContextExtensions
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             FrankenProposal::AppEphemeral(_) => FrankenProposalType::AppEphemeral,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             FrankenProposal::AppDataUpdate(_) => FrankenProposalType::AppDataUpdate,
             FrankenProposal::Custom(FrankenCustomProposal {
                 proposal_type,
@@ -96,14 +96,14 @@ pub enum FrankenProposal {
     ReInit(FrankenReInitProposal),
     ExternalInit(FrankenExternalInitProposal),
     GroupContextExtensions(Vec<FrankenExtension>),
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     AppEphemeral(FrankenAppEphemeralProposal),
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     AppDataUpdate(FrankenAppDataUpdateProposal),
     Custom(FrankenCustomProposal),
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(
     Debug,
     PartialEq,
@@ -220,7 +220,7 @@ pub struct FrankenMessageRange {
     pub last_generation: u32,
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]

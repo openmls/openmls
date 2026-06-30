@@ -132,15 +132,15 @@ use crate::{
 
 // Public
 pub mod errors;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub(crate) mod pprf;
 pub mod psk;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub use pprf::PprfError;
 
 // Crate
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub(crate) mod application_export_tree;
 pub(crate) mod message_secrets;
 
@@ -419,7 +419,7 @@ pub(crate) struct KeySchedule {
 
 pub(crate) struct EpochSecretsResult {
     pub(crate) epoch_secrets: EpochSecrets,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) application_exporter: ApplicationExportSecret,
 }
 
@@ -530,7 +530,7 @@ impl KeySchedule {
         };
 
         let res = EpochSecretsResult {
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_exporter: ApplicationExportSecret::new(crypto, ciphersuite, &epoch_secret)?,
             epoch_secrets: EpochSecrets::new(crypto, ciphersuite, epoch_secret)?,
         };
@@ -764,14 +764,14 @@ impl ExporterSecret {
 /// A secret that we can derive secrets from, that are used outside of OpenMLS.
 /// In contrast to `[ExporterSecret]`, the `[ApplicationExportSecret]` is not
 /// persisted. It can be deleted after use to achieve forward secrecy.
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 pub struct ApplicationExportSecret {
     secret: Secret,
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl ApplicationExportSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
     fn new(

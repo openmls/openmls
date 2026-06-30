@@ -4,7 +4,7 @@
 
 use thiserror::Error;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use super::public_group::errors::ApplyAppDataUpdateError;
 
 pub use super::mls_group::errors::*;
@@ -277,7 +277,7 @@ pub enum StageCommitError {
     GroupContextExtensionsProposalValidationError(
         #[from] GroupContextExtensionsProposalValidationError,
     ),
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// See [`AppDataUpdateValidationError`] for more details.
     #[error(transparent)]
     AppDataUpdateValidationError(#[from] AppDataUpdateValidationError),
@@ -285,7 +285,7 @@ pub enum StageCommitError {
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
     /// See [`ApplyAppDataUpdateError`] for more details.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[error(transparent)]
     ApplyAppDataUpdateError(#[from] ApplyAppDataUpdateError),
     /// Duplicate PSK Proposal.
@@ -333,7 +333,7 @@ pub enum CreateCommitError {
     /// See [`InvalidExtensionError`] for more details.
     #[error(transparent)]
     InvalidExtensionError(#[from] InvalidExtensionError),
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// See [`AppDataUpdateValidationError`] for more details.
     #[error(transparent)]
     AppDataUpdateValidationError(#[from] AppDataUpdateValidationError),
@@ -352,7 +352,7 @@ pub enum CreateCommitError {
     #[error("Invalid external commit.")]
     InvalidExternalCommit(#[from] ExternalCommitValidationError),
     /// See [`ApplyAppDataUpdateError`] for more details.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[error(transparent)]
     ApplyAppDataUpdateError(#[from] ApplyAppDataUpdateError),
     /// See [`LeafNodeValidationError`] for more details.
@@ -655,7 +655,7 @@ pub enum MergeCommitError<StorageError> {
     StorageError(StorageError),
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 /// Error validating an AppDataUpdate proposal.
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum AppDataUpdateValidationError {

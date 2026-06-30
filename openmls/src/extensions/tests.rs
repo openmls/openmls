@@ -397,7 +397,7 @@ fn last_resort_extension() {
         .expect("key package does not exist");
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[openmls_test::openmls_test]
 fn app_data_dictionary_extension() {
     use crate::test_utils::single_group_test_framework::*;
