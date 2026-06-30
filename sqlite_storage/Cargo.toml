@@ -3,6 +3,7 @@ name = "openmls_sqlite_storage"
 authors = ["OpenMLS Authors"]
 version = "0.2.0"
 edition = "2021"
+rust-version.workspace = true
 description = "A storage provider for OpenMLS based on SQlite based on the rusqlite crate."
 license = "MIT"
 documentation = "https://docs.rs/openmls_sqlite_storage"
