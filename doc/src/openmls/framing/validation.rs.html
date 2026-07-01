@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/validation.rs`."><title>validation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (096694416 2026-06-29)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/framing/</div>validation.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Validation steps for incoming messages
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/validation.rs`."><title>validation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (f46ec5218 2026-06-30)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/framing/</div>validation.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Validation steps for incoming messages
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! ```text
 <a href=#4 id=4 data-nosnippet>4</a>//!
@@ -508,23 +508,48 @@
 <a href=#508 id=508 data-nosnippet>508</a>    /// the commit should be merged into the group's state using
 <a href=#509 id=509 data-nosnippet>509</a>    /// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).
 <a href=#510 id=510 data-nosnippet>510</a>    </span>StagedCommitMessage(Box&lt;StagedCommit&gt;),
-<a href=#511 id=511 data-nosnippet>511</a>}
-<a href=#512 id=512 data-nosnippet>512</a>
-<a href=#513 id=513 data-nosnippet>513</a><span class="doccomment">/// Application message received through a [ProcessedMessage].
-<a href=#514 id=514 data-nosnippet>514</a></span><span class="attr">#[derive(Debug, PartialEq, Eq)]
-<a href=#515 id=515 data-nosnippet>515</a></span><span class="kw">pub struct </span>ApplicationMessage {
-<a href=#516 id=516 data-nosnippet>516</a>    bytes: Vec&lt;u8&gt;,
-<a href=#517 id=517 data-nosnippet>517</a>}
-<a href=#518 id=518 data-nosnippet>518</a>
-<a href=#519 id=519 data-nosnippet>519</a><span class="kw">impl </span>ApplicationMessage {
-<a href=#520 id=520 data-nosnippet>520</a>    <span class="doccomment">/// Create a new [ApplicationMessage].
-<a href=#521 id=521 data-nosnippet>521</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(bytes: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
-<a href=#522 id=522 data-nosnippet>522</a>        <span class="self">Self </span>{ bytes }
-<a href=#523 id=523 data-nosnippet>523</a>    }
-<a href=#524 id=524 data-nosnippet>524</a>
-<a href=#525 id=525 data-nosnippet>525</a>    <span class="doccomment">/// Returns the inner bytes and consumes the [`ApplicationMessage`].
-<a href=#526 id=526 data-nosnippet>526</a>    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
-<a href=#527 id=527 data-nosnippet>527</a>        <span class="self">self</span>.bytes
-<a href=#528 id=528 data-nosnippet>528</a>    }
-<a href=#529 id=529 data-nosnippet>529</a>}
+<a href=#511 id=511 data-nosnippet>511</a>    <span class="doccomment">/// A Commit authored by this client and echoed back to it, matching the
+<a href=#512 id=512 data-nosnippet>512</a>    /// group's pending commit.
+<a href=#513 id=513 data-nosnippet>513</a>    ///
+<a href=#514 id=514 data-nosnippet>514</a>    /// This is returned instead of
+<a href=#515 id=515 data-nosnippet>515</a>    /// [`StagedCommitMessage`](Self::StagedCommitMessage) when the processed
+<a href=#516 id=516 data-nosnippet>516</a>    /// Commit was created by this client. Since this client already holds the
+<a href=#517 id=517 data-nosnippet>517</a>    /// corresponding pending commit, the incoming Commit is not staged. To
+<a href=#518 id=518 data-nosnippet>518</a>    /// apply it, merge the pending commit using
+<a href=#519 id=519 data-nosnippet>519</a>    /// [`MlsGroup::merge_pending_commit()`](crate::group::mls_group::MlsGroup::merge_pending_commit()).
+<a href=#520 id=520 data-nosnippet>520</a>    ///
+<a href=#521 id=521 data-nosnippet>521</a>    /// The match against the pending commit is established by comparing the
+<a href=#522 id=522 data-nosnippet>522</a>    /// confirmation tag of the incoming Commit against one recomputed from the
+<a href=#523 id=523 data-nosnippet>523</a>    /// pending commit. The message signature has already been verified, which
+<a href=#524 id=524 data-nosnippet>524</a>    /// authenticates the Commit as ours, and a matching confirmation tag binds
+<a href=#525 id=525 data-nosnippet>525</a>    /// the confirmed transcript hash of the new epoch. We do not otherwise
+<a href=#526 id=526 data-nosnippet>526</a>    /// compare the contents of the incoming Commit against the pending commit,
+<a href=#527 id=527 data-nosnippet>527</a>    /// and the incoming Commit's state is never adopted.
+<a href=#528 id=528 data-nosnippet>528</a>    ///
+<a href=#529 id=529 data-nosnippet>529</a>    /// This is only produced for Commits framed as
+<a href=#530 id=530 data-nosnippet>530</a>    /// [`PublicMessage`](crate::framing::MlsMessageBodyIn::PublicMessage). A
+<a href=#531 id=531 data-nosnippet>531</a>    /// Commit framed as a
+<a href=#532 id=532 data-nosnippet>532</a>    /// [`PrivateMessage`](crate::framing::MlsMessageBodyIn::PrivateMessage)
+<a href=#533 id=533 data-nosnippet>533</a>    /// cannot be decrypted by its own author and is instead rejected during
+<a href=#534 id=534 data-nosnippet>534</a>    /// decryption.
+<a href=#535 id=535 data-nosnippet>535</a>    </span>OwnPendingCommit,
+<a href=#536 id=536 data-nosnippet>536</a>}
+<a href=#537 id=537 data-nosnippet>537</a>
+<a href=#538 id=538 data-nosnippet>538</a><span class="doccomment">/// Application message received through a [ProcessedMessage].
+<a href=#539 id=539 data-nosnippet>539</a></span><span class="attr">#[derive(Debug, PartialEq, Eq)]
+<a href=#540 id=540 data-nosnippet>540</a></span><span class="kw">pub struct </span>ApplicationMessage {
+<a href=#541 id=541 data-nosnippet>541</a>    bytes: Vec&lt;u8&gt;,
+<a href=#542 id=542 data-nosnippet>542</a>}
+<a href=#543 id=543 data-nosnippet>543</a>
+<a href=#544 id=544 data-nosnippet>544</a><span class="kw">impl </span>ApplicationMessage {
+<a href=#545 id=545 data-nosnippet>545</a>    <span class="doccomment">/// Create a new [ApplicationMessage].
+<a href=#546 id=546 data-nosnippet>546</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(bytes: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+<a href=#547 id=547 data-nosnippet>547</a>        <span class="self">Self </span>{ bytes }
+<a href=#548 id=548 data-nosnippet>548</a>    }
+<a href=#549 id=549 data-nosnippet>549</a>
+<a href=#550 id=550 data-nosnippet>550</a>    <span class="doccomment">/// Returns the inner bytes and consumes the [`ApplicationMessage`].
+<a href=#551 id=551 data-nosnippet>551</a>    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+<a href=#552 id=552 data-nosnippet>552</a>        <span class="self">self</span>.bytes
+<a href=#553 id=553 data-nosnippet>553</a>    }
+<a href=#554 id=554 data-nosnippet>554</a>}
 </code></pre></div></section></main></body></html>
