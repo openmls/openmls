@@ -18,3 +18,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
       - run: RUSTDOCFLAGS="--cfg doc_cfg --cfg docsrs" cargo +nightly doc --all-features --no-deps
+        working-directory: openmls
