@@ -2772,3 +2772,518 @@ fn vc_binding_carries_forward_across_foreign_commits() {
         _ => panic!("expected application message"),
     }
 }
+
+/// Set up two sibling emulator clients sharing one emulation group and epoch.
+/// `alice_a` founds the emulation group, `alice_b` joins it via Welcome, and
+/// both register the same emulation epoch, so both hold its
+/// `EmulationEpochState` and `OperationSecretTree`. Returns the shared epoch id.
+fn setup_sibling_emulation_epoch<P: OpenMlsProvider>(
+    emulator_ciphersuite: openmls_traits::types::Ciphersuite,
+    alice_a_provider: &P,
+    alice_b_provider: &P,
+) -> EpochId {
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(emulator_ciphersuite, alice_a_provider, b"AliceEmulatorA");
+    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        alice_b_provider,
+        b"AliceEmulatorB",
+        emulator_ciphersuite.signature_algorithm(),
+    );
+    let emulator_b_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            emulator_ciphersuite,
+            alice_b_provider,
+            &emulator_b_signer,
+            emulator_b_credential,
+        )
+        .expect("emulator_b KP build")
+        .key_package()
+        .to_owned();
+    let (_e_commit, e_welcome, _e_gi) = emulator_a
+        .add_members(alice_a_provider, &emulator_a_signer, &[emulator_b_kp])
+        .expect("emulator_a add alice_b");
+    emulator_a
+        .merge_pending_commit(alice_a_provider)
+        .expect("emulator_a merge add");
+    let mut emulator_b = StagedWelcome::new_from_welcome(
+        alice_b_provider,
+        &vc_join_config(),
+        e_welcome.into_welcome().expect("emulator welcome"),
+        Some(emulator_a.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(alice_b_provider))
+    .expect("alice_b join emulator group");
+
+    let epoch_id = emulator_a
+        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .expect("alice_a register vc epoch");
+    let epoch_id_b = emulator_b
+        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .expect("alice_b register vc epoch");
+    assert_eq!(
+        epoch_id, epoch_id_b,
+        "siblings must derive the same EpochId"
+    );
+    epoch_id
+}
+
+/// Export a `VerifiableGroupInfo` for `group`, signed by `signer`, optionally
+/// carrying the ratchet tree in the GroupInfo extension.
+fn export_verifiable_group_info<P: OpenMlsProvider>(
+    group: &MlsGroup,
+    provider: &P,
+    signer: &SignatureKeyPair,
+    with_ratchet_tree: bool,
+) -> openmls::messages::group_info::VerifiableGroupInfo {
+    use openmls::prelude::MlsMessageIn;
+    use tls_codec::Deserialize as _;
+
+    let group_info_msg = group
+        .export_group_info(provider.crypto(), signer, with_ratchet_tree)
+        .expect("export group info");
+    let serialized = group_info_msg
+        .tls_serialize_detached()
+        .expect("serialize group info");
+    MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+        .expect("deserialize group info message")
+        .into_verifiable_group_info()
+        .expect("into verifiable group info")
+}
+
+/// Create a higher-level group on the shared virtual-client leaf as the
+/// creator, deriving the leaf and epoch-0 secret from `epoch_id`.
+fn create_vc_group<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider: &P,
+    signer: &SignatureKeyPair,
+    credential: openmls::credentials::CredentialWithKey,
+    epoch_id: EpochId,
+) -> MlsGroup {
+    MlsGroup::builder()
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .with_capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .vc_emulation(epoch_id)
+        .build(provider, signer, credential)
+        .expect("create vc group")
+}
+
+/// A virtual client creates a higher-level group and a sibling emulator client
+/// reconstructs the epoch-0 state from the GroupInfo (ratchet tree carried in
+/// the GroupInfo extension). Both land on the shared leaf with identical epoch
+/// secrets, and the reconstructed sibling is a working member: it adds an
+/// ordinary member and exchanges an application message with it.
+#[openmls_test]
+fn vc_sibling_joins_group_created_by_virtual_client() {
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    // alice_a creates the group as the virtual client.
+    let alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+        epoch_id.clone(),
+    );
+
+    // alice_b reconstructs epoch-0 from the fanned-out GroupInfo.
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+    let mut alice_b_main = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id.clone(),
+    )
+    .expect("alice_b reconstructs the created group");
+
+    // Both siblings hold identical epoch-0 state on the shared leaf.
+    assert_eq!(alice_a_main.epoch(), alice_b_main.epoch());
+    assert_eq!(
+        alice_b_main.own_leaf_index(),
+        alice_a_main.own_leaf_index(),
+        "the sibling must land on the shared VC leaf"
+    );
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator(),
+        "reconstruction must reproduce the creator's epoch secrets"
+    );
+    assert_eq!(
+        alice_a_main.export_ratchet_tree(),
+        alice_b_main.export_ratchet_tree(),
+    );
+
+    // The reconstructed sibling is a working member: it adds Bob and exchanges
+    // an application message with him.
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_commit, welcome, _gi) = alice_b_main
+        .add_members(&alice_b_provider, &vc_signer, &[bob_kp])
+        .expect("alice_b adds bob");
+    alice_b_main
+        .merge_pending_commit(&alice_b_provider)
+        .expect("alice_b merge add");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_b_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob joins the created group");
+
+    let processed = send_and_process_app_message(
+        &mut alice_b_main,
+        &alice_b_provider,
+        &vc_signer,
+        &mut bob_main,
+        &bob_provider,
+        b"hello from the virtual client",
+    );
+    let ProcessedMessageContent::ApplicationMessage(message) = processed.into_content() else {
+        panic!("expected application message");
+    };
+    assert_eq!(message.into_bytes(), b"hello from the virtual client");
+}
+
+/// The ratchet tree may travel separately from the GroupInfo. A sibling
+/// reconstructs the created group when the GroupInfo carries no ratchet tree
+/// extension and the tree is supplied through the `ratchet_tree` argument.
+#[openmls_test]
+fn vc_group_creation_join_with_separate_ratchet_tree() {
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id.clone(),
+    );
+
+    // GroupInfo without the ratchet tree extension; tree passed separately.
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, false);
+    let ratchet_tree = alice_a_main.export_ratchet_tree().into();
+    let alice_b_main = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        Some(ratchet_tree),
+        epoch_id,
+    )
+    .expect("alice_b reconstructs with a separately supplied ratchet tree");
+
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator(),
+    );
+}
+
+/// A client that does not share the emulation epoch cannot reconstruct the
+/// created group: it holds no `EmulationEpochState` for the referenced epoch.
+#[openmls_test]
+fn vc_group_creation_join_fails_without_emulation_state() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let outsider_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id.clone(),
+    );
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+
+    let err = MlsGroup::vc_join_at_creation(
+        &outsider_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id,
+    )
+    .expect_err("a non-sibling cannot reconstruct the created group");
+    assert!(matches!(
+        err,
+        VcGroupCreationJoinError::VirtualClientsError(_)
+    ));
+}
+
+/// The join is rejected when the supplied emulation epoch differs from the one
+/// the creator leaf references.
+#[openmls_test]
+fn vc_group_creation_join_fails_on_epoch_id_mismatch() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let other_a_provider = Provider::default();
+    let other_b_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    // A distinct, valid emulation epoch from an unrelated emulator group.
+    let other_epoch_id =
+        setup_sibling_emulation_epoch(ciphersuite, &other_a_provider, &other_b_provider);
+    assert_ne!(epoch_id, other_epoch_id);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id,
+    );
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+
+    let err = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        other_epoch_id,
+    )
+    .expect_err("mismatched emulation epoch must be rejected");
+    assert!(matches!(err, VcGroupCreationJoinError::EpochIdMismatch));
+}
+
+/// The join is rejected when the creator leaf is not `key_package`-sourced. A
+/// virtual client's self-commit rekeys its leaf to a `commit` source, so the
+/// resulting single-leaf group is no longer a group-creation leaf.
+#[openmls_test]
+fn vc_group_creation_join_fails_on_non_key_package_creator_leaf() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let mut alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id.clone(),
+    );
+
+    // Self-commit as a virtual client: the creator leaf becomes commit-sourced
+    // while the tree stays a single leaf.
+    alice_a_main
+        .commit_builder()
+        .force_self_update(true)
+        .vc_emulation(
+            alice_a_provider.crypto(),
+            alice_a_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("vc emulation commit builder")
+        .load_psks(alice_a_provider.storage())
+        .expect("load psks")
+        .build(
+            alice_a_provider.rand(),
+            alice_a_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build commit")
+        .stage_commit(&alice_a_provider)
+        .expect("stage commit");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("merge self-commit");
+
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+    let err = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id,
+    )
+    .expect_err("a commit-sourced creator leaf must be rejected");
+    assert!(matches!(
+        err,
+        VcGroupCreationJoinError::CreatorLeafNotKeyPackageSourced
+    ));
+}
+
+/// The join is rejected when the ratchet tree holds more than the creator's
+/// leaf.
+#[openmls_test]
+fn vc_group_creation_join_fails_on_multi_leaf_tree() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let mut alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id.clone(),
+    );
+
+    // Add an ordinary member so the tree no longer consists of the sole leaf.
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp])
+        .expect("alice_a adds bob");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge add");
+
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+    let err = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id,
+    )
+    .expect_err("a multi-leaf tree must be rejected");
+    assert!(matches!(err, VcGroupCreationJoinError::NotASingleLeafTree));
+}
+
+/// The join is rejected when the creator leaf carries no virtual-clients
+/// derivation info. An ordinary (non-VC) group founder produces such a leaf:
+/// it is `key_package`-sourced but has no derivation-info entry.
+#[openmls_test]
+fn vc_group_creation_join_fails_on_missing_derivation_info() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (founder_credential, founder_signer) = new_credential(
+        &alice_a_provider,
+        b"Founder",
+        ciphersuite.signature_algorithm(),
+    );
+    let alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &founder_signer,
+        founder_credential,
+    );
+
+    let verifiable_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &founder_signer, true);
+    let err = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id,
+    )
+    .expect_err("a creator leaf without derivation info must be rejected");
+    assert!(matches!(
+        err,
+        VcGroupCreationJoinError::MissingDerivationInfo
+    ));
+}
+
+/// The single group-creation generation is consumed exactly once. A first join
+/// succeeds and persists the advanced operation tree; a second join on the same
+/// material fails because that generation is now consumed.
+#[openmls_test]
+fn vc_group_creation_double_join_consumes_generation() {
+    use openmls::prelude::VcGroupCreationJoinError;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+
+    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let alice_a_main = create_vc_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential,
+        epoch_id.clone(),
+    );
+
+    let first_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+    MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        first_group_info,
+        None,
+        epoch_id.clone(),
+    )
+    .expect("first reconstruction succeeds");
+
+    // The generation is now consumed in alice_b's persisted operation tree, so a
+    // second reconstruction on the same material fails.
+    let second_group_info =
+        export_verifiable_group_info(&alice_a_main, &alice_a_provider, &vc_signer, true);
+    let err = MlsGroup::vc_join_at_creation(
+        &alice_b_provider,
+        &vc_join_config(),
+        second_group_info,
+        None,
+        epoch_id,
+    )
+    .expect_err("second reconstruction must fail on the consumed generation");
+    assert!(matches!(
+        err,
+        VcGroupCreationJoinError::VirtualClientsError(_)
+    ));
+}

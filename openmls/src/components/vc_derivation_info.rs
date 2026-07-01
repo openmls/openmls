@@ -40,6 +40,9 @@ const INIT_KEY_LABEL: &str = "Init Key";
 /// KeyPackage's seed is expanded from it using the KeyPackage's index as the
 /// context.
 const KEY_PACKAGE_SEED_LABEL: &str = "key package seed";
+/// `DeriveSecret` label for the epoch-0 `epoch_secret` a group creator derives
+/// from its KeyPackage seed secret (mls-virtual-clients draft, group creation).
+const GROUP_CREATION_LABEL: &str = "Group Creation";
 
 /// `ExpandWithLabel` label for the [`DerivationInfoTbe`] AEAD key derived
 /// from the per-epoch [`EpochEncryptionKey`].
@@ -1075,6 +1078,26 @@ impl KeyPackageSeedSecret {
                 .derive_secret(crypto, ciphersuite, ENCRYPTION_KEY_LABEL)?;
         Ok(EncryptionKeySecret(encryption_key_secret))
     }
+
+    /// Derive the epoch-0 `epoch_secret` for a virtual-client-created group:
+    ///
+    /// ```text
+    /// epoch_secret = DeriveSecret(key_package_seed_secret, "Group Creation")
+    /// ```
+    ///
+    /// `ciphersuite` is the created (higher-level) group's ciphersuite, under
+    /// which the resulting `epoch_secret` seeds the epoch key schedule. Both
+    /// the creator and a reconstructing sibling derive it from the same seed,
+    /// so the epoch secret never travels on the wire.
+    pub(crate) fn derive_group_creation_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+    ) -> Result<Secret, VirtualClientsError> {
+        Ok(self
+            .0
+            .derive_secret(crypto, ciphersuite, GROUP_CREATION_LABEL)?)
+    }
 }
 
 pub(crate) struct EncryptionKeySecret(Secret);
@@ -1346,6 +1369,41 @@ impl DerivationInfoTbe {
         }
         Ok(tbe)
     }
+}
+
+/// Load the [`EmulationEpochState`] and [`OperationSecretTree`] for `epoch_id`,
+/// mapping a missing entry to the matching `Missing*` error. Callers convert the
+/// returned [`VirtualClientsError`] into their own error type.
+///
+/// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
+pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
+    provider: &Provider,
+    epoch_id: &EpochId,
+) -> Result<
+    (
+        EmulationEpochState,
+        crate::components::vc_operation_tree::OperationSecretTree,
+    ),
+    VirtualClientsError,
+> {
+    use openmls_traits::storage::StorageProvider as _;
+
+    let storage = provider.storage();
+    let state = storage
+        .vc_emulation_epoch_state(epoch_id)
+        .map_err(|e| {
+            log::error!("vc: load emulation epoch state failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?
+        .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+    let operation_tree = storage
+        .vc_operation_tree(epoch_id)
+        .map_err(|e| {
+            log::error!("vc: load operation tree failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?
+        .ok_or(VirtualClientsError::MissingOperationTree)?;
+    Ok((state, operation_tree))
 }
 
 /// Verify that the effective leaf about to carry a VC derivation-info entry
@@ -1913,6 +1971,55 @@ mod tests {
         assert_ne!(
             init_zero.public.as_slice(),
             encryption_zero.public_key().as_slice()
+        );
+    }
+
+    /// The group-creation epoch secret is deterministic for a given seed,
+    /// distinct across seeds, and label-separated from the encryption key
+    /// secret derived from the same seed.
+    #[test]
+    fn group_creation_secret_derivation_is_deterministic_and_label_separated() {
+        let provider = OpenMlsRustCrypto::default();
+        let operation_secret = OperationSecret::from(Secret::from_slice(
+            &provider
+                .rand()
+                .random_vec(CIPHERSUITE.hash_length())
+                .expect("randomness"),
+        ));
+
+        let seed_zero = operation_secret
+            .derive_key_package_seed_secret(provider.crypto(), CIPHERSUITE, 0)
+            .expect("derive seed 0");
+        let seed_one = operation_secret
+            .derive_key_package_seed_secret(provider.crypto(), CIPHERSUITE, 1)
+            .expect("derive seed 1");
+
+        let epoch_secret_zero = seed_zero
+            .derive_group_creation_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive group creation secret 0");
+        let epoch_secret_zero_again = seed_zero
+            .derive_group_creation_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive group creation secret 0 again");
+        let epoch_secret_one = seed_one
+            .derive_group_creation_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive group creation secret 1");
+
+        // Same seed derives deterministically.
+        assert_eq!(
+            epoch_secret_zero.as_slice(),
+            epoch_secret_zero_again.as_slice()
+        );
+        // Different seeds derive distinct epoch secrets.
+        assert_ne!(epoch_secret_zero.as_slice(), epoch_secret_one.as_slice());
+
+        // The epoch secret is label-separated from the encryption key secret
+        // derived from the same seed.
+        let encryption_key_secret = seed_zero
+            .derive_encryption_key_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive encryption key 0");
+        assert_ne!(
+            epoch_secret_zero.as_slice(),
+            encryption_key_secret.0.as_slice()
         );
     }
 
