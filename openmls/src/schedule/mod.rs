@@ -1216,6 +1216,23 @@ impl EpochSecrets {
         Ok(epoch_secrets)
     }
 
+    /// Initialize the `EpochSecrets` from a given `epoch_secret`, rather than
+    /// deriving it through the joiner key schedule. A sibling emulator client
+    /// uses this to reconstruct the epoch-0 state of a virtual-client-created
+    /// group from the `epoch_secret` carried in the creator LeafNode's
+    /// `group_creation_secret`.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn from_epoch_secret(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        epoch_secret: &[u8],
+    ) -> Result<Self, CryptoError> {
+        let epoch_secret = EpochSecret {
+            secret: Secret::from_slice(epoch_secret),
+        };
+        Self::new(crypto, ciphersuite, epoch_secret)
+    }
+
     /// Splits `EpochSecrets` into two different categories:
     ///  - [`GroupEpochSecrets`]: These secrets are only used within the same epoch
     ///  - [`MessageSecrets`]: These secrets are potentially also used for past epochs
