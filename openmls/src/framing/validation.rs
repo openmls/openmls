@@ -508,8 +508,8 @@ pub enum ProcessedMessageContent {
     /// the commit should be merged into the group's state using
     /// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).
     StagedCommitMessage(Box<StagedCommit>),
-    /// A Commit authored by this client and echoed back to it, matching the
-    /// group's pending commit.
+    /// A Commit authored by this client that it got fanned out by the delivery
+    /// service, matching the group's pending commit.
     ///
     /// This is returned instead of
     /// [`StagedCommitMessage`](Self::StagedCommitMessage) when the processed

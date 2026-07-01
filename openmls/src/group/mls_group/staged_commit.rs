@@ -47,8 +47,8 @@ use crate::prelude::processing::AppDataUpdates;
 impl MlsGroup {
     /// Returns `true` when `received_tag` is the confirmation tag produced by
     /// our pending member commit, i.e. the incoming Commit is that pending
-    /// commit echoed back to us. Returns `false` when we hold no member pending
-    /// commit or its tag differs.
+    /// commit this client got fanned out by the delivery service. Returns
+    /// `false` when we hold no member pending commit or its tag differs.
     ///
     /// We compare confirmation tags rather than the full Commit contents: the
     /// signature has already authenticated the Commit as ours, and a matching

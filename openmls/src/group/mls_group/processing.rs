@@ -775,9 +775,10 @@ impl MlsGroup {
                         .confirmation_tag()
                         .ok_or(StageCommitError::ConfirmationTagMissing)?;
                     if self.matches_pending_commit(received_tag) {
-                        // The Commit is our pending commit echoed back to us:
-                        // surface `OwnPendingCommit` so the caller merges the
-                        // pending commit instead of staging the echo.
+                        // The Commit is our pending commit this client got
+                        // fanned out by the delivery service: surface
+                        // `OwnPendingCommit` so the caller merges the pending
+                        // commit instead of staging the fanned-out Commit.
                         return Ok(ProcessedMessage::new(
                             self.group_id().clone(),
                             epoch,
@@ -895,9 +896,10 @@ impl MlsGroup {
                         .confirmation_tag()
                         .ok_or(StageCommitError::ConfirmationTagMissing)?;
                     if self.matches_pending_commit(received_tag) {
-                        // The Commit is our pending commit echoed back to us:
-                        // surface `OwnPendingCommit` so the caller merges the
-                        // pending commit instead of staging the echo.
+                        // The Commit is our pending commit this client got
+                        // fanned out by the delivery service: surface
+                        // `OwnPendingCommit` so the caller merges the pending
+                        // commit instead of staging the fanned-out Commit.
                         return Ok(ProcessedMessage::new(
                             self.group_id().clone(),
                             epoch,
