@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ca59b6a0.js";
+            window.path_to_searchindex_js = "searchindex-ae772d67.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-15f15180.js"></script>
+        <script src="toc-6ca32bdb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -3076,6 +3076,259 @@ part of an update that someone else committed for them. The key material in the 
         .delete_past_epoch_secrets(provider, PastEpochDeletion::delete_all())
         .expect("error deleting past epoch secrets");</code></pre>
 <p>Setting the group’s <code>PastEpochDeletionPolicy</code> to <code>PastEpochDeletionPolicy::MaxEpochs(0)</code> will also delete all past epoch secrets.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="virtual-clients-draft"><a class="header" href="#virtual-clients-draft">Virtual Clients (draft)</a></h1>
+<p>OpenMLS has experimental support for virtual clients, following
+<a href="https://github.com/mlswg/mls-virtual-clients">draft-ietf-mls-virtual-clients</a>.
+A virtual client lets several real clients act jointly as a single member of an
+MLS group. The group sees one leaf. Behind that leaf, any of the cooperating
+clients can speak for it.</p>
+<blockquote>
+<p><strong>This feature is a moving draft.</strong> Everything described here lives behind the
+<code>virtual-clients-draft</code> cargo feature and is not part of the stable API. Wire
+formats, storage layout, and method names can change between releases with no
+migration path. Do not assume interoperability with other implementations.</p>
+</blockquote>
+<h2 id="the-idea"><a class="header" href="#the-idea">The idea</a></h2>
+<p>The clients that cooperate to act as one member are called <em>emulator clients</em>.
+The member they present to the outside world is the <em>virtual client</em>. The
+emulator clients coordinate through a separate MLS group of their own, the
+<em>emulation group</em>, while the virtual client appears as a single leaf in one or
+more <em>higher-level groups</em>.</p>
+<p>The point of the construction is that the emulator clients never share raw
+private keys with each other. Instead they all derive the same key material
+from the emulation group’s epoch secrets, so any of them can produce a commit,
+an application message, or a KeyPackage on behalf of the virtual client, and any
+other can reproduce the matching private state. To the higher-level group, the
+result is indistinguishable from an ordinary single member.</p>
+<p>Two mechanisms make this work without secret sharing:</p>
+<ul>
+<li>A <em>Virtual Client Operation Secret Tree</em>, derived from the emulation group’s
+epoch through the Safe Exporter. It has the same shape as an MLS secret tree.
+Each emulator client’s leaf carries one ratchet per operation type
+(<code>KeyPackage</code>, <code>LeafNode</code>, <code>Application</code>). Advancing a ratchet yields an
+operation secret, and from that secret each client derives the leaf encryption
+key, init key, signature key seed, and path secrets for a single operation.</li>
+<li>A <code>DerivationInfo</code> component embedded in every leaf node the virtual client
+produces. It carries, encrypted, the emulation epoch’s <code>leaf_index</code> and the
+<code>generation</code> that was used. A sibling emulator client reads it, derives the
+same operation secret from the operation tree at that position, and so
+reconstructs the private keys for the leaf without ever receiving them.</li>
+</ul>
+<p>Each emulation epoch also produces a <code>generation_id_secret</code> (so the Delivery
+Service can detect when two emulator clients pick the same ratchet generation)
+and a <code>reuse_guard_secret</code> (so two emulator clients never reuse a key and nonce
+pair while still looking random to outside observers).</p>
+<h2 id="enabling-the-feature"><a class="header" href="#enabling-the-feature">Enabling the feature</a></h2>
+<p>Add the feature to your dependency on <code>openmls</code>:</p>
+<pre><code class="language-toml">[dependencies]
+openmls = { version = "...", features = ["virtual-clients-draft"] }
+</code></pre>
+<p>Storage backends carry their own <code>virtual-clients-draft</code> feature, which the
+<code>openmls</code> feature turns on for them. For tests that exercise the storage
+provider trait methods directly, enable
+<code>virtual-clients-draft-test-dependencies</code> on the <code>openmls</code> crate.</p>
+<h2 id="leaf-requirements"><a class="header" href="#leaf-requirements">Leaf requirements</a></h2>
+<p>Every leaf that carries virtual-client material must declare support for the
+<code>AppDataDictionary</code> extension and list the VC component id in its
+<code>AppComponents</code> entry. Build the capabilities and leaf-node extensions
+accordingly when you create or join an emulation group or a higher-level group:</p>
+<pre><code class="language-rust no_run noplayground">use openmls::component::{ComponentId, ComponentType};
+use openmls::components::vc_derivation_info::VC_COMPONENT_ID;
+use openmls::extensions::{
+    AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
+};
+use openmls::prelude::Capabilities;
+use tls_codec::Serialize as _;
+
+let capabilities = Capabilities::builder()
+    .extensions(vec![ExtensionType::AppDataDictionary])
+    .build();
+
+let supported_components: Vec&lt;ComponentId&gt; = vec![VC_COMPONENT_ID];
+let app_components_body = supported_components.tls_serialize_detached().unwrap();
+let mut dictionary = AppDataDictionary::new();
+dictionary.insert(ComponentType::AppComponents.into(), app_components_body);
+let leaf_extensions = Extensions::from_vec(vec![Extension::AppDataDictionary(
+    AppDataDictionaryExtension::new(dictionary),
+)])
+.unwrap();</code></pre>
+<p>Pass <code>capabilities</code> and <code>leaf_extensions</code> to <code>MlsGroupCreateConfig::builder()</code>
+through <code>.capabilities(...)</code> and <code>.with_leaf_node_extensions(...)</code>, and to the
+<code>KeyPackage::builder()</code> through <code>.leaf_node_capabilities(...)</code> and
+<code>.leaf_node_extensions(...)</code>.</p>
+<h2 id="registering-an-emulation-epoch"><a class="header" href="#registering-an-emulation-epoch">Registering an emulation epoch</a></h2>
+<p>An emulation group is an ordinary <code>MlsGroup</code>. Each emulator client maintains its
+own copy. To make a given epoch usable for virtual-client operations, every
+emulator client registers it. Registration sources the root secret from the
+group’s <code>safe_export_secret(VC_COMPONENT_ID)</code>, builds the operation secret tree,
+and persists the per-epoch state, returning an <code>EpochId</code>:</p>
+<pre><code class="language-rust no_run noplayground">let epoch_id = emulator_group
+    .register_vc_emulation_epoch(provider.crypto(), provider.storage())?;</code></pre>
+<p>Because the secret comes from the Safe Exporter, all emulator clients that are
+at the same emulation epoch derive the <strong>same</strong> <code>EpochId</code> and the same operation
+tree. The <code>EpochId</code> is the key under which all per-epoch state is stored, and it
+is the value embedded in the leaves the virtual client produces. Register the
+epoch on every emulator client before any of them issues an operation against
+it. A missed registration is not recoverable, because the Safe Exporter state of
+a past emulation epoch is not retained.</p>
+<h2 id="committing-in-a-higher-level-group"><a class="header" href="#committing-in-a-higher-level-group">Committing in a higher-level group</a></h2>
+<p>To commit on behalf of the virtual client, set <code>vc_emulation</code> on the commit
+builder, passing the <code>EpochId</code>. The builder allocates the next <code>LeafNode</code>
+operation generation, derives the new leaf’s encryption key and the first path
+secret from it, and embeds the encrypted <code>DerivationInfo</code> in the leaf:</p>
+<pre><code class="language-rust no_run noplayground">let bundle = main_group
+    .commit_builder()
+    .vc_emulation(provider.crypto(), provider.storage(), epoch_id)?
+    .load_psks(provider.storage())?
+    .build(provider.rand(), provider.crypto(), &amp;vc_signer, |_| true)?
+    .stage_commit(provider)?;
+
+main_group.merge_pending_commit(provider)?;
+let commit = bundle.into_commit();</code></pre>
+<p>Allocation advances the operation ratchet and persists it immediately, which is
+a deliberate exception to the usual rule that nothing is written before a commit
+is staged. The spec requires that a generation is never used for more than one
+operation, so the generation is consumed at allocation time. If you discard the
+builder, or the Delivery Service rejects the commit, the generation stays
+burned. <code>clear_pending_commit</code> does not roll the ratchet back. A burned
+generation is harmless, because sibling ratchets skip over it and retain the
+skipped secret.</p>
+<h2 id="processing-a-siblings-commit"><a class="header" href="#processing-a-siblings-commit">Processing a sibling’s commit</a></h2>
+<p><code>process_message</code> detects the <code>DerivationInfo</code> component in a committer’s leaf.
+If the committer’s leaf index is the receiver’s own leaf, the commit came from a
+sibling emulator client. The receiver loads the emulation epoch state, decrypts
+the derivation info, derives the same operation secret positionally from the
+operation tree (advancing or skipping the sibling’s ratchet as needed),
+reconstructs the path secrets, and processes the commit as if it had created it:</p>
+<pre><code class="language-rust no_run noplayground">let processed = receiver_group
+    .process_message(provider, commit.into_protocol_message().unwrap())?;</code></pre>
+<p>A receiver that does not hold the referenced emulation epoch state, for example
+a real member of the higher-level group that is not an emulator client,
+processes the commit as an ordinary commit. The permissive handling is framed
+around the receiver, who may not be a sibling. The sender is always a sibling.</p>
+<p>When a commit that carries a <code>DerivationInfo</code> is merged, the client stores a
+binding from <code>(GroupId, GroupEpoch)</code> to the <code>EpochId</code> from that leaf. The
+binding is keyed by epoch, not just group id, because a delayed application
+message from an earlier higher-level epoch must be processed with the emulation
+epoch that was active then. Bindings follow the same retention window as the
+message secrets store.</p>
+<h2 id="application-messages-1"><a class="header" href="#application-messages-1">Application messages</a></h2>
+<p>With the feature enabled, the single-shot <code>create_message</code> is replaced by a two
+step send flow, because two emulator clients can race for the same ratchet
+generation.</p>
+<p><code>create_unconfirmed_message</code> encrypts the payload, retains the key and nonce,
+and returns the message together with the ratchet <code>generation</code> and a
+<code>generation_id</code>:</p>
+<pre><code class="language-rust no_run noplayground">let unconfirmed = main_group
+    .create_unconfirmed_message(provider, &amp;vc_signer, b"hello")?;
+
+// Attach unconfirmed.generation_id when fanning out, so the Delivery Service
+// can detect a generation collision with a sibling.
+send_to_delivery_service(unconfirmed.message, unconfirmed.generation_id);</code></pre>
+<p>The <code>generation_id</code> is <code>Some</code> on a group bound to an emulation epoch and <code>None</code>
+otherwise. It is derived from <code>generation_id_secret</code> over the spec’s
+<code>PrivateMessageContext</code>. The reuse guard is computed rather than sampled: the
+client resolves the emulation epoch through the <code>(GroupId, GroupEpoch)</code> binding,
+picks a value congruent to its emulation leaf index modulo the emulation group
+size, and encrypts it with a small-space PRP keyed from <code>reuse_guard_secret</code>.</p>
+<p>Once the Delivery Service accepts the message, drop the retained key:</p>
+<pre><code class="language-rust no_run noplayground">main_group.confirm_message(provider.storage(), unconfirmed.generation)?;</code></pre>
+<p>If the Delivery Service reports a collision, the sibling won that generation.
+Process the winning message through <code>process_message</code>, which has a carve-out for
+messages arriving from the receiver’s own leaf. Decrypting the winner consumes
+the retained key for that generation, so no explicit cleanup is needed. Then
+call <code>create_unconfirmed_message</code> again to re-encrypt from the ratchet head.
+There is no explicit discard call. A retained unconfirmed key is, from the
+receiving side, the same as a skipped-generation key. It is cleaned up by
+<code>confirm_message</code>, by decrypting a sibling’s message at that generation, or by
+aging out under bounded retention.</p>
+<p>On the receiving side, <code>process_message</code> inverts the reuse guard PRP and
+recovers the sender’s leaf index in the emulation group, so the application can
+attribute the message to a specific emulator client:</p>
+<pre><code class="language-rust no_run noplayground">let processed = receiver_group
+    .process_message(provider, message.into_protocol_message().unwrap())?;
+
+if let Some(emulation_leaf) = processed.emulator_sender_leaf_index() {
+    // The message came from this emulator client of the virtual client.
+}</code></pre>
+<p><code>emulator_sender_leaf_index()</code> returns <code>None</code> for messages that did not come
+from a virtual client, or on a group with no emulation binding.</p>
+<h2 id="keypackages-and-welcomes"><a class="header" href="#keypackages-and-welcomes">KeyPackages and Welcomes</a></h2>
+<p>A virtual client publishes KeyPackages so that a sibling can later recover the
+private keys and join a higher-level group on its behalf. KeyPackages are built
+in batches, because one <code>key_package</code> operation generation seeds a whole batch.</p>
+<p>Build the batch with <code>build_vc_batch</code>. It allocates one <code>key_package</code>
+generation, derives a per-KeyPackage seed for each index, embeds a
+<code>DerivationInfo</code> in every leaf, writes each bundle to local storage, and returns
+the <code>generation</code> plus one <code>(KeyPackageBundle, KeyPackageInfo)</code> per KeyPackage:</p>
+<pre><code class="language-rust no_run noplayground">let batch = KeyPackage::builder()
+    .leaf_node_capabilities(capabilities)
+    .leaf_node_extensions(leaf_extensions)?
+    .build_vc_batch(
+        ciphersuite,
+        provider,
+        &amp;vc_signer,
+        vc_credential,
+        epoch_id.clone(),
+        count, // number of KeyPackages, must be &gt; 0
+    )?;</code></pre>
+<p>The operation tree is advanced in memory and persisted only after every
+KeyPackage is built, so a build failure consumes no generation. A <code>count</code> of <code>0</code>
+returns <code>EmptyBatch</code> before any state is touched.</p>
+<p>Assemble the upload the virtual client hands to its sibling from the batch
+generation and its <code>KeyPackageInfo</code>s. OpenMLS fills the emulation <code>leaf_index</code>
+from the stored epoch state:</p>
+<pre><code class="language-rust no_run noplayground">use openmls::components::vc_derivation_info::assemble_vc_key_package_upload;
+
+let infos = batch
+    .key_packages
+    .iter()
+    .map(|(_bundle, info)| info.clone())
+    .collect();
+
+let upload = assemble_vc_key_package_upload(
+    provider.storage(),
+    epoch_id,
+    batch.generation,
+    infos,
+)?;</code></pre>
+<p>How the upload reaches the sibling emulator clients is up to the application. It
+must reach them before the KeyPackages are offered to anyone else. On receipt, a
+sibling calls <code>process_vc_key_package_upload</code>, which derives the init and leaf
+encryption private keys for each listed reference and stores them keyed by
+<code>KeyPackageRef</code>:</p>
+<pre><code class="language-rust no_run noplayground">use openmls::components::vc_derivation_info::process_vc_key_package_upload;
+
+process_vc_key_package_upload(provider, &amp;upload)?;</code></pre>
+<p>After that, Welcome processing runs through the ordinary <code>ProcessedWelcome</code> and
+<code>StagedWelcome</code> entry points unchanged. The lookup by <code>KeyPackageRef</code> finds
+either a locally generated <code>KeyPackageBundle</code> or the derived virtual-client key
+material. Eager derivation costs no forward secrecy: the derived private keys
+take the place of any retained operation secret and have to be kept until the
+KeyPackage is no longer live anyway.</p>
+<h2 id="what-is-not-implemented-yet"><a class="header" href="#what-is-not-implemented-yet">What is not implemented yet</a></h2>
+<p>The implementation tracks the draft but does not yet cover everything in it:</p>
+<ul>
+<li>Handshake messages framed as PrivateMessages in higher-level groups do not
+carry a generation ID or computed reuse guard. Only application messages do.</li>
+<li>Onboarding a new emulator client by state transfer (the draft’s
+<code>NewEmulatorClientState</code>, Variant A) is not implemented. Onboarding through an
+external commit (Variant B) works, because it is an application-orchestrated
+sequence of operations the code already supports.</li>
+<li>VC Update proposals are not implemented. Only commits and external commits
+emit virtual-client leaves.</li>
+<li>The <code>VirtualClientAction</code> coordination channel over SafeAAD (the draft’s
+<code>external_join</code> and <code>key_package_upload</code> actions) is not implemented. The
+transport of the KeyPackage upload is left entirely to the application.</li>
+<li>There is no convenience layer for marking a group as an emulation group on its
+config and deriving epoch secrets automatically. Registration is the manual
+<code>register_vc_emulation_epoch</code> call shown above.</li>
+<li>Per-epoch state for dead emulation epochs is not garbage collected
+automatically.</li>
+</ul>
+<p>Refer to the <a href="https://github.com/mlswg/mls-virtual-clients">virtual clients draft</a>
+for the authoritative protocol description.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="release-management"><a class="header" href="#release-management">Release management</a></h1>
 <p>The process for releasing a new version of OpenMLS.</p>
