@@ -530,9 +530,8 @@ pub enum ProcessedMessageContent {
     /// [`PublicMessage`](crate::framing::MlsMessageBodyIn::PublicMessage). A
     /// Commit framed as a
     /// [`PrivateMessage`](crate::framing::MlsMessageBodyIn::PrivateMessage)
-    /// cannot be decrypted by its own author and will be rejected during
-    /// decryption with
-    /// [`ValidationError::CannotDecryptOwnMessage`](crate::group::errors::ValidationError::CannotDecryptOwnMessage).
+    /// cannot be decrypted by its own author and is instead rejected during
+    /// decryption.
     OwnPendingCommit,
 }
 
