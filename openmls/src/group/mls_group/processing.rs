@@ -740,10 +740,10 @@ impl MlsGroup {
             FramedContentBody::Commit(commit) => {
                 // Load virtual-client derivation info when this commit was
                 // authored by a sibling emulator through a leaf shared with us.
-                // A path commit carrying this material is staged via the VC path
-                // below rather than treated as our own (see the own-commit
-                // handling further down). The receiver only loads it when the
-                // commit shape lets it identify itself as a sibling:
+                // A Commit with an `UpdatePath` carrying this material is staged
+                // via the VC path below rather than treated as our own (see the
+                // own-commit handling further down). The receiver only loads it
+                // when the commit shape lets it identify itself as a sibling:
                 //
                 // * `Sender::Member(idx)` with `idx == own_leaf_index`: the
                 //   sender committed through our shared higher-level leaf, so
@@ -790,11 +790,12 @@ impl MlsGroup {
                         ));
                     }
                     // Not our pending commit. We cannot decrypt a path we
-                    // encrypted to the other members, so a path-carrying commit
-                    // is unprocessable. A path-less commit carries no
-                    // author-private material and falls through to staging (a
-                    // sibling's path-less commit, or our own commit replayed
-                    // after the pending commit was cleared).
+                    // encrypted to the other members, so a Commit with an
+                    // `UpdatePath` is unprocessable. A Commit without an
+                    // `UpdatePath` carries no author-private material and falls
+                    // through to staging (a sibling's Commit without an
+                    // `UpdatePath`, or our own commit replayed after the pending
+                    // commit was cleared).
                     if commit.path.is_some() {
                         return Err(StageCommitError::OwnCommitMismatch.into());
                     }
@@ -865,8 +866,9 @@ impl MlsGroup {
             FramedContentBody::Commit(commit) => {
                 // See `process_internal_authenticated_content_with_app_data_updates`
                 // for the rationale. We load VC derivation info for a sibling's
-                // path commit through a shared leaf, and otherwise apply the
-                // own-commit handling below. The receiver only loads VC material
+                // Commit with an `UpdatePath` through a shared leaf, and
+                // otherwise apply the own-commit handling below. The receiver
+                // only loads VC material
                 // when the commit shape lets it identify itself as a sibling:
                 // own-leaf sender, or external commit with an inline
                 // `Remove(own_leaf)`.
@@ -908,11 +910,12 @@ impl MlsGroup {
                         ));
                     }
                     // Not our pending commit. We cannot decrypt a path we
-                    // encrypted to the other members, so a path-carrying commit
-                    // is unprocessable. A path-less commit carries no
-                    // author-private material and falls through to staging (a
-                    // sibling's path-less commit, or our own commit replayed
-                    // after the pending commit was cleared).
+                    // encrypted to the other members, so a Commit with an
+                    // `UpdatePath` is unprocessable. A Commit without an
+                    // `UpdatePath` carries no author-private material and falls
+                    // through to staging (a sibling's Commit without an
+                    // `UpdatePath`, or our own commit replayed after the pending
+                    // commit was cleared).
                     if commit.path.is_some() {
                         return Err(StageCommitError::OwnCommitMismatch.into());
                     }

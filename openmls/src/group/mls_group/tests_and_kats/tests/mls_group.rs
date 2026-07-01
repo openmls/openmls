@@ -3078,12 +3078,13 @@ fn own_commit_mismatch() {
     );
 }
 
-// A path-less Commit from our own leaf that no longer matches a pending commit
-// is staged as a regular commit rather than rejected. Unlike a path-carrying
-// commit, a path-less commit holds no author-private material, so it applies
-// from the prior epoch and the public proposals alone.
+// A Commit without an `UpdatePath` from our own leaf that no longer matches a
+// pending commit is staged as a regular commit rather than rejected. Unlike a
+// Commit with an `UpdatePath`, a Commit without an `UpdatePath` holds no
+// author-private material, so it applies from the prior epoch and the public
+// proposals alone.
 #[openmls_test::openmls_test]
-fn own_pathless_commit_without_pending_is_staged() {
+fn own_commit_without_update_path_without_pending_is_staged() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
 
@@ -3134,8 +3135,9 @@ fn own_pathless_commit_without_pending_is_staged() {
     ));
 
     // Alice discards the pending commit without advancing the epoch. The echo
-    // no longer matches a pending commit, but a path-less commit can be staged
-    // from public information, so it is applied rather than rejected.
+    // no longer matches a pending commit, but a Commit without an `UpdatePath`
+    // can be staged from public information, so it is applied rather than
+    // rejected.
     alice_group
         .clear_pending_commit(alice_provider.storage())
         .expect("error clearing pending commit");
@@ -3143,14 +3145,14 @@ fn own_pathless_commit_without_pending_is_staged() {
 
     let processed = alice_group
         .process_message(alice_provider, commit)
-        .expect("path-less own commit without pending must be staged");
+        .expect("own commit without an UpdatePath without pending must be staged");
     let staged = match processed.into_content() {
         ProcessedMessageContent::StagedCommitMessage(staged) => *staged,
         other => panic!("expected staged commit, got {other:?}"),
     };
     alice_group
         .merge_staged_commit(alice_provider, staged)
-        .expect("error merging staged path-less commit");
+        .expect("error merging staged commit without an UpdatePath");
 
     // The commit applied: Bob is now a member.
     assert_eq!(alice_group.members().count(), 2);
