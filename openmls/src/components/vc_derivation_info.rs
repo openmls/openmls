@@ -1172,11 +1172,22 @@ impl ExternalInitSecret {
 /// struct { opaque epoch_secret<V>; } GroupCreationSecret;
 /// ```
 ///
-/// Group creation is not implemented here. The field is decoded purely for
-/// wire-format fidelity and rejected if present, since this build never emits
-/// or consumes it.
+/// It is the epoch-0 `epoch_secret` the creator generated for the group. A
+/// sibling emulator client decrypts it from the creator LeafNode's
+/// `DerivationInfoTBE` and initializes its own epoch-0 state from it instead of
+/// running the joiner key schedule, which it cannot reproduce.
 #[derive(Debug, Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub(crate) struct GroupCreationSecret(VLBytes);
+
+impl GroupCreationSecret {
+    pub(crate) fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes.to_vec().into())
+    }
+
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+}
 
 /// What a receiver derives from a sibling virtual client's commit in order to
 /// recreate it: the emulation `epoch_id` the commit binds to, the per-commit
@@ -1220,7 +1231,8 @@ pub(crate) struct VcCommitMaterial {
 /// batch. `external_init_secret`, present only for the commit variant, carries
 /// the external init secret of an external commit (`Some`) and is absent
 /// (`None`) for a regular commit. The trailing `group_creation_secret` is
-/// always absent here (group creation is deferred).
+/// present (`Some`) only on the creator LeafNode of a newly created group and
+/// absent (`None`) otherwise.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum DerivationInfoTbe {
     /// Carried by `update` and `commit` leaves. No `key_package_index`. The
@@ -1232,6 +1244,9 @@ pub(crate) enum DerivationInfoTbe {
         generation: u32,
         /// `Some` for an external commit, `None` for a regular commit.
         external_init_secret: Option<ExternalInitSecret>,
+        /// `Some` on the creator LeafNode of a newly created group (carrying
+        /// the initial `epoch_secret`), `None` otherwise.
+        group_creation_secret: Option<GroupCreationSecret>,
     },
     /// Carried by `key_package` leaves. Adds the position within the batch.
     KeyPackage {
@@ -1268,29 +1283,43 @@ impl DerivationInfoTbe {
         }
     }
 
+    /// The initial epoch secret carried by the creator LeafNode of a newly
+    /// created group, if any. Always `None` for `KeyPackage` and for LeafNodes
+    /// that are not a group creator's.
+    pub(crate) fn group_creation_secret(&self) -> Option<&GroupCreationSecret> {
+        match self {
+            Self::LeafNode {
+                group_creation_secret,
+                ..
+            } => group_creation_secret.as_ref(),
+            Self::KeyPackage { .. } => None,
+        }
+    }
+
     /// Serialize the variant's fields in order, with no variant tag, matching
     /// the `DerivationInfoTBE` select. The TLS derive macros cannot express a
     /// tagless select, so this codec is written by hand.
     fn tls_serialize_detached(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        // Every variant ends with the trailing `optional<GroupCreationSecret>`,
-        // which this build always emits as absent (group creation is deferred).
-        let no_group_creation_secret: Option<GroupCreationSecret> = None;
+        // Every variant ends with the trailing `optional<GroupCreationSecret>`.
+        // It is only ever `Some` on the creator LeafNode of a newly created
+        // group, so the `KeyPackage` variant always emits it as absent.
         match self {
             Self::LeafNode {
                 leaf_index,
                 generation,
                 external_init_secret,
+                group_creation_secret,
             } => {
                 let mut out = Vec::with_capacity(
                     leaf_index.tls_serialized_len()
                         + generation.tls_serialized_len()
                         + external_init_secret.tls_serialized_len()
-                        + no_group_creation_secret.tls_serialized_len(),
+                        + group_creation_secret.tls_serialized_len(),
                 );
                 leaf_index.tls_serialize(&mut out)?;
                 generation.tls_serialize(&mut out)?;
                 external_init_secret.tls_serialize(&mut out)?;
-                no_group_creation_secret.tls_serialize(&mut out)?;
+                group_creation_secret.tls_serialize(&mut out)?;
                 Ok(out)
             }
             Self::KeyPackage {
@@ -1298,6 +1327,9 @@ impl DerivationInfoTbe {
                 generation,
                 key_package_index,
             } => {
+                // A KeyPackage leaf is never a group creator's, so its trailing
+                // `optional<GroupCreationSecret>` is always absent.
+                let no_group_creation_secret: Option<GroupCreationSecret> = None;
                 let mut out = Vec::with_capacity(
                     leaf_index.tls_serialized_len()
                         + generation.tls_serialized_len()
@@ -1324,9 +1356,17 @@ impl DerivationInfoTbe {
     ) -> Result<Self, VirtualClientsError> {
         let (leaf_index, rest) = LeafNodeIndex::tls_deserialize_bytes(bytes)?;
         let (generation, rest) = u32::tls_deserialize_bytes(rest)?;
+        // Decode the case-specific body selected by the operation type, then
+        // the trailing `optional<GroupCreationSecret>` shared by every variant.
         let (tbe, rest) = match operation_type {
             VirtualClientOperationType::KeyPackage => {
                 let (key_package_index, rest) = u32::tls_deserialize_bytes(rest)?;
+                let (group_creation_secret, rest) =
+                    Option::<GroupCreationSecret>::tls_deserialize_bytes(rest)?;
+                // A KeyPackage leaf is never a group creator's leaf.
+                if group_creation_secret.is_some() {
+                    return Err(VirtualClientsError::DerivationInfoMalformed);
+                }
                 (
                     Self::KeyPackage {
                         leaf_index,
@@ -1342,11 +1382,14 @@ impl DerivationInfoTbe {
             VirtualClientOperationType::LeafNode => {
                 let (external_init_secret, rest) =
                     Option::<ExternalInitSecret>::tls_deserialize_bytes(rest)?;
+                let (group_creation_secret, rest) =
+                    Option::<GroupCreationSecret>::tls_deserialize_bytes(rest)?;
                 (
                     Self::LeafNode {
                         leaf_index,
                         generation,
                         external_init_secret,
+                        group_creation_secret,
                     },
                     rest,
                 )
@@ -1355,16 +1398,46 @@ impl DerivationInfoTbe {
                 return Err(VirtualClientsError::DerivationInfoMalformed);
             }
         };
-        // The trailing `optional<GroupCreationSecret>` is decoded for wire
-        // fidelity but must be absent: group creation is not implemented here,
-        // so a present value is rejected.
-        let (group_creation_secret, rest) =
-            Option::<GroupCreationSecret>::tls_deserialize_bytes(rest)?;
-        if group_creation_secret.is_some() || !rest.is_empty() {
+        if !rest.is_empty() {
             return Err(VirtualClientsError::DerivationInfoMalformed);
         }
         Ok(tbe)
     }
+}
+
+/// Load the [`EmulationEpochState`] and [`OperationSecretTree`] for `epoch_id`,
+/// mapping a missing entry to the matching `Missing*` error. Callers convert the
+/// returned [`VirtualClientsError`] into their own error type.
+///
+/// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
+pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
+    provider: &Provider,
+    epoch_id: &EpochId,
+) -> Result<
+    (
+        EmulationEpochState,
+        crate::components::vc_operation_tree::OperationSecretTree,
+    ),
+    VirtualClientsError,
+> {
+    use openmls_traits::storage::StorageProvider as _;
+
+    let storage = provider.storage();
+    let state = storage
+        .vc_emulation_epoch_state(epoch_id)
+        .map_err(|e| {
+            log::error!("vc: load emulation epoch state failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?
+        .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+    let operation_tree = storage
+        .vc_operation_tree(epoch_id)
+        .map_err(|e| {
+            log::error!("vc: load operation tree failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?
+        .ok_or(VirtualClientsError::MissingOperationTree)?;
+    Ok((state, operation_tree))
 }
 
 /// Verify that the effective leaf about to carry a VC derivation-info entry
@@ -1707,11 +1780,19 @@ mod tests {
             leaf_index: LeafNodeIndex::new(7),
             generation: 3,
             external_init_secret: None,
+            group_creation_secret: None,
         };
         let external_commit_tbe = DerivationInfoTbe::LeafNode {
             leaf_index: LeafNodeIndex::new(7),
             generation: 3,
             external_init_secret: Some(ExternalInitSecret::from_slice(b"external init secret")),
+            group_creation_secret: None,
+        };
+        let group_creation_tbe = DerivationInfoTbe::LeafNode {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            external_init_secret: None,
+            group_creation_secret: Some(GroupCreationSecret::from_slice(b"initial epoch secret")),
         };
 
         // The key_package form carries the trailing key_package_index (u32),
@@ -1730,6 +1811,7 @@ mod tests {
             (key_package_tbe, VirtualClientOperationType::KeyPackage),
             (leaf_node_tbe, VirtualClientOperationType::LeafNode),
             (external_commit_tbe, VirtualClientOperationType::LeafNode),
+            (group_creation_tbe, VirtualClientOperationType::LeafNode),
         ] {
             let derivation_info = DerivationInfo::encrypt(
                 provider.crypto(),
@@ -1767,6 +1849,7 @@ mod tests {
             leaf_index: LeafNodeIndex::new(1),
             generation: 0,
             external_init_secret: None,
+            group_creation_secret: None,
         };
         let derivation_info = DerivationInfo::encrypt(
             provider.crypto(),

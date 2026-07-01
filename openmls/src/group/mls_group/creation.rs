@@ -972,6 +972,201 @@ impl MlsGroup {
             .map_err(Error::StorageError)?;
         Ok(group)
     }
+
+    /// Bootstrap a virtual client's sibling emulator client into a higher-level
+    /// group the virtual client created, when this client is not yet a member.
+    ///
+    /// The creator emulator client built the group with
+    /// [`MlsGroupBuilder::vc_emulation`], carrying the epoch-0 `epoch_secret`,
+    /// encrypted, in its leaf's `DerivationInfoTBE` `group_creation_secret`.
+    /// Sharing the same emulation epoch (`epoch_id`), this client reconstructs
+    /// the epoch-0 state: it verifies the GroupInfo and single-leaf ratchet tree
+    /// (which may instead travel in the GroupInfo's `ratchet_tree` extension),
+    /// rederives the creator leaf's key material from the shared operation
+    /// secret tree, and initializes epoch 0 from the carried `epoch_secret`. On
+    /// success the returned group sits at epoch 0 with this client on the shared
+    /// virtual-client leaf (index 0).
+    ///
+    /// [`MlsGroupBuilder::vc_emulation`]: crate::group::MlsGroupBuilder::vc_emulation
+    pub fn vc_join_at_creation<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        join_config: &MlsGroupJoinConfig,
+        verifiable_group_info: VerifiableGroupInfo,
+        ratchet_tree: Option<RatchetTreeIn>,
+        epoch_id: crate::components::vc_derivation_info::EpochId,
+    ) -> Result<MlsGroup, crate::group::errors::VcGroupCreationJoinError<Provider::StorageError>>
+    {
+        use tls_codec::{DeserializeBytes as _, Serialize as _};
+
+        use crate::{
+            components::vc_derivation_info::{
+                load_vc_epoch_state_and_tree, DerivationInfo, VirtualClientOperationType,
+                VirtualClientsError, VC_COMPONENT_ID,
+            },
+            group::errors::VcGroupCreationJoinError as Error,
+            group::public_group::PublicGroup,
+            schedule::EpochSecrets,
+        };
+
+        // Resolve the ratchet tree (from the GroupInfo extension or the
+        // argument) and verify the GroupInfo and tree.
+        let ratchet_tree = match verifiable_group_info.extensions().ratchet_tree() {
+            Some(extension) => extension.ratchet_tree().clone(),
+            None => ratchet_tree.ok_or(Error::MissingRatchetTree)?,
+        };
+        let (public_group, group_info) = PublicGroup::from_ratchet_tree(
+            provider.crypto(),
+            ratchet_tree,
+            verifiable_group_info,
+            ProposalStore::new(),
+            LeafNodeLifetimePolicy::default(),
+        )?;
+        let ciphersuite = public_group.ciphersuite();
+
+        // The created group consists of exactly the creator's leaf at index 0.
+        if public_group.members().count() != 1 {
+            return Err(Error::NotASingleLeafTree);
+        }
+        let creator_index = LeafNodeIndex::new(0);
+        let creator_leaf = public_group
+            .leaf(creator_index)
+            .ok_or(Error::NotASingleLeafTree)?;
+
+        // Read the creator leaf's derivation info and check the emulation epoch.
+        let derivation_info_bytes = creator_leaf
+            .extensions()
+            .app_data_dictionary()
+            .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+            .ok_or(Error::MissingDerivationInfo)?;
+        let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
+            .map_err(|_| VirtualClientsError::DerivationInfoMalformed)?;
+        if derivation_info.epoch_id() != &epoch_id {
+            return Err(Error::EpochIdMismatch);
+        }
+
+        // Load the emulation epoch state and operation tree.
+        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id)?;
+        let (_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
+
+        // Decrypt the derivation info (LeafNode / commit case) and require the
+        // group creation secret it carries.
+        let leaf_encryption_key = creator_leaf
+            .encryption_key()
+            .tls_serialize_detached()
+            .map_err(VirtualClientsError::from)?;
+        let tbe = derivation_info.decrypt(
+            provider.crypto(),
+            emulation_ciphersuite,
+            &epoch_encryption_key,
+            &leaf_encryption_key,
+            VirtualClientOperationType::LeafNode,
+        )?;
+        let group_creation_secret = tbe
+            .group_creation_secret()
+            .ok_or(Error::MissingGroupCreationSecret)?;
+
+        // Rederive the creator leaf's key material positionally from the shared
+        // operation tree and persist the advanced tree. The operation context
+        // for a leaf_node operation is the group's id.
+        let operation_context = public_group.group_id().as_slice().to_vec();
+        let operation_secret = operation_tree.derive_operation_secret(
+            provider.crypto(),
+            emulation_ciphersuite,
+            &epoch_id,
+            tbe.leaf_index(),
+            VirtualClientOperationType::LeafNode,
+            tbe.generation(),
+            &operation_context,
+        )?;
+        provider
+            .storage()
+            .write_vc_operation_tree(&epoch_id, &operation_tree)
+            .map_err(Error::StorageError)?;
+        let leaf_keypair = operation_secret
+            .derive_encryption_key_secret(provider.crypto(), ciphersuite)?
+            .generate_encryption_key_pair(provider.crypto(), ciphersuite)?;
+        if leaf_keypair.public_key() != creator_leaf.encryption_key() {
+            return Err(Error::LeafKeyMismatch);
+        }
+
+        // Initialize epoch-0 secrets from the carried epoch secret and verify
+        // the GroupInfo's confirmation tag against them. A mismatch means the
+        // reconstruction did not reproduce the creator's epoch secrets.
+        let serialized_group_context = public_group
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+        let epoch_secrets = EpochSecrets::from_epoch_secret(
+            provider.crypto(),
+            ciphersuite,
+            group_creation_secret.as_slice(),
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            serialized_group_context,
+            public_group.tree_size(),
+            creator_index,
+        );
+        let expected_confirmation_tag = message_secrets
+            .confirmation_key()
+            .tag(
+                provider.crypto(),
+                ciphersuite,
+                public_group.group_context().confirmed_transcript_hash(),
+            )
+            .map_err(LibraryError::unexpected_crypto_error)?;
+        if &expected_confirmation_tag != group_info.confirmation_tag() {
+            return Err(Error::ConfirmationTagMismatch);
+        }
+
+        let message_secrets_store = MessageSecretsStore::new_with_secret(
+            join_config.past_epoch_deletion_policy(),
+            message_secrets,
+        );
+        let mut resumption_psk_store = ResumptionPskStore::new(32);
+        resumption_psk_store.add(
+            public_group.group_context().epoch(),
+            group_epoch_secrets.resumption_psk().clone(),
+        );
+
+        let mls_group = MlsGroup {
+            mls_group_config: join_config.clone(),
+            own_leaf_nodes: vec![],
+            aad: vec![],
+            #[cfg(feature = "extensions-draft")]
+            safe_aad: crate::framing::SafeAad::empty(),
+            group_state: MlsGroupState::Operational,
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index: creator_index,
+            message_secrets_store,
+            resumption_psk_store,
+            #[cfg(feature = "extensions-draft")]
+            application_export_tree: None,
+        };
+        mls_group
+            .store(provider.storage())
+            .map_err(Error::StorageError)?;
+        mls_group
+            .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
+            .map_err(Error::StorageError)?;
+
+        // Bind epoch 0 of the created group to the emulation epoch so later VC
+        // operations in this group resolve the right emulation state.
+        let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
+            .storage()
+            .vc_emulation_bindings(mls_group.group_id())
+            .map_err(Error::StorageError)?
+            .unwrap_or_default();
+        let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
+        bindings.insert(mls_group.epoch(), epoch_id, max_entries);
+        provider
+            .storage()
+            .write_vc_emulation_bindings(mls_group.group_id(), &bindings)
+            .map_err(Error::StorageError)?;
+
+        Ok(mls_group)
+    }
 }
 
 /// Verify or skip the validation of leaf node lifetimes in the ratchet tree

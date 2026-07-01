@@ -465,6 +465,57 @@ impl TreeSync {
         Ok((tree_sync, commit_secret, encryption_key_pair))
     }
 
+    /// Create a new single-leaf tree for a virtual-client-created group.
+    ///
+    /// The creator's leaf uses the caller-supplied `encryption_key_pair`
+    /// (derived from a `leaf_node` operation secret) and carries a `commit`
+    /// `leaf_node_source`, matching the `DerivationInfoTBE` selector a sibling
+    /// uses to reconstruct the leaf. As the sole leaf is also the root, it has
+    /// an empty parent hash. `leaf_extensions` already carries the VC
+    /// derivation info. No commit secret is returned: epoch-0 secrets come from
+    /// the sampled `epoch_secret`, not the joiner key schedule.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn new_vc(
+        provider: &impl OpenMlsProvider,
+        signer: &impl Signer,
+        ciphersuite: Ciphersuite,
+        credential_with_key: CredentialWithKey,
+        capabilities: Capabilities,
+        leaf_extensions: Extensions<LeafNode>,
+        group_id: GroupId,
+        encryption_key_pair: EncryptionKeyPair,
+    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+        let update_params = crate::treesync::node::leaf_node::UpdateLeafNodeParams {
+            credential_with_key,
+            capabilities,
+            extensions: leaf_extensions,
+        };
+        let (leaf, encryption_key_pair) = LeafNode::new_with_parent_hash(
+            provider.rand(),
+            provider.crypto(),
+            ciphersuite,
+            &[],
+            update_params,
+            group_id,
+            LeafNodeIndex::new(0),
+            signer,
+            Some(encryption_key_pair),
+        )?;
+
+        let node = Node::leaf_node(leaf);
+        let nodes = vec![TreeSyncNode::from(node).into()];
+        let tree = MlsBinaryTree::new(nodes)
+            .map_err(|_| LibraryError::custom("Unexpected error creating the binary tree."))?;
+        let mut tree_sync = Self {
+            tree,
+            tree_hash: vec![],
+        };
+        tree_sync.populate_parent_hashes(provider.crypto(), ciphersuite)?;
+
+        Ok((tree_sync, encryption_key_pair))
+    }
+
     /// Return the full tree
     pub(crate) fn tree(&self) -> &MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode> {
         &self.tree

@@ -1258,6 +1258,9 @@ fn apply_vc_emulation(
         generation: loaded.generation,
         external_init_secret: external_init_secret
             .map(|init_secret| ExternalInitSecret::from_slice(init_secret.as_slice())),
+        // Only a group creator's LeafNode carries a group creation secret;
+        // commits never do.
+        group_creation_secret: None,
     };
     let derivation_info = DerivationInfo::encrypt(
         crypto,
