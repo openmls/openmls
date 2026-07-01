@@ -740,7 +740,7 @@ impl MlsGroup {
             FramedContentBody::Commit(commit) => {
                 // Load virtual-client derivation info when this commit was
                 // authored by a sibling emulator through a leaf shared with us.
-                // A Commit with an `UpdatePath` carrying this material is staged
+                // A Commit with an UpdatePath carrying this material is staged
                 // via the VC path below rather than treated as our own (see the
                 // own-commit handling further down). The receiver only loads it
                 // when the commit shape lets it identify itself as a sibling:
@@ -791,10 +791,10 @@ impl MlsGroup {
                     }
                     // Not our pending commit. We cannot decrypt a path we
                     // encrypted to the other members, so a Commit with an
-                    // `UpdatePath` is unprocessable. A Commit without an
-                    // `UpdatePath` carries no author-private material and falls
+                    // UpdatePath is unprocessable. A Commit without an
+                    // UpdatePath carries no author-private material and falls
                     // through to staging (a sibling's Commit without an
-                    // `UpdatePath`, or our own commit replayed after the pending
+                    // UpdatePath, or our own commit replayed after the pending
                     // commit was cleared).
                     if commit.path.is_some() {
                         return Err(StageCommitError::OwnCommitMismatch.into());
@@ -866,7 +866,7 @@ impl MlsGroup {
             FramedContentBody::Commit(commit) => {
                 // See `process_internal_authenticated_content_with_app_data_updates`
                 // for the rationale. We load VC derivation info for a sibling's
-                // Commit with an `UpdatePath` through a shared leaf, and
+                // Commit with an UpdatePath through a shared leaf, and
                 // otherwise apply the own-commit handling below. The receiver
                 // only loads VC material
                 // when the commit shape lets it identify itself as a sibling:
@@ -911,10 +911,10 @@ impl MlsGroup {
                     }
                     // Not our pending commit. We cannot decrypt a path we
                     // encrypted to the other members, so a Commit with an
-                    // `UpdatePath` is unprocessable. A Commit without an
-                    // `UpdatePath` carries no author-private material and falls
+                    // UpdatePath is unprocessable. A Commit without an
+                    // UpdatePath carries no author-private material and falls
                     // through to staging (a sibling's Commit without an
-                    // `UpdatePath`, or our own commit replayed after the pending
+                    // UpdatePath, or our own commit replayed after the pending
                     // commit was cleared).
                     if commit.path.is_some() {
                         return Err(StageCommitError::OwnCommitMismatch.into());

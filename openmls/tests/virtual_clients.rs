@@ -2506,19 +2506,19 @@ fn vc_binding_carries_forward_across_foreign_commits() {
     }
 }
 
-/// A virtual client issues a Commit *without* an `UpdatePath` (an add-only
+/// A virtual client issues a Commit *without* an UpdatePath (an add-only
 /// commit) and a sibling emulator client applies it.
 ///
 ///   * `alice_a` and `alice_b` are two emulator clients of one virtual client,
 ///     sharing a single leaf in a higher-level group that also contains `bob`.
 ///   * `alice_a` adds `charly` with `add_members_without_update`, producing a
-///     commit with no `UpdatePath`. A Commit without an `UpdatePath` cannot
+///     commit with no UpdatePath. A Commit without an UpdatePath cannot
 ///     carry a virtual-clients `DerivationInfo`, so on shape alone it is
 ///     indistinguishable from `alice_a`'s own commit echoed back.
 ///   * `alice_b` (the sibling) processes it. Because the group's current epoch
 ///     is bound to the emulation epoch and `alice_b` holds no pending commit of
 ///     its own, the commit is recognized as a sibling's Commit without an
-///     `UpdatePath` and staged as a regular commit rather than rejected as a
+///     UpdatePath and staged as a regular commit rather than rejected as a
 ///     mismatched own commit. `bob` processes it through the ordinary path.
 ///   * All four parties converge on the same epoch authenticator, and an
 ///     application message round-trips from the new member to the sibling.
@@ -2612,7 +2612,7 @@ fn vc_sibling_applies_commit_without_update_path() {
         "both Alice clients must share the higher-level leaf"
     );
 
-    // alice_a issues a Commit without an `UpdatePath`: an add-only commit for
+    // alice_a issues a Commit without an UpdatePath: an add-only commit for
     // charly.
     let (charly_credential, charly_signer) = new_credential(
         &charly_provider,
@@ -2644,7 +2644,7 @@ fn vc_sibling_applies_commit_without_update_path() {
         .merge_pending_commit(&alice_a_provider)
         .expect("alice_a merge add without an UpdatePath");
 
-    // The sibling (alice_b) applies alice_a's Commit without an `UpdatePath`. It
+    // The sibling (alice_b) applies alice_a's Commit without an UpdatePath. It
     // is staged as a regular commit, not surfaced as an own pending commit.
     let processed = alice_b_main
         .process_message(
@@ -2697,7 +2697,7 @@ fn vc_sibling_applies_commit_without_update_path() {
     assert_eq!(charly_main.epoch_authenticator(), authenticator);
 
     // The new member can message the sibling that applied the commit without an
-    // `UpdatePath`.
+    // UpdatePath.
     let processed = send_and_process_app_message(
         &mut charly_main,
         &charly_provider,
