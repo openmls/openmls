@@ -519,8 +519,8 @@ pub enum ProcessedMessageContent {
     /// using
     /// [`MlsGroup::merge_pending_commit()`](crate::group::mls_group::MlsGroup::merge_pending_commit()).
     /// An own Commit that does not match the pending commit is instead returned
-    /// as a [`StagedCommitMessage`](Self::StagedCommitMessage) (if it carries no
-    /// path) or rejected (if it carries a path we cannot decrypt).
+    /// as a [`StagedCommitMessage`](Self::StagedCommitMessage) (if it has no
+    /// UpdatePath) or rejected (if it has an UpdatePath we cannot decrypt).
     ///
     /// The match against the pending commit is established by comparing the
     /// confirmation tag of the incoming Commit against the one stored with the

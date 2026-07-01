@@ -253,7 +253,7 @@ impl PublicGroup {
     }
 
     /// Stages a commit message. The commit may have been sent by another group
-    /// member or be our own path-less commit.
+    /// member or be our own Commit without an UpdatePath.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
