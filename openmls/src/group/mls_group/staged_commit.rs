@@ -139,7 +139,8 @@ impl MlsGroup {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
     }
 
-    /// Stages a commit message that was sent by another group member. This
+    /// Stages a commit message. The commit may have been sent by another group
+    /// member or be our own path-less commit. This
     /// function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree

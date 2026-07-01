@@ -513,13 +513,17 @@ pub enum ProcessedMessageContent {
     ///
     /// This is returned instead of
     /// [`StagedCommitMessage`](Self::StagedCommitMessage) when the processed
-    /// Commit was created by this client. Since this client already holds the
-    /// corresponding pending commit, the incoming Commit is not staged. To
-    /// apply it, merge the pending commit using
+    /// Commit was created by this client and matches the group's pending commit.
+    /// Since this client already holds the corresponding pending commit, the
+    /// incoming Commit is not staged. To apply it, merge the pending commit
+    /// using
     /// [`MlsGroup::merge_pending_commit()`](crate::group::mls_group::MlsGroup::merge_pending_commit()).
+    /// An own Commit that does not match the pending commit is instead returned
+    /// as a [`StagedCommitMessage`](Self::StagedCommitMessage) (if it carries no
+    /// path) or rejected (if it carries a path we cannot decrypt).
     ///
     /// The match against the pending commit is established by comparing the
-    /// confirmation tag of the incoming Commit against one recomputed from the
+    /// confirmation tag of the incoming Commit against the one stored with the
     /// pending commit. The message signature has already been verified, which
     /// authenticates the Commit as ours, and a matching confirmation tag binds
     /// the confirmed transcript hash of the new epoch. We do not otherwise
