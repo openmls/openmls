@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2084](https://github.com/openmls/openmls/pull/2084): Added the `ProcessedMessageContent::OwnPendingCommit` variant, returned when processing a Commit authored by this client that matches the group's pending commit. Callers should merge the pending commit via `MlsGroup::merge_pending_commit()`.
 
 ### Fixed
+
+- [#XXXX](https://github.com/openmls/openmls/pull/XXXX): A path-less Commit from this client's own leaf that does not match the pending commit is now staged as a regular commit instead of being rejected as a mismatched own commit.
 - [#2034](https://github.com/openmls/openmls/pull/2034): Fixes a bug where the integer storage tags for `serde` non-self-describing serializations were changed, leading to incorrect deserializations. By default, storage format compatibility with `openmls` v0.7.1 and earlier is now restored. Enabling the `0-8-1-storage-format` feature maintains storage format compatibility with `openmls` v0.8.1 (the previous `openmls` release).
 
 ### Changed

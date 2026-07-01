@@ -738,17 +738,12 @@ impl MlsGroup {
                 }
             }
             FramedContentBody::Commit(commit) => {
-                // A Commit from our own leaf that carries no virtual-client
-                // derivation info is our own commit echoed back. We confirm it
-                // matches the pending commit and signal the caller to merge
-                // that instead of staging the incoming Commit. When the commit
-                // does carry VC material it is a sibling virtual-client commit
-                // and must be staged via the VC path below. We branch on the
-                // presence of VC material rather than the feature flag so that
-                // own commits are recognized in both configurations.
-                //
-                // The receiver only loads VC material when it can identify
-                // itself as a sibling from the commit shape:
+                // Load virtual-client derivation info when this commit was
+                // authored by a sibling emulator through a leaf shared with us.
+                // A path commit carrying this material is staged via the VC path
+                // below rather than treated as our own (see the own-commit
+                // handling further down). The receiver only loads it when the
+                // commit shape lets it identify itself as a sibling:
                 //
                 // * `Sender::Member(idx)` with `idx == own_leaf_index`: the
                 //   sender committed through our shared higher-level leaf, so
@@ -770,23 +765,39 @@ impl MlsGroup {
                 #[cfg(not(feature = "virtual-clients-draft"))]
                 let _ = commit;
 
-                let is_own_pending_commit =
+                let is_own_commit =
                     matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
                 #[cfg(feature = "virtual-clients-draft")]
-                let is_own_pending_commit = is_own_pending_commit && vc_material.is_none();
+                let is_own_commit = is_own_commit && vc_material.is_none();
 
-                if is_own_pending_commit {
-                    self.check_own_pending_commit(provider.crypto(), &content)?;
-                    return Ok(ProcessedMessage::new(
-                        self.group_id().clone(),
-                        epoch,
-                        sender,
-                        authenticated_data,
-                        ProcessedMessageContent::OwnPendingCommit,
-                        credential,
-                        #[cfg(feature = "virtual-clients-draft")]
-                        emulator_sender_leaf_index,
-                    ));
+                if is_own_commit {
+                    let received_tag = content
+                        .confirmation_tag()
+                        .ok_or(StageCommitError::ConfirmationTagMissing)?;
+                    if self.matches_pending_commit(received_tag) {
+                        // The Commit is our pending commit echoed back to us:
+                        // surface `OwnPendingCommit` so the caller merges the
+                        // pending commit instead of staging the echo.
+                        return Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            epoch,
+                            sender,
+                            authenticated_data,
+                            ProcessedMessageContent::OwnPendingCommit,
+                            credential,
+                            #[cfg(feature = "virtual-clients-draft")]
+                            emulator_sender_leaf_index,
+                        ));
+                    }
+                    // Not our pending commit. We cannot decrypt a path we
+                    // encrypted to the other members, so a path-carrying commit
+                    // is unprocessable. A path-less commit carries no
+                    // author-private material and falls through to staging (a
+                    // sibling's path-less commit, or our own commit replayed
+                    // after the pending commit was cleared).
+                    if commit.path.is_some() {
+                        return Err(StageCommitError::OwnCommitMismatch.into());
+                    }
                 }
 
                 // Since this is a commit, we need to load the private key material we need for decryption.
@@ -853,13 +864,12 @@ impl MlsGroup {
             }
             FramedContentBody::Commit(commit) => {
                 // See `process_internal_authenticated_content_with_app_data_updates`
-                // for the rationale. A Commit from our own leaf that carries no
-                // VC derivation info is our own commit echoed back and signals
-                // the caller to merge the pending commit; one that does carry VC
-                // material is a sibling virtual-client commit and is staged. The
-                // receiver only loads VC material when it can identify itself as
-                // a sibling from the commit shape: own-leaf sender, or external
-                // commit with an inline `Remove(own_leaf)`.
+                // for the rationale. We load VC derivation info for a sibling's
+                // path commit through a shared leaf, and otherwise apply the
+                // own-commit handling below. The receiver only loads VC material
+                // when the commit shape lets it identify itself as a sibling:
+                // own-leaf sender, or external commit with an inline
+                // `Remove(own_leaf)`.
                 #[cfg(feature = "virtual-clients-draft")]
                 let (vc_material, vc_emulation_epoch_id) =
                     if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
@@ -873,23 +883,39 @@ impl MlsGroup {
                 #[cfg(not(feature = "virtual-clients-draft"))]
                 let _ = commit;
 
-                let is_own_pending_commit =
+                let is_own_commit =
                     matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
                 #[cfg(feature = "virtual-clients-draft")]
-                let is_own_pending_commit = is_own_pending_commit && vc_material.is_none();
+                let is_own_commit = is_own_commit && vc_material.is_none();
 
-                if is_own_pending_commit {
-                    self.check_own_pending_commit(provider.crypto(), &content)?;
-                    return Ok(ProcessedMessage::new(
-                        self.group_id().clone(),
-                        epoch,
-                        sender,
-                        authenticated_data,
-                        ProcessedMessageContent::OwnPendingCommit,
-                        credential,
-                        #[cfg(feature = "virtual-clients-draft")]
-                        emulator_sender_leaf_index,
-                    ));
+                if is_own_commit {
+                    let received_tag = content
+                        .confirmation_tag()
+                        .ok_or(StageCommitError::ConfirmationTagMissing)?;
+                    if self.matches_pending_commit(received_tag) {
+                        // The Commit is our pending commit echoed back to us:
+                        // surface `OwnPendingCommit` so the caller merges the
+                        // pending commit instead of staging the echo.
+                        return Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            epoch,
+                            sender,
+                            authenticated_data,
+                            ProcessedMessageContent::OwnPendingCommit,
+                            credential,
+                            #[cfg(feature = "virtual-clients-draft")]
+                            emulator_sender_leaf_index,
+                        ));
+                    }
+                    // Not our pending commit. We cannot decrypt a path we
+                    // encrypted to the other members, so a path-carrying commit
+                    // is unprocessable. A path-less commit carries no
+                    // author-private material and falls through to staging (a
+                    // sibling's path-less commit, or our own commit replayed
+                    // after the pending commit was cleared).
+                    if commit.path.is_some() {
+                        return Err(StageCommitError::OwnCommitMismatch.into());
+                    }
                 }
 
                 // Since this is a commit, we need to load the private key material we need for decryption.

@@ -279,6 +279,11 @@ impl StagedPublicGroupDiff {
         &self.group_context
     }
 
+    /// Get the [`ConfirmationTag`] of the commit that produced this diff.
+    pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
+        &self.confirmation_tag
+    }
+
     /// Export the staged [`RatchetTree`]
     pub(crate) fn export_ratchet_tree(
         &self,
