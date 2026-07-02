@@ -114,10 +114,12 @@ fn decrypt_targeted_message_content_with_real_tbm(
     let content_bytes = own_keypair
         .private_key()
         .decrypt_with_label_psk_aad(
-            super::TARGETED_MESSAGE_DATA_LABEL,
-            ctx.serialized_group_context,
-            &psk,
-            &psk_id_bytes,
+            crate::ciphersuite::hpke::PskEncryptParams {
+                label: super::TARGETED_MESSAGE_DATA_LABEL,
+                context: ctx.serialized_group_context,
+                psk: &psk,
+                psk_id: &psk_id_bytes,
+            },
             &tbm_bytes,
             &hpke_ciphertext,
             ctx.ciphersuite,

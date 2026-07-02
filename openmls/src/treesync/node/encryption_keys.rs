@@ -67,13 +67,9 @@ impl EncryptionKey {
 
 #[cfg(feature = "targeted-messages-draft")]
 impl EncryptionKey {
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn encrypt_with_label_psk_resolved_aad<F>(
         &self,
-        label: &str,
-        context: &[u8],
-        psk: &[u8],
-        psk_id_bytes: &[u8],
+        params: hpke::PskEncryptParams,
         plaintext: &[u8],
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
@@ -84,10 +80,7 @@ impl EncryptionKey {
     {
         hpke::encrypt_with_label_psk_resolved_aad(
             self.as_slice(),
-            label,
-            context,
-            psk,
-            psk_id_bytes,
+            params,
             plaintext,
             ciphersuite,
             crypto,
@@ -161,29 +154,15 @@ impl EncryptionPrivateKey {
     }
 
     #[cfg(feature = "targeted-messages-draft")]
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn decrypt_with_label_psk_aad(
         &self,
-        label: &str,
-        context: &[u8],
-        psk: &[u8],
-        psk_id_bytes: &[u8],
+        params: hpke::PskEncryptParams,
         aad: &[u8],
         ciphertext: &HpkeCiphertext,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<Vec<u8>, hpke::Error> {
-        hpke::decrypt_with_label_psk_aad(
-            &self.key,
-            label,
-            context,
-            psk,
-            psk_id_bytes,
-            aad,
-            ciphertext,
-            ciphersuite,
-            crypto,
-        )
+        hpke::decrypt_with_label_psk_aad(&self.key, params, aad, ciphertext, ciphersuite, crypto)
     }
 }
 

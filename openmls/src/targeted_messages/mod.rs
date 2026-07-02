@@ -184,11 +184,23 @@ impl TargetedMessageContent {
     fn serialize_detached(&self) -> Result<Vec<u8>, tls_codec::Error> {
         use std::io::Write;
         let app_data_len = self.application_data.tls_serialized_len();
-        let mut buffer = Vec::with_capacity(app_data_len + self.padding_length);
+        // Guard against overflow and against exceeding Rust's allocation limit
+        // of isize::MAX bytes, since padding_length is caller-controlled.
+        let total_len = app_data_len
+            .checked_add(self.padding_length)
+            .filter(|&len| len <= isize::MAX as usize)
+            .ok_or_else(|| {
+                tls_codec::Error::EncodingError(
+                    "Targeted message content exceeds the maximum size.".into(),
+                )
+            })?;
+        let mut buffer = Vec::with_capacity(total_len);
         self.application_data.tls_serialize(&mut buffer)?;
         buffer
             .write_all(&vec![0u8; self.padding_length])
-            .map_err(|_| tls_codec::Error::EncodingError("Failed to write padding.".into()))?;
+            .map_err(|e| {
+                tls_codec::Error::EncodingError(format!("Failed to write padding: {e}"))
+            })?;
         Ok(buffer)
     }
 
@@ -515,10 +527,12 @@ pub(crate) fn create_targeted_message(
 
     let mut sender_auth_data_bytes = None;
     let hpke_ct = recipient_encryption_key.encrypt_with_label_psk_resolved_aad(
-        TARGETED_MESSAGE_DATA_LABEL,
-        ctx.serialized_group_context,
-        &psk,
-        &psk_id_bytes,
+        crate::ciphersuite::hpke::PskEncryptParams {
+            label: TARGETED_MESSAGE_DATA_LABEL,
+            context: ctx.serialized_group_context,
+            psk: &psk,
+            psk_id: &psk_id_bytes,
+        },
         &content_bytes,
         ctx.ciphersuite,
         crypto,
@@ -540,9 +554,10 @@ pub(crate) fn create_targeted_message(
             let tbs_payload = TargetedMessageTBSPayload {
                 serialized: tbs_bytes,
             };
-            let signature = tbs_payload
-                .sign(signer)
-                .map_err(|_| LibraryError::custom("Signing targeted message failed"))?;
+            let signature = tbs_payload.sign(signer).map_err(|e| {
+                log::error!("Signing targeted message failed: {e:?}");
+                LibraryError::custom("Signing targeted message failed")
+            })?;
 
             let sender_auth_data = TargetedMessageSenderAuthData {
                 sender_leaf_index: sender_leaf_index.u32(),
@@ -656,11 +671,17 @@ pub(crate) fn process_targeted_message<StorageError>(
             &sender_auth_aad_bytes,
             &nonce,
         )
-        .map_err(|_| ProcessTargetedMessageError::SenderAuthDataDecryptionFailed)?;
+        .map_err(|e| {
+            log::error!("Targeted message sender auth data decryption failed: {e:?}");
+            ProcessTargetedMessageError::SenderAuthDataDecryptionFailed
+        })?;
 
     let sender_auth_data =
         TargetedMessageSenderAuthData::tls_deserialize_exact_bytes(&sender_auth_data_bytes)
-            .map_err(|_| ProcessTargetedMessageError::MalformedSenderAuthData)?;
+            .map_err(|e| {
+                log::error!("Targeted message sender auth data is malformed: {e:?}");
+                ProcessTargetedMessageError::MalformedSenderAuthData
+            })?;
 
     let sender_leaf_index = LeafNodeIndex::new(sender_auth_data.sender_leaf_index);
 
@@ -695,7 +716,10 @@ pub(crate) fn process_targeted_message<StorageError>(
 
     verifiable
         .verify(crypto, &sender_signature_key)
-        .map_err(|_| ProcessTargetedMessageError::SignatureVerificationFailed)?;
+        .map_err(|e| {
+            log::error!("Targeted message signature verification failed: {e:?}");
+            ProcessTargetedMessageError::SignatureVerificationFailed
+        })?;
 
     // Decrypt the content via HPKE PSK open
     let psk = derive_targeted_message_psk(crypto, ctx.ciphersuite, ctx.exporter_secret)?;
@@ -723,19 +747,26 @@ pub(crate) fn process_targeted_message<StorageError>(
 
     let content_bytes = own_encryption_private_key
         .decrypt_with_label_psk_aad(
-            TARGETED_MESSAGE_DATA_LABEL,
-            ctx.serialized_group_context,
-            &psk,
-            &psk_id_bytes,
+            crate::ciphersuite::hpke::PskEncryptParams {
+                label: TARGETED_MESSAGE_DATA_LABEL,
+                context: ctx.serialized_group_context,
+                psk: &psk,
+                psk_id: &psk_id_bytes,
+            },
             &tbm_bytes,
             &hpke_ciphertext,
             ctx.ciphersuite,
             crypto,
         )
-        .map_err(|_| ProcessTargetedMessageError::ContentDecryptionFailed)?;
+        .map_err(|e| {
+            log::error!("Targeted message content decryption failed: {e:?}");
+            ProcessTargetedMessageError::ContentDecryptionFailed
+        })?;
 
-    let content = TargetedMessageContent::deserialize_detached(&content_bytes)
-        .map_err(|_| ProcessTargetedMessageError::MalformedContent)?;
+    let content = TargetedMessageContent::deserialize_detached(&content_bytes).map_err(|e| {
+        log::error!("Targeted message content is malformed: {e:?}");
+        ProcessTargetedMessageError::MalformedContent
+    })?;
 
     Ok(ProcessedTargetedMessage {
         sender_leaf_index,
