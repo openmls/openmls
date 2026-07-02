@@ -303,82 +303,45 @@ fn app_data_update_book_example() {
     // ANCHOR: process_commit
     // Bob receives the commit and must independently compute the same new state.
 
-    // First, unprotect (decrypt) the message
+    // Process the message. Since the commit covers AppDataUpdate proposals,
+    // it comes back as an UnresolvedAppDataCommit: the signature has been
+    // verified, but staging is paused until Bob supplies the computed updates.
     let commit_in: MlsMessageIn = commit_message.into();
-    let unverified_message = bob
+    let processed_message = bob
         .group
-        .unprotect_message(
+        .process_message(
             &bob_party.provider,
             commit_in
                 .into_protocol_message()
                 .expect("not a protocol message"),
         )
-        .expect("failed to unprotect message");
+        .expect("failed to process message");
 
-    // Create an updater for Bob
-    let mut bob_updater = bob.group.app_data_dictionary_updater();
-
-    // Get the proposals from the commit
-    let committed_proposals = unverified_message
-        .committed_proposals()
-        .expect("not a commit");
-
-    // Process each proposal, resolving references from the proposal store
-    let mut app_data_updates: Vec<AppDataUpdateProposal> = Vec::new();
-
-    for proposal_or_ref in committed_proposals.iter() {
-        // Validate and potentially resolve the reference
-        let validated = proposal_or_ref
-            .clone()
-            .validate(
-                bob_party.provider.crypto(),
-                ciphersuite,
-                ProtocolVersion::Mls10,
-            )
-            .expect("invalid proposal");
-
-        // Resolve to the actual proposal
-        let proposal: Box<Proposal> = match validated {
-            ProposalOrRef::Proposal(proposal) => proposal,
-            ProposalOrRef::Reference(reference) => {
-                // Look up the proposal in the proposal store
-                bob.group
-                    .proposal_store()
-                    .proposals()
-                    .find(|p| p.proposal_reference_ref() == &*reference)
-                    .map(|p| Box::new(p.proposal().clone()))
-                    .expect("proposal not found in store")
-            }
-        };
-
-        // Collect AppDataUpdate proposals for processing
-        if let Proposal::AppDataUpdate(app_data_proposal) = *proposal {
-            app_data_updates.push(*app_data_proposal);
-        }
-    }
-
-    // Process the collected proposals
-    process_app_data_proposals(&mut bob_updater, app_data_updates.iter())
-        .expect("failed to process proposals");
-
-    // Now process the message with the computed updates
-    let processed_message = bob
-        .group
-        .process_unverified_message_with_app_data_updates(
-            &bob_party.provider,
-            unverified_message,
-            bob_updater.changes(),
-        )
-        .expect("failed to process commit");
-
-    // Extract and merge the staged commit
-    let staged_commit = match processed_message.into_content() {
-        ProcessedMessageContent::StagedCommitMessage(commit) => commit,
-        _ => panic!("expected a staged commit"),
+    let unresolved_commit = match processed_message.into_content() {
+        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
+        _ => panic!("expected an unresolved app data commit"),
     };
 
+    // Create an updater for Bob and compute the new state. The proposals are
+    // already verified, resolved from the proposal store and sorted by
+    // component ID.
+    let mut bob_updater = bob.group.app_data_dictionary_updater();
+
+    process_app_data_proposals(
+        &mut bob_updater,
+        unresolved_commit.app_data_update_proposals(),
+    )
+    .expect("failed to process proposals");
+    let updates = bob_updater.changes();
+
+    // Resume staging with the computed updates
+    let staged_commit = bob
+        .group
+        .stage_app_data_commit(&bob_party.provider, *unresolved_commit, updates)
+        .expect("failed to stage commit");
+
     bob.group
-        .merge_staged_commit(&bob_party.provider, *staged_commit)
+        .merge_staged_commit(&bob_party.provider, staged_commit)
         .expect("failed to merge commit");
     // ANCHOR_END: process_commit
 
@@ -501,49 +464,37 @@ fn app_data_update_increment_then_decrement() {
 
         // Bob processes
         let commit_in: MlsMessageIn = commit_message.into();
-        let unverified = bob
+        let processed = bob
             .group
-            .unprotect_message(
+            .process_message(
                 &bob_party.provider,
                 commit_in.into_protocol_message().unwrap(),
             )
             .unwrap();
 
-        let mut bob_updater = bob.group.app_data_dictionary_updater();
-        let committed = unverified.committed_proposals().unwrap();
-
-        let mut updates: Vec<AppDataUpdateProposal> = Vec::new();
-        for por in committed.iter() {
-            let validated = por
-                .clone()
-                .validate(
-                    bob_party.provider.crypto(),
-                    ciphersuite,
-                    ProtocolVersion::Mls10,
-                )
-                .unwrap();
-            if let ProposalOrRef::Proposal(p) = validated {
-                if let Proposal::AppDataUpdate(u) = *p {
-                    updates.push(*u);
-                }
+        let unresolved_commit = match processed.into_content() {
+            ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => {
+                unresolved_commit
             }
-        }
-        process_app_data_proposals(&mut bob_updater, updates.iter()).unwrap();
+            _ => panic!("expected an unresolved app data commit"),
+        };
 
-        let processed = bob
+        let mut bob_updater = bob.group.app_data_dictionary_updater();
+        process_app_data_proposals(
+            &mut bob_updater,
+            unresolved_commit.app_data_update_proposals(),
+        )
+        .unwrap();
+        let updates = bob_updater.changes();
+
+        let staged_commit = bob
             .group
-            .process_unverified_message_with_app_data_updates(
-                &bob_party.provider,
-                unverified,
-                bob_updater.changes(),
-            )
+            .stage_app_data_commit(&bob_party.provider, *unresolved_commit, updates)
             .unwrap();
 
-        if let ProcessedMessageContent::StagedCommitMessage(sc) = processed.into_content() {
-            bob.group
-                .merge_staged_commit(&bob_party.provider, *sc)
-                .unwrap();
-        }
+        bob.group
+            .merge_staged_commit(&bob_party.provider, staged_commit)
+            .unwrap();
         alice
             .group
             .merge_pending_commit(&alice_party.provider)
@@ -596,49 +547,37 @@ fn app_data_update_increment_then_decrement() {
 
         // Bob processes
         let commit_in: MlsMessageIn = commit_message.into();
-        let unverified = bob
+        let processed = bob
             .group
-            .unprotect_message(
+            .process_message(
                 &bob_party.provider,
                 commit_in.into_protocol_message().unwrap(),
             )
             .unwrap();
 
-        let mut bob_updater = bob.group.app_data_dictionary_updater();
-        let committed = unverified.committed_proposals().unwrap();
-
-        let mut updates: Vec<AppDataUpdateProposal> = Vec::new();
-        for por in committed.iter() {
-            let validated = por
-                .clone()
-                .validate(
-                    bob_party.provider.crypto(),
-                    ciphersuite,
-                    ProtocolVersion::Mls10,
-                )
-                .unwrap();
-            if let ProposalOrRef::Proposal(p) = validated {
-                if let Proposal::AppDataUpdate(u) = *p {
-                    updates.push(*u);
-                }
+        let unresolved_commit = match processed.into_content() {
+            ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => {
+                unresolved_commit
             }
-        }
-        process_app_data_proposals(&mut bob_updater, updates.iter()).unwrap();
+            _ => panic!("expected an unresolved app data commit"),
+        };
 
-        let processed = bob
+        let mut bob_updater = bob.group.app_data_dictionary_updater();
+        process_app_data_proposals(
+            &mut bob_updater,
+            unresolved_commit.app_data_update_proposals(),
+        )
+        .unwrap();
+        let updates = bob_updater.changes();
+
+        let staged_commit = bob
             .group
-            .process_unverified_message_with_app_data_updates(
-                &bob_party.provider,
-                unverified,
-                bob_updater.changes(),
-            )
+            .stage_app_data_commit(&bob_party.provider, *unresolved_commit, updates)
             .unwrap();
 
-        if let ProcessedMessageContent::StagedCommitMessage(sc) = processed.into_content() {
-            bob.group
-                .merge_staged_commit(&bob_party.provider, *sc)
-                .unwrap();
-        }
+        bob.group
+            .merge_staged_commit(&bob_party.provider, staged_commit)
+            .unwrap();
         alice
             .group
             .merge_pending_commit(&alice_party.provider)
