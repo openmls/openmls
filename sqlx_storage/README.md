@@ -55,6 +55,13 @@ transaction.commit().await?;
 Run the migrations on the bare connection rather than inside a transaction, so
 that the schema is not tied to the lifetime of a single transaction.
 
+`connection.begin()` starts a deferred transaction (SQLite's default), so the
+write lock is not acquired until the first write. If two concurrent, deferred
+transactions both read and then try to write, one fails with `SQLITE_BUSY`, and
+this case is not resolved by `busy_timeout`. Such applications may want to begin
+the transaction as `BEGIN IMMEDIATE` to take the write lock upfront, or handle
+the busy error with a retry.
+
 A complete, runnable version of this is in
 [`examples/transaction.rs`](examples/transaction.rs):
 
