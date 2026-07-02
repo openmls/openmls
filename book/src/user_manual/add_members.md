@@ -10,6 +10,16 @@ Members can be added to the group atomically with the `.add_members()` function.
 
 The function returns the tuple `(MlsMessageOut, Welcome, Option<GroupInfo>)`. The `MlsMessageOut` contains a Commit message that needs to be fanned out to existing group members. The `Welcome` message must be sent to the newly added members, along the optional `GroupInfo` if it is available.
 
+**Important**
+
+Calling `.add_members()` creates a *pending commit* but does not immediately update the group state.
+
+You must call:
+
+```rust
+group.merge_pending_commit(provider)?;
+```
+
 Users could also use the new `CommitBuilder` API, which would look like this:
 
 ```rust,no_run,noplayground
