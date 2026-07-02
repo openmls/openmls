@@ -296,19 +296,12 @@ fn test_app_data_update_multi_remove_validate_outgoing() {
     assert_eq!(commit.proposals.len(), 1);
 }
 
-/// Test that using `process_message` (classic function) on a commit containing
-/// AppDataUpdate proposals returns an appropriate error.
-///
-/// When processing a commit with AppDataUpdate proposals, callers MUST use
-/// `process_unverified_message_with_app_data_updates` instead of `process_message`.
-///
-/// CURRENT BEHAVIOR: Returns `StageCommitError::ApplyAppDataUpdateError(MissingAppDataUpdates)`
-/// IDEAL BEHAVIOR: Should return `ProcessMessageError::FoundAppDataUpdateProposal` to clearly
-///                 indicate that the caller needs to use the app-data-aware function.
-///
-/// This test documents the current behavior and serves as a regression test.
+/// Test that `process_message` returns a commit containing AppDataUpdate
+/// proposals as `ProcessedMessageContent::UnresolvedAppDataCommit`, with the
+/// covered proposals resolved and accessible, and that staging resumes via
+/// `stage_app_data_commit`.
 #[openmls_test]
-fn test_process_message_with_app_data_update_returns_error() {
+fn test_process_message_returns_unresolved_app_data_commit() {
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
@@ -352,9 +345,9 @@ fn test_process_message_with_app_data_update_returns_error() {
 
     let (commit_message, _, _) = commit_bundle.into_contents();
 
-    // Bob tries to process the commit using the classic `process_message` function.
-    // This MUST fail because the classic function doesn't handle AppDataUpdate proposals.
-    let err = bob
+    // Bob processes the commit with `process_message`. Since the commit
+    // covers AppDataUpdate proposals, it must come back unresolved.
+    let processed_message = bob
         .group
         .process_message(
             &bob_party.provider,
@@ -362,101 +355,58 @@ fn test_process_message_with_app_data_update_returns_error() {
                 .into_protocol_message()
                 .expect("not a protocol message"),
         )
-        .expect_err(
-            "process_message should have failed when processing a commit with \
-                 AppDataUpdate proposals, but it succeeded. This is a bug - the \
-                 AppDataDictionary will be incorrect.",
-        );
+        .expect("failed to process commit");
 
-    // The function must return an error. Check which error we get.
-    match err {
-        ProcessMessageError::FoundAppDataUpdateProposal => {
-            // IDEAL: The classic function detected AppDataUpdate proposals and returned
-            // a clear error telling the caller to use the proper function instead.
-        }
-        // ProcessMessageError::StageCommitError(StageCommitError::ApplyAppDataUpdateError(
-        //     crate::group::public_group::errors::ApplyAppDataUpdateError::MissingAppDataUpdates,
-        // )) => {
-        //     // CURRENT: The error comes from deep in the apply_proposals stack.
-        //     // This is less user-friendly but still fails correctly.
-        //     // Consider improving to return FoundAppDataUpdateProposal instead.
-        // }
-        other_error => {
-            panic!(
-                "Unexpected error type: {:?}\n\
-                 Expected either ProcessMessageError::FoundAppDataUpdateProposal or \
-                 StageCommitError::ApplyAppDataUpdateError(MissingAppDataUpdates).",
-                other_error
-            );
-        }
-    }
-}
+    let unresolved_commit = match processed_message.into_content() {
+        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
+        other => panic!(
+            "Expected UnresolvedAppDataCommit, got: {:?}",
+            std::mem::discriminant(&other)
+        ),
+    };
 
-/// Test that verifies the IDEAL behavior: `process_message` should return
-/// `ProcessMessageError::FoundAppDataUpdateProposal` when processing a commit
-/// with AppDataUpdate proposals.
-///
-/// This test will fail until the API is improved to return this clearer error.
-/// When this test passes, the previous test can be updated to only accept
-/// the FoundAppDataUpdateProposal variant.
-#[openmls_test]
-#[ignore] // Remove this when the API is improved
-fn test_process_message_returns_found_app_data_update_proposal_error() {
-    // Set up parties
-    let alice_party = CorePartyState::<Provider>::new("alice");
-    let bob_party = CorePartyState::<Provider>::new("bob");
+    // The covered proposals are accessible on the unresolved commit
+    let proposals: Vec<_> = unresolved_commit.app_data_update_proposals().collect();
+    assert_eq!(proposals.len(), 1);
+    assert_eq!(proposals[0].component_id(), 0xf042);
+    assert!(matches!(
+        proposals[0].operation(),
+        AppDataUpdateOperation::Update(data) if data.as_slice() == b"test_value"
+    ));
 
-    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
-
-    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
-
-    // Alice creates a commit with an AppDataUpdate proposal
-    let mut stage = alice
-        .group
-        .commit_builder()
-        .add_proposals(vec![Proposal::AppDataUpdate(Box::new(
-            AppDataUpdateProposal::update(0xf042, b"test_value"),
-        ))])
-        .load_psks(alice_party.provider.storage())
-        .unwrap();
-
-    let mut alice_updater = stage.app_data_dictionary_updater();
-    for proposal in stage.app_data_update_proposals() {
+    // Bob computes the updates and resumes staging
+    let mut bob_updater = bob.group.app_data_dictionary_updater();
+    for proposal in unresolved_commit.app_data_update_proposals() {
         if let AppDataUpdateOperation::Update(data) = proposal.operation() {
-            alice_updater.set(ComponentData::from_parts(
+            bob_updater.set(ComponentData::from_parts(
                 proposal.component_id(),
                 data.clone(),
             ));
         }
     }
-    stage.with_app_data_dictionary_updates(alice_updater.changes());
 
-    let commit_bundle = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
+    let staged_commit = bob
+        .group
+        .stage_app_data_commit(
+            &bob_party.provider,
+            *unresolved_commit,
+            bob_updater.changes(),
         )
-        .unwrap()
-        .stage_commit(&alice_party.provider)
+        .expect("failed to stage commit");
+
+    bob.group
+        .merge_staged_commit(&bob_party.provider, staged_commit)
+        .unwrap();
+    alice
+        .group
+        .merge_pending_commit(&alice_party.provider)
         .unwrap();
 
-    let (commit_message, _, _) = commit_bundle.into_contents();
-
-    let err = bob.group.process_message(
-        &bob_party.provider,
-        commit_message
-            .into_protocol_message()
-            .expect("not a protocol message"),
-    ).expect_err( "Expected ProcessMessageError::FoundAppDataUpdateProposal, but function returned success");
-
-    if !matches!(err, ProcessMessageError::FoundAppDataUpdateProposal) {
-        panic!(
-            "Expected ProcessMessageError::FoundAppDataUpdateProposal, got: {err:?}\n\
-                 The API should be improved to return this clearer error.",
-        );
-    }
+    // Both parties agree on the dictionary
+    assert_eq!(
+        alice.group.extensions().app_data_dictionary(),
+        bob.group.extensions().app_data_dictionary()
+    );
 }
 
 /// Test that creating a commit with AppDataUpdate proposals but NOT providing
@@ -580,10 +530,10 @@ fn test_commit_with_superfluous_app_data_updates_fails() {
     }
 }
 
-/// Test that the error from process_unverified_message (without app data updates)
-/// when processing a commit with AppDataUpdate proposals is sensible.
+/// Test that staging an unresolved app data commit without providing the
+/// computed updates fails with a clear error.
 #[openmls_test]
-fn test_process_unverified_message_without_updates_returns_clear_error() {
+fn test_stage_app_data_commit_without_updates_returns_clear_error() {
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
@@ -626,34 +576,39 @@ fn test_process_unverified_message_without_updates_returns_clear_error() {
 
     let (commit_message, _, _) = commit_bundle.into_contents();
 
-    // Bob unprotects the message
+    // Bob processes the message and receives the unresolved commit
     let commit_in: MlsMessageIn = commit_message.into();
-    let unverified_message = bob
+    let processed_message = bob
         .group
-        .unprotect_message(
+        .process_message(
             &bob_party.provider,
             commit_in.into_protocol_message().unwrap(),
         )
         .unwrap();
 
-    // Bob tries to process WITHOUT providing app data updates (using None)
+    let unresolved_commit = match processed_message.into_content() {
+        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
+        _ => panic!("Expected UnresolvedAppDataCommit"),
+    };
+
+    // Bob tries to stage WITHOUT providing app data updates (using None)
     let err = bob
         .group
-        .process_unverified_message_with_app_data_updates(
+        .stage_app_data_commit(
             &bob_party.provider,
-            unverified_message,
+            *unresolved_commit,
             None, // Intentionally not providing the updates
         )
         .expect_err(
-            "Processing should have failed when AppDataUpdate proposals are present \
+            "Staging should have failed when AppDataUpdate proposals are present \
                  but no updates were provided.",
         );
 
     if !matches!(
         err,
-        ProcessMessageError::InvalidCommit(StageCommitError::ApplyAppDataUpdateError(
+        StageCommitError::ApplyAppDataUpdateError(
             crate::group::public_group::errors::ApplyAppDataUpdateError::MissingAppDataUpdates,
-        ))
+        )
     ) {
         panic!(
             "Expected StageCommitError::ApplyAppDataUpdateError(MissingAppDataUpdates), \
@@ -709,15 +664,20 @@ fn test_process_with_wrong_app_data_updates() {
 
     let (commit_message, _, _) = commit_bundle.into_contents();
 
-    // Bob unprotects the message
+    // Bob processes the message and receives the unresolved commit
     let commit_in: MlsMessageIn = commit_message.into();
-    let unverified_message = bob
+    let processed_message = bob
         .group
-        .unprotect_message(
+        .process_message(
             &bob_party.provider,
             commit_in.into_protocol_message().unwrap(),
         )
         .unwrap();
+
+    let unresolved_commit = match processed_message.into_content() {
+        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
+        _ => panic!("Expected UnresolvedAppDataCommit"),
+    };
 
     // Bob provides updates for the WRONG component ID
     let mut bob_updater = bob.group.app_data_dictionary_updater();
@@ -727,10 +687,10 @@ fn test_process_with_wrong_app_data_updates() {
         b"wrong_component".to_vec().into(),
     ));
 
-    // Process with the wrong updates
-    let result = bob.group.process_unverified_message_with_app_data_updates(
+    // Stage with the wrong updates
+    let result = bob.group.stage_app_data_commit(
         &bob_party.provider,
-        unverified_message,
+        *unresolved_commit,
         bob_updater.changes(),
     );
 
@@ -738,34 +698,30 @@ fn test_process_with_wrong_app_data_updates() {
     // but the resulting state will be different from Alice's.
     // This test documents the current behavior.
     match result {
-        Ok(processed_message) => {
-            // The message processed, but let's verify the state is inconsistent
-            if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
-                processed_message.into_content()
-            {
-                bob.group
-                    .merge_staged_commit(&bob_party.provider, *staged_commit)
-                    .unwrap();
+        Ok(staged_commit) => {
+            // The commit staged, but let's verify the state is inconsistent
+            bob.group
+                .merge_staged_commit(&bob_party.provider, staged_commit)
+                .unwrap();
 
-                // Merge Alice's commit too
-                alice
-                    .group
-                    .merge_pending_commit(&alice_party.provider)
-                    .unwrap();
+            // Merge Alice's commit too
+            alice
+                .group
+                .merge_pending_commit(&alice_party.provider)
+                .unwrap();
 
-                // The dictionaries should NOT match because Bob provided wrong updates
-                let alice_dict = alice.group.extensions().app_data_dictionary();
-                let bob_dict = bob.group.extensions().app_data_dictionary();
+            // The dictionaries should NOT match because Bob provided wrong updates
+            let alice_dict = alice.group.extensions().app_data_dictionary();
+            let bob_dict = bob.group.extensions().app_data_dictionary();
 
-                // Note: This documents that the API allows mismatched updates
-                // A stricter API might want to validate this
-                if alice_dict == bob_dict {
-                    panic!(
-                        "Expected dictionaries to differ when Bob provides wrong updates, \
-                         but they are the same. This suggests the API might be validating \
-                         updates against proposals (which would be good!)."
-                    );
-                }
+            // Note: This documents that the API allows mismatched updates
+            // A stricter API might want to validate this
+            if alice_dict == bob_dict {
+                panic!(
+                    "Expected dictionaries to differ when Bob provides wrong updates, \
+                     but they are the same. This suggests the API might be validating \
+                     updates against proposals (which would be good!)."
+                );
             }
         }
         Err(e) => {

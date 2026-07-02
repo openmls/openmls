@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2043](https://github.com/openmls/openmls/pull/2043): Renamed and deprecated `MlsGroup::propose_external_psk` to `MlsGroup::propose_pre_shared_key`. Same for the `_by_value` variant.
 - [#2084](https://github.com/openmls/openmls/pull/2084): Renamed `StageCommitError::OwnCommit` to `StageCommitError::OwnCommitMismatch`, now returned only when a Commit authored by this client does not match the pending commit.
 - [#2060](https://github.com/openmls/openmls/pull/2060) Renamed `extensions-draft-08` feature flag to `extensions-draft`.
+- Reworked the receive-side API for `AppDataUpdate` proposals (`extensions-draft` feature). `MlsGroup::process_message` now returns a commit covering `AppDataUpdate` proposals as `ProcessedMessageContent::UnresolvedAppDataCommit`. Applications inspect the verified proposals via `UnresolvedAppDataCommit::app_data_update_proposals()` and resume staging with `MlsGroup::stage_app_data_commit()`. This replaces the `MlsGroup::unprotect_message`/`MlsGroup::process_unverified_message_with_app_data_updates` flow, which exposed unverified message content; both functions are no longer public, and `ProcessMessageError::FoundAppDataUpdateProposal` was removed.
 
 ## 0.8.1 (2026-02-13)
 

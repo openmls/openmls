@@ -29,7 +29,9 @@ pub use mls_group::config::*;
 pub use mls_group::creation::*;
 pub use mls_group::membership::*;
 #[cfg(feature = "extensions-draft")]
-pub use mls_group::processing::{AppDataDictionaryUpdater, AppDataUpdates};
+pub use mls_group::processing::{
+    AppDataDictionaryUpdater, AppDataUpdates, UnresolvedAppDataCommit,
+};
 pub use mls_group::proposal_store::*;
 pub use mls_group::staged_commit::StagedCommit;
 pub use mls_group::{Member, *};

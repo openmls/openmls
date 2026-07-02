@@ -476,6 +476,10 @@ impl User {
                 }
                 None
             }
+            #[cfg(feature = "extensions-draft")]
+            ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
+                unimplemented!("the cli does not support AppDataUpdate proposals")
+            }
         };
         Ok((PostUpdateActions::None, None, message_out))
     }
