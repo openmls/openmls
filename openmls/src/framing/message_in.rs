@@ -101,7 +101,8 @@ impl MlsMessageIn {
         self.try_into()
     }
 
-    /// Extract a [`TargetedMessageIn`] from this message, if it contains one.
+    /// Extract a [`TargetedMessageIn`](crate::targeted_messages::TargetedMessageIn)
+    /// from this message, if it contains one.
     #[cfg(feature = "targeted-messages-draft")]
     #[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
     pub fn into_targeted_message(self) -> Option<crate::targeted_messages::TargetedMessageIn> {

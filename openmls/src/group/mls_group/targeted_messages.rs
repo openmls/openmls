@@ -1,5 +1,4 @@
 use openmls_traits::signatures::Signer;
-use tls_codec::Serialize as _;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
