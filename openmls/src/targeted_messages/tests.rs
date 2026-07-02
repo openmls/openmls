@@ -32,16 +32,11 @@ fn decrypt_targeted_message_content_with_real_tbm(
     group: &crate::group::MlsGroup,
     message: &TargetedMessageIn,
 ) -> TargetedMessageContent {
-    let serialized_group_context = group
-        .context()
-        .tls_serialize_detached()
-        .expect("Failed to serialize group context");
     let ctx = TargetedMessageGroupContext {
         ciphersuite: group.ciphersuite(),
         group_id: group.group_id(),
         epoch: group.context().epoch(),
         exporter_secret: group.group_epoch_secrets().exporter_secret(),
-        serialized_group_context: &serialized_group_context,
     };
 
     let sender_auth_data_secret =
@@ -84,7 +79,8 @@ fn decrypt_targeted_message_content_with_real_tbm(
         epoch: ctx.epoch,
         recipient_leaf_index: group.own_leaf_index().u32(),
         authenticated_data: VLByteSlice(message.authenticated_data.as_slice()),
-        sender_auth_data: &sender_auth_data,
+        sender_leaf_index: sender_auth_data.sender_leaf_index,
+        kem_output: VLByteSlice(sender_auth_data.kem_output.as_slice()),
     };
     let tbm_bytes = tbm
         .tls_serialize_detached()
@@ -116,7 +112,7 @@ fn decrypt_targeted_message_content_with_real_tbm(
         .decrypt_with_label_psk_aad(
             crate::ciphersuite::hpke::PskEncryptParams {
                 label: super::TARGETED_MESSAGE_DATA_LABEL,
-                context: ctx.serialized_group_context,
+                context: &[],
                 psk: &psk,
                 psk_id: &psk_id_bytes,
             },
@@ -608,16 +604,11 @@ fn targeted_message_signature_bound_to_sender_leaf_index() {
         .expect("create");
     let targeted_in = extract_targeted_message_in(&mls_msg_out);
 
-    let serialized_group_context = bob_group
-        .context()
-        .tls_serialize_detached()
-        .expect("serialize ctx");
     let ctx = TargetedMessageGroupContext {
         ciphersuite: bob_group.ciphersuite(),
         group_id: bob_group.group_id(),
         epoch: bob_group.context().epoch(),
         exporter_secret: bob_group.group_epoch_secrets().exporter_secret(),
-        serialized_group_context: &serialized_group_context,
     };
     let auth_secret =
         derive_sender_auth_data_secret(bob_provider.crypto(), ctx.ciphersuite, ctx.exporter_secret)

@@ -32,8 +32,6 @@ pub struct TargetedMessageKatVector {
     pub epoch: u64,
     #[serde(with = "hex")]
     pub exporter_secret: Vec<u8>,
-    #[serde(with = "hex")]
-    pub serialized_group_context: Vec<u8>,
     pub sender_leaf_index: u32,
     #[serde(with = "hex")]
     pub sender_leaf_node: Vec<u8>,
@@ -92,16 +90,12 @@ pub fn generate_kat_vector(
         .random_vec(ciphersuite.hash_length())
         .expect("exporter_secret generation failed");
     let exporter_secret = ExporterSecret::from_slice(&exporter_secret_bytes);
-    let serialized_group_context = rand
-        .random_vec(64)
-        .expect("group_context generation failed");
 
     let ctx = TargetedMessageGroupContext {
         ciphersuite,
         group_id: &group_id,
         epoch: GroupEpoch::from(epoch),
         exporter_secret: &exporter_secret,
-        serialized_group_context: &serialized_group_context,
     };
 
     let msg = create_targeted_message(
@@ -127,7 +121,6 @@ pub fn generate_kat_vector(
         group_id: group_id_bytes,
         epoch,
         exporter_secret: exporter_secret_bytes,
-        serialized_group_context,
         sender_leaf_index,
         sender_leaf_node: sender_leaf_node_bytes,
         recipient_leaf_index,
@@ -161,7 +154,6 @@ fn append_vector_text(out: &mut String, number: usize, v: &TargetedMessageKatVec
     let _ = writeln!(out, "padding_length: {}", v.padding_length);
     write_hex_field(out, "group_id", &v.group_id);
     write_hex_field(out, "exporter_secret", &v.exporter_secret);
-    write_hex_field(out, "serialized_group_context", &v.serialized_group_context);
     write_hex_field(out, "sender_leaf_node", &v.sender_leaf_node);
     write_hex_field(
         out,
@@ -222,7 +214,6 @@ pub fn verify_kat_vector(vector: &TargetedMessageKatVector, crypto: &impl OpenMl
         group_id: &group_id,
         epoch,
         exporter_secret: &exporter_secret,
-        serialized_group_context: &vector.serialized_group_context,
     };
 
     let recipient_index = LeafNodeIndex::new(vector.recipient_leaf_index);

@@ -38,17 +38,11 @@ impl MlsGroup {
                 .ok_or(CreateTargetedMessageError::RecipientNotFound)?;
             let recipient_encryption_key = recipient_leaf.encryption_key();
 
-            let serialized_group_context = self
-                .context()
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?;
-
             let ctx = TargetedMessageGroupContext {
                 ciphersuite: self.ciphersuite(),
                 group_id: self.group_id(),
                 epoch: self.context().epoch(),
                 exporter_secret: self.group_epoch_secrets().exporter_secret(),
-                serialized_group_context: &serialized_group_context,
             };
 
             targeted_messages::create_targeted_message(
@@ -97,17 +91,11 @@ impl MlsGroup {
 
         let leaves = self.public_group().treesync().leaves();
 
-        let serialized_group_context = self
-            .context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-
         let ctx = TargetedMessageGroupContext {
             ciphersuite: self.ciphersuite(),
             group_id: self.group_id(),
             epoch: self.context().epoch(),
             exporter_secret: self.group_epoch_secrets().exporter_secret(),
-            serialized_group_context: &serialized_group_context,
         };
 
         targeted_messages::process_targeted_message(
