@@ -16,19 +16,19 @@ use crate::{
 #[cfg(feature = "virtual-clients-draft")]
 use crate::messages::Commit;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     component::{ComponentData, ComponentId},
     extensions::AppDataDictionary,
     messages::proposals_in::{ProposalIn, ProposalOrRefIn},
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use std::collections::BTreeMap;
 
 use super::{errors::ProcessMessageError, *};
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 /// Keeps the old dictionary as well as the values that are being overwritten
 pub struct AppDataDictionaryUpdater<'a> {
     old_dict: Option<&'a AppDataDictionary>,
@@ -38,11 +38,11 @@ pub struct AppDataDictionaryUpdater<'a> {
 /// A diff of update values that can be provided to [`MlsGroup::process_unverified_message_with_app_data_updates`] or [`CommitBuilder::with_app_data_dictionary_updates`]
 ///
 /// [`CommitBuilder::with_app_data_dictionary_updates`]: crate::group::CommitBuilder::with_app_data_dictionary_updates
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Default, Debug)]
 pub struct AppDataUpdates(BTreeMap<ComponentId, Option<Vec<u8>>>);
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl IntoIterator for AppDataUpdates {
     type Item = (ComponentId, Option<Vec<u8>>);
 
@@ -53,7 +53,7 @@ impl IntoIterator for AppDataUpdates {
     }
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl AppDataUpdates {
     /// Returns the number of changes.
     pub fn len(&self) -> usize {
@@ -66,7 +66,7 @@ impl AppDataUpdates {
     }
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl<'a> AppDataDictionaryUpdater<'a> {
     /// Creates a new [`AppDataDictionaryUpdater`].
     pub fn new(old_dict: Option<&'a AppDataDictionary>) -> Self {
@@ -128,7 +128,7 @@ impl MlsGroup {
 
         // Check if the commit contains AppDataUpdate proposals - if so, the caller
         // must use process_unverified_message_with_app_data_updates instead
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         if let Some(proposals) = unverified_message.committed_proposals() {
             for proposal_or_ref in proposals {
                 if let ProposalOrRefIn::Proposal(proposal) = proposal_or_ref {
@@ -141,7 +141,7 @@ impl MlsGroup {
         self.process_unverified_message(provider, unverified_message)
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Returns a new helper struct for updating the app data
     pub fn app_data_dictionary_updater<'a>(&'a self) -> AppDataDictionaryUpdater<'a> {
         AppDataDictionaryUpdater::new(self.context().app_data_dict())
@@ -498,18 +498,12 @@ impl MlsGroup {
             .encryption_key()
             .tls_serialize_detached()
             .map_err(VirtualClientsError::from)?;
-        let tbe = derivation_info.decrypt(
-            crypto,
-            emulation_ciphersuite,
-            &epoch_encryption_key,
-            &leaf_encryption_key,
-        )?;
-
         // The operation type is not on the wire. It is inferred from the
         // carrying leaf's source: key-package leaves map to `KeyPackage`,
         // update and commit leaves map to `LeafNode`. Only `LeafNode` is
         // wired up today, and an update-path leaf always has a commit
-        // source.
+        // source. It selects the tagless `DerivationInfoTbe` variant the
+        // plaintext decodes into.
         let operation_type = match path.leaf_node().leaf_node_source() {
             LeafNodeSource::KeyPackage(_) => {
                 log::error!("vc: key-package leaf on an update path");
@@ -519,6 +513,13 @@ impl MlsGroup {
                 VirtualClientOperationType::LeafNode
             }
         };
+        let tbe = derivation_info.decrypt(
+            crypto,
+            emulation_ciphersuite,
+            &epoch_encryption_key,
+            &leaf_encryption_key,
+            operation_type,
+        )?;
         // The operation context for `LeafNode` operations is the
         // higher-level group's id.
         let operation_context = self.group_id().as_slice().to_vec();
@@ -530,9 +531,9 @@ impl MlsGroup {
             crypto,
             emulation_ciphersuite,
             epoch_id,
-            tbe.leaf_index,
+            tbe.leaf_index(),
             operation_type,
-            tbe.generation,
+            tbe.generation(),
             &operation_context,
         )?;
         // Persist the advanced tree immediately, before any key material is
@@ -575,7 +576,7 @@ impl MlsGroup {
 
     /// This function processes a message that may contain AppDataUpdate proposals.
     /// Process these first an create an AppDataUpdates, then pass that into this function.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn process_unverified_message_with_app_data_updates<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
@@ -590,7 +591,7 @@ impl MlsGroup {
         let verified =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
         let mut processed = match verified.content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
                 .process_internal_authenticated_content_with_app_data_updates(
@@ -607,7 +608,7 @@ impl MlsGroup {
                 verified.credential,
             )?,
         };
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         if self.context().safe_aad_required() {
             processed
                 .try_attach_safe_aad()
@@ -656,7 +657,7 @@ impl MlsGroup {
         let verified =
             unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
 
-        #[cfg_attr(not(feature = "extensions-draft-08"), allow(unused_mut))]
+        #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
         let mut processed = match verified.content.sender() {
             Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
                 .process_internal_authenticated_content(
@@ -672,7 +673,7 @@ impl MlsGroup {
                 verified.credential,
             )?,
         };
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         if self.context().safe_aad_required() {
             processed
                 .try_attach_safe_aad()
@@ -704,7 +705,7 @@ impl MlsGroup {
     ///  - ValSem204: Public keys from Path must be verified and match the
     ///    private keys from the direct path
     ///  - ValSem205
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn process_internal_authenticated_content_with_app_data_updates<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
@@ -737,12 +738,12 @@ impl MlsGroup {
                 }
             }
             FramedContentBody::Commit(commit) => {
-                // Since this is a commit, we need to load the private key material we need for decryption.
-                let (old_epoch_keypairs, leaf_node_keypairs) =
-                    self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
-
-                // The receiver only takes the VC path when it can
-                // identify itself as a sibling from the commit shape:
+                // Load virtual-client derivation info when this commit was
+                // authored by a sibling emulator through a leaf shared with us.
+                // A Commit with an UpdatePath carrying this material is staged
+                // via the VC path below rather than treated as our own (see the
+                // own-commit handling further down). The receiver only loads it
+                // when the commit shape lets it identify itself as a sibling:
                 //
                 // * `Sender::Member(idx)` with `idx == own_leaf_index`: the
                 //   sender committed through our shared higher-level leaf, so
@@ -763,6 +764,47 @@ impl MlsGroup {
                     };
                 #[cfg(not(feature = "virtual-clients-draft"))]
                 let _ = commit;
+
+                let is_own_commit =
+                    matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
+                #[cfg(feature = "virtual-clients-draft")]
+                let is_own_commit = is_own_commit && vc_material.is_none();
+
+                if is_own_commit {
+                    let received_tag = content
+                        .confirmation_tag()
+                        .ok_or(StageCommitError::ConfirmationTagMissing)?;
+                    if self.matches_pending_commit(received_tag) {
+                        // The Commit is our pending commit this client got
+                        // fanned out by the delivery service: surface
+                        // `OwnPendingCommit` so the caller merges the pending
+                        // commit instead of staging the fanned-out Commit.
+                        return Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            epoch,
+                            sender,
+                            authenticated_data,
+                            ProcessedMessageContent::OwnPendingCommit,
+                            credential,
+                            #[cfg(feature = "virtual-clients-draft")]
+                            emulator_sender_leaf_index,
+                        ));
+                    }
+                    // Not our pending commit. We cannot decrypt a path we
+                    // encrypted to the other members, so a Commit with an
+                    // UpdatePath is unprocessable. A Commit without an
+                    // UpdatePath carries no author-private material and falls
+                    // through to staging (a sibling's Commit without an
+                    // UpdatePath, or our own commit replayed after the pending
+                    // commit was cleared).
+                    if commit.path.is_some() {
+                        return Err(StageCommitError::OwnCommitMismatch.into());
+                    }
+                }
+
+                // Since this is a commit, we need to load the private key material we need for decryption.
+                let (old_epoch_keypairs, leaf_node_keypairs) =
+                    self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
 
                 let staged_commit = self.stage_commit_with_app_data_updates(
                     &content,
@@ -822,17 +864,15 @@ impl MlsGroup {
                     ProcessedMessageContent::ProposalMessage(proposal)
                 }
             }
-            #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_variables))]
             FramedContentBody::Commit(commit) => {
-                // Since this is a commit, we need to load the private key material we need for decryption.
-                let (old_epoch_keypairs, leaf_node_keypairs) =
-                    self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
-
                 // See `process_internal_authenticated_content_with_app_data_updates`
-                // for the rationale. The receiver only takes the VC path when
-                // it can identify itself as a sibling of the
-                // sender from the commit shape: own-leaf sender, or external
-                // commit with an inline `Remove(own_leaf)`.
+                // for the rationale. We load VC derivation info for a sibling's
+                // Commit with an UpdatePath through a shared leaf, and
+                // otherwise apply the own-commit handling below. The receiver
+                // only loads VC material
+                // when the commit shape lets it identify itself as a sibling:
+                // own-leaf sender, or external commit with an inline
+                // `Remove(own_leaf)`.
                 #[cfg(feature = "virtual-clients-draft")]
                 let (vc_material, vc_emulation_epoch_id) =
                     if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
@@ -843,6 +883,49 @@ impl MlsGroup {
                     } else {
                         (None, None)
                     };
+                #[cfg(not(feature = "virtual-clients-draft"))]
+                let _ = commit;
+
+                let is_own_commit =
+                    matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
+                #[cfg(feature = "virtual-clients-draft")]
+                let is_own_commit = is_own_commit && vc_material.is_none();
+
+                if is_own_commit {
+                    let received_tag = content
+                        .confirmation_tag()
+                        .ok_or(StageCommitError::ConfirmationTagMissing)?;
+                    if self.matches_pending_commit(received_tag) {
+                        // The Commit is our pending commit this client got
+                        // fanned out by the delivery service: surface
+                        // `OwnPendingCommit` so the caller merges the pending
+                        // commit instead of staging the fanned-out Commit.
+                        return Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            epoch,
+                            sender,
+                            authenticated_data,
+                            ProcessedMessageContent::OwnPendingCommit,
+                            credential,
+                            #[cfg(feature = "virtual-clients-draft")]
+                            emulator_sender_leaf_index,
+                        ));
+                    }
+                    // Not our pending commit. We cannot decrypt a path we
+                    // encrypted to the other members, so a Commit with an
+                    // UpdatePath is unprocessable. A Commit without an
+                    // UpdatePath carries no author-private material and falls
+                    // through to staging (a sibling's Commit without an
+                    // UpdatePath, or our own commit replayed after the pending
+                    // commit was cleared).
+                    if commit.path.is_some() {
+                        return Err(StageCommitError::OwnCommitMismatch.into());
+                    }
+                }
+
+                // Since this is a commit, we need to load the private key material we need for decryption.
+                let (old_epoch_keypairs, leaf_node_keypairs) =
+                    self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
 
                 let staged_commit = self.stage_commit(
                     &content,

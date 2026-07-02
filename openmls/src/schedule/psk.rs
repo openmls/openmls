@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
 
 use super::*;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::component::ComponentId;
 use crate::{
     group::{GroupEpoch, GroupId},
@@ -149,7 +149,7 @@ impl ResumptionPsk {
 /// Application PSK according to the [draft-ietf-mls-extensions]
 ///
 /// [draft-ietf-mls-protocol]: https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions-09#name-pre-shared-keys-psks
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(
     Clone,
     Debug,
@@ -170,7 +170,7 @@ pub struct ApplicationPsk {
     pub(crate) psk_id: VLBytes,
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl ApplicationPsk {
     /// Create a new `ApplicationPsk`
     pub fn new(component_id: ComponentId, psk_id: VLBytes) -> Self {
@@ -215,7 +215,7 @@ pub enum Psk {
     /// A resumption PSK derived from the MLS key schedule.
     #[tls_codec(discriminant = 2)]
     Resumption(ResumptionPsk),
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// An application component PSK.
     #[tls_codec(discriminant = 3)]
     Application(ApplicationPsk),
@@ -239,7 +239,7 @@ pub enum PskType {
     External = 1,
     /// A resumption PSK.
     Resumption = 2,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// An application component PSK.
     Application = 3,
 }
@@ -324,7 +324,7 @@ impl PreSharedKeyId {
     }
 
     /// Construct an application `PreSharedKeyID`.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn application(component_id: ComponentId, psk_id: Vec<u8>, psk_nonce: Vec<u8>) -> Self {
         let psk = Psk::Application(ApplicationPsk::new(component_id, psk_id.into()));
 
@@ -382,7 +382,7 @@ impl PreSharedKeyId {
                 }
             }
             Psk::External(_) => {}
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Psk::Application(_) => {}
         };
 
@@ -449,7 +449,7 @@ impl PreSharedKeyId {
                     }
                 },
                 Psk::External(_) => {}
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 Psk::Application(_) => {}
             };
 
@@ -616,7 +616,7 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
                     return Err(PskError::KeyNotFound);
                 }
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Psk::Application(_) => {
                 let psk_bundle: Option<PskBundle> = storage
                     .psk(psk_id.psk())

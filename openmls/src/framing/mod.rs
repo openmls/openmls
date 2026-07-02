@@ -66,7 +66,7 @@ pub(crate) mod private_message;
 pub(crate) mod private_message_in;
 pub(crate) mod public_message;
 pub(crate) mod public_message_in;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub(crate) mod safe_aad;
 pub(crate) mod sender;
 pub(crate) mod validation;
@@ -96,7 +96,7 @@ pub use private_message::*;
 pub use private_message_in::*;
 pub use public_message::*;
 pub use public_message_in::*;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub use safe_aad::{SafeAad, SafeAadError, SafeAadItem};
 pub use sender::*;
 pub use validation::*;

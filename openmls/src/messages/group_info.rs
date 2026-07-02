@@ -28,8 +28,7 @@ const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";
 /// `verify(...)` with the signature key of the [`Credential`](crate::credentials::Credential).
 /// When receiving a serialized group info, it can only be deserialized into a
 /// [`VerifiableGroupInfo`], which can then be turned into a group info as described above.
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
-#[cfg_attr(any(test, feature = "test-utils"), derive(TlsSerialize))]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 pub struct VerifiableGroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
@@ -209,7 +208,8 @@ impl GroupInfo {
         &self.payload.confirmation_tag
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    /// Returns the GroupInfo with a type that signals it is unverified.
+    /// A form of downcasting to an equivalent type with a weaker type invariant.
     pub(crate) fn into_verifiable_group_info(self) -> VerifiableGroupInfo {
         VerifiableGroupInfo {
             payload: GroupInfoTBS {

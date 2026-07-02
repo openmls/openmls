@@ -28,7 +28,7 @@ use crate::{
     treesync::{errors::LeafNodeValidationError, LeafNode},
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     group::errors::AppDataUpdateValidationError, messages::proposals::AppDataUpdateOperationType,
 };
@@ -646,7 +646,7 @@ impl PublicGroup {
     ///     and Removes
     ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes more than one
     ///     Remove
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn validate_app_data_update_proposals_and_group_context(
         &self,
         proposal_queue: &ProposalQueue,

@@ -11,7 +11,7 @@ use crate::{
     treesync::errors::LeafNodeValidationError,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::prelude::processing::AppDataUpdates;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -187,7 +187,7 @@ impl PublicGroup {
         // ValSem209
         self.validate_group_context_extensions_proposal(&proposal_queue)?;
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         self.validate_app_data_update_proposals_and_group_context(&proposal_queue)?;
 
         // ValSem401
@@ -252,7 +252,8 @@ impl PublicGroup {
         Ok(())
     }
 
-    /// Stages a commit message that was sent by another group member.
+    /// Stages a commit message. The commit may have been sent by another group
+    /// member or be our own Commit without an UpdatePath.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
@@ -285,9 +286,6 @@ impl PublicGroup {
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244
-    ///
-    /// Returns an error if the given commit was sent by the owner of this
-    /// group.
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
@@ -311,7 +309,7 @@ impl PublicGroup {
         ))
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn stage_commit_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,
@@ -362,7 +360,7 @@ impl PublicGroup {
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn stage_diff_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,

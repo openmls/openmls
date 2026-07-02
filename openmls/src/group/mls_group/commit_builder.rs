@@ -39,13 +39,12 @@ use crate::{
 use crate::{
     components::vc_derivation_info::{
         DerivationInfo, DerivationInfoTbe, EmulationEpochState, EpochEncryptionKey, EpochId,
-        OperationSecret, VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
+        OperationSecret, VirtualClientOperationType, VirtualClientsError,
     },
     components::vc_operation_tree::OperationSecretTree,
-    extensions::{AppDataDictionary, AppDataDictionaryExtension},
-    treesync::node::leaf_node::LeafNode,
+    extensions::AppDataDictionary,
 };
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     messages::proposals::AppDataUpdateProposal,
     prelude::processing::{AppDataDictionaryUpdater, AppDataUpdates},
@@ -144,7 +143,7 @@ pub struct LoadedPsks {
     /// The GroupInfo creation config
     group_info_config: GroupInfoConfig,
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     app_data_dictionary_updates: Option<AppDataUpdates>,
 }
 
@@ -369,7 +368,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// - derives the path secret and the new leaf's encryption keypair
     ///   from the allocated `OperationSecret`, so a sibling virtual
     ///   client can rederive them on the receiver side, and
-    /// - embeds an encrypted `DerivationInfo` blob under [`VC_COMPONENT_ID`]
+    /// - embeds an encrypted `DerivationInfo` blob under
+    ///   [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
     ///   in the new leaf's `app_data_dictionary` extension.
     ///
     /// Because the ratchet advance is persisted here, a builder that is
@@ -385,7 +385,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     ///
     /// - lists [`ExtensionType::AppDataDictionary`](crate::extensions::ExtensionType::AppDataDictionary)
     ///   in its `Capabilities.extensions`, and
-    /// - signals support for [`VC_COMPONENT_ID`].
+    /// - signals support for
+    ///   [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID).
     ///
     /// If those preconditions are not met this method fails with
     /// `VirtualClientsError::AppDataDictionaryNotSupported` or
@@ -528,7 +529,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         consume_proposal_store: stage.consume_proposal_store,
                         group_info_config,
                         external_commit_info: stage.external_commit_info,
-                        #[cfg(feature = "extensions-draft-08")]
+                        #[cfg(feature = "extensions-draft")]
                         app_data_dictionary_updates: None,
                     },
                 )
@@ -712,7 +713,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .public_group
             .validate_group_context_extensions_proposal(&proposal_queue)?;
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         group
             .public_group
             .validate_app_data_update_proposals_and_group_context(&proposal_queue)?;
@@ -729,13 +730,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let mut diff = group.public_group.empty_diff();
 
         // Apply proposals to tree
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let apply_proposals_values = diff.apply_proposals_with_app_data_updates(
             &proposal_queue,
             own_leaf_index,
             cur_stage.app_data_dictionary_updates,
         )?;
-        #[cfg(not(feature = "extensions-draft-08"))]
+        #[cfg(not(feature = "extensions-draft"))]
         let apply_proposals_values = diff.apply_proposals(&proposal_queue, own_leaf_index)?;
         if apply_proposals_values.self_removed && !is_external_commit {
             return Err(CreateCommitError::CannotRemoveSelf);
@@ -880,7 +881,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     // The spec requires the SafeAAD prefix even with zero items
                     // when the target GroupContext has `safe_aad` present, so a
                     // bare `aad` would be rejected by SafeAAD-aware receivers.
-                    #[cfg(feature = "extensions-draft-08")]
+                    #[cfg(feature = "extensions-draft")]
                     let aad_bytes = if group.context().safe_aad_required() {
                         crate::framing::safe_aad::assemble_authenticated_data(
                             &crate::framing::SafeAad::empty(),
@@ -890,7 +891,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     } else {
                         aad.clone()
                     };
-                    #[cfg(not(feature = "extensions-draft-08"))]
+                    #[cfg(not(feature = "extensions-draft"))]
                     let aad_bytes = aad.clone();
                     (aad_bytes, WireFormat::PublicMessage)
                 }
@@ -942,7 +943,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let EpochSecretsResult {
             epoch_secrets: provisional_epoch_secrets,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_exporter,
         } = key_schedule
             .epoch_secrets(crypto, ciphersuite)
@@ -1070,7 +1071,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 own_leaf_index,
             );
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let application_export_tree = ApplicationExportTree::new(application_exporter);
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
@@ -1081,7 +1082,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             // proposal, so there is no extra keypair to store here.
             None,
             update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_export_tree,
             // The committer's `own_leaf_index` is already set to the new
             // leaf (in `build_group` for external commits, or unchanged for
@@ -1114,13 +1115,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// [`AppDataDictionary`] of the group.
     ///
     /// [`AppDataDictionary`]: crate::extensions::AppDataDictionary
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn app_data_dictionary_updater(&self) -> AppDataDictionaryUpdater<'_> {
         AppDataDictionaryUpdater::new(self.group.borrow().context().app_data_dict())
     }
 
     /// Sets the [`AppDataUpdates`] that contain the changes made by the AppDataUpdate proposals
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn with_app_data_dictionary_updates(
         &mut self,
         app_data_dictionary_updates: Option<AppDataUpdates>,
@@ -1129,7 +1130,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     }
 
     /// Returns an iterator over all AppDataUpdate proposals in the proposal store of the group
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn app_data_update_proposals(&self) -> impl Iterator<Item = &AppDataUpdateProposal> {
         let proposal_store_proposals = self
             .group
@@ -1241,7 +1242,10 @@ fn apply_vc_emulation(
         .public_key()
         .tls_serialize_detached()
         .map_err(VirtualClientsError::from)?;
-    let tbe = DerivationInfoTbe {
+    // leaf_node operations are not batched, so the TBE carries no
+    // key_package_index: the select resolves to the empty `update`/`commit`
+    // case and the field is absent on the wire.
+    let tbe = DerivationInfoTbe::LeafNode {
         leaf_index: loaded.emulation_leaf_index,
         generation: loaded.generation,
     };
@@ -1287,12 +1291,6 @@ fn check_vc_leaf_configuration(
     own_leaf_index: LeafNodeIndex,
     is_external_commit: bool,
 ) -> Result<AppDataDictionary, CreateCommitError> {
-    use crate::{
-        component::{ComponentId, ComponentType},
-        extensions::ExtensionType,
-    };
-    use tls_codec::DeserializeBytes as _;
-
     let current_leaf = if is_external_commit {
         None
     } else {
@@ -1301,62 +1299,12 @@ fn check_vc_leaf_configuration(
         })?)
     };
 
-    let supports_app_data_dictionary = match leaf_node_parameters.capabilities() {
-        Some(c) => c.extensions().contains(&ExtensionType::AppDataDictionary),
-        None => current_leaf
-            .map(|leaf| {
-                leaf.capabilities()
-                    .extensions()
-                    .contains(&ExtensionType::AppDataDictionary)
-            })
-            .unwrap_or(false),
-    };
-    if !supports_app_data_dictionary {
-        return Err(CreateCommitError::VirtualClientsError(
-            VirtualClientsError::AppDataDictionaryNotSupported,
-        ));
-    }
-
-    // Merge the dictionary from the current leaf with anything the
-    // caller passed in `leaf_node_parameters`, with the caller winning.
-    // For external commits there's no current leaf to merge from.
-    let mut resolved_dictionary = current_leaf
-        .and_then(|leaf| leaf.extensions().app_data_dictionary())
-        .map(|ext| ext.dictionary().clone())
-        .unwrap_or_default();
-    if let Some(caller_dict) = leaf_node_parameters
-        .extensions()
-        .and_then(|exts| exts.app_data_dictionary())
-    {
-        for entry in caller_dict.dictionary().entries() {
-            resolved_dictionary.insert(entry.id(), entry.data().to_vec());
-        }
-    }
-
-    let app_components_bytes = resolved_dictionary
-        .get(&ComponentId::from(ComponentType::AppComponents))
-        .map(|bytes| bytes.to_vec());
-    let Some(app_components_bytes) = app_components_bytes else {
-        return Err(CreateCommitError::VirtualClientsError(
-            VirtualClientsError::VcComponentNotListed,
-        ));
-    };
-
-    // The AppComponents body is `ComponentID supported_components<V>`,
-    // i.e. a TLS-encoded variable-length vector of u16. `Vec<u16>`'s
-    // `DeserializeBytes` impl handles the length prefix.
-    let supported_components = Vec::<u16>::tls_deserialize_exact_bytes(&app_components_bytes)
-        .map_err(|e| {
-            log::error!("vc: AppComponents body failed to deserialize: {e:?}");
-            CreateCommitError::VirtualClientsError(VirtualClientsError::VcComponentNotListed)
-        })?;
-    if !supported_components.contains(&VC_COMPONENT_ID) {
-        return Err(CreateCommitError::VirtualClientsError(
-            VirtualClientsError::VcComponentNotListed,
-        ));
-    }
-
-    Ok(resolved_dictionary)
+    crate::components::vc_derivation_info::resolve_vc_leaf_dictionary(
+        leaf_node_parameters.capabilities(),
+        leaf_node_parameters.extensions(),
+        current_leaf,
+    )
+    .map_err(CreateCommitError::VirtualClientsError)
 }
 
 /// Merge a virtual-clients derivation info blob into
@@ -1366,32 +1314,14 @@ fn check_vc_leaf_configuration(
 #[cfg(feature = "virtual-clients-draft")]
 fn inject_vc_derivation_info(
     leaf_node_parameters: &mut LeafNodeParameters,
-    mut resolved_dictionary: AppDataDictionary,
+    resolved_dictionary: AppDataDictionary,
     derivation_info_bytes: Vec<u8>,
 ) -> Result<(), CreateCommitError> {
-    resolved_dictionary.insert(VC_COMPONENT_ID, derivation_info_bytes);
-    let vc_extension =
-        Extension::AppDataDictionary(AppDataDictionaryExtension::new(resolved_dictionary));
-
-    // Drop any pre-existing AppDataDictionary entry from the caller-
-    // supplied extension list (we just rebuilt it) and append the merged
-    // one.
-    let other_extensions = leaf_node_parameters
-        .extensions()
-        .map(|exts| {
-            exts.iter()
-                .filter(|ext| !matches!(ext, Extension::AppDataDictionary(_)))
-                .cloned()
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    let new_extensions: Vec<Extension> = other_extensions
-        .into_iter()
-        .chain(std::iter::once(vc_extension))
-        .collect();
-    let extensions = crate::extensions::Extensions::<LeafNode>::from_vec(new_extensions)
-        .map_err(|_| LibraryError::custom("Failed to build leaf-node extensions"))?;
-
+    let extensions = crate::components::vc_derivation_info::merge_vc_derivation_info(
+        leaf_node_parameters.extensions(),
+        resolved_dictionary,
+        derivation_info_bytes,
+    )?;
     leaf_node_parameters.set_extensions(extensions);
     Ok(())
 }

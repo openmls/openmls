@@ -156,7 +156,7 @@ pub mod prelude_test;
 
 /// Component-specific helpers for application-level extensions built on top
 /// of the safe-export interface (e.g. the virtual-clients draft).
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub mod components;
 
 #[cfg(any(feature = "test-utils", test))]
@@ -175,7 +175,7 @@ pub mod error;
 
 // Public
 pub mod ciphersuite;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub mod component;
 pub mod credentials;
 pub mod extensions;

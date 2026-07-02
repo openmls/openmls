@@ -9,7 +9,7 @@ use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use super::errors::ApplyAppDataUpdateError;
 
 #[cfg(feature = "virtual-clients-draft")]
@@ -277,6 +277,11 @@ impl StagedPublicGroupDiff {
     /// Get the staged [`GroupContext`].
     pub(crate) fn group_context(&self) -> &GroupContext {
         &self.group_context
+    }
+
+    /// Get the [`ConfirmationTag`] of the commit that produced this diff.
+    pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
+        &self.confirmation_tag
     }
 
     /// Export the staged [`RatchetTree`]

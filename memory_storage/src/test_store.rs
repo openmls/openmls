@@ -529,7 +529,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn write_application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
@@ -541,7 +541,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
@@ -552,7 +552,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn delete_application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
@@ -587,10 +587,10 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_state<EpochId: traits::VcEpochId<V_TEST>>(
+    fn delete_vc_emulation_state_if_unreferenced<EpochId: traits::VcEpochId<V_TEST>>(
         &self,
         _epoch_id: &EpochId,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<bool, Self::Error> {
         todo!()
     }
 
@@ -645,6 +645,48 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         &self,
         _epoch_id: &EpochId,
     ) -> Result<Option<VcOperationTree>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_retained_key_package_material_batch<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcOperationTree: traits::VcOperationTree<V_TEST>,
+        KeyPackageRef: traits::HashReference<V_TEST>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+        _operation_tree: &VcOperationTree,
+        _materials: &[(KeyPackageRef, RetainedKeyPackageMaterial)],
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn retained_key_package_material<
+        KeyPackageRef: traits::HashReference<V_TEST>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<V_TEST>,
+    >(
+        &self,
+        _hash_ref: &KeyPackageRef,
+    ) -> Result<Option<RetainedKeyPackageMaterial>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<V_TEST>>(
+        &self,
+        _hash_ref: &KeyPackageRef,
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 }

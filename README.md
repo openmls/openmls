@@ -59,7 +59,7 @@ details.
 ## Features
 OpenMLS provides the following features
 
-- **extensions-draft-08**: enable features defined in [MLS extensions draft-08](https://messaginglayersecurity.rocks/mls-extensions/draft-ietf-mls-extensions.html)
+- **extensions-draft**: enable features defined in [MLS extensions draft](https://messaginglayersecurity.rocks/mls-extensions/draft-ietf-mls-extensions.html)
 - **fork-resolution**: helper functionality for [resolving forks](https://book.openmls.tech/user_manual/fork-resolution.html).
 - **js**: enable compilation to wasm
 
@@ -92,7 +92,7 @@ OpenMLS is maintained and developed by [Phoenix R&D] and [Cryspen].
 [chat-link]: https://openmls.zulipchat.com
 [list-image]: https://img.shields.io/badge/mailing-list-blue.svg?style=for-the-badge
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
-[rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg?style=for-the-badge&logo=rust
+[rustc-image]: https://img.shields.io/badge/rustc-1.91+-blue.svg?style=for-the-badge&logo=rust
 [docs-release-badge]: https://img.shields.io/badge/docs-release-blue.svg?style=for-the-badge
 [docs-release-link]: https://docs.rs/crate/openmls/latest
 [book-release-badge]: https://img.shields.io/badge/book-release-blue.svg?style=for-the-badge

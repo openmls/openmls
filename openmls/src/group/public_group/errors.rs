@@ -59,7 +59,7 @@ pub enum PublicGroupBuildError {
 }
 
 /// The errors that may occur while applying AppDataUpdate proposals
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ApplyAppDataUpdateError {
     /// Found AppDataUpdate proposals, but was not provided the updated values

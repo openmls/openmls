@@ -15,7 +15,7 @@ use super::{
     CustomProposal,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use super::proposals::{AppDataUpdateProposal, AppEphemeralProposal};
 
 impl Size for Proposal {
@@ -29,10 +29,10 @@ impl Size for Proposal {
                 Proposal::ReInit(p) => p.tls_serialized_len(),
                 Proposal::ExternalInit(p) => p.tls_serialized_len(),
                 Proposal::GroupContextExtensions(p) => p.tls_serialized_len(),
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 Proposal::AppDataUpdate(p) => p.tls_serialized_len(),
                 Proposal::SelfRemove => 0,
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 Proposal::AppEphemeral(p) => p.tls_serialized_len(),
                 Proposal::Custom(p) => p.payload().tls_serialized_len(),
             }
@@ -50,10 +50,10 @@ impl Serialize for Proposal {
             Proposal::ReInit(p) => p.tls_serialize(writer),
             Proposal::ExternalInit(p) => p.tls_serialize(writer),
             Proposal::GroupContextExtensions(p) => p.tls_serialize(writer),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Proposal::AppDataUpdate(p) => p.tls_serialize(writer),
             Proposal::SelfRemove => Ok(0),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Proposal::AppEphemeral(p) => p.tls_serialize(writer),
             Proposal::Custom(p) => p.payload().tls_serialize(writer),
         }
@@ -72,10 +72,10 @@ impl Size for &ProposalIn {
                 ProposalIn::ReInit(p) => p.tls_serialized_len(),
                 ProposalIn::ExternalInit(p) => p.tls_serialized_len(),
                 ProposalIn::GroupContextExtensions(p) => p.tls_serialized_len(),
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 ProposalIn::AppDataUpdate(p) => p.tls_serialized_len(),
                 ProposalIn::SelfRemove => 0,
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 ProposalIn::AppEphemeral(p) => p.tls_serialized_len(),
                 ProposalIn::Custom(p) => p.payload().tls_serialized_len(),
             }
@@ -99,10 +99,10 @@ impl Serialize for &ProposalIn {
             ProposalIn::ReInit(p) => p.tls_serialize(writer),
             ProposalIn::ExternalInit(p) => p.tls_serialize(writer),
             ProposalIn::GroupContextExtensions(p) => p.tls_serialize(writer),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalIn::AppDataUpdate(p) => p.tls_serialize(writer),
             ProposalIn::SelfRemove => Ok(0),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalIn::AppEphemeral(p) => p.tls_serialize(writer),
             ProposalIn::Custom(p) => p.payload().tls_serialize(writer),
         }
@@ -142,12 +142,12 @@ impl Deserialize for ProposalIn {
             ProposalType::GroupContextExtensions => ProposalIn::GroupContextExtensions(Box::new(
                 GroupContextExtensionProposalIn::tls_deserialize(bytes)?,
             )),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalType::AppDataUpdate => {
                 ProposalIn::AppDataUpdate(Box::new(AppDataUpdateProposal::tls_deserialize(bytes)?))
             }
             ProposalType::SelfRemove => ProposalIn::SelfRemove,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalType::AppEphemeral => {
                 ProposalIn::AppEphemeral(Box::new(AppEphemeralProposal::tls_deserialize(bytes)?))
             }
