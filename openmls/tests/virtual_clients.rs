@@ -1775,9 +1775,14 @@ fn processing_own_application_message() {
 
     // Alice sends an application message and decrypts it herself
     let alice_message = b"Hello, this is Alice!";
-    let (_generation, ciphertext) = alice_group
+    let unconfirmed = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
         .unwrap();
+    assert!(
+        unconfirmed.generation_id.is_none(),
+        "a group with no emulation binding must not produce a generation id"
+    );
+    let ciphertext = unconfirmed.message;
 
     let processed_message = alice_group
         .process_message(
@@ -1800,11 +1805,12 @@ fn processing_own_application_message() {
     // Alice sends another application message and confirms it. Trying to
     // decrypt it should then fail.
     let alice_message = b"Hello, this is Alice again!";
-    let (generation, ciphertext) = alice_group
+    let unconfirmed = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
         .unwrap();
+    let ciphertext = unconfirmed.message;
     alice_group
-        .confirm_message(alice_provider.storage(), generation)
+        .confirm_message(alice_provider.storage(), unconfirmed.generation)
         .unwrap();
 
     let _ = alice_group
@@ -1828,24 +1834,24 @@ fn unconfirmed_message_decrypts_after_next_message_is_confirmed() {
         .expect("An unexpected error occurred.");
 
     let first_message = b"first unconfirmed message";
-    let (first_generation, first_ciphertext) = alice_group
+    let first = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, first_message)
         .expect("Could not create first unconfirmed message.");
-    assert_eq!(first_generation, 0);
+    assert_eq!(first.generation, 0);
 
     let second_message = b"second confirmed message";
-    let (second_generation, _second_ciphertext) = alice_group
+    let second = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, second_message)
         .expect("Could not create second message.");
-    assert_eq!(second_generation, 1);
+    assert_eq!(second.generation, 1);
     alice_group
-        .confirm_message(alice_provider.storage(), second_generation)
+        .confirm_message(alice_provider.storage(), second.generation)
         .expect("Could not confirm second message.");
 
     let processed_message = alice_group
         .process_message(
             alice_provider,
-            first_ciphertext.into_protocol_message().unwrap(),
+            first.message.into_protocol_message().unwrap(),
         )
         .expect("Expected first unconfirmed message to decrypt.");
 
@@ -1868,7 +1874,7 @@ fn old_unconfirmed_own_message_survives_later_confirmations() {
         .expect("An unexpected error occurred.");
 
     let first_message = b"first unconfirmed message";
-    let (_first_generation, first_ciphertext) = alice_group
+    let first = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, first_message)
         .expect("Could not create first unconfirmed message.");
 
@@ -1878,7 +1884,7 @@ fn old_unconfirmed_own_message_survives_later_confirmations() {
         .out_of_order_tolerance();
 
     for i in 0..tolerance + 2 {
-        let (generation, _) = alice_group
+        let later = alice_group
             .create_unconfirmed_message(
                 alice_provider,
                 &alice_signer,
@@ -1886,14 +1892,14 @@ fn old_unconfirmed_own_message_survives_later_confirmations() {
             )
             .expect("Could not create later unconfirmed message.");
         alice_group
-            .confirm_message(alice_provider.storage(), generation)
+            .confirm_message(alice_provider.storage(), later.generation)
             .expect("Could not confirm later message.");
     }
 
     let processed_message = alice_group
         .process_message(
             alice_provider,
-            first_ciphertext.into_protocol_message().unwrap(),
+            first.message.into_protocol_message().unwrap(),
         )
         .expect("Expected old unconfirmed own message to decrypt.");
 
@@ -2048,6 +2054,57 @@ fn bound_group_fails_closed_when_emulation_state_missing_on_send() {
             )
         ),
         "unexpected error: {err:?}"
+    );
+}
+
+/// On a group bound to an emulation epoch, `create_unconfirmed_message`
+/// returns a generation ID, and consecutive ratchet generations produce
+/// distinct generation IDs.
+#[test]
+fn create_unconfirmed_message_returns_generation_id_when_bound() {
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let provider = OpenMlsRustCrypto::default();
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group =
+        new_vc_main_group(ciphersuite, &provider, &alice_signer, alice_credential);
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+
+    // Bind alice_group's current epoch to the emulation epoch.
+    let _ = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        &provider,
+        &alice_signer,
+    );
+
+    let first = alice_group
+        .create_unconfirmed_message(&provider, &alice_signer, b"first")
+        .expect("create first unconfirmed message");
+    let generation_id_first = first
+        .generation_id
+        .expect("a bound group must produce a generation id");
+    assert_eq!(
+        generation_id_first.as_slice().len(),
+        ciphersuite.hash_length()
+    );
+    alice_group
+        .confirm_message(provider.storage(), first.generation)
+        .expect("confirm first message");
+
+    let second = alice_group
+        .create_unconfirmed_message(&provider, &alice_signer, b"second")
+        .expect("create second unconfirmed message");
+    let generation_id_second = second
+        .generation_id
+        .expect("a bound group must produce a generation id");
+
+    assert_ne!(
+        generation_id_first, generation_id_second,
+        "distinct ratchet generations must yield distinct generation ids"
     );
 }
 
@@ -2444,6 +2501,214 @@ fn vc_binding_carries_forward_across_foreign_commits() {
     match processed_app.into_content() {
         ProcessedMessageContent::ApplicationMessage(msg) => {
             assert_eq!(msg.into_bytes().as_slice(), plaintext);
+        }
+        _ => panic!("expected application message"),
+    }
+}
+
+/// A virtual client issues a Commit *without* an UpdatePath (an add-only
+/// commit) and a sibling emulator client applies it.
+///
+///   * `alice_a` and `alice_b` are two emulator clients of one virtual client,
+///     sharing a single leaf in a higher-level group that also contains `bob`.
+///   * `alice_a` adds `charly` with `add_members_without_update`, producing a
+///     commit with no UpdatePath. A Commit without an UpdatePath cannot
+///     carry a virtual-clients `DerivationInfo`, so on shape alone it is
+///     indistinguishable from `alice_a`'s own commit echoed back.
+///   * `alice_b` (the sibling) processes it. Because the group's current epoch
+///     is bound to the emulation epoch and `alice_b` holds no pending commit of
+///     its own, the commit is recognized as a sibling's Commit without an
+///     UpdatePath and staged as a regular commit rather than rejected as a
+///     mismatched own commit. `bob` processes it through the ordinary path.
+///   * All four parties converge on the same epoch authenticator, and an
+///     application message round-trips from the new member to the sibling.
+#[openmls_test]
+fn vc_sibling_applies_commit_without_update_path() {
+    use openmls::credentials::{BasicCredential, CredentialWithKey};
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let charly_provider = Provider::default();
+
+    // The virtual client's shared signature key and credential, stored on both
+    // emulator clients so either can sign for the shared higher-level leaf.
+    let vc_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).expect("vc signer");
+    vc_signer
+        .store(alice_a_provider.storage())
+        .expect("store vc signer on alice_a");
+    vc_signer
+        .store(alice_b_provider.storage())
+        .expect("store vc signer on alice_b");
+    let vc_credential = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice (VC)".to_vec()).into(),
+        signature_key: vc_signer.public().into(),
+    };
+
+    // alice_a founds the higher-level group and adds bob.
+    let mut alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+    );
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_, welcome, _) = alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp])
+        .expect("alice_a add bob");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge add bob");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join");
+
+    // alice_b joins as a sibling emulator and resyncs into the higher-level
+    // group, so both Alice clients share `own_leaf_index`.
+    let (siblings, resync_commit) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        vc_join_config(),
+    );
+    let mut alice_b_main = siblings.alice_b_main;
+
+    for (group, provider) in [
+        (&mut alice_a_main, &alice_a_provider),
+        (&mut bob_main, &bob_provider),
+    ] {
+        let processed = group
+            .process_message(
+                provider,
+                resync_commit.clone().into_protocol_message().unwrap(),
+            )
+            .expect("process resync commit");
+        let staged = match processed.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(s) => *s,
+            _ => panic!("expected staged commit"),
+        };
+        group
+            .merge_staged_commit(provider, staged)
+            .expect("merge resync commit");
+    }
+    assert_eq!(
+        alice_a_main.own_leaf_index(),
+        alice_b_main.own_leaf_index(),
+        "both Alice clients must share the higher-level leaf"
+    );
+
+    // alice_a issues a Commit without an UpdatePath: an add-only commit for
+    // charly.
+    let (charly_credential, charly_signer) = new_credential(
+        &charly_provider,
+        b"Charly",
+        ciphersuite.signature_algorithm(),
+    );
+    let charly_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(
+            ciphersuite,
+            &charly_provider,
+            &charly_signer,
+            charly_credential,
+        )
+        .expect("charly KP build")
+        .key_package()
+        .to_owned();
+    let (commit, charly_welcome, _) = alice_a_main
+        .add_members_without_update(&alice_a_provider, &vc_signer, &[charly_kp])
+        .expect("alice_a add charly without an UpdatePath");
+    let staged_pending = alice_a_main
+        .pending_commit()
+        .expect("alice_a has a pending commit");
+    assert!(
+        staged_pending.update_path_leaf_node().is_none(),
+        "the add-only commit must not carry a path"
+    );
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge add without an UpdatePath");
+
+    // The sibling (alice_b) applies alice_a's Commit without an UpdatePath. It
+    // is staged as a regular commit, not surfaced as an own pending commit.
+    let processed = alice_b_main
+        .process_message(
+            &alice_b_provider,
+            commit.clone().into_protocol_message().unwrap(),
+        )
+        .expect("alice_b processes sibling commit without an UpdatePath");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        other => panic!("expected staged commit, got {other:?}"),
+    };
+    assert!(
+        !staged.self_removed(),
+        "a sibling's add-only commit must not remove alice_b"
+    );
+    alice_b_main
+        .merge_staged_commit(&alice_b_provider, staged)
+        .expect("alice_b merge sibling commit without an UpdatePath");
+
+    // bob applies it through the ordinary path.
+    let processed = bob_main
+        .process_message(&bob_provider, commit.into_protocol_message().unwrap())
+        .expect("bob processes commit without an UpdatePath");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        _ => panic!("expected staged commit"),
+    };
+    bob_main
+        .merge_staged_commit(&bob_provider, staged)
+        .expect("bob merge commit without an UpdatePath");
+
+    // charly joins from the welcome the add produced.
+    let mut charly_main = StagedWelcome::new_from_welcome(
+        &charly_provider,
+        &vc_join_config(),
+        charly_welcome.into_welcome().expect("charly welcome"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&charly_provider))
+    .expect("charly join");
+
+    // All parties agree on the new epoch.
+    let authenticator = alice_a_main.epoch_authenticator();
+    assert_eq!(
+        alice_b_main.epoch_authenticator(),
+        authenticator,
+        "sibling must converge with the committer"
+    );
+    assert_eq!(bob_main.epoch_authenticator(), authenticator);
+    assert_eq!(charly_main.epoch_authenticator(), authenticator);
+
+    // The new member can message the sibling that applied the commit without an
+    // UpdatePath.
+    let processed = send_and_process_app_message(
+        &mut charly_main,
+        &charly_provider,
+        &charly_signer,
+        &mut alice_b_main,
+        &alice_b_provider,
+        b"hello from charly",
+    );
+    match processed.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), b"hello from charly");
         }
         _ => panic!("expected application message"),
     }

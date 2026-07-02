@@ -183,6 +183,9 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
                     }
                     group_state.merge_staged_commit(&self.provider, *staged_commit)?;
                 }
+                ProcessedMessageContent::OwnPendingCommit => {
+                    group_state.merge_pending_commit(&self.provider)?;
+                }
             }
         }
 

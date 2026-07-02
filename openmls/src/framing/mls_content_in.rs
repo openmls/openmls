@@ -10,7 +10,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::messages::proposals_in::ProposalOrRefIn;
 
 use std::io::{Read, Write};
@@ -78,7 +78,7 @@ impl FramedContentIn {
         })
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn proposals(&self) -> Option<&[ProposalOrRefIn]> {
         match &self.body {
             FramedContentBodyIn::Commit(commit_in) => Some(commit_in.proposals()),

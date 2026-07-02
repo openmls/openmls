@@ -470,6 +470,12 @@ impl User {
                 }
                 None
             }
+            ProcessedMessageContent::OwnPendingCommit => {
+                if let Err(e) = mls_group.merge_pending_commit(&self.provider) {
+                    return Err(e.to_string());
+                }
+                None
+            }
         };
         Ok((PostUpdateActions::None, None, message_out))
     }

@@ -1,7 +1,7 @@
 # Working with AppData
 
 > [!IMPORTANT]
-> Currently this functionality is behind the `extensions-draft-08` feature. 
+> Currently this functionality is behind the `extensions-draft` feature.
 
 So far, applications could store group state that all members should agree on in custom
 extensions.

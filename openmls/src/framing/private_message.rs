@@ -37,6 +37,15 @@ pub(crate) struct EncryptionOutput {
     pub(crate) generation: Generation,
     /// The resulting encrypted message.
     pub(crate) private_message: PrivateMessage,
+    /// The [`GenerationId`] for this message when the group is bound to an
+    /// emulation epoch, `None` otherwise. Derived by [`MlsGroup::encrypt`]
+    /// once the ratchet generation is known, since `encrypt_content` does not
+    /// hold the emulation-epoch state.
+    ///
+    /// [`GenerationId`]: crate::components::vc_derivation_info::GenerationId
+    /// [`MlsGroup::encrypt`]: crate::group::MlsGroup::encrypt
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) generation_id: Option<crate::components::vc_derivation_info::GenerationId>,
 }
 
 /// `PrivateMessage` is the framing struct for an encrypted `PublicMessage`.
@@ -331,6 +340,8 @@ impl PrivateMessage {
         Ok(EncryptionOutput {
             generation,
             private_message,
+            #[cfg(feature = "virtual-clients-draft")]
+            generation_id: None,
         })
     }
 

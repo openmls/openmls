@@ -8,17 +8,7 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - '**/*.md'
-      - 'book/**'
-      - 'LICENSE*'
-      - '.gitignore'
   pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - 'book/**'
-      - 'LICENSE*'
-      - '.gitignore'
   workflow_dispatch:
 
 env:
@@ -51,7 +41,7 @@ jobs:
           - wasm32-unknown-unknown
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.arch }}
@@ -71,7 +61,7 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-hack
@@ -85,7 +75,19 @@ jobs:
         run: |
           cargo hack check --feature-powerset --no-dev-deps --verbose -p openmls \
           --group-features test-utils,crypto-debug,content-debug,backtrace,libcrux-provider,sqlite-provider \
-          --group-features extensions-draft-08,extensions-draft-08-test-dependencies,virtual-clients-draft,virtual-clients-draft-test-dependencies \
+          --group-features extensions-draft,extensions-draft-test-dependencies,virtual-clients-draft,virtual-clients-draft-test-dependencies \
           --group-features js,js-test \
           --group-features 0-8-1-storage-format,generate-kats,unchecked-conversions,fork-resolution \
           --exclude-features all-ciphersuites
+
+  # Verify the crates build with the declared MSRV (specified in rust-version in Cargo.toml)
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get -y install protobuf-compiler # Needed to build the interop client
+      - uses: actions/checkout@v7
+      # keep in sync with rust-version in Cargo.toml
+      - uses: dtolnay/rust-toolchain@1.91.0
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --locked --workspace --all-features --all-targets
