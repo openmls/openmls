@@ -65,6 +65,30 @@ impl EncryptionKey {
     }
 }
 
+#[cfg(feature = "targeted-messages-draft")]
+impl EncryptionKey {
+    pub(crate) fn encrypt_with_label_psk_resolved_aad<F>(
+        &self,
+        params: hpke::PskEncryptParams,
+        plaintext: &[u8],
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        aad_builder: F,
+    ) -> Result<HpkeCiphertext, LibraryError>
+    where
+        F: FnOnce(&[u8]) -> Result<Vec<u8>, LibraryError>,
+    {
+        hpke::encrypt_with_label_psk_resolved_aad(
+            self.as_slice(),
+            params,
+            plaintext,
+            ciphersuite,
+            crypto,
+            aad_builder,
+        )
+    }
+}
+
 impl From<Vec<u8>> for EncryptionKey {
     fn from(key: Vec<u8>) -> Self {
         Self { key: key.into() }
@@ -127,6 +151,18 @@ impl EncryptionPrivateKey {
             crypto,
         )
         .map(|secret_bytes| Secret::from_slice(&secret_bytes))
+    }
+
+    #[cfg(feature = "targeted-messages-draft")]
+    pub(crate) fn decrypt_with_label_psk_aad(
+        &self,
+        params: hpke::PskEncryptParams,
+        aad: &[u8],
+        ciphertext: &HpkeCiphertext,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<Vec<u8>, hpke::Error> {
+        hpke::decrypt_with_label_psk_aad(&self.key, params, aad, ciphertext, ciphersuite, crypto)
     }
 }
 

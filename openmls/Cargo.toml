@@ -137,6 +137,13 @@ extensions-draft-test-dependencies = [
     "openmls_libcrux_crypto?/extensions-draft",
     "openmls_memory_storage?/extensions-draft",
 ]
+# Implementation of the targeted messages draft:
+# https://datatracker.ietf.org/doc/draft-ietf-mls-targeted-messages/
+targeted-messages-draft = [
+    "openmls_traits/targeted-messages-draft",
+    "openmls_rust_crypto?/targeted-messages-draft",
+    "openmls_libcrux_crypto?/targeted-messages-draft",
+]
 draft-ietf-mls-pq-ciphersuites = [
     "openmls_traits/draft-ietf-mls-pq-ciphersuites",
     "openmls_memory_storage?/draft-ietf-mls-pq-ciphersuites",
@@ -146,7 +153,6 @@ draft-ietf-mls-pq-ciphersuites = [
     "openmls_basic_credential?/draft-ietf-mls-pq-ciphersuites",
     "openmls_test?/draft-ietf-mls-pq-ciphersuites",
 ]
-# experimental feature implementing the virtual-clients draft
 # enable randomness source
 fork-resolution = []
 

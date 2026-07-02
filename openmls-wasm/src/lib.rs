@@ -242,6 +242,8 @@ impl Group {
             openmls::framing::MlsMessageBodyIn::Welcome(_) => todo!(),
             openmls::framing::MlsMessageBodyIn::GroupInfo(_) => todo!(),
             openmls::framing::MlsMessageBodyIn::KeyPackage(_) => todo!(),
+            #[cfg(feature = "targeted-messages-draft")]
+            openmls::framing::MlsMessageBodyIn::TargetedMessage(_) => todo!(),
         };
 
         match msg.into_content() {
