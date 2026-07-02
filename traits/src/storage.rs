@@ -162,7 +162,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Write the ApplicationExportTree for the group with the given id.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn write_application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
@@ -170,6 +170,84 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         application_export_tree: &ApplicationExportTree,
+    ) -> Result<(), Self::Error>;
+
+    /// Write the virtual clients per-emulation-epoch state (the AEAD key
+    /// plus the registering client's emulation-group leaf index) for the
+    /// given epoch.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_epoch_state<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_emulation_epoch_state: &VcEmulationEpochState,
+    ) -> Result<(), Self::Error>;
+
+    /// Store the record binding each recent epoch of a higher-level group to
+    /// the emulation-group epoch whose virtual-client LeafNode was active at
+    /// that epoch. Used by the reuse-guard derivation path to look up the
+    /// per-message `ReuseGuardSecret` for the epoch a message was sent in.
+    ///
+    /// The record is updated on every commit merged on the higher-level
+    /// group and prunes its own entries in lockstep with the group's
+    /// message-secrets retention. A subsequent write replaces any previously
+    /// stored record.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_bindings<
+        GroupId: traits::GroupId<VERSION>,
+        VcEmulationBindings: traits::VcEmulationBindings<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        bindings: &VcEmulationBindings,
+    ) -> Result<(), Self::Error>;
+
+    /// Write the per-emulation-epoch Virtual Client Operation Secret Tree
+    /// (the lazily derived node secrets plus the per-leaf operation
+    /// ratchets) for the given epoch. The tree is written back after every
+    /// ratchet advance. It is stored separately from the static
+    /// `EmulationEpochState` so that per-operation writes do not rewrite
+    /// the static fields.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_operation_tree<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcOperationTree: traits::VcOperationTree<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_operation_tree: &VcOperationTree,
+    ) -> Result<(), Self::Error>;
+
+    /// Store the advanced operation secret tree for `epoch_id` together with
+    /// the retained virtual clients KeyPackage material for every reference in
+    /// `materials`.
+    ///
+    /// A sibling calls this once when it processes a `KeyPackageUpload`: the
+    /// upload consumes one operation generation in the tree and produces one
+    /// [`RetainedKeyPackageMaterial`](traits::RetainedKeyPackageMaterial) per
+    /// KeyPackage. These writes belong together: the tree must never be
+    /// persisted as advanced without the materials it produced. Providers do
+    /// not open their own transaction, so an application using a transactional
+    /// provider (such as SQLite) should call this within a transaction to get
+    /// atomicity and rollback on error. The in-memory provider applies the
+    /// writes while holding its write lock. Each material is keyed by its
+    /// [`HashReference`](traits::HashReference)
+    /// and tagged with `epoch_id` so the epoch-liveness query
+    /// ([`Self::has_retained_key_package_material_for_epoch`]) can find it. A
+    /// subsequent write for the same reference replaces the stored material.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_retained_key_package_material_batch<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcOperationTree: traits::VcOperationTree<VERSION>,
+        KeyPackageRef: traits::HashReference<VERSION>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        operation_tree: &VcOperationTree,
+        materials: &[(KeyPackageRef, RetainedKeyPackageMaterial)],
     ) -> Result<(), Self::Error>;
 
     //
@@ -424,7 +502,7 @@ pub trait StorageProvider<const VERSION: u16> {
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error>;
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Get the application export tree for the group with the given id.
     fn application_export_tree<
         GroupId: traits::GroupId<VERSION>,
@@ -433,6 +511,64 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
     ) -> Result<Option<ApplicationExportTree>, Self::Error>;
+
+    #[cfg(feature = "virtual-clients-draft")]
+    /// Get the virtual clients per-emulation-epoch state for the given
+    /// epoch (the AEAD key plus the registering client's
+    /// emulation-group leaf index).
+    fn vc_emulation_epoch_state<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcEmulationEpochState: traits::VcEmulationEpochState<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcEmulationEpochState>, Self::Error>;
+
+    /// Load the per-epoch emulation bindings of a higher-level group (see
+    /// [`Self::write_vc_emulation_bindings`]). Returns `None` if no VC
+    /// commit has been merged on this higher-level group.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_bindings<
+        GroupId: traits::GroupId<VERSION>,
+        VcEmulationBindings: traits::VcEmulationBindings<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<VcEmulationBindings>, Self::Error>;
+
+    /// Get the per-emulation-epoch Virtual Client Operation Secret Tree for
+    /// the given epoch (the lazily derived node secrets plus the per-leaf
+    /// operation ratchets).
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_operation_tree<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcOperationTree: traits::VcOperationTree<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcOperationTree>, Self::Error>;
+
+    /// Get the retained virtual clients KeyPackage material for the given
+    /// KeyPackage reference. Returns `None` if no material was stored for that
+    /// reference.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn retained_key_package_material<
+        KeyPackageRef: traits::HashReference<VERSION>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<VERSION>,
+    >(
+        &self,
+        hash_ref: &KeyPackageRef,
+    ) -> Result<Option<RetainedKeyPackageMaterial>, Self::Error>;
+
+    /// Return `true` if any retained virtual clients KeyPackage material still
+    /// references `epoch_id`. Used to keep an emulation epoch's state alive
+    /// while KeyPackages derived from it can still be welcomed (see
+    /// [`Self::delete_vc_emulation_state_if_unreferenced`]).
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error>;
 
     //
     //     ---    deleters for group state    ---
@@ -560,8 +696,11 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Delete a key package based on the hash reference.
     ///
-    /// This function only deletes the key package.
-    /// The corresponding encryption keys must be deleted separately.
+    /// Under the `virtual-clients-draft` feature, an implementation must also
+    /// delete the retained virtual clients KeyPackage material stored for the
+    /// same reference (see [`Self::delete_retained_key_package_material`]).
+    /// Deleting non-existent material is a no-op, so this is safe for
+    /// KeyPackages that were never uploaded by a virtual client.
     fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
@@ -574,13 +713,49 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Delete the application export tree for the group with the given id.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn delete_application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
     >(
         &self,
         group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Delete all per-epoch state for the given emulation epoch (both the
+    /// emulation epoch state and the Virtual Client Operation Secret Tree),
+    /// but only if no retained virtual clients KeyPackage material still
+    /// references it.
+    ///
+    /// Returns `Ok(true)` if the epoch state was deleted, and `Ok(false)` if
+    /// it was kept because retained material still references the epoch. The
+    /// liveness check and the deletion belong together. Providers do not open
+    /// their own transaction, so an application using a transactional provider
+    /// (such as SQLite) should call this within a transaction, so a material
+    /// stored concurrently cannot be orphaned by a deletion that already
+    /// observed the epoch as unreferenced. The in-memory provider holds its
+    /// write lock across both.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_state_if_unreferenced<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error>;
+
+    /// Remove the per-epoch emulation bindings of the given group. Called
+    /// when the group is being deleted.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_bindings<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Delete the retained virtual clients KeyPackage material stored for the
+    /// given KeyPackage reference. Called from [`Self::delete_key_package`] so
+    /// the material is removed together with the KeyPackage it describes.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<VERSION>>(
+        &self,
+        hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error>;
 }
 
@@ -637,6 +812,16 @@ pub mod traits {
     pub trait MlsGroupJoinConfig<const VERSION: u16>: Entity<VERSION> {}
     pub trait LeafNode<const VERSION: u16>: Entity<VERSION> {}
     pub trait ApplicationExportTree<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEpochId<const VERSION: u16>: Key<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEmulationEpochState<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEmulationBindings<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcOperationTree<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait RetainedKeyPackageMaterial<const VERSION: u16>: Entity<VERSION> {}
 
     // traits for types that implement both
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}

@@ -34,8 +34,7 @@ use crate::{
 ///
 /// The `-In` suffix of this struct is to separate it from the [`MlsMessageOut`]
 /// which is commonly returned by functions of the [`MlsGroup`] API.
-#[derive(PartialEq, Debug, Clone, TlsSize)]
-#[cfg_attr(feature = "test-utils", derive(TlsSerialize))]
+#[derive(PartialEq, Debug, Clone, TlsSize, TlsSerialize)]
 pub struct MlsMessageIn {
     pub(crate) version: ProtocolVersion,
     pub(crate) body: MlsMessageBodyIn,
@@ -47,8 +46,7 @@ pub struct MlsMessageIn {
 /// `public_message`, `private_message`, etc., we don't use the `wire_format`
 /// field. This prevents inconsistent assignments where `wire_format`
 /// contradicts the variant given in `body`.
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
-#[cfg_attr(feature = "test-utils", derive(TlsSerialize))]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 #[repr(u16)]
 pub enum MlsMessageBodyIn {
     /// Plaintext message

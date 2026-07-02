@@ -9,8 +9,11 @@ use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use super::errors::ApplyAppDataUpdateError;
+
+#[cfg(feature = "virtual-clients-draft")]
+use crate::messages::PathSecret;
 
 use super::PublicGroup;
 use crate::{
@@ -150,6 +153,29 @@ impl<'a> PublicGroupDiff<'a> {
         )
     }
 
+    /// Create the update path of an incoming commit by deriving the path
+    /// secrets from the given `path_secret`.
+    ///
+    /// Returns a vector containing the derived [`ParentNode`] instances, as
+    /// well as the [`CommitSecret`] resulting from their derivation. Returns an
+    /// error if the derived path does not match the given `update_path`.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn recreate_path_from_path_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        path_secret: PathSecret,
+        own_leaf_index: LeafNodeIndex,
+        update_path: &[UpdatePathNode],
+    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
+        self.diff.recreate_path_from_path_secret(
+            crypto,
+            self.group_context().ciphersuite(),
+            path_secret,
+            own_leaf_index,
+            update_path,
+        )
+    }
+
     /// Return a reference to the leaf with the given index.
     pub(crate) fn leaf(&self, index: LeafNodeIndex) -> Option<&LeafNode> {
         self.diff.leaf(index)
@@ -251,6 +277,11 @@ impl StagedPublicGroupDiff {
     /// Get the staged [`GroupContext`].
     pub(crate) fn group_context(&self) -> &GroupContext {
         &self.group_context
+    }
+
+    /// Get the [`ConfirmationTag`] of the commit that produced this diff.
+    pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
+        &self.confirmation_tag
     }
 
     /// Export the staged [`RatchetTree`]

@@ -21,7 +21,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     component::ComponentId,
     messages::proposals::{AppDataUpdateOperation, AppDataUpdateProposal},
@@ -59,7 +59,7 @@ pub enum Propose {
     /// Propose adding new group context extensions.
     GroupContextExtensions(Extensions<GroupContext>),
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Propose an update to a component in the [`AppDataDictionary`]
     UpdateAppDataComponent {
         /// The component_id to update in the dictionary
@@ -67,7 +67,7 @@ pub enum Propose {
         /// The data representing the update
         update: Vec<u8>,
     },
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Propose removal of a component in the [`AppDataDictionary`]
     RemoveAppDataComponent {
         /// The component_id to remove in the dictionary
@@ -92,7 +92,9 @@ macro_rules! impl_propose_fun {
         ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
             self.is_operational()?;
 
-            let proposal = self.$group_fun(self.framing_parameters(), value, signer)?;
+            let aad = self.outgoing_authenticated_data()?;
+            let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
+            let proposal = self.$group_fun(framing_parameters, value, signer)?;
 
             let queued_proposal = QueuedProposal::from_authenticated_content(
                 self.ciphersuite(),
@@ -133,18 +135,44 @@ impl MlsGroup {
     );
 
     impl_propose_fun!(
-        propose_external_psk,
+        propose_pre_shared_key,
         PreSharedKeyId,
         create_presharedkey_proposal,
         ProposalOrRefType::Reference
     );
 
     impl_propose_fun!(
-        propose_external_psk_by_value,
+        propose_pre_shared_key_by_value,
         PreSharedKeyId,
         create_presharedkey_proposal,
         ProposalOrRefType::Proposal
     );
+
+    /// Creates proposals to add a non-resumption PSK to the key schedule.
+    #[deprecated(
+        note = "Renamed to `propose_pre_shared_key`; works for any non-resumption PSK, not just external"
+    )]
+    pub fn propose_external_psk<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        value: PreSharedKeyId,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        self.propose_pre_shared_key(provider, signer, value)
+    }
+
+    /// Creates proposals to add a non-resumption PSK to the key schedule by value.
+    #[deprecated(
+        note = "Renamed to `propose_pre_shared_key_by_value`; works for any non-resumption PSK, not just external"
+    )]
+    pub fn propose_external_psk_by_value<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        value: PreSharedKeyId,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        self.propose_pre_shared_key_by_value(provider, signer, value)
+    }
 
     impl_propose_fun!(
         propose_custom_proposal_by_value,
@@ -206,19 +234,26 @@ impl MlsGroup {
                     .propose_remove_member_by_credential(provider, signer, &credential)
                     .map_err(|e| e.into()),
             },
-            Propose::PreSharedKey(psk_id) => match psk_id.psk() {
-                crate::schedule::Psk::External(_) => match ref_or_value {
+            Propose::PreSharedKey(psk_id) => {
+                match psk_id.psk() {
+                    crate::schedule::Psk::External(_) => {}
+                    #[cfg(feature = "extensions-draft")]
+                    crate::schedule::Psk::Application(_) => {}
+                    crate::schedule::Psk::Resumption(_) => {
+                        return Err(ProposalError::LibraryError(LibraryError::custom(
+                            "Invalid PSk argument",
+                        )))
+                    }
+                };
+                match ref_or_value {
                     ProposalOrRefType::Proposal => {
-                        self.propose_external_psk_by_value(provider, signer, psk_id)
+                        self.propose_pre_shared_key_by_value(provider, signer, psk_id)
                     }
                     ProposalOrRefType::Reference => {
-                        self.propose_external_psk(provider, signer, psk_id)
+                        self.propose_pre_shared_key(provider, signer, psk_id)
                     }
-                },
-                crate::schedule::Psk::Resumption(_) => Err(ProposalError::LibraryError(
-                    LibraryError::custom("Invalid PSk argument"),
-                )),
-            },
+                }
+            }
             Propose::ReInit {
                 group_id: _,
                 version: _,
@@ -233,8 +268,8 @@ impl MlsGroup {
             Propose::GroupContextExtensions(_) => Err(ProposalError::LibraryError(
                 LibraryError::custom("Unsupported proposal type GroupContextExtensions"),
             )),
-            // extensions-draft-08
-            #[cfg(feature = "extensions-draft-08")]
+            // extensions-draft
+            #[cfg(feature = "extensions-draft")]
             Propose::UpdateAppDataComponent {
                 component_id,
                 update,
@@ -244,7 +279,7 @@ impl MlsGroup {
                 component_id,
                 AppDataUpdateOperation::Update(update.into()),
             ),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Propose::RemoveAppDataComponent { component_id } => self.propose_app_data_update(
                 provider,
                 signer,
@@ -275,8 +310,10 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeAddMemberError<Provider::StorageError>> {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let add_proposal = self
-            .create_add_proposal(self.framing_parameters(), key_package.clone(), signer)
+            .create_add_proposal(framing_parameters, key_package.clone(), signer)
             .map_err(|e| match e {
                 CreateAddProposalError::LibraryError(e) => e.into(),
                 CreateAddProposalError::LeafNodeValidation(error) => {
@@ -315,8 +352,10 @@ impl MlsGroup {
     {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let remove_proposal = self
-            .create_remove_proposal(self.framing_parameters(), member, signer)
+            .create_remove_proposal(framing_parameters, member, signer)
             .map_err(|_| ProposeRemoveMemberError::UnknownMember)?;
 
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
@@ -400,8 +439,10 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let proposal = self.create_group_context_ext_proposal::<Provider>(
-            self.framing_parameters(),
+            framing_parameters,
             extensions,
             signer,
         )?;
@@ -460,7 +501,7 @@ impl MlsGroup {
     }
 
     /// Updates the AppDataDictionary
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn propose_app_data_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -470,8 +511,10 @@ impl MlsGroup {
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let proposal = self.create_app_data_update_proposal(
-            self.framing_parameters(),
+            framing_parameters,
             component_id,
             operation,
             signer,
@@ -632,7 +675,7 @@ impl MlsGroup {
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn create_app_data_update_proposal(
         &self,
         framing_parameters: FramingParameters,

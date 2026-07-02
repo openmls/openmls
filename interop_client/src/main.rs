@@ -672,6 +672,7 @@ impl MlsClient for MlsClientImpl {
             ProcessedMessageContent::ProposalMessage(_) => unreachable!(),
             ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
             ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
+            ProcessedMessageContent::OwnPendingCommit => unreachable!(),
         };
 
         let response = UnprotectResponse {
@@ -973,6 +974,7 @@ impl MlsClient for MlsClientImpl {
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
+                ProcessedMessageContent::OwnPendingCommit => unreachable!(),
             }
         }
 
@@ -1020,7 +1022,7 @@ impl MlsClient for MlsClientImpl {
                     .map_err(|_| Status::internal("Unsupported proposal type (resumption PSK)"))?;
 
                     group
-                        .propose_external_psk_by_value(
+                        .propose_pre_shared_key_by_value(
                             &interop_group.crypto_provider,
                             &interop_group.signature_keys,
                             psk_id,
@@ -1037,7 +1039,7 @@ impl MlsClient for MlsClientImpl {
 
                     // TODO: epoch_id vs epoch?
                     let (msg_out, proposal_ref) = group
-                        .propose_external_psk_by_value(
+                        .propose_pre_shared_key_by_value(
                             &interop_group.crypto_provider,
                             &interop_group.signature_keys,
                             psk_id,
@@ -1157,6 +1159,7 @@ impl MlsClient for MlsClientImpl {
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
+                ProcessedMessageContent::OwnPendingCommit => unreachable!(),
             }
         }
 
@@ -1189,6 +1192,7 @@ impl MlsClient for MlsClientImpl {
                     .merge_staged_commit(&interop_group.crypto_provider, *staged_commit)
                     .map_err(into_status)?;
             }
+            ProcessedMessageContent::OwnPendingCommit => unreachable!(),
         }
 
         trace!(epoch=?group.epoch(), "New group state.");
@@ -1308,7 +1312,7 @@ impl MlsClient for MlsClientImpl {
 
         let (proposal, _proposal_ref) = interop_group
             .group
-            .propose_external_psk(
+            .propose_pre_shared_key(
                 &interop_group.crypto_provider,
                 &interop_group.signature_keys,
                 psk_id,
@@ -1350,7 +1354,7 @@ impl MlsClient for MlsClientImpl {
 
         let (msg_out, _proposal_ref) = interop_group
             .group
-            .propose_external_psk(
+            .propose_pre_shared_key(
                 &interop_group.crypto_provider,
                 &interop_group.signature_keys,
                 psk_id,

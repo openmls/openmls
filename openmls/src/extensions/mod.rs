@@ -31,7 +31,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 // Private
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 mod app_data_dict_extension;
 mod application_id_extension;
 mod codec;
@@ -46,7 +46,7 @@ use errors::*;
 pub mod errors;
 
 // Public re-exports
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub use app_data_dict_extension::{AppDataDictionary, AppDataDictionaryExtension};
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
@@ -85,39 +85,59 @@ mod tests;
 /// | 0xff00  - 0xffff | Reserved for Private Use | N/A        | N/A         | RFC XXXX  |
 ///
 /// Note: OpenMLS does not provide a `Reserved` variant in [ExtensionType].
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[cfg_attr(
+    feature = "0-8-1-storage-format",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[cfg_attr(
+    not(feature = "0-8-1-storage-format"),
+    derive(
+        openmls_serialization_helpers::Serialize,
+        openmls_serialization_helpers::Deserialize,
+    )
+)]
 pub enum ExtensionType {
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 0)]
     /// The application id extension allows applications to add an explicit,
     /// application-defined identifier to a KeyPackage.
     ApplicationId,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 1)]
     /// The ratchet tree extensions provides the whole public state of the
     /// ratchet tree.
     RatchetTree,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 2)]
     /// The required capabilities extension defines the configuration of a group
     /// that imposes certain requirements on clients in the group.
     RequiredCapabilities,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 3)]
     /// To join a group via an External Commit, a new member needs a GroupInfo
     /// with an ExternalPub extension present in its extensions field.
     ExternalPub,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 4)]
     /// Group context extension that contains the credentials and signature keys
     /// of senders that are permitted to send external proposals to the group.
     ExternalSenders,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 5)]
     /// KeyPackage extension that marks a KeyPackage for use in a last resort
     /// scenario.
     LastResort,
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 8)]
     /// AppDataDictionary extension
     AppDataDictionary,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 7)]
     /// A GREASE extension type for ensuring extensibility.
     Grease(u16),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
     /// A currently unknown extension type.
     Unknown(u16),
 }
@@ -134,7 +154,7 @@ impl ExtensionType {
             ExtensionType::LastResort | ExtensionType::Grease(_) | ExtensionType::Unknown(_) => {
                 false
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => false,
         }
     }
@@ -152,7 +172,7 @@ impl ExtensionType {
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => false,
             ExtensionType::Unknown(_) | ExtensionType::ApplicationId => true,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
         }
     }
@@ -165,7 +185,7 @@ impl ExtensionType {
             | ExtensionType::ApplicationId => Some(false),
             ExtensionType::RatchetTree | ExtensionType::ExternalPub => Some(true),
             ExtensionType::Unknown(_) => None,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => Some(true),
         }
     }
@@ -179,7 +199,7 @@ impl ExtensionType {
             | ExtensionType::ExternalSenders
             | ExtensionType::ApplicationId => false,
             ExtensionType::Unknown(_) | ExtensionType::LastResort => true,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
         }
     }
@@ -189,7 +209,7 @@ impl ExtensionType {
             ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalSenders
             | ExtensionType::Unknown(_) => true,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
             _ => false,
         }
@@ -250,7 +270,7 @@ impl From<u16> for ExtensionType {
             3 => ExtensionType::RequiredCapabilities,
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             6 => ExtensionType::AppDataDictionary,
             10 => ExtensionType::LastResort,
             unknown if crate::grease::is_grease_value(unknown) => ExtensionType::Grease(unknown),
@@ -267,7 +287,7 @@ impl From<ExtensionType> for u16 {
             ExtensionType::RequiredCapabilities => 3,
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => 6,
             ExtensionType::LastResort => 10,
             ExtensionType::Grease(value) => value,
@@ -290,30 +310,49 @@ impl From<ExtensionType> for u16 {
 ///     opaque extension_data<V>;
 /// } Extension;
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "0-8-1-storage-format",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[cfg_attr(
+    not(feature = "0-8-1-storage-format"),
+    derive(
+        openmls_serialization_helpers::Serialize,
+        openmls_serialization_helpers::Deserialize,
+    )
+)]
 pub enum Extension {
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 0)]
     /// An [`ApplicationIdExtension`]
     ApplicationId(ApplicationIdExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 1)]
     /// A [`RatchetTreeExtension`]
     RatchetTree(RatchetTreeExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 2)]
     /// A [`RequiredCapabilitiesExtension`]
     RequiredCapabilities(RequiredCapabilitiesExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 3)]
     /// An [`ExternalPubExtension`]
     ExternalPub(ExternalPubExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 4)]
     /// An [`ExternalSendersExtension`]
     ExternalSenders(ExternalSendersExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 7)]
     /// An [`AppDataDictionaryExtension`]
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     AppDataDictionary(AppDataDictionaryExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 5)]
     /// A [`LastResortExtension`]
     LastResort(LastResortExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
     /// A currently unknown extension.
     Unknown(u16, UnknownExtension),
 }
@@ -486,6 +525,21 @@ where
     }
 }
 
+impl Extensions<AnyObject> {
+    /// Assume that the extensions contain the given extension type.
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that the extensions are of the correct type.
+    #[cfg(feature = "unchecked-conversions")]
+    pub fn into_unchecked<T>(self) -> Extensions<T> {
+        Extensions {
+            unique: self.unique,
+            _object: PhantomData,
+        }
+    }
+}
+
 /// Can be implemented by a type to validate extensions.
 pub trait ExtensionValidator {
     /// The error returned by the validator
@@ -648,7 +702,7 @@ impl<T> Extensions<T> {
             })
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Get a reference to the [`AppDataDictionaryExtension`] if there is any.
     pub fn app_data_dictionary(&self) -> Option<&AppDataDictionaryExtension> {
         self.find_by_type(ExtensionType::AppDataDictionary)
@@ -684,7 +738,7 @@ impl Extension {
             )),
         }
     }
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Get a reference to this extension as [`AppDataDictionaryExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
     /// [`Extension`] that's not an [`AppDataDictionaryExtension`].
@@ -760,7 +814,7 @@ impl Extension {
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Extension::AppDataDictionary(_) => ExtensionType::AppDataDictionary,
             Extension::LastResort(_) => ExtensionType::LastResort,
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),

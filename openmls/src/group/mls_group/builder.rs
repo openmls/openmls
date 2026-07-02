@@ -1,7 +1,7 @@
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use tls_codec::Serialize;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
@@ -144,7 +144,7 @@ impl MlsGroupBuilder {
 
         let EpochSecretsResult {
             epoch_secrets,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_exporter,
         } = key_schedule
             .epoch_secrets(provider.crypto(), ciphersuite)
@@ -176,20 +176,22 @@ impl MlsGroupBuilder {
         let resumption_psk = group_epoch_secrets.resumption_psk();
         resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let application_export_tree = ApplicationExportTree::new(application_exporter);
 
         let mls_group = MlsGroup {
             mls_group_config: mls_group_create_config.join_config.clone(),
             own_leaf_nodes: vec![],
             aad: vec![],
+            #[cfg(feature = "extensions-draft")]
+            safe_aad: crate::framing::SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group,
             group_epoch_secrets,
             own_leaf_index: LeafNodeIndex::new(0),
             message_secrets_store,
             resumption_psk_store,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_export_tree: Some(application_export_tree),
         };
 

@@ -216,3 +216,163 @@ fn last_resort_key_package() {
         .expect("An unexpected error occurred.");
     assert!(key_package.key_package().last_resort());
 }
+
+/// Build a batch of virtual-client KeyPackages and verify the first carries a
+/// reproducible derivation info. Registers an emulation epoch on a VC-capable
+/// emulator group, calls `build_vc_batch`, and checks that the batch reports
+/// generation 0, that the first leaf carries a `VC_COMPONENT_ID` entry in its
+/// `app_data_dictionary`, and that the embedded `DerivationInfo` decrypts
+/// (with the epoch's encryption key) to a `DerivationInfoTbe` whose
+/// `leaf_index`, `generation`, and `key_package_index` match the emulator
+/// leaf, the consumed generation, and the batch index. Also checks that a
+/// count of 0 is rejected with `EmptyBatch`.
+#[cfg(feature = "virtual-clients-draft")]
+#[openmls_test::openmls_test]
+fn build_vc_key_package_carries_reproducible_derivation_info() {
+    use crate::{
+        components::vc_derivation_info::{
+            DerivationInfo, DerivationInfoTbe, EmulationEpochState, VirtualClientOperationType,
+            VC_COMPONENT_ID,
+        },
+        credentials::test_utils::new_credential,
+        extensions::{AppDataDictionary, AppDataDictionaryExtension},
+        group::{MlsGroup, MlsGroupCreateConfig, PURE_PLAINTEXT_WIRE_FORMAT_POLICY},
+        key_packages::errors::KeyPackageNewError,
+        treesync::node::leaf_node::Capabilities,
+    };
+    use tls_codec::{DeserializeBytes as _, Serialize as _};
+
+    let provider = Provider::default();
+
+    // VC-capable leaf config: declares AppDataDictionary support and lists
+    // VC_COMPONENT_ID in its AppComponents entry (component id 1).
+    let capabilities = Capabilities::builder()
+        .extensions(vec![ExtensionType::AppDataDictionary])
+        .build();
+    let vc_leaf_extensions = {
+        let supported_components: Vec<u16> = vec![VC_COMPONENT_ID];
+        let app_components_body = supported_components
+            .tls_serialize_detached()
+            .expect("serialize AppComponents body");
+        let mut dictionary = AppDataDictionary::new();
+        dictionary.insert(1, app_components_body);
+        let ext = Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary));
+        Extensions::from_vec(vec![ext]).expect("build leaf-node Extensions")
+    };
+
+    // Emulator group: source of safe_export_secret(VC_COMPONENT_ID).
+    let (emulator_credential, emulator_signer) =
+        new_credential(&provider, b"Emulator", ciphersuite.signature_algorithm());
+    let emulator_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(capabilities.clone())
+        .with_leaf_node_extensions(vc_leaf_extensions.clone())
+        .expect("attach emulator leaf-node extensions")
+        .build();
+    let mut emulator = MlsGroup::new(
+        &provider,
+        &emulator_signer,
+        &emulator_config,
+        emulator_credential,
+    )
+    .expect("create emulator group");
+    let emulation_leaf_index = emulator.own_leaf_index();
+
+    let epoch_id = emulator
+        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
+        .expect("register vc emulation epoch");
+
+    // The virtual client's own signing identity for the KeyPackage.
+    let (vc_credential, vc_signer) = new_credential(
+        &provider,
+        b"VirtualClient",
+        ciphersuite.signature_algorithm(),
+    );
+
+    // A count of 0 is rejected before any state is loaded or consumed.
+    let empty = KeyPackage::builder().build_vc_batch(
+        ciphersuite,
+        &provider,
+        &vc_signer,
+        vc_credential.clone(),
+        epoch_id.clone(),
+        0,
+    );
+    assert_eq!(empty.unwrap_err(), KeyPackageNewError::EmptyBatch);
+
+    let mut batch = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities)
+        .leaf_node_extensions(vc_leaf_extensions)
+        .build_vc_batch(
+            ciphersuite,
+            &provider,
+            &vc_signer,
+            vc_credential,
+            epoch_id.clone(),
+            1,
+        )
+        .expect("build_vc_batch must succeed");
+
+    assert_eq!(
+        batch.generation, 0,
+        "the first key_package operation must consume generation 0"
+    );
+    assert_eq!(
+        batch.key_packages.len(),
+        1,
+        "a count of 1 must produce one KeyPackage"
+    );
+    let (bundle, key_package_info) = batch.key_packages.remove(0);
+    assert_eq!(
+        key_package_info.key_package_index, 0,
+        "the only KeyPackage in the batch has index 0"
+    );
+
+    // The leaf carries a VC_COMPONENT_ID entry in its app_data_dictionary.
+    let leaf = bundle.key_package().leaf_node();
+    let dictionary = leaf
+        .extensions()
+        .app_data_dictionary()
+        .expect("leaf must carry an AppDataDictionary extension")
+        .dictionary();
+    let derivation_info_bytes = dictionary
+        .get(&VC_COMPONENT_ID)
+        .expect("leaf must carry a VC_COMPONENT_ID entry");
+
+    // The embedded DerivationInfo decrypts with the epoch's encryption key.
+    let state: EmulationEpochState = provider
+        .storage()
+        .vc_emulation_epoch_state(&epoch_id)
+        .expect("load emulation epoch state")
+        .expect("emulation epoch state present");
+    let (_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
+    let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
+        .expect("deserialize DerivationInfo");
+    assert_eq!(derivation_info.epoch_id(), &epoch_id);
+    let leaf_encryption_key = leaf
+        .encryption_key()
+        .tls_serialize_detached()
+        .expect("serialize leaf encryption key");
+    let tbe = derivation_info
+        .decrypt(
+            provider.crypto(),
+            emulation_ciphersuite,
+            &epoch_encryption_key,
+            &leaf_encryption_key,
+            VirtualClientOperationType::KeyPackage,
+        )
+        .expect("decrypt DerivationInfoTbe");
+    let DerivationInfoTbe::KeyPackage {
+        leaf_index,
+        generation: tbe_generation,
+        key_package_index,
+    } = tbe
+    else {
+        panic!("a key-package leaf must decode to the KeyPackage variant");
+    };
+    assert_eq!(leaf_index, emulation_leaf_index);
+    assert_eq!(tbe_generation, batch.generation);
+    assert_eq!(key_package_index, key_package_info.key_package_index);
+}

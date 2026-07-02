@@ -226,7 +226,7 @@ impl ExternalCommitBuilder {
                 ciphersuite,
             )?;
             let unverified_message = public_group.parse_message(decrypted_message, None)?;
-            let (verified_message, _credential) = unverified_message.verify(
+            let verified = unverified_message.verify(
                 ciphersuite,
                 provider.crypto(),
                 ProtocolVersion::default(),
@@ -234,7 +234,7 @@ impl ExternalCommitBuilder {
             let queued_proposal = QueuedProposal::from_authenticated_content(
                 ciphersuite,
                 provider.crypto(),
-                verified_message,
+                verified.content,
                 ProposalOrRefType::Reference,
             )?;
             // We ignore any proposal that is not a SelfRemove.
@@ -284,6 +284,8 @@ impl ExternalCommitBuilder {
             mls_group_config: config,
             own_leaf_nodes: vec![],
             aad: vec![],
+            #[cfg(feature = "extensions-draft")]
+            safe_aad: crate::framing::SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group,
             group_epoch_secrets,
@@ -292,7 +294,7 @@ impl ExternalCommitBuilder {
             resumption_psk_store: ResumptionPskStore::new(32),
             // This is set to `None` for now. It will be set once the external
             // commit is merged.
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_export_tree: None,
         };
 

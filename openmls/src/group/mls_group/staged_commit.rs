@@ -9,15 +9,18 @@ use super::proposal_store::{
     QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use super::Sender;
 use super::{
     super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
-    JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, OpenMlsProvider,
-    Proposal, ProposalQueue, PskSecret, QueuedProposal, Sender,
+    JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, MlsGroupState,
+    OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue, PskSecret, QueuedProposal,
 };
 use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;
+use crate::messages::ConfirmationTag;
 use crate::prelude::{Commit, LeafNodeIndex};
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{component::ComponentId, schedule::application_export_tree::ApplicationExportTree};
 
 use crate::treesync::errors::TreeSyncFromNodesError;
@@ -36,12 +39,33 @@ use crate::{
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use super::proposal_store::{QueuedAppDataUpdateProposal, QueuedAppEphemeralProposal};
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::prelude::processing::AppDataUpdates;
 
 impl MlsGroup {
+    /// Returns `true` when `received_tag` is the confirmation tag produced by
+    /// our pending member commit, i.e. the incoming Commit is that pending
+    /// commit this client got fanned out by the delivery service. Returns
+    /// `false` when we hold no member pending commit or its tag differs.
+    ///
+    /// We compare confirmation tags rather than the full Commit contents: the
+    /// signature has already authenticated the Commit as ours, and a matching
+    /// confirmation tag binds the confirmed transcript hash of the new epoch.
+    pub(crate) fn matches_pending_commit(&self, received_tag: &ConfirmationTag) -> bool {
+        let MlsGroupState::PendingCommit(pending_commit_state) = &self.group_state else {
+            return false;
+        };
+        let PendingCommitState::Member(staged_commit) = pending_commit_state.as_ref() else {
+            return false;
+        };
+        let StagedCommitState::GroupMember(member_state) = &staged_commit.state else {
+            return false;
+        };
+        member_state.staged_diff.confirmation_tag() == received_tag
+    }
+
     fn derive_epoch_secrets(
         &self,
         provider: &impl OpenMlsProvider,
@@ -115,7 +139,8 @@ impl MlsGroup {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
     }
 
-    /// Stages a commit message that was sent by another group member. This
+    /// Stages a commit message. The commit may have been sent by another group
+    /// member or be our own Commit without an UpdatePath. This
     /// function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
@@ -151,22 +176,20 @@ impl MlsGroup {
     ///  - ValSem240
     ///  - ValSem241
     ///  - ValSem242
-    ///  - ValSem244 Returns an error if the given commit was sent by the owner
-    ///    of this group.
+    ///  - ValSem244
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         provider: &impl OpenMlsProvider,
+        #[cfg(feature = "virtual-clients-draft")] vc_material: Option<
+            crate::components::vc_derivation_info::OperationSecret,
+        >,
+        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
+            crate::components::vc_derivation_info::EpochId,
+        >,
     ) -> Result<StagedCommit, StageCommitError> {
-        // Check that the sender is another member of the group
-        if let Sender::Member(member) = mls_content.sender() {
-            if member == &self.own_leaf_index() {
-                return Err(StageCommitError::OwnCommit);
-            }
-        }
-
         let (commit, proposal_queue, sender_index) = self
             .public_group
             .validate_commit(mls_content, provider.crypto())?;
@@ -175,11 +198,11 @@ impl MlsGroup {
         // group context) and apply proposals.
         let mut diff = self.public_group.empty_diff();
 
-        #[cfg(not(feature = "extensions-draft-08"))]
+        #[cfg(not(feature = "extensions-draft"))]
         let apply_proposals_values =
             diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let apply_proposals_values = diff.apply_proposals_with_app_data_updates(
             &proposal_queue,
             self.own_leaf_index(),
@@ -195,10 +218,15 @@ impl MlsGroup {
             old_epoch_keypairs,
             leaf_node_keypairs,
             provider,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_material,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_emulation_epoch_id,
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn stage_commit_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,
@@ -206,14 +234,13 @@ impl MlsGroup {
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         app_data_dict_updates: Option<AppDataUpdates>,
         provider: &impl OpenMlsProvider,
+        #[cfg(feature = "virtual-clients-draft")] vc_material: Option<
+            crate::components::vc_derivation_info::OperationSecret,
+        >,
+        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
+            crate::components::vc_derivation_info::EpochId,
+        >,
     ) -> Result<StagedCommit, StageCommitError> {
-        // Check that the sender is another member of the group
-        if let Sender::Member(member) = mls_content.sender() {
-            if member == &self.own_leaf_index() {
-                return Err(StageCommitError::OwnCommit);
-            }
-        }
-
         let (commit, proposal_queue, sender_index) = self
             .public_group
             .validate_commit(mls_content, provider.crypto())?;
@@ -238,6 +265,10 @@ impl MlsGroup {
             old_epoch_keypairs,
             leaf_node_keypairs,
             provider,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_material,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_emulation_epoch_id,
         )
     }
 
@@ -253,8 +284,41 @@ impl MlsGroup {
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         provider: &impl OpenMlsProvider,
+        #[cfg(feature = "virtual-clients-draft")] vc_material: Option<
+            crate::components::vc_derivation_info::OperationSecret,
+        >,
+        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
+            crate::components::vc_derivation_info::EpochId,
+        >,
     ) -> Result<StagedCommit, StageCommitError> {
         let ciphersuite = self.ciphersuite();
+
+        // A sibling-resync external commit is a VC external commit sent by a
+        // sibling emulator client to onboard itself into this higher-level
+        // group, inline-removing our existing leaf. The receiver-side gate in
+        // `process_internal_authenticated_content[_with_app_data_updates]` (see
+        // `is_sibling_vc_commit`) sets `vc_material = Some(_)` only for
+        // own-leaf VC commits and sibling-resync external commits, so here the
+        // two-condition check fully identifies the resync case:
+        //
+        //   - `vc_material` is `Some`, which after the upstream gate means the
+        //     commit carries a VC derivation-info entry and we hold per-epoch
+        //     state for the referenced `epoch_id`.
+        //   - the sender is `NewMemberCommit`, since own-leaf VC commits arrive as
+        //     `Sender::Member`, so this disambiguates the two sibling shapes.
+        //
+        // When this holds, we (a) skip the `self_removed` short-circuit so we
+        // don't transition to `Inactive`, (b) derive the path from the
+        // per-commit `OperationSecret` (we have no HPKE recipient on the path),
+        // and (c) record the new leaf index on the staged commit so
+        // `merge_commit` can update `own_leaf_index` before filtering owned
+        // encryption keypairs.
+        #[cfg(feature = "virtual-clients-draft")]
+        let is_sibling_resync =
+            vc_material.is_some() && matches!(mls_content.sender(), Sender::NewMemberCommit);
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        let is_sibling_resync = false;
+
         // Determine if Commit has a path
         let (commit_secret, new_keypairs, new_leaf_keypair_option, update_path_leaf_node) =
             if let Some(path) = commit.path.clone() {
@@ -273,8 +337,12 @@ impl MlsGroup {
                     apply_proposals_values.extensions.clone(),
                 )?;
 
-                // Check if we were removed from the group
-                if apply_proposals_values.self_removed {
+                // Check if we were removed from the group. The sibling-resync
+                // discriminator carves out the case where the `Remove` of our
+                // leaf is the auto-Remove paired with a sibling emulator's
+                // external commit. In that case our state survives on the
+                // joiner's new leaf, so we must continue processing.
+                if apply_proposals_values.self_removed && !is_sibling_resync {
                     // If so, we return here, because we can't decrypt the path
                     let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
                     let staged_state = PublicStagedCommitState::new(
@@ -284,32 +352,69 @@ impl MlsGroup {
                     let staged_commit = StagedCommit::new(
                         proposal_queue,
                         StagedCommitState::PublicState(Box::new(staged_state)),
+                        #[cfg(feature = "virtual-clients-draft")]
+                        None,
                     );
                     return Ok(staged_commit);
                 }
 
-                let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
-                    .iter()
-                    .chain(leaf_node_keypairs.iter())
-                    .collect();
+                // When processing a commit sent by a sibling virtual client
+                // (either our own leaf, or a sibling-resync external commit
+                // onto a new leaf), we have no HPKE recipient on the path.
+                // Re-derive the path from the per-commit `OperationSecret`
+                // the receiver derived from the per-epoch operation secret
+                // tree, and verify the resulting public keys against the
+                // commit. The non-VC `decrypt_path` is the fallback for
+                // everyone else.
+                #[cfg(feature = "virtual-clients-draft")]
+                let vc_path: Option<(Vec<EncryptionKeyPair>, CommitSecret)> = if sender_index
+                    == self.own_leaf_index()
+                    || is_sibling_resync
+                {
+                    let operation_secret = vc_material.ok_or(
+                            crate::components::vc_derivation_info::VirtualClientsError::MissingOperationTree,
+                        )?;
+                    Some(self.recreate_path_for_own_commit(
+                        &diff,
+                        &path,
+                        ciphersuite,
+                        provider.crypto(),
+                        sender_index,
+                        operation_secret,
+                    )?)
+                } else {
+                    None
+                };
+                #[cfg(not(feature = "virtual-clients-draft"))]
+                let vc_path: Option<(Vec<EncryptionKeyPair>, CommitSecret)> = None;
 
                 // ValSem203: Path secrets must decrypt correctly
                 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-                let (new_keypairs, commit_secret) = diff.decrypt_path(
-                    provider.crypto(),
-                    &decryption_keypairs,
-                    self.own_leaf_index(),
-                    sender_index,
-                    path.nodes(),
-                    &apply_proposals_values.exclusion_list(),
-                )?;
+                let (new_keypairs, commit_secret) = if let Some(pair) = vc_path {
+                    pair
+                } else {
+                    let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
+                        .iter()
+                        .chain(leaf_node_keypairs.iter())
+                        .collect();
+                    diff.decrypt_path(
+                        provider.crypto(),
+                        &decryption_keypairs,
+                        self.own_leaf_index(),
+                        sender_index,
+                        path.nodes(),
+                        &apply_proposals_values.exclusion_list(),
+                    )?
+                };
 
                 // Check if one of our update proposals was applied. If so, we
                 // need to store that keypair separately, because after merging
                 // it needs to be removed from the key store separately and in
                 // addition to the removal of the keypairs of the previous
                 // epoch.
-                let new_leaf_keypair_option = if let Some(leaf) = diff.leaf(self.own_leaf_index()) {
+                let new_leaf_keypair_option = if is_sibling_resync {
+                    None
+                } else if let Some(leaf) = diff.leaf(self.own_leaf_index()) {
                     leaf_node_keypairs.into_iter().find_map(|keypair| {
                         if leaf.encryption_key() == keypair.public_key() {
                             Some(keypair)
@@ -362,9 +467,18 @@ impl MlsGroup {
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
+        #[cfg(feature = "virtual-clients-draft")]
+        let provisional_own_leaf_index = if is_sibling_resync {
+            sender_index
+        } else {
+            self.own_leaf_index()
+        };
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        let provisional_own_leaf_index = self.own_leaf_index();
+
         let EpochSecretsResult {
             epoch_secrets,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_exporter,
         } = self.derive_epoch_secrets(
             provider,
@@ -376,7 +490,7 @@ impl MlsGroup {
         let (provisional_group_secrets, provisional_message_secrets) = epoch_secrets.split_secrets(
             serialized_provisional_group_context,
             diff.tree_size(),
-            self.own_leaf_index(),
+            provisional_own_leaf_index,
         );
 
         // Verify confirmation tag
@@ -407,8 +521,10 @@ impl MlsGroup {
         diff.update_interim_transcript_hash(ciphersuite, provider.crypto(), own_confirmation_tag)?;
 
         let staged_diff = diff.into_staged_diff(provider.crypto(), ciphersuite)?;
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let application_export_tree = ApplicationExportTree::new(application_exporter);
+        #[cfg(feature = "virtual-clients-draft")]
+        let new_own_leaf_index = is_sibling_resync.then_some(provisional_own_leaf_index);
         let staged_commit_state =
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
                 provisional_group_secrets,
@@ -417,12 +533,76 @@ impl MlsGroup {
                 new_keypairs,
                 new_leaf_keypair_option,
                 update_path_leaf_node,
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 application_export_tree,
+                #[cfg(feature = "virtual-clients-draft")]
+                new_own_leaf_index,
             )));
-        let staged_commit = StagedCommit::new(proposal_queue, staged_commit_state);
+        let staged_commit = StagedCommit::new(
+            proposal_queue,
+            staged_commit_state,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_emulation_epoch_id,
+        );
 
         Ok(staged_commit)
+    }
+
+    /// Re-derive the path of a commit sent by a sibling virtual client
+    /// (either through our own higher-level leaf, or onto a new leaf via a
+    /// sibling-resync external commit) from the per-commit `OperationSecret`
+    /// resolved by the caller (in `process_message`, via PPRF evaluation), and
+    /// verify that the public keys derived from the path secret match the
+    /// leaf node in the path. Returns the derived parent-node keypairs and
+    /// commit secret, ready to be slotted in where `decrypt_path` would
+    /// normally produce them.
+    ///
+    /// `sender_index` is the leaf the path originates from. For an own-leaf
+    /// VC commit this equals `self.own_leaf_index()`. For a sibling-resync
+    /// external commit it is the joiner's new leaf (the `leftmost_free_index`
+    /// the external-commit builder chose), which is where the path actually
+    /// starts.
+    ///
+    /// Signature key changes are not verified here: not every signature
+    /// scheme has an interoperable seed-to-keypair construction, so the
+    /// application is responsible for supplying any rotated signature key
+    /// pair to the storage provider out-of-band. The new public key on the
+    /// path leaf is already authenticated by the commit's standard
+    /// path-validation against the previous signature key.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn recreate_path_for_own_commit(
+        &self,
+        diff: &PublicGroupDiff,
+        path: &crate::treesync::treekem::UpdatePath,
+        ciphersuite: openmls_traits::types::Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        sender_index: LeafNodeIndex,
+        operation_secret: crate::components::vc_derivation_info::OperationSecret,
+    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), StageCommitError> {
+        use crate::components::vc_derivation_info::VirtualClientsError;
+
+        let path_secret = operation_secret
+            .derive_path_generation_secret(crypto, ciphersuite)?
+            .into();
+        let (encryption_key_pairs, commit_secret) =
+            diff.recreate_path_from_path_secret(crypto, path_secret, sender_index, path.nodes())?;
+
+        // Verify that the leaf encryption key in the path matches the one
+        // derived from the operation secret.
+        let leaf_keypair = operation_secret
+            .derive_encryption_key_secret(crypto, ciphersuite)?
+            .generate_encryption_key_pair(crypto, ciphersuite)?;
+        if leaf_keypair.public_key() != path.leaf_node().encryption_key() {
+            return Err(VirtualClientsError::EncryptionKeyMismatch.into());
+        }
+
+        // Mirror the sender's `apply_own_update_path`: the leaf keypair is
+        // prepended to the parent keypairs so the merge step has private
+        // keys for all of the new epoch's owned encryption keys.
+        let mut keypairs = Vec::with_capacity(1 + encryption_key_pairs.len());
+        keypairs.push(leaf_keypair);
+        keypairs.extend(encryption_key_pairs);
+        Ok((keypairs, commit_secret))
     }
 
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
@@ -468,7 +648,7 @@ impl MlsGroup {
                 );
 
                 // Replace the previous exporter tree with the new one.
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 {
                     // The application exporter is only None if the group was
                     // stored using an older version of OpenMLS that did not
@@ -490,6 +670,18 @@ impl MlsGroup {
                 }
 
                 self.public_group.merge_diff(state.staged_diff);
+
+                #[cfg(feature = "virtual-clients-draft")]
+                let previous_own_leaf_index = self.own_leaf_index;
+
+                // Sibling-resync external commit: install the joiner's new
+                // leaf as our own before filtering keypairs. The call to
+                // `owned_encryption_keys(self.own_leaf_index())` below relies
+                // on this value.
+                #[cfg(feature = "virtual-clients-draft")]
+                if let Some(new_idx) = state.new_own_leaf_index {
+                    self.own_leaf_index = new_idx;
+                }
 
                 let leaf_keypair = if let Some(keypair) = &state.new_leaf_keypair_option {
                     vec![keypair.clone()]
@@ -526,6 +718,9 @@ impl MlsGroup {
                     .store(storage)
                     .map_err(MergeCommitError::StorageError)?;
                 storage
+                    .write_own_leaf_index(group_id, &self.own_leaf_index)
+                    .map_err(MergeCommitError::StorageError)?;
+                storage
                     .write_group_epoch_secrets(group_id, &self.group_epoch_secrets)
                     .map_err(MergeCommitError::StorageError)?;
                 storage
@@ -537,8 +732,12 @@ impl MlsGroup {
                     .map_err(MergeCommitError::StorageError)?;
 
                 // Delete the old keys.
-                self.delete_previous_epoch_keypairs(storage)
-                    .map_err(MergeCommitError::StorageError)?;
+                self.delete_previous_epoch_keypairs(
+                    storage,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    previous_own_leaf_index,
+                )
+                .map_err(MergeCommitError::StorageError)?;
                 if let Some(keypair) = state.new_leaf_keypair_option {
                     keypair
                         .delete(storage)
@@ -573,15 +772,28 @@ pub struct StagedCommit {
     pub staged_proposal_queue: ProposalQueue,
     /// The staged commit state.
     pub(super) state: StagedCommitState,
+    /// Emulation epoch this commit binds the group to on merge, when
+    /// the commit was built via `CommitBuilder::vc_emulation`.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[serde(default)]
+    pub(super) vc_emulation_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
 }
 
 impl StagedCommit {
     /// Create a new [`StagedCommit`] from the provisional group state created
     /// during the commit process.
-    pub(crate) fn new(staged_proposal_queue: ProposalQueue, state: StagedCommitState) -> Self {
+    pub(crate) fn new(
+        staged_proposal_queue: ProposalQueue,
+        state: StagedCommitState,
+        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
+            crate::components::vc_derivation_info::EpochId,
+        >,
+    ) -> Self {
         StagedCommit {
             staged_proposal_queue,
             state,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_emulation_epoch_id,
         }
     }
 
@@ -628,7 +840,7 @@ impl StagedCommit {
         self.staged_proposal_queue.psk_proposals()
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Returns the AppEphemeral proposals that are covered by the Commit message as an iterator
     /// over [`QueuedAppEphemeralProposal`].
     pub fn queued_app_ephemeral_proposals(
@@ -637,7 +849,7 @@ impl StagedCommit {
         self.staged_proposal_queue.app_ephemeral_proposals()
     }
     // NOTE: this is not a default proposal type
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Returns the AppDataUpdate proposals that are covered by the Commit message as an iterator
     /// over [`QueuedAppDataUpdateProposal`].
     pub fn app_data_update_proposals(
@@ -712,6 +924,12 @@ impl StagedCommit {
 
     /// Returns `true` if the member was removed through a proposal covered by this Commit message
     /// and `false` otherwise.
+    //
+    // Sibling-resync external commits intentionally land in `GroupMember`
+    // rather than `PublicState`, even though the proposal queue contains a
+    // Remove of our own leaf. The new leaf carries our state forward, so
+    // `self_removed()` returns `false` and `merge_staged_commit` keeps the
+    // group active.
     pub fn self_removed(&self) -> bool {
         matches!(self.state, StagedCommitState::PublicState(_))
     }
@@ -750,7 +968,7 @@ impl StagedCommit {
         }
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn safe_export_secret(
         &mut self,
         crypto: &impl OpenMlsCrypto,
@@ -818,14 +1036,22 @@ pub(crate) struct MemberStagedCommitState {
     new_keypairs: Vec<EncryptionKeyPair>,
     new_leaf_keypair_option: Option<EncryptionKeyPair>,
     update_path_leaf_node: Option<LeafNode>,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[serde(default)]
     // This is `None` only if the group was stored using an older version of
     // OpenMLS that did not support the application exporter.
     application_export_tree: Option<ApplicationExportTree>,
+    // The new leaf index to install on the receiving group at merge time
+    // when this staged commit is a sibling-resync external commit (a VC
+    // external commit from a sibling emulator that inline-removes the
+    // receiver's existing leaf). `None` for all other commit kinds.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[serde(default)]
+    new_own_leaf_index: Option<LeafNodeIndex>,
 }
 
 impl MemberStagedCommitState {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         group_epoch_secrets: GroupEpochSecrets,
         message_secrets: MessageSecrets,
@@ -833,7 +1059,8 @@ impl MemberStagedCommitState {
         new_keypairs: Vec<EncryptionKeyPair>,
         new_leaf_keypair_option: Option<EncryptionKeyPair>,
         update_path_leaf_node: Option<LeafNode>,
-        #[cfg(feature = "extensions-draft-08")] application_export_tree: ApplicationExportTree,
+        #[cfg(feature = "extensions-draft")] application_export_tree: ApplicationExportTree,
+        #[cfg(feature = "virtual-clients-draft")] new_own_leaf_index: Option<LeafNodeIndex>,
     ) -> Self {
         Self {
             group_epoch_secrets,
@@ -842,8 +1069,10 @@ impl MemberStagedCommitState {
             new_keypairs,
             new_leaf_keypair_option,
             update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_export_tree: Some(application_export_tree),
+            #[cfg(feature = "virtual-clients-draft")]
+            new_own_leaf_index,
         }
     }
 

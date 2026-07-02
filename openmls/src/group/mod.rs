@@ -12,7 +12,7 @@ use openmls_traits::random::OpenMlsRand;
 
 #[cfg(test)]
 use crate::ciphersuite::*;
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 use crate::utils::*;
 
 // Crate
@@ -28,7 +28,7 @@ pub use mls_group::commit_builder::*;
 pub use mls_group::config::*;
 pub use mls_group::creation::*;
 pub use mls_group::membership::*;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub use mls_group::processing::{AppDataDictionaryUpdater, AppDataUpdates};
 pub use mls_group::proposal_store::*;
 pub use mls_group::staged_commit::StagedCommit;

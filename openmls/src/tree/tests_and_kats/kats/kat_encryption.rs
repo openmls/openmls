@@ -251,7 +251,8 @@ fn build_handshake_messages(
         group.message_secrets_test_mut(),
         0,
     )
-    .expect("Could not create PrivateMessage");
+    .expect("Could not create PrivateMessage")
+    .private_message;
     (
         plaintext
             .tls_serialize_detached()
@@ -308,7 +309,7 @@ fn build_application_messages(
         group.message_secrets_test_mut(),
         0,
     ) {
-        Ok(c) => c,
+        Ok(output) => output.private_message,
         Err(e) => panic!("Could not create PrivateMessage {e}"),
     };
     (
@@ -444,6 +445,7 @@ pub fn generate_test_vector(
     }
 }
 
+#[cfg(feature = "generate-kats")]
 #[test]
 fn write_test_vectors() {
     use openmls_traits::prelude::*;
@@ -632,8 +634,11 @@ pub fn run_test_vector(
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
                     sender_data,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 )
                 .expect("Error decrypting PrivateMessage")
+                .verifiable
                 .into();
             assert!(matches!(
                 mls_plaintext_application.content(),
@@ -708,8 +713,11 @@ pub fn run_test_vector(
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
                     sender_data,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 )
                 .expect("Error decrypting PrivateMessage")
+                .verifiable
                 .into();
 
             assert!(matches!(
@@ -783,8 +791,11 @@ pub fn run_test_vector(
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
                     sender_data,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 )
                 .expect("Error decrypting PrivateMessage")
+                .verifiable
                 .into();
 
             assert!(matches!(

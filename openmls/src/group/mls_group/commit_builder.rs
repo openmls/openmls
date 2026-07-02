@@ -35,12 +35,45 @@ use crate::{
     treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
 };
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "virtual-clients-draft")]
+use crate::{
+    components::vc_derivation_info::{
+        DerivationInfo, DerivationInfoTbe, EmulationEpochState, EpochEncryptionKey, EpochId,
+        OperationSecret, VirtualClientOperationType, VirtualClientsError,
+    },
+    components::vc_operation_tree::OperationSecretTree,
+    extensions::AppDataDictionary,
+};
+#[cfg(feature = "extensions-draft")]
 use crate::{
     messages::proposals::AppDataUpdateProposal,
     prelude::processing::{AppDataDictionaryUpdater, AppDataUpdates},
     schedule::application_export_tree::ApplicationExportTree,
 };
+
+/// Per-commit virtual-clients state allocated by
+/// [`CommitBuilder::vc_emulation`] and consumed by `build`.
+///
+/// `vc_emulation` advances the own `LeafNode` operation ratchet by one
+/// generation and immediately persists the advanced tree, before the commit
+/// message exists. A builder that is discarded after the setter therefore
+/// burns a generation, as does a commit the DS rejects. That is harmless:
+/// sibling ratchets skip over a burned generation, retaining the skipped
+/// generation secrets inside their copy of the operation secret tree.
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Debug)]
+struct VcLoaded {
+    epoch_id: EpochId,
+    emulation_leaf_index: LeafNodeIndex,
+    epoch_encryption_key: EpochEncryptionKey,
+    emulation_ciphersuite: openmls_traits::types::Ciphersuite,
+    generation: u32,
+    operation_secret: OperationSecret,
+    /// The resolved `AppDataDictionary` produced by the leaf-configuration
+    /// pre-check in `vc_emulation`, carried to `build` so the VC
+    /// derivation-info injection preserves every other entry.
+    resolved_dictionary: AppDataDictionary,
+}
 
 pub(crate) mod external_commits;
 
@@ -110,7 +143,7 @@ pub struct LoadedPsks {
     /// The GroupInfo creation config
     group_info_config: GroupInfoConfig,
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     app_data_dictionary_updates: Option<AppDataUpdates>,
 }
 
@@ -168,6 +201,12 @@ pub struct CommitBuilder<'a, T, G: BorrowMut<MlsGroup> = &'a mut MlsGroup> {
     /// The current stage
     stage: T,
 
+    /// Virtual-clients material allocated by [`Self::vc_emulation`] and
+    /// consumed by `build`. Lives on the builder rather than on a stage
+    /// struct so the stage transitions can carry it through unchanged.
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_loaded: Option<VcLoaded>,
+
     pd: PhantomData<&'a ()>,
 }
 
@@ -197,6 +236,8 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
         let Self {
             group,
             stage,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_loaded,
             pd: PhantomData,
         } = self;
 
@@ -207,6 +248,8 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
             CommitBuilder {
                 group,
                 stage,
+                #[cfg(feature = "virtual-clients-draft")]
+                vc_loaded,
                 pd: PhantomData,
             },
         )
@@ -299,6 +342,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         CommitBuilder {
             group,
             stage,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_loaded: None,
             pd: PhantomData,
         }
     }
@@ -308,6 +353,127 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     pub fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
         self.stage.leaf_node_parameters = leaf_node_parameters;
         self
+    }
+
+    /// Opt this commit into the virtual-clients-draft sender flow.
+    ///
+    /// The application supplies the [`EpochId`] of an already-registered
+    /// emulation epoch (see
+    /// [`MlsGroup::register_vc_emulation_epoch`]). This method loads the
+    /// per-epoch operation secret tree and AEAD key from the storage
+    /// provider, validates the leaf configuration (see the preconditions
+    /// below), then advances the own `LeafNode` operation ratchet by one
+    /// generation and immediately persists the advanced tree. `build` then:
+    ///
+    /// - derives the path secret and the new leaf's encryption keypair
+    ///   from the allocated `OperationSecret`, so a sibling virtual
+    ///   client can rederive them on the receiver side, and
+    /// - embeds an encrypted `DerivationInfo` blob under
+    ///   [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
+    ///   in the new leaf's `app_data_dictionary` extension.
+    ///
+    /// Because the ratchet advance is persisted here, a builder that is
+    /// discarded after this call burns a generation. The same happens when
+    /// the DS rejects the commit. That is harmless because sibling ratchets
+    /// skip over a burned generation, retaining the skipped generation
+    /// secrets inside their copy of the operation secret tree.
+    ///
+    /// The leaf configuration is validated against the
+    /// `leaf_node_parameters` set on the builder so far, so call this after
+    /// configuring the self-update leaf. The application must ensure the new
+    /// leaf:
+    ///
+    /// - lists [`ExtensionType::AppDataDictionary`](crate::extensions::ExtensionType::AppDataDictionary)
+    ///   in its `Capabilities.extensions`, and
+    /// - signals support for
+    ///   [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID).
+    ///
+    /// If those preconditions are not met this method fails with
+    /// `VirtualClientsError::AppDataDictionaryNotSupported` or
+    /// `VirtualClientsError::VcComponentNotListed` (wrapped in
+    /// [`CreateCommitError::VirtualClientsError`]) before allocating a
+    /// generation, so no operation secret is burned in that case.
+    ///
+    /// Fails with `VirtualClientsError::MissingEmulationEpochState` or
+    /// `VirtualClientsError::MissingOperationTree` if the epoch was never
+    /// registered. Neither the state nor the tree is instantiated on the
+    /// fly, since that could diverge from a sibling virtual client's
+    /// already-advanced ratchets.
+    ///
+    /// Implies that a self-update takes place: the commit will always have
+    /// a path even if no other proposals are queued.
+    ///
+    /// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        mut self,
+        crypto: &Crypto,
+        storage: &Storage,
+        epoch_id: EpochId,
+    ) -> Result<Self, CreateCommitError> {
+        let state: EmulationEpochState = storage
+            .vc_emulation_epoch_state(&epoch_id)
+            .map_err(|e| {
+                log::error!("vc: load emulation epoch state in vc_emulation failed: {e:?}");
+                CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
+            })?
+            .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+        let mut operation_tree: OperationSecretTree = storage
+            .vc_operation_tree(&epoch_id)
+            .map_err(|e| {
+                log::error!("vc: load operation tree in vc_emulation failed: {e:?}");
+                CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
+            })?
+            .ok_or(VirtualClientsError::MissingOperationTree)?;
+        let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) =
+            state.into_parts();
+
+        // Validate the leaf configuration before allocating a generation, so
+        // a deterministic precondition failure (the new leaf not declaring
+        // `AppDataDictionary` or not listing `VC_COMPONENT_ID`) does not burn
+        // an operation secret. Returns the resolved `AppDataDictionary`, which
+        // `build` reuses so the injection preserves the AppComponents entry
+        // across commits.
+        let own_leaf_index = self.group.borrow().own_leaf_index();
+        let is_external_commit = self.stage.external_commit_info.is_some();
+        let resolved_dictionary = check_vc_leaf_configuration(
+            &self.stage.leaf_node_parameters,
+            self.group.borrow(),
+            own_leaf_index,
+            is_external_commit,
+        )?;
+
+        // Update-path leaf-node derivations are the only operation type
+        // wired up so far. KeyPackage / Application will get their own
+        // allocation entry points when emitted. The operation context for
+        // LeafNode operations is the higher-level group's id.
+        let (generation, operation_secret) = operation_tree.next_operation_secret(
+            crypto,
+            emulation_ciphersuite,
+            &epoch_id,
+            emulation_leaf_index,
+            VirtualClientOperationType::LeafNode,
+            self.group.borrow().group_id().as_slice(),
+        )?;
+        // Persist the advanced tree right away, so the allocation can never
+        // be observed on the wire before it is persisted.
+        storage
+            .write_vc_operation_tree(&epoch_id, &operation_tree)
+            .map_err(|e| {
+                log::error!("vc: persist advanced operation tree failed: {e:?}");
+                CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
+            })?;
+
+        self.vc_loaded = Some(VcLoaded {
+            epoch_id,
+            emulation_leaf_index,
+            epoch_encryption_key,
+            emulation_ciphersuite,
+            generation,
+            operation_secret,
+            resolved_dictionary,
+        });
+        Ok(self)
     }
 
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
@@ -363,7 +529,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         consume_proposal_store: stage.consume_proposal_store,
                         group_info_config,
                         external_commit_info: stage.external_commit_info,
-                        #[cfg(feature = "extensions-draft-08")]
+                        #[cfg(feature = "extensions-draft")]
                         app_data_dictionary_updates: None,
                     },
                 )
@@ -453,7 +619,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         new_signer: Option<NewSignerBundle<'_, S>>,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete, G>, CreateCommitError> {
-        let (mut cur_stage, builder) = self.take_stage();
+        #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+        let (mut cur_stage, mut builder) = self.take_stage();
 
         // retrieve the config
         let GroupInfoConfig {
@@ -546,7 +713,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .public_group
             .validate_group_context_extensions_proposal(&proposal_queue)?;
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         group
             .public_group
             .validate_app_data_update_proposals_and_group_context(&proposal_queue)?;
@@ -563,17 +730,46 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let mut diff = group.public_group.empty_diff();
 
         // Apply proposals to tree
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let apply_proposals_values = diff.apply_proposals_with_app_data_updates(
             &proposal_queue,
             own_leaf_index,
             cur_stage.app_data_dictionary_updates,
         )?;
-        #[cfg(not(feature = "extensions-draft-08"))]
+        #[cfg(not(feature = "extensions-draft"))]
         let apply_proposals_values = diff.apply_proposals(&proposal_queue, own_leaf_index)?;
         if apply_proposals_values.self_removed && !is_external_commit {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
+
+        // Virtual-clients sender hook: when the caller opted into VC for
+        // this commit, validate that the effective leaf is configured to
+        // accept the derivation-info entry (capabilities + AppComponents),
+        // then derive the path-secret + leaf-keypair override from the
+        // operation secret allocated in `vc_emulation` and embed the
+        // `DerivationInfo` blob in the leaf's `app_data_dictionary`
+        // extension.
+        #[cfg(feature = "virtual-clients-draft")]
+        let vc_loaded = builder.vc_loaded.take();
+        #[cfg(feature = "virtual-clients-draft")]
+        let own_update_override = if let Some(loaded) = vc_loaded.as_ref() {
+            // The leaf-configuration pre-check already ran in `vc_emulation`,
+            // before the generation was allocated. Reuse the resolved
+            // `AppDataDictionary` it produced so the inject step preserves
+            // every other entry, including the AppComponents entry that
+            // survives across multiple VC commits.
+            Some(apply_vc_emulation(
+                loaded,
+                &mut cur_stage.leaf_node_parameters,
+                loaded.resolved_dictionary.clone(),
+                crypto,
+                ciphersuite,
+            )?)
+        } else {
+            None
+        };
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        let own_update_override: Option<crate::treesync::diff::OwnUpdatePathOverride> = None;
 
         let path_computation_result =
             // If path is needed, compute path values
@@ -611,7 +807,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         &commit_type,
                         &cur_stage.leaf_node_parameters,
                         new_signer.signer,
-                        apply_proposals_values.extensions.clone()
+                        apply_proposals_values.extensions.clone(),
+                        own_update_override,
                     )?
                 } else {
                     diff.compute_path(
@@ -622,7 +819,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         &commit_type,
                         &cur_stage.leaf_node_parameters,
                         old_signer,
-                        apply_proposals_values.extensions.clone()
+                        apply_proposals_values.extensions.clone(),
+                        own_update_override,
                     )?
                 }
             } else {
@@ -673,12 +871,32 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             path: path_computation_result.encrypted_path,
         };
 
-        let framing_parameters =
-            if let Some(ExternalCommitInfo { aad, .. }) = &cur_stage.external_commit_info {
-                FramingParameters::new(aad, WireFormat::PublicMessage)
-            } else {
-                group.framing_parameters()
+        let (outgoing_aad, wire_format): (Vec<u8>, WireFormat) =
+            match &cur_stage.external_commit_info {
+                None => (
+                    group.outgoing_authenticated_data()?,
+                    group.outgoing_wire_format(),
+                ),
+                Some(ExternalCommitInfo { aad, .. }) => {
+                    // The spec requires the SafeAAD prefix even with zero items
+                    // when the target GroupContext has `safe_aad` present, so a
+                    // bare `aad` would be rejected by SafeAAD-aware receivers.
+                    #[cfg(feature = "extensions-draft")]
+                    let aad_bytes = if group.context().safe_aad_required() {
+                        crate::framing::safe_aad::assemble_authenticated_data(
+                            &crate::framing::SafeAad::empty(),
+                            aad,
+                        )
+                        .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
+                    } else {
+                        aad.clone()
+                    };
+                    #[cfg(not(feature = "extensions-draft"))]
+                    let aad_bytes = aad.clone();
+                    (aad_bytes, WireFormat::PublicMessage)
+                }
             };
+        let framing_parameters = FramingParameters::new(&outgoing_aad, wire_format);
 
         // Build AuthenticatedContent
         let mut authenticated_content = AuthenticatedContent::commit(
@@ -725,7 +943,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let EpochSecretsResult {
             epoch_secrets: provisional_epoch_secrets,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_exporter,
         } = key_schedule
             .epoch_secrets(crypto, ciphersuite)
@@ -853,7 +1071,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 own_leaf_index,
             );
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let application_export_tree = ApplicationExportTree::new(application_exporter);
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
@@ -864,12 +1082,19 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             // proposal, so there is no extra keypair to store here.
             None,
             update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_export_tree,
+            // The committer's `own_leaf_index` is already set to the new
+            // leaf (in `build_group` for external commits, or unchanged for
+            // regular commits), so `merge_commit` has nothing to overwrite.
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_loaded.as_ref().map(|loaded| loaded.epoch_id.clone()),
         );
 
         Ok(builder.into_stage(Complete {
@@ -890,13 +1115,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// [`AppDataDictionary`] of the group.
     ///
     /// [`AppDataDictionary`]: crate::extensions::AppDataDictionary
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn app_data_dictionary_updater(&self) -> AppDataDictionaryUpdater<'_> {
         AppDataDictionaryUpdater::new(self.group.borrow().context().app_data_dict())
     }
 
     /// Sets the [`AppDataUpdates`] that contain the changes made by the AppDataUpdate proposals
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn with_app_data_dictionary_updates(
         &mut self,
         app_data_dictionary_updates: Option<AppDataUpdates>,
@@ -905,7 +1130,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     }
 
     /// Returns an iterator over all AppDataUpdate proposals in the proposal store of the group
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn app_data_update_proposals(&self) -> impl Iterator<Item = &AppDataUpdateProposal> {
         let proposal_store_proposals = self
             .group
@@ -979,6 +1204,126 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
             group_info: create_commit_result.group_info,
         })
     }
+}
+
+/// Build the path-secret + leaf-keypair override from the
+/// [`OperationSecret`] allocated in [`CommitBuilder::vc_emulation`] and
+/// inject the corresponding `DerivationInfo` blob into
+/// `leaf_node_parameters`'s `app_data_dictionary` extension.
+///
+/// The `DerivationInfoTbe` wrapping stays in the emulation epoch's
+/// ciphersuite, while the operation secret is expanded under the
+/// higher-level group ciphersuite to produce MLS path material for this
+/// group. The generation was consumed and the advanced tree persisted when
+/// `vc_emulation` was called, so this helper neither allocates nor
+/// persists anything.
+#[cfg(feature = "virtual-clients-draft")]
+fn apply_vc_emulation(
+    loaded: &VcLoaded,
+    leaf_node_parameters: &mut LeafNodeParameters,
+    resolved_dictionary: AppDataDictionary,
+    crypto: &impl OpenMlsCrypto,
+    group_ciphersuite: openmls_traits::types::Ciphersuite,
+) -> Result<crate::treesync::diff::OwnUpdatePathOverride, CreateCommitError> {
+    let emulation_ciphersuite = loaded.emulation_ciphersuite;
+
+    let path_secret = loaded
+        .operation_secret
+        .derive_path_generation_secret(crypto, group_ciphersuite)?
+        .into();
+    let leaf_encryption_keypair = loaded
+        .operation_secret
+        .derive_encryption_key_secret(crypto, group_ciphersuite)?
+        .generate_encryption_key_pair(crypto, group_ciphersuite)?;
+
+    // Wrap the TBE under the per-epoch AEAD key, bound to the new leaf via
+    // its serialized encryption key as derivation context.
+    let leaf_encryption_key = leaf_encryption_keypair
+        .public_key()
+        .tls_serialize_detached()
+        .map_err(VirtualClientsError::from)?;
+    // leaf_node operations are not batched, so the TBE carries no
+    // key_package_index: the select resolves to the empty `update`/`commit`
+    // case and the field is absent on the wire.
+    let tbe = DerivationInfoTbe::LeafNode {
+        leaf_index: loaded.emulation_leaf_index,
+        generation: loaded.generation,
+    };
+    let derivation_info = DerivationInfo::encrypt(
+        crypto,
+        emulation_ciphersuite,
+        &loaded.epoch_encryption_key,
+        loaded.epoch_id.clone(),
+        &leaf_encryption_key,
+        &tbe,
+    )?;
+    let derivation_info_bytes = derivation_info
+        .tls_serialize_detached()
+        .map_err(VirtualClientsError::from)?;
+
+    inject_vc_derivation_info(
+        leaf_node_parameters,
+        resolved_dictionary,
+        derivation_info_bytes,
+    )?;
+
+    Ok(crate::treesync::diff::OwnUpdatePathOverride {
+        path_secret,
+        leaf_encryption_keypair,
+    })
+}
+
+/// Verify that the effective leaf for this commit (= the merged view of
+/// `leaf_node_parameters` over the existing leaf, or `leaf_node_parameters`
+/// alone for external commits) declares `AppDataDictionary` and lists
+/// [`VC_COMPONENT_ID`] in its `AppComponents` entry. Without both, the
+/// receiver cannot reliably surface the derivation-info entry to the
+/// virtual-clients consumer, so we reject the commit at build time.
+///
+/// Returns the resolved `AppDataDictionary` (caller's override merged
+/// over the existing leaf's, with the caller winning on duplicate keys)
+/// so subsequent injection of the VC derivation-info preserves the
+/// AppComponents entry across commits.
+#[cfg(feature = "virtual-clients-draft")]
+fn check_vc_leaf_configuration(
+    leaf_node_parameters: &LeafNodeParameters,
+    group: &MlsGroup,
+    own_leaf_index: LeafNodeIndex,
+    is_external_commit: bool,
+) -> Result<AppDataDictionary, CreateCommitError> {
+    let current_leaf = if is_external_commit {
+        None
+    } else {
+        Some(group.public_group().leaf(own_leaf_index).ok_or_else(|| {
+            LibraryError::custom("Couldn't find own leaf for VC capability check")
+        })?)
+    };
+
+    crate::components::vc_derivation_info::resolve_vc_leaf_dictionary(
+        leaf_node_parameters.capabilities(),
+        leaf_node_parameters.extensions(),
+        current_leaf,
+    )
+    .map_err(CreateCommitError::VirtualClientsError)
+}
+
+/// Merge a virtual-clients derivation info blob into
+/// `leaf_node_parameters.app_data_dictionary[VC_COMPONENT_ID]`,
+/// preserving every other component id from `resolved_dictionary` and
+/// every non-`AppDataDictionary` leaf-node extension the caller put in.
+#[cfg(feature = "virtual-clients-draft")]
+fn inject_vc_derivation_info(
+    leaf_node_parameters: &mut LeafNodeParameters,
+    resolved_dictionary: AppDataDictionary,
+    derivation_info_bytes: Vec<u8>,
+) -> Result<(), CreateCommitError> {
+    let extensions = crate::components::vc_derivation_info::merge_vc_derivation_info(
+        leaf_node_parameters.extensions(),
+        resolved_dictionary,
+        derivation_info_bytes,
+    )?;
+    leaf_node_parameters.set_extensions(extensions);
+    Ok(())
 }
 
 /// Contains the messages that are produced by committing. The messages can be accessed individually

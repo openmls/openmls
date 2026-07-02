@@ -48,7 +48,7 @@ use crate::error::LibraryError;
 #[cfg(feature = "targeted-messages-draft")]
 use openmls_traits::crypto::HpkeSealPskResolvedAadError;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::component::{ComponentId, ComponentOperationLabel};
 
 /// HPKE labeled encryption errors.
@@ -94,7 +94,7 @@ impl EncryptContext {
         Self { label, context }
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn new_from_component_operation_label(
         label: ComponentOperationLabel,
         context: VLBytes,
@@ -166,7 +166,7 @@ fn encrypt_with_label_internal(
 }
 
 /// Context for [`safe_encrypt_with_label`] and [`safe_decrypt_with_label`].
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub struct SafeEncryptionContext<'a> {
     /// The [`ComponentId`] to use.
     pub component_id: ComponentId,
@@ -183,7 +183,7 @@ pub struct SafeEncryptionContext<'a> {
 /// and optional `context`.
 ///
 /// Returns an [`HpkeCiphertext`] or an [`enum@Error`].
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub fn safe_encrypt_with_label(
     public_key: &[u8],
     plaintext: &[u8],
@@ -249,7 +249,7 @@ fn decrypt_with_label_internal(
     plaintext
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 /// Decrypt the provided `ciphertext` with the `private_key`.
 /// The [`SafeEncryptionContext`] is used to set the [`ComponentId`], `label`,
 /// and optional `context`.

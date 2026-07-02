@@ -4,7 +4,7 @@
 
 use thiserror::Error;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use super::public_group::errors::ApplyAppDataUpdateError;
 
 pub use super::mls_group::errors::*;
@@ -101,6 +101,11 @@ pub enum WelcomeError<StorageError> {
     /// A group with this [`GroupId`] already exists.
     #[error("A group with this [`GroupId`] already exists.")]
     GroupAlreadyExists,
+    /// A virtual-clients error occurred while deriving or validating the
+    /// virtual client's join material.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
 }
 
 /// External Commit error
@@ -200,15 +205,19 @@ impl<StorageError> From<ExternalCommitBuilderFinalizeError<StorageError>>
 /// Stage Commit error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum StageCommitError {
+    /// Virtual clients error.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// The epoch of the group context and PublicMessage didn't match.
     #[error("The epoch of the group context and PublicMessage didn't match.")]
     EpochMismatch,
-    /// The Commit was created by this client.
-    #[error("The Commit was created by this client.")]
-    OwnCommit,
+    /// The Commit was created by this client but does not match the pending commit.
+    #[error("The Commit was created by this client but does not match the pending commit.")]
+    OwnCommitMismatch,
     /// stage_commit was called with an PublicMessage that is not a Commit.
     #[error("stage_commit was called with an PublicMessage that is not a Commit.")]
     WrongPlaintextContentType,
@@ -268,7 +277,7 @@ pub enum StageCommitError {
     GroupContextExtensionsProposalValidationError(
         #[from] GroupContextExtensionsProposalValidationError,
     ),
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// See [`AppDataUpdateValidationError`] for more details.
     #[error(transparent)]
     AppDataUpdateValidationError(#[from] AppDataUpdateValidationError),
@@ -276,7 +285,7 @@ pub enum StageCommitError {
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
     /// See [`ApplyAppDataUpdateError`] for more details.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[error(transparent)]
     ApplyAppDataUpdateError(#[from] ApplyAppDataUpdateError),
     /// Duplicate PSK Proposal.
@@ -290,6 +299,10 @@ pub enum CreateCommitError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// Virtual-clients error.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
     /// Missing own key to apply proposal.
     #[error("Missing own key to apply proposal.")]
     OwnKeyNotFound,
@@ -320,7 +333,7 @@ pub enum CreateCommitError {
     /// See [`InvalidExtensionError`] for more details.
     #[error(transparent)]
     InvalidExtensionError(#[from] InvalidExtensionError),
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// See [`AppDataUpdateValidationError`] for more details.
     #[error(transparent)]
     AppDataUpdateValidationError(#[from] AppDataUpdateValidationError),
@@ -339,7 +352,7 @@ pub enum CreateCommitError {
     #[error("Invalid external commit.")]
     InvalidExternalCommit(#[from] ExternalCommitValidationError),
     /// See [`ApplyAppDataUpdateError`] for more details.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[error(transparent)]
     ApplyAppDataUpdateError(#[from] ApplyAppDataUpdateError),
     /// See [`LeafNodeValidationError`] for more details.
@@ -452,6 +465,7 @@ pub enum ValidationError {
         "The ciphersuite in the KeyPackage of the Add proposal does not match the group context."
     )]
     InvalidAddProposalCiphersuite,
+    #[cfg(not(feature = "virtual-clients-draft"))]
     /// Cannot decrypt own messages because the necessary key has been deleted according to the deletion schedule.
     #[error("Cannot decrypt own messages.")]
     CannotDecryptOwnMessage,
@@ -641,7 +655,7 @@ pub enum MergeCommitError<StorageError> {
     StorageError(StorageError),
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 /// Error validating an AppDataUpdate proposal.
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum AppDataUpdateValidationError {

@@ -140,7 +140,6 @@ impl From<TargetedMessageIn> for TargetedMessage {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
 impl From<TargetedMessage> for TargetedMessageIn {
     fn from(msg: TargetedMessage) -> Self {
         Self {
