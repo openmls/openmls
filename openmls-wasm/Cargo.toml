@@ -13,6 +13,12 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["console_error_panic_hook"]
+# Forward feature to openmls and the crypto provider, whose storage backend
+# only implements the `extensions-draft` trait methods with its feature on.
+extensions-draft = [
+    "openmls/extensions-draft",
+    "openmls_rust_crypto/extensions-draft",
+]
 
 [dependencies]
 wasm-bindgen = "0.2.84"

@@ -263,6 +263,10 @@ impl Group {
                 self.mls_group.merge_pending_commit(provider.as_mut())?;
                 Ok(vec![])
             }
+            #[cfg(feature = "extensions-draft")]
+            openmls::framing::ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
+                unimplemented!("openmls-wasm does not support AppDataUpdate proposals")
+            }
         }
     }
 
