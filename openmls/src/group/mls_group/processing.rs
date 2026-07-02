@@ -753,17 +753,12 @@ impl MlsGroup {
                 }
             }
             FramedContentBody::Commit(commit) => {
-                // A Commit from our own leaf that carries no virtual-client
-                // derivation info is our own commit echoed back. We confirm it
-                // matches the pending commit and signal the caller to merge
-                // that instead of staging the incoming Commit. When the commit
-                // does carry VC material it is a sibling virtual-client commit
-                // and must be staged via the VC path below. We branch on the
-                // presence of VC material rather than the feature flag so that
-                // own commits are recognized in both configurations.
-                //
-                // The receiver only loads VC material when it can identify
-                // itself as a sibling from the commit shape:
+                // Load virtual-client derivation info when this commit was
+                // authored by a sibling emulator through a leaf shared with us.
+                // A Commit with an UpdatePath carrying this material is staged
+                // via the VC path below rather than treated as our own (see the
+                // own-commit handling further down). The receiver only loads it
+                // when the commit shape lets it identify itself as a sibling:
                 //
                 // * `Sender::Member(idx)` with `idx == own_leaf_index`: the
                 //   sender committed through our shared higher-level leaf, so
@@ -785,23 +780,41 @@ impl MlsGroup {
                 #[cfg(not(feature = "extensions-draft"))]
                 let _ = commit;
 
-                let is_own_pending_commit =
+                let is_own_commit =
                     matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
                 #[cfg(feature = "virtual-clients-draft")]
-                let is_own_pending_commit = is_own_pending_commit && vc_material.is_none();
+                let is_own_commit = is_own_commit && vc_material.is_none();
 
-                if is_own_pending_commit {
-                    self.check_own_pending_commit(provider.crypto(), &content)?;
-                    return Ok(ProcessedMessage::new(
-                        self.group_id().clone(),
-                        epoch,
-                        sender,
-                        authenticated_data,
-                        ProcessedMessageContent::OwnPendingCommit,
-                        credential,
-                        #[cfg(feature = "virtual-clients-draft")]
-                        emulator_sender_leaf_index,
-                    ));
+                if is_own_commit {
+                    let received_tag = content
+                        .confirmation_tag()
+                        .ok_or(StageCommitError::ConfirmationTagMissing)?;
+                    if self.matches_pending_commit(received_tag) {
+                        // The Commit is our pending commit this client got
+                        // fanned out by the delivery service: surface
+                        // `OwnPendingCommit` so the caller merges the pending
+                        // commit instead of staging the fanned-out Commit.
+                        return Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            epoch,
+                            sender,
+                            authenticated_data,
+                            ProcessedMessageContent::OwnPendingCommit,
+                            credential,
+                            #[cfg(feature = "virtual-clients-draft")]
+                            emulator_sender_leaf_index,
+                        ));
+                    }
+                    // Not our pending commit. We cannot decrypt a path we
+                    // encrypted to the other members, so a Commit with an
+                    // UpdatePath is unprocessable. A Commit without an
+                    // UpdatePath carries no author-private material and falls
+                    // through to staging (a sibling's Commit without an
+                    // UpdatePath, or our own commit replayed after the pending
+                    // commit was cleared).
+                    if commit.path.is_some() {
+                        return Err(StageCommitError::OwnCommitMismatch.into());
+                    }
                 }
 
                 // A commit covering AppDataUpdate proposals cannot be staged
