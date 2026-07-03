@@ -1143,7 +1143,7 @@ pub(crate) mod compat {
                 new_keypairs: compat.new_keypairs,
                 new_leaf_keypair_option: compat.new_leaf_keypair_option,
                 update_path_leaf_node: compat.update_path_leaf_node,
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 application_export_tree: None,
                 #[cfg(feature = "virtual-clients-draft")]
                 new_own_leaf_index: None,
