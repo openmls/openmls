@@ -5,7 +5,7 @@ use openmls_traits::storage::{traits, Entity, StorageProvider, CURRENT_VERSION};
 
 /// Migrate all stored `MlsGroupState`s  for each `GroupId` key
 ///
-/// NOTE: This migration helper is intended for upgrades from `openmls=0.7.0` -> the current version,
+/// NOTE: This migration helper is intended for upgrades from `openmls=0.7.x` -> the current version,
 /// with non-self-describing `serde` storage formats.
 pub fn migrate_group_state<S: StorageMigrationHelper<CURRENT_VERSION, CURRENT_VERSION>>(
     storage: &S,
