@@ -31,7 +31,7 @@ use crate::{
 };
 
 #[cfg(feature = "storage_migration")]
-use crate::group::{compat::MlsGroupStateCompat, past_secrets::compat::MessageSecretsStoreCompat};
+use crate::group::compat::MlsGroupStateCompat;
 
 #[cfg(feature = "storage_migration")]
 pub mod migration;
@@ -129,11 +129,6 @@ impl traits::GroupEpochSecrets<CURRENT_VERSION> for GroupEpochSecrets {}
 
 impl Entity<CURRENT_VERSION> for MessageSecretsStore {}
 impl traits::MessageSecrets<CURRENT_VERSION> for MessageSecretsStore {}
-
-#[cfg(feature = "storage_migration")]
-impl Entity<CURRENT_VERSION> for MessageSecretsStoreCompat {}
-#[cfg(feature = "storage_migration")]
-impl traits::MessageSecrets<CURRENT_VERSION> for MessageSecretsStoreCompat {}
 
 impl Entity<CURRENT_VERSION> for ResumptionPskStore {}
 impl traits::ResumptionPskStore<CURRENT_VERSION> for ResumptionPskStore {}
