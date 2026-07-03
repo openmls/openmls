@@ -6,7 +6,10 @@ publish = false
 
 [features]
 # enable `openmls` versions
-compat_0_7_0 = ["dep:openmls_0_7_0"]
+# NOTE: the patch version of `openmls_0_7` is selected in `test.sh` via
+# `cargo update --precise`, since only one patch version of a semver-compatible
+# line can be resolved at a time.
+compat_0_7 = ["dep:openmls_0_7"]
 compat_0_8_1 = ["dep:openmls_0_8_1", "openmls/0-8-1-storage-format"]
 compat_0_8_1_extensions = [
     "compat_0_8_1",
@@ -25,7 +28,7 @@ virtual-clients-draft = [
 
 # enable features required for `test_storage_migration` test
 storage_migration = [
-    "compat_0_7_0",
+    "compat_0_7",
     "openmls_traits_0_4_1",
     "openmls/storage_migration",
     "dep:openmls_storage_migration",
@@ -35,7 +38,7 @@ storage_migration = [
 serde = { version = "^1.0" }
 postcard = { version = "1", features = ["alloc"] }
 thiserror = { version = "^2.0" }
-openmls_0_7_0 = { package = "openmls", version = "=0.7.0", optional = true }
+openmls_0_7 = { package = "openmls", version = "0.7", optional = true }
 openmls_traits_0_4_1 = { package = "openmls_traits", version = "=0.4.1", optional = true }
 openmls_0_8_1 = { package = "openmls", version = "=0.8.1", optional = true }
 openmls = { path = "../openmls" }

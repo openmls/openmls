@@ -152,11 +152,12 @@ macro_rules! compat_tests {
     };
 }
 
-// check the storage tag stability for openmls=0.7.1 => `main`
-#[cfg(feature = "compat_0_7_0")]
+// check the storage tag stability for openmls=0.7.x => `main`
+// (the patch version of `openmls_0_7` is selected in `test.sh`)
+#[cfg(feature = "compat_0_7")]
 compat_tests!(
-    test_storage_tags_0_7_0,
-    openmls_0_7_0,
+    test_storage_tags_0_7,
+    openmls_0_7,
     openmls,
     SupportedVersion::OpenMls_0_7_0
 );

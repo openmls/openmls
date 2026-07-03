@@ -74,19 +74,19 @@ fn test_tolerant_deserialization<
 }
 
 #[test]
-/// Test storage migration with a non-self-describing format (0.7.0 -> current)
+/// Test storage migration with a non-self-describing format (0.7.x -> current)
 fn test_storage_migration() {
     // create group ids
-    let group_id_0_7_0 = openmls_0_7_0::prelude::GroupId::from_slice(GROUP_ID_BYTES);
+    let group_id_0_7 = openmls_0_7::prelude::GroupId::from_slice(GROUP_ID_BYTES);
     let group_id = openmls::prelude::GroupId::from_slice(GROUP_ID_BYTES);
     // initialize test storage provider
     let storage_provider = TestStorageProvider::default();
 
     // test migration of group state
-    test_migration::<_, _, openmls::prelude::MlsGroupState, openmls_0_7_0::prelude::MlsGroupState>(
+    test_migration::<_, _, openmls::prelude::MlsGroupState, openmls_0_7::prelude::MlsGroupState>(
         &storage_provider,
         TEST_GROUP_STATE,
-        &group_id_0_7_0,
+        &group_id_0_7,
         &group_id,
         StorageProvider_0_4_1::write_group_state,
         StorageProvider::group_state,
