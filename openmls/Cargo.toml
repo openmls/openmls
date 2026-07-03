@@ -50,7 +50,7 @@ serde_bytes = "0.11.17"
 [features]
 # enable for compatibility with openmls=0.8.1
 0-8-1-storage-format = []
-# migration helpers for openmls=0.7.0 and earlier
+# migration helpers for openmls=0.7.x and earlier
 storage_migration = ["dep:openmls_storage_migration"]
 test-utils = [
     "dep:serde_json",
