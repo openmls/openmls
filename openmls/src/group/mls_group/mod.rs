@@ -129,7 +129,6 @@ pub enum PendingCommitState {
     External(StagedCommit),
 }
 
-/// Compatibility version of [`PendingGroupState`] for openmls v0.7.0
 impl PendingCommitState {
     /// Returns a reference to the [`StagedCommit`] contained in the
     /// [`PendingCommitState`] enum.
