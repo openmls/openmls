@@ -30,7 +30,7 @@ virtual-clients-draft = [
 storage_migration = [
     "compat_0_7",
     "openmls_traits_0_4_1",
-    "openmls/storage_migration",
+    "openmls/storage-migration-0-7",
     "dep:openmls_storage_migration",
 ]
 

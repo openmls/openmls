@@ -1082,7 +1082,7 @@ impl MemberStagedCommitState {
     }
 }
 
-#[cfg(feature = "storage_migration")]
+#[cfg(feature = "storage-migration-0-7")]
 pub(crate) mod compat {
 
     use super::*;

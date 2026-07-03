@@ -30,10 +30,10 @@ use crate::{
     treesync::{node::encryption_keys::EncryptionKeyPair, EncryptionKey},
 };
 
-#[cfg(feature = "storage_migration")]
+#[cfg(feature = "storage-migration-0-7")]
 use crate::group::compat::MlsGroupStateCompat;
 
-#[cfg(feature = "storage_migration")]
+#[cfg(feature = "storage-migration-0-7")]
 pub mod migration;
 
 #[cfg(test)]
@@ -139,9 +139,9 @@ impl traits::MlsGroupJoinConfig<CURRENT_VERSION> for MlsGroupJoinConfig {}
 impl Entity<CURRENT_VERSION> for MlsGroupState {}
 impl traits::GroupState<CURRENT_VERSION> for MlsGroupState {}
 
-#[cfg(feature = "storage_migration")]
+#[cfg(feature = "storage-migration-0-7")]
 impl Entity<CURRENT_VERSION> for MlsGroupStateCompat {}
-#[cfg(feature = "storage_migration")]
+#[cfg(feature = "storage-migration-0-7")]
 impl traits::GroupState<CURRENT_VERSION> for MlsGroupStateCompat {}
 
 impl Entity<CURRENT_VERSION> for LeafNode {}
