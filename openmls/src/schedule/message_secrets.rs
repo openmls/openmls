@@ -181,6 +181,7 @@ pub(crate) mod compat {
                 confirmation_key: compat.confirmation_key,
                 serialized_context: compat.serialized_context,
                 secret_tree: compat.secret_tree,
+                // migrate Option added in `openmls` v0.8.2
                 added_at: None,
             }
         }

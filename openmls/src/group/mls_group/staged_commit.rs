@@ -1118,6 +1118,7 @@ pub(crate) mod compat {
             Self {
                 staged_proposal_queue: compat.staged_proposal_queue,
                 state: compat.state.into(),
+                // migrate Option added in `openmls` v0.8.2
                 #[cfg(feature = "virtual-clients-draft")]
                 vc_emulation_epoch_id: None,
             }
@@ -1143,8 +1144,10 @@ pub(crate) mod compat {
                 new_keypairs: compat.new_keypairs,
                 new_leaf_keypair_option: compat.new_leaf_keypair_option,
                 update_path_leaf_node: compat.update_path_leaf_node,
+                // migrate Option added in `openmls` v0.7.1
                 #[cfg(feature = "extensions-draft")]
                 application_export_tree: None,
+                // migrate Option added in `openmls` v0.8.2
                 #[cfg(feature = "virtual-clients-draft")]
                 new_own_leaf_index: None,
             }
