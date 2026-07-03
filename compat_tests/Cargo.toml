@@ -11,12 +11,12 @@ compat_0_8_1 = ["dep:openmls_0_8_1", "openmls/0-8-1-storage-format"]
 compat_0_8_1_extensions = [
     "compat_0_8_1",
     "openmls_0_8_1/extensions-draft-08",
-    "extensions-draft-08"
+    "extensions-draft"
 ]
 
 # enable features on the underlying `openmls` crate,
 # and on the StorageProvider implementation in `test_storage_provider`
-extensions-draft-08 = [
+extensions-draft = [
     "openmls/extensions-draft",
 ]
 virtual-clients-draft = [

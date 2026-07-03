@@ -697,7 +697,7 @@ macro_rules! impl_storage_provider_basic {
 macro_rules! impl_storage_provider_feature_flagged {
     () => {
         /// Write the ApplicationExportTree for the group with the given id.
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         fn write_application_export_tree<
             GroupId: traits::GroupId<CURRENT_VERSION>,
             ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
@@ -758,7 +758,7 @@ macro_rules! impl_storage_provider_feature_flagged {
             unimplemented!()
         }
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         /// Get the application export tree for the group with the given id.
         fn application_export_tree<
             GroupId: traits::GroupId<CURRENT_VERSION>,
@@ -811,7 +811,7 @@ macro_rules! impl_storage_provider_feature_flagged {
         }
 
         /// Delete the application export tree for the group with the given id.
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         fn delete_application_export_tree<
             GroupId: traits::GroupId<CURRENT_VERSION>,
             ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
