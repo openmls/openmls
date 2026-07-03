@@ -3,6 +3,7 @@ name = "openmls"
 version = "0.8.1"
 authors = ["OpenMLS Authors"]
 edition = "2021"
+rust-version.workspace = true
 description = "A Rust implementation of the Messaging Layer Security (MLS) protocol, as defined in RFC 9420."
 license = "MIT"
 documentation = "https://docs.rs/openmls"
@@ -99,7 +100,7 @@ js-test = [
 ]
 
 virtual-clients-draft = [
-    "extensions-draft-08",
+    "extensions-draft",
     "openmls_traits/virtual-clients-draft",
     # The crypto providers implement the trait's FF1 small-space PRP, so
     # their `OpenMlsCrypto` impls only compile against a
@@ -108,36 +109,36 @@ virtual-clients-draft = [
     "openmls_libcrux_crypto?/virtual-clients-draft",
 ]
 
-# Same XXX as for `extensions-draft-08-test-dependencies`: the storage-backend
+# Same XXX as for `extensions-draft-test-dependencies`: the storage-backend
 # crates only know about the `virtual-clients-draft` trait methods if they
 # enable their own `virtual-clients-draft` feature, but enabling it directly
 # from `virtual-clients-draft` would force them in even when not used. So we
 # expose a separate feature that tests turn on alongside `virtual-clients-draft`.
 # The backends' own `virtual-clients-draft` feature pulls in their
-# `extensions-draft-08` impls transitively, so we don't need to chain
-# `extensions-draft-08-test-dependencies` here.
+# `extensions-draft` impls transitively, so we don't need to chain
+# `extensions-draft-test-dependencies` here.
 virtual-clients-draft-test-dependencies = [
     "openmls_sqlite_storage?/virtual-clients-draft",
     "openmls_memory_storage?/virtual-clients-draft",
 ]
 
-extensions-draft-08 = [
-    "openmls_traits/extensions-draft-08",
+extensions-draft = [
+    "openmls_traits/extensions-draft",
     # XXX: to avoid enabling the `openmls_sqlite_storage` dependency
     # and other dependencies used for testing
     # when enabling this feature, these optional dependencies
     # are not explicitly included in this feature.
     #
     # See https://github.com/rust-lang/cargo/issues/10801
-    # "openmls_sqlite_storage?/extensions-draft-08",
-    # "openmls_libcrux_crypto?/extensions-draft-08",
-    # "openmls_memory_storage?/extensions-draft-08",
+    # "openmls_sqlite_storage?/extensions-draft",
+    # "openmls_libcrux_crypto?/extensions-draft",
+    # "openmls_memory_storage?/extensions-draft",
 ]
 
-extensions-draft-08-test-dependencies = [
-    "openmls_sqlite_storage?/extensions-draft-08",
-    "openmls_libcrux_crypto?/extensions-draft-08",
-    "openmls_memory_storage?/extensions-draft-08",
+extensions-draft-test-dependencies = [
+    "openmls_sqlite_storage?/extensions-draft",
+    "openmls_libcrux_crypto?/extensions-draft",
+    "openmls_memory_storage?/extensions-draft",
 ]
 draft-ietf-mls-pq-ciphersuites = [
     "openmls_traits/draft-ietf-mls-pq-ciphersuites",

@@ -168,7 +168,7 @@ compat_tests!(
     openmls,
     SupportedVersion::OpenMls_0_8_1
 );
-// check the storage tag stability for openmls=0.8.1 => `main` with feature `extensions-draft-08`
+// check the storage tag stability for openmls=0.8.1 => `main` with feature `extensions-draft`
 #[cfg(feature = "compat_0_8_1_extensions")]
 compat_tests!(
     test_storage_tags_0_8_1,

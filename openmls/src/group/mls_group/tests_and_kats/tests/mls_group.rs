@@ -356,7 +356,7 @@ fn export_secret() {
     )
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[openmls_test]
 fn safe_export_secret() {
     use crate::schedule::application_export_tree::ApplicationExportTreeError;
@@ -2754,7 +2754,7 @@ fn psks() {
 }
 
 // Test that application PSKs can be proposed (by reference and by value) and committed in a group
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[openmls_test::openmls_test]
 fn application_psks() {
     use crate::{group::mls_group::proposal::Propose, schedule::psk::ApplicationPsk};
@@ -2949,7 +2949,6 @@ fn staged_commit_creation() {
     )
 }
 
-#[cfg(not(feature = "virtual-clients-draft"))]
 // Test processing of own commits
 #[openmls_test::openmls_test]
 fn own_commit_processing() {
@@ -2981,14 +2980,182 @@ fn own_commit_processing() {
 
     let commit_in = MlsMessageIn::from(commit_out);
 
-    // Alice attempts to process her own commit
-    let error = alice_group
+    // Alice processes her own commit: it matches the pending commit, so it is
+    // surfaced as `OwnPendingCommit` rather than staged.
+    let processed = alice_group
         .process_message(alice_provider, commit_in.into_protocol_message().unwrap())
-        .expect_err("no error while processing own commit");
+        .expect("error while processing own commit");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+
+    // The pending commit is untouched and can still be merged.
+    assert!(alice_group.pending_commit().is_some());
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("error merging pending commit after processing own commit");
+}
+
+// Test that an own commit which no longer matches a pending commit is rejected.
+#[openmls_test::openmls_test]
+fn own_commit_mismatch() {
+    // Basic group setup.
+    let alice_provider = &Provider::default();
+    let (alice_credential_with_key, alice_signature_keys) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential_with_key,
+        )
+        .expect("Error creating group.");
+
+    // Alice creates a commit
+    let (commit_out, _welcome_option, _group_info_option) = alice_group
+        .self_update(
+            alice_provider,
+            &alice_signature_keys,
+            LeafNodeParameters::default(),
+        )
+        .expect("Could not create commit")
+        .into_contents();
+
+    let first_commit = MlsMessageIn::from(commit_out)
+        .into_protocol_message()
+        .unwrap();
+
+    // Happy path: the echoed commit matches the pending commit, so it is
+    // surfaced as `OwnPendingCommit`.
+    let processed = alice_group
+        .process_message(alice_provider, first_commit.clone())
+        .expect("error while processing own commit");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+
+    // Alice discards the pending commit without advancing the epoch. The
+    // echoed commit is still validly signed by her own leaf at the current
+    // epoch, so it reaches the own-commit check, but there is no pending
+    // commit to match against.
+    alice_group
+        .clear_pending_commit(alice_provider.storage())
+        .expect("error clearing pending commit");
+    assert!(alice_group.pending_commit().is_none());
+
+    let error = alice_group
+        .process_message(alice_provider, first_commit.clone())
+        .expect_err("no error while processing own commit without pending commit");
     assert_eq!(
         error,
-        ProcessMessageError::InvalidCommit(StageCommitError::OwnCommit)
+        ProcessMessageError::InvalidCommit(StageCommitError::OwnCommitMismatch)
     );
+
+    // Alice creates a second commit at the same epoch. The first commit is now
+    // stale: it is still validly signed by her own leaf, but its confirmation
+    // tag no longer matches the new pending commit.
+    let _ = alice_group
+        .self_update(
+            alice_provider,
+            &alice_signature_keys,
+            LeafNodeParameters::default(),
+        )
+        .expect("Could not create second commit");
+    assert!(alice_group.pending_commit().is_some());
+
+    let error = alice_group
+        .process_message(alice_provider, first_commit)
+        .expect_err("no error while processing stale own commit");
+    assert_eq!(
+        error,
+        ProcessMessageError::InvalidCommit(StageCommitError::OwnCommitMismatch)
+    );
+}
+
+// A Commit without an UpdatePath from our own leaf that no longer matches a
+// pending commit is staged as a regular commit rather than rejected. Unlike a
+// Commit with an UpdatePath, a Commit without an UpdatePath holds no
+// author-private material, so it applies from the prior epoch and the public
+// proposals alone.
+#[openmls_test::openmls_test]
+fn own_commit_without_update_path_without_pending_is_staged() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential_with_key, alice_signature_keys) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (_bob_credential, bob_kpb, _bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, bob_provider);
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential_with_key,
+        )
+        .expect("Error creating group.");
+
+    // Alice creates an add-only commit, which carries no path.
+    let (commit_out, _welcome, _group_info) = alice_group
+        .add_members_without_update(
+            alice_provider,
+            &alice_signature_keys,
+            &[bob_kpb.key_package().clone()],
+        )
+        .expect("Could not create add-only commit");
+    assert!(
+        alice_group
+            .pending_commit()
+            .expect("pending commit")
+            .update_path_leaf_node()
+            .is_none(),
+        "an add-only commit must not carry a path"
+    );
+
+    let commit = MlsMessageIn::from(commit_out)
+        .into_protocol_message()
+        .unwrap();
+
+    // While the pending commit is held, the echo matches it and surfaces as
+    // `OwnPendingCommit`.
+    let processed = alice_group
+        .process_message(alice_provider, commit.clone())
+        .expect("error while processing own pending add-only commit");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+
+    // Alice discards the pending commit without advancing the epoch. The echo
+    // no longer matches a pending commit, but a Commit without an UpdatePath
+    // can be staged from public information, so it is applied rather than
+    // rejected.
+    alice_group
+        .clear_pending_commit(alice_provider.storage())
+        .expect("error clearing pending commit");
+    assert!(alice_group.pending_commit().is_none());
+
+    let processed = alice_group
+        .process_message(alice_provider, commit)
+        .expect("own commit without an UpdatePath without pending must be staged");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged) => *staged,
+        other => panic!("expected staged commit, got {other:?}"),
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, staged)
+        .expect("error merging staged commit without an UpdatePath");
+
+    // The commit applied: Bob is now a member.
+    assert_eq!(alice_group.members().count(), 2);
 }
 
 #[openmls_test::openmls_test]

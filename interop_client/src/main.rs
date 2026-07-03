@@ -672,6 +672,7 @@ impl MlsClient for MlsClientImpl {
             ProcessedMessageContent::ProposalMessage(_) => unreachable!(),
             ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
             ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
+            ProcessedMessageContent::OwnPendingCommit => unreachable!(),
         };
 
         let response = UnprotectResponse {
@@ -973,6 +974,7 @@ impl MlsClient for MlsClientImpl {
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
+                ProcessedMessageContent::OwnPendingCommit => unreachable!(),
             }
         }
 
@@ -1157,6 +1159,7 @@ impl MlsClient for MlsClientImpl {
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
+                ProcessedMessageContent::OwnPendingCommit => unreachable!(),
             }
         }
 
@@ -1189,6 +1192,7 @@ impl MlsClient for MlsClientImpl {
                     .merge_staged_commit(&interop_group.crypto_provider, *staged_commit)
                     .map_err(into_status)?;
             }
+            ProcessedMessageContent::OwnPendingCommit => unreachable!(),
         }
 
         trace!(epoch=?group.epoch(), "New group state.");

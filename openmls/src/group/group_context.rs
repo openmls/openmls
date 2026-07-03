@@ -4,9 +4,9 @@ use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
 
 use super::*;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::component::{ComponentId, ComponentType, ComponentsList};
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::extensions::AppDataDictionary;
 use crate::{
     error::LibraryError,
@@ -86,7 +86,7 @@ impl GroupContext {
         }
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn app_data_dict(&self) -> Option<&AppDataDictionary> {
         self.extensions
             .app_data_dictionary()
@@ -100,7 +100,7 @@ impl GroupContext {
     /// inspected here, an empty `ComponentsList` is still "present").
     /// Per the Safe AAD spec section 4.9, when this is `true` the
     /// `authenticated_data` field always starts with the `SafeAAD` struct.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_aad_required(&self) -> bool {
         let safe_aad_id = ComponentId::from(ComponentType::SafeAad);
         self.app_data_dict()
@@ -114,7 +114,7 @@ impl GroupContext {
     /// `app_data_dictionary` GroupContext extension, `Ok(Some(list))` when it
     /// is present and parses cleanly (the list may be empty), and an error
     /// when the component value fails to decode as a `ComponentsList`.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_aad_required_components(
         &self,
     ) -> Result<Option<Vec<ComponentId>>, crate::framing::SafeAadError> {

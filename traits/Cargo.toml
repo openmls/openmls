@@ -3,6 +3,7 @@ name = "openmls_traits"
 version = "0.5.0"
 authors = ["OpenMLS Authors"]
 edition = "2021"
+rust-version.workspace = true
 description = "Traits used by OpenMLS"
 license = "MIT"
 documentation = "https://docs.rs/openmls_traits"
@@ -15,9 +16,9 @@ path = "src/traits.rs"
 [features]
 default = []
 test-utils = []
-extensions-draft-08 = []
+extensions-draft = []
 draft-ietf-mls-pq-ciphersuites = []
-virtual-clients-draft = ["extensions-draft-08"]
+virtual-clients-draft = ["extensions-draft"]
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }

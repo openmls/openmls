@@ -3,6 +3,7 @@ name = "openmls_sqlite_storage"
 authors = ["OpenMLS Authors"]
 version = "0.2.0"
 edition = "2021"
+rust-version.workspace = true
 description = "A storage provider for OpenMLS based on SQlite based on the rusqlite crate."
 license = "MIT"
 documentation = "https://docs.rs/openmls_sqlite_storage"
@@ -19,11 +20,11 @@ refinery = { version = "0.9", features = ["rusqlite", "enums"] }
 serde_json = { version = "1.0" }
 
 [features]
-extensions-draft-08 = ["openmls_traits/extensions-draft-08"]
+extensions-draft = ["openmls_traits/extensions-draft"]
 draft-ietf-mls-pq-ciphersuites = [
     "openmls_traits/draft-ietf-mls-pq-ciphersuites",
 ]
 virtual-clients-draft = [
-    "extensions-draft-08",
+    "extensions-draft",
     "openmls_traits/virtual-clients-draft",
 ]

@@ -259,6 +259,10 @@ impl Group {
                     .merge_staged_commit(provider.as_mut(), *staged_commit)?;
                 Ok(vec![])
             }
+            openmls::framing::ProcessedMessageContent::OwnPendingCommit => {
+                self.mls_group.merge_pending_commit(provider.as_mut())?;
+                Ok(vec![])
+            }
         }
     }
 
