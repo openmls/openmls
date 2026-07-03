@@ -1309,7 +1309,7 @@ pub(crate) mod compat {
         }
     }
 
-    /// Compatibility version of [`MlsGroupState`] for openmls v0.7.0
+    /// Compatibility version of [`MlsGroupState`]
     #[derive(Serialize, Deserialize)]
     pub enum MlsGroupStateCompat {
         /// There is currently a pending Commit that hasn't been merged yet.
