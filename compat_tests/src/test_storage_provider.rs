@@ -694,7 +694,7 @@ macro_rules! impl_storage_provider_basic {
     };
 }
 
-macro_rules! impl_storage_provider_feature_flagged {
+macro_rules! impl_storage_provider_extensions_draft {
     () => {
         /// Write the ApplicationExportTree for the group with the given id.
         #[cfg(feature = "extensions-draft")]
@@ -708,56 +708,6 @@ macro_rules! impl_storage_provider_feature_flagged {
         ) -> Result<(), Self::Error> {
             unimplemented!()
         }
-
-        /// Write the virtual clients per-emulation-epoch state (the AEAD key
-        /// plus the registering client's emulation-group leaf index) for the
-        /// given epoch.
-        #[cfg(feature = "virtual-clients-draft")]
-        fn write_vc_emulation_epoch_state<
-            EpochId: traits::VcEpochId<CURRENT_VERSION>,
-            VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
-        >(
-            &self,
-            epoch_id: &EpochId,
-            vc_emulation_epoch_state: &VcEmulationEpochState,
-        ) -> Result<(), Self::Error> {
-            unimplemented!()
-        }
-
-        /// Write the virtual clients PPRF for the given epoch.
-        #[cfg(feature = "virtual-clients-draft")]
-        fn write_vc_pprf<
-            EpochId: traits::VcEpochId<CURRENT_VERSION>,
-            VcPprf: traits::VcPprf<CURRENT_VERSION>,
-        >(
-            &self,
-            epoch_id: &EpochId,
-            vc_pprf: &VcPprf,
-        ) -> Result<(), Self::Error> {
-            unimplemented!()
-        }
-
-        /// Store the record binding each recent epoch of a higher-level group to
-        /// the emulation-group epoch whose virtual-client LeafNode was active at
-        /// that epoch. Used by the reuse-guard derivation path to look up the
-        /// per-message `ReuseGuardSecret` for the epoch a message was sent in.
-        ///
-        /// The record is updated on every commit merged on the higher-level
-        /// group and prunes its own entries in lockstep with the group's
-        /// message-secrets retention. A subsequent write replaces any previously
-        /// stored record.
-        #[cfg(feature = "virtual-clients-draft")]
-        fn write_vc_emulation_bindings<
-            GroupId: traits::GroupId<CURRENT_VERSION>,
-            VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
-        >(
-            &self,
-            group_id: &GroupId,
-            bindings: &VcEmulationBindings,
-        ) -> Result<(), Self::Error> {
-            unimplemented!()
-        }
-
         #[cfg(feature = "extensions-draft")]
         /// Get the application export tree for the group with the given id.
         fn application_export_tree<
@@ -767,46 +717,6 @@ macro_rules! impl_storage_provider_feature_flagged {
             &self,
             group_id: &GroupId,
         ) -> Result<Option<ApplicationExportTree>, Self::Error> {
-            unimplemented!()
-        }
-
-        #[cfg(feature = "virtual-clients-draft")]
-        /// Get the virtual clients per-emulation-epoch state for the given
-        /// epoch (the AEAD key plus the registering client's
-        /// emulation-group leaf index).
-        fn vc_emulation_epoch_state<
-            EpochId: traits::VcEpochId<CURRENT_VERSION>,
-            VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
-        >(
-            &self,
-            epoch_id: &EpochId,
-        ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
-            unimplemented!()
-        }
-
-        #[cfg(feature = "virtual-clients-draft")]
-        /// Get the virtual clients PPRF for the given epoch.
-        fn vc_pprf<
-            EpochId: traits::VcEpochId<CURRENT_VERSION>,
-            VcPprf: traits::VcPprf<CURRENT_VERSION>,
-        >(
-            &self,
-            epoch_id: &EpochId,
-        ) -> Result<Option<VcPprf>, Self::Error> {
-            unimplemented!()
-        }
-
-        /// Load the per-epoch emulation bindings of a higher-level group (see
-        /// [`Self::write_vc_emulation_bindings`]). Returns `None` if no VC
-        /// commit has been merged on this higher-level group.
-        #[cfg(feature = "virtual-clients-draft")]
-        fn vc_emulation_bindings<
-            GroupId: traits::GroupId<CURRENT_VERSION>,
-            VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
-        >(
-            &self,
-            group_id: &GroupId,
-        ) -> Result<Option<VcEmulationBindings>, Self::Error> {
             unimplemented!()
         }
 
@@ -821,41 +731,140 @@ macro_rules! impl_storage_provider_feature_flagged {
         ) -> Result<(), Self::Error> {
             unimplemented!()
         }
+    };
+}
 
-        /// Delete the emulation-epoch state stored under the given epoch id.
-        ///
-        /// Never called by OpenMLS: the state is keyed by emulation epoch and
-        /// may be referenced by several higher-level groups, so the
-        /// application must call this once the emulation epoch is no longer
-        /// referenced by any group.
+macro_rules! impl_storage_provider_virtual_clients_draft {
+    () => {
         #[cfg(feature = "virtual-clients-draft")]
-        fn delete_vc_emulation_epoch_state<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+        fn vc_emulation_epoch_state<
+            EpochId: traits::VcEpochId<CURRENT_VERSION>,
+            VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
+        >(
             &self,
             epoch_id: &EpochId,
+        ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn vc_emulation_bindings<
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
+        >(
+            &self,
+            group_id: &GroupId,
+        ) -> Result<Option<VcEmulationBindings>, Self::Error> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn vc_operation_tree<
+            EpochId: traits::VcEpochId<CURRENT_VERSION>,
+            VcOperationTree: traits::VcOperationTree<CURRENT_VERSION>,
+        >(
+            &self,
+            epoch_id: &EpochId,
+        ) -> Result<Option<VcOperationTree>, Self::Error> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn retained_key_package_material<
+            KeyPackageRef: traits::HashReference<CURRENT_VERSION>,
+            RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<CURRENT_VERSION>,
+        >(
+            &self,
+            hash_ref: &KeyPackageRef,
+        ) -> Result<Option<RetainedKeyPackageMaterial>, Self::Error> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn has_retained_key_package_material_for_epoch<
+            EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        >(
+            &self,
+            epoch_id: &EpochId,
+        ) -> Result<bool, Self::Error> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn write_vc_emulation_epoch_state<
+            EpochId: traits::VcEpochId<CURRENT_VERSION>,
+            VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
+        >(
+            &self,
+            epoch_id: &EpochId,
+            vc_emulation_epoch_state: &VcEmulationEpochState,
         ) -> Result<(), Self::Error> {
             unimplemented!()
         }
 
-        /// Delete the virtual-clients PPRF stored under the given epoch id.
-        ///
-        /// Never called by OpenMLS: like the emulation-epoch state, the PPRF
-        /// is keyed by emulation epoch and may be referenced by several
-        /// higher-level groups, so the application must call this once the
-        /// emulation epoch is no longer referenced by any group.
         #[cfg(feature = "virtual-clients-draft")]
-        fn delete_vc_pprf<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+        fn write_vc_emulation_bindings<
+            GroupId: traits::GroupId<CURRENT_VERSION>,
+            VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
+        >(
             &self,
-            epoch_id: &EpochId,
+            group_id: &GroupId,
+            bindings: &VcEmulationBindings,
         ) -> Result<(), Self::Error> {
             unimplemented!()
         }
 
-        /// Remove the per-epoch emulation bindings of the given group. Called
-        /// when the group is being deleted.
+        #[cfg(feature = "virtual-clients-draft")]
+        fn write_vc_operation_tree<
+            EpochId: traits::VcEpochId<CURRENT_VERSION>,
+            VcOperationTree: traits::VcOperationTree<CURRENT_VERSION>,
+        >(
+            &self,
+            epoch_id: &EpochId,
+            vc_operation_tree: &VcOperationTree,
+        ) -> Result<(), Self::Error> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn write_retained_key_package_material_batch<
+            EpochId: traits::VcEpochId<CURRENT_VERSION>,
+            VcOperationTree: traits::VcOperationTree<CURRENT_VERSION>,
+            KeyPackageRef: traits::HashReference<CURRENT_VERSION>,
+            RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<CURRENT_VERSION>,
+        >(
+            &self,
+            epoch_id: &EpochId,
+            operation_tree: &VcOperationTree,
+            materials: &[(KeyPackageRef, RetainedKeyPackageMaterial)],
+        ) -> Result<(), Self::Error> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn delete_vc_emulation_state_if_unreferenced<
+            EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        >(
+            &self,
+            epoch_id: &EpochId,
+        ) -> Result<bool, Self::Error> {
+            unimplemented!()
+        }
+
         #[cfg(feature = "virtual-clients-draft")]
         fn delete_vc_emulation_bindings<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
             group_id: &GroupId,
+        ) -> Result<(), Self::Error> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn delete_retained_key_package_material<
+            KeyPackageRef: traits::HashReference<CURRENT_VERSION>,
+        >(
+            &self,
+            hash_ref: &KeyPackageRef,
         ) -> Result<(), Self::Error> {
             unimplemented!()
         }
@@ -870,7 +879,8 @@ mod current {
 
     impl StorageProvider<CURRENT_VERSION> for TestStorageProvider {
         impl_storage_provider_basic!();
-        impl_storage_provider_feature_flagged!();
+        impl_storage_provider_extensions_draft!();
+        impl_storage_provider_virtual_clients_draft!();
     }
 
     impl Storage {
