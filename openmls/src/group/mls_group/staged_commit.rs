@@ -757,26 +757,6 @@ pub(crate) enum StagedCommitState {
     GroupMember(Box<MemberStagedCommitState>),
 }
 
-#[derive(Serialize, Deserialize)]
-#[cfg(feature = "storage_migration")]
-pub(crate) enum StagedCommitStateCompat {
-    PublicState(Box<PublicStagedCommitState>),
-    /// The group member variant of the staged commit state.
-    GroupMember(Box<MemberStagedCommitStateCompat>),
-}
-
-#[cfg(feature = "storage_migration")]
-impl From<StagedCommitStateCompat> for StagedCommitState {
-    fn from(compat: StagedCommitStateCompat) -> Self {
-        match compat {
-            StagedCommitStateCompat::PublicState(state) => Self::PublicState(state),
-            StagedCommitStateCompat::GroupMember(state_compat) => {
-                Self::GroupMember(Box::new((*state_compat).into()))
-            }
-        }
-    }
-}
-
 /// Contains the changes from a commit to the group state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
@@ -790,27 +770,6 @@ pub struct StagedCommit {
     #[cfg(feature = "virtual-clients-draft")]
     #[serde(default)]
     pub(super) vc_emulation_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[cfg(feature = "storage_migration")]
-pub struct StagedCommitCompat {
-    /// A queue containing the proposals associated with the commit.
-    pub staged_proposal_queue: ProposalQueue,
-    /// The staged commit state.
-    pub(super) state: StagedCommitStateCompat,
-}
-
-#[cfg(feature = "storage_migration")]
-impl From<StagedCommitCompat> for StagedCommit {
-    fn from(compat: StagedCommitCompat) -> Self {
-        Self {
-            staged_proposal_queue: compat.staged_proposal_queue,
-            state: compat.state.into(),
-            #[cfg(feature = "virtual-clients-draft")]
-            vc_emulation_epoch_id: None,
-        }
-    }
 }
 
 impl StagedCommit {
@@ -1060,35 +1019,6 @@ impl StagedCommit {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-#[cfg(feature = "storage_migration")]
-pub(crate) struct MemberStagedCommitStateCompat {
-    group_epoch_secrets: GroupEpochSecrets,
-    message_secrets: crate::schedule::message_secrets::MessageSecretsCompat,
-    staged_diff: StagedPublicGroupDiff,
-    new_keypairs: Vec<EncryptionKeyPair>,
-    new_leaf_keypair_option: Option<EncryptionKeyPair>,
-    update_path_leaf_node: Option<LeafNode>,
-}
-
-#[cfg(feature = "storage_migration")]
-impl From<MemberStagedCommitStateCompat> for MemberStagedCommitState {
-    fn from(compat: MemberStagedCommitStateCompat) -> Self {
-        Self {
-            group_epoch_secrets: compat.group_epoch_secrets,
-            message_secrets: compat.message_secrets.into(),
-            staged_diff: compat.staged_diff,
-            new_keypairs: compat.new_keypairs,
-            new_leaf_keypair_option: compat.new_leaf_keypair_option,
-            update_path_leaf_node: compat.update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-08")]
-            application_export_tree: None,
-            #[cfg(feature = "virtual-clients-draft")]
-            new_own_leaf_index: None,
-        }
-    }
-}
-
 /// This struct is used internally by [`StagedCommit`] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Clone, PartialEq))]
@@ -1142,5 +1072,75 @@ impl MemberStagedCommitState {
     /// Get the staged [`GroupContext`].
     pub(crate) fn group_context(&self) -> &GroupContext {
         self.staged_diff.group_context()
+    }
+}
+
+#[cfg(feature = "storage_migration")]
+pub(crate) mod compat {
+
+    use super::*;
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) enum StagedCommitStateCompat {
+        PublicState(Box<PublicStagedCommitState>),
+        /// The group member variant of the staged commit state.
+        GroupMember(Box<MemberStagedCommitStateCompat>),
+    }
+
+    impl From<StagedCommitStateCompat> for StagedCommitState {
+        fn from(compat: StagedCommitStateCompat) -> Self {
+            match compat {
+                StagedCommitStateCompat::PublicState(state) => Self::PublicState(state),
+                StagedCommitStateCompat::GroupMember(state_compat) => {
+                    Self::GroupMember(Box::new((*state_compat).into()))
+                }
+            }
+        }
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub struct StagedCommitCompat {
+        /// A queue containing the proposals associated with the commit.
+        pub staged_proposal_queue: ProposalQueue,
+        /// The staged commit state.
+        pub(super) state: StagedCommitStateCompat,
+    }
+
+    impl From<StagedCommitCompat> for StagedCommit {
+        fn from(compat: StagedCommitCompat) -> Self {
+            Self {
+                staged_proposal_queue: compat.staged_proposal_queue,
+                state: compat.state.into(),
+                #[cfg(feature = "virtual-clients-draft")]
+                vc_emulation_epoch_id: None,
+            }
+        }
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct MemberStagedCommitStateCompat {
+        group_epoch_secrets: GroupEpochSecrets,
+        message_secrets: crate::schedule::message_secrets::compat::MessageSecretsCompat,
+        staged_diff: StagedPublicGroupDiff,
+        new_keypairs: Vec<EncryptionKeyPair>,
+        new_leaf_keypair_option: Option<EncryptionKeyPair>,
+        update_path_leaf_node: Option<LeafNode>,
+    }
+
+    impl From<MemberStagedCommitStateCompat> for MemberStagedCommitState {
+        fn from(compat: MemberStagedCommitStateCompat) -> Self {
+            Self {
+                group_epoch_secrets: compat.group_epoch_secrets,
+                message_secrets: compat.message_secrets.into(),
+                staged_diff: compat.staged_diff,
+                new_keypairs: compat.new_keypairs,
+                new_leaf_keypair_option: compat.new_leaf_keypair_option,
+                update_path_leaf_node: compat.update_path_leaf_node,
+                #[cfg(feature = "extensions-draft-08")]
+                application_export_tree: None,
+                #[cfg(feature = "virtual-clients-draft")]
+                new_own_leaf_index: None,
+            }
+        }
     }
 }

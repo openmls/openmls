@@ -50,9 +50,6 @@ use openmls_traits::{
 #[cfg(feature = "extensions-draft-08")]
 use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
 
-#[cfg(feature = "storage_migration")]
-use crate::group::mls_group::staged_commit::StagedCommitCompat;
-
 // Private
 mod application;
 mod exporting;
@@ -130,25 +127,6 @@ pub enum PendingCommitState {
 }
 
 /// Compatibility version of [`PendingGroupState`] for openmls v0.7.0
-#[cfg(feature = "storage_migration")]
-#[derive(Serialize, Deserialize)]
-pub enum PendingCommitStateCompat {
-    /// Commit from a group member
-    Member(StagedCommitCompat),
-    /// Commit from an external joiner
-    External(StagedCommitCompat),
-}
-
-#[cfg(feature = "storage_migration")]
-impl From<PendingCommitStateCompat> for PendingCommitState {
-    fn from(compat: PendingCommitStateCompat) -> Self {
-        match compat {
-            PendingCommitStateCompat::Member(member) => Self::Member(member.into()),
-            PendingCommitStateCompat::External(external) => Self::External(external.into()),
-        }
-    }
-}
-
 impl PendingCommitState {
     /// Returns a reference to the [`StagedCommit`] contained in the
     /// [`PendingCommitState`] enum.
@@ -222,31 +200,6 @@ pub enum MlsGroupState {
     Operational,
     /// The group is inactive because the member has been removed.
     Inactive,
-}
-
-/// Compatibility version of [`MlsGroupState`] for openmls v0.7.0
-#[cfg(feature = "storage_migration")]
-#[derive(Serialize, Deserialize)]
-pub enum MlsGroupStateCompat {
-    /// There is currently a pending Commit that hasn't been merged yet.
-    PendingCommit(Box<PendingCommitStateCompat>),
-    /// The group state is in an operational state, where new messages and Commits can be created.
-    Operational,
-    /// The group is inactive because the member has been removed.
-    Inactive,
-}
-
-#[cfg(feature = "storage_migration")]
-impl From<MlsGroupStateCompat> for MlsGroupState {
-    fn from(compat: MlsGroupStateCompat) -> Self {
-        match compat {
-            MlsGroupStateCompat::PendingCommit(commit) => {
-                Self::PendingCommit(Box::new((*commit).into()))
-            }
-            MlsGroupStateCompat::Operational => Self::Operational,
-            MlsGroupStateCompat::Inactive => Self::Inactive,
-        }
-    }
 }
 
 /// A `MlsGroup` represents an MLS group with a high-level API. The API exposes
@@ -1303,6 +1256,53 @@ impl WelcomeKeyMaterial {
             WelcomeKeyMaterial::KeyPackage(bundle) => bundle.encryption_key_pair(),
             #[cfg(feature = "virtual-clients-draft")]
             WelcomeKeyMaterial::VirtualClient(material) => material.encryption_keypair.clone(),
+        }
+    }
+}
+
+#[cfg(feature = "storage_migration")]
+pub(crate) mod compat {
+    use super::*;
+
+    use crate::group::mls_group::staged_commit::compat::StagedCommitCompat;
+
+    #[derive(Serialize, Deserialize)]
+    pub enum PendingCommitStateCompat {
+        /// Commit from a group member
+        Member(StagedCommitCompat),
+        /// Commit from an external joiner
+        External(StagedCommitCompat),
+    }
+
+    impl From<PendingCommitStateCompat> for PendingCommitState {
+        fn from(compat: PendingCommitStateCompat) -> Self {
+            match compat {
+                PendingCommitStateCompat::Member(member) => Self::Member(member.into()),
+                PendingCommitStateCompat::External(external) => Self::External(external.into()),
+            }
+        }
+    }
+
+    /// Compatibility version of [`MlsGroupState`] for openmls v0.7.0
+    #[derive(Serialize, Deserialize)]
+    pub enum MlsGroupStateCompat {
+        /// There is currently a pending Commit that hasn't been merged yet.
+        PendingCommit(Box<PendingCommitStateCompat>),
+        /// The group state is in an operational state, where new messages and Commits can be created.
+        Operational,
+        /// The group is inactive because the member has been removed.
+        Inactive,
+    }
+
+    impl From<MlsGroupStateCompat> for MlsGroupState {
+        fn from(compat: MlsGroupStateCompat) -> Self {
+            match compat {
+                MlsGroupStateCompat::PendingCommit(commit) => {
+                    Self::PendingCommit(Box::new((*commit).into()))
+                }
+                MlsGroupStateCompat::Operational => Self::Operational,
+                MlsGroupStateCompat::Inactive => Self::Inactive,
+            }
         }
     }
 }

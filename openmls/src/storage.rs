@@ -31,7 +31,7 @@ use crate::{
 };
 
 #[cfg(feature = "storage_migration")]
-use crate::group::{past_secrets::MessageSecretsStoreCompat, MlsGroupStateCompat};
+use crate::group::{compat::MlsGroupStateCompat, past_secrets::compat::MessageSecretsStoreCompat};
 
 #[cfg(feature = "storage_migration")]
 pub mod migration;

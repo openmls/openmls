@@ -24,31 +24,6 @@ pub(crate) struct MessageSecrets {
     added_at: Option<SystemTime>,
 }
 
-/// Combined message secrets that need to be stored for later decryption/verification
-#[derive(Serialize, Deserialize)]
-#[cfg(feature = "storage_migration")]
-pub(crate) struct MessageSecretsCompat {
-    sender_data_secret: SenderDataSecret,
-    membership_key: MembershipKey,
-    confirmation_key: ConfirmationKey,
-    serialized_context: Vec<u8>,
-    secret_tree: SecretTree,
-}
-
-#[cfg(feature = "storage_migration")]
-impl From<MessageSecretsCompat> for MessageSecrets {
-    fn from(compat: MessageSecretsCompat) -> Self {
-        Self {
-            sender_data_secret: compat.sender_data_secret,
-            membership_key: compat.membership_key,
-            confirmation_key: compat.confirmation_key,
-            serialized_context: compat.serialized_context,
-            secret_tree: compat.secret_tree,
-            added_at: None,
-        }
-    }
-}
-
 #[cfg(not(feature = "crypto-debug"))]
 impl core::fmt::Debug for MessageSecrets {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -181,5 +156,33 @@ impl PartialEq for MessageSecrets {
             && self.membership_key == other.membership_key
             && self.confirmation_key == other.confirmation_key
             && self.secret_tree == other.secret_tree
+    }
+}
+
+#[cfg(feature = "storage_migration")]
+pub(crate) mod compat {
+    use super::*;
+
+    /// Combined message secrets that need to be stored for later decryption/verification
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct MessageSecretsCompat {
+        sender_data_secret: SenderDataSecret,
+        membership_key: MembershipKey,
+        confirmation_key: ConfirmationKey,
+        serialized_context: Vec<u8>,
+        secret_tree: SecretTree,
+    }
+
+    impl From<MessageSecretsCompat> for MessageSecrets {
+        fn from(compat: MessageSecretsCompat) -> Self {
+            Self {
+                sender_data_secret: compat.sender_data_secret,
+                membership_key: compat.membership_key,
+                confirmation_key: compat.confirmation_key,
+                serialized_context: compat.serialized_context,
+                secret_tree: compat.secret_tree,
+                added_at: None,
+            }
+        }
     }
 }

@@ -18,7 +18,7 @@ pub fn migrate_group_state<S: StorageMigrationHelper<CURRENT_VERSION, CURRENT_VE
 > {
     S::migrate_group_state::<
         crate::group::MlsGroupState,
-        crate::group::MlsGroupStateCompat,
+        crate::group::compat::MlsGroupStateCompat,
         crate::group::GroupId,
     >(storage)
 }
@@ -31,7 +31,7 @@ pub struct MessageSecretsStore(crate::group::past_secrets::MessageSecretsStore);
 /// Public wrapper for MessageSecretsStoreCompat
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
-pub struct MessageSecretsStoreCompat(crate::group::past_secrets::MessageSecretsStoreCompat);
+pub struct MessageSecretsStoreCompat(crate::group::past_secrets::compat::MessageSecretsStoreCompat);
 
 impl Entity<CURRENT_VERSION> for MessageSecretsStore {}
 impl traits::MessageSecrets<CURRENT_VERSION> for MessageSecretsStore {}

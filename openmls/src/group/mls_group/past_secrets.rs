@@ -7,9 +7,6 @@ use web_time::SystemTime;
 
 use crate::schedule::message_secrets::MessageSecrets;
 
-#[cfg(feature = "storage_migration")]
-use crate::schedule::message_secrets::MessageSecretsCompat;
-
 use super::*;
 
 impl EpochTree {
@@ -27,48 +24,6 @@ pub(crate) struct EpochTree {
     epoch: u64,
     message_secrets: MessageSecrets,
     leaves: Vec<Member>,
-}
-
-#[cfg(feature = "storage_migration")]
-#[derive(Serialize, Deserialize)]
-pub(crate) struct EpochTreeCompat {
-    epoch: u64,
-    message_secrets: MessageSecretsCompat,
-    leaves: Vec<Member>,
-}
-
-#[cfg(feature = "storage_migration")]
-impl From<EpochTreeCompat> for EpochTree {
-    fn from(compat: EpochTreeCompat) -> Self {
-        Self {
-            epoch: compat.epoch,
-            message_secrets: compat.message_secrets.into(),
-            leaves: compat.leaves,
-        }
-    }
-}
-
-#[cfg(feature = "storage_migration")]
-#[derive(Serialize, Deserialize)]
-pub(crate) struct MessageSecretsStoreCompat {
-    pub(crate) max_epochs: usize,
-    past_epoch_trees: VecDeque<EpochTreeCompat>,
-    message_secrets: MessageSecretsCompat,
-}
-
-#[cfg(feature = "storage_migration")]
-impl From<MessageSecretsStoreCompat> for MessageSecretsStore {
-    fn from(compat: MessageSecretsStoreCompat) -> Self {
-        Self {
-            max_epochs: compat.max_epochs,
-            past_epoch_trees: compat
-                .past_epoch_trees
-                .into_iter()
-                .map(EpochTree::from)
-                .collect(),
-            message_secrets: compat.message_secrets.into(),
-        }
-    }
 }
 
 /// Can store message secrets for up to `max_epochs`. The trees are added with [`self::add()`] and can be queried
@@ -383,5 +338,49 @@ impl MessageSecretsStore {
     /// Helper function for testing, to get the number of past epoch trees
     pub(crate) fn num_past_epoch_trees(&self) -> usize {
         self.past_epoch_trees.len()
+    }
+}
+
+#[cfg(feature = "storage_migration")]
+pub(crate) mod compat {
+    use super::*;
+    use crate::schedule::message_secrets::compat::MessageSecretsCompat;
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct EpochTreeCompat {
+        epoch: u64,
+        message_secrets: MessageSecretsCompat,
+        leaves: Vec<Member>,
+    }
+
+    impl From<EpochTreeCompat> for EpochTree {
+        fn from(compat: EpochTreeCompat) -> Self {
+            Self {
+                epoch: compat.epoch,
+                message_secrets: compat.message_secrets.into(),
+                leaves: compat.leaves,
+            }
+        }
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct MessageSecretsStoreCompat {
+        pub(crate) max_epochs: usize,
+        past_epoch_trees: VecDeque<EpochTreeCompat>,
+        message_secrets: MessageSecretsCompat,
+    }
+
+    impl From<MessageSecretsStoreCompat> for MessageSecretsStore {
+        fn from(compat: MessageSecretsStoreCompat) -> Self {
+            Self {
+                max_epochs: compat.max_epochs,
+                past_epoch_trees: compat
+                    .past_epoch_trees
+                    .into_iter()
+                    .map(EpochTree::from)
+                    .collect(),
+                message_secrets: compat.message_secrets.into(),
+            }
+        }
     }
 }
