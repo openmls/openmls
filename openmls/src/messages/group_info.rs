@@ -123,6 +123,11 @@ impl VerifiableGroupInfo {
     pub fn epoch(&self) -> GroupEpoch {
         self.payload.group_context.epoch()
     }
+
+    /// Get (unverified) group context of the verifiable group info.
+    pub fn group_context(&self) -> &GroupContext {
+        &self.payload.group_context
+    }
 }
 
 #[cfg(test)]
