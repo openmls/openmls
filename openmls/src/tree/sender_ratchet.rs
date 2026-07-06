@@ -12,7 +12,6 @@ use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
 
 use crate::ciphersuite::{AeadNonce, *};
-#[cfg(feature = "virtual-clients-draft")]
 use crate::tree::dual_use_ratchet::DualUseRatchet;
 use crate::tree::secret_tree::*;
 
@@ -77,13 +76,66 @@ pub(crate) type RatchetKeyMaterial = (AeadKey, AeadNonce);
 /// [`DualUseRatchet`](super::dual_use_ratchet::DualUseRatchet)s, which can
 /// output key material for both encryption and decryption.
 #[derive(Serialize, Deserialize)]
+#[serde(from = "PersistedSenderRatchet")]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 #[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
 pub(crate) enum SenderRatchet {
+    #[cfg_attr(
+        all(feature = "virtual-clients-draft", not(test)),
+        expect(
+            dead_code,
+            reason = "with the feature enabled own ratchets are always DualUse and \
+                      persisted EncryptionRatchets are normalized to DualUse, so this \
+                      variant is never constructed outside of tests; it is retained \
+                      for the shared serialized format and feature-off builds"
+        )
+    )]
     EncryptionRatchet(RatchetSecret),
     DecryptionRatchet(DecryptionRatchet),
     #[cfg(feature = "virtual-clients-draft")]
     DualUse(DualUseRatchet),
+}
+
+/// Mirror of [`SenderRatchet`] used only for deserialization. All variants are
+/// always present so state persisted under either setting of the
+/// `virtual-clients-draft` feature can be loaded. The conversion into
+/// [`SenderRatchet`] normalizes own sender ratchets to the representation
+/// matching the current feature setting. Only the own leaf's ratchet can be
+/// `EncryptionRatchet` or `DualUse`; other members' ratchets are always
+/// `DecryptionRatchet`, so the conversion never touches them.
+#[derive(Deserialize)]
+enum PersistedSenderRatchet {
+    EncryptionRatchet(RatchetSecret),
+    DecryptionRatchet(DecryptionRatchet),
+    DualUse(DualUseRatchet),
+}
+
+impl From<PersistedSenderRatchet> for SenderRatchet {
+    fn from(persisted: PersistedSenderRatchet) -> Self {
+        match persisted {
+            #[cfg(feature = "virtual-clients-draft")]
+            PersistedSenderRatchet::EncryptionRatchet(ratchet_secret) => {
+                Self::DualUse(ratchet_secret.into())
+            }
+            #[cfg(not(feature = "virtual-clients-draft"))]
+            PersistedSenderRatchet::EncryptionRatchet(ratchet_secret) => {
+                Self::EncryptionRatchet(ratchet_secret)
+            }
+            PersistedSenderRatchet::DecryptionRatchet(dec_ratchet) => {
+                Self::DecryptionRatchet(dec_ratchet)
+            }
+            #[cfg(feature = "virtual-clients-draft")]
+            PersistedSenderRatchet::DualUse(dual_use_ratchet) => Self::DualUse(dual_use_ratchet),
+            #[cfg(not(feature = "virtual-clients-draft"))]
+            PersistedSenderRatchet::DualUse(dual_use_ratchet) => {
+                log::warn!(
+                    "loaded a dual-use sender ratchet without the virtual-clients-draft \
+                     feature; discarding its retained past secrets"
+                );
+                Self::EncryptionRatchet(dual_use_ratchet.ratchet_head())
+            }
+        }
+    }
 }
 
 impl SenderRatchet {

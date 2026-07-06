@@ -432,3 +432,122 @@ fn dual_use_local_sends_do_not_advance_receive_window() {
         )
         .expect("Local sends should not prune the receive window.");
 }
+
+// === Cross-feature persistence ===
+//
+// A `SecretTree` persisted by a build with a different setting of the
+// `virtual-clients-draft` feature must still load. The own leaf's sender
+// ratchet is a `DualUse` when the feature is on and an `EncryptionRatchet` when
+// it is off, and the two serialize under different variant tags. On
+// deserialization the ratchet is normalized to the representation matching the
+// current feature setting. The fixtures below are the externally tagged JSON
+// (as produced by the memory storage provider's serde_json backend) for each
+// variant; the tests assert that loading either one yields the right in-memory
+// variant under both feature settings.
+//
+// The fixtures were produced by serializing freshly built ratchets; the
+// `*_round_trips_*` tests below guard that this on-wire shape stays stable.
+
+// A `DualUse` ratchet at head generation 4 whose past-secrets window holds one
+// `AwaitingConfirmation` entry (generation 0) and three `RetainedForDecryption`
+// entries (generations 1, 2, 3).
+const DUAL_USE_FIXTURE: &str = r#"{"DualUse":{"past_secrets":[[0,{"AwaitingConfirmation":[{"aead_mode":"Aes128Gcm","value":{"vec":[253,163,208,156,211,4,29,242,6,31,159,140,240,147,32,181]}},[66,147,247,188,34,115,67,54,156,29,45,85]]}],[1,{"RetainedForDecryption":{"Available":[{"aead_mode":"Aes128Gcm","value":{"vec":[78,248,98,88,0,200,245,93,100,15,35,11,191,186,188,111]}},[185,5,151,21,100,129,2,187,13,218,40,157]]}}],[2,{"RetainedForDecryption":{"Available":[{"aead_mode":"Aes128Gcm","value":{"vec":[76,176,77,172,42,35,216,131,186,71,84,243,34,1,146,15]}},[165,247,166,187,73,173,238,205,123,104,91,183]]}}],[3,{"RetainedForDecryption":"Consumed"}]],"ratchet_head":{"secret":{"value":{"vec":[235,88,101,41,245,163,189,178,33,120,83,33,244,232,122,6,166,50,7,198,8,42,17,82,24,46,126,10,123,200,92,117]}},"generation":4}}}"#;
+
+// An `EncryptionRatchet` at generation 7.
+const ENCRYPTION_FIXTURE: &str = r#"{"EncryptionRatchet":{"secret":{"value":{"vec":[61,205,226,216,74,2,96,155,236,233,72,2,173,193,202,67,186,68,75,62,126,162,196,233,243,232,73,177,2,216,66,143]}},"generation":7}}"#;
+
+// A persisted `DualUse` ratchet loads as `DualUse` (keeping its head generation
+// and its past secrets) when the feature is on, and is downgraded to an
+// `EncryptionRatchet` at the same head generation (dropping the past secrets)
+// when the feature is off.
+#[test]
+fn dual_use_fixture_normalizes_to_current_feature() {
+    let ratchet: SenderRatchet =
+        serde_json::from_str(DUAL_USE_FIXTURE).expect("fixture should deserialize");
+    assert_eq!(ratchet.generation(), 4);
+
+    #[cfg(feature = "virtual-clients-draft")]
+    {
+        let SenderRatchet::DualUse(dual) = &ratchet else {
+            panic!("expected the own ratchet to load as DualUse with the feature enabled");
+        };
+        assert_eq!(dual.generation(), 4);
+        assert_eq!(dual.past_secrets_len(), 4);
+    }
+    #[cfg(not(feature = "virtual-clients-draft"))]
+    {
+        let SenderRatchet::EncryptionRatchet(_) = &ratchet else {
+            panic!("expected the own ratchet to load as EncryptionRatchet without the feature");
+        };
+    }
+}
+
+// A persisted `EncryptionRatchet` loads unchanged when the feature is off, and
+// is upgraded to a `DualUse` (same generation, empty past-secrets window) when
+// the feature is on.
+#[test]
+fn encryption_fixture_normalizes_to_current_feature() {
+    let ratchet: SenderRatchet =
+        serde_json::from_str(ENCRYPTION_FIXTURE).expect("fixture should deserialize");
+    assert_eq!(ratchet.generation(), 7);
+
+    #[cfg(feature = "virtual-clients-draft")]
+    {
+        let SenderRatchet::DualUse(dual) = &ratchet else {
+            panic!("expected the own EncryptionRatchet to be upgraded to DualUse");
+        };
+        assert_eq!(dual.generation(), 7);
+        assert_eq!(dual.past_secrets_len(), 0);
+    }
+    #[cfg(not(feature = "virtual-clients-draft"))]
+    {
+        let SenderRatchet::EncryptionRatchet(_) = &ratchet else {
+            panic!("expected the own EncryptionRatchet to load unchanged");
+        };
+    }
+}
+
+// A freshly built `DualUse` ratchet serializes under the `DualUse` tag (the
+// on-wire shape the fixtures rely on) and round-trips back to an equal value.
+#[cfg(feature = "virtual-clients-draft")]
+#[openmls_test::openmls_test]
+fn dual_use_round_trips_and_keeps_variant_tag() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::default();
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut dual = DualUseRatchet::new(secret);
+    dual.secret_for_encryption(ciphersuite, provider.crypto())
+        .expect("Expected encryption secret.");
+    dual.secret_for_decryption(ciphersuite, provider.crypto(), 3, configuration)
+        .expect("Expected decryption secret.");
+
+    let ratchet = SenderRatchet::DualUse(dual);
+    let json = serde_json::to_string(&ratchet).expect("Expected serialization to succeed.");
+    assert!(json.starts_with(r#"{"DualUse":"#));
+
+    let restored: SenderRatchet =
+        serde_json::from_str(&json).expect("Expected deserialization to succeed.");
+    assert_eq!(ratchet, restored);
+}
+
+// An `EncryptionRatchet` serializes under the `EncryptionRatchet` tag. Without
+// the feature it also round-trips back to an equal value; with the feature it is
+// normalized to `DualUse` on load, which the fixture test above already covers.
+#[openmls_test::openmls_test]
+fn encryption_ratchet_keeps_variant_tag() {
+    let provider = &Provider::default();
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut ratchet_secret = RatchetSecret::initial_ratchet_secret(secret);
+    ratchet_secret.set_generation(7);
+
+    let ratchet = SenderRatchet::EncryptionRatchet(ratchet_secret);
+    let json = serde_json::to_string(&ratchet).expect("Expected serialization to succeed.");
+    assert!(json.starts_with(r#"{"EncryptionRatchet":"#));
+
+    #[cfg(not(feature = "virtual-clients-draft"))]
+    {
+        let restored: SenderRatchet =
+            serde_json::from_str(&json).expect("Expected deserialization to succeed.");
+        assert_eq!(ratchet, restored);
+    }
+}

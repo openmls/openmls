@@ -4,17 +4,22 @@
 //! emitted encryption secrets for forward secrecy.
 
 use std::collections::BTreeMap;
+#[cfg(feature = "virtual-clients-draft")]
 use std::mem;
 
+#[cfg(feature = "virtual-clients-draft")]
 use openmls_traits::crypto::OpenMlsCrypto;
+#[cfg(feature = "virtual-clients-draft")]
 use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "virtual-clients-draft")]
 use crate::ciphersuite::Secret;
+#[cfg(feature = "virtual-clients-draft")]
 use crate::tree::secret_tree::SecretTreeError;
-use crate::tree::sender_ratchet::{
-    Generation, RatchetKeyMaterial, RatchetSecret, SenderRatchetConfiguration,
-};
+#[cfg(feature = "virtual-clients-draft")]
+use crate::tree::sender_ratchet::SenderRatchetConfiguration;
+use crate::tree::sender_ratchet::{Generation, RatchetKeyMaterial, RatchetSecret};
 use crate::utils::vector_converter;
 
 /// [`SenderRatchet`](super::sender_ratchet::SenderRatchet) used for own
@@ -50,6 +55,7 @@ enum RetainedDecryptionSecret {
     Consumed,
 }
 
+#[cfg(feature = "virtual-clients-draft")]
 impl DualUsePastSecret {
     fn take_for_decryption(&mut self) -> Result<RatchetKeyMaterial, SecretTreeError> {
         match mem::replace(
@@ -71,16 +77,40 @@ impl DualUsePastSecret {
     }
 }
 
+/// Feature-off accessor used to normalize a persisted dual-use ratchet into an
+/// [`EncryptionRatchet`](super::sender_ratchet::SenderRatchet) when the
+/// `virtual-clients-draft` feature is disabled. Consumes the ratchet and
+/// returns its head, discarding any retained past secrets.
+#[cfg(not(feature = "virtual-clients-draft"))]
 impl DualUseRatchet {
-    pub(crate) fn new(secret: Secret) -> Self {
+    pub(super) fn ratchet_head(self) -> RatchetSecret {
+        self.ratchet_head
+    }
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl From<RatchetSecret> for DualUseRatchet {
+    fn from(ratchet_head: RatchetSecret) -> Self {
         Self {
             past_secrets: BTreeMap::new(),
-            ratchet_head: RatchetSecret::initial_ratchet_secret(secret),
+            ratchet_head,
         }
+    }
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl DualUseRatchet {
+    pub(crate) fn new(secret: Secret) -> Self {
+        RatchetSecret::initial_ratchet_secret(secret).into()
     }
 
     pub(crate) fn generation(&self) -> Generation {
         self.ratchet_head.generation()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn past_secrets_len(&self) -> usize {
+        self.past_secrets.len()
     }
 
     /// Discard the cached encryption secret for a previously emitted
