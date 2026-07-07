@@ -185,24 +185,27 @@
 <a href=#185 id=185 data-nosnippet>185</a><span class="kw">pub mod </span>key_packages;
 <a href=#186 id=186 data-nosnippet>186</a><span class="kw">pub mod </span>messages;
 <a href=#187 id=187 data-nosnippet>187</a><span class="kw">pub mod </span>schedule;
-<a href=#188 id=188 data-nosnippet>188</a><span class="kw">pub mod </span>treesync;
-<a href=#189 id=189 data-nosnippet>189</a><span class="kw">pub mod </span>versions;
-<a href=#190 id=190 data-nosnippet>190</a>
-<a href=#191 id=191 data-nosnippet>191</a><span class="comment">// implement storage traits
-<a href=#192 id=192 data-nosnippet>192</a>// public
-<a href=#193 id=193 data-nosnippet>193</a></span><span class="kw">pub mod </span>storage;
-<a href=#194 id=194 data-nosnippet>194</a>
-<a href=#195 id=195 data-nosnippet>195</a><span class="comment">// Private
-<a href=#196 id=196 data-nosnippet>196</a></span><span class="kw">mod </span>binary_tree;
-<a href=#197 id=197 data-nosnippet>197</a><span class="kw">mod </span>skip_validation;
-<a href=#198 id=198 data-nosnippet>198</a><span class="kw">mod </span>tree;
-<a href=#199 id=199 data-nosnippet>199</a>
-<a href=#200 id=200 data-nosnippet>200</a><span class="doccomment">/// Single place, re-exporting the most used public functions.
-<a href=#201 id=201 data-nosnippet>201</a></span><span class="kw">pub mod </span>prelude;
+<a href=#188 id=188 data-nosnippet>188</a><span class="attr">#[cfg(feature = <span class="string">"targeted-messages-draft"</span>)]
+<a href=#189 id=189 data-nosnippet>189</a>#[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"targeted-messages-draft"</span>)))]
+<a href=#190 id=190 data-nosnippet>190</a></span><span class="kw">pub mod </span>targeted_messages;
+<a href=#191 id=191 data-nosnippet>191</a><span class="kw">pub mod </span>treesync;
+<a href=#192 id=192 data-nosnippet>192</a><span class="kw">pub mod </span>versions;
+<a href=#193 id=193 data-nosnippet>193</a>
+<a href=#194 id=194 data-nosnippet>194</a><span class="comment">// implement storage traits
+<a href=#195 id=195 data-nosnippet>195</a>// public
+<a href=#196 id=196 data-nosnippet>196</a></span><span class="kw">pub mod </span>storage;
+<a href=#197 id=197 data-nosnippet>197</a>
+<a href=#198 id=198 data-nosnippet>198</a><span class="comment">// Private
+<a href=#199 id=199 data-nosnippet>199</a></span><span class="kw">mod </span>binary_tree;
+<a href=#200 id=200 data-nosnippet>200</a><span class="kw">mod </span>skip_validation;
+<a href=#201 id=201 data-nosnippet>201</a><span class="kw">mod </span>tree;
 <a href=#202 id=202 data-nosnippet>202</a>
-<a href=#203 id=203 data-nosnippet>203</a><span class="comment">// this is a workaround, see https://github.com/la10736/rstest/issues/211#issuecomment-1701238125
-<a href=#204 id=204 data-nosnippet>204</a></span><span class="attr">#[cfg(any(test, feature = <span class="string">"test-utils"</span>))]
-<a href=#205 id=205 data-nosnippet>205</a></span><span class="kw">pub mod </span>wasm {
-<a href=#206 id=206 data-nosnippet>206</a>    <span class="kw">pub use </span>wasm_bindgen_test::wasm_bindgen_test <span class="kw">as </span>test;
-<a href=#207 id=207 data-nosnippet>207</a>}
+<a href=#203 id=203 data-nosnippet>203</a><span class="doccomment">/// Single place, re-exporting the most used public functions.
+<a href=#204 id=204 data-nosnippet>204</a></span><span class="kw">pub mod </span>prelude;
+<a href=#205 id=205 data-nosnippet>205</a>
+<a href=#206 id=206 data-nosnippet>206</a><span class="comment">// this is a workaround, see https://github.com/la10736/rstest/issues/211#issuecomment-1701238125
+<a href=#207 id=207 data-nosnippet>207</a></span><span class="attr">#[cfg(any(test, feature = <span class="string">"test-utils"</span>))]
+<a href=#208 id=208 data-nosnippet>208</a></span><span class="kw">pub mod </span>wasm {
+<a href=#209 id=209 data-nosnippet>209</a>    <span class="kw">pub use </span>wasm_bindgen_test::wasm_bindgen_test <span class="kw">as </span>test;
+<a href=#210 id=210 data-nosnippet>210</a>}
 </code></pre></div></section></main></body></html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CreateTargetedMessageError","ProcessTargetedMessageError"],"struct":["ProcessedTargetedMessage","TargetedMessage","TargetedMessageIn"]};
