@@ -152,24 +152,38 @@ macro_rules! compat_tests {
     };
 }
 
+// These compare the previous version's tags against the current version's, so
+// they only make sense when both sides have the *same* extensions-draft state —
+// they are skipped for a feature-flag-toggle build (one side has the draft, the
+// other doesn't), which is only meaningful for the migration tests.
+
 // check the storage tag stability for openmls=0.7.1 => `main`
-#[cfg(feature = "compat_0_7_1")]
+// (0.7.1 has no extensions-draft, so only run when the current version has none either)
+#[cfg(all(feature = "compat_0_7_1", not(feature = "extensions-draft-current")))]
 compat_tests!(
     test_storage_tags_0_7_1,
     openmls_0_7_1,
     openmls,
     SupportedVersion::OpenMls_0_7_1
 );
-// check the storage tag stability for openmls=0.8.1 => `main`
-#[cfg(all(feature = "compat_0_8_1", not(feature = "compat_0_8_1_extensions")))]
+// check the storage tag stability for openmls=0.8.1 => `main` (neither side has the draft)
+#[cfg(all(
+    feature = "compat_0_8_1",
+    not(feature = "extensions-draft-current"),
+    not(feature = "extensions-draft-compat")
+))]
 compat_tests!(
     test_storage_tags_0_8_1,
     openmls_0_8_1,
     openmls,
     SupportedVersion::OpenMls_0_8_1
 );
-// check the storage tag stability for openmls=0.8.1 => `main` with feature `extensions-draft`
-#[cfg(feature = "compat_0_8_1_extensions")]
+// check the storage tag stability for openmls=0.8.1 => `main` with `extensions-draft` on both sides
+#[cfg(all(
+    feature = "compat_0_8_1",
+    feature = "extensions-draft-current",
+    feature = "extensions-draft-compat"
+))]
 compat_tests!(
     test_storage_tags_0_8_1,
     openmls_0_8_1,
