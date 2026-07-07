@@ -1,5 +1,8 @@
 use crate::component::*;
 use crate::extensions::*;
+use crate::group::tests_and_kats::utils::{
+    generate_credential_with_key, CredentialWithKeyAndSigner,
+};
 use crate::prelude::*;
 use crate::test_utils::{frankenstein::*, single_group_test_framework::*};
 use openmls_test::openmls_test;
@@ -776,6 +779,210 @@ fn test_process_with_wrong_app_data_updates() {
             );
         }
     }
+}
+
+/// Test that an AppDataUpdate proposal is allowed as an inline proposal in an external commit.
+#[openmls_test]
+fn test_external_commit_with_app_data_update_proposal() {
+    let alice_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: alice_credential_with_key,
+        signer: alice_signer,
+    } = generate_credential_with_key(
+        b"alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: charlie_credential_with_key,
+        signer: charlie_signer,
+    } = generate_credential_with_key(
+        b"charlie".into(),
+        ciphersuite.signature_algorithm(),
+        charlie_provider,
+    );
+
+    // Members must support the AppDataDictionary extension and the AppDataUpdate proposal for the
+    // group to allow committing AppDataUpdate proposals.
+    let capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[ExtensionType::AppDataDictionary]),
+        Some(&[ProposalType::AppDataUpdate]),
+        None,
+    );
+
+    let required_capabilities_extension =
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+            &[ExtensionType::AppDataDictionary],
+            &[ProposalType::AppDataUpdate],
+            &[],
+        ));
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(crate::group::PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .with_capabilities(capabilities.clone())
+        .with_group_context_extensions(Extensions::single(required_capabilities_extension).unwrap())
+        .build(alice_provider, &alice_signer, alice_credential_with_key)
+        .unwrap();
+
+    // Alice sets an initial entry in the group's AppDataDictionary, so that Charlie's external
+    // commit joins a group with a non-empty dictionary.
+    let mut stage = alice_group
+        .commit_builder()
+        .add_proposals(vec![Proposal::AppDataUpdate(Box::new(
+            AppDataUpdateProposal::update(0xf042, b"alice"),
+        ))])
+        .load_psks(alice_provider.storage())
+        .unwrap();
+
+    let mut updater = stage.app_data_dictionary_updater();
+    for proposal in stage.app_data_update_proposals() {
+        if let AppDataUpdateOperation::Update(data) = proposal.operation() {
+            updater.set(ComponentData::from_parts(
+                proposal.component_id(),
+                data.clone(),
+            ));
+        }
+    }
+    stage.with_app_data_dictionary_updates(updater.changes());
+
+    stage
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    assert_eq!(
+        alice_group
+            .extensions()
+            .app_data_dictionary()
+            .unwrap()
+            .dictionary()
+            .get(&0xf042),
+        Some(b"alice".as_slice())
+    );
+
+    // Alice exports a group info for Charlie to join externally.
+    let verifiable_group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    // Charlie can inspect the (unverified) AppDataDictionary via the group context before deciding
+    // what to include in the AppDataUpdate proposal of the external commit.
+    assert_eq!(
+        verifiable_group_info
+            .group_context()
+            .app_data_dict()
+            .unwrap()
+            .get(&0xf042),
+        Some(b"alice".as_slice())
+    );
+
+    let tree_option = alice_group.export_ratchet_tree();
+
+    // Charlie joins externally and includes an AppDataUpdate proposal as an inline proposal of the
+    // external commit. This must be allowed by `validate_external_commit`.
+    let mut stage = MlsGroup::external_commit_builder()
+        .with_ratchet_tree(tree_option.into())
+        .build_group(
+            charlie_provider,
+            verifiable_group_info,
+            charlie_credential_with_key.clone(),
+        )
+        .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(capabilities)
+                .build(),
+        )
+        .add_app_data_update_proposal(AppDataUpdateProposal::update(0xf043, b"charlie"))
+        .load_psks(charlie_provider.storage())
+        .unwrap();
+
+    let mut charlie_updater = stage.app_data_dictionary_updater();
+    for proposal in stage.app_data_update_proposals() {
+        if let AppDataUpdateOperation::Update(data) = proposal.operation() {
+            charlie_updater.set(ComponentData::from_parts(
+                proposal.component_id(),
+                data.clone(),
+            ));
+        }
+    }
+    stage.with_app_data_dictionary_updates(charlie_updater.changes());
+
+    let (charlie_group, commit_message_bundle) = stage
+        .build(
+            charlie_provider.rand(),
+            charlie_provider.crypto(),
+            &charlie_signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(charlie_provider)
+        .unwrap();
+
+    // Charlie's view of the AppDataDictionary contains both Alice's and Charlie's entries.
+    let charlie_dict = charlie_group
+        .extensions()
+        .app_data_dictionary()
+        .unwrap()
+        .dictionary();
+    assert_eq!(charlie_dict.get(&0xf042), Some(b"alice".as_slice()));
+    assert_eq!(charlie_dict.get(&0xf043), Some(b"charlie".as_slice()));
+
+    // Alice processes Charlie's external commit, which carries the AppDataUpdate proposal inline.
+    let plaintext = commit_message_bundle
+        .into_commit()
+        .into_protocol_message()
+        .unwrap();
+
+    let unverified_message = alice_group
+        .unprotect_message(alice_provider, plaintext)
+        .unwrap();
+
+    let mut alice_updater = alice_group.app_data_dictionary_updater();
+    alice_updater.set(ComponentData::from_parts(
+        0xf043,
+        b"charlie".to_vec().into(),
+    ));
+
+    let processed_message = alice_group
+        .process_unverified_message_with_app_data_updates(
+            alice_provider,
+            unverified_message,
+            alice_updater.changes(),
+        )
+        .unwrap();
+
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a staged commit message.");
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, *staged_commit)
+        .unwrap();
+
+    let alice_dict = alice_group
+        .extensions()
+        .app_data_dictionary()
+        .unwrap()
+        .dictionary();
+    assert_eq!(alice_dict, charlie_dict);
 }
 
 /// Test that standalone AppDataUpdate proposals can be processed normally

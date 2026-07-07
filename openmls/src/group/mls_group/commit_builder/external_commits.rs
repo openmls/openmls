@@ -340,6 +340,18 @@ impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
             .extend(proposals.into_iter().map(Proposal::psk));
         self
     }
+
+    /// Adds an AppDataUpdateProposal.
+    #[cfg(feature = "extensions-draft")]
+    pub fn add_app_data_update_proposal(
+        mut self,
+        proposal: crate::messages::proposals::AppDataUpdateProposal,
+    ) -> Self {
+        self.stage
+            .own_proposals
+            .push(Proposal::AppDataUpdate(Box::new(proposal)));
+        self
+    }
 }
 
 // Impls that apply only to external commits.
