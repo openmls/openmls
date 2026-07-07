@@ -77,7 +77,13 @@ impl EncryptionKey {
     where
         F: FnOnce(&[u8]) -> Result<Vec<u8>, LibraryError>,
     {
-        hpke::encrypt_with_label_psk_resolved_aad(self.as_slice(), params, plaintext, crypto, aad_builder)
+        hpke::encrypt_with_label_psk_resolved_aad(
+            self.as_slice(),
+            params,
+            plaintext,
+            crypto,
+            aad_builder,
+        )
     }
 }
 
