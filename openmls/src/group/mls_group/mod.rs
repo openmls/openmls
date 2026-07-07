@@ -220,6 +220,7 @@ pub enum MlsGroupState {
 /// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
 /// more information.
 #[derive(Debug)]
+#[cfg_attr(feature = "migration-export", derive(serde::Serialize))]
 #[cfg_attr(feature = "test-utils", derive(Clone, PartialEq))]
 pub struct MlsGroup {
     /// The group configuration. See [`MlsGroupJoinConfig`] for more information.
@@ -774,6 +775,75 @@ impl MlsGroup {
             MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction),
             MlsGroupState::Operational => Ok(()),
         }
+    }
+}
+
+/// A serializable snapshot of a group together with all of the group-associated
+/// data it owns, produced for migration to a newer OpenMLS version.
+#[cfg(feature = "migration-export")]
+#[derive(serde::Serialize)]
+pub struct GroupMigrationBundle {
+    group: MlsGroup,
+    epoch_encryption_key_pairs: Vec<EncryptionKeyPair>,
+    update_encryption_key_pairs: Vec<EncryptionKeyPair>,
+}
+
+#[cfg(feature = "migration-export")]
+impl MlsGroup {
+    /// Load a group together with every piece of group-associated data it owns
+    /// into one serializable bundle, for migration to a newer OpenMLS version.
+    ///
+    /// The bundle is serialized to a self-describing format and imported by the
+    /// target version (see that version's `GroupMigrationBundle::store`).
+    pub fn export_for_migration<Storage: crate::storage::StorageProvider>(
+        storage: &Storage,
+        group_id: &GroupId,
+    ) -> Result<Option<GroupMigrationBundle>, Storage::Error> {
+        let Some(group) = Self::load(storage, group_id)? else {
+            return Ok(None);
+        };
+
+        // The group's own encryption key pairs for the current epoch.
+        let epoch_encryption_key_pairs = group.read_epoch_keypairs(storage)?;
+
+        // Encryption key pairs for pending (uncommitted) update leaf nodes.
+        let mut update_encryption_key_pairs = Vec::new();
+        for leaf_node in group.own_leaf_nodes.iter() {
+            if let Some(key_pair) = storage.encryption_key_pair(leaf_node.encryption_key())? {
+                update_encryption_key_pairs.push(key_pair);
+            }
+        }
+
+        Ok(Some(GroupMigrationBundle {
+            group,
+            epoch_encryption_key_pairs,
+            update_encryption_key_pairs,
+        }))
+    }
+}
+
+#[cfg(feature = "migration-export")]
+impl GroupMigrationBundle {
+    /// Delete the group and all of the group-associated data captured in this
+    /// bundle from `storage`.
+    ///
+    /// Use this to remove the old-format entries after an in-place migration, in
+    /// particular when the storage keys changed between versions (e.g. the
+    /// `GroupId` serialization differs): the entries can then only be addressed
+    /// with this — the previous — version's key encoding, which this method uses.
+    pub fn delete<Storage: crate::storage::StorageProvider>(
+        &mut self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        // Group state, proposals, and the current epoch's encryption key pairs.
+        self.group.delete(storage)?;
+
+        // Pending-update encryption key pairs (keyed by encryption public key).
+        for key_pair in &self.update_encryption_key_pairs {
+            key_pair.delete(storage)?;
+        }
+
+        Ok(())
     }
 }
 

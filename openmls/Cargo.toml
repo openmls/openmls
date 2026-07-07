@@ -46,6 +46,9 @@ serde_bytes = "0.11.17"
 
 [features]
 crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
+# export a group (and the associated data it owns) for migration to a newer
+# OpenMLS version; storage format is unchanged
+migration-export = []
 test-utils = [
     "dep:serde_json",
     "dep:itertools",
@@ -79,8 +82,8 @@ js = [
 
 extensions-draft-08 = [
     "openmls_traits/extensions-draft-08",
-    "openmls_memory_storage/extensions-draft-08",
-    "openmls_sqlite_storage/extensions-draft-08",
+    "openmls_memory_storage?/extensions-draft-08",
+    "openmls_sqlite_storage?/extensions-draft-08",
 ]
 libcrux-provider-js = ["dep:getrandom", "getrandom/wasm_js"]
 # enable randomness source
