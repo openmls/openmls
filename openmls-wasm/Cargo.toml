@@ -13,6 +13,10 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["console_error_panic_hook"]
+targeted-messages-draft = [
+    "openmls/targeted-messages-draft",
+    "openmls_rust_crypto/targeted-messages-draft",
+]
 
 [dependencies]
 wasm-bindgen = "0.2.84"

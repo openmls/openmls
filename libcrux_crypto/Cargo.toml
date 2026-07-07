@@ -51,3 +51,4 @@ virtual-clients-draft = [
     "dep:fpe",
     "dep:aes",
 ]
+targeted-messages-draft = ["openmls_traits/targeted-messages-draft"]
