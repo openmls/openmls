@@ -16,9 +16,10 @@ default = ["console_error_panic_hook"]
 # Forward feature to openmls and the crypto provider, whose storage backend
 # only implements the `extensions-draft` trait methods with its feature on.
 extensions-draft = [
-    "openmls/extensions-draft",
-    "openmls_rust_crypto/extensions-draft",
+    "openmls_traits/extensions-draft",
+    "openmls_memory_storage/extensions-draft",
 ]
+targeted-messages-draft = ["openmls_traits/targeted-messages-draft"]
 
 [dependencies]
 wasm-bindgen = "0.2.84"

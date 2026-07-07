@@ -107,16 +107,16 @@ pub(crate) mod tests;
 
 /// Wire format of MLS messages.
 ///
-/// // draft-ietf-mls-protocol-17
-/// | Value           | Name                     | Recommended | Reference |
-/// |-----------------|--------------------------|-------------|-----------|
-/// | 0x0000          | RESERVED                 | N/A         | RFC XXXX  |
-/// | 0x0001          | mls_plaintext            | Y           | RFC XXXX  |
-/// | 0x0002          | mls_ciphertext           | Y           | RFC XXXX  |
-/// | 0x0003          | mls_welcome              | Y           | RFC XXXX  |
-/// | 0x0004          | mls_group_info           | Y           | RFC XXXX  |
-/// | 0x0005          | mls_key_package          | Y           | RFC XXXX  |
-/// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
+/// | Value           | Name                     | Recommended | Reference                              |
+/// |-----------------|--------------------------|-------------|----------------------------------------|
+/// | 0x0000          | RESERVED                 | N/A         | RFC 9420                               |
+/// | 0x0001          | mls_plaintext            | Y           | RFC 9420                               |
+/// | 0x0002          | mls_ciphertext           | Y           | RFC 9420                               |
+/// | 0x0003          | mls_welcome              | Y           | RFC 9420                               |
+/// | 0x0004          | mls_group_info           | Y           | RFC 9420                               |
+/// | 0x0005          | mls_key_package          | Y           | RFC 9420                               |
+/// | 0x0006          | mls_targeted_message     | Y           | draft-ietf-mls-targeted-messages       |
+/// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | RFC 9420                               |
 #[derive(
     PartialEq,
     Eq,
@@ -142,6 +142,10 @@ pub enum WireFormat {
     GroupInfo = 4,
     /// KeyPackage
     KeyPackage = 5,
+    /// Targeted message (draft-ietf-mls-targeted-messages)
+    #[cfg(feature = "targeted-messages-draft")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
+    TargetedMessage = 6,
 }
 
 /// This struct is used to group common framing parameters
@@ -169,7 +173,6 @@ impl<'a> FramingParameters<'a> {
 }
 
 /// ```c
-/// // draft-ietf-mls-protocol-17
 /// enum {
 ///     reserved(0),
 ///     application(1),

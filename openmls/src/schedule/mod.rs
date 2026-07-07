@@ -740,6 +740,14 @@ impl ExporterSecret {
         self.secret.as_slice()
     }
 
+    // Only used for KATs of the Targeted Messages feature
+    #[cfg(all(feature = "targeted-messages-draft", test))]
+    pub(crate) fn from_slice(bytes: &[u8]) -> Self {
+        Self {
+            secret: Secret::from_slice(bytes),
+        }
+    }
+
     /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
     /// it can be used outside of OpenMLS. This function is made available for
     /// use from the outside through [`MlsGroup::export_secret`].
@@ -1126,7 +1134,6 @@ impl EpochSecrets {
     }
 
     /// Exporter secret
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
         &self.exporter_secret
     }
