@@ -1126,7 +1126,6 @@ impl EpochSecrets {
     }
 
     /// Exporter secret
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
         &self.exporter_secret
     }

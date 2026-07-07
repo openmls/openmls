@@ -67,7 +67,7 @@ pub enum PskError {
 
 /// Key schedule state error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum ErrorState {
+pub enum ErrorState {
     /// Expected to be in initial state.
     #[error("Expected to be in initial state.")]
     Init,
@@ -78,7 +78,7 @@ pub(crate) enum ErrorState {
 
 /// Key schedule error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum KeyScheduleError {
+pub enum KeyScheduleError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

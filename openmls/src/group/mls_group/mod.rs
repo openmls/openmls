@@ -1214,7 +1214,7 @@ pub struct ProcessedWelcome {
     // building the group.
     ciphersuite: Ciphersuite,
     group_secrets: GroupSecrets,
-    key_schedule: crate::schedule::KeySchedule,
+    epoch_secrets: crate::schedule::EpochSecretsResult,
     verifiable_group_info: crate::messages::group_info::VerifiableGroupInfo,
     resumption_psk_store: crate::schedule::psk::store::ResumptionPskStore,
     key_material: WelcomeKeyMaterial,
