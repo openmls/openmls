@@ -49,6 +49,12 @@ serde_bytes = "0.11.17"
 [features]
 # enable for compatibility with openmls=0.8.1
 0-8-1-storage-format = []
+# import a group (and the group-associated data it owns) exported from a previous
+# OpenMLS version; mirror of the previous version's `migration-export`
+migration-import = []
+# additionally derive `serde::Serialize` on migratable group types so migration
+# can be verified by round-tripping through a self-describing format
+migration-test-utils = ["migration-import"]
 test-utils = [
     "dep:serde_json",
     "dep:itertools",

@@ -233,6 +233,8 @@ pub enum MlsGroupState {
 /// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
 /// more information.
 #[derive(Debug)]
+#[cfg_attr(feature = "migration-import", derive(serde::Deserialize))]
+#[cfg_attr(feature = "migration-test-utils", derive(serde::Serialize))]
 #[cfg_attr(feature = "test-utils", derive(Clone, PartialEq))]
 pub struct MlsGroup {
     /// The group configuration. See [`MlsGroupJoinConfig`] for more information.
@@ -264,6 +266,13 @@ pub struct MlsGroup {
     // alongside `aad`. Only consulted when the group's GroupContext requires
     // Safe AAD framing.
     #[cfg(feature = "extensions-draft")]
+    // Migration bridge: new v0.8.2 and
+    // absent from older serializations, so default it to empty on import — it is
+    // ephemeral, so a freshly migrated group has nothing staged anyway.
+    #[cfg_attr(
+        feature = "migration-import",
+        serde(default = "crate::framing::SafeAad::empty")
+    )]
     safe_aad: SafeAad,
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
@@ -1026,6 +1035,43 @@ impl MlsGroup {
         Ok(())
     }
 
+    #[cfg(feature = "migration-import")]
+    /// Store a group as part of a storage migration.
+    ///
+    /// This replaces the group's persisted state for its [`GroupId`]: the
+    /// single-value tables are overwritten, and the accumulate-style tables (the
+    /// own leaf nodes and the proposal queue) are cleared before being rewritten.
+    ///
+    /// **NOTE**: This helper only addresses entries under the current key encoding. When the key
+    /// encoding differs between versions (e.g. postcard → JSON), old-format entries
+    /// live under different keys and are not changed; remove those with the
+    /// older version's `MlsGroup::delete`.
+    pub(crate) fn store_for_migration<Storage: crate::storage::StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        self.public_group.store_for_migration(storage)?;
+        storage.write_group_epoch_secrets(self.group_id(), &self.group_epoch_secrets)?;
+        storage.write_own_leaf_index(self.group_id(), &self.own_leaf_index)?;
+        storage.write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+        storage.write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)?;
+        storage.write_mls_join_config(self.group_id(), &self.mls_group_config)?;
+
+        // clear `own_leaf_nodes`, and rewrite one-by-one
+        storage.delete_own_leaf_nodes(self.group_id())?;
+        for leaf_node in self.own_leaf_nodes.iter() {
+            storage.append_own_leaf_node(self.group_id(), leaf_node)?;
+        }
+
+        storage.write_group_state(self.group_id(), &self.group_state)?;
+        #[cfg(feature = "extensions-draft")]
+        if let Some(application_export_tree) = &self.application_export_tree {
+            storage.write_application_export_tree(self.group_id(), application_export_tree)?;
+        }
+
+        Ok(())
+    }
+
     /// Converts PublicMessage to MlsMessage. Depending on whether handshake
     /// message should be encrypted, PublicMessage messages are encrypted to
     /// PrivateMessage first.
@@ -1348,5 +1394,53 @@ impl WelcomeKeyMaterial {
             #[cfg(feature = "virtual-clients-draft")]
             WelcomeKeyMaterial::VirtualClient(material) => material.encryption_keypair.clone(),
         }
+    }
+}
+
+/// A group and all of the group-associated data it owns, deserialized from a
+/// previous OpenMLS version for migration. The mirror of the older version's
+/// `MlsGroup::export_for_migration`.
+#[cfg(feature = "migration-import")]
+#[derive(serde::Deserialize)]
+pub struct GroupMigrationBundle {
+    group: MlsGroup,
+    epoch_encryption_key_pairs: Vec<EncryptionKeyPair>,
+    update_encryption_key_pairs: Vec<EncryptionKeyPair>,
+}
+
+#[cfg(feature = "migration-import")]
+impl GroupMigrationBundle {
+    /// Store the migrated group and all of its group-associated data in the
+    /// current storage format.
+    ///
+    /// **NOTE**: This replaces any existing state for the group's [`GroupId`] (see
+    /// [`MlsGroup::store_for_migration`]), under the same [`GroupId`] encoding.
+    ///
+    /// Single-value tables are overwritten and the accumulate-style data
+    /// (own leaf nodes, proposal queue) are cleared before writing.
+    ///
+    /// Old-format entries under a different key encoding are not changed; see the
+    /// note on [`MlsGroup::store_for_migration`] for cleaning those up.
+    pub fn store<Storage: crate::storage::StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        // Group state (config, tree, context, proposals, secrets, ...).
+        self.group.store_for_migration(storage)?;
+
+        // The group's own encryption key pairs for the current epoch.
+        storage.write_encryption_epoch_key_pairs(
+            self.group.group_id(),
+            &self.group.epoch(),
+            self.group.own_leaf_index().u32(),
+            &self.epoch_encryption_key_pairs,
+        )?;
+
+        // Encryption key pairs for pending (uncommitted) update leaf nodes.
+        for key_pair in &self.update_encryption_key_pairs {
+            key_pair.write(storage)?;
+        }
+
+        Ok(())
     }
 }
