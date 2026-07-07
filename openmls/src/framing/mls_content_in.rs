@@ -10,9 +10,6 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft")]
-use crate::messages::proposals_in::ProposalOrRefIn;
-
 use std::io::{Read, Write};
 
 use super::{
@@ -76,14 +73,6 @@ impl FramedContentIn {
                 .body
                 .validate(ciphersuite, crypto, sender_context, protocol_version)?,
         })
-    }
-
-    #[cfg(feature = "extensions-draft")]
-    pub(crate) fn proposals(&self) -> Option<&[ProposalOrRefIn]> {
-        match &self.body {
-            FramedContentBodyIn::Commit(commit_in) => Some(commit_in.proposals()),
-            _ => None,
-        }
     }
 }
 

@@ -38,7 +38,7 @@ use crate::{
 #[cfg(feature = "extensions-draft")]
 use crate::{
     component::ComponentId, framing::safe_aad::SafeAad,
-    group::mls_group::processing::UnresolvedAppDataCommit, messages::proposals_in::ProposalOrRefIn,
+    group::mls_group::processing::UnresolvedAppDataCommit,
 };
 
 use super::{
@@ -324,12 +324,6 @@ impl UnverifiedMessage {
             emulator_sender_leaf_index: self.emulator_sender_leaf_index,
         })
     }
-
-    /// Get the proposals of the commit, if it is one. If not, return `None`.
-    #[cfg(feature = "extensions-draft")]
-    pub(crate) fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
-        self.verifiable_content.committed_proposals()
-    }
 }
 
 /// A message that has passed all syntax and semantics checks.
@@ -548,6 +542,13 @@ pub enum ProcessedMessageContent {
     /// [`MlsGroup::app_data_dictionary_updater()`](crate::group::mls_group::MlsGroup::app_data_dictionary_updater)
     /// and resume staging via
     /// [`MlsGroup::stage_app_data_commit()`](crate::group::mls_group::MlsGroup::stage_app_data_commit).
+    ///
+    /// This variant is likewise returned by
+    /// [`PublicGroup::process_message()`](crate::group::public_group::PublicGroup::process_message),
+    /// where the updates are computed with
+    /// [`PublicGroup::app_data_dictionary_updater()`](crate::group::public_group::PublicGroup::app_data_dictionary_updater)
+    /// and staging resumes via
+    /// [`PublicGroup::stage_app_data_commit()`](crate::group::public_group::PublicGroup::stage_app_data_commit).
     #[cfg(feature = "extensions-draft")]
     UnresolvedAppDataCommit(Box<UnresolvedAppDataCommit>),
 }

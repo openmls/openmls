@@ -2,6 +2,7 @@
 
 use openmls::component::*;
 use openmls::extensions::*;
+use openmls::group::ProposalStore;
 use openmls::prelude::*;
 use openmls::test_utils::single_group_test_framework::*;
 use openmls_test::openmls_test;
@@ -345,4 +346,391 @@ fn test_app_data_update_with_welcome() {
         charlie_group.extensions().app_data_dictionary(),
         alice.group.extensions().app_data_dictionary()
     );
+}
+
+/// Builds a [`PublicGroup`] observer that tracks the same group as `alice`,
+/// using her currently exported group info and ratchet tree.
+fn build_public_group<Provider: OpenMlsProvider>(
+    alice: &MemberState<'_, Provider>,
+    alice_provider: &Provider,
+    observer_provider: &Provider,
+) -> PublicGroup {
+    let verifiable_group_info = alice
+        .group
+        .export_group_info(alice_provider.crypto(), &alice.party.signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+    let ratchet_tree = alice.group.export_ratchet_tree();
+    let (public_group, _extensions) = PublicGroup::from_external(
+        observer_provider.crypto(),
+        observer_provider.storage(),
+        ratchet_tree.into(),
+        verifiable_group_info,
+        ProposalStore::new(),
+    )
+    .unwrap();
+    public_group
+}
+
+/// Has `alice` build and stage a commit carrying a single by-value
+/// AppDataUpdate proposal for `component_id` with `proposal_payload`, while
+/// setting the caller-computed dictionary value to `dict_value`. Returns the
+/// commit message; the commit is left pending on `alice`.
+fn alice_app_data_commit<Provider: OpenMlsProvider>(
+    alice: &mut MemberState<'_, Provider>,
+    alice_provider: &Provider,
+    component_id: ComponentId,
+    proposal_payload: &[u8],
+    dict_value: &[u8],
+) -> MlsMessageOut {
+    let mut stage = alice
+        .group
+        .commit_builder()
+        .add_proposals(vec![Proposal::AppDataUpdate(Box::new(
+            AppDataUpdateProposal::update(component_id, proposal_payload),
+        ))])
+        .load_psks(alice_provider.storage())
+        .unwrap();
+
+    let mut updater = stage.app_data_dictionary_updater();
+    updater.set(ComponentData::from_parts(
+        component_id,
+        dict_value.to_vec().into(),
+    ));
+    stage.with_app_data_dictionary_updates(updater.changes());
+
+    let commit_bundle = stage
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice.party.signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    let (commit_message, _, _) = commit_bundle.into_contents();
+    commit_message
+}
+
+fn to_protocol_message(message: MlsMessageOut) -> ProtocolMessage {
+    let message_in: MlsMessageIn = message.into();
+    message_in.into_protocol_message().unwrap()
+}
+
+/// A `PublicGroup` observer processes a commit covering an AppDataUpdate
+/// proposal committed by value. The commit comes back as
+/// `UnresolvedAppDataCommit`, the caller computes the dictionary value and
+/// resumes staging, and the resulting state matches a full member's.
+#[openmls_test]
+fn test_public_group_app_data_commit() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let observer_provider = Provider::default();
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
+
+    let mut public_group = build_public_group(alice, &alice_party.provider, &observer_provider);
+
+    // The caller-computed dictionary value deliberately differs from the
+    // proposal payload, so we can prove the applied value comes from the
+    // caller, not from the raw proposal.
+    let commit_message = alice_app_data_commit(
+        alice,
+        &alice_party.provider,
+        0xf042,
+        b"proposal_payload",
+        b"caller_computed_value",
+    );
+
+    // The public group processes the commit and gets it back unresolved.
+    let processed_message = public_group
+        .process_message(
+            observer_provider.crypto(),
+            to_protocol_message(commit_message.clone()),
+        )
+        .unwrap();
+
+    let unresolved_commit = match processed_message.into_content() {
+        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
+        _ => panic!("Should be an unresolved app data commit"),
+    };
+
+    let proposals: Vec<_> = unresolved_commit.app_data_update_proposals().collect();
+    assert_eq!(proposals.len(), 1);
+    assert_eq!(proposals[0].component_id(), 0xf042);
+    assert!(matches!(
+        proposals[0].operation(),
+        AppDataUpdateOperation::Update(data) if data.as_slice() == b"proposal_payload"
+    ));
+
+    // The observer computes the caller value and stages the commit.
+    let mut updater = public_group.app_data_dictionary_updater();
+    updater.set(ComponentData::from_parts(
+        0xf042,
+        b"caller_computed_value".to_vec().into(),
+    ));
+    let staged_commit = public_group
+        .stage_app_data_commit(
+            observer_provider.crypto(),
+            *unresolved_commit,
+            updater.changes(),
+        )
+        .expect("error staging commit");
+
+    // The staged commit's group context carries the caller-computed value.
+    let dictionary = staged_commit
+        .group_context()
+        .extensions()
+        .app_data_dictionary()
+        .unwrap()
+        .dictionary();
+    assert_eq!(
+        dictionary.get(&0xf042),
+        Some(b"caller_computed_value".as_ref())
+    );
+    assert_ne!(dictionary.get(&0xf042), Some(b"proposal_payload".as_ref()));
+
+    public_group
+        .merge_commit(observer_provider.storage(), staged_commit)
+        .unwrap();
+
+    // Bob resolves the same commit via his full group state.
+    let processed_message = bob
+        .group
+        .process_message(&bob_party.provider, to_protocol_message(commit_message))
+        .unwrap();
+    let unresolved_commit = match processed_message.into_content() {
+        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
+        _ => panic!("Should be an unresolved app data commit"),
+    };
+    let mut bob_updater = bob.group.app_data_dictionary_updater();
+    bob_updater.set(ComponentData::from_parts(
+        0xf042,
+        b"caller_computed_value".to_vec().into(),
+    ));
+    let staged_commit = bob
+        .group
+        .stage_app_data_commit(
+            &bob_party.provider,
+            *unresolved_commit,
+            bob_updater.changes(),
+        )
+        .expect("error staging commit");
+    bob.group
+        .merge_staged_commit(&bob_party.provider, staged_commit)
+        .unwrap();
+
+    assert_eq!(
+        bob.group.export_group_context(),
+        public_group.group_context()
+    );
+}
+
+/// A `PublicGroup` observer resolves an AppDataUpdate proposal committed by
+/// reference against its own proposal store.
+#[openmls_test]
+fn test_public_group_app_data_commit_by_reference() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let observer_provider = Provider::default();
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice, _bob] = group_state.members_mut(&["alice", "bob"]);
+
+    let mut public_group = build_public_group(alice, &alice_party.provider, &observer_provider);
+
+    // Alice sends a standalone AppDataUpdate proposal.
+    let (proposal_message, _proposal_ref) = alice
+        .group
+        .propose_app_data_update(
+            &alice_party.provider,
+            &alice.party.signer,
+            0xf042,
+            AppDataUpdateOperation::Update(b"proposal_payload".to_vec().into()),
+        )
+        .unwrap();
+
+    // The public group processes it and stores it in its proposal store.
+    let processed = public_group
+        .process_message(
+            observer_provider.crypto(),
+            to_protocol_message(proposal_message),
+        )
+        .unwrap();
+    match processed.into_content() {
+        ProcessedMessageContent::ProposalMessage(proposal) => {
+            public_group
+                .add_proposal(observer_provider.storage(), *proposal)
+                .unwrap();
+        }
+        _ => panic!("Expected a proposal message"),
+    }
+
+    // Alice commits to the pending proposal by reference, computing the
+    // dictionary value herself.
+    let mut stage = alice
+        .group
+        .commit_builder()
+        .consume_proposal_store(true)
+        .load_psks(alice_party.provider.storage())
+        .unwrap();
+    let mut alice_updater = stage.app_data_dictionary_updater();
+    alice_updater.set(ComponentData::from_parts(
+        0xf042,
+        b"caller_computed_value".to_vec().into(),
+    ));
+    stage.with_app_data_dictionary_updates(alice_updater.changes());
+    let commit_bundle = stage
+        .build(
+            alice_party.provider.rand(),
+            alice_party.provider.crypto(),
+            &alice.party.signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(&alice_party.provider)
+        .unwrap();
+    let (commit_message, _, _) = commit_bundle.into_contents();
+
+    // The public group processes the by-reference commit.
+    let processed_message = public_group
+        .process_message(
+            observer_provider.crypto(),
+            to_protocol_message(commit_message),
+        )
+        .unwrap();
+    let unresolved_commit = match processed_message.into_content() {
+        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
+        _ => panic!("Should be an unresolved app data commit"),
+    };
+
+    // The proposal was resolved from the proposal store.
+    let proposals: Vec<_> = unresolved_commit.app_data_update_proposals().collect();
+    assert_eq!(proposals.len(), 1);
+    assert_eq!(proposals[0].component_id(), 0xf042);
+    assert!(matches!(
+        proposals[0].operation(),
+        AppDataUpdateOperation::Update(data) if data.as_slice() == b"proposal_payload"
+    ));
+
+    let mut updater = public_group.app_data_dictionary_updater();
+    updater.set(ComponentData::from_parts(
+        0xf042,
+        b"caller_computed_value".to_vec().into(),
+    ));
+    let staged_commit = public_group
+        .stage_app_data_commit(
+            observer_provider.crypto(),
+            *unresolved_commit,
+            updater.changes(),
+        )
+        .expect("error staging commit");
+
+    let dictionary = staged_commit
+        .group_context()
+        .extensions()
+        .app_data_dictionary()
+        .unwrap()
+        .dictionary();
+    assert_eq!(
+        dictionary.get(&0xf042),
+        Some(b"caller_computed_value".as_ref())
+    );
+
+    public_group
+        .merge_commit(observer_provider.storage(), staged_commit)
+        .unwrap();
+}
+
+/// Staging an unresolved app data commit on a `PublicGroup` without supplying
+/// the updates fails with `MissingAppDataUpdates`.
+#[openmls_test]
+fn test_public_group_stage_app_data_commit_missing_updates() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let observer_provider = Provider::default();
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice, _bob] = group_state.members_mut(&["alice", "bob"]);
+
+    let public_group = build_public_group(alice, &alice_party.provider, &observer_provider);
+
+    let commit_message =
+        alice_app_data_commit(alice, &alice_party.provider, 0xf042, b"value", b"value");
+
+    let processed_message = public_group
+        .process_message(
+            observer_provider.crypto(),
+            to_protocol_message(commit_message),
+        )
+        .unwrap();
+    let unresolved_commit = match processed_message.into_content() {
+        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
+        _ => panic!("Should be an unresolved app data commit"),
+    };
+
+    let err = public_group
+        .stage_app_data_commit(observer_provider.crypto(), *unresolved_commit, None)
+        .expect_err("staging without updates should fail");
+
+    assert!(matches!(
+        err,
+        StageCommitError::ApplyAppDataUpdateError(ApplyAppDataUpdateError::MissingAppDataUpdates)
+    ));
+}
+
+/// A commit without AppDataUpdate proposals is returned by a `PublicGroup` as a
+/// regular `StagedCommitMessage`, not as `UnresolvedAppDataCommit`.
+#[openmls_test]
+fn test_public_group_plain_commit_not_unresolved() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let observer_provider = Provider::default();
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice, _bob] = group_state.members_mut(&["alice", "bob"]);
+
+    let mut public_group = build_public_group(alice, &alice_party.provider, &observer_provider);
+
+    let commit_message = alice
+        .group
+        .commit_builder()
+        .force_self_update(true)
+        .load_psks(alice_party.provider.storage())
+        .unwrap()
+        .build(
+            alice_party.provider.rand(),
+            alice_party.provider.crypto(),
+            &alice.party.signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(&alice_party.provider)
+        .unwrap()
+        .into_contents()
+        .0;
+
+    let processed_message = public_group
+        .process_message(
+            observer_provider.crypto(),
+            to_protocol_message(commit_message),
+        )
+        .unwrap();
+
+    let staged_commit = match processed_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => staged_commit,
+        _ => panic!("Expected a plain staged commit message"),
+    };
+
+    public_group
+        .merge_commit(observer_provider.storage(), *staged_commit)
+        .unwrap();
 }

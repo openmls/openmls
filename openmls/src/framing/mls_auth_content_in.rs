@@ -21,9 +21,6 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft")]
-use crate::messages::proposals_in::ProposalOrRefIn;
-
 #[cfg(doc)]
 use super::{PrivateMessageIn, PublicMessageIn};
 
@@ -189,13 +186,6 @@ impl VerifiableAuthenticatedContentIn {
     /// Get the content type
     pub(crate) fn content_type(&self) -> ContentType {
         self.tbs.content.body.content_type()
-    }
-
-    /// If this message is a commit, this returns the unverified list of committed porposals.
-    /// Otherwise it returns `None`.
-    #[cfg(feature = "extensions-draft")]
-    pub(crate) fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
-        self.tbs.content.proposals()
     }
 }
 
