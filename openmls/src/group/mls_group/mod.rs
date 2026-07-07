@@ -281,6 +281,10 @@ pub struct MlsGroup {
     /// for more information. This is `None` if an old OpenMLS group state was
     /// loaded and has not yet merged a commit.
     #[cfg(feature = "extensions-draft")]
+    // Migration bridge (see the note on the struct): absent when migrating in a
+    // group from a version that did not have `extensions-draft`, so default it to
+    // `None` on import — it initializes on the next merged commit.
+    #[cfg_attr(feature = "migration-import", serde(default))]
     application_export_tree: Option<ApplicationExportTree>,
 }
 
