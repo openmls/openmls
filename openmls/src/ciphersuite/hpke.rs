@@ -282,6 +282,7 @@ pub(crate) struct PskEncryptParams<'a> {
     pub context: &'a [u8],
     pub psk: &'a [u8],
     pub psk_id: &'a [u8],
+    pub ciphersuite: Ciphersuite,
 }
 
 #[cfg(feature = "targeted-messages-draft")]
@@ -289,7 +290,6 @@ pub(crate) fn encrypt_with_label_psk_resolved_aad<F>(
     public_key: &[u8],
     params: PskEncryptParams,
     plaintext: &[u8],
-    ciphersuite: Ciphersuite,
     crypto: &impl OpenMlsCrypto,
     aad_builder: F,
 ) -> Result<HpkeCiphertext, LibraryError>
@@ -301,7 +301,7 @@ where
         .map_err(LibraryError::missing_bound_check)?;
     crypto
         .hpke_seal_psk_resolved_aad(
-            ciphersuite.hpke_config(),
+            params.ciphersuite.hpke_config(),
             public_key,
             &info,
             plaintext,
@@ -321,12 +321,11 @@ pub(crate) fn decrypt_with_label_psk_aad(
     params: PskEncryptParams,
     aad: &[u8],
     ciphertext: &HpkeCiphertext,
-    ciphersuite: Ciphersuite,
     crypto: &impl OpenMlsCrypto,
 ) -> Result<Vec<u8>, Error> {
     let info = EncryptContext::new(params.label, params.context.into()).tls_serialize_detached()?;
     let content_bytes = crypto.hpke_open_psk(
-        ciphersuite.hpke_config(),
+        params.ciphersuite.hpke_config(),
         ciphertext,
         private_key,
         &info,

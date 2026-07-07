@@ -115,10 +115,10 @@ fn decrypt_targeted_message_content_with_real_tbm(
                 context: &[],
                 psk: &psk,
                 psk_id: &psk_id_bytes,
+                ciphersuite: ctx.ciphersuite,
             },
             &tbm_bytes,
             &hpke_ciphertext,
-            ctx.ciphersuite,
             provider.crypto(),
         )
         .expect("Failed to decrypt content with the real TBM");

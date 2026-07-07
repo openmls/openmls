@@ -540,9 +540,9 @@ pub(crate) fn create_targeted_message(
             context: &[],
             psk: &psk,
             psk_id: &psk_id_bytes,
+            ciphersuite: ctx.ciphersuite,
         },
         &content_bytes,
-        ctx.ciphersuite,
         crypto,
         |kem_output| {
             let tbm = TargetedMessageTBM {
@@ -780,10 +780,10 @@ pub(crate) fn process_targeted_message<StorageError>(
                 context: &[],
                 psk: &psk,
                 psk_id: &psk_id_bytes,
+                ciphersuite: ctx.ciphersuite,
             },
             &tbm_bytes,
             &hpke_ciphertext,
-            ctx.ciphersuite,
             crypto,
         )
         .map_err(|e| {
