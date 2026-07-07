@@ -89,7 +89,8 @@ fn public_group() {
         ProcessedMessageContent::ApplicationMessage(_)
         | ProcessedMessageContent::ProposalMessage(_)
         | ProcessedMessageContent::ExternalJoinProposalMessage(_)
-        | ProcessedMessageContent::OwnPendingCommit => {
+        | ProcessedMessageContent::OwnPendingCommit
+        | ProcessedMessageContent::OwnPrivateMessage => {
             panic!("Unexpected message type.")
         }
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
@@ -209,7 +210,8 @@ fn public_group() {
         ProcessedMessageContent::ApplicationMessage(_)
         | ProcessedMessageContent::ExternalJoinProposalMessage(_)
         | ProcessedMessageContent::StagedCommitMessage(_)
-        | ProcessedMessageContent::OwnPendingCommit => panic!("Unexpected message type."),
+        | ProcessedMessageContent::OwnPendingCommit
+        | ProcessedMessageContent::OwnPrivateMessage => panic!("Unexpected message type."),
         #[cfg(feature = "extensions-draft")]
         ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
             panic!("Unexpected message type.")
@@ -334,7 +336,8 @@ fn extract_staged_commit(ppm: ProcessedMessage) -> StagedCommit {
         ProcessedMessageContent::ApplicationMessage(_)
         | ProcessedMessageContent::ProposalMessage(_)
         | ProcessedMessageContent::ExternalJoinProposalMessage(_)
-        | ProcessedMessageContent::OwnPendingCommit => {
+        | ProcessedMessageContent::OwnPendingCommit
+        | ProcessedMessageContent::OwnPrivateMessage => {
             panic!("Unexpected message type.")
         }
         ProcessedMessageContent::StagedCommitMessage(staged_content) => *staged_content,

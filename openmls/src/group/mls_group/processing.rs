@@ -30,6 +30,22 @@ use std::collections::BTreeMap;
 
 use super::{errors::ProcessMessageError, *};
 
+/// Result of unprotecting an inbound message.
+pub(crate) enum UnprotectedMessage {
+    /// A message from another sender that has been unprotected and is ready
+    /// for signature verification and content parsing.
+    Unverified(Box<UnverifiedMessage>),
+    /// A PrivateMessage whose sender data claims this client's own leaf. The
+    /// content cannot be decrypted; callers should surface
+    /// [`ProcessedMessageContent::OwnPrivateMessage`] and skip further
+    /// processing.
+    #[cfg(not(feature = "virtual-clients-draft"))]
+    OwnPrivateMessage {
+        epoch: GroupEpoch,
+        authenticated_data: Vec<u8>,
+    },
+}
+
 #[cfg(feature = "extensions-draft")]
 /// Keeps the old dictionary as well as the values that are being overwritten
 pub struct AppDataDictionaryUpdater<'a> {
@@ -188,8 +204,34 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
-        let unverified_message = self.unprotect_message(provider, message)?;
-        self.process_unverified_message(provider, unverified_message)
+        match self.unprotect_message(provider, message)? {
+            UnprotectedMessage::Unverified(m) => self.process_unverified_message(provider, *m),
+            // The content cannot be decrypted and the sender claim is unauthenticated,
+            // so we surface OwnPrivateMessage and skip all further processing.
+            #[cfg(not(feature = "virtual-clients-draft"))]
+            UnprotectedMessage::OwnPrivateMessage {
+                epoch,
+                authenticated_data,
+            } => {
+                let credential = self.credential()?.clone();
+                #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
+                let mut processed = ProcessedMessage::new(
+                    self.group_id().clone(),
+                    epoch,
+                    Sender::Member(self.own_leaf_index()),
+                    authenticated_data,
+                    ProcessedMessageContent::OwnPrivateMessage,
+                    credential,
+                );
+                #[cfg(feature = "extensions-draft")]
+                if self.context().safe_aad_required() {
+                    processed
+                        .try_attach_safe_aad()
+                        .map_err(|_| ProcessMessageError::MalformedSafeAad)?;
+                }
+                Ok(processed)
+            }
+        }
     }
 
     #[cfg(feature = "extensions-draft")]
@@ -204,7 +246,7 @@ impl MlsGroup {
         &mut self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
-    ) -> Result<UnverifiedMessage, ProcessMessageError<Provider::StorageError>> {
+    ) -> Result<UnprotectedMessage, ProcessMessageError<Provider::StorageError>> {
         // Make sure we are still a member of the group
         if !self.is_active() {
             return Err(ProcessMessageError::GroupStateError(
@@ -269,13 +311,29 @@ impl MlsGroup {
         //  - ValSem003
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
-        let decrypted_message = self.decrypt_message(
+        let decrypt_result = self.decrypt_message(
             provider.crypto(),
             message,
             &sender_ratchet_configuration,
             #[cfg(feature = "virtual-clients-draft")]
             emulator_ctx.as_ref(),
         )?;
+
+        let decrypted_message = match decrypt_result {
+            InboundDecryptionResult::Decrypted(decrypted_message) => decrypted_message,
+            // Own private messages short-circuit here: no ratchet state was
+            // consumed, so there is nothing to persist and no content to parse.
+            #[cfg(not(feature = "virtual-clients-draft"))]
+            InboundDecryptionResult::OwnPrivateMessage {
+                epoch,
+                authenticated_data,
+            } => {
+                return Ok(UnprotectedMessage::OwnPrivateMessage {
+                    epoch,
+                    authenticated_data,
+                });
+            }
+        };
 
         // Persist the secret tree if it was modified to ensure forward secrecy
         if will_modify_secret_tree {
@@ -290,7 +348,7 @@ impl MlsGroup {
             .parse_message(decrypted_message, &self.message_secrets_store)
             .map_err(ProcessMessageError::from)?;
 
-        Ok(unverified_message)
+        Ok(UnprotectedMessage::Unverified(Box::new(unverified_message)))
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
@@ -974,7 +1032,7 @@ impl MlsGroup {
 
     /// Performs framing validation and, if necessary, decrypts the given message.
     ///
-    /// Returns the [`DecryptedMessage`] if processing is successful, or a
+    /// Returns the [`InboundDecryptionResult`] if processing is successful, or a
     /// [`ValidationError`] if it is not.
     ///
     /// Checks the following semantic validation:
@@ -991,7 +1049,7 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")] emulator_ctx: Option<
             &crate::framing::EmulatorReuseGuardCtx<'_>,
         >,
-    ) -> Result<DecryptedMessage, ValidationError> {
+    ) -> Result<InboundDecryptionResult, ValidationError> {
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
@@ -1020,6 +1078,7 @@ impl MlsGroup {
                     crypto,
                     self.ciphersuite(),
                 )
+                .map(InboundDecryptionResult::Decrypted)
             }
             ProtocolMessage::PrivateMessage(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
