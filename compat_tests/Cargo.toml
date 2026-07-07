@@ -5,20 +5,45 @@ edition = "2021"
 publish = false
 
 [features]
-compat_0_7_1 = ["dep:openmls_0_7_1"]
+# enable `openmls` versions
+# NOTE: the patch version of `openmls_0_7` is selected in `test.sh` via
+# `cargo update --precise`, since only one patch version of a semver-compatible
+# line can be resolved at a time.
+compat_0_7 = ["dep:openmls_0_7"]
 compat_0_8_1 = ["dep:openmls_0_8_1", "openmls/0-8-1-storage-format"]
 compat_0_8_1_extensions = [
     "compat_0_8_1",
     "openmls_0_8_1/extensions-draft-08",
+    "extensions-draft"
+]
+
+# enable features on the underlying `openmls` crate,
+# and on the StorageProvider implementation in `test_storage_provider`
+extensions-draft = [
     "openmls/extensions-draft",
+]
+virtual-clients-draft = [
+    "openmls/virtual-clients-draft"
+]
+
+# enable features required for `test_storage_migration` test
+storage_migration = [
+    "compat_0_7",
+    "openmls_traits_0_4_1",
+    "openmls/storage-migration-0-7",
+    "dep:openmls_storage_migration",
 ]
 
 [dependencies]
 serde = { version = "^1.0" }
+postcard = { version = "1", features = ["alloc"] }
 thiserror = { version = "^2.0" }
-openmls_0_7_1 = { package = "openmls", version = "=0.7.1", optional = true }
+openmls_0_7 = { package = "openmls", version = "0.7", optional = true }
+openmls_traits_0_4_1 = { package = "openmls_traits", version = "=0.4.1", optional = true }
 openmls_0_8_1 = { package = "openmls", version = "=0.8.1", optional = true }
 openmls = { path = "../openmls" }
+openmls_traits = { path = "../traits" }
+openmls_storage_migration = { path = "../storage_migration", optional = true }
 
 [dev-dependencies]
 serde_json = "1.0"

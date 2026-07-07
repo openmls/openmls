@@ -2459,6 +2459,7 @@ dependencies = [
  "openmls_rust_crypto",
  "openmls_serialization_helpers",
  "openmls_sqlite_storage",
+ "openmls_storage_migration",
  "openmls_test",
  "openmls_traits",
  "pretty_env_logger",
@@ -2601,6 +2602,14 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "openmls_storage_migration"
+version = "0.1.0"
+dependencies = [
+ "openmls_traits",
+ "thiserror",
 ]
 
 [[package]]

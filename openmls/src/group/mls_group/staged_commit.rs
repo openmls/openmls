@@ -1081,3 +1081,76 @@ impl MemberStagedCommitState {
         self.staged_diff.group_context()
     }
 }
+
+#[cfg(feature = "storage-migration-0-7")]
+pub(crate) mod compat {
+
+    use super::*;
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) enum StagedCommitStateCompat {
+        PublicState(Box<PublicStagedCommitState>),
+        /// The group member variant of the staged commit state.
+        GroupMember(Box<MemberStagedCommitStateCompat>),
+    }
+
+    impl From<StagedCommitStateCompat> for StagedCommitState {
+        fn from(compat: StagedCommitStateCompat) -> Self {
+            match compat {
+                StagedCommitStateCompat::PublicState(state) => Self::PublicState(state),
+                StagedCommitStateCompat::GroupMember(state_compat) => {
+                    Self::GroupMember(Box::new((*state_compat).into()))
+                }
+            }
+        }
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub struct StagedCommitCompat {
+        /// A queue containing the proposals associated with the commit.
+        pub staged_proposal_queue: ProposalQueue,
+        /// The staged commit state.
+        pub(super) state: StagedCommitStateCompat,
+    }
+
+    impl From<StagedCommitCompat> for StagedCommit {
+        fn from(compat: StagedCommitCompat) -> Self {
+            Self {
+                staged_proposal_queue: compat.staged_proposal_queue,
+                state: compat.state.into(),
+                // migrate Option added in `openmls` v0.8.2
+                #[cfg(feature = "virtual-clients-draft")]
+                vc_emulation_epoch_id: None,
+            }
+        }
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct MemberStagedCommitStateCompat {
+        group_epoch_secrets: GroupEpochSecrets,
+        message_secrets: crate::schedule::message_secrets::compat::MessageSecretsCompat,
+        staged_diff: StagedPublicGroupDiff,
+        new_keypairs: Vec<EncryptionKeyPair>,
+        new_leaf_keypair_option: Option<EncryptionKeyPair>,
+        update_path_leaf_node: Option<LeafNode>,
+    }
+
+    impl From<MemberStagedCommitStateCompat> for MemberStagedCommitState {
+        fn from(compat: MemberStagedCommitStateCompat) -> Self {
+            Self {
+                group_epoch_secrets: compat.group_epoch_secrets,
+                message_secrets: compat.message_secrets.into(),
+                staged_diff: compat.staged_diff,
+                new_keypairs: compat.new_keypairs,
+                new_leaf_keypair_option: compat.new_leaf_keypair_option,
+                update_path_leaf_node: compat.update_path_leaf_node,
+                // migrate Option added in `openmls` v0.7.1
+                #[cfg(feature = "extensions-draft")]
+                application_export_tree: None,
+                // migrate Option added in `openmls` v0.8.2
+                #[cfg(feature = "virtual-clients-draft")]
+                new_own_leaf_index: None,
+            }
+        }
+    }
+}

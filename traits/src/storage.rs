@@ -787,7 +787,7 @@ pub mod traits {
     use super::{Entity, Key};
 
     // traits for keys, one per data type
-    pub trait GroupId<const VERSION: u16>: Key<VERSION> {}
+    pub trait GroupId<const VERSION: u16>: Key<VERSION> + Entity<VERSION> {}
     pub trait SignaturePublicKey<const VERSION: u16>: Key<VERSION> {}
     pub trait HashReference<const VERSION: u16>: Key<VERSION> {}
     pub trait PskId<const VERSION: u16>: Key<VERSION> {}

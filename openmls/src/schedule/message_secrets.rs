@@ -158,3 +158,32 @@ impl PartialEq for MessageSecrets {
             && self.secret_tree == other.secret_tree
     }
 }
+
+#[cfg(feature = "storage-migration-0-7")]
+pub(crate) mod compat {
+    use super::*;
+
+    /// Combined message secrets that need to be stored for later decryption/verification
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct MessageSecretsCompat {
+        sender_data_secret: SenderDataSecret,
+        membership_key: MembershipKey,
+        confirmation_key: ConfirmationKey,
+        serialized_context: Vec<u8>,
+        secret_tree: SecretTree,
+    }
+
+    impl From<MessageSecretsCompat> for MessageSecrets {
+        fn from(compat: MessageSecretsCompat) -> Self {
+            Self {
+                sender_data_secret: compat.sender_data_secret,
+                membership_key: compat.membership_key,
+                confirmation_key: compat.confirmation_key,
+                serialized_context: compat.serialized_context,
+                secret_tree: compat.secret_tree,
+                // migrate Option added in `openmls` v0.8.2
+                added_at: None,
+            }
+        }
+    }
+}

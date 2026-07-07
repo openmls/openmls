@@ -24,6 +24,7 @@ openmls_memory_storage = { workspace = true, features = [
 ], optional = true }
 openmls_sqlite_storage = { workspace = true, optional = true }
 openmls_test = { workspace = true, optional = true }
+openmls_storage_migration = { workspace = true, optional = true }
 openmls_serialization_helpers = { workspace = true }
 openmls_libcrux_crypto = { workspace = true, optional = true }
 
@@ -49,6 +50,8 @@ serde_bytes = "0.11.17"
 [features]
 # enable for compatibility with openmls=0.8.1
 0-8-1-storage-format = []
+# migration helpers for openmls=0.7.x and earlier
+storage-migration-0-7 = ["dep:openmls_storage_migration"]
 test-utils = [
     "dep:serde_json",
     "dep:itertools",

@@ -340,3 +340,47 @@ impl MessageSecretsStore {
         self.past_epoch_trees.len()
     }
 }
+
+#[cfg(feature = "storage-migration-0-7")]
+pub(crate) mod compat {
+    use super::*;
+    use crate::schedule::message_secrets::compat::MessageSecretsCompat;
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct EpochTreeCompat {
+        epoch: u64,
+        message_secrets: MessageSecretsCompat,
+        leaves: Vec<Member>,
+    }
+
+    impl From<EpochTreeCompat> for EpochTree {
+        fn from(compat: EpochTreeCompat) -> Self {
+            Self {
+                epoch: compat.epoch,
+                message_secrets: compat.message_secrets.into(),
+                leaves: compat.leaves,
+            }
+        }
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct MessageSecretsStoreCompat {
+        pub(crate) max_epochs: usize,
+        past_epoch_trees: VecDeque<EpochTreeCompat>,
+        message_secrets: MessageSecretsCompat,
+    }
+
+    impl From<MessageSecretsStoreCompat> for MessageSecretsStore {
+        fn from(compat: MessageSecretsStoreCompat) -> Self {
+            Self {
+                max_epochs: compat.max_epochs,
+                past_epoch_trees: compat
+                    .past_epoch_trees
+                    .into_iter()
+                    .map(EpochTree::from)
+                    .collect(),
+                message_secrets: compat.message_secrets.into(),
+            }
+        }
+    }
+}

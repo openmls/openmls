@@ -1285,3 +1285,50 @@ impl WelcomeKeyMaterial {
         }
     }
 }
+
+#[cfg(feature = "storage-migration-0-7")]
+pub(crate) mod compat {
+    use super::*;
+
+    use crate::group::mls_group::staged_commit::compat::StagedCommitCompat;
+
+    #[derive(Serialize, Deserialize)]
+    pub enum PendingCommitStateCompat {
+        /// Commit from a group member
+        Member(StagedCommitCompat),
+        /// Commit from an external joiner
+        External(StagedCommitCompat),
+    }
+
+    impl From<PendingCommitStateCompat> for PendingCommitState {
+        fn from(compat: PendingCommitStateCompat) -> Self {
+            match compat {
+                PendingCommitStateCompat::Member(member) => Self::Member(member.into()),
+                PendingCommitStateCompat::External(external) => Self::External(external.into()),
+            }
+        }
+    }
+
+    /// Compatibility version of [`MlsGroupState`]
+    #[derive(Serialize, Deserialize)]
+    pub enum MlsGroupStateCompat {
+        /// There is currently a pending Commit that hasn't been merged yet.
+        PendingCommit(Box<PendingCommitStateCompat>),
+        /// The group state is in an operational state, where new messages and Commits can be created.
+        Operational,
+        /// The group is inactive because the member has been removed.
+        Inactive,
+    }
+
+    impl From<MlsGroupStateCompat> for MlsGroupState {
+        fn from(compat: MlsGroupStateCompat) -> Self {
+            match compat {
+                MlsGroupStateCompat::PendingCommit(commit) => {
+                    Self::PendingCommit(Box::new((*commit).into()))
+                }
+                MlsGroupStateCompat::Operational => Self::Operational,
+                MlsGroupStateCompat::Inactive => Self::Inactive,
+            }
+        }
+    }
+}

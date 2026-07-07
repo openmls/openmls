@@ -1,0 +1,450 @@
+{
+  "PendingCommit": {
+    "Member": {
+      "staged_proposal_queue": {
+        "proposal_references": [
+          {
+            "value": {
+              "vec": []
+            }
+          }
+        ],
+        "queued_proposals": [
+          [
+            {
+              "value": {
+                "vec": []
+              }
+            },
+            {
+              "proposal": {
+                "Add": {
+                  "key_package": {
+                    "payload": {
+                      "protocol_version": "Mls10",
+                      "ciphersuite": "MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448",
+                      "init_key": {
+                        "key": {
+                          "vec": []
+                        }
+                      },
+                      "leaf_node": {
+                        "payload": {
+                          "encryption_key": {
+                            "key": {
+                              "vec": []
+                            }
+                          },
+                          "signature_key": {
+                            "value": {
+                              "vec": []
+                            }
+                          },
+                          "credential": {
+                            "credential_type": "Basic",
+                            "serialized_credential_content": {
+                              "vec": []
+                            }
+                          },
+                          "capabilities": {
+                            "versions": [
+                              "Mls10"
+                            ],
+                            "ciphersuites": [],
+                            "extensions": [],
+                            "proposals": [],
+                            "credentials": [
+                              "Basic"
+                            ]
+                          },
+                          "leaf_node_source": {
+                            "KeyPackage": {
+                              "not_before": 0,
+                              "not_after": 0
+                            }
+                          },
+                          "extensions": {
+                            "unique": []
+                          }
+                        },
+                        "signature": {
+                          "value": {
+                            "vec": []
+                          }
+                        }
+                      },
+                      "extensions": {
+                        "unique": []
+                      }
+                    },
+                    "signature": {
+                      "value": {
+                        "vec": []
+                      }
+                    }
+                  }
+                }
+              },
+              "proposal_reference": {
+                "value": {
+                  "vec": []
+                }
+              },
+              "sender": {
+                "Member": 0
+              },
+              "proposal_or_ref_type": "Proposal"
+            }
+          ]
+        ]
+      },
+      "state": {
+        "GroupMember": {
+          "group_epoch_secrets": {
+            "init_secret": {
+              "secret": {
+                "value": {
+                  "vec": []
+                }
+              }
+            },
+            "exporter_secret": {
+              "secret": {
+                "value": {
+                  "vec": []
+                }
+              }
+            },
+            "epoch_authenticator": {
+              "secret": {
+                "value": {
+                  "vec": []
+                }
+              }
+            },
+            "external_secret": {
+              "secret": {
+                "value": {
+                  "vec": []
+                }
+              }
+            },
+            "resumption_psk": {
+              "secret": {
+                "value": {
+                  "vec": []
+                }
+              }
+            }
+          },
+          "message_secrets": {
+            "sender_data_secret": {
+              "secret": {
+                "value": {
+                  "vec": []
+                }
+              }
+            },
+            "membership_key": {
+              "secret": {
+                "value": {
+                  "vec": []
+                }
+              }
+            },
+            "confirmation_key": {
+              "secret": {
+                "value": {
+                  "vec": []
+                }
+              }
+            },
+            "serialized_context": [],
+            "secret_tree": {
+              "own_index": 0,
+              "leaf_nodes": [
+                null,
+                null
+              ],
+              "parent_nodes": [
+                {
+                  "secret": {
+                    "value": {
+                      "vec": []
+                    }
+                  }
+                },
+                null
+              ],
+              "handshake_sender_ratchets": [
+                null,
+                null
+              ],
+              "application_sender_ratchets": [
+                null,
+                null
+              ],
+              "size": 3
+            }
+          },
+          "staged_diff": {
+            "staged_diff": {
+              "diff": {
+                "leaf_diff": {
+                  "0": {
+                    "node": {
+                      "payload": {
+                        "encryption_key": {
+                          "key": {
+                            "vec": []
+                          }
+                        },
+                        "signature_key": {
+                          "value": {
+                            "vec": []
+                          }
+                        },
+                        "credential": {
+                          "credential_type": "Basic",
+                          "serialized_credential_content": {
+                            "vec": []
+                          }
+                        },
+                        "capabilities": {
+                          "versions": [
+                            "Mls10"
+                          ],
+                          "ciphersuites": [],
+                          "extensions": [
+                            {
+                              "Unknown": 0
+                            }
+                          ],
+                          "proposals": [],
+                          "credentials": [
+                            "Basic"
+                          ]
+                        },
+                        "leaf_node_source": {
+                          "Commit": {
+                            "vec": []
+                          }
+                        },
+                        "extensions": {
+                          "unique": [
+                            {
+                              "Unknown": [
+                                0,
+                                []
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "signature": {
+                        "value": {
+                          "vec": []
+                        }
+                      }
+                    }
+                  },
+                  "1": {
+                    "node": {
+                      "payload": {
+                        "encryption_key": {
+                          "key": {
+                            "vec": []
+                          }
+                        },
+                        "signature_key": {
+                          "value": {
+                            "vec": []
+                          }
+                        },
+                        "credential": {
+                          "credential_type": "Basic",
+                          "serialized_credential_content": {
+                            "vec": []
+                          }
+                        },
+                        "capabilities": {
+                          "versions": [
+                            "Mls10"
+                          ],
+                          "ciphersuites": [],
+                          "extensions": [],
+                          "proposals": [],
+                          "credentials": [
+                            "Basic"
+                          ]
+                        },
+                        "leaf_node_source": {
+                          "KeyPackage": {
+                            "not_before": 0,
+                            "not_after": 0
+                          }
+                        },
+                        "extensions": {
+                          "unique": []
+                        }
+                      },
+                      "signature": {
+                        "value": {
+                          "vec": []
+                        }
+                      }
+                    }
+                  }
+                },
+                "parent_diff": {
+                  "0": {
+                    "node": {
+                      "encryption_key": {
+                        "key": {
+                          "vec": []
+                        }
+                      },
+                      "parent_hash": {
+                        "vec": []
+                      },
+                      "unmerged_leaves": {
+                        "list": []
+                      }
+                    }
+                  }
+                },
+                "size": 3
+              },
+              "new_tree_hash": []
+            },
+            "group_context": {
+              "protocol_version": "Mls10",
+              "ciphersuite": "MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448",
+              "group_id": {
+                "value": {
+                  "vec": []
+                }
+              },
+              "epoch": 1,
+              "tree_hash": {
+                "vec": []
+              },
+              "confirmed_transcript_hash": {
+                "vec": []
+              },
+              "extensions": {
+                "unique": [
+                  {
+                    "ExternalSenders": [
+                      {
+                        "signature_key": {
+                          "value": {
+                            "vec": []
+                          }
+                        },
+                        "credential": {
+                          "credential_type": "Basic",
+                          "serialized_credential_content": {
+                            "vec": []
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "interim_transcript_hash": [],
+            "confirmation_tag": {
+              "mac_value": {
+                "vec": []
+              }
+            }
+          },
+          "new_keypairs": [
+            {
+              "public_key": {
+                "key": {
+                  "vec": []
+                }
+              },
+              "private_key": {
+                "key": {
+                  "vec": []
+                }
+              }
+            },
+            {
+              "public_key": {
+                "key": {
+                  "vec": []
+                }
+              },
+              "private_key": {
+                "key": {
+                  "vec": []
+                }
+              }
+            }
+          ],
+          "new_leaf_keypair_option": null,
+          "update_path_leaf_node": {
+            "payload": {
+              "encryption_key": {
+                "key": {
+                  "vec": []
+                }
+              },
+              "signature_key": {
+                "value": {
+                  "vec": []
+                }
+              },
+              "credential": {
+                "credential_type": "Basic",
+                "serialized_credential_content": {
+                  "vec": []
+                }
+              },
+              "capabilities": {
+                "versions": [
+                  "Mls10"
+                ],
+                "ciphersuites": [],
+                "extensions": [
+                  {
+                    "Unknown": 0
+                  }
+                ],
+                "proposals": [],
+                "credentials": [
+                  "Basic"
+                ]
+              },
+              "leaf_node_source": {
+                "Commit": {
+                  "vec": []
+                }
+              },
+              "extensions": {
+                "unique": [
+                  {
+                    "Unknown": [
+                      0,
+                      []
+                    ]
+                  }
+                ]
+              }
+            },
+            "signature": {
+              "value": {
+                "vec": []
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
