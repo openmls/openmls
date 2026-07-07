@@ -418,6 +418,8 @@ impl OpenMlsCrypto for CryptoProvider {
         F: FnOnce(&[u8]) -> Result<Vec<u8>, E>,
     {
         let mut hpke = hpke_psk_from_config(config);
+        // Split the single-shot seal into setup and seal so the AAD can be built
+        // from the KEM output. The setup and seal must share the same context.
         let (kem_output, mut context) = hpke
             .setup_sender(&pk_r.into(), info, Some(psk), Some(psk_id), None)
             .map_err(|_| HpkeSealPskResolvedAadError::CryptoError(CryptoError::SenderSetupError))?;

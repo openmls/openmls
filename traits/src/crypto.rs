@@ -183,8 +183,11 @@ pub trait OpenMlsCrypto: Send + Sync {
         psk_id: &[u8],
     ) -> Result<Vec<u8>, CryptoError>;
 
-    /// HPKE PSK encryption where the caller constructs the final AAD after the
-    /// KEM output is known but before sealing.
+    /// HPKE PSK encryption where the AAD depends on the KEM output.
+    ///
+    /// The KEM output is only produced by the sealing operation itself, so it
+    /// cannot be passed as a ready-made AAD. Instead, `aad_builder` is invoked
+    /// with the KEM output between sender setup and seal to construct the AAD.
     #[cfg(feature = "targeted-messages-draft")]
     #[allow(clippy::too_many_arguments)]
     fn hpke_seal_psk_resolved_aad<F, E>(
