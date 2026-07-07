@@ -7,7 +7,7 @@ use tls_codec::{DeserializeBytes as _, Serialize as TlsSerializeTrait, VLByteSli
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{MlsMessageBodyOut, MlsMessageIn},
-    group::mls_group::tests_and_kats::utils::setup_alice_bob_group,
+    group::mls_group::{config::MlsGroupJoinConfig, tests_and_kats::utils::setup_alice_bob_group},
     targeted_messages::{
         derive_sender_auth_data_key_nonce, derive_sender_auth_data_secret,
         derive_targeted_message_psk, ProcessTargetedMessageError, SenderAuthDataAAD,
@@ -139,7 +139,7 @@ fn targeted_message_round_trip() {
     let bob_leaf_index = bob_group.own_leaf_index();
 
     let mls_msg_out = alice_group
-        .create_targeted_message(alice_provider, &alice_signer, bob_leaf_index, payload, 0)
+        .create_targeted_message(alice_provider, &alice_signer, bob_leaf_index, payload)
         .expect("Failed to create targeted message");
 
     // Verify the MlsMessageOut wraps a TargetedMessage
@@ -173,7 +173,7 @@ fn targeted_message_wrong_recipient() {
     let bob_leaf_index = bob_group.own_leaf_index();
 
     let mls_msg_out = alice_group
-        .create_targeted_message(alice_provider, &alice_signer, bob_leaf_index, b"secret", 0)
+        .create_targeted_message(alice_provider, &alice_signer, bob_leaf_index, b"secret")
         .expect("Failed to create targeted message");
 
     let targeted_in = extract_targeted_message_in(&mls_msg_out);
@@ -194,7 +194,7 @@ fn targeted_message_serialization() {
     let bob_leaf_index = bob_group.own_leaf_index();
 
     let mls_msg_out = alice_group
-        .create_targeted_message(alice_provider, &alice_signer, bob_leaf_index, b"payload", 0)
+        .create_targeted_message(alice_provider, &alice_signer, bob_leaf_index, b"payload")
         .expect("Failed to create targeted message");
 
     // Serialize/deserialize at the MlsMessage level
@@ -230,7 +230,6 @@ fn targeted_message_bidirectional() {
             &alice_signer,
             bob_group.own_leaf_index(),
             b"Hello Bob",
-            0,
         )
         .expect("Alice failed to create targeted message");
 
@@ -247,7 +246,6 @@ fn targeted_message_bidirectional() {
             &bob_signer,
             alice_group.own_leaf_index(),
             b"Hello Alice",
-            0,
         )
         .expect("Bob failed to create targeted message");
 
@@ -271,7 +269,6 @@ fn targeted_message_invalid_recipient_leaf() {
         &alice_signer,
         LeafNodeIndex::new(99),
         b"payload",
-        0,
     );
     assert!(result.is_err());
 }
@@ -290,7 +287,6 @@ fn targeted_message_empty_payload() {
             &alice_signer,
             bob_group.own_leaf_index(),
             b"",
-            0,
         )
         .expect("Failed to create targeted message with empty payload");
 
@@ -316,7 +312,6 @@ fn targeted_message_uses_real_sender_auth_data_in_tbm() {
             &alice_signer,
             bob_group.own_leaf_index(),
             payload,
-            0,
         )
         .expect("Failed to create targeted message");
 
@@ -344,7 +339,6 @@ fn targeted_message_aad_is_one_shot() {
             &alice_signer,
             bob_group.own_leaf_index(),
             b"first",
-            0,
         )
         .expect("Failed to create first targeted message");
     assert!(alice_group.aad().is_empty());
@@ -355,7 +349,6 @@ fn targeted_message_aad_is_one_shot() {
             &alice_signer,
             bob_group.own_leaf_index(),
             b"second",
-            0,
         )
         .expect("Failed to create second targeted message");
 
@@ -413,7 +406,6 @@ fn targeted_message_epoch_mismatch() {
             &alice_signer,
             bob_group.own_leaf_index(),
             b"test",
-            0,
         )
         .expect("Failed to create targeted message");
 
@@ -440,7 +432,6 @@ fn targeted_message_group_id_mismatch() {
             &alice_signer,
             bob_group.own_leaf_index(),
             b"test",
-            0,
         )
         .expect("Failed to create targeted message");
 
@@ -468,7 +459,6 @@ fn targeted_message_ciphertext_tampered() {
             &alice_signer,
             bob_group.own_leaf_index(),
             b"test",
-            0,
         )
         .expect("Failed to create targeted message");
 
@@ -494,7 +484,6 @@ fn targeted_message_sender_auth_data_tampered() {
             &alice_signer,
             bob_group.own_leaf_index(),
             b"test",
-            0,
         )
         .expect("Failed to create targeted message");
 
@@ -516,7 +505,10 @@ fn targeted_message_padding_round_trip() {
         setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
     let payload = b"short";
-    let padding_length = 256;
+    let config = MlsGroupJoinConfig::builder().padding_size(256).build();
+    alice_group
+        .set_configuration(alice_provider.storage(), &config)
+        .expect("Failed to set padding size");
 
     let mls_msg_out = alice_group
         .create_targeted_message(
@@ -524,7 +516,6 @@ fn targeted_message_padding_round_trip() {
             &alice_signer,
             bob_group.own_leaf_index(),
             payload,
-            padding_length,
         )
         .expect("Failed to create padded targeted message");
 
@@ -553,16 +544,19 @@ fn targeted_message_padding_grows_ciphertext() {
             &alice_signer,
             bob_group.own_leaf_index(),
             payload,
-            0,
         )
         .expect("create unpadded");
+
+    let config = MlsGroupJoinConfig::builder().padding_size(512).build();
+    alice_group
+        .set_configuration(alice_provider.storage(), &config)
+        .expect("Failed to set padding size");
     let padded = alice_group
         .create_targeted_message(
             alice_provider,
             &alice_signer,
             bob_group.own_leaf_index(),
             payload,
-            512,
         )
         .expect("create padded");
 
@@ -599,7 +593,6 @@ fn targeted_message_signature_bound_to_sender_leaf_index() {
             &alice_signer,
             bob_group.own_leaf_index(),
             b"genuine",
-            0,
         )
         .expect("create");
     let targeted_in = extract_targeted_message_in(&mls_msg_out);

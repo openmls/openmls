@@ -15,17 +15,16 @@ use super::*;
 impl MlsGroup {
     /// Creates a targeted message for a specific group member. The
     /// `application_data` payload is encrypted to the recipient's leaf
-    /// encryption key. The sender is authenticated via signature.
-    /// `padding_length` is the number of zero bytes appended to the plaintext
-    /// before encryption to obscure the application data length. Pass `0` for
-    /// no padding.
+    /// encryption key. The sender is authenticated via signature. The number of
+    /// zero bytes appended to the plaintext before encryption to obscure the
+    /// application data length is taken from the group's configured padding
+    /// size.
     pub fn create_targeted_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         recipient_leaf_index: LeafNodeIndex,
         application_data: &[u8],
-        padding_length: usize,
     ) -> Result<MlsMessageOut, CreateTargetedMessageError> {
         if !self.is_active() {
             return Err(CreateTargetedMessageError::GroupNotActive);
@@ -54,7 +53,7 @@ impl MlsGroup {
                 recipient_encryption_key,
                 &self.aad,
                 application_data,
-                padding_length,
+                self.configuration().padding_size(),
             )?
         };
         self.reset_aad();
