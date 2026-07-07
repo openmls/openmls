@@ -906,9 +906,15 @@ fn test_external_commit_with_app_data_update_proposal() {
         .into_protocol_message()
         .unwrap();
 
-    let unverified_message = alice_group
-        .unprotect_message(alice_provider, plaintext)
+    let processed_message = alice_group
+        .process_message(alice_provider, plaintext)
         .unwrap();
+
+    let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected an unresolved AppDataUpdate commit.");
+    };
 
     let mut alice_updater = alice_group.app_data_dictionary_updater();
     alice_updater.set(ComponentData::from_parts(
@@ -916,21 +922,11 @@ fn test_external_commit_with_app_data_update_proposal() {
         b"charlie".to_vec().into(),
     ));
 
-    let processed_message = alice_group
-        .process_unverified_message_with_app_data_updates(
-            alice_provider,
-            unverified_message,
-            alice_updater.changes(),
-        )
+    let staged_commit = alice_group
+        .stage_app_data_commit(alice_provider, *unresolved_commit, alice_updater.changes())
         .unwrap();
-
-    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
-        processed_message.into_content()
-    else {
-        panic!("Expected a staged commit message.");
-    };
     alice_group
-        .merge_staged_commit(alice_provider, *staged_commit)
+        .merge_staged_commit(alice_provider, staged_commit)
         .unwrap();
 
     let alice_dict = alice_group
