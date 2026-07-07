@@ -9,6 +9,11 @@
 
 use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 
+/// Bundle used to export a group for migration to a newer OpenMLS version. See
+/// [`crate::group::MlsGroup::export_for_migration`].
+#[cfg(feature = "migration-export")]
+pub use crate::group::GroupMigrationBundle;
+
 use crate::binary_tree::LeafNodeIndex;
 use crate::group::proposal_store::QueuedProposal;
 use crate::group::{MlsGroupJoinConfig, MlsGroupState};
@@ -89,6 +94,7 @@ impl Entity<CURRENT_VERSION> for TreeSync {}
 impl traits::TreeSync<CURRENT_VERSION> for TreeSync {}
 
 impl Key<CURRENT_VERSION> for GroupId {}
+impl Entity<CURRENT_VERSION> for GroupId {}
 impl traits::GroupId<CURRENT_VERSION> for GroupId {}
 
 impl Key<CURRENT_VERSION> for ProposalRef {}

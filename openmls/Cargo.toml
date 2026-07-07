@@ -58,6 +58,9 @@ test-utils = [
     "backtrace",
 ]
 backtrace = ["dep:backtrace"]
+# export a group (and the side-table data it owns) for migration to a newer
+# OpenMLS version; storage format is unchanged
+migration-export = []
 libcrux-provider = [
     "dep:openmls_libcrux_crypto",
     "openmls_test?/libcrux-provider",
