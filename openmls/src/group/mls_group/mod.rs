@@ -1401,6 +1401,7 @@ impl WelcomeKeyMaterial {
 /// previous OpenMLS version for migration. The mirror of the older version's
 /// `MlsGroup::export_for_migration`.
 #[cfg(feature = "migration-import")]
+#[cfg_attr(feature = "migration-test-utils", derive(serde::Serialize))]
 #[derive(serde::Deserialize)]
 pub struct GroupMigrationBundle {
     group: MlsGroup,
