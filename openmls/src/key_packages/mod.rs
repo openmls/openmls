@@ -822,10 +822,7 @@ impl KeyPackageBuilder {
             .derive_encryption_key_secret(provider.crypto(), ciphersuite)?
             .generate_encryption_key_pair(provider.crypto(), ciphersuite)?;
 
-        // Wrap the TBE bound to the new leaf via its serialized encryption key.
-        // The leaf dictionary was resolved and validated once for the whole
-        // batch, so reuse a clone here.
-        let resolved_dictionary = batch_ctx.resolved_dictionary.clone();
+        // Bind the TBE to the new leaf via its serialized encryption key.
         let leaf_encryption_key = encryption_key_pair
             .public_key()
             .tls_serialize_detached()
@@ -850,7 +847,7 @@ impl KeyPackageBuilder {
         builder.ensure_last_resort();
         let leaf_node_extensions = crate::components::vc_derivation_info::merge_vc_derivation_info(
             builder.leaf_node_extensions.as_ref(),
-            resolved_dictionary,
+            batch_ctx.resolved_dictionary.clone(),
             derivation_info_bytes,
         )
         .map_err(KeyPackageNewError::LibraryError)?;

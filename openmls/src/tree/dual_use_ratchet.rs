@@ -97,6 +97,18 @@ impl DualUseRatchet {
         self.ratchet_head.generation()
     }
 
+    /// Advance the derivation head by one generation, returning only the
+    /// resulting key material and dropping the generation number.
+    fn advance_head(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
+        self.ratchet_head
+            .ratchet_forward(crypto, ciphersuite)
+            .map(|(_, key_material)| key_material)
+    }
+
     /// Discard the cached encryption secret for a previously emitted
     /// generation. Call this to confirm a sent message and drop the
     /// corresponding key material for forward secrecy.
@@ -131,10 +143,7 @@ impl DualUseRatchet {
         crypto: &impl OpenMlsCrypto,
     ) -> Result<(Generation, RatchetKeyMaterial), SecretTreeError> {
         let generation = self.ratchet_head.generation();
-        let ratchet_secrets = self
-            .ratchet_head
-            .ratchet_forward(crypto, ciphersuite)
-            .map(|(_, key_material)| key_material)?;
+        let ratchet_secrets = self.advance_head(ciphersuite, crypto)?;
         self.past_secrets.insert(
             generation,
             DualUsePastSecret::AwaitingConfirmation(ratchet_secrets.clone()),
@@ -165,10 +174,7 @@ impl DualUseRatchet {
 
         let ratchet_secrets = if generation >= head_generation {
             for skipped_generation in head_generation..generation {
-                let ratchet_secrets = self
-                    .ratchet_head
-                    .ratchet_forward(crypto, ciphersuite)
-                    .map(|(_, key_material)| key_material)?;
+                let ratchet_secrets = self.advance_head(ciphersuite, crypto)?;
                 self.past_secrets.insert(
                     skipped_generation,
                     DualUsePastSecret::RetainedForDecryption(RetainedDecryptionSecret::Available(
@@ -176,10 +182,7 @@ impl DualUseRatchet {
                     )),
                 );
             }
-            let ratchet_secrets = self
-                .ratchet_head
-                .ratchet_forward(crypto, ciphersuite)
-                .map(|(_, key_material)| key_material)?;
+            let ratchet_secrets = self.advance_head(ciphersuite, crypto)?;
             self.past_secrets.insert(
                 generation,
                 DualUsePastSecret::RetainedForDecryption(RetainedDecryptionSecret::Consumed),
