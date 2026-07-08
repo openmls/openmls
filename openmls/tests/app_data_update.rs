@@ -724,3 +724,184 @@ fn test_public_group_plain_commit_not_unresolved() {
         .merge_commit(observer_provider.storage(), *staged_commit)
         .unwrap();
 }
+
+/// `MlsGroup::resolve_app_data_commit` stages an unresolved app data commit
+/// and returns the same message with regular `StagedCommitMessage` content,
+/// preserving the message envelope (sender, credential).
+#[openmls_test]
+fn test_resolve_app_data_commit() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
+
+    let commit_message = alice_app_data_commit(
+        alice,
+        &alice_party.provider,
+        0xf042,
+        b"proposal_payload",
+        b"caller_computed_value",
+    );
+
+    let processed_message = bob
+        .group
+        .process_message(&bob_party.provider, to_protocol_message(commit_message))
+        .unwrap();
+    let sender = processed_message.sender().clone();
+    let credential = processed_message.credential().clone();
+
+    let mut bob_updater = bob.group.app_data_dictionary_updater();
+    bob_updater.set(ComponentData::from_parts(
+        0xf042,
+        b"caller_computed_value".to_vec().into(),
+    ));
+    let resolved_message = bob
+        .group
+        .resolve_app_data_commit(
+            &bob_party.provider,
+            processed_message,
+            bob_updater.changes(),
+        )
+        .expect("error resolving commit");
+
+    // The envelope is preserved ...
+    assert_eq!(resolved_message.sender(), &sender);
+    assert_eq!(resolved_message.credential(), &credential);
+
+    // ... and the content is now a regular staged commit carrying the
+    // caller-computed dictionary value.
+    let staged_commit = match resolved_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => staged_commit,
+        other => panic!("expected a staged commit message, got {other:?}"),
+    };
+    let dictionary = staged_commit
+        .group_context()
+        .extensions()
+        .app_data_dictionary()
+        .unwrap()
+        .dictionary();
+    assert_eq!(
+        dictionary.get(&0xf042),
+        Some(b"caller_computed_value".as_ref())
+    );
+
+    bob.group
+        .merge_staged_commit(&bob_party.provider, *staged_commit)
+        .unwrap();
+    alice
+        .group
+        .merge_pending_commit(&alice_party.provider)
+        .unwrap();
+    assert_eq!(
+        alice.group.extensions().app_data_dictionary(),
+        bob.group.extensions().app_data_dictionary()
+    );
+}
+
+/// Resolving a message that does not carry an unresolved app data commit
+/// fails with `NotAnUnresolvedAppDataCommit`.
+#[openmls_test]
+fn test_resolve_app_data_commit_wrong_content() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
+
+    // A plain self-update commit without AppDataUpdate proposals.
+    let commit_message = alice
+        .group
+        .commit_builder()
+        .force_self_update(true)
+        .load_psks(alice_party.provider.storage())
+        .unwrap()
+        .build(
+            alice_party.provider.rand(),
+            alice_party.provider.crypto(),
+            &alice.party.signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(&alice_party.provider)
+        .unwrap()
+        .into_contents()
+        .0;
+
+    let processed_message = bob
+        .group
+        .process_message(&bob_party.provider, to_protocol_message(commit_message))
+        .unwrap();
+
+    let err = bob
+        .group
+        .resolve_app_data_commit(&bob_party.provider, processed_message, None)
+        .expect_err("resolving a plain commit should fail");
+    assert!(matches!(
+        err,
+        ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit
+    ));
+}
+
+/// `PublicGroup::resolve_app_data_commit` mirrors the `MlsGroup` variant.
+#[openmls_test]
+fn test_public_group_resolve_app_data_commit() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let observer_provider = Provider::default();
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice, _bob] = group_state.members_mut(&["alice", "bob"]);
+
+    let mut public_group = build_public_group(alice, &alice_party.provider, &observer_provider);
+
+    let commit_message = alice_app_data_commit(
+        alice,
+        &alice_party.provider,
+        0xf042,
+        b"proposal_payload",
+        b"caller_computed_value",
+    );
+
+    let processed_message = public_group
+        .process_message(
+            observer_provider.crypto(),
+            to_protocol_message(commit_message),
+        )
+        .unwrap();
+
+    let mut updater = public_group.app_data_dictionary_updater();
+    updater.set(ComponentData::from_parts(
+        0xf042,
+        b"caller_computed_value".to_vec().into(),
+    ));
+    let resolved_message = public_group
+        .resolve_app_data_commit(
+            observer_provider.crypto(),
+            processed_message,
+            updater.changes(),
+        )
+        .expect("error resolving commit");
+
+    let staged_commit = match resolved_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => staged_commit,
+        other => panic!("expected a staged commit message, got {other:?}"),
+    };
+    let dictionary = staged_commit
+        .group_context()
+        .extensions()
+        .app_data_dictionary()
+        .unwrap()
+        .dictionary();
+    assert_eq!(
+        dictionary.get(&0xf042),
+        Some(b"caller_computed_value".as_ref())
+    );
+
+    public_group
+        .merge_commit(observer_provider.storage(), *staged_commit)
+        .unwrap();
+}

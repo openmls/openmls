@@ -24,7 +24,7 @@ use crate::{
 use crate::{
     group::{
         mls_group::processing::{committed_app_data_update_proposals, UnresolvedAppDataCommit},
-        StageCommitError, StagedCommit,
+        ResolveAppDataCommitError, StageCommitError, StagedCommit,
     },
     prelude::processing::{AppDataDictionaryUpdater, AppDataUpdates},
 };
@@ -225,6 +225,40 @@ impl PublicGroup {
             crypto,
             app_data_dict_updates,
         )
+    }
+
+    /// Resolves a [`ProcessedMessage`] carrying an
+    /// [`ProcessedMessageContent::UnresolvedAppDataCommit`]: stages the commit
+    /// with the application-computed [`AppDataUpdates`] and returns the same
+    /// message with the resulting [`StagedCommit`] as regular
+    /// [`ProcessedMessageContent::StagedCommitMessage`] content. All other
+    /// message fields (sender, credential, authenticated data) are preserved.
+    ///
+    /// Use this instead of [`PublicGroup::stage_app_data_commit()`] when the
+    /// caller needs the resolved commit in [`ProcessedMessage`] form, e.g. to
+    /// keep a single code path for commits with and without AppDataUpdate
+    /// proposals.
+    ///
+    /// Returns an error if the message content is not an unresolved app data
+    /// commit; the message is consumed either way.
+    #[cfg(feature = "extensions-draft")]
+    pub fn resolve_app_data_commit(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        processed_message: ProcessedMessage,
+        app_data_dict_updates: Option<AppDataUpdates>,
+    ) -> Result<ProcessedMessage, ResolveAppDataCommitError> {
+        processed_message.map_content(|content| {
+            let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) = content
+            else {
+                return Err(ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit);
+            };
+            let staged_commit =
+                self.stage_app_data_commit(crypto, *unresolved_commit, app_data_dict_updates)?;
+            Ok(ProcessedMessageContent::StagedCommitMessage(Box::new(
+                staged_commit,
+            )))
+        })
     }
 }
 

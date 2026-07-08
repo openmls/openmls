@@ -375,6 +375,24 @@ impl ProcessedMessage {
         }
     }
 
+    /// Replaces the content of this message via `f`, keeping all other fields
+    /// (sender, credential, authenticated data, Safe AAD state) intact.
+    ///
+    /// Used to swap an [`ProcessedMessageContent::UnresolvedAppDataCommit`]
+    /// for the [`StagedCommit`] it resolves to.
+    #[cfg(feature = "extensions-draft")]
+    pub(crate) fn map_content<E>(
+        mut self,
+        f: impl FnOnce(ProcessedMessageContent) -> Result<ProcessedMessageContent, E>,
+    ) -> Result<Self, E> {
+        // Temporarily park a cheap placeholder in `content` so it can be moved
+        // out of `self` without destructuring the (cfg-dependent) fields.
+        let content =
+            std::mem::replace(&mut self.content, ProcessedMessageContent::OwnPendingCommit);
+        self.content = f(content)?;
+        Ok(self)
+    }
+
     /// Parse the Safe AAD prefix at the start of `authenticated_data` and
     /// attach it to this message. Callers should invoke this only when the receiving
     /// group's GroupContext requires Safe AAD framing. Otherwise, `safe_aad`

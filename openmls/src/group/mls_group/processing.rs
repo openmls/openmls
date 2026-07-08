@@ -2,6 +2,8 @@
 
 use std::mem;
 
+#[cfg(feature = "extensions-draft")]
+use errors::ResolveAppDataCommitError;
 use errors::{CommitToPendingProposalsError, MergePendingCommitError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
 
@@ -692,6 +694,40 @@ impl MlsGroup {
             #[cfg(feature = "virtual-clients-draft")]
             vc_emulation_epoch_id,
         )
+    }
+
+    /// Resolves a [`ProcessedMessage`] carrying an
+    /// [`ProcessedMessageContent::UnresolvedAppDataCommit`]: stages the commit
+    /// with the application-computed [`AppDataUpdates`] and returns the same
+    /// message with the resulting [`StagedCommit`] as regular
+    /// [`ProcessedMessageContent::StagedCommitMessage`] content. All other
+    /// message fields (sender, credential, authenticated data) are preserved.
+    ///
+    /// Use this instead of [`MlsGroup::stage_app_data_commit()`] when the
+    /// caller needs the resolved commit in [`ProcessedMessage`] form, e.g. to
+    /// keep a single code path for commits with and without AppDataUpdate
+    /// proposals.
+    ///
+    /// Returns an error if the message content is not an unresolved app data
+    /// commit; the message is consumed either way.
+    #[cfg(feature = "extensions-draft")]
+    pub fn resolve_app_data_commit<Provider: OpenMlsProvider>(
+        &self,
+        provider: &Provider,
+        processed_message: ProcessedMessage,
+        app_data_dict_updates: Option<AppDataUpdates>,
+    ) -> Result<ProcessedMessage, ResolveAppDataCommitError> {
+        processed_message.map_content(|content| {
+            let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) = content
+            else {
+                return Err(ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit);
+            };
+            let staged_commit =
+                self.stage_app_data_commit(provider, *unresolved_commit, app_data_dict_updates)?;
+            Ok(ProcessedMessageContent::StagedCommitMessage(Box::new(
+                staged_commit,
+            )))
+        })
     }
 
     /// This processing function does most of the semantic verifications.
