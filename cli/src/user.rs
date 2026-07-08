@@ -476,6 +476,8 @@ impl User {
                 }
                 None
             }
+            // Own PrivateMessages echoed by the DS cannot be decrypted; skip them.
+            ProcessedMessageContent::OwnPrivateMessage => None,
             #[cfg(feature = "extensions-draft")]
             ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
                 unimplemented!("the cli does not support AppDataUpdate proposals")

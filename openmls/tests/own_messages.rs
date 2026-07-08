@@ -1,12 +1,14 @@
-#![cfg(not(feature = "virtual-clients-draft"))]
-
-//! Test that decryption of own messages fails.
+//! Test that processing a PrivateMessage authored by this client surfaces as
+//! `OwnPrivateMessage` instead of failing. The groups here do not register
+//! emulation state, so this also holds under the `virtual-clients-draft`
+//! feature whenever the message cannot be decrypted (the dual-use ratchet
+//! there still decrypts own messages whose secrets are retained).
 use openmls::prelude::*;
 use openmls_test::openmls_test;
 use test_utils::new_credential;
 
 #[openmls_test]
-fn own_messages_attempted_decryption() {
+fn own_messages_surface_as_own_private_message() {
     let group_id = GroupId::from_slice(b"Test Group");
 
     let alice_provider = &Provider::default();
@@ -135,18 +137,148 @@ fn own_messages_attempted_decryption() {
         unreachable!("Expected an ApplicationMessage.");
     }
 
-    // === Alice tries to decrypt her own message ===
-    let e = alice_group
+    // === Alice processes her own echoed application message ===
+    let processed_message = alice_group
         .process_message(
             alice_provider,
             queued_message
                 .into_protocol_message()
                 .expect("Unexpected message type"),
         )
-        .expect_err("Expected error.");
+        .expect("Expected processing own message to succeed.");
 
-    assert!(matches!(
-        e,
-        ProcessMessageError::ValidationError(ValidationError::CannotDecryptOwnMessage)
-    ));
+    assert!(
+        matches!(
+            processed_message.content(),
+            ProcessedMessageContent::OwnPrivateMessage
+        ),
+        "Expected OwnPrivateMessage, got {:?}",
+        processed_message.content()
+    );
+    assert!(
+        matches!(
+            processed_message.sender(),
+            Sender::Member(idx) if *idx == alice_group.own_leaf_index()
+        ),
+        "Expected sender to be Alice's leaf index"
+    );
+    assert_eq!(processed_message.epoch(), alice_group.epoch());
+    assert_eq!(
+        processed_message.credential(),
+        alice_group
+            .credential()
+            .expect("An unexpected error occurred.")
+    );
+}
+
+/// Test that an own PrivateMessage Commit (echoed back by the DS) surfaces as
+/// `OwnPrivateMessage`, not `OwnPendingCommit`. Under the
+/// `virtual-clients-draft` feature the commit's encryption secret is still
+/// retained, so the echo decrypts and surfaces as `OwnPendingCommit` instead.
+/// TODO 2102: This will be fixed in a follow-up PR.
+#[openmls_test]
+fn own_private_commit_surfaces_as_own_private_message() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+
+    let bob_key_package = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(
+            ciphersuite,
+            bob_provider,
+            &bob_signer,
+            bob_credential.clone(),
+        )
+        .unwrap()
+        .key_package()
+        .to_owned();
+
+    // Use a pure-ciphertext policy so commits are sent as PrivateMessage.
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .build();
+
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &alice_signer,
+        &mls_group_create_config,
+        alice_credential.clone(),
+    )
+    .expect("An unexpected error occurred.");
+
+    let (_, welcome, _) = alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .expect("Could not add member to group");
+
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("error merging pending commit");
+
+    let welcome_in: MlsMessageIn = welcome.into();
+    let welcome_in = welcome_in
+        .into_welcome()
+        .expect("expected the message to be a welcome message");
+    let _bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        mls_group_create_config.join_config(),
+        welcome_in,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating StagedWelcome from Welcome")
+    .into_group(bob_provider)
+    .expect("Error creating group from StagedWelcome");
+
+    // Now have Alice create another commit as PrivateMessage while Bob is in group.
+    let (commit_msg2, _, _) = alice_group
+        .commit_to_pending_proposals(alice_provider, &alice_signer)
+        .expect("Could not commit");
+
+    let echoed_commit2: MlsMessageIn = commit_msg2.clone().into();
+
+    // Process the echoed commit BEFORE merging the pending commit.
+    let processed = alice_group
+        .process_message(
+            alice_provider,
+            echoed_commit2
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
+        .expect("Expected processing own private commit to succeed.");
+
+    // The commit is a PrivateMessage, so it cannot be decrypted/verified;
+    // it surfaces as OwnPrivateMessage, NOT OwnPendingCommit.
+    #[cfg(not(feature = "virtual-clients-draft"))]
+    assert!(
+        matches!(
+            processed.content(),
+            ProcessedMessageContent::OwnPrivateMessage
+        ),
+        "Expected OwnPrivateMessage for own private commit, got {:?}",
+        processed.content()
+    );
+    // With the `virtual-clients-draft` feature, the dual-use ratchet still
+    // retains the commit's handshake encryption secret (only application
+    // secrets are confirmed), so the echo decrypts and matches the pending
+    // commit.
+    // TODO 2102: This will be fixed in a follow-up PR.
+    #[cfg(feature = "virtual-clients-draft")]
+    assert!(
+        matches!(
+            processed.content(),
+            ProcessedMessageContent::OwnPendingCommit
+        ),
+        "Expected OwnPendingCommit for own private commit, got {:?}",
+        processed.content()
+    );
+
+    // Merging the pending commit still works after processing the echo.
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("merge_pending_commit failed after processing own private commit echo");
 }

@@ -53,6 +53,34 @@ use super::{
     *,
 };
 
+/// Result of decrypting an inbound PrivateMessage: either content this client
+/// can process further, or a message this client authored itself, which it
+/// cannot decrypt.
+#[derive(Debug)]
+pub(crate) enum InboundDecryptionResult {
+    /// A message from another sender or from a sibling emulator client (with
+    /// the `virtual-clients-draft` feature), decrypted and ready for parsing.
+    Decrypted(DecryptedMessage),
+    /// A private message whose sender data claims this client's own leaf.
+    /// Carries the plaintext framing fields needed to build the
+    /// [`ProcessedMessage`], since the content itself cannot be decrypted.
+    OwnPrivateMessage {
+        epoch: GroupEpoch,
+        authenticated_data: Vec<u8>,
+    },
+}
+
+impl InboundDecryptionResult {
+    /// Returns the decrypted message, or `None` for an own private message.
+    #[cfg(test)]
+    pub(crate) fn into_decrypted(self) -> Option<DecryptedMessage> {
+        match self {
+            Self::Decrypted(message) => Some(message),
+            Self::OwnPrivateMessage { .. } => None,
+        }
+    }
+}
+
 /// Intermediate message that can be constructed either from a public message or from private message.
 /// If it it constructed from a ciphertext message, the ciphertext message is decrypted first.
 /// This function implements the following checks:
@@ -118,7 +146,7 @@ impl DecryptedMessage {
         #[cfg(feature = "virtual-clients-draft")] emulator_ctx: Option<
             &crate::framing::private_message::EmulatorReuseGuardCtx<'_>,
         >,
-    ) -> Result<Self, ValidationError> {
+    ) -> Result<InboundDecryptionResult, ValidationError> {
         // This will be refactored with #265.
         let ciphersuite = group.ciphersuite();
         // TODO: #819 The old leaves should not be needed any more.
@@ -127,21 +155,32 @@ impl DecryptedMessage {
             .message_secrets_and_leaves(ciphertext.epoch())
             .map_err(MessageDecryptionError::SecretTreeError)?;
         let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
-        // Check if we are the sender. With the `virtual-clients` feature,
-        // decrypting own messages is allowed, so we skip this check
+        let own_sender = sender_data.leaf_index == group.own_leaf_index();
+        // If we are the sender, the content cannot be decrypted and the
+        // signature cannot be verified: the own sender ratchet only produces
+        // encryption keys. Return early before touching any ratchet state so
+        // no decryption counter is consumed. With the `virtual-clients-draft`
+        // feature, own-leaf messages are decryptable instead (sibling
+        // emulator clients share the leaf, and the dual-use ratchet retains
+        // the secrets of unconfirmed own sends), so decryption is attempted
+        // below and only its failure surfaces the message as an own private
+        // message.
         #[cfg(not(feature = "virtual-clients-draft"))]
-        if sender_data.leaf_index == group.own_leaf_index() {
-            return Err(ValidationError::CannotDecryptOwnMessage);
+        if own_sender {
+            return Ok(InboundDecryptionResult::OwnPrivateMessage {
+                epoch: ciphertext.epoch(),
+                authenticated_data: ciphertext.aad().to_vec(),
+            });
         }
         #[cfg(feature = "virtual-clients-draft")]
         let effective_emulator_ctx = match emulator_ctx {
-            Some(ctx) if sender_data.leaf_index == group.own_leaf_index() => Some(ctx),
+            Some(ctx) if own_sender => Some(ctx),
             _ => None,
         };
         let message_secrets = group
             .message_secrets_for_epoch_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        let decrypted = ciphertext.to_verifiable_content(
+        let decrypt_result = ciphertext.to_verifiable_content(
             ciphersuite,
             crypto,
             message_secrets,
@@ -150,12 +189,32 @@ impl DecryptedMessage {
             sender_data,
             #[cfg(feature = "virtual-clients-draft")]
             effective_emulator_ctx,
-        )?;
+        );
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        let decrypted = decrypt_result?;
+        #[cfg(feature = "virtual-clients-draft")]
+        let decrypted = match decrypt_result {
+            Ok(decrypted) => decrypted,
+            // In a group that does not use virtual clients (no emulator
+            // context resolved for the epoch), an own message that fails to
+            // decrypt is an echo of a send this client already confirmed or
+            // processed. In groups that do use virtual clients, failures
+            // keep surfacing as errors, since the message may come from a
+            // sibling emulator client.
+            Err(_) if own_sender && emulator_ctx.is_none() => {
+                return Ok(InboundDecryptionResult::OwnPrivateMessage {
+                    epoch: ciphertext.epoch(),
+                    authenticated_data: ciphertext.aad().to_vec(),
+                });
+            }
+            Err(e) => return Err(e.into()),
+        };
         Self::from_verifiable_content(
             decrypted.verifiable,
             #[cfg(feature = "virtual-clients-draft")]
             decrypted.emulator_sender_leaf_index,
         )
+        .map(InboundDecryptionResult::Decrypted)
     }
 
     // Internal constructor function. Does the following checks:
@@ -553,9 +612,32 @@ pub enum ProcessedMessageContent {
     /// [`PublicMessage`](crate::framing::MlsMessageBodyIn::PublicMessage). A
     /// Commit framed as a
     /// [`PrivateMessage`](crate::framing::MlsMessageBodyIn::PrivateMessage)
-    /// cannot be decrypted by its own author and is instead rejected during
-    /// decryption.
+    /// cannot be decrypted by its own author and instead surfaces as
+    /// [`OwnPrivateMessage`](Self::OwnPrivateMessage). The exception is the
+    /// `virtual-clients-draft` feature, where an own private Commit whose
+    /// encryption secret is still retained (not yet confirmed) decrypts and
+    /// can produce this variant as well.
     OwnPendingCommit,
+    /// A PrivateMessage whose sender data claims this client's own leaf index,
+    /// i.e. a message this client authored that the delivery service fanned
+    /// back.
+    ///
+    /// The content cannot be decrypted (the own sender ratchet is
+    /// encryption-only) and the signature cannot be verified.
+    ///
+    /// Applications should treat this variant as a hint to skip the message.
+    /// The content type of the incoming message (application/proposal/commit)
+    /// is available via `ProtocolMessage::content_type()` before processing,
+    /// and is unauthenticated plaintext in the PrivateMessage framing.
+    ///
+    /// With the `virtual-clients-draft` feature, own-leaf messages are
+    /// decryptable while their secrets are retained: unconfirmed own sends
+    /// and messages from sibling emulator clients decrypt and process
+    /// normally. This variant is then only returned in groups that do not
+    /// use virtual clients (no emulation state registered for the message's
+    /// epoch), when decryption of an own message fails, e.g. because the
+    /// send was already confirmed via `MlsGroup::confirm_message()`.
+    OwnPrivateMessage,
     /// A Commit message covering AppDataUpdate proposals.
     ///
     /// The proposals carry diffs in an application-defined format, so the

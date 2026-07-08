@@ -673,6 +673,7 @@ impl MlsClient for MlsClientImpl {
             ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
             ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
             ProcessedMessageContent::OwnPendingCommit => unreachable!(),
+            ProcessedMessageContent::OwnPrivateMessage => unreachable!(),
             #[cfg(feature = "extensions-draft")]
             ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
                 unimplemented!("the interop client does not support AppDataUpdate proposals")
@@ -979,6 +980,7 @@ impl MlsClient for MlsClientImpl {
                 ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
                 ProcessedMessageContent::OwnPendingCommit => unreachable!(),
+                ProcessedMessageContent::OwnPrivateMessage => unreachable!(),
                 #[cfg(feature = "extensions-draft")]
                 ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
                     unimplemented!("the interop client does not support AppDataUpdate proposals")
@@ -1168,6 +1170,7 @@ impl MlsClient for MlsClientImpl {
                 ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
                 ProcessedMessageContent::OwnPendingCommit => unreachable!(),
+                ProcessedMessageContent::OwnPrivateMessage => unreachable!(),
                 #[cfg(feature = "extensions-draft")]
                 ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
                     unimplemented!("the interop client does not support AppDataUpdate proposals")
@@ -1205,6 +1208,7 @@ impl MlsClient for MlsClientImpl {
                     .map_err(into_status)?;
             }
             ProcessedMessageContent::OwnPendingCommit => unreachable!(),
+            ProcessedMessageContent::OwnPrivateMessage => unreachable!(),
             #[cfg(feature = "extensions-draft")]
             ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
                 unimplemented!("the interop client does not support AppDataUpdate proposals")

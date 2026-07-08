@@ -2063,14 +2063,19 @@ fn processing_own_application_message() {
     };
     assert!(alice_message.as_slice() == msg.into_bytes().as_slice());
 
-    // Decrypting the message again should fail because the generation has
-    // already been ratcheted forward.
-    let _ = alice_group
+    // Processing the message again cannot decrypt it because the generation
+    // has already been consumed. In a group without virtual clients this
+    // surfaces as OwnPrivateMessage.
+    let processed_message = alice_group
         .process_message(alice_provider, ciphertext.into_protocol_message().unwrap())
-        .expect_err("Expected an error when processing the same message again.");
+        .expect("Expected processing the same message again to succeed.");
+    assert!(matches!(
+        processed_message.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
 
-    // Alice sends another application message and confirms it. Trying to
-    // decrypt it should then fail.
+    // Alice sends another application message and confirms it. Its secret is
+    // deleted, so processing it also surfaces as OwnPrivateMessage.
     let alice_message = b"Hello, this is Alice again!";
     let unconfirmed = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
@@ -2080,12 +2085,16 @@ fn processing_own_application_message() {
         .confirm_message(alice_provider.storage(), unconfirmed.generation)
         .unwrap();
 
-    let _ = alice_group
+    let processed_message = alice_group
         .process_message(
             alice_provider,
             ciphertext.clone().into_protocol_message().unwrap(),
         )
-        .expect_err("Expected an error when processing a confirmed message.");
+        .expect("Expected processing a confirmed message to succeed.");
+    assert!(matches!(
+        processed_message.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
 }
 
 #[openmls_test::openmls_test]
