@@ -233,6 +233,8 @@ impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
             ProcessedMessageContent::OwnPendingCommit => self
                 .group
                 .merge_pending_commit(&self.party.core_state.provider)?,
+            #[cfg(feature = "extensions-draft")]
+            ProcessedMessageContent::UnresolvedAppDataCommit(_) => todo!(),
         };
 
         Ok(())

@@ -347,7 +347,7 @@ impl PublicGroup {
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
     #[cfg(feature = "extensions-draft")]
-    pub fn process_unverified_message_with_app_data_updates(
+    pub(crate) fn process_unverified_message_with_app_data_updates(
         &self,
         crypto: &impl OpenMlsCrypto,
         unverified_message: UnverifiedMessage,

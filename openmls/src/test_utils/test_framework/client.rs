@@ -186,6 +186,10 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
                 ProcessedMessageContent::OwnPendingCommit => {
                     group_state.merge_pending_commit(&self.provider)?;
                 }
+                #[cfg(feature = "extensions-draft")]
+                ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
+                    unimplemented!("this test framework does not handle AppDataUpdate proposals")
+                }
             }
         }
 

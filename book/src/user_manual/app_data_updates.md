@@ -54,7 +54,7 @@ This part doesn't really change.
 
 Alice sends a proposal to increment the counter:
 ```rust,no_run,noplayground
-./tests/book_code_app_data.rs:send_proposal}}
+{{#include ../../../openmls/tests/book_code_app_data.rs:send_proposal}}
 ```
 
 Bob receives and stores the proposal:
@@ -75,7 +75,13 @@ An important change is that Alice must compute the resulting state herself befor
 
 ## Receiving Commits
 
-Bob receives the commit and must independently compute the same new state. He iterates over the proposals in the commit, resolving references from his proposal store:
+Bob receives the commit and must independently compute the same new state.
+When a commit covers `AppDataUpdate` proposals, `process_message` returns it as
+`ProcessedMessageContent::UnresolvedAppDataCommit` instead of a staged commit:
+the message signature has already been verified, but staging is paused until
+the application has interpreted the proposals. Bob iterates over the covered
+proposals (references are already resolved from his proposal store), computes
+the new state and resumes staging with `stage_app_data_commit`:
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_app_data.rs:process_commit}}
 ```

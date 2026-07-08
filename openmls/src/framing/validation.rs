@@ -37,7 +37,8 @@ use crate::{
 
 #[cfg(feature = "extensions-draft")]
 use crate::{
-    component::ComponentId, framing::safe_aad::SafeAad, messages::proposals_in::ProposalOrRefIn,
+    component::ComponentId, framing::safe_aad::SafeAad,
+    group::mls_group::processing::UnresolvedAppDataCommit, messages::proposals_in::ProposalOrRefIn,
 };
 
 use super::{
@@ -326,7 +327,7 @@ impl UnverifiedMessage {
 
     /// Get the proposals of the commit, if it is one. If not, return `None`.
     #[cfg(feature = "extensions-draft")]
-    pub fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
+    pub(crate) fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
         self.verifiable_content.committed_proposals()
     }
 }
@@ -537,6 +538,18 @@ pub enum ProcessedMessageContent {
     /// cannot be decrypted by its own author and is instead rejected during
     /// decryption.
     OwnPendingCommit,
+    /// A Commit message covering AppDataUpdate proposals.
+    ///
+    /// The proposals carry diffs in an application-defined format, so the
+    /// commit cannot be staged before the application has interpreted them and
+    /// computed the resulting dictionary entries. Inspect the proposals via
+    /// [`UnresolvedAppDataCommit::app_data_update_proposals()`], compute the
+    /// updates with the help of
+    /// [`MlsGroup::app_data_dictionary_updater()`](crate::group::mls_group::MlsGroup::app_data_dictionary_updater)
+    /// and resume staging via
+    /// [`MlsGroup::stage_app_data_commit()`](crate::group::mls_group::MlsGroup::stage_app_data_commit).
+    #[cfg(feature = "extensions-draft")]
+    UnresolvedAppDataCommit(Box<UnresolvedAppDataCommit>),
 }
 
 /// Application message received through a [ProcessedMessage].

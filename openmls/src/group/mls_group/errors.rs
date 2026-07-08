@@ -183,12 +183,6 @@ pub enum ProcessMessageError<StorageError> {
     /// The proposal is invalid for the Sender of type [External](crate::prelude::Sender::External)
     #[error("The proposal is invalid for the Sender of type External")]
     UnsupportedProposalType,
-
-    /// Use `_with_app_data_update` functions for handling AppDataUpdate proposals
-    #[cfg(feature = "extensions-draft")]
-    #[error("Use `_with_app_data_update` functions for handling AppDataUpdate proposals")]
-    FoundAppDataUpdateProposal,
-
     /// The group's GroupContext requires Safe AAD framing, but the message's
     /// `authenticated_data` did not start with a well-formed `SafeAad`.
     #[cfg(feature = "extensions-draft")]

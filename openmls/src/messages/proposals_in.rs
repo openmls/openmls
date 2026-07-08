@@ -267,7 +267,7 @@ pub enum ProposalOrRefIn {
 
 impl ProposalOrRefIn {
     /// Returns a [`ProposalOrRef`] after successful validation.
-    pub fn validate(
+    pub(crate) fn validate(
         self,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,

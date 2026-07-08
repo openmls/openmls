@@ -42,6 +42,10 @@ aes = { version = "0.8", optional = true }
 
 [features]
 test-utils = ["openmls_memory_storage/test-utils"]
+extensions-draft = [
+  "openmls_traits/extensions-draft",
+  "openmls_memory_storage/extensions-draft",
+]
 targeted-messages-draft = ["openmls_traits/targeted-messages-draft"]
 draft-ietf-mls-pq-ciphersuites = [
   "openmls_traits/draft-ietf-mls-pq-ciphersuites",
