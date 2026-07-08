@@ -6,8 +6,8 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{
-    DeserializeBytes, SecretVLBytes, Serialize as _, Size as _, TlsDeserializeBytes, TlsSerialize,
-    TlsSize, VLByteSlice, VLBytes,
+    DeserializeBytes, SecretVLBytes, Serialize as _, TlsDeserializeBytes, TlsSerialize, TlsSize,
+    VLByteSlice, VLBytes,
 };
 
 use crate::{
@@ -17,6 +17,20 @@ use crate::{
     messages::PathSecret,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
+
+/// Implement `Debug` for a secret newtype, printing `<redacted>` in place of
+/// the wrapped secret so key material never reaches logs.
+macro_rules! impl_redacted_debug {
+    ($ty:ident, $field:literal) => {
+        impl std::fmt::Debug for $ty {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.debug_struct(stringify!($ty))
+                    .field($field, &"<redacted>")
+                    .finish()
+            }
+        }
+    };
+}
 
 /// Component ID under which the virtual-clients derivation info is carried in
 /// the leaf node's `app_data_dictionary` extension.
@@ -158,13 +172,7 @@ pub enum VirtualClientsError {
 #[derive(Serialize, Deserialize)]
 pub(crate) struct EmulatorEpochSecret(Secret);
 
-impl std::fmt::Debug for EmulatorEpochSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EmulatorEpochSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
+impl_redacted_debug!(EmulatorEpochSecret, "secret");
 
 impl EmulatorEpochSecret {
     /// Construct an `EmulatorEpochSecret` from raw bytes. Bytes are
@@ -238,13 +246,7 @@ impl EmulatorEpochSecret {
 #[derive(Serialize, Deserialize)]
 pub(crate) struct ReuseGuardSecret(Secret);
 
-impl std::fmt::Debug for ReuseGuardSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ReuseGuardSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
+impl_redacted_debug!(ReuseGuardSecret, "secret");
 
 impl ReuseGuardSecret {
     /// Test-only constructor from raw bytes.
@@ -291,13 +293,7 @@ impl ReuseGuardSecret {
 #[derive(Serialize, Deserialize)]
 pub(crate) struct GenerationIdSecret(Secret);
 
-impl std::fmt::Debug for GenerationIdSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GenerationIdSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
+impl_redacted_debug!(GenerationIdSecret, "secret");
 
 impl GenerationIdSecret {
     /// Derive the [`GenerationId`] for a message sent with the given
@@ -815,13 +811,7 @@ impl VcEmulationBindings {
 #[derive(Serialize, Deserialize)]
 pub(crate) struct EpochEncryptionKey(Secret);
 
-impl std::fmt::Debug for EpochEncryptionKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EpochEncryptionKey")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
+impl_redacted_debug!(EpochEncryptionKey, "secret");
 
 impl EpochEncryptionKey {
     /// Derive the AEAD key and nonce for one [`DerivationInfoTbe`] wrap,
@@ -951,13 +941,7 @@ impl EmulationEpochState {
 #[derive(Serialize, Deserialize)]
 pub struct OperationSecret(Secret);
 
-impl std::fmt::Debug for OperationSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("OperationSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
+impl_redacted_debug!(OperationSecret, "secret");
 
 impl From<Secret> for OperationSecret {
     fn from(secret: Secret) -> Self {
@@ -1050,13 +1034,7 @@ struct KeyPackageSeedContext {
 #[derive(Serialize, Deserialize)]
 pub struct KeyPackageSeedSecret(Secret);
 
-impl std::fmt::Debug for KeyPackageSeedSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("KeyPackageSeedSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
+impl_redacted_debug!(KeyPackageSeedSecret, "secret");
 
 impl KeyPackageSeedSecret {
     pub(crate) fn derive_init_key_secret(
@@ -1178,13 +1156,7 @@ pub enum VirtualClientOperationType {
 #[derive(Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub(crate) struct ExternalInitSecret(SecretVLBytes);
 
-impl std::fmt::Debug for ExternalInitSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ExternalInitSecret")
-            .field("init_secret", &"<redacted>")
-            .finish()
-    }
-}
+impl_redacted_debug!(ExternalInitSecret, "init_secret");
 
 impl ExternalInitSecret {
     pub(crate) fn from_slice(bytes: &[u8]) -> Self {
@@ -1288,38 +1260,19 @@ impl DerivationInfoTbe {
     /// the `DerivationInfoTBE` select. The TLS derive macros cannot express a
     /// tagless select, so this codec is written by hand.
     fn tls_serialize_detached(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        let mut out = Vec::new();
+        self.leaf_index().tls_serialize(&mut out)?;
+        self.generation().tls_serialize(&mut out)?;
         match self {
             Self::LeafNode {
-                leaf_index,
-                generation,
                 external_init_secret,
-            } => {
-                let mut out = Vec::with_capacity(
-                    leaf_index.tls_serialized_len()
-                        + generation.tls_serialized_len()
-                        + external_init_secret.tls_serialized_len(),
-                );
-                leaf_index.tls_serialize(&mut out)?;
-                generation.tls_serialize(&mut out)?;
-                external_init_secret.tls_serialize(&mut out)?;
-                Ok(out)
-            }
+                ..
+            } => external_init_secret.tls_serialize(&mut out)?,
             Self::KeyPackage {
-                leaf_index,
-                generation,
-                key_package_index,
-            } => {
-                let mut out = Vec::with_capacity(
-                    leaf_index.tls_serialized_len()
-                        + generation.tls_serialized_len()
-                        + key_package_index.tls_serialized_len(),
-                );
-                leaf_index.tls_serialize(&mut out)?;
-                generation.tls_serialize(&mut out)?;
-                key_package_index.tls_serialize(&mut out)?;
-                Ok(out)
-            }
-        }
+                key_package_index, ..
+            } => key_package_index.tls_serialize(&mut out)?,
+        };
+        Ok(out)
     }
 
     /// Deserialize the tagless select for the given operation type. The
@@ -1498,18 +1451,15 @@ pub(crate) fn merge_vc_derivation_info(
     let vc_extension =
         Extension::AppDataDictionary(AppDataDictionaryExtension::new(resolved_dictionary));
 
-    let other_extensions = caller_extensions
-        .map(|exts| {
-            exts.iter()
-                .filter(|ext| !matches!(ext, Extension::AppDataDictionary(_)))
-                .cloned()
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    let new_extensions: Vec<Extension> = other_extensions
-        .into_iter()
-        .chain(std::iter::once(vc_extension))
-        .collect();
+    let mut new_extensions = Vec::new();
+    if let Some(exts) = caller_extensions {
+        for ext in exts.iter() {
+            if !matches!(ext, Extension::AppDataDictionary(_)) {
+                new_extensions.push(ext.clone());
+            }
+        }
+    }
+    new_extensions.push(vc_extension);
     Extensions::from_vec(new_extensions)
         .map_err(|_| crate::error::LibraryError::custom("Failed to build VC leaf-node extensions"))
 }
