@@ -3078,6 +3078,86 @@ fn own_commit_mismatch() {
     );
 }
 
+// A Commit without an UpdatePath from our own leaf that no longer matches a
+// pending commit is staged as a regular commit rather than rejected. Unlike a
+// Commit with an UpdatePath, a Commit without an UpdatePath holds no
+// author-private material, so it applies from the prior epoch and the public
+// proposals alone.
+#[openmls_test::openmls_test]
+fn own_commit_without_update_path_without_pending_is_staged() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential_with_key, alice_signature_keys) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (_bob_credential, bob_kpb, _bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, bob_provider);
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential_with_key,
+        )
+        .expect("Error creating group.");
+
+    // Alice creates an add-only commit, which carries no path.
+    let (commit_out, _welcome, _group_info) = alice_group
+        .add_members_without_update(
+            alice_provider,
+            &alice_signature_keys,
+            &[bob_kpb.key_package().clone()],
+        )
+        .expect("Could not create add-only commit");
+    assert!(
+        alice_group
+            .pending_commit()
+            .expect("pending commit")
+            .update_path_leaf_node()
+            .is_none(),
+        "an add-only commit must not carry a path"
+    );
+
+    let commit = MlsMessageIn::from(commit_out)
+        .into_protocol_message()
+        .unwrap();
+
+    // While the pending commit is held, the echo matches it and surfaces as
+    // `OwnPendingCommit`.
+    let processed = alice_group
+        .process_message(alice_provider, commit.clone())
+        .expect("error while processing own pending add-only commit");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+
+    // Alice discards the pending commit without advancing the epoch. The echo
+    // no longer matches a pending commit, but a Commit without an UpdatePath
+    // can be staged from public information, so it is applied rather than
+    // rejected.
+    alice_group
+        .clear_pending_commit(alice_provider.storage())
+        .expect("error clearing pending commit");
+    assert!(alice_group.pending_commit().is_none());
+
+    let processed = alice_group
+        .process_message(alice_provider, commit)
+        .expect("own commit without an UpdatePath without pending must be staged");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged) => *staged,
+        other => panic!("expected staged commit, got {other:?}"),
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, staged)
+        .expect("error merging staged commit without an UpdatePath");
+
+    // The commit applied: Bob is now a member.
+    assert_eq!(alice_group.members().count(), 2);
+}
+
 #[openmls_test::openmls_test]
 fn proposal_application_after_self_was_removed() {
     // We're going to test if proposals are still applied, even after a client

@@ -185,6 +185,9 @@ pub mod group;
 pub mod key_packages;
 pub mod messages;
 pub mod schedule;
+#[cfg(feature = "targeted-messages-draft")]
+#[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
+pub mod targeted_messages;
 pub mod treesync;
 pub mod versions;
 

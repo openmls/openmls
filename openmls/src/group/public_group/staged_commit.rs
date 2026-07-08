@@ -252,7 +252,8 @@ impl PublicGroup {
         Ok(())
     }
 
-    /// Stages a commit message that was sent by another group member.
+    /// Stages a commit message. The commit may have been sent by another group
+    /// member or be our own Commit without an UpdatePath.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
@@ -285,9 +286,6 @@ impl PublicGroup {
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244
-    ///
-    /// Returns an error if the given commit was sent by the owner of this
-    /// group.
     pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,

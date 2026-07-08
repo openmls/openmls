@@ -186,17 +186,22 @@ impl ProcessedWelcome {
 
             PskSecret::new(provider.crypto(), ciphersuite, psks)?
         };
-        let key_schedule = KeySchedule::init(
+
+        // prepare the key schedule
+        let mut key_schedule = KeySchedule::init(
             ciphersuite,
             provider.crypto(),
             &group_secrets.joiner_secret,
             psk_secret,
         )?;
+
+        // derive the keys for decrypting the group info
         let (welcome_key, welcome_nonce) = key_schedule
             .welcome(provider.crypto(), ciphersuite)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
             .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
             .map_err(LibraryError::unexpected_crypto_error)?;
+
         let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
             &welcome_key,
             &welcome_nonce,
@@ -204,6 +209,16 @@ impl ProcessedWelcome {
             &[],
             provider.crypto(),
         )?;
+
+        let serialized_group_context = verifiable_group_info
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
+        // TODO #751: Implement PSK
+        key_schedule.add_context(provider.crypto(), &serialized_group_context)?;
+
+        let epoch_secrets = key_schedule.epoch_secrets(provider.crypto(), ciphersuite)?;
 
         // On the bundle path, check the required capabilities and the
         // ciphersuite against the local KeyPackage. On the virtual-client path
@@ -237,7 +252,7 @@ impl ProcessedWelcome {
             mls_group_config: mls_group_config.clone(),
             ciphersuite,
             group_secrets,
-            key_schedule,
+            epoch_secrets,
             verifiable_group_info,
             resumption_psk_store,
             key_material,
@@ -381,19 +396,11 @@ impl ProcessedWelcome {
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?;
 
-            // TODO #751: Implement PSK
-            self.key_schedule
-                .add_context(provider.crypto(), &serialized_group_context)
-                .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
-
             let EpochSecretsResult {
                 epoch_secrets,
                 #[cfg(feature = "extensions-draft")]
                 application_exporter,
-            } = self
-                .key_schedule
-                .epoch_secrets(provider.crypto(), self.ciphersuite)
-                .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+            } = self.epoch_secrets;
 
             let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
                 serialized_group_context,
@@ -478,6 +485,30 @@ impl ProcessedWelcome {
         };
 
         Ok(staged_welcome)
+    }
+
+    /// Exports a secret from the epoch of the group that is joined
+    /// using this [`ProcessedWelcome`].
+    /// Returns [`ExportSecretError::KeyLengthTooLong`] if the requested
+    /// key length is too long.
+    pub fn export_secret<CryptoProvider: OpenMlsCrypto>(
+        &self,
+        crypto: &CryptoProvider,
+        label: &str,
+        context: &[u8],
+        key_length: usize,
+    ) -> Result<Vec<u8>, ExportSecretError> {
+        if key_length > u16::MAX as usize {
+            log::error!("Got a key that is larger than u16::MAX");
+            return Err(ExportSecretError::KeyLengthTooLong);
+        }
+
+        Ok(self
+            .epoch_secrets
+            .epoch_secrets
+            .exporter_secret()
+            .derive_exported_secret(self.ciphersuite, crypto, label, context, key_length)
+            .map_err(LibraryError::unexpected_crypto_error)?)
     }
 }
 

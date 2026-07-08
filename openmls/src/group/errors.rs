@@ -18,7 +18,10 @@ use crate::{
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
     prelude::ExtensionType,
-    schedule::{errors::PskError, PreSharedKeyId},
+    schedule::{
+        errors::{KeyScheduleError, PskError},
+        PreSharedKeyId,
+    },
     treesync::errors::*,
 };
 
@@ -106,6 +109,9 @@ pub enum WelcomeError<StorageError> {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// This error indicates that computing the key schedule failed
+    #[error(transparent)]
+    KeySchedule(#[from] KeyScheduleError),
 }
 
 /// External Commit error
