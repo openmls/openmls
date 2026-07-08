@@ -39,7 +39,7 @@ use crate::{
 use crate::{
     components::vc_derivation_info::{
         DerivationInfo, DerivationInfoTbe, EmulationEpochState, EpochEncryptionKey, EpochId,
-        OperationSecret, VirtualClientOperationType, VirtualClientsError,
+        ExternalInitSecret, OperationSecret, VirtualClientOperationType, VirtualClientsError,
     },
     components::vc_operation_tree::OperationSecretTree,
     extensions::AppDataDictionary,
@@ -758,12 +758,19 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             // `AppDataDictionary` it produced so the inject step preserves
             // every other entry, including the AppComponents entry that
             // survives across multiple VC commits.
+            // For an external commit, carry the external init secret in the
+            // derivation info so a sibling emulator client can process the
+            // commit without holding the previous epoch's `external_secret`.
+            // Regular commits carry no external init secret.
+            let external_init_secret =
+                is_external_commit.then(|| group.group_epoch_secrets().init_secret());
             Some(apply_vc_emulation(
                 loaded,
                 &mut cur_stage.leaf_node_parameters,
                 loaded.resolved_dictionary.clone(),
                 crypto,
                 ciphersuite,
+                external_init_secret,
             )?)
         } else {
             None
@@ -1224,6 +1231,7 @@ fn apply_vc_emulation(
     resolved_dictionary: AppDataDictionary,
     crypto: &impl OpenMlsCrypto,
     group_ciphersuite: openmls_traits::types::Ciphersuite,
+    external_init_secret: Option<&crate::schedule::InitSecret>,
 ) -> Result<crate::treesync::diff::OwnUpdatePathOverride, CreateCommitError> {
     let emulation_ciphersuite = loaded.emulation_ciphersuite;
 
@@ -1243,11 +1251,13 @@ fn apply_vc_emulation(
         .tls_serialize_detached()
         .map_err(VirtualClientsError::from)?;
     // leaf_node operations are not batched, so the TBE carries no
-    // key_package_index: the select resolves to the empty `update`/`commit`
-    // case and the field is absent on the wire.
+    // key_package_index. For an external commit the commit-case
+    // `external_init_secret` is present; for a regular commit it is absent.
     let tbe = DerivationInfoTbe::LeafNode {
         leaf_index: loaded.emulation_leaf_index,
         generation: loaded.generation,
+        external_init_secret: external_init_secret
+            .map(|init_secret| ExternalInitSecret::from_slice(init_secret.as_slice())),
     };
     let derivation_info = DerivationInfo::encrypt(
         crypto,

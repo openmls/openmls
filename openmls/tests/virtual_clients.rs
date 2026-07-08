@@ -4,12 +4,16 @@ use openmls::{
     extensions::{
         AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
     },
+    framing::errors::{MessageDecryptionError, SecretTreeError},
     group::{
         MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, StagedWelcome,
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
-    prelude::{test_utils::new_credential, Capabilities, LeafNode, ProcessedMessageContent},
+    prelude::{
+        test_utils::new_credential, Capabilities, LeafNode, ProcessMessageError,
+        ProcessedMessageContent, ValidationError,
+    },
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -1399,6 +1403,269 @@ fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
         bob_main.epoch_authenticator(),
         alice_a_main.epoch_authenticator()
     );
+}
+
+/// A virtual client's **second** emulator client bootstraps into a higher-level
+/// group by **processing** the first emulator client's external commit.
+///
+/// `charly_a` joins the higher-level group (Alice + Bob) via a plain external
+/// commit. Per the mls-virtual-clients draft the commit's leaf carries the
+/// external init secret in its derivation info. `charly_b`, which shares the
+/// emulation epoch but is not a member, calls
+/// [`MlsGroup::vc_join_via_sibling_external_commit`] with the prior-epoch
+/// GroupInfo and that commit: it rebuilds the prior-epoch public group,
+/// recreates the commit path from the shared operation secret tree, and uses
+/// the carried external init secret as the new epoch's external init secret
+/// (it never held the previous epoch's `external_secret`). It lands on the
+/// shared virtual-client leaf, and all four parties converge.
+#[openmls_test]
+fn vc_second_emulator_client_onboards_via_external_commit() {
+    use openmls::credentials::{BasicCredential, CredentialWithKey};
+    use openmls::prelude::{LeafNodeParameters, MlsMessageIn};
+    use tls_codec::Deserialize as _;
+
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let charly_a_provider = Provider::default();
+    let charly_b_provider = Provider::default();
+
+    // Alice founds the higher-level group and adds Bob. Neither is the virtual
+    // client; they are ordinary members who process Charly's commits via HPKE.
+    let (alice_credential, alice_signer) =
+        new_credential(&alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let mut alice_main = new_vc_main_group(
+        ciphersuite,
+        &alice_provider,
+        &alice_signer,
+        alice_credential,
+    );
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_, welcome, _) = alice_main
+        .add_members(&alice_provider, &alice_signer, &[bob_kp])
+        .expect("alice add bob");
+    alice_main
+        .merge_pending_commit(&alice_provider)
+        .expect("alice merge add bob");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join higher-level group");
+
+    // Charly is one virtual client with two emulator clients. They share a
+    // signing identity (stored in both providers) ...
+    let vc_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).expect("vc signer");
+    vc_signer
+        .store(charly_a_provider.storage())
+        .expect("store vc signer on charly_a");
+    vc_signer
+        .store(charly_b_provider.storage())
+        .expect("store vc signer on charly_b");
+    let vc_credential = CredentialWithKey {
+        credential: BasicCredential::new(b"Charly (VC)".to_vec()).into(),
+        signature_key: vc_signer.public().into(),
+    };
+
+    // ... and a two-member emulator group from which both derive the same
+    // emulation epoch (operation secret tree + AEAD key + EpochId).
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(ciphersuite, &charly_a_provider, b"CharlyEmulatorA");
+    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        &charly_b_provider,
+        b"CharlyEmulatorB",
+        ciphersuite.signature_algorithm(),
+    );
+    let emulator_b_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            ciphersuite,
+            &charly_b_provider,
+            &emulator_b_signer,
+            emulator_b_credential,
+        )
+        .expect("charly_b emulator KP build")
+        .key_package()
+        .to_owned();
+    let (_, e_welcome, _) = emulator_a
+        .add_members(&charly_a_provider, &emulator_a_signer, &[emulator_b_kp])
+        .expect("emulator_a add charly_b");
+    emulator_a
+        .merge_pending_commit(&charly_a_provider)
+        .expect("emulator_a merge add");
+    let mut emulator_b = StagedWelcome::new_from_welcome(
+        &charly_b_provider,
+        &vc_join_config(),
+        e_welcome.into_welcome().expect("emulator welcome"),
+        Some(emulator_a.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&charly_b_provider))
+    .expect("charly_b join emulator group");
+    let epoch_id = emulator_a
+        .register_vc_emulation_epoch(charly_a_provider.crypto(), charly_a_provider.storage())
+        .expect("charly_a register vc epoch");
+    let epoch_id_b = emulator_b
+        .register_vc_emulation_epoch(charly_b_provider.crypto(), charly_b_provider.storage())
+        .expect("charly_b register vc epoch");
+    assert_eq!(
+        epoch_id, epoch_id_b,
+        "siblings must derive the same EpochId"
+    );
+
+    // Export the prior-epoch GroupInfo twice: one copy is consumed by
+    // charly_a's external commit, the other is handed to charly_b so it can
+    // rebuild the prior-epoch public group when bootstrapping. Both carry the
+    // ratchet tree as an extension (the group uses `use_ratchet_tree_extension`).
+    let export_prior_epoch_vgi = |label: &str| {
+        let gi = alice_main
+            .export_group_info(alice_provider.crypto(), &alice_signer, true)
+            .unwrap_or_else(|_| panic!("export group info ({label})"));
+        let serialized = gi.tls_serialize_detached().expect("serialize gi");
+        MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+            .expect("deserialize gi")
+            .into_verifiable_group_info()
+            .expect("into vgi")
+    };
+    let vgi_charly_a = export_prior_epoch_vgi("charly_a");
+    let vgi_charly_b = export_prior_epoch_vgi("charly_b");
+    let pre_join_message = alice_main
+        .create_message(&alice_provider, &alice_signer, b"before charly joins")
+        .expect("alice create pre-join app message");
+
+    // Phase 1: charly_a (the first emulator client) joins the higher-level
+    // group via an external commit. No prior Charly leaf exists, so this is a
+    // plain external join, not a resync. Its leaf carries the external init
+    // secret in the derivation info. Alice and Bob process it via HPKE.
+    let (charly_a_main, bundle) = MlsGroup::external_commit_builder()
+        .with_config(vc_join_config())
+        .build_group(&charly_a_provider, vgi_charly_a, vc_credential.clone())
+        .expect("build_group charly_a")
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(vc_capabilities())
+                .with_extensions(vc_leaf_extensions())
+                .build(),
+        )
+        .vc_emulation(
+            charly_a_provider.crypto(),
+            charly_a_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("vc emulation charly_a")
+        .load_psks(charly_a_provider.storage())
+        .expect("load psks")
+        .build(
+            charly_a_provider.rand(),
+            charly_a_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build external commit charly_a")
+        .finalize(&charly_a_provider)
+        .expect("finalize charly_a join");
+    let charly_a_join = bundle.into_commit();
+    // A copy of charly_a's external commit for charly_b to process.
+    let charly_a_commit_for_b = charly_a_join
+        .clone()
+        .into_protocol_message()
+        .expect("charly_a commit as protocol message");
+    process_and_merge_commit(&mut alice_main, &alice_provider, charly_a_join.clone());
+    process_and_merge_commit(&mut bob_main, &bob_provider, charly_a_join);
+
+    let auth_after_join = charly_a_main.epoch_authenticator();
+    assert_eq!(alice_main.epoch_authenticator(), auth_after_join);
+    assert_eq!(bob_main.epoch_authenticator(), auth_after_join);
+
+    // Phase 2: charly_b bootstraps by *processing* charly_a's external commit.
+    // It is not a member, so it rebuilds the prior-epoch public group from
+    // `vgi_charly_b`, recreates the path from the shared operation secret tree,
+    // and uses the external init secret carried in the commit. It lands on the
+    // same virtual-client leaf charly_a occupies.
+    let bootstrap_join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .max_past_epochs(1)
+        .build();
+    let mut charly_b_main = MlsGroup::vc_join_via_sibling_external_commit(
+        &charly_b_provider,
+        &bootstrap_join_config,
+        vgi_charly_b,
+        None,
+        charly_a_commit_for_b,
+        epoch_id_b.clone(),
+    )
+    .expect("charly_b bootstraps by processing charly_a's external commit");
+    let err = charly_b_main
+        .process_message(
+            &charly_b_provider,
+            pre_join_message.into_protocol_message().unwrap(),
+        )
+        .expect_err("bootstrapped sibling must not retain fake prior-epoch secrets");
+    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        MessageDecryptionError::SecretTreeError(SecretTreeError::TooDistantInThePast),
+    )) = err
+    else {
+        panic!("expected no usable past epoch secret for pre-bootstrap message");
+    };
+
+    // Both emulator clients now hold the VC's higher-level group state on one
+    // shared leaf, and the whole group converges.
+    assert!(charly_a_main.is_active() && charly_b_main.is_active());
+    assert_eq!(
+        charly_b_main.own_leaf_index(),
+        charly_a_main.own_leaf_index(),
+        "the bootstrapped sibling must land on the shared VC leaf"
+    );
+    let auth = charly_b_main.epoch_authenticator();
+    assert_eq!(charly_a_main.epoch_authenticator(), auth);
+    assert_eq!(alice_main.epoch_authenticator(), auth);
+    assert_eq!(bob_main.epoch_authenticator(), auth);
+
+    // The bootstrapped sibling is a working member: it decrypts an application
+    // message from Alice, and a message it sends is decrypted by Alice and Bob.
+    let alice_app = alice_main
+        .create_message(&alice_provider, &alice_signer, b"hello charly_b")
+        .expect("alice create app message");
+    let processed = charly_b_main
+        .process_message(
+            &charly_b_provider,
+            alice_app.into_protocol_message().unwrap(),
+        )
+        .expect("charly_b processes alice's app message");
+    let ProcessedMessageContent::ApplicationMessage(message) = processed.into_content() else {
+        panic!("expected application message");
+    };
+    assert_eq!(message.into_bytes(), b"hello charly_b");
+
+    let charly_b_app = charly_b_main
+        .create_message(&charly_b_provider, &vc_signer, b"charly_b bootstrapped")
+        .expect("charly_b create app message");
+    for (group, provider) in [
+        (&mut alice_main, &alice_provider),
+        (&mut bob_main, &bob_provider),
+    ] {
+        let processed = group
+            .process_message(
+                provider,
+                charly_b_app.clone().into_protocol_message().unwrap(),
+            )
+            .expect("process charly_b app message");
+        let ProcessedMessageContent::ApplicationMessage(message) = processed.into_content() else {
+            panic!("expected application message");
+        };
+        assert_eq!(message.into_bytes(), b"charly_b bootstrapped");
+    }
 }
 
 /// A sibling emulator joins a higher-level group via a virtual client's

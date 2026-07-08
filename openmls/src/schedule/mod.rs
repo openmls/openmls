@@ -350,7 +350,7 @@ impl InitSecret {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(any(feature = "test-utils", test, feature = "virtual-clients-draft"))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
