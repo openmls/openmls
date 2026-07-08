@@ -1223,6 +1223,24 @@ impl EpochSecrets {
         Ok(epoch_secrets)
     }
 
+    /// Initialize the `EpochSecrets` from a given `epoch_secret`, rather than
+    /// deriving it through the joiner key schedule. Both the creator and a
+    /// reconstructing sibling of a virtual-client-created group use this to
+    /// initialize the epoch-0 state from the `epoch_secret` each derives from
+    /// the creator's KeyPackage seed secret. The `epoch_secret` stays in a
+    /// zeroizing [`Secret`] end to end.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn from_epoch_secret(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        epoch_secret: Secret,
+    ) -> Result<Self, CryptoError> {
+        let epoch_secret = EpochSecret {
+            secret: epoch_secret,
+        };
+        Self::new(crypto, ciphersuite, epoch_secret)
+    }
+
     /// Splits `EpochSecrets` into two different categories:
     ///  - [`GroupEpochSecrets`]: These secrets are only used within the same epoch
     ///  - [`MessageSecrets`]: These secrets are potentially also used for past epochs
