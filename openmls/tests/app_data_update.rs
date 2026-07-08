@@ -72,6 +72,14 @@ fn setup<'a, Provider: OpenMlsProvider>(
     group_state
 }
 
+/// Asserts that `message` carries an unresolved app data commit and returns it.
+fn expect_unresolved_app_data_commit(message: ProcessedMessage) -> Box<UnresolvedAppDataCommit> {
+    match message.into_content() {
+        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
+        other => panic!("expected an unresolved app data commit, got {other:?}"),
+    }
+}
+
 /// Test a simple AppDataUpdate
 #[openmls_test]
 fn test_app_data_update_simple() {
@@ -142,10 +150,7 @@ fn test_app_data_update_simple() {
         )
         .unwrap();
 
-    let unresolved_commit = match processed_message.into_content() {
-        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
-        _ => panic!("Should be an unresolved app data commit"),
-    };
+    let unresolved_commit = expect_unresolved_app_data_commit(processed_message);
 
     // create the AppDataUpdater for Bob
     let mut app_data_updater = bob.group.app_data_dictionary_updater();
@@ -279,10 +284,7 @@ fn test_app_data_update_with_welcome() {
         )
         .unwrap();
 
-    let unresolved_commit = match processed_message.into_content() {
-        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
-        _ => panic!("Should be an unresolved app data commit"),
-    };
+    let unresolved_commit = expect_unresolved_app_data_commit(processed_message);
 
     // create the AppDataUpdater for Bob
     let mut app_data_updater = bob.group.app_data_dictionary_updater();
@@ -455,10 +457,7 @@ fn test_public_group_app_data_commit() {
         )
         .unwrap();
 
-    let unresolved_commit = match processed_message.into_content() {
-        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
-        _ => panic!("Should be an unresolved app data commit"),
-    };
+    let unresolved_commit = expect_unresolved_app_data_commit(processed_message);
 
     let proposals: Vec<_> = unresolved_commit.app_data_update_proposals().collect();
     assert_eq!(proposals.len(), 1);
@@ -504,10 +503,7 @@ fn test_public_group_app_data_commit() {
         .group
         .process_message(&bob_party.provider, to_protocol_message(commit_message))
         .unwrap();
-    let unresolved_commit = match processed_message.into_content() {
-        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
-        _ => panic!("Should be an unresolved app data commit"),
-    };
+    let unresolved_commit = expect_unresolved_app_data_commit(processed_message);
     let mut bob_updater = bob.group.app_data_dictionary_updater();
     bob_updater.set(ComponentData::from_parts(
         0xf042,
@@ -605,10 +601,7 @@ fn test_public_group_app_data_commit_by_reference() {
             to_protocol_message(commit_message),
         )
         .unwrap();
-    let unresolved_commit = match processed_message.into_content() {
-        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
-        _ => panic!("Should be an unresolved app data commit"),
-    };
+    let unresolved_commit = expect_unresolved_app_data_commit(processed_message);
 
     // The proposal was resolved from the proposal store.
     let proposals: Vec<_> = unresolved_commit.app_data_update_proposals().collect();
@@ -671,10 +664,7 @@ fn test_public_group_stage_app_data_commit_missing_updates() {
             to_protocol_message(commit_message),
         )
         .unwrap();
-    let unresolved_commit = match processed_message.into_content() {
-        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
-        _ => panic!("Should be an unresolved app data commit"),
-    };
+    let unresolved_commit = expect_unresolved_app_data_commit(processed_message);
 
     let err = public_group
         .stage_app_data_commit(observer_provider.crypto(), *unresolved_commit, None)
