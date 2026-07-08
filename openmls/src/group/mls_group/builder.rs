@@ -1,6 +1,8 @@
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use tls_codec::Serialize;
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::components::vc_derivation_info::EpochId;
 #[cfg(feature = "extensions-draft")]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
@@ -35,7 +37,7 @@ pub struct MlsGroupBuilder {
     replace_old_group: bool,
     psk_ids: Vec<PreSharedKeyId>,
     #[cfg(feature = "virtual-clients-draft")]
-    vc_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
+    vc_epoch_id: Option<EpochId>,
 }
 
 impl MlsGroupBuilder {
@@ -60,10 +62,7 @@ impl MlsGroupBuilder {
     ///
     /// [`MlsGroup::vc_join_at_creation`]: crate::group::MlsGroup::vc_join_at_creation
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn vc_emulation(
-        mut self,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
-    ) -> Self {
+    pub fn vc_emulation(mut self, epoch_id: EpochId) -> Self {
         self.vc_epoch_id = Some(epoch_id);
         self
     }
@@ -395,14 +394,15 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     mls_group_create_config: MlsGroupCreateConfig,
     group_id: GroupId,
     replace_old_group: bool,
-    epoch_id: crate::components::vc_derivation_info::EpochId,
+    epoch_id: EpochId,
 ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
     use openmls_traits::storage::StorageProvider as _;
 
     use crate::{
         components::vc_derivation_info::{
-            load_vc_epoch_state_and_tree, DerivationInfo, DerivationInfoTbe,
-            VirtualClientOperationType, VirtualClientsError,
+            load_vc_epoch_state_and_tree, merge_vc_derivation_info, resolve_vc_leaf_dictionary,
+            DerivationInfo, DerivationInfoTbe, VcEmulationBindings, VirtualClientOperationType,
+            VirtualClientsError,
         },
         schedule::EpochSecrets,
         treesync::TreeSync,
@@ -422,7 +422,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     // Validate that the creator's leaf declares `AppDataDictionary` and lists
     // `VC_COMPONENT_ID` before allocating a generation, so a deterministic
     // precondition failure does not burn an operation secret.
-    let resolved_dictionary = crate::components::vc_derivation_info::resolve_vc_leaf_dictionary(
+    let resolved_dictionary = resolve_vc_leaf_dictionary(
         Some(&capabilities),
         Some(&mls_group_create_config.leaf_node_extensions),
         None,
@@ -487,7 +487,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     let derivation_info_bytes = derivation_info
         .tls_serialize_detached()
         .map_err(VirtualClientsError::from)?;
-    let leaf_extensions = crate::components::vc_derivation_info::merge_vc_derivation_info(
+    let leaf_extensions = merge_vc_derivation_info(
         Some(&mls_group_create_config.leaf_node_extensions),
         resolved_dictionary,
         derivation_info_bytes,
@@ -565,7 +565,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     // the group itself, so an error between the writes cannot leave a loadable
     // group without a binding (a bound group is required for the reuse-guard
     // MUST).
-    let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
+    let mut bindings: VcEmulationBindings = provider
         .storage()
         .vc_emulation_bindings(&group_id)
         .map_err(NewGroupError::StorageError)?

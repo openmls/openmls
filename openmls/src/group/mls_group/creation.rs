@@ -25,6 +25,8 @@ use crate::{
     },
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::components::vc_derivation_info::{EpochId, VcWelcomeMaterial};
 #[cfg(doc)]
 use crate::key_packages::KeyPackage;
 
@@ -726,13 +728,8 @@ fn vc_welcome_material<Provider: OpenMlsProvider>(
     provider: &Provider,
     ciphersuite: Ciphersuite,
     hash_ref: &crate::ciphersuite::hash_ref::KeyPackageRef,
-) -> Result<
-    Option<crate::components::vc_derivation_info::VcWelcomeMaterial>,
-    WelcomeError<<Provider as OpenMlsProvider>::StorageError>,
-> {
-    use crate::components::vc_derivation_info::{
-        RetainedKeyPackageMaterial, VcWelcomeMaterial, VirtualClientsError,
-    };
+) -> Result<Option<VcWelcomeMaterial>, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
+    use crate::components::vc_derivation_info::{RetainedKeyPackageMaterial, VirtualClientsError};
 
     let storage = provider.storage();
     let Some(material) = storage
@@ -791,7 +788,7 @@ fn vc_welcome_material<Provider: OpenMlsProvider>(
 fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     provider: &Provider,
     public_group: &PublicGroup,
-    material: &crate::components::vc_derivation_info::VcWelcomeMaterial,
+    material: &VcWelcomeMaterial,
 ) -> Result<LeafNodeIndex, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
     use tls_codec::{DeserializeBytes as _, Serialize as _};
 
@@ -801,7 +798,7 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     };
 
     let crypto = provider.crypto();
-    let derived_encryption_key = material.encryption_keypair.public_key().as_slice().to_vec();
+    let derived_encryption_key = material.encryption_keypair.public_key().as_slice();
 
     let own_index = public_group
         .members()
@@ -903,14 +900,12 @@ impl MlsGroup {
         verifiable_group_info: VerifiableGroupInfo,
         ratchet_tree: Option<RatchetTreeIn>,
         external_commit: impl Into<crate::framing::ProtocolMessage>,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
+        epoch_id: EpochId,
     ) -> Result<MlsGroup, crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>>
     {
         use crate::{
             framing::Sender,
-            group::config::PastEpochDeletionPolicy,
             group::errors::{ProcessMessageError, VcExternalCommitJoinError as Error},
-            group::public_group::PublicGroup,
             prelude::mls_content::FramedContentBody,
             schedule::{EpochSecrets, InitSecret},
         };
@@ -1024,7 +1019,7 @@ impl MlsGroup {
         join_config: &MlsGroupJoinConfig,
         verifiable_group_info: VerifiableGroupInfo,
         ratchet_tree: Option<RatchetTreeIn>,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
+        epoch_id: EpochId,
     ) -> Result<MlsGroup, crate::group::errors::VcGroupCreationJoinError<Provider::StorageError>>
     {
         use tls_codec::{DeserializeBytes as _, Serialize as _};
@@ -1032,10 +1027,10 @@ impl MlsGroup {
         use crate::{
             components::vc_derivation_info::{
                 load_vc_epoch_state_and_tree, DerivationInfo, DerivationInfoTbe,
-                VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
+                VcEmulationBindings, VirtualClientOperationType, VirtualClientsError,
+                VC_COMPONENT_ID,
             },
             group::errors::VcGroupCreationJoinError as Error,
-            group::public_group::PublicGroup,
             schedule::EpochSecrets,
             treesync::node::leaf_node::LeafNodeSource,
         };
@@ -1188,7 +1183,7 @@ impl MlsGroup {
         // before the group itself, so an error between the writes cannot leave a
         // loadable group without a binding (a bound group is required for the
         // reuse-guard MUST).
-        let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
+        let mut bindings: VcEmulationBindings = provider
             .storage()
             .vc_emulation_bindings(public_group.group_id())
             .map_err(Error::StorageError)?
