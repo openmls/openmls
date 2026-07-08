@@ -54,6 +54,10 @@ pub enum NewGroupError<StorageError> {
     /// A group with the given [`GroupId`] already exists.
     #[error("A group with the given GroupId already exists.")]
     GroupAlreadyExists,
+    /// A virtual-clients processing error occurred.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
 }
 
 /// An error when deleting past epoch secrets.

@@ -535,6 +535,14 @@ fn staged_join() {
         alice_kpb.key_package().leaf_node().credential()
     );
 
+    // retrieve the own leaf from the staged group for Bob
+    let own_leaf = staged_bob_group
+        .own_leaf_node()
+        .expect("no own leaf index was found");
+
+    // check that the own leaf node matches the leaf node in Bob's key package
+    assert_eq!(own_leaf, bob_kpb.key_package.leaf_node());
+
     let bob_group = staged_bob_group
         .into_group(bob_provider)
         .expect("error turning StagedWelcome into MlsGroup");

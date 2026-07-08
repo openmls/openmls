@@ -19,6 +19,7 @@ test-utils = []
 extensions-draft = []
 draft-ietf-mls-pq-ciphersuites = []
 virtual-clients-draft = ["extensions-draft"]
+targeted-messages-draft = []
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }

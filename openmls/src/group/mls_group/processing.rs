@@ -148,9 +148,7 @@ pub struct UnresolvedAppDataCommit {
     /// component id.
     proposals: Vec<AppDataUpdateProposal>,
     #[cfg(feature = "virtual-clients-draft")]
-    vc_material: Option<crate::components::vc_derivation_info::OperationSecret>,
-    #[cfg(feature = "virtual-clients-draft")]
-    vc_emulation_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
+    vc_commit_material: Option<crate::components::vc_derivation_info::VcCommitMaterial>,
 }
 
 #[cfg(feature = "extensions-draft")]
@@ -166,9 +164,7 @@ impl UnresolvedAppDataCommit {
             content,
             proposals,
             #[cfg(feature = "virtual-clients-draft")]
-            vc_material: None,
-            #[cfg(feature = "virtual-clients-draft")]
-            vc_emulation_epoch_id: None,
+            vc_commit_material: None,
         }
     }
 
@@ -195,9 +191,16 @@ impl core::fmt::Debug for UnresolvedAppDataCommit {
         debug_struct
             .field("content", &self.content)
             .field("proposals", &self.proposals);
-        // vc_material holds secret key material and is deliberately omitted.
+        // vc_commit_material holds secret key material, so only the epoch id
+        // is printed.
         #[cfg(feature = "virtual-clients-draft")]
-        debug_struct.field("vc_emulation_epoch_id", &self.vc_emulation_epoch_id);
+        debug_struct.field(
+            "vc_emulation_epoch_id",
+            &self
+                .vc_commit_material
+                .as_ref()
+                .map(|material| &material.epoch_id),
+        );
         debug_struct.finish_non_exhaustive()
     }
 }
@@ -521,17 +524,12 @@ impl MlsGroup {
     /// `OperationGenerationConsumed`. Operation secrets are consume-once,
     /// matching the semantics of regular PrivateMessage decryption.
     #[cfg(feature = "virtual-clients-draft")]
-    fn load_vc_commit_material<Provider: OpenMlsProvider>(
+    pub(super) fn load_vc_commit_material<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         commit: &Commit,
-    ) -> Result<
-        Option<(
-            crate::components::vc_derivation_info::EpochId,
-            crate::components::vc_derivation_info::OperationSecret,
-        )>,
-        StageCommitError,
-    > {
+    ) -> Result<Option<crate::components::vc_derivation_info::VcCommitMaterial>, StageCommitError>
+    {
         use tls_codec::{DeserializeBytes, Serialize as _};
 
         use crate::{
@@ -607,6 +605,11 @@ impl MlsGroup {
             &leaf_encryption_key,
             operation_type,
         )?;
+        // Carried by an external commit's leaf only; `None` for own-leaf
+        // (regular) VC commits. A sibling uses it as the new epoch's external
+        // init secret instead of decapsulating from the previous epoch's
+        // `external_secret`.
+        let external_init_secret = tbe.external_init_secret().cloned();
         // The operation context for `LeafNode` operations is the
         // higher-level group's id.
         let operation_context = self.group_id().as_slice().to_vec();
@@ -632,7 +635,13 @@ impl MlsGroup {
                 VirtualClientsError::StorageError
             })?;
 
-        Ok(Some((epoch_id.clone(), operation_secret)))
+        Ok(Some(
+            crate::components::vc_derivation_info::VcCommitMaterial {
+                epoch_id: epoch_id.clone(),
+                operation_secret,
+                external_init_secret,
+            },
+        ))
     }
 
     /// Helper function to read decryption keypairs.
@@ -676,9 +685,7 @@ impl MlsGroup {
     ) -> Result<StagedCommit, StageCommitError> {
         let content = unresolved_commit.content;
         #[cfg(feature = "virtual-clients-draft")]
-        let vc_material = unresolved_commit.vc_material;
-        #[cfg(feature = "virtual-clients-draft")]
-        let vc_emulation_epoch_id = unresolved_commit.vc_emulation_epoch_id;
+        let vc_commit_material = unresolved_commit.vc_commit_material;
 
         let (old_epoch_keypairs, leaf_node_keypairs) =
             self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
@@ -690,9 +697,7 @@ impl MlsGroup {
             app_data_dict_updates,
             provider,
             #[cfg(feature = "virtual-clients-draft")]
-            vc_material,
-            #[cfg(feature = "virtual-clients-draft")]
-            vc_emulation_epoch_id,
+            vc_commit_material,
         )
     }
 
@@ -830,22 +835,17 @@ impl MlsGroup {
                 //   auto-Remove targets our previous leaf, so we are the
                 //   sibling being resynced.
                 #[cfg(feature = "virtual-clients-draft")]
-                let (vc_material, vc_emulation_epoch_id) =
+                let vc_commit_material =
                     if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
-                        match self.load_vc_commit_material(provider, commit)? {
-                            Some((epoch_id, op)) => (Some(op), Some(epoch_id)),
-                            None => (None, None),
-                        }
+                        self.load_vc_commit_material(provider, commit)?
                     } else {
-                        (None, None)
+                        None
                     };
-                #[cfg(not(feature = "extensions-draft"))]
-                let _ = commit;
 
                 let is_own_commit =
                     matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
                 #[cfg(feature = "virtual-clients-draft")]
-                let is_own_commit = is_own_commit && vc_material.is_none();
+                let is_own_commit = is_own_commit && vc_commit_material.is_none();
 
                 if is_own_commit {
                     let received_tag = content
@@ -894,9 +894,7 @@ impl MlsGroup {
                             content,
                             proposals: app_data_update_proposals,
                             #[cfg(feature = "virtual-clients-draft")]
-                            vc_material,
-                            #[cfg(feature = "virtual-clients-draft")]
-                            vc_emulation_epoch_id,
+                            vc_commit_material,
                         };
                         return Ok(ProcessedMessage::new(
                             self.group_id().clone(),
@@ -923,9 +921,7 @@ impl MlsGroup {
                     leaf_node_keypairs,
                     provider,
                     #[cfg(feature = "virtual-clients-draft")]
-                    vc_material,
-                    #[cfg(feature = "virtual-clients-draft")]
-                    vc_emulation_epoch_id,
+                    vc_commit_material,
                 )?;
 
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))

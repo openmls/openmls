@@ -350,7 +350,7 @@ impl InitSecret {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(any(feature = "test-utils", test, feature = "virtual-clients-draft"))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -740,6 +740,14 @@ impl ExporterSecret {
         self.secret.as_slice()
     }
 
+    // Only used for KATs of the Targeted Messages feature
+    #[cfg(all(feature = "targeted-messages-draft", test))]
+    pub(crate) fn from_slice(bytes: &[u8]) -> Self {
+        Self {
+            secret: Secret::from_slice(bytes),
+        }
+    }
+
     /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
     /// it can be used outside of OpenMLS. This function is made available for
     /// use from the outside through [`MlsGroup::export_secret`].
@@ -1126,7 +1134,6 @@ impl EpochSecrets {
     }
 
     /// Exporter secret
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
         &self.exporter_secret
     }
@@ -1214,6 +1221,24 @@ impl EpochSecrets {
         let mut epoch_secrets = Self::new(crypto, ciphersuite, epoch_secret)?;
         epoch_secrets.init_secret = init_secret;
         Ok(epoch_secrets)
+    }
+
+    /// Initialize the `EpochSecrets` from a given `epoch_secret`, rather than
+    /// deriving it through the joiner key schedule. Both the creator and a
+    /// reconstructing sibling of a virtual-client-created group use this to
+    /// initialize the epoch-0 state from the `epoch_secret` each derives from
+    /// the creator's KeyPackage seed secret. The `epoch_secret` stays in a
+    /// zeroizing [`Secret`] end to end.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn from_epoch_secret(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        epoch_secret: Secret,
+    ) -> Result<Self, CryptoError> {
+        let epoch_secret = EpochSecret {
+            secret: epoch_secret,
+        };
+        Self::new(crypto, ciphersuite, epoch_secret)
     }
 
     /// Splits `EpochSecrets` into two different categories:
