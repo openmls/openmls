@@ -186,17 +186,22 @@ impl ProcessedWelcome {
 
             PskSecret::new(provider.crypto(), ciphersuite, psks)?
         };
-        let key_schedule = KeySchedule::init(
+
+        // prepare the key schedule
+        let mut key_schedule = KeySchedule::init(
             ciphersuite,
             provider.crypto(),
             &group_secrets.joiner_secret,
             psk_secret,
         )?;
+
+        // derive the keys for decrypting the group info
         let (welcome_key, welcome_nonce) = key_schedule
             .welcome(provider.crypto(), ciphersuite)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
             .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
             .map_err(LibraryError::unexpected_crypto_error)?;
+
         let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
             &welcome_key,
             &welcome_nonce,
@@ -204,6 +209,16 @@ impl ProcessedWelcome {
             &[],
             provider.crypto(),
         )?;
+
+        let serialized_group_context = verifiable_group_info
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
+        // TODO #751: Implement PSK
+        key_schedule.add_context(provider.crypto(), &serialized_group_context)?;
+
+        let epoch_secrets = key_schedule.epoch_secrets(provider.crypto(), ciphersuite)?;
 
         // On the bundle path, check the required capabilities and the
         // ciphersuite against the local KeyPackage. On the virtual-client path
@@ -237,7 +252,7 @@ impl ProcessedWelcome {
             mls_group_config: mls_group_config.clone(),
             ciphersuite,
             group_secrets,
-            key_schedule,
+            epoch_secrets,
             verifiable_group_info,
             resumption_psk_store,
             key_material,
@@ -381,19 +396,11 @@ impl ProcessedWelcome {
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?;
 
-            // TODO #751: Implement PSK
-            self.key_schedule
-                .add_context(provider.crypto(), &serialized_group_context)
-                .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
-
             let EpochSecretsResult {
                 epoch_secrets,
                 #[cfg(feature = "extensions-draft")]
                 application_exporter,
-            } = self
-                .key_schedule
-                .epoch_secrets(provider.crypto(), self.ciphersuite)
-                .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+            } = self.epoch_secrets;
 
             let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
                 serialized_group_context,
@@ -478,6 +485,30 @@ impl ProcessedWelcome {
         };
 
         Ok(staged_welcome)
+    }
+
+    /// Exports a secret from the epoch of the group that is joined
+    /// using this [`ProcessedWelcome`].
+    /// Returns [`ExportSecretError::KeyLengthTooLong`] if the requested
+    /// key length is too long.
+    pub fn export_secret<CryptoProvider: OpenMlsCrypto>(
+        &self,
+        crypto: &CryptoProvider,
+        label: &str,
+        context: &[u8],
+        key_length: usize,
+    ) -> Result<Vec<u8>, ExportSecretError> {
+        if key_length > u16::MAX as usize {
+            log::error!("Got a key that is larger than u16::MAX");
+            return Err(ExportSecretError::KeyLengthTooLong);
+        }
+
+        Ok(self
+            .epoch_secrets
+            .epoch_secrets
+            .exporter_secret()
+            .derive_exported_secret(self.ciphersuite, crypto, label, context, key_length)
+            .map_err(LibraryError::unexpected_crypto_error)?)
     }
 }
 
@@ -843,6 +874,135 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     }
 
     Ok(own_index)
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl MlsGroup {
+    /// Bootstrap a virtual client's sibling emulator client into a higher-level
+    /// group by processing another sibling's external commit, when this client
+    /// is not yet a member of that group.
+    ///
+    /// The first emulator client joined the higher-level group via an external
+    /// commit. A second emulator client (this one), sharing the same emulation
+    /// epoch (`epoch_id`), reconstructs the resulting group state from that
+    /// commit. It cannot decapsulate the external init secret from the previous
+    /// epoch's `external_secret` (it never held it), so it uses the external
+    /// init secret the committing sibling carried in the commit's
+    /// `DerivationInfoTBE` (mls-virtual-clients draft), and recreates
+    /// the commit path from the shared operation secret tree.
+    ///
+    /// `verifiable_group_info` and `ratchet_tree` describe the higher-level
+    /// group at the epoch *before* the external commit (the ratchet tree may
+    /// instead travel in the GroupInfo's `ratchet_tree` extension).
+    /// `external_commit` is the sibling's external commit. On success the
+    /// returned group sits at the epoch the commit installs, with this client
+    /// on the shared virtual-client leaf.
+    pub fn vc_join_via_sibling_external_commit<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        join_config: &MlsGroupJoinConfig,
+        verifiable_group_info: VerifiableGroupInfo,
+        ratchet_tree: Option<RatchetTreeIn>,
+        external_commit: impl Into<crate::framing::ProtocolMessage>,
+        epoch_id: crate::components::vc_derivation_info::EpochId,
+    ) -> Result<MlsGroup, crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>>
+    {
+        use crate::{
+            framing::Sender,
+            group::config::PastEpochDeletionPolicy,
+            group::errors::{ProcessMessageError, VcExternalCommitJoinError as Error},
+            group::public_group::PublicGroup,
+            prelude::mls_content::FramedContentBody,
+            schedule::{EpochSecrets, InitSecret},
+        };
+
+        // Resolve the prior-epoch ratchet tree (from the GroupInfo extension or
+        // the argument) and rebuild the prior-epoch public group.
+        let ratchet_tree = match verifiable_group_info.extensions().ratchet_tree() {
+            Some(extension) => extension.ratchet_tree().clone(),
+            None => ratchet_tree.ok_or(Error::MissingRatchetTree)?,
+        };
+        let (public_group, _group_info) = PublicGroup::from_ratchet_tree(
+            provider.crypto(),
+            ratchet_tree,
+            verifiable_group_info,
+            ProposalStore::new(),
+            LeafNodeLifetimePolicy::default(),
+        )?;
+
+        // Assemble a transient group at the prior epoch. Its epoch secrets are
+        // never used cryptographically here: the external commit carries the
+        // external init secret and the operation secret tree supplies the path,
+        // so a random init-secret stub is sufficient. The own leaf index is the
+        // leftmost free index, where the committing sibling installs the shared
+        // virtual-client leaf.
+        let ciphersuite = public_group.ciphersuite();
+        let serialized_group_context = public_group
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+        let own_leaf_index = public_group.leftmost_free_index(std::iter::empty())?;
+        let init_secret = InitSecret::random(ciphersuite, provider.rand())
+            .map_err(LibraryError::unexpected_crypto_error)?;
+        let epoch_secrets =
+            EpochSecrets::with_init_secret(provider.crypto(), ciphersuite, init_secret)
+                .map_err(LibraryError::unexpected_crypto_error)?;
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            serialized_group_context,
+            public_group.tree_size(),
+            LeafNodeIndex::new(0u32),
+        );
+        // Do not retain the synthetic prior-epoch secrets used only to stage
+        // this external commit.
+        let message_secrets_store = MessageSecretsStore::new_with_secret(
+            &PastEpochDeletionPolicy::MaxEpochs(0),
+            message_secrets,
+        );
+        let mut group = MlsGroup {
+            mls_group_config: join_config.clone(),
+            own_leaf_nodes: vec![],
+            aad: vec![],
+            #[cfg(feature = "extensions-draft")]
+            safe_aad: crate::framing::SafeAad::empty(),
+            group_state: MlsGroupState::Operational,
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            message_secrets_store,
+            resumption_psk_store: ResumptionPskStore::new(join_config.number_of_resumption_psks),
+            #[cfg(feature = "extensions-draft")]
+            application_export_tree: None,
+        };
+
+        // Parse and verify the external commit against the prior-epoch group.
+        let unverified = group.unprotect_message(provider, external_commit)?;
+        let verified = unverified
+            .verify(group.ciphersuite(), provider.crypto(), group.version())
+            .map_err(ProcessMessageError::from)?;
+        if !matches!(verified.content.sender(), Sender::NewMemberCommit) {
+            return Err(Error::NotAnExternalCommit);
+        }
+        let content = verified.content;
+        let FramedContentBody::Commit(commit) = content.content() else {
+            return Err(Error::NotAnExternalCommit);
+        };
+
+        // Recover the sibling-VC commit material (operation secret + emulation
+        // epoch id + carried external init secret) from the leaf's derivation
+        // info, then stage and merge the commit through the sibling-VC path.
+        let material = group
+            .load_vc_commit_material(provider, commit)?
+            .ok_or(Error::MissingDerivationInfo)?;
+        if material.epoch_id != epoch_id {
+            return Err(Error::EpochIdMismatch);
+        }
+        let staged = group.stage_commit(&content, vec![], vec![], provider, Some(material))?;
+        group.merge_staged_commit(provider, staged)?;
+        group.resize_message_secrets_store(join_config.past_epoch_deletion_policy());
+        group
+            .store(provider.storage())
+            .map_err(Error::StorageError)?;
+        Ok(group)
+    }
 }
 
 #[cfg(feature = "virtual-clients-draft")]

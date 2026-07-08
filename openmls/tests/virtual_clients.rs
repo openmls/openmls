@@ -2773,6 +2773,214 @@ fn vc_binding_carries_forward_across_foreign_commits() {
     }
 }
 
+/// A virtual client issues a Commit *without* an UpdatePath (an add-only
+/// commit) and a sibling emulator client applies it.
+///
+///   * `alice_a` and `alice_b` are two emulator clients of one virtual client,
+///     sharing a single leaf in a higher-level group that also contains `bob`.
+///   * `alice_a` adds `charly` with `add_members_without_update`, producing a
+///     commit with no UpdatePath. A Commit without an UpdatePath cannot
+///     carry a virtual-clients `DerivationInfo`, so on shape alone it is
+///     indistinguishable from `alice_a`'s own commit echoed back.
+///   * `alice_b` (the sibling) processes it. Because the group's current epoch
+///     is bound to the emulation epoch and `alice_b` holds no pending commit of
+///     its own, the commit is recognized as a sibling's Commit without an
+///     UpdatePath and staged as a regular commit rather than rejected as a
+///     mismatched own commit. `bob` processes it through the ordinary path.
+///   * All four parties converge on the same epoch authenticator, and an
+///     application message round-trips from the new member to the sibling.
+#[openmls_test]
+fn vc_sibling_applies_commit_without_update_path() {
+    use openmls::credentials::{BasicCredential, CredentialWithKey};
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let charly_provider = Provider::default();
+
+    // The virtual client's shared signature key and credential, stored on both
+    // emulator clients so either can sign for the shared higher-level leaf.
+    let vc_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).expect("vc signer");
+    vc_signer
+        .store(alice_a_provider.storage())
+        .expect("store vc signer on alice_a");
+    vc_signer
+        .store(alice_b_provider.storage())
+        .expect("store vc signer on alice_b");
+    let vc_credential = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice (VC)".to_vec()).into(),
+        signature_key: vc_signer.public().into(),
+    };
+
+    // alice_a founds the higher-level group and adds bob.
+    let mut alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+    );
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_, welcome, _) = alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp])
+        .expect("alice_a add bob");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge add bob");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join");
+
+    // alice_b joins as a sibling emulator and resyncs into the higher-level
+    // group, so both Alice clients share `own_leaf_index`.
+    let (siblings, resync_commit) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        vc_join_config(),
+    );
+    let mut alice_b_main = siblings.alice_b_main;
+
+    for (group, provider) in [
+        (&mut alice_a_main, &alice_a_provider),
+        (&mut bob_main, &bob_provider),
+    ] {
+        let processed = group
+            .process_message(
+                provider,
+                resync_commit.clone().into_protocol_message().unwrap(),
+            )
+            .expect("process resync commit");
+        let staged = match processed.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(s) => *s,
+            _ => panic!("expected staged commit"),
+        };
+        group
+            .merge_staged_commit(provider, staged)
+            .expect("merge resync commit");
+    }
+    assert_eq!(
+        alice_a_main.own_leaf_index(),
+        alice_b_main.own_leaf_index(),
+        "both Alice clients must share the higher-level leaf"
+    );
+
+    // alice_a issues a Commit without an UpdatePath: an add-only commit for
+    // charly.
+    let (charly_credential, charly_signer) = new_credential(
+        &charly_provider,
+        b"Charly",
+        ciphersuite.signature_algorithm(),
+    );
+    let charly_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(
+            ciphersuite,
+            &charly_provider,
+            &charly_signer,
+            charly_credential,
+        )
+        .expect("charly KP build")
+        .key_package()
+        .to_owned();
+    let (commit, charly_welcome, _) = alice_a_main
+        .add_members_without_update(&alice_a_provider, &vc_signer, &[charly_kp])
+        .expect("alice_a add charly without an UpdatePath");
+    let staged_pending = alice_a_main
+        .pending_commit()
+        .expect("alice_a has a pending commit");
+    assert!(
+        staged_pending.update_path_leaf_node().is_none(),
+        "the add-only commit must not carry a path"
+    );
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge add without an UpdatePath");
+
+    // The sibling (alice_b) applies alice_a's Commit without an UpdatePath. It
+    // is staged as a regular commit, not surfaced as an own pending commit.
+    let processed = alice_b_main
+        .process_message(
+            &alice_b_provider,
+            commit.clone().into_protocol_message().unwrap(),
+        )
+        .expect("alice_b processes sibling commit without an UpdatePath");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        other => panic!("expected staged commit, got {other:?}"),
+    };
+    assert!(
+        !staged.self_removed(),
+        "a sibling's add-only commit must not remove alice_b"
+    );
+    alice_b_main
+        .merge_staged_commit(&alice_b_provider, staged)
+        .expect("alice_b merge sibling commit without an UpdatePath");
+
+    // bob applies it through the ordinary path.
+    let processed = bob_main
+        .process_message(&bob_provider, commit.into_protocol_message().unwrap())
+        .expect("bob processes commit without an UpdatePath");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        _ => panic!("expected staged commit"),
+    };
+    bob_main
+        .merge_staged_commit(&bob_provider, staged)
+        .expect("bob merge commit without an UpdatePath");
+
+    // charly joins from the welcome the add produced.
+    let mut charly_main = StagedWelcome::new_from_welcome(
+        &charly_provider,
+        &vc_join_config(),
+        charly_welcome.into_welcome().expect("charly welcome"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&charly_provider))
+    .expect("charly join");
+
+    // All parties agree on the new epoch.
+    let authenticator = alice_a_main.epoch_authenticator();
+    assert_eq!(
+        alice_b_main.epoch_authenticator(),
+        authenticator,
+        "sibling must converge with the committer"
+    );
+    assert_eq!(bob_main.epoch_authenticator(), authenticator);
+    assert_eq!(charly_main.epoch_authenticator(), authenticator);
+
+    // The new member can message the sibling that applied the commit without an
+    // UpdatePath.
+    let processed = send_and_process_app_message(
+        &mut charly_main,
+        &charly_provider,
+        &charly_signer,
+        &mut alice_b_main,
+        &alice_b_provider,
+        b"hello from charly",
+    );
+    match processed.into_content() {
+        ProcessedMessageContent::ApplicationMessage(msg) => {
+            assert_eq!(msg.into_bytes().as_slice(), b"hello from charly");
+        }
+        _ => panic!("expected application message"),
+    }
+}
+
 /// Set up two sibling emulator clients sharing one emulation group and epoch.
 /// `alice_a` founds the emulation group, `alice_b` joins it via Welcome, and
 /// both register the same emulation epoch, so both hold its

@@ -12,13 +12,13 @@ use super::proposal_store::{
 #[cfg(feature = "virtual-clients-draft")]
 use super::Sender;
 use super::{
-    super::errors::*, errors::ProcessMessageError, load_psks, Credential, Extension, GroupContext,
-    GroupEpochSecrets, GroupId, JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets,
-    MlsGroup, MlsGroupState, OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue,
-    PskSecret, QueuedProposal,
+    super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
+    JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, MlsGroupState,
+    OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue, PskSecret, QueuedProposal,
 };
 use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;
+use crate::messages::ConfirmationTag;
 use crate::prelude::{Commit, LeafNodeIndex};
 #[cfg(feature = "extensions-draft")]
 use crate::{component::ComponentId, schedule::application_export_tree::ApplicationExportTree};
@@ -66,46 +66,25 @@ fn validate_vc_external_init_secret(
 }
 
 impl MlsGroup {
-    /// Confirms that an incoming Commit authored by this client matches the
-    /// group's pending commit, by recomputing the confirmation tag from the
-    /// pending commit and comparing it against the tag carried by the message.
+    /// Returns `true` when `received_tag` is the confirmation tag produced by
+    /// our pending member commit, i.e. the incoming Commit is that pending
+    /// commit this client got fanned out by the delivery service. Returns
+    /// `false` when we hold no member pending commit or its tag differs.
     ///
-    /// We deliberately do not compare the full contents of the incoming Commit
-    /// against the pending commit. The message signature has already been
-    /// verified, which authenticates the Commit as ours, and a matching
+    /// We compare confirmation tags rather than the full Commit contents: the
+    /// signature has already authenticated the Commit as ours, and a matching
     /// confirmation tag binds the confirmed transcript hash of the new epoch.
-    /// We never adopt the incoming Commit's state: the caller applies the
-    /// locally built pending commit via [`MlsGroup::merge_pending_commit()`].
-    pub(crate) fn check_own_pending_commit<StorageError>(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        content: &AuthenticatedContent,
-    ) -> Result<(), ProcessMessageError<StorageError>> {
-        let received_tag = content
-            .confirmation_tag()
-            .ok_or(StageCommitError::ConfirmationTagMissing)?;
+    pub(crate) fn matches_pending_commit(&self, received_tag: &ConfirmationTag) -> bool {
         let MlsGroupState::PendingCommit(pending_commit_state) = &self.group_state else {
-            return Err(StageCommitError::OwnCommitMismatch.into());
+            return false;
         };
         let PendingCommitState::Member(staged_commit) = pending_commit_state.as_ref() else {
-            return Err(StageCommitError::OwnCommitMismatch.into());
+            return false;
         };
         let StagedCommitState::GroupMember(member_state) = &staged_commit.state else {
-            return Err(StageCommitError::OwnCommitMismatch.into());
+            return false;
         };
-        let expected_tag = member_state
-            .message_secrets
-            .confirmation_key()
-            .tag(
-                crypto,
-                self.ciphersuite(),
-                member_state.group_context().confirmed_transcript_hash(),
-            )
-            .map_err(LibraryError::unexpected_crypto_error)?;
-        if &expected_tag != received_tag {
-            return Err(StageCommitError::OwnCommitMismatch.into());
-        }
-        Ok(())
+        member_state.staged_diff.confirmation_tag() == received_tag
     }
 
     fn derive_epoch_secrets(
@@ -200,7 +179,8 @@ impl MlsGroup {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
     }
 
-    /// Stages a commit message that was sent by another group member. This
+    /// Stages a commit message. The commit may have been sent by another group
+    /// member or be our own Commit without an UpdatePath. This
     /// function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree

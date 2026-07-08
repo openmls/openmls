@@ -77,13 +77,71 @@ pub(crate) type RatchetKeyMaterial = (AeadKey, AeadNonce);
 /// [`DualUseRatchet`](super::dual_use_ratchet::DualUseRatchet)s, which can
 /// output key material for both encryption and decryption.
 #[derive(Serialize, Deserialize)]
+#[serde(from = "SerdeSenderRatchet")]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 #[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
 pub(crate) enum SenderRatchet {
+    #[cfg_attr(feature = "virtual-clients-draft", allow(unused))]
     EncryptionRatchet(RatchetSecret),
     DecryptionRatchet(DecryptionRatchet),
     #[cfg(feature = "virtual-clients-draft")]
     DualUse(DualUseRatchet),
+}
+
+/// Wire representation of [`SenderRatchet`] used to deserialize it via
+/// `#[serde(from = ...)]`. Unlike [`SenderRatchet`], the `DualUse` variant
+/// here is always present (its payload just changes shape depending on the
+/// `virtual-clients-draft` feature), so a value persisted by a build with the
+/// feature enabled can still be read by a build with the feature disabled,
+/// and vice versa. This avoids two failure modes of deserializing directly
+/// into [`SenderRatchet`]: an own ratchet persisted as `EncryptionRatchet`
+/// before the feature was turned on would otherwise never become a
+/// `DualUse` ratchet, and an own ratchet persisted as `DualUse` would
+/// otherwise fail to deserialize at all once the feature is turned off.
+#[derive(Deserialize)]
+enum SerdeSenderRatchet {
+    EncryptionRatchet(RatchetSecret),
+    DecryptionRatchet(DecryptionRatchet),
+    DualUse(SerdeDualUseRatchet),
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+type SerdeDualUseRatchet = DualUseRatchet;
+
+#[cfg(not(feature = "virtual-clients-draft"))]
+#[derive(Deserialize)]
+struct SerdeDualUseRatchet {
+    ratchet_head: RatchetSecret,
+}
+
+impl From<SerdeSenderRatchet> for SenderRatchet {
+    fn from(repr: SerdeSenderRatchet) -> Self {
+        match repr {
+            SerdeSenderRatchet::EncryptionRatchet(ratchet_secret) => {
+                #[cfg(feature = "virtual-clients-draft")]
+                {
+                    SenderRatchet::DualUse(DualUseRatchet::from(ratchet_secret))
+                }
+                #[cfg(not(feature = "virtual-clients-draft"))]
+                {
+                    SenderRatchet::EncryptionRatchet(ratchet_secret)
+                }
+            }
+            SerdeSenderRatchet::DecryptionRatchet(dec_ratchet) => {
+                SenderRatchet::DecryptionRatchet(dec_ratchet)
+            }
+            SerdeSenderRatchet::DualUse(dual_ratchet) => {
+                #[cfg(feature = "virtual-clients-draft")]
+                {
+                    SenderRatchet::DualUse(dual_ratchet)
+                }
+                #[cfg(not(feature = "virtual-clients-draft"))]
+                {
+                    SenderRatchet::EncryptionRatchet(dual_ratchet.ratchet_head)
+                }
+            }
+        }
+    }
 }
 
 impl SenderRatchet {
@@ -279,6 +337,44 @@ impl DecryptionRatchet {
                 // If the requested generation was used to decrypt a message
                 // earlier, throw an error.
                 .ok_or(SecretTreeError::SecretReuseError)
+        }
+    }
+}
+
+#[cfg(test)]
+mod persistence_tests {
+    use super::*;
+
+    // Reading an `EncryptionRatchet` as `DualUse` when enabling the `virtual-clients-draft` feature.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[test]
+    fn pre_feature_encryption_ratchet_is_promoted_to_dual_use() {
+        let ratchet_head = RatchetSecret::initial_ratchet_secret(Secret::from_slice(&[0; 32]));
+        let restored: SenderRatchet =
+            SerdeSenderRatchet::EncryptionRatchet(ratchet_head.clone()).into();
+        match restored {
+            SenderRatchet::DualUse(dual_use) => {
+                assert_eq!(dual_use.generation(), ratchet_head.generation())
+            }
+            _ => panic!("expected promotion to DualUse"),
+        }
+    }
+
+    // A `DualUse` ratchet persisted when using the `virtual-clients-draft` that should
+    // be downgraded to a `EncryptionRatchet` when not using the feature.
+    #[cfg(not(feature = "virtual-clients-draft"))]
+    #[test]
+    fn persisted_dual_use_is_readable_without_the_feature() {
+        let ratchet_head = RatchetSecret::initial_ratchet_secret(Secret::from_slice(&[0; 32]));
+        let restored: SenderRatchet = SerdeSenderRatchet::DualUse(SerdeDualUseRatchet {
+            ratchet_head: ratchet_head.clone(),
+        })
+        .into();
+        match restored {
+            SenderRatchet::EncryptionRatchet(rs) => {
+                assert_eq!(rs.generation(), ratchet_head.generation())
+            }
+            _ => panic!("expected fallback to EncryptionRatchet"),
         }
     }
 }
