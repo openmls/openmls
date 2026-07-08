@@ -568,6 +568,16 @@ impl StagedWelcome {
             ))
     }
 
+    /// Returns the leaf index of the client in this welcome's [`PublicGroup`].
+    pub fn own_leaf_index(&self) -> LeafNodeIndex {
+        self.own_leaf_index
+    }
+
+    /// Returns the leaf node of the client in this welcome's [`PublicGroup`].
+    pub fn own_leaf_node(&self) -> Option<&LeafNode> {
+        self.public_group.leaf(self.own_leaf_index())
+    }
+
     /// Get the [`GroupContext`] of this welcome's [`PublicGroup`].
     pub fn group_context(&self) -> &GroupContext {
         self.public_group.group_context()
