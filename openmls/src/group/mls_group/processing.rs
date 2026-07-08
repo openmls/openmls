@@ -777,8 +777,6 @@ impl MlsGroup {
                     } else {
                         (None, None)
                     };
-                #[cfg(not(feature = "extensions-draft"))]
-                let _ = commit;
 
                 let is_own_commit =
                     matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
