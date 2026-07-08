@@ -5,6 +5,9 @@
 use crate::error::LibraryError;
 use thiserror::Error;
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::ciphersuite::ReuseGuardDerivationError;
+
 // === Public ===
 
 // Re-export errors
@@ -37,6 +40,16 @@ pub enum MessageDecryptionError {
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
 }
 
+#[cfg(feature = "virtual-clients-draft")]
+impl From<ReuseGuardDerivationError> for MessageDecryptionError {
+    fn from(error: ReuseGuardDerivationError) -> Self {
+        match error {
+            ReuseGuardDerivationError::VirtualClients(inner) => Self::VirtualClientsError(inner),
+            ReuseGuardDerivationError::Library(inner) => Self::LibraryError(inner),
+        }
+    }
+}
+
 /// Message encryption error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum MessageEncryptionError<StorageError> {
@@ -56,6 +69,16 @@ pub enum MessageEncryptionError<StorageError> {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl<StorageError> From<ReuseGuardDerivationError> for MessageEncryptionError<StorageError> {
+    fn from(error: ReuseGuardDerivationError) -> Self {
+        match error {
+            ReuseGuardDerivationError::VirtualClients(inner) => Self::VirtualClientsError(inner),
+            ReuseGuardDerivationError::Library(inner) => Self::LibraryError(inner),
+        }
+    }
 }
 
 /// MlsMessage error
