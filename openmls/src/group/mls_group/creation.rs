@@ -984,7 +984,12 @@ impl MlsGroup {
         };
 
         // Parse and verify the external commit against the prior-epoch group.
-        let unverified = group.unprotect_message(provider, external_commit)?;
+        // A PrivateMessage claiming our own leaf cannot be an external commit.
+        let processing::UnprotectedMessage::Unverified(unverified) =
+            group.unprotect_message(provider, external_commit)?
+        else {
+            return Err(Error::NotAnExternalCommit);
+        };
         let verified = unverified
             .verify(group.ciphersuite(), provider.crypto(), group.version())
             .map_err(ProcessMessageError::from)?;

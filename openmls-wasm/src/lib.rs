@@ -265,6 +265,9 @@ impl Group {
                 self.mls_group.merge_pending_commit(provider.as_mut())?;
                 Ok(vec![])
             }
+            // Own PrivateMessages echoed by the DS cannot be decrypted, so skip
+            // them.
+            openmls::framing::ProcessedMessageContent::OwnPrivateMessage => Ok(vec![]),
             #[cfg(feature = "extensions-draft")]
             openmls::framing::ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
                 unimplemented!("openmls-wasm does not support AppDataUpdate proposals")
