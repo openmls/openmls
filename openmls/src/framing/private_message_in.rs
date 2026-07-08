@@ -194,35 +194,17 @@ impl PrivateMessageIn {
                 MessageDecryptionError::SecretTreeError(e)
             })?;
 
-        // Reuse-guard inversion. Uses the pre-XOR ratchet nonce as the
-        // `key_schedule_nonce` input to `ExpandWithLabel`.
+        // Recover the sender's emulation-group leaf index by inverting the
+        // reuse guard, when the group is bound to an emulation epoch.
         #[cfg(feature = "virtual-clients-draft")]
         let emulator_sender_leaf_index = if let Some(ctx) = emulator_ctx {
-            let prp_key = ctx.reuse_guard_secret.derive_prp_key(
+            Some(sender_data.reuse_guard.emulator_sender_leaf_index(
                 crypto,
+                ctx.reuse_guard_secret,
                 ctx.emulation_ciphersuite,
-                ratchet_nonce.raw_bytes(),
-            )?;
-            let x = crypto
-                .ff1_aes128_decrypt(
-                    &prp_key,
-                    u32::from_be_bytes(sender_data.reuse_guard.bytes()),
-                )
-                .map_err(|e| {
-                    log::error!("vc: FF1 inversion of reuse_guard failed: {e:?}");
-                    crate::components::vc_derivation_info::VirtualClientsError::CryptoError(
-                        openmls_traits::types::CryptoError::CryptoLibraryError,
-                    )
-                })?;
-            let n_e = u64::from(ctx.emulation_group_size.leaf_count());
-            if n_e == 0 {
-                log::error!("vc: emulation_group_size is zero (corrupt state)");
-                return Err(LibraryError::custom(
-                    "EmulationEpochState has zero emulation_group_size",
-                )
-                .into());
-            }
-            Some(LeafNodeIndex::new((u64::from(x) % n_e) as u32))
+                &ratchet_nonce,
+                ctx.emulation_group_size,
+            )?)
         } else {
             None
         };

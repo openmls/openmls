@@ -679,7 +679,7 @@ impl KeyPackageBuilder {
         count: u32,
     ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
         use crate::components::vc_derivation_info::{
-            EmulationEpochState, VirtualClientOperationType, VirtualClientsError,
+            vc_storage_error, EmulationEpochState, VirtualClientOperationType, VirtualClientsError,
         };
         use crate::components::vc_operation_tree::OperationSecretTree;
 
@@ -709,18 +709,14 @@ impl KeyPackageBuilder {
         let state: EmulationEpochState = provider
             .storage()
             .vc_emulation_epoch_state(&epoch_id)
-            .map_err(|e| {
-                log::error!("vc: load emulation epoch state in build_vc_batch failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?
+            .map_err(vc_storage_error(
+                "load emulation epoch state in build_vc_batch",
+            ))?
             .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
         let mut operation_tree: OperationSecretTree = provider
             .storage()
             .vc_operation_tree(&epoch_id)
-            .map_err(|e| {
-                log::error!("vc: load operation tree in build_vc_batch failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?
+            .map_err(vc_storage_error("load operation tree in build_vc_batch"))?
             .ok_or(VirtualClientsError::MissingOperationTree)?;
         let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) =
             state.into_parts();
@@ -766,10 +762,9 @@ impl KeyPackageBuilder {
         provider
             .storage()
             .write_vc_operation_tree(&batch_ctx.epoch_id, &operation_tree)
-            .map_err(|e| {
-                log::error!("vc: persist advanced operation tree in build_vc_batch failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?;
+            .map_err(vc_storage_error(
+                "persist advanced operation tree in build_vc_batch",
+            ))?;
         for (full_kp, info) in &key_packages {
             provider
                 .storage()
@@ -801,7 +796,8 @@ impl KeyPackageBuilder {
         KeyPackageNewError,
     > {
         use crate::components::vc_derivation_info::{
-            DerivationInfo, DerivationInfoTbe, KeyPackageInfo, VirtualClientsError,
+            merge_vc_derivation_info, DerivationInfo, DerivationInfoTbe, KeyPackageInfo,
+            VirtualClientsError,
         };
         use tls_codec::Serialize as _;
 
@@ -822,10 +818,7 @@ impl KeyPackageBuilder {
             .derive_encryption_key_secret(provider.crypto(), ciphersuite)?
             .generate_encryption_key_pair(provider.crypto(), ciphersuite)?;
 
-        // Wrap the TBE bound to the new leaf via its serialized encryption key.
-        // The leaf dictionary was resolved and validated once for the whole
-        // batch, so reuse a clone here.
-        let resolved_dictionary = batch_ctx.resolved_dictionary.clone();
+        // Bind the TBE to the new leaf via its serialized encryption key.
         let leaf_encryption_key = encryption_key_pair
             .public_key()
             .tls_serialize_detached()
@@ -848,9 +841,9 @@ impl KeyPackageBuilder {
             .map_err(VirtualClientsError::from)?;
         let mut builder = self.clone();
         builder.ensure_last_resort();
-        let leaf_node_extensions = crate::components::vc_derivation_info::merge_vc_derivation_info(
+        let leaf_node_extensions = merge_vc_derivation_info(
             builder.leaf_node_extensions.as_ref(),
-            resolved_dictionary,
+            batch_ctx.resolved_dictionary.clone(),
             derivation_info_bytes,
         )
         .map_err(KeyPackageNewError::LibraryError)?;

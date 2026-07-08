@@ -38,8 +38,9 @@ use crate::{
 #[cfg(feature = "virtual-clients-draft")]
 use crate::{
     components::vc_derivation_info::{
-        DerivationInfo, DerivationInfoTbe, EmulationEpochState, EpochEncryptionKey, EpochId,
-        ExternalInitSecret, OperationSecret, VirtualClientOperationType, VirtualClientsError,
+        vc_storage_error, DerivationInfo, DerivationInfoTbe, EmulationEpochState,
+        EpochEncryptionKey, EpochId, ExternalInitSecret, OperationSecret,
+        VirtualClientOperationType, VirtualClientsError,
     },
     components::vc_operation_tree::OperationSecretTree,
     extensions::AppDataDictionary,
@@ -413,17 +414,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     ) -> Result<Self, CreateCommitError> {
         let state: EmulationEpochState = storage
             .vc_emulation_epoch_state(&epoch_id)
-            .map_err(|e| {
-                log::error!("vc: load emulation epoch state in vc_emulation failed: {e:?}");
-                CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
-            })?
+            .map_err(vc_storage_error(
+                "load emulation epoch state in vc_emulation",
+            ))?
             .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
         let mut operation_tree: OperationSecretTree = storage
             .vc_operation_tree(&epoch_id)
-            .map_err(|e| {
-                log::error!("vc: load operation tree in vc_emulation failed: {e:?}");
-                CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
-            })?
+            .map_err(vc_storage_error("load operation tree in vc_emulation"))?
             .ok_or(VirtualClientsError::MissingOperationTree)?;
         let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) =
             state.into_parts();
@@ -459,10 +456,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         // be observed on the wire before it is persisted.
         storage
             .write_vc_operation_tree(&epoch_id, &operation_tree)
-            .map_err(|e| {
-                log::error!("vc: persist advanced operation tree failed: {e:?}");
-                CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
-            })?;
+            .map_err(vc_storage_error("persist advanced operation tree"))?;
 
         self.vc_loaded = Some(VcLoaded {
             epoch_id,
@@ -767,7 +761,6 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             Some(apply_vc_emulation(
                 loaded,
                 &mut cur_stage.leaf_node_parameters,
-                loaded.resolved_dictionary.clone(),
                 crypto,
                 ciphersuite,
                 external_init_secret,
@@ -1228,7 +1221,6 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
 fn apply_vc_emulation(
     loaded: &VcLoaded,
     leaf_node_parameters: &mut LeafNodeParameters,
-    resolved_dictionary: AppDataDictionary,
     crypto: &impl OpenMlsCrypto,
     group_ciphersuite: openmls_traits::types::Ciphersuite,
     external_init_secret: Option<&crate::schedule::InitSecret>,
@@ -1273,7 +1265,7 @@ fn apply_vc_emulation(
 
     inject_vc_derivation_info(
         leaf_node_parameters,
-        resolved_dictionary,
+        loaded.resolved_dictionary.clone(),
         derivation_info_bytes,
     )?;
 

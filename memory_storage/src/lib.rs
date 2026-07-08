@@ -618,11 +618,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         #[cfg(feature = "virtual-clients-draft")]
-        {
-            let serialized_ref = serde_json::to_vec(&hash_ref)?;
-            self.delete::<CURRENT_VERSION>(RETAINED_KEY_PACKAGE_MATERIAL_LABEL, &serialized_ref)?;
-            self.delete::<CURRENT_VERSION>(RETAINED_KEY_PACKAGE_EPOCH_LABEL, &serialized_ref)?;
-        }
+        self.delete_retained_key_package_material(hash_ref)?;
         self.delete::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &serde_json::to_vec(&hash_ref)?)
     }
 
@@ -1084,10 +1080,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         // Hold the write lock across the liveness check and the deletion so a
         // material stored concurrently cannot be orphaned.
         let mut values = self.values.write().unwrap();
-        let referenced = values
-            .iter()
-            .any(|(key, value)| is_epoch_tag(key) && value == &serialized_epoch_id);
-        if referenced {
+        if epoch_is_referenced(&values, &serialized_epoch_id) {
             return Ok(false);
         }
         let state_key = build_key_from_vec::<CURRENT_VERSION>(
@@ -1240,10 +1233,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     ) -> Result<bool, Self::Error> {
         let serialized_epoch_id = serde_json::to_vec(epoch_id)?;
         let values = self.values.read().unwrap();
-        let referenced = values
-            .iter()
-            .any(|(key, value)| is_epoch_tag(key) && value == &serialized_epoch_id);
-        Ok(referenced)
+        Ok(epoch_is_referenced(&values, &serialized_epoch_id))
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -1267,10 +1257,14 @@ fn build_key_from_vec<const V: u16>(label: &[u8], key: Vec<u8>) -> Vec<u8> {
     key_out
 }
 
-/// Whether a storage key belongs to a retained-KeyPackage epoch tag entry.
+/// Whether any retained-KeyPackage epoch tag entry points at the given
+/// serialized epoch id.
 #[cfg(feature = "virtual-clients-draft")]
-fn is_epoch_tag(storage_key: &[u8]) -> bool {
-    storage_key.starts_with(RETAINED_KEY_PACKAGE_EPOCH_LABEL)
+fn epoch_is_referenced(values: &HashMap<Vec<u8>, Vec<u8>>, serialized_epoch_id: &[u8]) -> bool {
+    values.iter().any(|(storage_key, value)| {
+        storage_key.starts_with(RETAINED_KEY_PACKAGE_EPOCH_LABEL)
+            && value.as_slice() == serialized_epoch_id
+    })
 }
 
 /// Build a key with version and label.

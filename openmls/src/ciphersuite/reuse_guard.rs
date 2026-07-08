@@ -20,12 +20,6 @@ pub struct ReuseGuard {
 }
 
 impl ReuseGuard {
-    /// Returns the raw 4 bytes of the guard.
-    #[cfg(feature = "virtual-clients-draft")]
-    pub(crate) fn bytes(&self) -> [u8; REUSE_GUARD_BYTES] {
-        self.value
-    }
-
     /// Samples a fresh reuse guard uniformly at random.
     pub(crate) fn try_from_random(rng: &impl OpenMlsRand) -> Result<Self, CryptoError> {
         Ok(Self {
@@ -57,11 +51,6 @@ impl ReuseGuard {
     ) -> Result<Self, ReuseGuardDerivationError> {
         let n_e = u64::from(emulation_group_size.leaf_count());
         let leaf_index_e = u64::from(emulation_leaf_index.u32());
-        if n_e == 0 {
-            return Err(ReuseGuardDerivationError::Library(LibraryError::custom(
-                "emulation_group_size is zero",
-            )));
-        }
         if leaf_index_e >= n_e {
             return Err(ReuseGuardDerivationError::Library(LibraryError::custom(
                 "emulation_leaf_index is out of range for the emulation group",
@@ -96,15 +85,46 @@ impl ReuseGuard {
         )?;
         let permuted = crypto.ff1_aes128_encrypt(&prp_key, x).map_err(|e| {
             log::error!("vc: FF1 encryption of reuse_guard failed: {e:?}");
-            ReuseGuardDerivationError::Library(LibraryError::custom("FF1 encrypt failed"))
+            ReuseGuardDerivationError::Library(LibraryError::unexpected_crypto_error(e))
         })?;
         Ok(Self {
             value: permuted.to_be_bytes(),
         })
     }
+
+    /// Recover the sender's emulation-group leaf index from this reuse guard.
+    ///
+    /// This inverts [`ReuseGuard::for_emulator_sender`]: it decrypts the guard
+    /// under FF1-AES128 with the same `prp_key` and reduces the result modulo
+    /// the emulation group size. `ratchet_nonce` is the pre-XOR per-message
+    /// nonce used as the `key_schedule_nonce` input to `ExpandWithLabel`.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn emulator_sender_leaf_index(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        reuse_guard_secret: &ReuseGuardSecret,
+        emulation_ciphersuite: openmls_traits::types::Ciphersuite,
+        ratchet_nonce: &AeadNonce,
+        emulation_group_size: TreeSize,
+    ) -> Result<LeafNodeIndex, ReuseGuardDerivationError> {
+        let prp_key = reuse_guard_secret.derive_prp_key(
+            crypto,
+            emulation_ciphersuite,
+            ratchet_nonce.raw_bytes(),
+        )?;
+        let x = crypto
+            .ff1_aes128_decrypt(&prp_key, u32::from_be_bytes(self.value))
+            .map_err(|e| {
+                log::error!("vc: FF1 inversion of reuse_guard failed: {e:?}");
+                ReuseGuardDerivationError::Library(LibraryError::unexpected_crypto_error(e))
+            })?;
+        let n_e = u64::from(emulation_group_size.leaf_count());
+        Ok(LeafNodeIndex::new((u64::from(x) % n_e) as u32))
+    }
 }
 
-/// Errors returned by [`ReuseGuard::for_emulator_sender`].
+/// Errors returned by [`ReuseGuard::for_emulator_sender`] and
+/// [`ReuseGuard::emulator_sender_leaf_index`].
 #[cfg(feature = "virtual-clients-draft")]
 #[derive(thiserror::Error, Debug, PartialEq, Clone)]
 pub(crate) enum ReuseGuardDerivationError {

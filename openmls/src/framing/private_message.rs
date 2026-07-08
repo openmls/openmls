@@ -240,7 +240,7 @@ impl PrivateMessage {
         // Derive the reuse guard deterministically when the group is
         // bound to an emulation epoch, otherwise sample at random.
         #[cfg(feature = "virtual-clients-draft")]
-        let reuse_guard: ReuseGuard = if let Some(ctx) = emulator_ctx {
+        let reuse_guard = if let Some(ctx) = emulator_ctx {
             ReuseGuard::for_emulator_sender(
                 crypto,
                 rand,
@@ -249,20 +249,12 @@ impl PrivateMessage {
                 &ratchet_nonce,
                 ctx.emulation_leaf_index,
                 ctx.emulation_group_size,
-            )
-            .map_err(|e| match e {
-                ReuseGuardDerivationError::VirtualClients(inner) => {
-                    MessageEncryptionError::VirtualClientsError(inner)
-                }
-                ReuseGuardDerivationError::Library(inner) => {
-                    MessageEncryptionError::LibraryError(inner)
-                }
-            })?
+            )?
         } else {
             ReuseGuard::try_from_random(rand).map_err(LibraryError::unexpected_crypto_error)?
         };
         #[cfg(not(feature = "virtual-clients-draft"))]
-        let reuse_guard: ReuseGuard =
+        let reuse_guard =
             ReuseGuard::try_from_random(rand).map_err(LibraryError::unexpected_crypto_error)?;
         // Prepare the nonce by xoring with the reuse guard.
         let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
