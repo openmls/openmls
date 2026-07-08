@@ -2,6 +2,8 @@
 
 use std::mem;
 
+#[cfg(feature = "extensions-draft")]
+use errors::ResolveAppDataCommitError;
 use errors::{CommitToPendingProposalsError, MergePendingCommitError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
 
@@ -138,14 +140,21 @@ impl<'a> AppDataDictionaryUpdater<'a> {
 /// [`AppDataDictionary`] becomes part of the new epoch's GroupContext and
 /// feeds into the key schedule.
 ///
-/// Returned by [`MlsGroup::process_message()`] as
+/// Returned by [`MlsGroup::process_message()`] and
+/// [`PublicGroup::process_message()`] as
 /// [`ProcessedMessageContent::UnresolvedAppDataCommit`]. Inspect the proposals
 /// via [`Self::app_data_update_proposals()`], compute the updates with the
-/// help of [`MlsGroup::app_data_dictionary_updater()`] and resume staging via
-/// [`MlsGroup::stage_app_data_commit()`].
+/// help of [`MlsGroup::app_data_dictionary_updater()`] (or
+/// [`PublicGroup::app_data_dictionary_updater()`]) and resume staging via
+/// [`MlsGroup::stage_app_data_commit()`] (or
+/// [`PublicGroup::stage_app_data_commit()`]).
 ///
 /// The message signature has already been verified at this point. Dropping
 /// this value discards the commit.
+///
+/// [`PublicGroup::process_message()`]: crate::group::public_group::PublicGroup::process_message
+/// [`PublicGroup::app_data_dictionary_updater()`]: crate::group::public_group::PublicGroup::app_data_dictionary_updater
+/// [`PublicGroup::stage_app_data_commit()`]: crate::group::public_group::PublicGroup::stage_app_data_commit
 #[cfg(feature = "extensions-draft")]
 pub struct UnresolvedAppDataCommit {
     content: AuthenticatedContent,
@@ -159,6 +168,29 @@ pub struct UnresolvedAppDataCommit {
 
 #[cfg(feature = "extensions-draft")]
 impl UnresolvedAppDataCommit {
+    /// Constructs an [`UnresolvedAppDataCommit`] from verified content and the
+    /// covered AppDataUpdate proposals. Used by public-group processing, which
+    /// carries no virtual-clients material.
+    pub(crate) fn new(
+        content: AuthenticatedContent,
+        proposals: Vec<AppDataUpdateProposal>,
+    ) -> Self {
+        Self {
+            content,
+            proposals,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_commit_material: None,
+        }
+    }
+
+    /// Consumes the commit and returns the verified [`AuthenticatedContent`],
+    /// so that [`PublicGroup::stage_app_data_commit`] can resume staging.
+    ///
+    /// [`PublicGroup::stage_app_data_commit`]: crate::group::public_group::PublicGroup::stage_app_data_commit
+    pub(crate) fn into_content(self) -> AuthenticatedContent {
+        self.content
+    }
+
     /// Returns the AppDataUpdate proposals covered by the commit, sorted by
     /// component id. Proposals that were committed by reference have already
     /// been resolved from the proposal store.
@@ -195,11 +227,13 @@ impl MlsGroup {
     /// and semantic validation of the message. It returns a [ProcessedMessage]
     /// enum.
     ///
-    /// A commit covering AppDataUpdate proposals is returned as
-    /// [`ProcessedMessageContent::UnresolvedAppDataCommit`], since the
-    /// application has to interpret the proposals before the commit can be
-    /// staged via [`MlsGroup::stage_app_data_commit()`].
-    ///
+    #[cfg_attr(
+        feature = "extensions-draft",
+        doc = "A commit covering AppDataUpdate proposals is returned as\n\
+        [`ProcessedMessageContent::UnresolvedAppDataCommit`], since the\n\
+        application has to interpret the proposals before the commit can be\n\
+        staged via [`MlsGroup::stage_app_data_commit()`].\n"
+    )]
     /// # Errors:
     /// Returns an [`ProcessMessageError`] when the validation checks fail
     /// with the exact reason of the failure.
@@ -724,6 +758,32 @@ impl MlsGroup {
         )
     }
 
+    /// Resolves a [`ProcessedMessage`] carrying an
+    /// [`ProcessedMessageContent::UnresolvedAppDataCommit`]: stages the commit
+    /// with the application-computed [`AppDataUpdates`] and returns the same
+    /// message with the resulting [`StagedCommit`] as regular
+    /// [`ProcessedMessageContent::StagedCommitMessage`] content. All other
+    /// message fields (sender, credential, authenticated data) are preserved.
+    ///
+    /// Use this instead of [`MlsGroup::stage_app_data_commit()`] when the
+    /// caller needs the resolved commit in [`ProcessedMessage`] form, e.g. to
+    /// keep a single code path for commits with and without AppDataUpdate
+    /// proposals.
+    ///
+    /// Returns an error if the message content is not an unresolved app data
+    /// commit; the message is consumed either way.
+    #[cfg(feature = "extensions-draft")]
+    pub fn resolve_app_data_commit<Provider: OpenMlsProvider>(
+        &self,
+        provider: &Provider,
+        processed_message: ProcessedMessage,
+        app_data_dict_updates: Option<AppDataUpdates>,
+    ) -> Result<ProcessedMessage, ResolveAppDataCommitError> {
+        processed_message.resolve_app_data_commit(|unresolved_commit| {
+            self.stage_app_data_commit(provider, unresolved_commit, app_data_dict_updates)
+        })
+    }
+
     /// This processing function does most of the semantic verifications.
     /// It returns a [ProcessedMessage] enum.
     ///
@@ -1100,7 +1160,7 @@ impl MlsGroup {
 /// later with the regular missing-proposal error, so it does not need to be
 /// surfaced at detection time.
 #[cfg(feature = "extensions-draft")]
-fn committed_app_data_update_proposals(
+pub(crate) fn committed_app_data_update_proposals(
     commit: &Commit,
     proposal_store: &ProposalStore,
 ) -> Vec<AppDataUpdateProposal> {

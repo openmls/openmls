@@ -449,6 +449,18 @@ pub enum SafeExportSecretError<StorageError> {
     Storage(StorageError),
 }
 
+/// Error resolving a processed message carrying an unresolved app data commit.
+#[cfg(feature = "extensions-draft")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ResolveAppDataCommitError {
+    /// The processed message does not carry an unresolved app data commit.
+    #[error("The processed message does not carry an unresolved app data commit.")]
+    NotAnUnresolvedAppDataCommit,
+    /// See [`StageCommitError`] for more details.
+    #[error(transparent)]
+    StageCommit(#[from] StageCommitError),
+}
+
 /// Export secret error
 #[cfg(feature = "extensions-draft")]
 #[derive(Error, Debug, PartialEq, Clone)]

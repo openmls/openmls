@@ -292,11 +292,6 @@ impl CommitIn {
         };
         Ok(Commit { proposals, path })
     }
-
-    #[cfg(feature = "extensions-draft")]
-    pub(crate) fn proposals(&self) -> &[ProposalOrRefIn] {
-        &self.proposals
-    }
 }
 
 // The following `From` implementation( breaks abstraction layers and MUST

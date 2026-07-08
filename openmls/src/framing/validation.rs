@@ -37,8 +37,12 @@ use crate::{
 
 #[cfg(feature = "extensions-draft")]
 use crate::{
-    component::ComponentId, framing::safe_aad::SafeAad,
-    group::mls_group::processing::UnresolvedAppDataCommit, messages::proposals_in::ProposalOrRefIn,
+    component::ComponentId,
+    framing::safe_aad::SafeAad,
+    group::{
+        errors::StageCommitError,
+        mls_group::{errors::ResolveAppDataCommitError, processing::UnresolvedAppDataCommit},
+    },
 };
 
 use super::{
@@ -383,12 +387,6 @@ impl UnverifiedMessage {
             emulator_sender_leaf_index: self.emulator_sender_leaf_index,
         })
     }
-
-    /// Get the proposals of the commit, if it is one. If not, return `None`.
-    #[cfg(feature = "extensions-draft")]
-    pub(crate) fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
-        self.verifiable_content.committed_proposals()
-    }
 }
 
 /// A message that has passed all syntax and semantics checks.
@@ -438,6 +436,26 @@ impl ProcessedMessage {
             #[cfg(feature = "extensions-draft")]
             safe_aad_prefix_len: 0,
         }
+    }
+
+    /// Swaps an [`ProcessedMessageContent::UnresolvedAppDataCommit`] for the
+    /// [`StagedCommit`] produced by `stage`, keeping all other fields (sender,
+    /// credential, authenticated data, Safe AAD state) intact.
+    ///
+    /// Returns an error if the content is not an unresolved app data commit;
+    /// the message is consumed either way.
+    #[cfg(feature = "extensions-draft")]
+    pub(crate) fn resolve_app_data_commit(
+        mut self,
+        stage: impl FnOnce(UnresolvedAppDataCommit) -> Result<StagedCommit, StageCommitError>,
+    ) -> Result<Self, ResolveAppDataCommitError> {
+        let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) = self.content
+        else {
+            return Err(ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit);
+        };
+        let staged_commit = stage(*unresolved_commit)?;
+        self.content = ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit));
+        Ok(self)
     }
 
     /// Parse the Safe AAD prefix at the start of `authenticated_data` and
@@ -630,6 +648,13 @@ pub enum ProcessedMessageContent {
     /// [`MlsGroup::app_data_dictionary_updater()`](crate::group::mls_group::MlsGroup::app_data_dictionary_updater)
     /// and resume staging via
     /// [`MlsGroup::stage_app_data_commit()`](crate::group::mls_group::MlsGroup::stage_app_data_commit).
+    ///
+    /// This variant is likewise returned by
+    /// [`PublicGroup::process_message()`](crate::group::public_group::PublicGroup::process_message),
+    /// where the updates are computed with
+    /// [`PublicGroup::app_data_dictionary_updater()`](crate::group::public_group::PublicGroup::app_data_dictionary_updater)
+    /// and staging resumes via
+    /// [`PublicGroup::stage_app_data_commit()`](crate::group::public_group::PublicGroup::stage_app_data_commit).
     #[cfg(feature = "extensions-draft")]
     UnresolvedAppDataCommit(Box<UnresolvedAppDataCommit>),
 }
