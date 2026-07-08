@@ -968,8 +968,15 @@ impl StagedCommit {
         }
     }
 
+    /// Safely exports a secret for the given `component_id` from the epoch the
+    /// staged commit moves to, before the commit is merged.
+    ///
+    /// This is needed by components that feed a secret exported from one
+    /// commit into the processing of a related commit, e.g. a PSK derived
+    /// from one group's staged commit and consumed by another group's key
+    /// schedule.
     #[cfg(feature = "extensions-draft")]
-    pub(crate) fn safe_export_secret(
+    pub fn safe_export_secret(
         &mut self,
         crypto: &impl OpenMlsCrypto,
         component_id: ComponentId,
