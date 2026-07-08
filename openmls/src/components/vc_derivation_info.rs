@@ -18,20 +18,6 @@ use crate::{
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
-/// Implement `Debug` for a secret newtype, printing `<redacted>` in place of
-/// the wrapped secret so key material never reaches logs.
-macro_rules! impl_redacted_debug {
-    ($ty:ident, $field:literal) => {
-        impl std::fmt::Debug for $ty {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.debug_struct(stringify!($ty))
-                    .field($field, &"<redacted>")
-                    .finish()
-            }
-        }
-    };
-}
-
 /// Component ID under which the virtual-clients derivation info is carried in
 /// the leaf node's `app_data_dictionary` extension.
 ///
@@ -164,15 +150,24 @@ pub enum VirtualClientsError {
     DuplicateKeyPackageRef,
 }
 
+/// Log a storage failure with `context` and map it to
+/// [`VirtualClientsError::StorageError`].
+pub(crate) fn vc_storage_error<E: std::fmt::Debug>(
+    context: &'static str,
+) -> impl FnOnce(E) -> VirtualClientsError {
+    move |error| {
+        log::error!("vc: {context} failed: {error:?}");
+        VirtualClientsError::StorageError
+    }
+}
+
 /// Per-emulation-epoch root secret. Sourced internally by
 /// [`MlsGroup::register_vc_emulation_epoch`] from the emulation group's
 /// `safe_export_secret(VC_COMPONENT_ID)`.
 ///
 /// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct EmulatorEpochSecret(Secret);
-
-impl_redacted_debug!(EmulatorEpochSecret, "secret");
 
 impl EmulatorEpochSecret {
     /// Construct an `EmulatorEpochSecret` from raw bytes. Bytes are
@@ -243,10 +238,8 @@ impl EmulatorEpochSecret {
 /// Per-emulation-epoch secret used to derive the FF1 PRP key for
 /// `reuse_guard` values sent by this virtual client. Derived from
 /// [`EmulatorEpochSecret`] via [`EmulatorEpochSecret::derive_reuse_guard_secret`].
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct ReuseGuardSecret(Secret);
-
-impl_redacted_debug!(ReuseGuardSecret, "secret");
 
 impl ReuseGuardSecret {
     /// Test-only constructor from raw bytes.
@@ -290,10 +283,8 @@ impl ReuseGuardSecret {
 /// collision detection (mls-virtual-clients draft, "Coordinating ratchet
 /// generations with the DS" section). Derived from [`EmulatorEpochSecret`]
 /// via [`EmulatorEpochSecret::derive_generation_id_secret`].
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct GenerationIdSecret(Secret);
-
-impl_redacted_debug!(GenerationIdSecret, "secret");
 
 impl GenerationIdSecret {
     /// Derive the [`GenerationId`] for a message sent with the given
@@ -622,10 +613,9 @@ pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
     validate_key_package_infos(&key_package_info)?;
     let state: EmulationEpochState = storage
         .vc_emulation_epoch_state(&epoch_id)
-        .map_err(|e| {
-            log::error!("vc: load emulation epoch state in assemble upload failed: {e:?}");
-            VirtualClientsError::StorageError
-        })?
+        .map_err(vc_storage_error(
+            "load emulation epoch state in assemble upload",
+        ))?
         .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
     Ok(KeyPackageUpload {
         epoch_id,
@@ -663,17 +653,13 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
 
     let state: EmulationEpochState = storage
         .vc_emulation_epoch_state(&upload.epoch_id)
-        .map_err(|e| {
-            log::error!("vc: load emulation epoch state in process upload failed: {e:?}");
-            VirtualClientsError::StorageError
-        })?
+        .map_err(vc_storage_error(
+            "load emulation epoch state in process upload",
+        ))?
         .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
     let mut operation_tree: OperationSecretTree = storage
         .vc_operation_tree(&upload.epoch_id)
-        .map_err(|e| {
-            log::error!("vc: load operation tree in process upload failed: {e:?}");
-            VirtualClientsError::StorageError
-        })?
+        .map_err(vc_storage_error("load operation tree in process upload"))?
         .ok_or(VirtualClientsError::MissingOperationTree)?;
     let emulation_ciphersuite = state.emulation_ciphersuite;
 
@@ -707,10 +693,9 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
 
     storage
         .write_retained_key_package_material_batch(&upload.epoch_id, &operation_tree, &materials)
-        .map_err(|e| {
-            log::error!("vc: persist batch key package material in process upload failed: {e:?}");
-            VirtualClientsError::StorageError
-        })?;
+        .map_err(vc_storage_error(
+            "persist batch key package material in process upload",
+        ))?;
     Ok(())
 }
 
@@ -808,10 +793,8 @@ impl VcEmulationBindings {
 /// by [`MlsGroup::register_vc_emulation_epoch`].
 ///
 /// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct EpochEncryptionKey(Secret);
-
-impl_redacted_debug!(EpochEncryptionKey, "secret");
 
 impl EpochEncryptionKey {
     /// Derive the AEAD key and nonce for one [`DerivationInfoTbe`] wrap,
@@ -938,10 +921,8 @@ impl EmulationEpochState {
 /// from the same per-epoch state.
 ///
 /// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OperationSecret(Secret);
-
-impl_redacted_debug!(OperationSecret, "secret");
 
 impl From<Secret> for OperationSecret {
     fn from(secret: Secret) -> Self {
@@ -1031,10 +1012,8 @@ struct KeyPackageSeedContext {
 /// `key_package` operation's batch. Persisted in [`RetainedKeyPackageMaterial`]
 /// so the Welcome path can rederive the keys without re-walking the operation
 /// tree.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct KeyPackageSeedSecret(Secret);
-
-impl_redacted_debug!(KeyPackageSeedSecret, "secret");
 
 impl KeyPackageSeedSecret {
     pub(crate) fn derive_init_key_secret(
@@ -1156,7 +1135,13 @@ pub enum VirtualClientOperationType {
 #[derive(Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub(crate) struct ExternalInitSecret(SecretVLBytes);
 
-impl_redacted_debug!(ExternalInitSecret, "init_secret");
+impl std::fmt::Debug for ExternalInitSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExternalInitSecret")
+            .field("init_secret", &"<redacted>")
+            .finish()
+    }
+}
 
 impl ExternalInitSecret {
     pub(crate) fn from_slice(bytes: &[u8]) -> Self {
@@ -1344,17 +1329,11 @@ pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
     let storage = provider.storage();
     let state = storage
         .vc_emulation_epoch_state(epoch_id)
-        .map_err(|e| {
-            log::error!("vc: load emulation epoch state failed: {e:?}");
-            VirtualClientsError::StorageError
-        })?
+        .map_err(vc_storage_error("load emulation epoch state"))?
         .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
     let operation_tree = storage
         .vc_operation_tree(epoch_id)
-        .map_err(|e| {
-            log::error!("vc: load operation tree failed: {e:?}");
-            VirtualClientsError::StorageError
-        })?
+        .map_err(vc_storage_error("load operation tree"))?
         .ok_or(VirtualClientsError::MissingOperationTree)?;
     Ok((state, operation_tree))
 }
@@ -1445,23 +1424,17 @@ pub(crate) fn merge_vc_derivation_info(
     crate::extensions::Extensions<crate::treesync::node::leaf_node::LeafNode>,
     crate::error::LibraryError,
 > {
-    use crate::extensions::{AppDataDictionaryExtension, Extension, Extensions};
+    use crate::extensions::{AppDataDictionaryExtension, Extension};
 
     resolved_dictionary.insert(VC_COMPONENT_ID, derivation_info_bytes);
     let vc_extension =
         Extension::AppDataDictionary(AppDataDictionaryExtension::new(resolved_dictionary));
 
-    let mut new_extensions = Vec::new();
-    if let Some(exts) = caller_extensions {
-        for ext in exts.iter() {
-            if !matches!(ext, Extension::AppDataDictionary(_)) {
-                new_extensions.push(ext.clone());
-            }
-        }
-    }
-    new_extensions.push(vc_extension);
-    Extensions::from_vec(new_extensions)
-        .map_err(|_| crate::error::LibraryError::custom("Failed to build VC leaf-node extensions"))
+    let mut new_extensions = caller_extensions.cloned().unwrap_or_default();
+    new_extensions.add_or_replace(vc_extension).map_err(|_| {
+        crate::error::LibraryError::custom("Failed to build VC leaf-node extensions")
+    })?;
+    Ok(new_extensions)
 }
 
 #[cfg(test)]

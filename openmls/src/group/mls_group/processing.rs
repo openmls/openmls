@@ -444,7 +444,7 @@ impl MlsGroup {
 
         use crate::{
             components::vc_derivation_info::{
-                DerivationInfo, EmulationEpochState, VirtualClientOperationType,
+                vc_storage_error, DerivationInfo, EmulationEpochState, VirtualClientOperationType,
                 VirtualClientsError, VC_COMPONENT_ID,
             },
             components::vc_operation_tree::OperationSecretTree,
@@ -470,17 +470,11 @@ impl MlsGroup {
         let storage = provider.storage();
         let state: EmulationEpochState = storage
             .vc_emulation_epoch_state(epoch_id)
-            .map_err(|e| {
-                log::error!("vc: load emulation epoch state failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?
+            .map_err(vc_storage_error("load emulation epoch state"))?
             .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
         let mut operation_tree: OperationSecretTree = storage
             .vc_operation_tree(epoch_id)
-            .map_err(|e| {
-                log::error!("vc: load operation tree failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?
+            .map_err(vc_storage_error("load operation tree"))?
             .ok_or(VirtualClientsError::MissingOperationTree)?;
         // The receiver uses the emulation epoch's AEAD key and ciphersuite
         // for `DerivationInfoTbe`. The sender's emulation leaf index travels
@@ -540,10 +534,7 @@ impl MlsGroup {
         // derived from the secret.
         storage
             .write_vc_operation_tree(epoch_id, &operation_tree)
-            .map_err(|e| {
-                log::error!("vc: persist advanced operation tree failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?;
+            .map_err(vc_storage_error("persist advanced operation tree"))?;
 
         Ok(Some(
             crate::components::vc_derivation_info::VcCommitMaterial {

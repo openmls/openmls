@@ -729,7 +729,7 @@ fn vc_welcome_material<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
     hash_ref: &crate::ciphersuite::hash_ref::KeyPackageRef,
 ) -> Result<Option<VcWelcomeMaterial>, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
-    use crate::components::vc_derivation_info::{RetainedKeyPackageMaterial, VirtualClientsError};
+    use crate::components::vc_derivation_info::{vc_storage_error, RetainedKeyPackageMaterial};
 
     let storage = provider.storage();
     let Some(material) = storage
@@ -744,10 +744,9 @@ fn vc_welcome_material<Provider: OpenMlsProvider>(
     // `delete_key_package` on the bundle path.
     storage
         .delete_retained_key_package_material(hash_ref)
-        .map_err(|e| {
-            log::error!("vc: delete retained key package material in welcome failed: {e:?}");
-            VirtualClientsError::StorageError
-        })?;
+        .map_err(vc_storage_error(
+            "delete retained key package material in welcome",
+        ))?;
 
     // The seed was derived under the emulation ciphersuite at
     // upload-processing time. The init and leaf-encryption keys are derived
@@ -793,8 +792,8 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     use tls_codec::{DeserializeBytes as _, Serialize as _};
 
     use crate::components::vc_derivation_info::{
-        DerivationInfo, DerivationInfoTbe, EmulationEpochState, VirtualClientOperationType,
-        VirtualClientsError, VC_COMPONENT_ID,
+        vc_storage_error, DerivationInfo, DerivationInfoTbe, EmulationEpochState,
+        VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
     };
 
     let crypto = provider.crypto();
@@ -832,10 +831,9 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     let state: EmulationEpochState = provider
         .storage()
         .vc_emulation_epoch_state(&material.epoch_id)
-        .map_err(|e| {
-            log::error!("vc: load emulation epoch state in welcome staging failed: {e:?}");
-            VirtualClientsError::StorageError
-        })?
+        .map_err(vc_storage_error(
+            "load emulation epoch state in welcome staging",
+        ))?
         .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
     let (_state_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
 

@@ -51,11 +51,6 @@ impl ReuseGuard {
     ) -> Result<Self, ReuseGuardDerivationError> {
         let n_e = u64::from(emulation_group_size.leaf_count());
         let leaf_index_e = u64::from(emulation_leaf_index.u32());
-        if n_e == 0 {
-            return Err(ReuseGuardDerivationError::Library(LibraryError::custom(
-                "emulation_group_size is zero",
-            )));
-        }
         if leaf_index_e >= n_e {
             return Err(ReuseGuardDerivationError::Library(LibraryError::custom(
                 "emulation_leaf_index is out of range for the emulation group",
@@ -90,7 +85,7 @@ impl ReuseGuard {
         )?;
         let permuted = crypto.ff1_aes128_encrypt(&prp_key, x).map_err(|e| {
             log::error!("vc: FF1 encryption of reuse_guard failed: {e:?}");
-            ReuseGuardDerivationError::Library(LibraryError::custom("FF1 encrypt failed"))
+            ReuseGuardDerivationError::Library(LibraryError::unexpected_crypto_error(e))
         })?;
         Ok(Self {
             value: permuted.to_be_bytes(),
@@ -121,20 +116,15 @@ impl ReuseGuard {
             .ff1_aes128_decrypt(&prp_key, u32::from_be_bytes(self.value))
             .map_err(|e| {
                 log::error!("vc: FF1 inversion of reuse_guard failed: {e:?}");
-                VirtualClientsError::CryptoError(CryptoError::CryptoLibraryError)
+                ReuseGuardDerivationError::Library(LibraryError::unexpected_crypto_error(e))
             })?;
         let n_e = u64::from(emulation_group_size.leaf_count());
-        if n_e == 0 {
-            log::error!("vc: emulation_group_size is zero (corrupt state)");
-            return Err(
-                LibraryError::custom("EmulationEpochState has zero emulation_group_size").into(),
-            );
-        }
         Ok(LeafNodeIndex::new((u64::from(x) % n_e) as u32))
     }
 }
 
-/// Errors returned by [`ReuseGuard::for_emulator_sender`].
+/// Errors returned by [`ReuseGuard::for_emulator_sender`] and
+/// [`ReuseGuard::emulator_sender_leaf_index`].
 #[cfg(feature = "virtual-clients-draft")]
 #[derive(thiserror::Error, Debug, PartialEq, Clone)]
 pub(crate) enum ReuseGuardDerivationError {
