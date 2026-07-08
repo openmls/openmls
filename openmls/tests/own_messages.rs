@@ -1,7 +1,8 @@
-#![cfg(not(feature = "virtual-clients-draft"))]
-
 //! Test that processing a PrivateMessage authored by this client surfaces as
-//! `OwnPrivateMessage` instead of failing.
+//! `OwnPrivateMessage` instead of failing. The groups here do not register
+//! emulation state, so this also holds under the `virtual-clients-draft`
+//! feature whenever the message cannot be decrypted (the dual-use ratchet
+//! there still decrypts own messages whose secrets are retained).
 use openmls::prelude::*;
 use openmls_test::openmls_test;
 use test_utils::new_credential;
@@ -171,7 +172,10 @@ fn own_messages_surface_as_own_private_message() {
 }
 
 /// Test that an own PrivateMessage Commit (echoed back by the DS) surfaces as
-/// `OwnPrivateMessage`, not `OwnPendingCommit`.
+/// `OwnPrivateMessage`, not `OwnPendingCommit`. Under the
+/// `virtual-clients-draft` feature the commit's encryption secret is still
+/// retained, so the echo decrypts and surfaces as `OwnPendingCommit` instead.
+/// TODO 2102: This will be fixed in a follow-up PR.
 #[openmls_test]
 fn own_private_commit_surfaces_as_own_private_message() {
     let alice_provider = &Provider::default();
@@ -249,12 +253,27 @@ fn own_private_commit_surfaces_as_own_private_message() {
 
     // The commit is a PrivateMessage, so it cannot be decrypted/verified;
     // it surfaces as OwnPrivateMessage, NOT OwnPendingCommit.
+    #[cfg(not(feature = "virtual-clients-draft"))]
     assert!(
         matches!(
             processed.content(),
             ProcessedMessageContent::OwnPrivateMessage
         ),
         "Expected OwnPrivateMessage for own private commit, got {:?}",
+        processed.content()
+    );
+    // With the `virtual-clients-draft` feature, the dual-use ratchet still
+    // retains the commit's handshake encryption secret (only application
+    // secrets are confirmed), so the echo decrypts and matches the pending
+    // commit.
+    // TODO 2102: This will be fixed in a follow-up PR.
+    #[cfg(feature = "virtual-clients-draft")]
+    assert!(
+        matches!(
+            processed.content(),
+            ProcessedMessageContent::OwnPendingCommit
+        ),
+        "Expected OwnPendingCommit for own private commit, got {:?}",
         processed.content()
     );
 

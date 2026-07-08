@@ -39,7 +39,6 @@ pub(crate) enum UnprotectedMessage {
     /// content cannot be decrypted; callers should surface
     /// [`ProcessedMessageContent::OwnPrivateMessage`] and skip further
     /// processing.
-    #[cfg(not(feature = "virtual-clients-draft"))]
     OwnPrivateMessage {
         epoch: GroupEpoch,
         authenticated_data: Vec<u8>,
@@ -208,7 +207,6 @@ impl MlsGroup {
             UnprotectedMessage::Unverified(m) => self.process_unverified_message(provider, *m),
             // The content cannot be decrypted and the sender claim is unauthenticated,
             // so we surface OwnPrivateMessage and skip all further processing.
-            #[cfg(not(feature = "virtual-clients-draft"))]
             UnprotectedMessage::OwnPrivateMessage {
                 epoch,
                 authenticated_data,
@@ -222,6 +220,8 @@ impl MlsGroup {
                     authenticated_data,
                     ProcessedMessageContent::OwnPrivateMessage,
                     credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 );
                 #[cfg(feature = "extensions-draft")]
                 if self.context().safe_aad_required() {
@@ -319,11 +319,18 @@ impl MlsGroup {
             emulator_ctx.as_ref(),
         )?;
 
+        // Persist the secret tree if it was modified to ensure forward secrecy
+        if will_modify_secret_tree {
+            provider
+                .storage()
+                .write_message_secrets(self.group_id(), &self.message_secrets_store)
+                .map_err(ProcessMessageError::StorageError)?;
+        }
+
         let decrypted_message = match decrypt_result {
             InboundDecryptionResult::Decrypted(decrypted_message) => decrypted_message,
-            // Own private messages short-circuit here: no ratchet state was
-            // consumed, so there is nothing to persist and no content to parse.
-            #[cfg(not(feature = "virtual-clients-draft"))]
+            // Own private messages short-circuit here: there is no content
+            // to parse or verify.
             InboundDecryptionResult::OwnPrivateMessage {
                 epoch,
                 authenticated_data,
@@ -334,14 +341,6 @@ impl MlsGroup {
                 });
             }
         };
-
-        // Persist the secret tree if it was modified to ensure forward secrecy
-        if will_modify_secret_tree {
-            provider
-                .storage()
-                .write_message_secrets(self.group_id(), &self.message_secrets_store)
-                .map_err(ProcessMessageError::StorageError)?;
-        }
 
         let unverified_message = self
             .public_group
