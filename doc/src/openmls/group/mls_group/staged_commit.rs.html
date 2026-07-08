@@ -1025,159 +1025,166 @@
 <a href=#1025 id=1025 data-nosnippet>1025</a>        </span>}
 <a href=#1026 id=1026 data-nosnippet>1026</a>    }
 <a href=#1027 id=1027 data-nosnippet>1027</a>
-<a href=#1028 id=1028 data-nosnippet>1028</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#1029 id=1029 data-nosnippet>1029</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>safe_export_secret(
-<a href=#1030 id=1030 data-nosnippet>1030</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#1031 id=1031 data-nosnippet>1031</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#1032 id=1032 data-nosnippet>1032</a>        component_id: ComponentId,
-<a href=#1033 id=1033 data-nosnippet>1033</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, StagedSafeExportSecretError&gt; {
-<a href=#1034 id=1034 data-nosnippet>1034</a>        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.group_context().ciphersuite();
-<a href=#1035 id=1035 data-nosnippet>1035</a>        <span class="kw">let </span>StagedCommitState::GroupMember(<span class="kw-2">ref mut </span>staged_commit) = <span class="self">self</span>.state <span class="kw">else </span>{
-<a href=#1036 id=1036 data-nosnippet>1036</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(StagedSafeExportSecretError::NotGroupMember);
-<a href=#1037 id=1037 data-nosnippet>1037</a>        };
-<a href=#1038 id=1038 data-nosnippet>1038</a>        <span class="kw">let </span><span class="prelude-val">Some</span>(application_export_tree) = staged_commit.application_export_tree.as_mut() <span class="kw">else </span>{
-<a href=#1039 id=1039 data-nosnippet>1039</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(StagedSafeExportSecretError::Unsupported);
-<a href=#1040 id=1040 data-nosnippet>1040</a>        };
-<a href=#1041 id=1041 data-nosnippet>1041</a>        <span class="kw">let </span>secret =
-<a href=#1042 id=1042 data-nosnippet>1042</a>            application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)<span class="question-mark">?</span>;
-<a href=#1043 id=1043 data-nosnippet>1043</a>        <span class="prelude-val">Ok</span>(secret.as_slice().to_vec())
-<a href=#1044 id=1044 data-nosnippet>1044</a>    }
-<a href=#1045 id=1045 data-nosnippet>1045</a>
-<a href=#1046 id=1046 data-nosnippet>1046</a>    <span class="doccomment">/// Exports a secret from the epoch that the staged commit moves to.
-<a href=#1047 id=1047 data-nosnippet>1047</a>    /// Returns [`ExportSecretError::KeyLengthTooLong`] if the requested
-<a href=#1048 id=1048 data-nosnippet>1048</a>    /// key length is too long.
-<a href=#1049 id=1049 data-nosnippet>1049</a>    /// Returns [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`]
-<a href=#1050 id=1050 data-nosnippet>1050</a>    /// if the commit removed us from the group.
-<a href=#1051 id=1051 data-nosnippet>1051</a>    ///
-<a href=#1052 id=1052 data-nosnippet>1052</a>    /// [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`]: MlsGroupStateError::UseAfterEviction
-<a href=#1053 id=1053 data-nosnippet>1053</a>    </span><span class="kw">pub fn </span>export_secret&lt;CryptoProvider: OpenMlsCrypto&gt;(
-<a href=#1054 id=1054 data-nosnippet>1054</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#1055 id=1055 data-nosnippet>1055</a>        crypto: <span class="kw-2">&amp;</span>CryptoProvider,
-<a href=#1056 id=1056 data-nosnippet>1056</a>        label: <span class="kw-2">&amp;</span>str,
-<a href=#1057 id=1057 data-nosnippet>1057</a>        context: <span class="kw-2">&amp;</span>[u8],
-<a href=#1058 id=1058 data-nosnippet>1058</a>        key_length: usize,
-<a href=#1059 id=1059 data-nosnippet>1059</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ExportSecretError&gt; {
-<a href=#1060 id=1060 data-nosnippet>1060</a>        <span class="kw">if </span>key_length &gt; u16::MAX <span class="kw">as </span>usize {
-<a href=#1061 id=1061 data-nosnippet>1061</a>            <span class="macro">log::error!</span>(<span class="string">"Got a key that is larger than u16::MAX"</span>);
-<a href=#1062 id=1062 data-nosnippet>1062</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(ExportSecretError::KeyLengthTooLong);
-<a href=#1063 id=1063 data-nosnippet>1063</a>        }
-<a href=#1064 id=1064 data-nosnippet>1064</a>
-<a href=#1065 id=1065 data-nosnippet>1065</a>        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
-<a href=#1066 id=1066 data-nosnippet>1066</a>            StagedCommitState::PublicState(_public_staged_commit_state) =&gt; <span class="prelude-val">Err</span>(
-<a href=#1067 id=1067 data-nosnippet>1067</a>                ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction),
-<a href=#1068 id=1068 data-nosnippet>1068</a>            ),
-<a href=#1069 id=1069 data-nosnippet>1069</a>            StagedCommitState::GroupMember(member_staged_commit_state) =&gt; {
-<a href=#1070 id=1070 data-nosnippet>1070</a>                <span class="prelude-val">Ok</span>(member_staged_commit_state
-<a href=#1071 id=1071 data-nosnippet>1071</a>                    .group_epoch_secrets
-<a href=#1072 id=1072 data-nosnippet>1072</a>                    .exporter_secret()
-<a href=#1073 id=1073 data-nosnippet>1073</a>                    .derive_exported_secret(
-<a href=#1074 id=1074 data-nosnippet>1074</a>                        <span class="self">self</span>.group_context().ciphersuite(),
-<a href=#1075 id=1075 data-nosnippet>1075</a>                        crypto,
-<a href=#1076 id=1076 data-nosnippet>1076</a>                        label,
-<a href=#1077 id=1077 data-nosnippet>1077</a>                        context,
-<a href=#1078 id=1078 data-nosnippet>1078</a>                        key_length,
-<a href=#1079 id=1079 data-nosnippet>1079</a>                    )
-<a href=#1080 id=1080 data-nosnippet>1080</a>                    .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>)
-<a href=#1081 id=1081 data-nosnippet>1081</a>            }
-<a href=#1082 id=1082 data-nosnippet>1082</a>        }
-<a href=#1083 id=1083 data-nosnippet>1083</a>    }
-<a href=#1084 id=1084 data-nosnippet>1084</a>}
-<a href=#1085 id=1085 data-nosnippet>1085</a>
-<a href=#1086 id=1086 data-nosnippet>1086</a><span class="doccomment">/// This struct is used internally by [`StagedCommit`] to encapsulate all the modified group state.
-<a href=#1087 id=1087 data-nosnippet>1087</a></span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-<a href=#1088 id=1088 data-nosnippet>1088</a>#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
-<a href=#1089 id=1089 data-nosnippet>1089</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MemberStagedCommitState {
-<a href=#1090 id=1090 data-nosnippet>1090</a>    group_epoch_secrets: GroupEpochSecrets,
-<a href=#1091 id=1091 data-nosnippet>1091</a>    message_secrets: MessageSecrets,
-<a href=#1092 id=1092 data-nosnippet>1092</a>    staged_diff: StagedPublicGroupDiff,
-<a href=#1093 id=1093 data-nosnippet>1093</a>    new_keypairs: Vec&lt;EncryptionKeyPair&gt;,
-<a href=#1094 id=1094 data-nosnippet>1094</a>    new_leaf_keypair_option: <span class="prelude-ty">Option</span>&lt;EncryptionKeyPair&gt;,
-<a href=#1095 id=1095 data-nosnippet>1095</a>    update_path_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
-<a href=#1096 id=1096 data-nosnippet>1096</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#1097 id=1097 data-nosnippet>1097</a>    #[serde(default)]
-<a href=#1098 id=1098 data-nosnippet>1098</a>    </span><span class="comment">// This is `None` only if the group was stored using an older version of
-<a href=#1099 id=1099 data-nosnippet>1099</a>    // OpenMLS that did not support the application exporter.
-<a href=#1100 id=1100 data-nosnippet>1100</a>    </span>application_export_tree: <span class="prelude-ty">Option</span>&lt;ApplicationExportTree&gt;,
-<a href=#1101 id=1101 data-nosnippet>1101</a>    <span class="comment">// The new leaf index to install on the receiving group at merge time
-<a href=#1102 id=1102 data-nosnippet>1102</a>    // when this staged commit is a sibling-resync external commit (a VC
-<a href=#1103 id=1103 data-nosnippet>1103</a>    // external commit from a sibling emulator that inline-removes the
-<a href=#1104 id=1104 data-nosnippet>1104</a>    // receiver's existing leaf). `None` for all other commit kinds.
-<a href=#1105 id=1105 data-nosnippet>1105</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#1106 id=1106 data-nosnippet>1106</a>    #[serde(default)]
-<a href=#1107 id=1107 data-nosnippet>1107</a>    </span>new_own_leaf_index: <span class="prelude-ty">Option</span>&lt;LeafNodeIndex&gt;,
-<a href=#1108 id=1108 data-nosnippet>1108</a>}
-<a href=#1109 id=1109 data-nosnippet>1109</a>
-<a href=#1110 id=1110 data-nosnippet>1110</a><span class="kw">impl </span>MemberStagedCommitState {
-<a href=#1111 id=1111 data-nosnippet>1111</a>    <span class="attr">#[allow(clippy::too_many_arguments)]
-<a href=#1112 id=1112 data-nosnippet>1112</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-<a href=#1113 id=1113 data-nosnippet>1113</a>        group_epoch_secrets: GroupEpochSecrets,
-<a href=#1114 id=1114 data-nosnippet>1114</a>        message_secrets: MessageSecrets,
-<a href=#1115 id=1115 data-nosnippet>1115</a>        staged_diff: StagedPublicGroupDiff,
-<a href=#1116 id=1116 data-nosnippet>1116</a>        new_keypairs: Vec&lt;EncryptionKeyPair&gt;,
-<a href=#1117 id=1117 data-nosnippet>1117</a>        new_leaf_keypair_option: <span class="prelude-ty">Option</span>&lt;EncryptionKeyPair&gt;,
-<a href=#1118 id=1118 data-nosnippet>1118</a>        update_path_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
-<a href=#1119 id=1119 data-nosnippet>1119</a>        <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)] </span>application_export_tree: ApplicationExportTree,
-<a href=#1120 id=1120 data-nosnippet>1120</a>        <span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)] </span>new_own_leaf_index: <span class="prelude-ty">Option</span>&lt;LeafNodeIndex&gt;,
-<a href=#1121 id=1121 data-nosnippet>1121</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#1122 id=1122 data-nosnippet>1122</a>        <span class="self">Self </span>{
-<a href=#1123 id=1123 data-nosnippet>1123</a>            group_epoch_secrets,
-<a href=#1124 id=1124 data-nosnippet>1124</a>            message_secrets,
-<a href=#1125 id=1125 data-nosnippet>1125</a>            staged_diff,
-<a href=#1126 id=1126 data-nosnippet>1126</a>            new_keypairs,
-<a href=#1127 id=1127 data-nosnippet>1127</a>            new_leaf_keypair_option,
-<a href=#1128 id=1128 data-nosnippet>1128</a>            update_path_leaf_node,
-<a href=#1129 id=1129 data-nosnippet>1129</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#1130 id=1130 data-nosnippet>1130</a>            </span>application_export_tree: <span class="prelude-val">Some</span>(application_export_tree),
-<a href=#1131 id=1131 data-nosnippet>1131</a>            <span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#1132 id=1132 data-nosnippet>1132</a>            </span>new_own_leaf_index,
-<a href=#1133 id=1133 data-nosnippet>1133</a>        }
-<a href=#1134 id=1134 data-nosnippet>1134</a>    }
-<a href=#1135 id=1135 data-nosnippet>1135</a>
-<a href=#1136 id=1136 data-nosnippet>1136</a>    <span class="doccomment">/// Get the staged [`GroupContext`].
-<a href=#1137 id=1137 data-nosnippet>1137</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
-<a href=#1138 id=1138 data-nosnippet>1138</a>        <span class="self">self</span>.staged_diff.group_context()
-<a href=#1139 id=1139 data-nosnippet>1139</a>    }
-<a href=#1140 id=1140 data-nosnippet>1140</a>}
-<a href=#1141 id=1141 data-nosnippet>1141</a>
-<a href=#1142 id=1142 data-nosnippet>1142</a><span class="attr">#[cfg(all(test, feature = <span class="string">"virtual-clients-draft"</span>))]
-<a href=#1143 id=1143 data-nosnippet>1143</a></span><span class="kw">mod </span>tests {
-<a href=#1144 id=1144 data-nosnippet>1144</a>    <span class="kw">use </span><span class="kw">super</span>::validate_vc_external_init_secret;
-<a href=#1145 id=1145 data-nosnippet>1145</a>    <span class="kw">use crate</span>::{
-<a href=#1146 id=1146 data-nosnippet>1146</a>        components::vc_derivation_info::VirtualClientsError, group::errors::StageCommitError,
-<a href=#1147 id=1147 data-nosnippet>1147</a>    };
+<a href=#1028 id=1028 data-nosnippet>1028</a>    <span class="doccomment">/// Safely exports a secret for the given `component_id` from the epoch the
+<a href=#1029 id=1029 data-nosnippet>1029</a>    /// staged commit moves to, before the commit is merged.
+<a href=#1030 id=1030 data-nosnippet>1030</a>    ///
+<a href=#1031 id=1031 data-nosnippet>1031</a>    /// This is needed by components that feed a secret exported from one
+<a href=#1032 id=1032 data-nosnippet>1032</a>    /// commit into the processing of a related commit, e.g. a PSK derived
+<a href=#1033 id=1033 data-nosnippet>1033</a>    /// from one group's staged commit and consumed by another group's key
+<a href=#1034 id=1034 data-nosnippet>1034</a>    /// schedule.
+<a href=#1035 id=1035 data-nosnippet>1035</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#1036 id=1036 data-nosnippet>1036</a>    </span><span class="kw">pub fn </span>safe_export_secret(
+<a href=#1037 id=1037 data-nosnippet>1037</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#1038 id=1038 data-nosnippet>1038</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#1039 id=1039 data-nosnippet>1039</a>        component_id: ComponentId,
+<a href=#1040 id=1040 data-nosnippet>1040</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, StagedSafeExportSecretError&gt; {
+<a href=#1041 id=1041 data-nosnippet>1041</a>        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.group_context().ciphersuite();
+<a href=#1042 id=1042 data-nosnippet>1042</a>        <span class="kw">let </span>StagedCommitState::GroupMember(<span class="kw-2">ref mut </span>staged_commit) = <span class="self">self</span>.state <span class="kw">else </span>{
+<a href=#1043 id=1043 data-nosnippet>1043</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(StagedSafeExportSecretError::NotGroupMember);
+<a href=#1044 id=1044 data-nosnippet>1044</a>        };
+<a href=#1045 id=1045 data-nosnippet>1045</a>        <span class="kw">let </span><span class="prelude-val">Some</span>(application_export_tree) = staged_commit.application_export_tree.as_mut() <span class="kw">else </span>{
+<a href=#1046 id=1046 data-nosnippet>1046</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(StagedSafeExportSecretError::Unsupported);
+<a href=#1047 id=1047 data-nosnippet>1047</a>        };
+<a href=#1048 id=1048 data-nosnippet>1048</a>        <span class="kw">let </span>secret =
+<a href=#1049 id=1049 data-nosnippet>1049</a>            application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)<span class="question-mark">?</span>;
+<a href=#1050 id=1050 data-nosnippet>1050</a>        <span class="prelude-val">Ok</span>(secret.as_slice().to_vec())
+<a href=#1051 id=1051 data-nosnippet>1051</a>    }
+<a href=#1052 id=1052 data-nosnippet>1052</a>
+<a href=#1053 id=1053 data-nosnippet>1053</a>    <span class="doccomment">/// Exports a secret from the epoch that the staged commit moves to.
+<a href=#1054 id=1054 data-nosnippet>1054</a>    /// Returns [`ExportSecretError::KeyLengthTooLong`] if the requested
+<a href=#1055 id=1055 data-nosnippet>1055</a>    /// key length is too long.
+<a href=#1056 id=1056 data-nosnippet>1056</a>    /// Returns [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`]
+<a href=#1057 id=1057 data-nosnippet>1057</a>    /// if the commit removed us from the group.
+<a href=#1058 id=1058 data-nosnippet>1058</a>    ///
+<a href=#1059 id=1059 data-nosnippet>1059</a>    /// [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`]: MlsGroupStateError::UseAfterEviction
+<a href=#1060 id=1060 data-nosnippet>1060</a>    </span><span class="kw">pub fn </span>export_secret&lt;CryptoProvider: OpenMlsCrypto&gt;(
+<a href=#1061 id=1061 data-nosnippet>1061</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#1062 id=1062 data-nosnippet>1062</a>        crypto: <span class="kw-2">&amp;</span>CryptoProvider,
+<a href=#1063 id=1063 data-nosnippet>1063</a>        label: <span class="kw-2">&amp;</span>str,
+<a href=#1064 id=1064 data-nosnippet>1064</a>        context: <span class="kw-2">&amp;</span>[u8],
+<a href=#1065 id=1065 data-nosnippet>1065</a>        key_length: usize,
+<a href=#1066 id=1066 data-nosnippet>1066</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ExportSecretError&gt; {
+<a href=#1067 id=1067 data-nosnippet>1067</a>        <span class="kw">if </span>key_length &gt; u16::MAX <span class="kw">as </span>usize {
+<a href=#1068 id=1068 data-nosnippet>1068</a>            <span class="macro">log::error!</span>(<span class="string">"Got a key that is larger than u16::MAX"</span>);
+<a href=#1069 id=1069 data-nosnippet>1069</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(ExportSecretError::KeyLengthTooLong);
+<a href=#1070 id=1070 data-nosnippet>1070</a>        }
+<a href=#1071 id=1071 data-nosnippet>1071</a>
+<a href=#1072 id=1072 data-nosnippet>1072</a>        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
+<a href=#1073 id=1073 data-nosnippet>1073</a>            StagedCommitState::PublicState(_public_staged_commit_state) =&gt; <span class="prelude-val">Err</span>(
+<a href=#1074 id=1074 data-nosnippet>1074</a>                ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction),
+<a href=#1075 id=1075 data-nosnippet>1075</a>            ),
+<a href=#1076 id=1076 data-nosnippet>1076</a>            StagedCommitState::GroupMember(member_staged_commit_state) =&gt; {
+<a href=#1077 id=1077 data-nosnippet>1077</a>                <span class="prelude-val">Ok</span>(member_staged_commit_state
+<a href=#1078 id=1078 data-nosnippet>1078</a>                    .group_epoch_secrets
+<a href=#1079 id=1079 data-nosnippet>1079</a>                    .exporter_secret()
+<a href=#1080 id=1080 data-nosnippet>1080</a>                    .derive_exported_secret(
+<a href=#1081 id=1081 data-nosnippet>1081</a>                        <span class="self">self</span>.group_context().ciphersuite(),
+<a href=#1082 id=1082 data-nosnippet>1082</a>                        crypto,
+<a href=#1083 id=1083 data-nosnippet>1083</a>                        label,
+<a href=#1084 id=1084 data-nosnippet>1084</a>                        context,
+<a href=#1085 id=1085 data-nosnippet>1085</a>                        key_length,
+<a href=#1086 id=1086 data-nosnippet>1086</a>                    )
+<a href=#1087 id=1087 data-nosnippet>1087</a>                    .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>)
+<a href=#1088 id=1088 data-nosnippet>1088</a>            }
+<a href=#1089 id=1089 data-nosnippet>1089</a>        }
+<a href=#1090 id=1090 data-nosnippet>1090</a>    }
+<a href=#1091 id=1091 data-nosnippet>1091</a>}
+<a href=#1092 id=1092 data-nosnippet>1092</a>
+<a href=#1093 id=1093 data-nosnippet>1093</a><span class="doccomment">/// This struct is used internally by [`StagedCommit`] to encapsulate all the modified group state.
+<a href=#1094 id=1094 data-nosnippet>1094</a></span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+<a href=#1095 id=1095 data-nosnippet>1095</a>#[cfg_attr(any(test, feature = <span class="string">"test-utils"</span>), derive(Clone, PartialEq))]
+<a href=#1096 id=1096 data-nosnippet>1096</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MemberStagedCommitState {
+<a href=#1097 id=1097 data-nosnippet>1097</a>    group_epoch_secrets: GroupEpochSecrets,
+<a href=#1098 id=1098 data-nosnippet>1098</a>    message_secrets: MessageSecrets,
+<a href=#1099 id=1099 data-nosnippet>1099</a>    staged_diff: StagedPublicGroupDiff,
+<a href=#1100 id=1100 data-nosnippet>1100</a>    new_keypairs: Vec&lt;EncryptionKeyPair&gt;,
+<a href=#1101 id=1101 data-nosnippet>1101</a>    new_leaf_keypair_option: <span class="prelude-ty">Option</span>&lt;EncryptionKeyPair&gt;,
+<a href=#1102 id=1102 data-nosnippet>1102</a>    update_path_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
+<a href=#1103 id=1103 data-nosnippet>1103</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#1104 id=1104 data-nosnippet>1104</a>    #[serde(default)]
+<a href=#1105 id=1105 data-nosnippet>1105</a>    </span><span class="comment">// This is `None` only if the group was stored using an older version of
+<a href=#1106 id=1106 data-nosnippet>1106</a>    // OpenMLS that did not support the application exporter.
+<a href=#1107 id=1107 data-nosnippet>1107</a>    </span>application_export_tree: <span class="prelude-ty">Option</span>&lt;ApplicationExportTree&gt;,
+<a href=#1108 id=1108 data-nosnippet>1108</a>    <span class="comment">// The new leaf index to install on the receiving group at merge time
+<a href=#1109 id=1109 data-nosnippet>1109</a>    // when this staged commit is a sibling-resync external commit (a VC
+<a href=#1110 id=1110 data-nosnippet>1110</a>    // external commit from a sibling emulator that inline-removes the
+<a href=#1111 id=1111 data-nosnippet>1111</a>    // receiver's existing leaf). `None` for all other commit kinds.
+<a href=#1112 id=1112 data-nosnippet>1112</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#1113 id=1113 data-nosnippet>1113</a>    #[serde(default)]
+<a href=#1114 id=1114 data-nosnippet>1114</a>    </span>new_own_leaf_index: <span class="prelude-ty">Option</span>&lt;LeafNodeIndex&gt;,
+<a href=#1115 id=1115 data-nosnippet>1115</a>}
+<a href=#1116 id=1116 data-nosnippet>1116</a>
+<a href=#1117 id=1117 data-nosnippet>1117</a><span class="kw">impl </span>MemberStagedCommitState {
+<a href=#1118 id=1118 data-nosnippet>1118</a>    <span class="attr">#[allow(clippy::too_many_arguments)]
+<a href=#1119 id=1119 data-nosnippet>1119</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+<a href=#1120 id=1120 data-nosnippet>1120</a>        group_epoch_secrets: GroupEpochSecrets,
+<a href=#1121 id=1121 data-nosnippet>1121</a>        message_secrets: MessageSecrets,
+<a href=#1122 id=1122 data-nosnippet>1122</a>        staged_diff: StagedPublicGroupDiff,
+<a href=#1123 id=1123 data-nosnippet>1123</a>        new_keypairs: Vec&lt;EncryptionKeyPair&gt;,
+<a href=#1124 id=1124 data-nosnippet>1124</a>        new_leaf_keypair_option: <span class="prelude-ty">Option</span>&lt;EncryptionKeyPair&gt;,
+<a href=#1125 id=1125 data-nosnippet>1125</a>        update_path_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
+<a href=#1126 id=1126 data-nosnippet>1126</a>        <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)] </span>application_export_tree: ApplicationExportTree,
+<a href=#1127 id=1127 data-nosnippet>1127</a>        <span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)] </span>new_own_leaf_index: <span class="prelude-ty">Option</span>&lt;LeafNodeIndex&gt;,
+<a href=#1128 id=1128 data-nosnippet>1128</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#1129 id=1129 data-nosnippet>1129</a>        <span class="self">Self </span>{
+<a href=#1130 id=1130 data-nosnippet>1130</a>            group_epoch_secrets,
+<a href=#1131 id=1131 data-nosnippet>1131</a>            message_secrets,
+<a href=#1132 id=1132 data-nosnippet>1132</a>            staged_diff,
+<a href=#1133 id=1133 data-nosnippet>1133</a>            new_keypairs,
+<a href=#1134 id=1134 data-nosnippet>1134</a>            new_leaf_keypair_option,
+<a href=#1135 id=1135 data-nosnippet>1135</a>            update_path_leaf_node,
+<a href=#1136 id=1136 data-nosnippet>1136</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#1137 id=1137 data-nosnippet>1137</a>            </span>application_export_tree: <span class="prelude-val">Some</span>(application_export_tree),
+<a href=#1138 id=1138 data-nosnippet>1138</a>            <span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#1139 id=1139 data-nosnippet>1139</a>            </span>new_own_leaf_index,
+<a href=#1140 id=1140 data-nosnippet>1140</a>        }
+<a href=#1141 id=1141 data-nosnippet>1141</a>    }
+<a href=#1142 id=1142 data-nosnippet>1142</a>
+<a href=#1143 id=1143 data-nosnippet>1143</a>    <span class="doccomment">/// Get the staged [`GroupContext`].
+<a href=#1144 id=1144 data-nosnippet>1144</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
+<a href=#1145 id=1145 data-nosnippet>1145</a>        <span class="self">self</span>.staged_diff.group_context()
+<a href=#1146 id=1146 data-nosnippet>1146</a>    }
+<a href=#1147 id=1147 data-nosnippet>1147</a>}
 <a href=#1148 id=1148 data-nosnippet>1148</a>
-<a href=#1149 id=1149 data-nosnippet>1149</a>    <span class="doccomment">/// The two spec MUSTs behind `validate_vc_external_init_secret`: a
-<a href=#1150 id=1150 data-nosnippet>1150</a>    /// sibling external commit whose derivation info omits the external init
-<a href=#1151 id=1151 data-nosnippet>1151</a>    /// secret is rejected, and a carried init secret on a commit without an
-<a href=#1152 id=1152 data-nosnippet>1152</a>    /// ExternalInit proposal is rejected. The conforming combinations pass.
-<a href=#1153 id=1153 data-nosnippet>1153</a>    </span><span class="attr">#[test]
-<a href=#1154 id=1154 data-nosnippet>1154</a>    </span><span class="kw">fn </span>external_init_secret_presence_is_validated() {
-<a href=#1155 id=1155 data-nosnippet>1155</a>        <span class="kw">let </span>malformed: <span class="prelude-ty">Result</span>&lt;(), StageCommitError&gt; =
-<a href=#1156 id=1156 data-nosnippet>1156</a>            <span class="prelude-val">Err</span>(VirtualClientsError::DerivationInfoMalformed.into());
-<a href=#1157 id=1157 data-nosnippet>1157</a>
-<a href=#1158 id=1158 data-nosnippet>1158</a>        <span class="comment">// Sibling external commit without a carried init secret.
-<a href=#1159 id=1159 data-nosnippet>1159</a>        </span><span class="macro">assert_eq!</span>(
-<a href=#1160 id=1160 data-nosnippet>1160</a>            validate_vc_external_init_secret(<span class="bool-val">true</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>),
-<a href=#1161 id=1161 data-nosnippet>1161</a>            malformed
-<a href=#1162 id=1162 data-nosnippet>1162</a>        );
-<a href=#1163 id=1163 data-nosnippet>1163</a>        <span class="comment">// Carried init secret on a commit without an ExternalInit proposal.
-<a href=#1164 id=1164 data-nosnippet>1164</a>        </span><span class="macro">assert_eq!</span>(
-<a href=#1165 id=1165 data-nosnippet>1165</a>            validate_vc_external_init_secret(<span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>),
-<a href=#1166 id=1166 data-nosnippet>1166</a>            malformed
-<a href=#1167 id=1167 data-nosnippet>1167</a>        );
-<a href=#1168 id=1168 data-nosnippet>1168</a>        <span class="macro">assert_eq!</span>(
-<a href=#1169 id=1169 data-nosnippet>1169</a>            validate_vc_external_init_secret(<span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>),
-<a href=#1170 id=1170 data-nosnippet>1170</a>            malformed
-<a href=#1171 id=1171 data-nosnippet>1171</a>        );
-<a href=#1172 id=1172 data-nosnippet>1172</a>
-<a href=#1173 id=1173 data-nosnippet>1173</a>        <span class="comment">// Conforming: external commit carrying the secret, and a regular
-<a href=#1174 id=1174 data-nosnippet>1174</a>        // commit carrying none.
-<a href=#1175 id=1175 data-nosnippet>1175</a>        </span><span class="macro">assert_eq!</span>(validate_vc_external_init_secret(<span class="bool-val">true</span>, <span class="bool-val">true</span>, <span class="bool-val">true</span>), <span class="prelude-val">Ok</span>(()));
-<a href=#1176 id=1176 data-nosnippet>1176</a>        <span class="macro">assert_eq!</span>(validate_vc_external_init_secret(<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>), <span class="prelude-val">Ok</span>(()));
-<a href=#1177 id=1177 data-nosnippet>1177</a>        <span class="macro">assert_eq!</span>(
-<a href=#1178 id=1178 data-nosnippet>1178</a>            validate_vc_external_init_secret(<span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>),
-<a href=#1179 id=1179 data-nosnippet>1179</a>            <span class="prelude-val">Ok</span>(())
-<a href=#1180 id=1180 data-nosnippet>1180</a>        );
-<a href=#1181 id=1181 data-nosnippet>1181</a>    }
-<a href=#1182 id=1182 data-nosnippet>1182</a>}
+<a href=#1149 id=1149 data-nosnippet>1149</a><span class="attr">#[cfg(all(test, feature = <span class="string">"virtual-clients-draft"</span>))]
+<a href=#1150 id=1150 data-nosnippet>1150</a></span><span class="kw">mod </span>tests {
+<a href=#1151 id=1151 data-nosnippet>1151</a>    <span class="kw">use </span><span class="kw">super</span>::validate_vc_external_init_secret;
+<a href=#1152 id=1152 data-nosnippet>1152</a>    <span class="kw">use crate</span>::{
+<a href=#1153 id=1153 data-nosnippet>1153</a>        components::vc_derivation_info::VirtualClientsError, group::errors::StageCommitError,
+<a href=#1154 id=1154 data-nosnippet>1154</a>    };
+<a href=#1155 id=1155 data-nosnippet>1155</a>
+<a href=#1156 id=1156 data-nosnippet>1156</a>    <span class="doccomment">/// The two spec MUSTs behind `validate_vc_external_init_secret`: a
+<a href=#1157 id=1157 data-nosnippet>1157</a>    /// sibling external commit whose derivation info omits the external init
+<a href=#1158 id=1158 data-nosnippet>1158</a>    /// secret is rejected, and a carried init secret on a commit without an
+<a href=#1159 id=1159 data-nosnippet>1159</a>    /// ExternalInit proposal is rejected. The conforming combinations pass.
+<a href=#1160 id=1160 data-nosnippet>1160</a>    </span><span class="attr">#[test]
+<a href=#1161 id=1161 data-nosnippet>1161</a>    </span><span class="kw">fn </span>external_init_secret_presence_is_validated() {
+<a href=#1162 id=1162 data-nosnippet>1162</a>        <span class="kw">let </span>malformed: <span class="prelude-ty">Result</span>&lt;(), StageCommitError&gt; =
+<a href=#1163 id=1163 data-nosnippet>1163</a>            <span class="prelude-val">Err</span>(VirtualClientsError::DerivationInfoMalformed.into());
+<a href=#1164 id=1164 data-nosnippet>1164</a>
+<a href=#1165 id=1165 data-nosnippet>1165</a>        <span class="comment">// Sibling external commit without a carried init secret.
+<a href=#1166 id=1166 data-nosnippet>1166</a>        </span><span class="macro">assert_eq!</span>(
+<a href=#1167 id=1167 data-nosnippet>1167</a>            validate_vc_external_init_secret(<span class="bool-val">true</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>),
+<a href=#1168 id=1168 data-nosnippet>1168</a>            malformed
+<a href=#1169 id=1169 data-nosnippet>1169</a>        );
+<a href=#1170 id=1170 data-nosnippet>1170</a>        <span class="comment">// Carried init secret on a commit without an ExternalInit proposal.
+<a href=#1171 id=1171 data-nosnippet>1171</a>        </span><span class="macro">assert_eq!</span>(
+<a href=#1172 id=1172 data-nosnippet>1172</a>            validate_vc_external_init_secret(<span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>),
+<a href=#1173 id=1173 data-nosnippet>1173</a>            malformed
+<a href=#1174 id=1174 data-nosnippet>1174</a>        );
+<a href=#1175 id=1175 data-nosnippet>1175</a>        <span class="macro">assert_eq!</span>(
+<a href=#1176 id=1176 data-nosnippet>1176</a>            validate_vc_external_init_secret(<span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>),
+<a href=#1177 id=1177 data-nosnippet>1177</a>            malformed
+<a href=#1178 id=1178 data-nosnippet>1178</a>        );
+<a href=#1179 id=1179 data-nosnippet>1179</a>
+<a href=#1180 id=1180 data-nosnippet>1180</a>        <span class="comment">// Conforming: external commit carrying the secret, and a regular
+<a href=#1181 id=1181 data-nosnippet>1181</a>        // commit carrying none.
+<a href=#1182 id=1182 data-nosnippet>1182</a>        </span><span class="macro">assert_eq!</span>(validate_vc_external_init_secret(<span class="bool-val">true</span>, <span class="bool-val">true</span>, <span class="bool-val">true</span>), <span class="prelude-val">Ok</span>(()));
+<a href=#1183 id=1183 data-nosnippet>1183</a>        <span class="macro">assert_eq!</span>(validate_vc_external_init_secret(<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>), <span class="prelude-val">Ok</span>(()));
+<a href=#1184 id=1184 data-nosnippet>1184</a>        <span class="macro">assert_eq!</span>(
+<a href=#1185 id=1185 data-nosnippet>1185</a>            validate_vc_external_init_secret(<span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>),
+<a href=#1186 id=1186 data-nosnippet>1186</a>            <span class="prelude-val">Ok</span>(())
+<a href=#1187 id=1187 data-nosnippet>1187</a>        );
+<a href=#1188 id=1188 data-nosnippet>1188</a>    }
+<a href=#1189 id=1189 data-nosnippet>1189</a>}
 </code></pre></div></section></main></body></html>
