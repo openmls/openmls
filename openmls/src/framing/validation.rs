@@ -37,8 +37,12 @@ use crate::{
 
 #[cfg(feature = "extensions-draft")]
 use crate::{
-    component::ComponentId, framing::safe_aad::SafeAad,
-    group::mls_group::processing::UnresolvedAppDataCommit,
+    component::ComponentId,
+    framing::safe_aad::SafeAad,
+    group::{
+        errors::StageCommitError,
+        mls_group::{errors::ResolveAppDataCommitError, processing::UnresolvedAppDataCommit},
+    },
 };
 
 use super::{
@@ -375,21 +379,23 @@ impl ProcessedMessage {
         }
     }
 
-    /// Replaces the content of this message via `f`, keeping all other fields
-    /// (sender, credential, authenticated data, Safe AAD state) intact.
+    /// Swaps an [`ProcessedMessageContent::UnresolvedAppDataCommit`] for the
+    /// [`StagedCommit`] produced by `stage`, keeping all other fields (sender,
+    /// credential, authenticated data, Safe AAD state) intact.
     ///
-    /// Used to swap an [`ProcessedMessageContent::UnresolvedAppDataCommit`]
-    /// for the [`StagedCommit`] it resolves to.
+    /// Returns an error if the content is not an unresolved app data commit;
+    /// the message is consumed either way.
     #[cfg(feature = "extensions-draft")]
-    pub(crate) fn map_content<E>(
+    pub(crate) fn resolve_app_data_commit(
         mut self,
-        f: impl FnOnce(ProcessedMessageContent) -> Result<ProcessedMessageContent, E>,
-    ) -> Result<Self, E> {
-        // Temporarily park a cheap placeholder in `content` so it can be moved
-        // out of `self` without destructuring the (cfg-dependent) fields.
-        let content =
-            std::mem::replace(&mut self.content, ProcessedMessageContent::OwnPendingCommit);
-        self.content = f(content)?;
+        stage: impl FnOnce(UnresolvedAppDataCommit) -> Result<StagedCommit, StageCommitError>,
+    ) -> Result<Self, ResolveAppDataCommitError> {
+        let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) = self.content
+        else {
+            return Err(ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit);
+        };
+        let staged_commit = stage(*unresolved_commit)?;
+        self.content = ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit));
         Ok(self)
     }
 

@@ -248,16 +248,8 @@ impl PublicGroup {
         processed_message: ProcessedMessage,
         app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<ProcessedMessage, ResolveAppDataCommitError> {
-        processed_message.map_content(|content| {
-            let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) = content
-            else {
-                return Err(ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit);
-            };
-            let staged_commit =
-                self.stage_app_data_commit(crypto, *unresolved_commit, app_data_dict_updates)?;
-            Ok(ProcessedMessageContent::StagedCommitMessage(Box::new(
-                staged_commit,
-            )))
+        processed_message.resolve_app_data_commit(|unresolved_commit| {
+            self.stage_app_data_commit(crypto, unresolved_commit, app_data_dict_updates)
         })
     }
 }
