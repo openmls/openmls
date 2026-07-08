@@ -568,6 +568,16 @@ impl StagedWelcome {
             ))
     }
 
+    /// Returns the leaf index of the client in this welcome's [`PublicGroup`].
+    pub fn own_leaf_index(&self) -> LeafNodeIndex {
+        self.own_leaf_index
+    }
+
+    /// Returns the leaf node of the client in this welcome's [`PublicGroup`].
+    pub fn own_leaf_node(&self) -> Option<&LeafNode> {
+        self.public_group.leaf(self.own_leaf_index())
+    }
+
     /// Get the [`GroupContext`] of this welcome's [`PublicGroup`].
     pub fn group_context(&self) -> &GroupContext {
         self.public_group.group_context()
@@ -874,6 +884,356 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     }
 
     Ok(own_index)
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl MlsGroup {
+    /// Bootstrap a virtual client's sibling emulator client into a higher-level
+    /// group by processing another sibling's external commit, when this client
+    /// is not yet a member of that group.
+    ///
+    /// The first emulator client joined the higher-level group via an external
+    /// commit. A second emulator client (this one), sharing the same emulation
+    /// epoch (`epoch_id`), reconstructs the resulting group state from that
+    /// commit. It cannot decapsulate the external init secret from the previous
+    /// epoch's `external_secret` (it never held it), so it uses the external
+    /// init secret the committing sibling carried in the commit's
+    /// `DerivationInfoTBE` (mls-virtual-clients draft), and recreates
+    /// the commit path from the shared operation secret tree.
+    ///
+    /// `verifiable_group_info` and `ratchet_tree` describe the higher-level
+    /// group at the epoch *before* the external commit (the ratchet tree may
+    /// instead travel in the GroupInfo's `ratchet_tree` extension).
+    /// `external_commit` is the sibling's external commit. On success the
+    /// returned group sits at the epoch the commit installs, with this client
+    /// on the shared virtual-client leaf.
+    pub fn vc_join_via_sibling_external_commit<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        join_config: &MlsGroupJoinConfig,
+        verifiable_group_info: VerifiableGroupInfo,
+        ratchet_tree: Option<RatchetTreeIn>,
+        external_commit: impl Into<crate::framing::ProtocolMessage>,
+        epoch_id: crate::components::vc_derivation_info::EpochId,
+    ) -> Result<MlsGroup, crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>>
+    {
+        use crate::{
+            framing::Sender,
+            group::config::PastEpochDeletionPolicy,
+            group::errors::{ProcessMessageError, VcExternalCommitJoinError as Error},
+            group::public_group::PublicGroup,
+            prelude::mls_content::FramedContentBody,
+            schedule::{EpochSecrets, InitSecret},
+        };
+
+        // Resolve the prior-epoch ratchet tree (from the GroupInfo extension or
+        // the argument) and rebuild the prior-epoch public group.
+        let ratchet_tree = match verifiable_group_info.extensions().ratchet_tree() {
+            Some(extension) => extension.ratchet_tree().clone(),
+            None => ratchet_tree.ok_or(Error::MissingRatchetTree)?,
+        };
+        let (public_group, _group_info) = PublicGroup::from_ratchet_tree(
+            provider.crypto(),
+            ratchet_tree,
+            verifiable_group_info,
+            ProposalStore::new(),
+            LeafNodeLifetimePolicy::default(),
+        )?;
+
+        // Assemble a transient group at the prior epoch. Its epoch secrets are
+        // never used cryptographically here: the external commit carries the
+        // external init secret and the operation secret tree supplies the path,
+        // so a random init-secret stub is sufficient. The own leaf index is the
+        // leftmost free index, where the committing sibling installs the shared
+        // virtual-client leaf.
+        let ciphersuite = public_group.ciphersuite();
+        let serialized_group_context = public_group
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+        let own_leaf_index = public_group.leftmost_free_index(std::iter::empty())?;
+        let init_secret = InitSecret::random(ciphersuite, provider.rand())
+            .map_err(LibraryError::unexpected_crypto_error)?;
+        let epoch_secrets =
+            EpochSecrets::with_init_secret(provider.crypto(), ciphersuite, init_secret)
+                .map_err(LibraryError::unexpected_crypto_error)?;
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            serialized_group_context,
+            public_group.tree_size(),
+            LeafNodeIndex::new(0u32),
+        );
+        // Do not retain the synthetic prior-epoch secrets used only to stage
+        // this external commit.
+        let message_secrets_store = MessageSecretsStore::new_with_secret(
+            &PastEpochDeletionPolicy::MaxEpochs(0),
+            message_secrets,
+        );
+        let mut group = MlsGroup {
+            mls_group_config: join_config.clone(),
+            own_leaf_nodes: vec![],
+            aad: vec![],
+            #[cfg(feature = "extensions-draft")]
+            safe_aad: crate::framing::SafeAad::empty(),
+            group_state: MlsGroupState::Operational,
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            message_secrets_store,
+            resumption_psk_store: ResumptionPskStore::new(join_config.number_of_resumption_psks),
+            #[cfg(feature = "extensions-draft")]
+            application_export_tree: None,
+        };
+
+        // Parse and verify the external commit against the prior-epoch group.
+        let unverified = group.unprotect_message(provider, external_commit)?;
+        let verified = unverified
+            .verify(group.ciphersuite(), provider.crypto(), group.version())
+            .map_err(ProcessMessageError::from)?;
+        if !matches!(verified.content.sender(), Sender::NewMemberCommit) {
+            return Err(Error::NotAnExternalCommit);
+        }
+        let content = verified.content;
+        let FramedContentBody::Commit(commit) = content.content() else {
+            return Err(Error::NotAnExternalCommit);
+        };
+
+        // Recover the sibling-VC commit material (operation secret + emulation
+        // epoch id + carried external init secret) from the leaf's derivation
+        // info, then stage and merge the commit through the sibling-VC path.
+        let material = group
+            .load_vc_commit_material(provider, commit)?
+            .ok_or(Error::MissingDerivationInfo)?;
+        if material.epoch_id != epoch_id {
+            return Err(Error::EpochIdMismatch);
+        }
+        let staged = group.stage_commit(&content, vec![], vec![], provider, Some(material))?;
+        group.merge_staged_commit(provider, staged)?;
+        group.resize_message_secrets_store(join_config.past_epoch_deletion_policy());
+        group
+            .store(provider.storage())
+            .map_err(Error::StorageError)?;
+        Ok(group)
+    }
+
+    /// Bootstrap a virtual client's sibling emulator client into a higher-level
+    /// group the virtual client created, when this client is not yet a member.
+    ///
+    /// The creator emulator client built the group with
+    /// [`MlsGroupBuilder::vc_emulation`], its `key_package`-sourced leaf key
+    /// material derived from a `key_package` operation secret. Sharing the same
+    /// emulation epoch (`epoch_id`), this client reconstructs the epoch-0 state:
+    /// it verifies the GroupInfo and single-leaf ratchet tree (which may instead
+    /// travel in the GroupInfo's `ratchet_tree` extension), rederives the creator
+    /// leaf's key material from the shared operation secret tree, and derives the
+    /// same epoch-0 `epoch_secret` from the creator's KeyPackage seed. No secret
+    /// travels on the wire. On success the returned group sits at epoch 0 with
+    /// this client on the shared virtual-client leaf (index 0).
+    ///
+    /// [`MlsGroupBuilder::vc_emulation`]: crate::group::MlsGroupBuilder::vc_emulation
+    pub fn vc_join_at_creation<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        join_config: &MlsGroupJoinConfig,
+        verifiable_group_info: VerifiableGroupInfo,
+        ratchet_tree: Option<RatchetTreeIn>,
+        epoch_id: crate::components::vc_derivation_info::EpochId,
+    ) -> Result<MlsGroup, crate::group::errors::VcGroupCreationJoinError<Provider::StorageError>>
+    {
+        use tls_codec::{DeserializeBytes as _, Serialize as _};
+
+        use crate::{
+            components::vc_derivation_info::{
+                load_vc_epoch_state_and_tree, DerivationInfo, DerivationInfoTbe,
+                VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
+            },
+            group::errors::VcGroupCreationJoinError as Error,
+            group::public_group::PublicGroup,
+            schedule::EpochSecrets,
+            treesync::node::leaf_node::LeafNodeSource,
+        };
+
+        // Resolve the ratchet tree (from the GroupInfo extension or the
+        // argument) and verify the GroupInfo and tree.
+        let ratchet_tree = match verifiable_group_info.extensions().ratchet_tree() {
+            Some(extension) => extension.ratchet_tree().clone(),
+            None => ratchet_tree.ok_or(Error::MissingRatchetTree)?,
+        };
+        let (public_group, group_info) = PublicGroup::from_ratchet_tree(
+            provider.crypto(),
+            ratchet_tree,
+            verifiable_group_info,
+            ProposalStore::new(),
+            LeafNodeLifetimePolicy::default(),
+        )?;
+        let ciphersuite = public_group.ciphersuite();
+
+        // The created group consists of exactly the creator's leaf at index 0.
+        if public_group.members().count() != 1 {
+            return Err(Error::NotASingleLeafTree);
+        }
+        let creator_index = LeafNodeIndex::new(0);
+        let creator_leaf = public_group
+            .leaf(creator_index)
+            .ok_or(Error::NotASingleLeafTree)?;
+
+        // A virtual client's group-creation leaf is key_package-sourced.
+        let LeafNodeSource::KeyPackage(_) = creator_leaf.leaf_node_source() else {
+            return Err(Error::CreatorLeafNotKeyPackageSourced);
+        };
+
+        // Read the creator leaf's derivation info and check the emulation epoch.
+        let derivation_info_bytes = creator_leaf
+            .extensions()
+            .app_data_dictionary()
+            .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+            .ok_or(Error::MissingDerivationInfo)?;
+        let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
+            .map_err(|_| VirtualClientsError::DerivationInfoMalformed)?;
+        if derivation_info.epoch_id() != &epoch_id {
+            return Err(Error::EpochIdMismatch);
+        }
+
+        // Load the emulation epoch state and operation tree.
+        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id)?;
+        let (_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
+
+        // Decrypt the derivation info (KeyPackage case) and read the batch index
+        // the creator's seed was derived under.
+        let leaf_encryption_key = creator_leaf
+            .encryption_key()
+            .tls_serialize_detached()
+            .map_err(VirtualClientsError::from)?;
+        let tbe = derivation_info.decrypt(
+            provider.crypto(),
+            emulation_ciphersuite,
+            &epoch_encryption_key,
+            &leaf_encryption_key,
+            VirtualClientOperationType::KeyPackage,
+        )?;
+        let DerivationInfoTbe::KeyPackage {
+            leaf_index,
+            generation,
+            key_package_index,
+        } = tbe
+        else {
+            // Decrypting with the KeyPackage operation type always yields the
+            // KeyPackage variant.
+            return Err(LibraryError::custom("unexpected derivation info variant").into());
+        };
+
+        // Rederive the creator's KeyPackage seed positionally from the shared
+        // operation tree, then the creator leaf's encryption keypair from that
+        // seed. The `key_package` operation context is empty. The advanced tree
+        // is persisted only after the confirmation tag verifies, so a corrupted
+        // GroupInfo naming the genuine creator leaf does not burn this sibling's
+        // generation.
+        let operation_secret = operation_tree.derive_operation_secret(
+            provider.crypto(),
+            emulation_ciphersuite,
+            &epoch_id,
+            leaf_index,
+            VirtualClientOperationType::KeyPackage,
+            generation,
+            b"",
+        )?;
+        let key_package_seed = operation_secret.derive_key_package_seed_secret(
+            provider.crypto(),
+            emulation_ciphersuite,
+            key_package_index,
+        )?;
+        let leaf_keypair = key_package_seed
+            .derive_encryption_key_secret(provider.crypto(), ciphersuite)?
+            .generate_encryption_key_pair(provider.crypto(), ciphersuite)?;
+        if leaf_keypair.public_key() != creator_leaf.encryption_key() {
+            return Err(Error::LeafKeyMismatch);
+        }
+
+        // Derive epoch-0 secrets from the same KeyPackage seed and verify the
+        // GroupInfo's confirmation tag against them. A mismatch means the
+        // reconstruction did not reproduce the creator's epoch secrets.
+        let serialized_group_context = public_group
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+        let epoch_secret =
+            key_package_seed.derive_group_creation_secret(provider.crypto(), ciphersuite)?;
+        let epoch_secrets =
+            EpochSecrets::from_epoch_secret(provider.crypto(), ciphersuite, epoch_secret)
+                .map_err(LibraryError::unexpected_crypto_error)?;
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            serialized_group_context,
+            public_group.tree_size(),
+            creator_index,
+        );
+        let expected_confirmation_tag = message_secrets
+            .confirmation_key()
+            .tag(
+                provider.crypto(),
+                ciphersuite,
+                public_group.group_context().confirmed_transcript_hash(),
+            )
+            .map_err(LibraryError::unexpected_crypto_error)?;
+        if &expected_confirmation_tag != group_info.confirmation_tag() {
+            return Err(Error::ConfirmationTagMismatch);
+        }
+
+        // The reconstruction reproduced the creator's secrets, so this is a
+        // genuine sibling-created group: persist the advanced operation tree.
+        provider
+            .storage()
+            .write_vc_operation_tree(&epoch_id, &operation_tree)
+            .map_err(Error::StorageError)?;
+
+        let message_secrets_store = MessageSecretsStore::new_with_secret(
+            join_config.past_epoch_deletion_policy(),
+            message_secrets,
+        );
+        let mut resumption_psk_store =
+            ResumptionPskStore::new(join_config.number_of_resumption_psks);
+        resumption_psk_store.add(
+            public_group.group_context().epoch(),
+            group_epoch_secrets.resumption_psk().clone(),
+        );
+
+        // Bind epoch 0 of the created group to the emulation epoch so later VC
+        // operations in this group resolve the right emulation state. Written
+        // before the group itself, so an error between the writes cannot leave a
+        // loadable group without a binding (a bound group is required for the
+        // reuse-guard MUST).
+        let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
+            .storage()
+            .vc_emulation_bindings(public_group.group_id())
+            .map_err(Error::StorageError)?
+            .unwrap_or_default();
+        let max_entries = message_secrets_store.max_epochs.saturating_add(1);
+        bindings.insert(public_group.group_context().epoch(), epoch_id, max_entries);
+        provider
+            .storage()
+            .write_vc_emulation_bindings(public_group.group_id(), &bindings)
+            .map_err(Error::StorageError)?;
+
+        let mls_group = MlsGroup {
+            mls_group_config: join_config.clone(),
+            own_leaf_nodes: vec![],
+            aad: vec![],
+            #[cfg(feature = "extensions-draft")]
+            safe_aad: crate::framing::SafeAad::empty(),
+            group_state: MlsGroupState::Operational,
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index: creator_index,
+            message_secrets_store,
+            resumption_psk_store,
+            #[cfg(feature = "extensions-draft")]
+            application_export_tree: None,
+        };
+        mls_group
+            .store(provider.storage())
+            .map_err(Error::StorageError)?;
+        mls_group
+            .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
+            .map_err(Error::StorageError)?;
+
+        Ok(mls_group)
+    }
 }
 
 /// Verify or skip the validation of leaf node lifetimes in the ratchet tree

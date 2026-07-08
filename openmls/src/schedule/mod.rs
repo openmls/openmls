@@ -350,7 +350,7 @@ impl InitSecret {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(any(feature = "test-utils", test, feature = "virtual-clients-draft"))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -1221,6 +1221,24 @@ impl EpochSecrets {
         let mut epoch_secrets = Self::new(crypto, ciphersuite, epoch_secret)?;
         epoch_secrets.init_secret = init_secret;
         Ok(epoch_secrets)
+    }
+
+    /// Initialize the `EpochSecrets` from a given `epoch_secret`, rather than
+    /// deriving it through the joiner key schedule. Both the creator and a
+    /// reconstructing sibling of a virtual-client-created group use this to
+    /// initialize the epoch-0 state from the `epoch_secret` each derives from
+    /// the creator's KeyPackage seed secret. The `epoch_secret` stays in a
+    /// zeroizing [`Secret`] end to end.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn from_epoch_secret(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        epoch_secret: Secret,
+    ) -> Result<Self, CryptoError> {
+        let epoch_secret = EpochSecret {
+            secret: epoch_secret,
+        };
+        Self::new(crypto, ciphersuite, epoch_secret)
     }
 
     /// Splits `EpochSecrets` into two different categories:
