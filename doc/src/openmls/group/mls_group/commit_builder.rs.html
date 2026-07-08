@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/commit_builder.rs`."><title>commit_builder.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (c4af71034 2026-07-06)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>commit_builder.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module contains the commit builder types, which can be used to build regular (i.e.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/commit_builder.rs`."><title>commit_builder.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (f10db292a 2026-07-07)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>commit_builder.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module contains the commit builder types, which can be used to build regular (i.e.
 <a href=#2 id=2 data-nosnippet>2</a>//! non-external) commits. See the documentation of [`CommitBuilder`] for more information.
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a></span><span class="kw">use </span>std::{borrow::BorrowMut, marker::PhantomData};
@@ -39,7 +39,7 @@
 <a href=#39 id=39 data-nosnippet>39</a></span><span class="kw">use crate</span>::{
 <a href=#40 id=40 data-nosnippet>40</a>    components::vc_derivation_info::{
 <a href=#41 id=41 data-nosnippet>41</a>        DerivationInfo, DerivationInfoTbe, EmulationEpochState, EpochEncryptionKey, EpochId,
-<a href=#42 id=42 data-nosnippet>42</a>        OperationSecret, VirtualClientOperationType, VirtualClientsError,
+<a href=#42 id=42 data-nosnippet>42</a>        ExternalInitSecret, OperationSecret, VirtualClientOperationType, VirtualClientsError,
 <a href=#43 id=43 data-nosnippet>43</a>    },
 <a href=#44 id=44 data-nosnippet>44</a>    components::vc_operation_tree::OperationSecretTree,
 <a href=#45 id=45 data-nosnippet>45</a>    extensions::AppDataDictionary,
@@ -758,741 +758,751 @@
 <a href=#758 id=758 data-nosnippet>758</a>            // `AppDataDictionary` it produced so the inject step preserves
 <a href=#759 id=759 data-nosnippet>759</a>            // every other entry, including the AppComponents entry that
 <a href=#760 id=760 data-nosnippet>760</a>            // survives across multiple VC commits.
-<a href=#761 id=761 data-nosnippet>761</a>            </span><span class="prelude-val">Some</span>(apply_vc_emulation(
-<a href=#762 id=762 data-nosnippet>762</a>                loaded,
-<a href=#763 id=763 data-nosnippet>763</a>                <span class="kw-2">&amp;mut </span>cur_stage.leaf_node_parameters,
-<a href=#764 id=764 data-nosnippet>764</a>                loaded.resolved_dictionary.clone(),
-<a href=#765 id=765 data-nosnippet>765</a>                crypto,
-<a href=#766 id=766 data-nosnippet>766</a>                ciphersuite,
-<a href=#767 id=767 data-nosnippet>767</a>            )<span class="question-mark">?</span>)
-<a href=#768 id=768 data-nosnippet>768</a>        } <span class="kw">else </span>{
-<a href=#769 id=769 data-nosnippet>769</a>            <span class="prelude-val">None
-<a href=#770 id=770 data-nosnippet>770</a>        </span>};
-<a href=#771 id=771 data-nosnippet>771</a>        <span class="attr">#[cfg(not(feature = <span class="string">"virtual-clients-draft"</span>))]
-<a href=#772 id=772 data-nosnippet>772</a>        </span><span class="kw">let </span>own_update_override: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::treesync::diff::OwnUpdatePathOverride&gt; = <span class="prelude-val">None</span>;
-<a href=#773 id=773 data-nosnippet>773</a>
-<a href=#774 id=774 data-nosnippet>774</a>        <span class="kw">let </span>path_computation_result =
-<a href=#775 id=775 data-nosnippet>775</a>            <span class="comment">// If path is needed, compute path values
-<a href=#776 id=776 data-nosnippet>776</a>            </span><span class="kw">if </span>apply_proposals_values.path_required
-<a href=#777 id=777 data-nosnippet>777</a>                || contains_own_updates
-<a href=#778 id=778 data-nosnippet>778</a>                || cur_stage.force_self_update
-<a href=#779 id=779 data-nosnippet>779</a>                || !cur_stage.leaf_node_parameters.is_empty()
-<a href=#780 id=780 data-nosnippet>780</a>            {
-<a href=#781 id=781 data-nosnippet>781</a>                <span class="kw">let </span>commit_type = <span class="kw">match </span><span class="kw-2">&amp;</span>cur_stage.external_commit_info {
-<a href=#782 id=782 data-nosnippet>782</a>                    <span class="prelude-val">Some</span>(ExternalCommitInfo { credential , ..}) =&gt; {
-<a href=#783 id=783 data-nosnippet>783</a>                        CommitType::External(credential.clone())
-<a href=#784 id=784 data-nosnippet>784</a>                    }
-<a href=#785 id=785 data-nosnippet>785</a>                    <span class="prelude-val">None </span>=&gt; CommitType::Member,
-<a href=#786 id=786 data-nosnippet>786</a>                };
-<a href=#787 id=787 data-nosnippet>787</a>                <span class="comment">// Process the path. This includes updating the provisional
-<a href=#788 id=788 data-nosnippet>788</a>                // group context by updating the epoch and computing the new
-<a href=#789 id=789 data-nosnippet>789</a>                // tree hash.
-<a href=#790 id=790 data-nosnippet>790</a>                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(new_signer) = new_signer {
-<a href=#791 id=791 data-nosnippet>791</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(credential_with_key) =
-<a href=#792 id=792 data-nosnippet>792</a>                        cur_stage.leaf_node_parameters.credential_with_key()
-<a href=#793 id=793 data-nosnippet>793</a>                    {
-<a href=#794 id=794 data-nosnippet>794</a>                        <span class="kw">if </span>credential_with_key != <span class="kw-2">&amp;</span>new_signer.credential_with_key {
-<a href=#795 id=795 data-nosnippet>795</a>                            <span class="kw">return </span><span class="prelude-val">Err</span>(CreateCommitError::InvalidLeafNodeParameters);
-<a href=#796 id=796 data-nosnippet>796</a>                        }
-<a href=#797 id=797 data-nosnippet>797</a>                    }
-<a href=#798 id=798 data-nosnippet>798</a>                    cur_stage.leaf_node_parameters.set_credential_with_key(
-<a href=#799 id=799 data-nosnippet>799</a>                        new_signer.credential_with_key,
-<a href=#800 id=800 data-nosnippet>800</a>                    );
-<a href=#801 id=801 data-nosnippet>801</a>
-<a href=#802 id=802 data-nosnippet>802</a>                    diff.compute_path(
-<a href=#803 id=803 data-nosnippet>803</a>                        rand,
-<a href=#804 id=804 data-nosnippet>804</a>                        crypto,
-<a href=#805 id=805 data-nosnippet>805</a>                        own_leaf_index,
-<a href=#806 id=806 data-nosnippet>806</a>                        apply_proposals_values.exclusion_list(),
-<a href=#807 id=807 data-nosnippet>807</a>                        <span class="kw-2">&amp;</span>commit_type,
-<a href=#808 id=808 data-nosnippet>808</a>                        <span class="kw-2">&amp;</span>cur_stage.leaf_node_parameters,
-<a href=#809 id=809 data-nosnippet>809</a>                        new_signer.signer,
-<a href=#810 id=810 data-nosnippet>810</a>                        apply_proposals_values.extensions.clone(),
-<a href=#811 id=811 data-nosnippet>811</a>                        own_update_override,
-<a href=#812 id=812 data-nosnippet>812</a>                    )<span class="question-mark">?
-<a href=#813 id=813 data-nosnippet>813</a>                </span>} <span class="kw">else </span>{
-<a href=#814 id=814 data-nosnippet>814</a>                    diff.compute_path(
-<a href=#815 id=815 data-nosnippet>815</a>                        rand,
-<a href=#816 id=816 data-nosnippet>816</a>                        crypto,
-<a href=#817 id=817 data-nosnippet>817</a>                        own_leaf_index,
-<a href=#818 id=818 data-nosnippet>818</a>                        apply_proposals_values.exclusion_list(),
-<a href=#819 id=819 data-nosnippet>819</a>                        <span class="kw-2">&amp;</span>commit_type,
-<a href=#820 id=820 data-nosnippet>820</a>                        <span class="kw-2">&amp;</span>cur_stage.leaf_node_parameters,
-<a href=#821 id=821 data-nosnippet>821</a>                        old_signer,
-<a href=#822 id=822 data-nosnippet>822</a>                        apply_proposals_values.extensions.clone(),
-<a href=#823 id=823 data-nosnippet>823</a>                        own_update_override,
-<a href=#824 id=824 data-nosnippet>824</a>                    )<span class="question-mark">?
-<a href=#825 id=825 data-nosnippet>825</a>                </span>}
-<a href=#826 id=826 data-nosnippet>826</a>            } <span class="kw">else </span>{
-<a href=#827 id=827 data-nosnippet>827</a>                <span class="comment">// If path is not needed, update the group context and return
-<a href=#828 id=828 data-nosnippet>828</a>                // empty path processing results
-<a href=#829 id=829 data-nosnippet>829</a>                </span>diff.update_group_context(crypto, apply_proposals_values.extensions.clone())<span class="question-mark">?</span>;
-<a href=#830 id=830 data-nosnippet>830</a>                PathComputationResult::default()
-<a href=#831 id=831 data-nosnippet>831</a>            };
-<a href=#832 id=832 data-nosnippet>832</a>
-<a href=#833 id=833 data-nosnippet>833</a>        <span class="kw">let </span>update_path_leaf_node = path_computation_result
-<a href=#834 id=834 data-nosnippet>834</a>            .encrypted_path
-<a href=#835 id=835 data-nosnippet>835</a>            .as_ref()
-<a href=#836 id=836 data-nosnippet>836</a>            .map(|path| path.leaf_node().clone());
-<a href=#837 id=837 data-nosnippet>837</a>
-<a href=#838 id=838 data-nosnippet>838</a>        <span class="comment">// Validate that the update path leaf node's capabilities
-<a href=#839 id=839 data-nosnippet>839</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>leaf_node) = update_path_leaf_node {
-<a href=#840 id=840 data-nosnippet>840</a>            <span class="comment">// Check that all extension types in the group context that are valid in leaf nodes
-<a href=#841 id=841 data-nosnippet>841</a>            // are supported by the leaf node
-<a href=#842 id=842 data-nosnippet>842</a>            //
-<a href=#843 id=843 data-nosnippet>843</a>            // This is currently not required by the RFC, likely by mistake:
-<a href=#844 id=844 data-nosnippet>844</a>            // https://mailarchive.ietf.org/arch/msg/mls/k18P4FP7dfS2cBmP0kL6Uh50-ok/
-<a href=#845 id=845 data-nosnippet>845</a>            </span><span class="kw">if </span>!diff
-<a href=#846 id=846 data-nosnippet>846</a>                .group_context()
-<a href=#847 id=847 data-nosnippet>847</a>                .extensions()
-<a href=#848 id=848 data-nosnippet>848</a>                .iter()
-<a href=#849 id=849 data-nosnippet>849</a>                .map(Extension::extension_type)
-<a href=#850 id=850 data-nosnippet>850</a>                .all(|ext_type| leaf_node.supports_extension(<span class="kw-2">&amp;</span>ext_type))
-<a href=#851 id=851 data-nosnippet>851</a>            {
-<a href=#852 id=852 data-nosnippet>852</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(CreateCommitError::LeafNodeValidation(
-<a href=#853 id=853 data-nosnippet>853</a>                    LeafNodeValidationError::UnsupportedExtensions,
-<a href=#854 id=854 data-nosnippet>854</a>                ));
-<a href=#855 id=855 data-nosnippet>855</a>            }
-<a href=#856 id=856 data-nosnippet>856</a>
-<a href=#857 id=857 data-nosnippet>857</a>            <span class="comment">// Check that the leaf node supports everything listed in the required capabilities.
-<a href=#858 id=858 data-nosnippet>858</a>            // https://validation.openmls.tech/#valn0103
-<a href=#859 id=859 data-nosnippet>859</a>            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
-<a href=#860 id=860 data-nosnippet>860</a>                diff.group_context().extensions().required_capabilities()
-<a href=#861 id=861 data-nosnippet>861</a>            {
-<a href=#862 id=862 data-nosnippet>862</a>                leaf_node
-<a href=#863 id=863 data-nosnippet>863</a>                    .capabilities()
-<a href=#864 id=864 data-nosnippet>864</a>                    .supports_required_capabilities(required_capabilities)<span class="question-mark">?
-<a href=#865 id=865 data-nosnippet>865</a>            </span>}
-<a href=#866 id=866 data-nosnippet>866</a>        }
-<a href=#867 id=867 data-nosnippet>867</a>
-<a href=#868 id=868 data-nosnippet>868</a>        <span class="comment">// Create commit message
-<a href=#869 id=869 data-nosnippet>869</a>        </span><span class="kw">let </span>commit = Commit {
-<a href=#870 id=870 data-nosnippet>870</a>            proposals: proposal_reference_list,
-<a href=#871 id=871 data-nosnippet>871</a>            path: path_computation_result.encrypted_path,
-<a href=#872 id=872 data-nosnippet>872</a>        };
-<a href=#873 id=873 data-nosnippet>873</a>
-<a href=#874 id=874 data-nosnippet>874</a>        <span class="kw">let </span>(outgoing_aad, wire_format): (Vec&lt;u8&gt;, WireFormat) =
-<a href=#875 id=875 data-nosnippet>875</a>            <span class="kw">match </span><span class="kw-2">&amp;</span>cur_stage.external_commit_info {
-<a href=#876 id=876 data-nosnippet>876</a>                <span class="prelude-val">None </span>=&gt; (
-<a href=#877 id=877 data-nosnippet>877</a>                    group.outgoing_authenticated_data()<span class="question-mark">?</span>,
-<a href=#878 id=878 data-nosnippet>878</a>                    group.outgoing_wire_format(),
-<a href=#879 id=879 data-nosnippet>879</a>                ),
-<a href=#880 id=880 data-nosnippet>880</a>                <span class="prelude-val">Some</span>(ExternalCommitInfo { aad, .. }) =&gt; {
-<a href=#881 id=881 data-nosnippet>881</a>                    <span class="comment">// The spec requires the SafeAAD prefix even with zero items
-<a href=#882 id=882 data-nosnippet>882</a>                    // when the target GroupContext has `safe_aad` present, so a
-<a href=#883 id=883 data-nosnippet>883</a>                    // bare `aad` would be rejected by SafeAAD-aware receivers.
-<a href=#884 id=884 data-nosnippet>884</a>                    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#885 id=885 data-nosnippet>885</a>                    </span><span class="kw">let </span>aad_bytes = <span class="kw">if </span>group.context().safe_aad_required() {
-<a href=#886 id=886 data-nosnippet>886</a>                        <span class="kw">crate</span>::framing::safe_aad::assemble_authenticated_data(
-<a href=#887 id=887 data-nosnippet>887</a>                            <span class="kw-2">&amp;</span><span class="kw">crate</span>::framing::SafeAad::empty(),
-<a href=#888 id=888 data-nosnippet>888</a>                            aad,
-<a href=#889 id=889 data-nosnippet>889</a>                        )
-<a href=#890 id=890 data-nosnippet>890</a>                        .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"SafeAad serialization failed"</span>))<span class="question-mark">?
-<a href=#891 id=891 data-nosnippet>891</a>                    </span>} <span class="kw">else </span>{
-<a href=#892 id=892 data-nosnippet>892</a>                        aad.clone()
-<a href=#893 id=893 data-nosnippet>893</a>                    };
-<a href=#894 id=894 data-nosnippet>894</a>                    <span class="attr">#[cfg(not(feature = <span class="string">"extensions-draft"</span>))]
-<a href=#895 id=895 data-nosnippet>895</a>                    </span><span class="kw">let </span>aad_bytes = aad.clone();
-<a href=#896 id=896 data-nosnippet>896</a>                    (aad_bytes, WireFormat::PublicMessage)
-<a href=#897 id=897 data-nosnippet>897</a>                }
-<a href=#898 id=898 data-nosnippet>898</a>            };
-<a href=#899 id=899 data-nosnippet>899</a>        <span class="kw">let </span>framing_parameters = FramingParameters::new(<span class="kw-2">&amp;</span>outgoing_aad, wire_format);
-<a href=#900 id=900 data-nosnippet>900</a>
-<a href=#901 id=901 data-nosnippet>901</a>        <span class="comment">// Build AuthenticatedContent
-<a href=#902 id=902 data-nosnippet>902</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>authenticated_content = AuthenticatedContent::commit(
-<a href=#903 id=903 data-nosnippet>903</a>            framing_parameters,
-<a href=#904 id=904 data-nosnippet>904</a>            sender,
-<a href=#905 id=905 data-nosnippet>905</a>            commit,
-<a href=#906 id=906 data-nosnippet>906</a>            group.public_group.group_context(),
-<a href=#907 id=907 data-nosnippet>907</a>            old_signer,
-<a href=#908 id=908 data-nosnippet>908</a>        )<span class="question-mark">?</span>;
-<a href=#909 id=909 data-nosnippet>909</a>
-<a href=#910 id=910 data-nosnippet>910</a>        <span class="comment">// Update the confirmed transcript hash using the commit we just created.
-<a href=#911 id=911 data-nosnippet>911</a>        </span>diff.update_confirmed_transcript_hash(crypto, <span class="kw-2">&amp;</span>authenticated_content)<span class="question-mark">?</span>;
-<a href=#912 id=912 data-nosnippet>912</a>
-<a href=#913 id=913 data-nosnippet>913</a>        <span class="kw">let </span>serialized_provisional_group_context = diff
-<a href=#914 id=914 data-nosnippet>914</a>            .group_context()
-<a href=#915 id=915 data-nosnippet>915</a>            .tls_serialize_detached()
-<a href=#916 id=916 data-nosnippet>916</a>            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-<a href=#917 id=917 data-nosnippet>917</a>
-<a href=#918 id=918 data-nosnippet>918</a>        <span class="kw">let </span>joiner_secret = JoinerSecret::new(
-<a href=#919 id=919 data-nosnippet>919</a>            crypto,
-<a href=#920 id=920 data-nosnippet>920</a>            ciphersuite,
-<a href=#921 id=921 data-nosnippet>921</a>            path_computation_result.commit_secret,
-<a href=#922 id=922 data-nosnippet>922</a>            group.group_epoch_secrets().init_secret(),
-<a href=#923 id=923 data-nosnippet>923</a>            <span class="kw-2">&amp;</span>serialized_provisional_group_context,
-<a href=#924 id=924 data-nosnippet>924</a>        )
-<a href=#925 id=925 data-nosnippet>925</a>        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-<a href=#926 id=926 data-nosnippet>926</a>
-<a href=#927 id=927 data-nosnippet>927</a>        <span class="comment">// Prepare the PskSecret
-<a href=#928 id=928 data-nosnippet>928</a>        </span><span class="kw">let </span>psk_secret = { PskSecret::new(crypto, ciphersuite, psks)<span class="question-mark">? </span>};
-<a href=#929 id=929 data-nosnippet>929</a>
-<a href=#930 id=930 data-nosnippet>930</a>        <span class="comment">// Create key schedule
-<a href=#931 id=931 data-nosnippet>931</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, crypto, <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
-<a href=#932 id=932 data-nosnippet>932</a>
-<a href=#933 id=933 data-nosnippet>933</a>        <span class="kw">let </span>serialized_provisional_group_context = diff
-<a href=#934 id=934 data-nosnippet>934</a>            .group_context()
-<a href=#935 id=935 data-nosnippet>935</a>            .tls_serialize_detached()
-<a href=#936 id=936 data-nosnippet>936</a>            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-<a href=#937 id=937 data-nosnippet>937</a>
-<a href=#938 id=938 data-nosnippet>938</a>        <span class="kw">let </span>welcome_secret = key_schedule
-<a href=#939 id=939 data-nosnippet>939</a>            .welcome(crypto, ciphersuite)
-<a href=#940 id=940 data-nosnippet>940</a>            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
-<a href=#941 id=941 data-nosnippet>941</a>        key_schedule
-<a href=#942 id=942 data-nosnippet>942</a>            .add_context(crypto, <span class="kw-2">&amp;</span>serialized_provisional_group_context)
-<a href=#943 id=943 data-nosnippet>943</a>            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
-<a href=#944 id=944 data-nosnippet>944</a>        <span class="kw">let </span>EpochSecretsResult {
-<a href=#945 id=945 data-nosnippet>945</a>            epoch_secrets: provisional_epoch_secrets,
-<a href=#946 id=946 data-nosnippet>946</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#947 id=947 data-nosnippet>947</a>            </span>application_exporter,
-<a href=#948 id=948 data-nosnippet>948</a>        } = key_schedule
-<a href=#949 id=949 data-nosnippet>949</a>            .epoch_secrets(crypto, ciphersuite)
+<a href=#761 id=761 data-nosnippet>761</a>            // For an external commit, carry the external init secret in the
+<a href=#762 id=762 data-nosnippet>762</a>            // derivation info so a sibling emulator client can process the
+<a href=#763 id=763 data-nosnippet>763</a>            // commit without holding the previous epoch's `external_secret`.
+<a href=#764 id=764 data-nosnippet>764</a>            // Regular commits carry no external init secret.
+<a href=#765 id=765 data-nosnippet>765</a>            </span><span class="kw">let </span>external_init_secret =
+<a href=#766 id=766 data-nosnippet>766</a>                is_external_commit.then(|| group.group_epoch_secrets().init_secret());
+<a href=#767 id=767 data-nosnippet>767</a>            <span class="prelude-val">Some</span>(apply_vc_emulation(
+<a href=#768 id=768 data-nosnippet>768</a>                loaded,
+<a href=#769 id=769 data-nosnippet>769</a>                <span class="kw-2">&amp;mut </span>cur_stage.leaf_node_parameters,
+<a href=#770 id=770 data-nosnippet>770</a>                loaded.resolved_dictionary.clone(),
+<a href=#771 id=771 data-nosnippet>771</a>                crypto,
+<a href=#772 id=772 data-nosnippet>772</a>                ciphersuite,
+<a href=#773 id=773 data-nosnippet>773</a>                external_init_secret,
+<a href=#774 id=774 data-nosnippet>774</a>            )<span class="question-mark">?</span>)
+<a href=#775 id=775 data-nosnippet>775</a>        } <span class="kw">else </span>{
+<a href=#776 id=776 data-nosnippet>776</a>            <span class="prelude-val">None
+<a href=#777 id=777 data-nosnippet>777</a>        </span>};
+<a href=#778 id=778 data-nosnippet>778</a>        <span class="attr">#[cfg(not(feature = <span class="string">"virtual-clients-draft"</span>))]
+<a href=#779 id=779 data-nosnippet>779</a>        </span><span class="kw">let </span>own_update_override: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::treesync::diff::OwnUpdatePathOverride&gt; = <span class="prelude-val">None</span>;
+<a href=#780 id=780 data-nosnippet>780</a>
+<a href=#781 id=781 data-nosnippet>781</a>        <span class="kw">let </span>path_computation_result =
+<a href=#782 id=782 data-nosnippet>782</a>            <span class="comment">// If path is needed, compute path values
+<a href=#783 id=783 data-nosnippet>783</a>            </span><span class="kw">if </span>apply_proposals_values.path_required
+<a href=#784 id=784 data-nosnippet>784</a>                || contains_own_updates
+<a href=#785 id=785 data-nosnippet>785</a>                || cur_stage.force_self_update
+<a href=#786 id=786 data-nosnippet>786</a>                || !cur_stage.leaf_node_parameters.is_empty()
+<a href=#787 id=787 data-nosnippet>787</a>            {
+<a href=#788 id=788 data-nosnippet>788</a>                <span class="kw">let </span>commit_type = <span class="kw">match </span><span class="kw-2">&amp;</span>cur_stage.external_commit_info {
+<a href=#789 id=789 data-nosnippet>789</a>                    <span class="prelude-val">Some</span>(ExternalCommitInfo { credential , ..}) =&gt; {
+<a href=#790 id=790 data-nosnippet>790</a>                        CommitType::External(credential.clone())
+<a href=#791 id=791 data-nosnippet>791</a>                    }
+<a href=#792 id=792 data-nosnippet>792</a>                    <span class="prelude-val">None </span>=&gt; CommitType::Member,
+<a href=#793 id=793 data-nosnippet>793</a>                };
+<a href=#794 id=794 data-nosnippet>794</a>                <span class="comment">// Process the path. This includes updating the provisional
+<a href=#795 id=795 data-nosnippet>795</a>                // group context by updating the epoch and computing the new
+<a href=#796 id=796 data-nosnippet>796</a>                // tree hash.
+<a href=#797 id=797 data-nosnippet>797</a>                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(new_signer) = new_signer {
+<a href=#798 id=798 data-nosnippet>798</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(credential_with_key) =
+<a href=#799 id=799 data-nosnippet>799</a>                        cur_stage.leaf_node_parameters.credential_with_key()
+<a href=#800 id=800 data-nosnippet>800</a>                    {
+<a href=#801 id=801 data-nosnippet>801</a>                        <span class="kw">if </span>credential_with_key != <span class="kw-2">&amp;</span>new_signer.credential_with_key {
+<a href=#802 id=802 data-nosnippet>802</a>                            <span class="kw">return </span><span class="prelude-val">Err</span>(CreateCommitError::InvalidLeafNodeParameters);
+<a href=#803 id=803 data-nosnippet>803</a>                        }
+<a href=#804 id=804 data-nosnippet>804</a>                    }
+<a href=#805 id=805 data-nosnippet>805</a>                    cur_stage.leaf_node_parameters.set_credential_with_key(
+<a href=#806 id=806 data-nosnippet>806</a>                        new_signer.credential_with_key,
+<a href=#807 id=807 data-nosnippet>807</a>                    );
+<a href=#808 id=808 data-nosnippet>808</a>
+<a href=#809 id=809 data-nosnippet>809</a>                    diff.compute_path(
+<a href=#810 id=810 data-nosnippet>810</a>                        rand,
+<a href=#811 id=811 data-nosnippet>811</a>                        crypto,
+<a href=#812 id=812 data-nosnippet>812</a>                        own_leaf_index,
+<a href=#813 id=813 data-nosnippet>813</a>                        apply_proposals_values.exclusion_list(),
+<a href=#814 id=814 data-nosnippet>814</a>                        <span class="kw-2">&amp;</span>commit_type,
+<a href=#815 id=815 data-nosnippet>815</a>                        <span class="kw-2">&amp;</span>cur_stage.leaf_node_parameters,
+<a href=#816 id=816 data-nosnippet>816</a>                        new_signer.signer,
+<a href=#817 id=817 data-nosnippet>817</a>                        apply_proposals_values.extensions.clone(),
+<a href=#818 id=818 data-nosnippet>818</a>                        own_update_override,
+<a href=#819 id=819 data-nosnippet>819</a>                    )<span class="question-mark">?
+<a href=#820 id=820 data-nosnippet>820</a>                </span>} <span class="kw">else </span>{
+<a href=#821 id=821 data-nosnippet>821</a>                    diff.compute_path(
+<a href=#822 id=822 data-nosnippet>822</a>                        rand,
+<a href=#823 id=823 data-nosnippet>823</a>                        crypto,
+<a href=#824 id=824 data-nosnippet>824</a>                        own_leaf_index,
+<a href=#825 id=825 data-nosnippet>825</a>                        apply_proposals_values.exclusion_list(),
+<a href=#826 id=826 data-nosnippet>826</a>                        <span class="kw-2">&amp;</span>commit_type,
+<a href=#827 id=827 data-nosnippet>827</a>                        <span class="kw-2">&amp;</span>cur_stage.leaf_node_parameters,
+<a href=#828 id=828 data-nosnippet>828</a>                        old_signer,
+<a href=#829 id=829 data-nosnippet>829</a>                        apply_proposals_values.extensions.clone(),
+<a href=#830 id=830 data-nosnippet>830</a>                        own_update_override,
+<a href=#831 id=831 data-nosnippet>831</a>                    )<span class="question-mark">?
+<a href=#832 id=832 data-nosnippet>832</a>                </span>}
+<a href=#833 id=833 data-nosnippet>833</a>            } <span class="kw">else </span>{
+<a href=#834 id=834 data-nosnippet>834</a>                <span class="comment">// If path is not needed, update the group context and return
+<a href=#835 id=835 data-nosnippet>835</a>                // empty path processing results
+<a href=#836 id=836 data-nosnippet>836</a>                </span>diff.update_group_context(crypto, apply_proposals_values.extensions.clone())<span class="question-mark">?</span>;
+<a href=#837 id=837 data-nosnippet>837</a>                PathComputationResult::default()
+<a href=#838 id=838 data-nosnippet>838</a>            };
+<a href=#839 id=839 data-nosnippet>839</a>
+<a href=#840 id=840 data-nosnippet>840</a>        <span class="kw">let </span>update_path_leaf_node = path_computation_result
+<a href=#841 id=841 data-nosnippet>841</a>            .encrypted_path
+<a href=#842 id=842 data-nosnippet>842</a>            .as_ref()
+<a href=#843 id=843 data-nosnippet>843</a>            .map(|path| path.leaf_node().clone());
+<a href=#844 id=844 data-nosnippet>844</a>
+<a href=#845 id=845 data-nosnippet>845</a>        <span class="comment">// Validate that the update path leaf node's capabilities
+<a href=#846 id=846 data-nosnippet>846</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>leaf_node) = update_path_leaf_node {
+<a href=#847 id=847 data-nosnippet>847</a>            <span class="comment">// Check that all extension types in the group context that are valid in leaf nodes
+<a href=#848 id=848 data-nosnippet>848</a>            // are supported by the leaf node
+<a href=#849 id=849 data-nosnippet>849</a>            //
+<a href=#850 id=850 data-nosnippet>850</a>            // This is currently not required by the RFC, likely by mistake:
+<a href=#851 id=851 data-nosnippet>851</a>            // https://mailarchive.ietf.org/arch/msg/mls/k18P4FP7dfS2cBmP0kL6Uh50-ok/
+<a href=#852 id=852 data-nosnippet>852</a>            </span><span class="kw">if </span>!diff
+<a href=#853 id=853 data-nosnippet>853</a>                .group_context()
+<a href=#854 id=854 data-nosnippet>854</a>                .extensions()
+<a href=#855 id=855 data-nosnippet>855</a>                .iter()
+<a href=#856 id=856 data-nosnippet>856</a>                .map(Extension::extension_type)
+<a href=#857 id=857 data-nosnippet>857</a>                .all(|ext_type| leaf_node.supports_extension(<span class="kw-2">&amp;</span>ext_type))
+<a href=#858 id=858 data-nosnippet>858</a>            {
+<a href=#859 id=859 data-nosnippet>859</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(CreateCommitError::LeafNodeValidation(
+<a href=#860 id=860 data-nosnippet>860</a>                    LeafNodeValidationError::UnsupportedExtensions,
+<a href=#861 id=861 data-nosnippet>861</a>                ));
+<a href=#862 id=862 data-nosnippet>862</a>            }
+<a href=#863 id=863 data-nosnippet>863</a>
+<a href=#864 id=864 data-nosnippet>864</a>            <span class="comment">// Check that the leaf node supports everything listed in the required capabilities.
+<a href=#865 id=865 data-nosnippet>865</a>            // https://validation.openmls.tech/#valn0103
+<a href=#866 id=866 data-nosnippet>866</a>            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
+<a href=#867 id=867 data-nosnippet>867</a>                diff.group_context().extensions().required_capabilities()
+<a href=#868 id=868 data-nosnippet>868</a>            {
+<a href=#869 id=869 data-nosnippet>869</a>                leaf_node
+<a href=#870 id=870 data-nosnippet>870</a>                    .capabilities()
+<a href=#871 id=871 data-nosnippet>871</a>                    .supports_required_capabilities(required_capabilities)<span class="question-mark">?
+<a href=#872 id=872 data-nosnippet>872</a>            </span>}
+<a href=#873 id=873 data-nosnippet>873</a>        }
+<a href=#874 id=874 data-nosnippet>874</a>
+<a href=#875 id=875 data-nosnippet>875</a>        <span class="comment">// Create commit message
+<a href=#876 id=876 data-nosnippet>876</a>        </span><span class="kw">let </span>commit = Commit {
+<a href=#877 id=877 data-nosnippet>877</a>            proposals: proposal_reference_list,
+<a href=#878 id=878 data-nosnippet>878</a>            path: path_computation_result.encrypted_path,
+<a href=#879 id=879 data-nosnippet>879</a>        };
+<a href=#880 id=880 data-nosnippet>880</a>
+<a href=#881 id=881 data-nosnippet>881</a>        <span class="kw">let </span>(outgoing_aad, wire_format): (Vec&lt;u8&gt;, WireFormat) =
+<a href=#882 id=882 data-nosnippet>882</a>            <span class="kw">match </span><span class="kw-2">&amp;</span>cur_stage.external_commit_info {
+<a href=#883 id=883 data-nosnippet>883</a>                <span class="prelude-val">None </span>=&gt; (
+<a href=#884 id=884 data-nosnippet>884</a>                    group.outgoing_authenticated_data()<span class="question-mark">?</span>,
+<a href=#885 id=885 data-nosnippet>885</a>                    group.outgoing_wire_format(),
+<a href=#886 id=886 data-nosnippet>886</a>                ),
+<a href=#887 id=887 data-nosnippet>887</a>                <span class="prelude-val">Some</span>(ExternalCommitInfo { aad, .. }) =&gt; {
+<a href=#888 id=888 data-nosnippet>888</a>                    <span class="comment">// The spec requires the SafeAAD prefix even with zero items
+<a href=#889 id=889 data-nosnippet>889</a>                    // when the target GroupContext has `safe_aad` present, so a
+<a href=#890 id=890 data-nosnippet>890</a>                    // bare `aad` would be rejected by SafeAAD-aware receivers.
+<a href=#891 id=891 data-nosnippet>891</a>                    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#892 id=892 data-nosnippet>892</a>                    </span><span class="kw">let </span>aad_bytes = <span class="kw">if </span>group.context().safe_aad_required() {
+<a href=#893 id=893 data-nosnippet>893</a>                        <span class="kw">crate</span>::framing::safe_aad::assemble_authenticated_data(
+<a href=#894 id=894 data-nosnippet>894</a>                            <span class="kw-2">&amp;</span><span class="kw">crate</span>::framing::SafeAad::empty(),
+<a href=#895 id=895 data-nosnippet>895</a>                            aad,
+<a href=#896 id=896 data-nosnippet>896</a>                        )
+<a href=#897 id=897 data-nosnippet>897</a>                        .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"SafeAad serialization failed"</span>))<span class="question-mark">?
+<a href=#898 id=898 data-nosnippet>898</a>                    </span>} <span class="kw">else </span>{
+<a href=#899 id=899 data-nosnippet>899</a>                        aad.clone()
+<a href=#900 id=900 data-nosnippet>900</a>                    };
+<a href=#901 id=901 data-nosnippet>901</a>                    <span class="attr">#[cfg(not(feature = <span class="string">"extensions-draft"</span>))]
+<a href=#902 id=902 data-nosnippet>902</a>                    </span><span class="kw">let </span>aad_bytes = aad.clone();
+<a href=#903 id=903 data-nosnippet>903</a>                    (aad_bytes, WireFormat::PublicMessage)
+<a href=#904 id=904 data-nosnippet>904</a>                }
+<a href=#905 id=905 data-nosnippet>905</a>            };
+<a href=#906 id=906 data-nosnippet>906</a>        <span class="kw">let </span>framing_parameters = FramingParameters::new(<span class="kw-2">&amp;</span>outgoing_aad, wire_format);
+<a href=#907 id=907 data-nosnippet>907</a>
+<a href=#908 id=908 data-nosnippet>908</a>        <span class="comment">// Build AuthenticatedContent
+<a href=#909 id=909 data-nosnippet>909</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>authenticated_content = AuthenticatedContent::commit(
+<a href=#910 id=910 data-nosnippet>910</a>            framing_parameters,
+<a href=#911 id=911 data-nosnippet>911</a>            sender,
+<a href=#912 id=912 data-nosnippet>912</a>            commit,
+<a href=#913 id=913 data-nosnippet>913</a>            group.public_group.group_context(),
+<a href=#914 id=914 data-nosnippet>914</a>            old_signer,
+<a href=#915 id=915 data-nosnippet>915</a>        )<span class="question-mark">?</span>;
+<a href=#916 id=916 data-nosnippet>916</a>
+<a href=#917 id=917 data-nosnippet>917</a>        <span class="comment">// Update the confirmed transcript hash using the commit we just created.
+<a href=#918 id=918 data-nosnippet>918</a>        </span>diff.update_confirmed_transcript_hash(crypto, <span class="kw-2">&amp;</span>authenticated_content)<span class="question-mark">?</span>;
+<a href=#919 id=919 data-nosnippet>919</a>
+<a href=#920 id=920 data-nosnippet>920</a>        <span class="kw">let </span>serialized_provisional_group_context = diff
+<a href=#921 id=921 data-nosnippet>921</a>            .group_context()
+<a href=#922 id=922 data-nosnippet>922</a>            .tls_serialize_detached()
+<a href=#923 id=923 data-nosnippet>923</a>            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+<a href=#924 id=924 data-nosnippet>924</a>
+<a href=#925 id=925 data-nosnippet>925</a>        <span class="kw">let </span>joiner_secret = JoinerSecret::new(
+<a href=#926 id=926 data-nosnippet>926</a>            crypto,
+<a href=#927 id=927 data-nosnippet>927</a>            ciphersuite,
+<a href=#928 id=928 data-nosnippet>928</a>            path_computation_result.commit_secret,
+<a href=#929 id=929 data-nosnippet>929</a>            group.group_epoch_secrets().init_secret(),
+<a href=#930 id=930 data-nosnippet>930</a>            <span class="kw-2">&amp;</span>serialized_provisional_group_context,
+<a href=#931 id=931 data-nosnippet>931</a>        )
+<a href=#932 id=932 data-nosnippet>932</a>        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#933 id=933 data-nosnippet>933</a>
+<a href=#934 id=934 data-nosnippet>934</a>        <span class="comment">// Prepare the PskSecret
+<a href=#935 id=935 data-nosnippet>935</a>        </span><span class="kw">let </span>psk_secret = { PskSecret::new(crypto, ciphersuite, psks)<span class="question-mark">? </span>};
+<a href=#936 id=936 data-nosnippet>936</a>
+<a href=#937 id=937 data-nosnippet>937</a>        <span class="comment">// Create key schedule
+<a href=#938 id=938 data-nosnippet>938</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, crypto, <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
+<a href=#939 id=939 data-nosnippet>939</a>
+<a href=#940 id=940 data-nosnippet>940</a>        <span class="kw">let </span>serialized_provisional_group_context = diff
+<a href=#941 id=941 data-nosnippet>941</a>            .group_context()
+<a href=#942 id=942 data-nosnippet>942</a>            .tls_serialize_detached()
+<a href=#943 id=943 data-nosnippet>943</a>            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+<a href=#944 id=944 data-nosnippet>944</a>
+<a href=#945 id=945 data-nosnippet>945</a>        <span class="kw">let </span>welcome_secret = key_schedule
+<a href=#946 id=946 data-nosnippet>946</a>            .welcome(crypto, ciphersuite)
+<a href=#947 id=947 data-nosnippet>947</a>            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
+<a href=#948 id=948 data-nosnippet>948</a>        key_schedule
+<a href=#949 id=949 data-nosnippet>949</a>            .add_context(crypto, <span class="kw-2">&amp;</span>serialized_provisional_group_context)
 <a href=#950 id=950 data-nosnippet>950</a>            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
-<a href=#951 id=951 data-nosnippet>951</a>
-<a href=#952 id=952 data-nosnippet>952</a>        <span class="comment">// Calculate the confirmation tag
-<a href=#953 id=953 data-nosnippet>953</a>        </span><span class="kw">let </span>confirmation_tag = provisional_epoch_secrets
-<a href=#954 id=954 data-nosnippet>954</a>            .confirmation_key()
-<a href=#955 id=955 data-nosnippet>955</a>            .tag(
-<a href=#956 id=956 data-nosnippet>956</a>                crypto,
-<a href=#957 id=957 data-nosnippet>957</a>                ciphersuite,
-<a href=#958 id=958 data-nosnippet>958</a>                diff.group_context().confirmed_transcript_hash(),
-<a href=#959 id=959 data-nosnippet>959</a>            )
-<a href=#960 id=960 data-nosnippet>960</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-<a href=#961 id=961 data-nosnippet>961</a>
-<a href=#962 id=962 data-nosnippet>962</a>        <span class="comment">// Set the confirmation tag
-<a href=#963 id=963 data-nosnippet>963</a>        </span>authenticated_content.set_confirmation_tag(confirmation_tag.clone());
-<a href=#964 id=964 data-nosnippet>964</a>
-<a href=#965 id=965 data-nosnippet>965</a>        diff.update_interim_transcript_hash(ciphersuite, crypto, confirmation_tag.clone())<span class="question-mark">?</span>;
-<a href=#966 id=966 data-nosnippet>966</a>
-<a href=#967 id=967 data-nosnippet>967</a>        <span class="comment">// If there are invitations, we need to build a welcome
-<a href=#968 id=968 data-nosnippet>968</a>        </span><span class="kw">let </span>needs_welcome = !apply_proposals_values.invitation_list.is_empty();
-<a href=#969 id=969 data-nosnippet>969</a>
-<a href=#970 id=970 data-nosnippet>970</a>        <span class="comment">// We need a GroupInfo if we need to build a Welcome, or if
-<a href=#971 id=971 data-nosnippet>971</a>        // `create_group_info` is set to `true`. If not overridden, `create_group_info`
-<a href=#972 id=972 data-nosnippet>972</a>        // is set to the `use_ratchet_tree` flag in the group configuration.
-<a href=#973 id=973 data-nosnippet>973</a>        </span><span class="kw">let </span>needs_group_info = needs_welcome || create_group_info;
-<a href=#974 id=974 data-nosnippet>974</a>
-<a href=#975 id=975 data-nosnippet>975</a>        <span class="kw">let </span>(welcome_option, group_info) = <span class="kw">if </span>!needs_group_info {
-<a href=#976 id=976 data-nosnippet>976</a>            (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
-<a href=#977 id=977 data-nosnippet>977</a>        } <span class="kw">else </span>{
-<a href=#978 id=978 data-nosnippet>978</a>            <span class="comment">// Create the ratchet tree extension if necessary
-<a href=#979 id=979 data-nosnippet>979</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>extensions_list = <span class="macro">vec!</span>[];
-<a href=#980 id=980 data-nosnippet>980</a>            <span class="kw">if </span>use_ratchet_tree_extension {
-<a href=#981 id=981 data-nosnippet>981</a>                extensions_list.push(Extension::RatchetTree(RatchetTreeExtension::new(
-<a href=#982 id=982 data-nosnippet>982</a>                    diff.export_ratchet_tree(),
-<a href=#983 id=983 data-nosnippet>983</a>                )));
-<a href=#984 id=984 data-nosnippet>984</a>            };
-<a href=#985 id=985 data-nosnippet>985</a>            <span class="comment">// Append rest of extensions
-<a href=#986 id=986 data-nosnippet>986</a>            </span>extensions_list.extend(other_extensions);
-<a href=#987 id=987 data-nosnippet>987</a>
-<a href=#988 id=988 data-nosnippet>988</a>            <span class="kw">let </span><span class="kw-2">mut </span>extensions = Extensions::from_vec(extensions_list)<span class="question-mark">?</span>;
-<a href=#989 id=989 data-nosnippet>989</a>
-<a href=#990 id=990 data-nosnippet>990</a>            <span class="kw">let </span>welcome_option = needs_welcome
-<a href=#991 id=991 data-nosnippet>991</a>                .then(|| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, CreateCommitError&gt; {
-<a href=#992 id=992 data-nosnippet>992</a>                    <span class="kw">let </span>group_info_tbs = {
-<a href=#993 id=993 data-nosnippet>993</a>                        GroupInfoTBS::new(
-<a href=#994 id=994 data-nosnippet>994</a>                            diff.group_context().clone(),
-<a href=#995 id=995 data-nosnippet>995</a>                            extensions.clone(),
-<a href=#996 id=996 data-nosnippet>996</a>                            confirmation_tag.clone(),
-<a href=#997 id=997 data-nosnippet>997</a>                            own_leaf_index,
-<a href=#998 id=998 data-nosnippet>998</a>                        )<span class="question-mark">?
-<a href=#999 id=999 data-nosnippet>999</a>                    </span>};
-<a href=#1000 id=1000 data-nosnippet>1000</a>                    <span class="comment">// Sign to-be-signed group info.
-<a href=#1001 id=1001 data-nosnippet>1001</a>                    </span><span class="kw">let </span>group_info = group_info_tbs.sign(old_signer)<span class="question-mark">?</span>;
-<a href=#1002 id=1002 data-nosnippet>1002</a>
-<a href=#1003 id=1003 data-nosnippet>1003</a>                    <span class="comment">// Encrypt GroupInfo object
-<a href=#1004 id=1004 data-nosnippet>1004</a>                    </span><span class="kw">let </span>(welcome_key, welcome_nonce) = welcome_secret
-<a href=#1005 id=1005 data-nosnippet>1005</a>                        .derive_welcome_key_nonce(crypto, ciphersuite)
-<a href=#1006 id=1006 data-nosnippet>1006</a>                        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-<a href=#1007 id=1007 data-nosnippet>1007</a>                    <span class="kw">let </span>encrypted_group_info = welcome_key
-<a href=#1008 id=1008 data-nosnippet>1008</a>                        .aead_seal(
-<a href=#1009 id=1009 data-nosnippet>1009</a>                            crypto,
-<a href=#1010 id=1010 data-nosnippet>1010</a>                            group_info
-<a href=#1011 id=1011 data-nosnippet>1011</a>                                .tls_serialize_detached()
-<a href=#1012 id=1012 data-nosnippet>1012</a>                                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?
-<a href=#1013 id=1013 data-nosnippet>1013</a>                                </span>.as_slice(),
-<a href=#1014 id=1014 data-nosnippet>1014</a>                            <span class="kw-2">&amp;</span>[],
-<a href=#1015 id=1015 data-nosnippet>1015</a>                            <span class="kw-2">&amp;</span>welcome_nonce,
-<a href=#1016 id=1016 data-nosnippet>1016</a>                        )
-<a href=#1017 id=1017 data-nosnippet>1017</a>                        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-<a href=#1018 id=1018 data-nosnippet>1018</a>
-<a href=#1019 id=1019 data-nosnippet>1019</a>                    <span class="comment">// Create group secrets for later use, so we can afterwards consume the
-<a href=#1020 id=1020 data-nosnippet>1020</a>                    // `joiner_secret`.
-<a href=#1021 id=1021 data-nosnippet>1021</a>                    </span><span class="kw">let </span>encrypted_secrets = diff.encrypt_group_secrets(
-<a href=#1022 id=1022 data-nosnippet>1022</a>                        <span class="kw-2">&amp;</span>joiner_secret,
-<a href=#1023 id=1023 data-nosnippet>1023</a>                        apply_proposals_values.invitation_list,
-<a href=#1024 id=1024 data-nosnippet>1024</a>                        path_computation_result.plain_path.as_deref(),
-<a href=#1025 id=1025 data-nosnippet>1025</a>                        <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
-<a href=#1026 id=1026 data-nosnippet>1026</a>                        <span class="kw-2">&amp;</span>encrypted_group_info,
-<a href=#1027 id=1027 data-nosnippet>1027</a>                        crypto,
-<a href=#1028 id=1028 data-nosnippet>1028</a>                        own_leaf_index,
-<a href=#1029 id=1029 data-nosnippet>1029</a>                    )<span class="question-mark">?</span>;
-<a href=#1030 id=1030 data-nosnippet>1030</a>
-<a href=#1031 id=1031 data-nosnippet>1031</a>                    <span class="comment">// Create welcome message
-<a href=#1032 id=1032 data-nosnippet>1032</a>                    </span><span class="kw">let </span>welcome =
-<a href=#1033 id=1033 data-nosnippet>1033</a>                        Welcome::new(ciphersuite, encrypted_secrets, encrypted_group_info);
-<a href=#1034 id=1034 data-nosnippet>1034</a>                    <span class="prelude-val">Ok</span>(welcome)
-<a href=#1035 id=1035 data-nosnippet>1035</a>                })
-<a href=#1036 id=1036 data-nosnippet>1036</a>                .transpose()<span class="question-mark">?</span>;
+<a href=#951 id=951 data-nosnippet>951</a>        <span class="kw">let </span>EpochSecretsResult {
+<a href=#952 id=952 data-nosnippet>952</a>            epoch_secrets: provisional_epoch_secrets,
+<a href=#953 id=953 data-nosnippet>953</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#954 id=954 data-nosnippet>954</a>            </span>application_exporter,
+<a href=#955 id=955 data-nosnippet>955</a>        } = key_schedule
+<a href=#956 id=956 data-nosnippet>956</a>            .epoch_secrets(crypto, ciphersuite)
+<a href=#957 id=957 data-nosnippet>957</a>            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">"Using the key schedule in the wrong state"</span>))<span class="question-mark">?</span>;
+<a href=#958 id=958 data-nosnippet>958</a>
+<a href=#959 id=959 data-nosnippet>959</a>        <span class="comment">// Calculate the confirmation tag
+<a href=#960 id=960 data-nosnippet>960</a>        </span><span class="kw">let </span>confirmation_tag = provisional_epoch_secrets
+<a href=#961 id=961 data-nosnippet>961</a>            .confirmation_key()
+<a href=#962 id=962 data-nosnippet>962</a>            .tag(
+<a href=#963 id=963 data-nosnippet>963</a>                crypto,
+<a href=#964 id=964 data-nosnippet>964</a>                ciphersuite,
+<a href=#965 id=965 data-nosnippet>965</a>                diff.group_context().confirmed_transcript_hash(),
+<a href=#966 id=966 data-nosnippet>966</a>            )
+<a href=#967 id=967 data-nosnippet>967</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#968 id=968 data-nosnippet>968</a>
+<a href=#969 id=969 data-nosnippet>969</a>        <span class="comment">// Set the confirmation tag
+<a href=#970 id=970 data-nosnippet>970</a>        </span>authenticated_content.set_confirmation_tag(confirmation_tag.clone());
+<a href=#971 id=971 data-nosnippet>971</a>
+<a href=#972 id=972 data-nosnippet>972</a>        diff.update_interim_transcript_hash(ciphersuite, crypto, confirmation_tag.clone())<span class="question-mark">?</span>;
+<a href=#973 id=973 data-nosnippet>973</a>
+<a href=#974 id=974 data-nosnippet>974</a>        <span class="comment">// If there are invitations, we need to build a welcome
+<a href=#975 id=975 data-nosnippet>975</a>        </span><span class="kw">let </span>needs_welcome = !apply_proposals_values.invitation_list.is_empty();
+<a href=#976 id=976 data-nosnippet>976</a>
+<a href=#977 id=977 data-nosnippet>977</a>        <span class="comment">// We need a GroupInfo if we need to build a Welcome, or if
+<a href=#978 id=978 data-nosnippet>978</a>        // `create_group_info` is set to `true`. If not overridden, `create_group_info`
+<a href=#979 id=979 data-nosnippet>979</a>        // is set to the `use_ratchet_tree` flag in the group configuration.
+<a href=#980 id=980 data-nosnippet>980</a>        </span><span class="kw">let </span>needs_group_info = needs_welcome || create_group_info;
+<a href=#981 id=981 data-nosnippet>981</a>
+<a href=#982 id=982 data-nosnippet>982</a>        <span class="kw">let </span>(welcome_option, group_info) = <span class="kw">if </span>!needs_group_info {
+<a href=#983 id=983 data-nosnippet>983</a>            (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+<a href=#984 id=984 data-nosnippet>984</a>        } <span class="kw">else </span>{
+<a href=#985 id=985 data-nosnippet>985</a>            <span class="comment">// Create the ratchet tree extension if necessary
+<a href=#986 id=986 data-nosnippet>986</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>extensions_list = <span class="macro">vec!</span>[];
+<a href=#987 id=987 data-nosnippet>987</a>            <span class="kw">if </span>use_ratchet_tree_extension {
+<a href=#988 id=988 data-nosnippet>988</a>                extensions_list.push(Extension::RatchetTree(RatchetTreeExtension::new(
+<a href=#989 id=989 data-nosnippet>989</a>                    diff.export_ratchet_tree(),
+<a href=#990 id=990 data-nosnippet>990</a>                )));
+<a href=#991 id=991 data-nosnippet>991</a>            };
+<a href=#992 id=992 data-nosnippet>992</a>            <span class="comment">// Append rest of extensions
+<a href=#993 id=993 data-nosnippet>993</a>            </span>extensions_list.extend(other_extensions);
+<a href=#994 id=994 data-nosnippet>994</a>
+<a href=#995 id=995 data-nosnippet>995</a>            <span class="kw">let </span><span class="kw-2">mut </span>extensions = Extensions::from_vec(extensions_list)<span class="question-mark">?</span>;
+<a href=#996 id=996 data-nosnippet>996</a>
+<a href=#997 id=997 data-nosnippet>997</a>            <span class="kw">let </span>welcome_option = needs_welcome
+<a href=#998 id=998 data-nosnippet>998</a>                .then(|| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, CreateCommitError&gt; {
+<a href=#999 id=999 data-nosnippet>999</a>                    <span class="kw">let </span>group_info_tbs = {
+<a href=#1000 id=1000 data-nosnippet>1000</a>                        GroupInfoTBS::new(
+<a href=#1001 id=1001 data-nosnippet>1001</a>                            diff.group_context().clone(),
+<a href=#1002 id=1002 data-nosnippet>1002</a>                            extensions.clone(),
+<a href=#1003 id=1003 data-nosnippet>1003</a>                            confirmation_tag.clone(),
+<a href=#1004 id=1004 data-nosnippet>1004</a>                            own_leaf_index,
+<a href=#1005 id=1005 data-nosnippet>1005</a>                        )<span class="question-mark">?
+<a href=#1006 id=1006 data-nosnippet>1006</a>                    </span>};
+<a href=#1007 id=1007 data-nosnippet>1007</a>                    <span class="comment">// Sign to-be-signed group info.
+<a href=#1008 id=1008 data-nosnippet>1008</a>                    </span><span class="kw">let </span>group_info = group_info_tbs.sign(old_signer)<span class="question-mark">?</span>;
+<a href=#1009 id=1009 data-nosnippet>1009</a>
+<a href=#1010 id=1010 data-nosnippet>1010</a>                    <span class="comment">// Encrypt GroupInfo object
+<a href=#1011 id=1011 data-nosnippet>1011</a>                    </span><span class="kw">let </span>(welcome_key, welcome_nonce) = welcome_secret
+<a href=#1012 id=1012 data-nosnippet>1012</a>                        .derive_welcome_key_nonce(crypto, ciphersuite)
+<a href=#1013 id=1013 data-nosnippet>1013</a>                        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#1014 id=1014 data-nosnippet>1014</a>                    <span class="kw">let </span>encrypted_group_info = welcome_key
+<a href=#1015 id=1015 data-nosnippet>1015</a>                        .aead_seal(
+<a href=#1016 id=1016 data-nosnippet>1016</a>                            crypto,
+<a href=#1017 id=1017 data-nosnippet>1017</a>                            group_info
+<a href=#1018 id=1018 data-nosnippet>1018</a>                                .tls_serialize_detached()
+<a href=#1019 id=1019 data-nosnippet>1019</a>                                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?
+<a href=#1020 id=1020 data-nosnippet>1020</a>                                </span>.as_slice(),
+<a href=#1021 id=1021 data-nosnippet>1021</a>                            <span class="kw-2">&amp;</span>[],
+<a href=#1022 id=1022 data-nosnippet>1022</a>                            <span class="kw-2">&amp;</span>welcome_nonce,
+<a href=#1023 id=1023 data-nosnippet>1023</a>                        )
+<a href=#1024 id=1024 data-nosnippet>1024</a>                        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#1025 id=1025 data-nosnippet>1025</a>
+<a href=#1026 id=1026 data-nosnippet>1026</a>                    <span class="comment">// Create group secrets for later use, so we can afterwards consume the
+<a href=#1027 id=1027 data-nosnippet>1027</a>                    // `joiner_secret`.
+<a href=#1028 id=1028 data-nosnippet>1028</a>                    </span><span class="kw">let </span>encrypted_secrets = diff.encrypt_group_secrets(
+<a href=#1029 id=1029 data-nosnippet>1029</a>                        <span class="kw-2">&amp;</span>joiner_secret,
+<a href=#1030 id=1030 data-nosnippet>1030</a>                        apply_proposals_values.invitation_list,
+<a href=#1031 id=1031 data-nosnippet>1031</a>                        path_computation_result.plain_path.as_deref(),
+<a href=#1032 id=1032 data-nosnippet>1032</a>                        <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
+<a href=#1033 id=1033 data-nosnippet>1033</a>                        <span class="kw-2">&amp;</span>encrypted_group_info,
+<a href=#1034 id=1034 data-nosnippet>1034</a>                        crypto,
+<a href=#1035 id=1035 data-nosnippet>1035</a>                        own_leaf_index,
+<a href=#1036 id=1036 data-nosnippet>1036</a>                    )<span class="question-mark">?</span>;
 <a href=#1037 id=1037 data-nosnippet>1037</a>
-<a href=#1038 id=1038 data-nosnippet>1038</a>            <span class="comment">// Create the GroupInfo for export if needed. In contrast to the Welcome, this
-<a href=#1039 id=1039 data-nosnippet>1039</a>            // group info contains the external public key extension.
-<a href=#1040 id=1040 data-nosnippet>1040</a>            </span><span class="kw">let </span>exported_group_info = create_group_info
-<a href=#1041 id=1041 data-nosnippet>1041</a>                .then(|| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, CreateCommitError&gt; {
-<a href=#1042 id=1042 data-nosnippet>1042</a>                    <span class="kw">let </span>external_pub = provisional_epoch_secrets
-<a href=#1043 id=1043 data-nosnippet>1043</a>                        .external_secret()
-<a href=#1044 id=1044 data-nosnippet>1044</a>                        .derive_external_keypair(crypto, ciphersuite)
-<a href=#1045 id=1045 data-nosnippet>1045</a>                        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
-<a href=#1046 id=1046 data-nosnippet>1046</a>                        </span>.public;
-<a href=#1047 id=1047 data-nosnippet>1047</a>
-<a href=#1048 id=1048 data-nosnippet>1048</a>                    <span class="kw">let </span>external_pub_extension =
-<a href=#1049 id=1049 data-nosnippet>1049</a>                        Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
-<a href=#1050 id=1050 data-nosnippet>1050</a>                    extensions.add(external_pub_extension)<span class="question-mark">?</span>;
-<a href=#1051 id=1051 data-nosnippet>1051</a>                    <span class="kw">let </span>group_info_tbs = {
-<a href=#1052 id=1052 data-nosnippet>1052</a>                        GroupInfoTBS::new(
-<a href=#1053 id=1053 data-nosnippet>1053</a>                            diff.group_context().clone(),
-<a href=#1054 id=1054 data-nosnippet>1054</a>                            extensions,
-<a href=#1055 id=1055 data-nosnippet>1055</a>                            confirmation_tag.clone(),
-<a href=#1056 id=1056 data-nosnippet>1056</a>                            own_leaf_index,
-<a href=#1057 id=1057 data-nosnippet>1057</a>                        )<span class="question-mark">?
-<a href=#1058 id=1058 data-nosnippet>1058</a>                    </span>};
-<a href=#1059 id=1059 data-nosnippet>1059</a>                    <span class="comment">// Sign to-be-signed group info.
-<a href=#1060 id=1060 data-nosnippet>1060</a>                    </span><span class="prelude-val">Ok</span>(group_info_tbs.sign(old_signer)<span class="question-mark">?</span>)
-<a href=#1061 id=1061 data-nosnippet>1061</a>                })
-<a href=#1062 id=1062 data-nosnippet>1062</a>                .transpose()<span class="question-mark">?</span>;
-<a href=#1063 id=1063 data-nosnippet>1063</a>
-<a href=#1064 id=1064 data-nosnippet>1064</a>            (welcome_option, exported_group_info)
-<a href=#1065 id=1065 data-nosnippet>1065</a>        };
-<a href=#1066 id=1066 data-nosnippet>1066</a>
-<a href=#1067 id=1067 data-nosnippet>1067</a>        <span class="kw">let </span>(provisional_group_epoch_secrets, provisional_message_secrets) =
-<a href=#1068 id=1068 data-nosnippet>1068</a>            provisional_epoch_secrets.split_secrets(
-<a href=#1069 id=1069 data-nosnippet>1069</a>                serialized_provisional_group_context,
-<a href=#1070 id=1070 data-nosnippet>1070</a>                diff.tree_size(),
-<a href=#1071 id=1071 data-nosnippet>1071</a>                own_leaf_index,
-<a href=#1072 id=1072 data-nosnippet>1072</a>            );
+<a href=#1038 id=1038 data-nosnippet>1038</a>                    <span class="comment">// Create welcome message
+<a href=#1039 id=1039 data-nosnippet>1039</a>                    </span><span class="kw">let </span>welcome =
+<a href=#1040 id=1040 data-nosnippet>1040</a>                        Welcome::new(ciphersuite, encrypted_secrets, encrypted_group_info);
+<a href=#1041 id=1041 data-nosnippet>1041</a>                    <span class="prelude-val">Ok</span>(welcome)
+<a href=#1042 id=1042 data-nosnippet>1042</a>                })
+<a href=#1043 id=1043 data-nosnippet>1043</a>                .transpose()<span class="question-mark">?</span>;
+<a href=#1044 id=1044 data-nosnippet>1044</a>
+<a href=#1045 id=1045 data-nosnippet>1045</a>            <span class="comment">// Create the GroupInfo for export if needed. In contrast to the Welcome, this
+<a href=#1046 id=1046 data-nosnippet>1046</a>            // group info contains the external public key extension.
+<a href=#1047 id=1047 data-nosnippet>1047</a>            </span><span class="kw">let </span>exported_group_info = create_group_info
+<a href=#1048 id=1048 data-nosnippet>1048</a>                .then(|| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, CreateCommitError&gt; {
+<a href=#1049 id=1049 data-nosnippet>1049</a>                    <span class="kw">let </span>external_pub = provisional_epoch_secrets
+<a href=#1050 id=1050 data-nosnippet>1050</a>                        .external_secret()
+<a href=#1051 id=1051 data-nosnippet>1051</a>                        .derive_external_keypair(crypto, ciphersuite)
+<a href=#1052 id=1052 data-nosnippet>1052</a>                        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
+<a href=#1053 id=1053 data-nosnippet>1053</a>                        </span>.public;
+<a href=#1054 id=1054 data-nosnippet>1054</a>
+<a href=#1055 id=1055 data-nosnippet>1055</a>                    <span class="kw">let </span>external_pub_extension =
+<a href=#1056 id=1056 data-nosnippet>1056</a>                        Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
+<a href=#1057 id=1057 data-nosnippet>1057</a>                    extensions.add(external_pub_extension)<span class="question-mark">?</span>;
+<a href=#1058 id=1058 data-nosnippet>1058</a>                    <span class="kw">let </span>group_info_tbs = {
+<a href=#1059 id=1059 data-nosnippet>1059</a>                        GroupInfoTBS::new(
+<a href=#1060 id=1060 data-nosnippet>1060</a>                            diff.group_context().clone(),
+<a href=#1061 id=1061 data-nosnippet>1061</a>                            extensions,
+<a href=#1062 id=1062 data-nosnippet>1062</a>                            confirmation_tag.clone(),
+<a href=#1063 id=1063 data-nosnippet>1063</a>                            own_leaf_index,
+<a href=#1064 id=1064 data-nosnippet>1064</a>                        )<span class="question-mark">?
+<a href=#1065 id=1065 data-nosnippet>1065</a>                    </span>};
+<a href=#1066 id=1066 data-nosnippet>1066</a>                    <span class="comment">// Sign to-be-signed group info.
+<a href=#1067 id=1067 data-nosnippet>1067</a>                    </span><span class="prelude-val">Ok</span>(group_info_tbs.sign(old_signer)<span class="question-mark">?</span>)
+<a href=#1068 id=1068 data-nosnippet>1068</a>                })
+<a href=#1069 id=1069 data-nosnippet>1069</a>                .transpose()<span class="question-mark">?</span>;
+<a href=#1070 id=1070 data-nosnippet>1070</a>
+<a href=#1071 id=1071 data-nosnippet>1071</a>            (welcome_option, exported_group_info)
+<a href=#1072 id=1072 data-nosnippet>1072</a>        };
 <a href=#1073 id=1073 data-nosnippet>1073</a>
-<a href=#1074 id=1074 data-nosnippet>1074</a>        <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#1075 id=1075 data-nosnippet>1075</a>        </span><span class="kw">let </span>application_export_tree = ApplicationExportTree::new(application_exporter);
-<a href=#1076 id=1076 data-nosnippet>1076</a>        <span class="kw">let </span>staged_commit_state = MemberStagedCommitState::new(
-<a href=#1077 id=1077 data-nosnippet>1077</a>            provisional_group_epoch_secrets,
-<a href=#1078 id=1078 data-nosnippet>1078</a>            provisional_message_secrets,
-<a href=#1079 id=1079 data-nosnippet>1079</a>            diff.into_staged_diff(crypto, ciphersuite)<span class="question-mark">?</span>,
-<a href=#1080 id=1080 data-nosnippet>1080</a>            path_computation_result.new_keypairs,
-<a href=#1081 id=1081 data-nosnippet>1081</a>            <span class="comment">// The committer is not allowed to include their own update
-<a href=#1082 id=1082 data-nosnippet>1082</a>            // proposal, so there is no extra keypair to store here.
-<a href=#1083 id=1083 data-nosnippet>1083</a>            </span><span class="prelude-val">None</span>,
-<a href=#1084 id=1084 data-nosnippet>1084</a>            update_path_leaf_node,
-<a href=#1085 id=1085 data-nosnippet>1085</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#1086 id=1086 data-nosnippet>1086</a>            </span>application_export_tree,
-<a href=#1087 id=1087 data-nosnippet>1087</a>            <span class="comment">// The committer's `own_leaf_index` is already set to the new
-<a href=#1088 id=1088 data-nosnippet>1088</a>            // leaf (in `build_group` for external commits, or unchanged for
-<a href=#1089 id=1089 data-nosnippet>1089</a>            // regular commits), so `merge_commit` has nothing to overwrite.
-<a href=#1090 id=1090 data-nosnippet>1090</a>            </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#1091 id=1091 data-nosnippet>1091</a>            </span><span class="prelude-val">None</span>,
-<a href=#1092 id=1092 data-nosnippet>1092</a>        );
-<a href=#1093 id=1093 data-nosnippet>1093</a>        <span class="kw">let </span>staged_commit = StagedCommit::new(
-<a href=#1094 id=1094 data-nosnippet>1094</a>            proposal_queue,
-<a href=#1095 id=1095 data-nosnippet>1095</a>            StagedCommitState::GroupMember(Box::new(staged_commit_state)),
-<a href=#1096 id=1096 data-nosnippet>1096</a>            <span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#1097 id=1097 data-nosnippet>1097</a>            </span>vc_loaded.as_ref().map(|loaded| loaded.epoch_id.clone()),
-<a href=#1098 id=1098 data-nosnippet>1098</a>        );
-<a href=#1099 id=1099 data-nosnippet>1099</a>
-<a href=#1100 id=1100 data-nosnippet>1100</a>        <span class="prelude-val">Ok</span>(builder.into_stage(Complete {
-<a href=#1101 id=1101 data-nosnippet>1101</a>            result: CreateCommitResult {
-<a href=#1102 id=1102 data-nosnippet>1102</a>                commit: authenticated_content,
-<a href=#1103 id=1103 data-nosnippet>1103</a>                welcome_option,
-<a href=#1104 id=1104 data-nosnippet>1104</a>                staged_commit,
-<a href=#1105 id=1105 data-nosnippet>1105</a>                group_info: group_info.filter(|<span class="kw">_</span>| create_group_info),
-<a href=#1106 id=1106 data-nosnippet>1106</a>            },
-<a href=#1107 id=1107 data-nosnippet>1107</a>            original_wire_format_policy: cur_stage
-<a href=#1108 id=1108 data-nosnippet>1108</a>                .external_commit_info
-<a href=#1109 id=1109 data-nosnippet>1109</a>                .as_ref()
-<a href=#1110 id=1110 data-nosnippet>1110</a>                .map(|info| info.wire_format_policy),
-<a href=#1111 id=1111 data-nosnippet>1111</a>        }))
-<a href=#1112 id=1112 data-nosnippet>1112</a>    }
-<a href=#1113 id=1113 data-nosnippet>1113</a>
-<a href=#1114 id=1114 data-nosnippet>1114</a>    <span class="doccomment">/// Creates a new [`AppDataUpdates`] based on the current state of the
-<a href=#1115 id=1115 data-nosnippet>1115</a>    /// [`AppDataDictionary`] of the group.
-<a href=#1116 id=1116 data-nosnippet>1116</a>    ///
-<a href=#1117 id=1117 data-nosnippet>1117</a>    /// [`AppDataDictionary`]: crate::extensions::AppDataDictionary
-<a href=#1118 id=1118 data-nosnippet>1118</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#1119 id=1119 data-nosnippet>1119</a>    </span><span class="kw">pub fn </span>app_data_dictionary_updater(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; AppDataDictionaryUpdater&lt;<span class="lifetime">'_</span>&gt; {
-<a href=#1120 id=1120 data-nosnippet>1120</a>        AppDataDictionaryUpdater::new(<span class="self">self</span>.group.borrow().context().app_data_dict())
-<a href=#1121 id=1121 data-nosnippet>1121</a>    }
-<a href=#1122 id=1122 data-nosnippet>1122</a>
-<a href=#1123 id=1123 data-nosnippet>1123</a>    <span class="doccomment">/// Sets the [`AppDataUpdates`] that contain the changes made by the AppDataUpdate proposals
-<a href=#1124 id=1124 data-nosnippet>1124</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#1125 id=1125 data-nosnippet>1125</a>    </span><span class="kw">pub fn </span>with_app_data_dictionary_updates(
-<a href=#1126 id=1126 data-nosnippet>1126</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#1127 id=1127 data-nosnippet>1127</a>        app_data_dictionary_updates: <span class="prelude-ty">Option</span>&lt;AppDataUpdates&gt;,
-<a href=#1128 id=1128 data-nosnippet>1128</a>    ) {
-<a href=#1129 id=1129 data-nosnippet>1129</a>        <span class="self">self</span>.stage.app_data_dictionary_updates = app_data_dictionary_updates;
-<a href=#1130 id=1130 data-nosnippet>1130</a>    }
-<a href=#1131 id=1131 data-nosnippet>1131</a>
-<a href=#1132 id=1132 data-nosnippet>1132</a>    <span class="doccomment">/// Returns an iterator over all AppDataUpdate proposals in the proposal store of the group
-<a href=#1133 id=1133 data-nosnippet>1133</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#1134 id=1134 data-nosnippet>1134</a>    </span><span class="kw">pub fn </span>app_data_update_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>AppDataUpdateProposal&gt; {
-<a href=#1135 id=1135 data-nosnippet>1135</a>        <span class="kw">let </span>proposal_store_proposals = <span class="self">self
-<a href=#1136 id=1136 data-nosnippet>1136</a>            </span>.group
-<a href=#1137 id=1137 data-nosnippet>1137</a>            .borrow()
-<a href=#1138 id=1138 data-nosnippet>1138</a>            .proposal_store()
-<a href=#1139 id=1139 data-nosnippet>1139</a>            .proposals()
-<a href=#1140 id=1140 data-nosnippet>1140</a>            .map(|queued_proposal| queued_proposal.proposal());
-<a href=#1141 id=1141 data-nosnippet>1141</a>
-<a href=#1142 id=1142 data-nosnippet>1142</a>        <span class="comment">// The proposals in the proposal store come earlier than the own_proposals.
-<a href=#1143 id=1143 data-nosnippet>1143</a>        </span><span class="kw">let </span>all_proposals = proposal_store_proposals.chain(<span class="self">self</span>.stage.own_proposals.iter());
-<a href=#1144 id=1144 data-nosnippet>1144</a>
-<a href=#1145 id=1145 data-nosnippet>1145</a>        <span class="comment">// Filter for AppDataUpdate proposals
-<a href=#1146 id=1146 data-nosnippet>1146</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>app_data_update_proposals: Vec&lt;<span class="kw-2">&amp;</span>AppDataUpdateProposal&gt; = all_proposals
-<a href=#1147 id=1147 data-nosnippet>1147</a>            .filter_map(|proposal| <span class="kw">match </span>proposal {
-<a href=#1148 id=1148 data-nosnippet>1148</a>                Proposal::AppDataUpdate(proposal) =&gt; <span class="prelude-val">Some</span>(proposal.as_ref()),
-<a href=#1149 id=1149 data-nosnippet>1149</a>                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-<a href=#1150 id=1150 data-nosnippet>1150</a>            })
-<a href=#1151 id=1151 data-nosnippet>1151</a>            .collect();
-<a href=#1152 id=1152 data-nosnippet>1152</a>
-<a href=#1153 id=1153 data-nosnippet>1153</a>        app_data_update_proposals.sort_by_key(|prop| prop.component_id());
-<a href=#1154 id=1154 data-nosnippet>1154</a>        app_data_update_proposals.into_iter()
-<a href=#1155 id=1155 data-nosnippet>1155</a>    }
-<a href=#1156 id=1156 data-nosnippet>1156</a>}
-<a href=#1157 id=1157 data-nosnippet>1157</a>
-<a href=#1158 id=1158 data-nosnippet>1158</a><span class="comment">// Impls that apply only to regular commits.
-<a href=#1159 id=1159 data-nosnippet>1159</a></span><span class="kw">impl </span>CommitBuilder&lt;<span class="lifetime">'_</span>, Complete, <span class="kw-2">&amp;mut </span>MlsGroup&gt; {
-<a href=#1160 id=1160 data-nosnippet>1160</a>    <span class="attr">#[cfg(test)]
-<a href=#1161 id=1161 data-nosnippet>1161</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>commit_result(<span class="self">self</span>) -&gt; CreateCommitResult {
-<a href=#1162 id=1162 data-nosnippet>1162</a>        <span class="self">self</span>.stage.result
-<a href=#1163 id=1163 data-nosnippet>1163</a>    }
+<a href=#1074 id=1074 data-nosnippet>1074</a>        <span class="kw">let </span>(provisional_group_epoch_secrets, provisional_message_secrets) =
+<a href=#1075 id=1075 data-nosnippet>1075</a>            provisional_epoch_secrets.split_secrets(
+<a href=#1076 id=1076 data-nosnippet>1076</a>                serialized_provisional_group_context,
+<a href=#1077 id=1077 data-nosnippet>1077</a>                diff.tree_size(),
+<a href=#1078 id=1078 data-nosnippet>1078</a>                own_leaf_index,
+<a href=#1079 id=1079 data-nosnippet>1079</a>            );
+<a href=#1080 id=1080 data-nosnippet>1080</a>
+<a href=#1081 id=1081 data-nosnippet>1081</a>        <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#1082 id=1082 data-nosnippet>1082</a>        </span><span class="kw">let </span>application_export_tree = ApplicationExportTree::new(application_exporter);
+<a href=#1083 id=1083 data-nosnippet>1083</a>        <span class="kw">let </span>staged_commit_state = MemberStagedCommitState::new(
+<a href=#1084 id=1084 data-nosnippet>1084</a>            provisional_group_epoch_secrets,
+<a href=#1085 id=1085 data-nosnippet>1085</a>            provisional_message_secrets,
+<a href=#1086 id=1086 data-nosnippet>1086</a>            diff.into_staged_diff(crypto, ciphersuite)<span class="question-mark">?</span>,
+<a href=#1087 id=1087 data-nosnippet>1087</a>            path_computation_result.new_keypairs,
+<a href=#1088 id=1088 data-nosnippet>1088</a>            <span class="comment">// The committer is not allowed to include their own update
+<a href=#1089 id=1089 data-nosnippet>1089</a>            // proposal, so there is no extra keypair to store here.
+<a href=#1090 id=1090 data-nosnippet>1090</a>            </span><span class="prelude-val">None</span>,
+<a href=#1091 id=1091 data-nosnippet>1091</a>            update_path_leaf_node,
+<a href=#1092 id=1092 data-nosnippet>1092</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#1093 id=1093 data-nosnippet>1093</a>            </span>application_export_tree,
+<a href=#1094 id=1094 data-nosnippet>1094</a>            <span class="comment">// The committer's `own_leaf_index` is already set to the new
+<a href=#1095 id=1095 data-nosnippet>1095</a>            // leaf (in `build_group` for external commits, or unchanged for
+<a href=#1096 id=1096 data-nosnippet>1096</a>            // regular commits), so `merge_commit` has nothing to overwrite.
+<a href=#1097 id=1097 data-nosnippet>1097</a>            </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#1098 id=1098 data-nosnippet>1098</a>            </span><span class="prelude-val">None</span>,
+<a href=#1099 id=1099 data-nosnippet>1099</a>        );
+<a href=#1100 id=1100 data-nosnippet>1100</a>        <span class="kw">let </span>staged_commit = StagedCommit::new(
+<a href=#1101 id=1101 data-nosnippet>1101</a>            proposal_queue,
+<a href=#1102 id=1102 data-nosnippet>1102</a>            StagedCommitState::GroupMember(Box::new(staged_commit_state)),
+<a href=#1103 id=1103 data-nosnippet>1103</a>            <span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#1104 id=1104 data-nosnippet>1104</a>            </span>vc_loaded.as_ref().map(|loaded| loaded.epoch_id.clone()),
+<a href=#1105 id=1105 data-nosnippet>1105</a>        );
+<a href=#1106 id=1106 data-nosnippet>1106</a>
+<a href=#1107 id=1107 data-nosnippet>1107</a>        <span class="prelude-val">Ok</span>(builder.into_stage(Complete {
+<a href=#1108 id=1108 data-nosnippet>1108</a>            result: CreateCommitResult {
+<a href=#1109 id=1109 data-nosnippet>1109</a>                commit: authenticated_content,
+<a href=#1110 id=1110 data-nosnippet>1110</a>                welcome_option,
+<a href=#1111 id=1111 data-nosnippet>1111</a>                staged_commit,
+<a href=#1112 id=1112 data-nosnippet>1112</a>                group_info: group_info.filter(|<span class="kw">_</span>| create_group_info),
+<a href=#1113 id=1113 data-nosnippet>1113</a>            },
+<a href=#1114 id=1114 data-nosnippet>1114</a>            original_wire_format_policy: cur_stage
+<a href=#1115 id=1115 data-nosnippet>1115</a>                .external_commit_info
+<a href=#1116 id=1116 data-nosnippet>1116</a>                .as_ref()
+<a href=#1117 id=1117 data-nosnippet>1117</a>                .map(|info| info.wire_format_policy),
+<a href=#1118 id=1118 data-nosnippet>1118</a>        }))
+<a href=#1119 id=1119 data-nosnippet>1119</a>    }
+<a href=#1120 id=1120 data-nosnippet>1120</a>
+<a href=#1121 id=1121 data-nosnippet>1121</a>    <span class="doccomment">/// Creates a new [`AppDataUpdates`] based on the current state of the
+<a href=#1122 id=1122 data-nosnippet>1122</a>    /// [`AppDataDictionary`] of the group.
+<a href=#1123 id=1123 data-nosnippet>1123</a>    ///
+<a href=#1124 id=1124 data-nosnippet>1124</a>    /// [`AppDataDictionary`]: crate::extensions::AppDataDictionary
+<a href=#1125 id=1125 data-nosnippet>1125</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#1126 id=1126 data-nosnippet>1126</a>    </span><span class="kw">pub fn </span>app_data_dictionary_updater(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; AppDataDictionaryUpdater&lt;<span class="lifetime">'_</span>&gt; {
+<a href=#1127 id=1127 data-nosnippet>1127</a>        AppDataDictionaryUpdater::new(<span class="self">self</span>.group.borrow().context().app_data_dict())
+<a href=#1128 id=1128 data-nosnippet>1128</a>    }
+<a href=#1129 id=1129 data-nosnippet>1129</a>
+<a href=#1130 id=1130 data-nosnippet>1130</a>    <span class="doccomment">/// Sets the [`AppDataUpdates`] that contain the changes made by the AppDataUpdate proposals
+<a href=#1131 id=1131 data-nosnippet>1131</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#1132 id=1132 data-nosnippet>1132</a>    </span><span class="kw">pub fn </span>with_app_data_dictionary_updates(
+<a href=#1133 id=1133 data-nosnippet>1133</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#1134 id=1134 data-nosnippet>1134</a>        app_data_dictionary_updates: <span class="prelude-ty">Option</span>&lt;AppDataUpdates&gt;,
+<a href=#1135 id=1135 data-nosnippet>1135</a>    ) {
+<a href=#1136 id=1136 data-nosnippet>1136</a>        <span class="self">self</span>.stage.app_data_dictionary_updates = app_data_dictionary_updates;
+<a href=#1137 id=1137 data-nosnippet>1137</a>    }
+<a href=#1138 id=1138 data-nosnippet>1138</a>
+<a href=#1139 id=1139 data-nosnippet>1139</a>    <span class="doccomment">/// Returns an iterator over all AppDataUpdate proposals in the proposal store of the group
+<a href=#1140 id=1140 data-nosnippet>1140</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#1141 id=1141 data-nosnippet>1141</a>    </span><span class="kw">pub fn </span>app_data_update_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>AppDataUpdateProposal&gt; {
+<a href=#1142 id=1142 data-nosnippet>1142</a>        <span class="kw">let </span>proposal_store_proposals = <span class="self">self
+<a href=#1143 id=1143 data-nosnippet>1143</a>            </span>.group
+<a href=#1144 id=1144 data-nosnippet>1144</a>            .borrow()
+<a href=#1145 id=1145 data-nosnippet>1145</a>            .proposal_store()
+<a href=#1146 id=1146 data-nosnippet>1146</a>            .proposals()
+<a href=#1147 id=1147 data-nosnippet>1147</a>            .map(|queued_proposal| queued_proposal.proposal());
+<a href=#1148 id=1148 data-nosnippet>1148</a>
+<a href=#1149 id=1149 data-nosnippet>1149</a>        <span class="comment">// The proposals in the proposal store come earlier than the own_proposals.
+<a href=#1150 id=1150 data-nosnippet>1150</a>        </span><span class="kw">let </span>all_proposals = proposal_store_proposals.chain(<span class="self">self</span>.stage.own_proposals.iter());
+<a href=#1151 id=1151 data-nosnippet>1151</a>
+<a href=#1152 id=1152 data-nosnippet>1152</a>        <span class="comment">// Filter for AppDataUpdate proposals
+<a href=#1153 id=1153 data-nosnippet>1153</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>app_data_update_proposals: Vec&lt;<span class="kw-2">&amp;</span>AppDataUpdateProposal&gt; = all_proposals
+<a href=#1154 id=1154 data-nosnippet>1154</a>            .filter_map(|proposal| <span class="kw">match </span>proposal {
+<a href=#1155 id=1155 data-nosnippet>1155</a>                Proposal::AppDataUpdate(proposal) =&gt; <span class="prelude-val">Some</span>(proposal.as_ref()),
+<a href=#1156 id=1156 data-nosnippet>1156</a>                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+<a href=#1157 id=1157 data-nosnippet>1157</a>            })
+<a href=#1158 id=1158 data-nosnippet>1158</a>            .collect();
+<a href=#1159 id=1159 data-nosnippet>1159</a>
+<a href=#1160 id=1160 data-nosnippet>1160</a>        app_data_update_proposals.sort_by_key(|prop| prop.component_id());
+<a href=#1161 id=1161 data-nosnippet>1161</a>        app_data_update_proposals.into_iter()
+<a href=#1162 id=1162 data-nosnippet>1162</a>    }
+<a href=#1163 id=1163 data-nosnippet>1163</a>}
 <a href=#1164 id=1164 data-nosnippet>1164</a>
-<a href=#1165 id=1165 data-nosnippet>1165</a>    <span class="doccomment">/// Stages the commit and returns the protocol messages.
-<a href=#1166 id=1166 data-nosnippet>1166</a>    </span><span class="kw">pub fn </span>stage_commit&lt;Provider: OpenMlsProvider&gt;(
-<a href=#1167 id=1167 data-nosnippet>1167</a>        <span class="self">self</span>,
-<a href=#1168 id=1168 data-nosnippet>1168</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#1169 id=1169 data-nosnippet>1169</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;CommitMessageBundle, CommitBuilderStageError&lt;Provider::StorageError&gt;&gt; {
-<a href=#1170 id=1170 data-nosnippet>1170</a>        <span class="kw">let </span><span class="self">Self </span>{
-<a href=#1171 id=1171 data-nosnippet>1171</a>            group,
-<a href=#1172 id=1172 data-nosnippet>1172</a>            stage:
-<a href=#1173 id=1173 data-nosnippet>1173</a>                Complete {
-<a href=#1174 id=1174 data-nosnippet>1174</a>                    result: create_commit_result,
-<a href=#1175 id=1175 data-nosnippet>1175</a>                    original_wire_format_policy: <span class="kw">_</span>,
-<a href=#1176 id=1176 data-nosnippet>1176</a>                },
-<a href=#1177 id=1177 data-nosnippet>1177</a>            ..
-<a href=#1178 id=1178 data-nosnippet>1178</a>        } = <span class="self">self</span>;
-<a href=#1179 id=1179 data-nosnippet>1179</a>
-<a href=#1180 id=1180 data-nosnippet>1180</a>        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
-<a href=#1181 id=1181 data-nosnippet>1181</a>        // storing the current [`StagedCommit`] from the commit results
-<a href=#1182 id=1182 data-nosnippet>1182</a>        </span>group.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-<a href=#1183 id=1183 data-nosnippet>1183</a>            create_commit_result.staged_commit,
-<a href=#1184 id=1184 data-nosnippet>1184</a>        )));
-<a href=#1185 id=1185 data-nosnippet>1185</a>
-<a href=#1186 id=1186 data-nosnippet>1186</a>        provider
-<a href=#1187 id=1187 data-nosnippet>1187</a>            .storage()
-<a href=#1188 id=1188 data-nosnippet>1188</a>            .write_group_state(group.group_id(), <span class="kw-2">&amp;</span>group.group_state)
-<a href=#1189 id=1189 data-nosnippet>1189</a>            .map_err(CommitBuilderStageError::KeyStoreError)<span class="question-mark">?</span>;
-<a href=#1190 id=1190 data-nosnippet>1190</a>
-<a href=#1191 id=1191 data-nosnippet>1191</a>        group.reset_aad();
+<a href=#1165 id=1165 data-nosnippet>1165</a><span class="comment">// Impls that apply only to regular commits.
+<a href=#1166 id=1166 data-nosnippet>1166</a></span><span class="kw">impl </span>CommitBuilder&lt;<span class="lifetime">'_</span>, Complete, <span class="kw-2">&amp;mut </span>MlsGroup&gt; {
+<a href=#1167 id=1167 data-nosnippet>1167</a>    <span class="attr">#[cfg(test)]
+<a href=#1168 id=1168 data-nosnippet>1168</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>commit_result(<span class="self">self</span>) -&gt; CreateCommitResult {
+<a href=#1169 id=1169 data-nosnippet>1169</a>        <span class="self">self</span>.stage.result
+<a href=#1170 id=1170 data-nosnippet>1170</a>    }
+<a href=#1171 id=1171 data-nosnippet>1171</a>
+<a href=#1172 id=1172 data-nosnippet>1172</a>    <span class="doccomment">/// Stages the commit and returns the protocol messages.
+<a href=#1173 id=1173 data-nosnippet>1173</a>    </span><span class="kw">pub fn </span>stage_commit&lt;Provider: OpenMlsProvider&gt;(
+<a href=#1174 id=1174 data-nosnippet>1174</a>        <span class="self">self</span>,
+<a href=#1175 id=1175 data-nosnippet>1175</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#1176 id=1176 data-nosnippet>1176</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;CommitMessageBundle, CommitBuilderStageError&lt;Provider::StorageError&gt;&gt; {
+<a href=#1177 id=1177 data-nosnippet>1177</a>        <span class="kw">let </span><span class="self">Self </span>{
+<a href=#1178 id=1178 data-nosnippet>1178</a>            group,
+<a href=#1179 id=1179 data-nosnippet>1179</a>            stage:
+<a href=#1180 id=1180 data-nosnippet>1180</a>                Complete {
+<a href=#1181 id=1181 data-nosnippet>1181</a>                    result: create_commit_result,
+<a href=#1182 id=1182 data-nosnippet>1182</a>                    original_wire_format_policy: <span class="kw">_</span>,
+<a href=#1183 id=1183 data-nosnippet>1183</a>                },
+<a href=#1184 id=1184 data-nosnippet>1184</a>            ..
+<a href=#1185 id=1185 data-nosnippet>1185</a>        } = <span class="self">self</span>;
+<a href=#1186 id=1186 data-nosnippet>1186</a>
+<a href=#1187 id=1187 data-nosnippet>1187</a>        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
+<a href=#1188 id=1188 data-nosnippet>1188</a>        // storing the current [`StagedCommit`] from the commit results
+<a href=#1189 id=1189 data-nosnippet>1189</a>        </span>group.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+<a href=#1190 id=1190 data-nosnippet>1190</a>            create_commit_result.staged_commit,
+<a href=#1191 id=1191 data-nosnippet>1191</a>        )));
 <a href=#1192 id=1192 data-nosnippet>1192</a>
-<a href=#1193 id=1193 data-nosnippet>1193</a>        <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by the
-<a href=#1194 id=1194 data-nosnippet>1194</a>        // configuration.
-<a href=#1195 id=1195 data-nosnippet>1195</a>        //
-<a href=#1196 id=1196 data-nosnippet>1196</a>        // Note that this performs writes to the storage, so we should do that here, rather than
-<a href=#1197 id=1197 data-nosnippet>1197</a>        // when working with the result.
-<a href=#1198 id=1198 data-nosnippet>1198</a>        </span><span class="kw">let </span>mls_message = group.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
+<a href=#1193 id=1193 data-nosnippet>1193</a>        provider
+<a href=#1194 id=1194 data-nosnippet>1194</a>            .storage()
+<a href=#1195 id=1195 data-nosnippet>1195</a>            .write_group_state(group.group_id(), <span class="kw-2">&amp;</span>group.group_state)
+<a href=#1196 id=1196 data-nosnippet>1196</a>            .map_err(CommitBuilderStageError::KeyStoreError)<span class="question-mark">?</span>;
+<a href=#1197 id=1197 data-nosnippet>1197</a>
+<a href=#1198 id=1198 data-nosnippet>1198</a>        group.reset_aad();
 <a href=#1199 id=1199 data-nosnippet>1199</a>
-<a href=#1200 id=1200 data-nosnippet>1200</a>        <span class="prelude-val">Ok</span>(CommitMessageBundle {
-<a href=#1201 id=1201 data-nosnippet>1201</a>            version: group.version(),
-<a href=#1202 id=1202 data-nosnippet>1202</a>            commit: mls_message,
-<a href=#1203 id=1203 data-nosnippet>1203</a>            welcome: create_commit_result.welcome_option,
-<a href=#1204 id=1204 data-nosnippet>1204</a>            group_info: create_commit_result.group_info,
-<a href=#1205 id=1205 data-nosnippet>1205</a>        })
-<a href=#1206 id=1206 data-nosnippet>1206</a>    }
-<a href=#1207 id=1207 data-nosnippet>1207</a>}
-<a href=#1208 id=1208 data-nosnippet>1208</a>
-<a href=#1209 id=1209 data-nosnippet>1209</a><span class="doccomment">/// Build the path-secret + leaf-keypair override from the
-<a href=#1210 id=1210 data-nosnippet>1210</a>/// [`OperationSecret`] allocated in [`CommitBuilder::vc_emulation`] and
-<a href=#1211 id=1211 data-nosnippet>1211</a>/// inject the corresponding `DerivationInfo` blob into
-<a href=#1212 id=1212 data-nosnippet>1212</a>/// `leaf_node_parameters`'s `app_data_dictionary` extension.
-<a href=#1213 id=1213 data-nosnippet>1213</a>///
-<a href=#1214 id=1214 data-nosnippet>1214</a>/// The `DerivationInfoTbe` wrapping stays in the emulation epoch's
-<a href=#1215 id=1215 data-nosnippet>1215</a>/// ciphersuite, while the operation secret is expanded under the
-<a href=#1216 id=1216 data-nosnippet>1216</a>/// higher-level group ciphersuite to produce MLS path material for this
-<a href=#1217 id=1217 data-nosnippet>1217</a>/// group. The generation was consumed and the advanced tree persisted when
-<a href=#1218 id=1218 data-nosnippet>1218</a>/// `vc_emulation` was called, so this helper neither allocates nor
-<a href=#1219 id=1219 data-nosnippet>1219</a>/// persists anything.
-<a href=#1220 id=1220 data-nosnippet>1220</a></span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#1221 id=1221 data-nosnippet>1221</a></span><span class="kw">fn </span>apply_vc_emulation(
-<a href=#1222 id=1222 data-nosnippet>1222</a>    loaded: <span class="kw-2">&amp;</span>VcLoaded,
-<a href=#1223 id=1223 data-nosnippet>1223</a>    leaf_node_parameters: <span class="kw-2">&amp;mut </span>LeafNodeParameters,
-<a href=#1224 id=1224 data-nosnippet>1224</a>    resolved_dictionary: AppDataDictionary,
-<a href=#1225 id=1225 data-nosnippet>1225</a>    crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-<a href=#1226 id=1226 data-nosnippet>1226</a>    group_ciphersuite: openmls_traits::types::Ciphersuite,
-<a href=#1227 id=1227 data-nosnippet>1227</a>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">crate</span>::treesync::diff::OwnUpdatePathOverride, CreateCommitError&gt; {
-<a href=#1228 id=1228 data-nosnippet>1228</a>    <span class="kw">let </span>emulation_ciphersuite = loaded.emulation_ciphersuite;
-<a href=#1229 id=1229 data-nosnippet>1229</a>
-<a href=#1230 id=1230 data-nosnippet>1230</a>    <span class="kw">let </span>path_secret = loaded
-<a href=#1231 id=1231 data-nosnippet>1231</a>        .operation_secret
-<a href=#1232 id=1232 data-nosnippet>1232</a>        .derive_path_generation_secret(crypto, group_ciphersuite)<span class="question-mark">?
-<a href=#1233 id=1233 data-nosnippet>1233</a>        </span>.into();
-<a href=#1234 id=1234 data-nosnippet>1234</a>    <span class="kw">let </span>leaf_encryption_keypair = loaded
-<a href=#1235 id=1235 data-nosnippet>1235</a>        .operation_secret
-<a href=#1236 id=1236 data-nosnippet>1236</a>        .derive_encryption_key_secret(crypto, group_ciphersuite)<span class="question-mark">?
-<a href=#1237 id=1237 data-nosnippet>1237</a>        </span>.generate_encryption_key_pair(crypto, group_ciphersuite)<span class="question-mark">?</span>;
-<a href=#1238 id=1238 data-nosnippet>1238</a>
-<a href=#1239 id=1239 data-nosnippet>1239</a>    <span class="comment">// Wrap the TBE under the per-epoch AEAD key, bound to the new leaf via
-<a href=#1240 id=1240 data-nosnippet>1240</a>    // its serialized encryption key as derivation context.
-<a href=#1241 id=1241 data-nosnippet>1241</a>    </span><span class="kw">let </span>leaf_encryption_key = leaf_encryption_keypair
-<a href=#1242 id=1242 data-nosnippet>1242</a>        .public_key()
-<a href=#1243 id=1243 data-nosnippet>1243</a>        .tls_serialize_detached()
-<a href=#1244 id=1244 data-nosnippet>1244</a>        .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
-<a href=#1245 id=1245 data-nosnippet>1245</a>    <span class="comment">// leaf_node operations are not batched, so the TBE carries no
-<a href=#1246 id=1246 data-nosnippet>1246</a>    // key_package_index: the select resolves to the empty `update`/`commit`
-<a href=#1247 id=1247 data-nosnippet>1247</a>    // case and the field is absent on the wire.
-<a href=#1248 id=1248 data-nosnippet>1248</a>    </span><span class="kw">let </span>tbe = DerivationInfoTbe::LeafNode {
-<a href=#1249 id=1249 data-nosnippet>1249</a>        leaf_index: loaded.emulation_leaf_index,
-<a href=#1250 id=1250 data-nosnippet>1250</a>        generation: loaded.generation,
-<a href=#1251 id=1251 data-nosnippet>1251</a>    };
-<a href=#1252 id=1252 data-nosnippet>1252</a>    <span class="kw">let </span>derivation_info = DerivationInfo::encrypt(
-<a href=#1253 id=1253 data-nosnippet>1253</a>        crypto,
-<a href=#1254 id=1254 data-nosnippet>1254</a>        emulation_ciphersuite,
-<a href=#1255 id=1255 data-nosnippet>1255</a>        <span class="kw-2">&amp;</span>loaded.epoch_encryption_key,
-<a href=#1256 id=1256 data-nosnippet>1256</a>        loaded.epoch_id.clone(),
-<a href=#1257 id=1257 data-nosnippet>1257</a>        <span class="kw-2">&amp;</span>leaf_encryption_key,
-<a href=#1258 id=1258 data-nosnippet>1258</a>        <span class="kw-2">&amp;</span>tbe,
-<a href=#1259 id=1259 data-nosnippet>1259</a>    )<span class="question-mark">?</span>;
-<a href=#1260 id=1260 data-nosnippet>1260</a>    <span class="kw">let </span>derivation_info_bytes = derivation_info
-<a href=#1261 id=1261 data-nosnippet>1261</a>        .tls_serialize_detached()
-<a href=#1262 id=1262 data-nosnippet>1262</a>        .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
-<a href=#1263 id=1263 data-nosnippet>1263</a>
-<a href=#1264 id=1264 data-nosnippet>1264</a>    inject_vc_derivation_info(
-<a href=#1265 id=1265 data-nosnippet>1265</a>        leaf_node_parameters,
-<a href=#1266 id=1266 data-nosnippet>1266</a>        resolved_dictionary,
-<a href=#1267 id=1267 data-nosnippet>1267</a>        derivation_info_bytes,
-<a href=#1268 id=1268 data-nosnippet>1268</a>    )<span class="question-mark">?</span>;
-<a href=#1269 id=1269 data-nosnippet>1269</a>
-<a href=#1270 id=1270 data-nosnippet>1270</a>    <span class="prelude-val">Ok</span>(<span class="kw">crate</span>::treesync::diff::OwnUpdatePathOverride {
-<a href=#1271 id=1271 data-nosnippet>1271</a>        path_secret,
-<a href=#1272 id=1272 data-nosnippet>1272</a>        leaf_encryption_keypair,
-<a href=#1273 id=1273 data-nosnippet>1273</a>    })
-<a href=#1274 id=1274 data-nosnippet>1274</a>}
-<a href=#1275 id=1275 data-nosnippet>1275</a>
-<a href=#1276 id=1276 data-nosnippet>1276</a><span class="doccomment">/// Verify that the effective leaf for this commit (= the merged view of
-<a href=#1277 id=1277 data-nosnippet>1277</a>/// `leaf_node_parameters` over the existing leaf, or `leaf_node_parameters`
-<a href=#1278 id=1278 data-nosnippet>1278</a>/// alone for external commits) declares `AppDataDictionary` and lists
-<a href=#1279 id=1279 data-nosnippet>1279</a>/// [`VC_COMPONENT_ID`] in its `AppComponents` entry. Without both, the
-<a href=#1280 id=1280 data-nosnippet>1280</a>/// receiver cannot reliably surface the derivation-info entry to the
-<a href=#1281 id=1281 data-nosnippet>1281</a>/// virtual-clients consumer, so we reject the commit at build time.
-<a href=#1282 id=1282 data-nosnippet>1282</a>///
-<a href=#1283 id=1283 data-nosnippet>1283</a>/// Returns the resolved `AppDataDictionary` (caller's override merged
-<a href=#1284 id=1284 data-nosnippet>1284</a>/// over the existing leaf's, with the caller winning on duplicate keys)
-<a href=#1285 id=1285 data-nosnippet>1285</a>/// so subsequent injection of the VC derivation-info preserves the
-<a href=#1286 id=1286 data-nosnippet>1286</a>/// AppComponents entry across commits.
-<a href=#1287 id=1287 data-nosnippet>1287</a></span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#1288 id=1288 data-nosnippet>1288</a></span><span class="kw">fn </span>check_vc_leaf_configuration(
-<a href=#1289 id=1289 data-nosnippet>1289</a>    leaf_node_parameters: <span class="kw-2">&amp;</span>LeafNodeParameters,
-<a href=#1290 id=1290 data-nosnippet>1290</a>    group: <span class="kw-2">&amp;</span>MlsGroup,
-<a href=#1291 id=1291 data-nosnippet>1291</a>    own_leaf_index: LeafNodeIndex,
-<a href=#1292 id=1292 data-nosnippet>1292</a>    is_external_commit: bool,
-<a href=#1293 id=1293 data-nosnippet>1293</a>) -&gt; <span class="prelude-ty">Result</span>&lt;AppDataDictionary, CreateCommitError&gt; {
-<a href=#1294 id=1294 data-nosnippet>1294</a>    <span class="kw">let </span>current_leaf = <span class="kw">if </span>is_external_commit {
-<a href=#1295 id=1295 data-nosnippet>1295</a>        <span class="prelude-val">None
-<a href=#1296 id=1296 data-nosnippet>1296</a>    </span>} <span class="kw">else </span>{
-<a href=#1297 id=1297 data-nosnippet>1297</a>        <span class="prelude-val">Some</span>(group.public_group().leaf(own_leaf_index).ok_or_else(|| {
-<a href=#1298 id=1298 data-nosnippet>1298</a>            LibraryError::custom(<span class="string">"Couldn't find own leaf for VC capability check"</span>)
-<a href=#1299 id=1299 data-nosnippet>1299</a>        })<span class="question-mark">?</span>)
-<a href=#1300 id=1300 data-nosnippet>1300</a>    };
-<a href=#1301 id=1301 data-nosnippet>1301</a>
-<a href=#1302 id=1302 data-nosnippet>1302</a>    <span class="kw">crate</span>::components::vc_derivation_info::resolve_vc_leaf_dictionary(
-<a href=#1303 id=1303 data-nosnippet>1303</a>        leaf_node_parameters.capabilities(),
-<a href=#1304 id=1304 data-nosnippet>1304</a>        leaf_node_parameters.extensions(),
-<a href=#1305 id=1305 data-nosnippet>1305</a>        current_leaf,
-<a href=#1306 id=1306 data-nosnippet>1306</a>    )
-<a href=#1307 id=1307 data-nosnippet>1307</a>    .map_err(CreateCommitError::VirtualClientsError)
-<a href=#1308 id=1308 data-nosnippet>1308</a>}
-<a href=#1309 id=1309 data-nosnippet>1309</a>
-<a href=#1310 id=1310 data-nosnippet>1310</a><span class="doccomment">/// Merge a virtual-clients derivation info blob into
-<a href=#1311 id=1311 data-nosnippet>1311</a>/// `leaf_node_parameters.app_data_dictionary[VC_COMPONENT_ID]`,
-<a href=#1312 id=1312 data-nosnippet>1312</a>/// preserving every other component id from `resolved_dictionary` and
-<a href=#1313 id=1313 data-nosnippet>1313</a>/// every non-`AppDataDictionary` leaf-node extension the caller put in.
-<a href=#1314 id=1314 data-nosnippet>1314</a></span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#1315 id=1315 data-nosnippet>1315</a></span><span class="kw">fn </span>inject_vc_derivation_info(
-<a href=#1316 id=1316 data-nosnippet>1316</a>    leaf_node_parameters: <span class="kw-2">&amp;mut </span>LeafNodeParameters,
-<a href=#1317 id=1317 data-nosnippet>1317</a>    resolved_dictionary: AppDataDictionary,
-<a href=#1318 id=1318 data-nosnippet>1318</a>    derivation_info_bytes: Vec&lt;u8&gt;,
-<a href=#1319 id=1319 data-nosnippet>1319</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), CreateCommitError&gt; {
-<a href=#1320 id=1320 data-nosnippet>1320</a>    <span class="kw">let </span>extensions = <span class="kw">crate</span>::components::vc_derivation_info::merge_vc_derivation_info(
-<a href=#1321 id=1321 data-nosnippet>1321</a>        leaf_node_parameters.extensions(),
-<a href=#1322 id=1322 data-nosnippet>1322</a>        resolved_dictionary,
-<a href=#1323 id=1323 data-nosnippet>1323</a>        derivation_info_bytes,
-<a href=#1324 id=1324 data-nosnippet>1324</a>    )<span class="question-mark">?</span>;
-<a href=#1325 id=1325 data-nosnippet>1325</a>    leaf_node_parameters.set_extensions(extensions);
-<a href=#1326 id=1326 data-nosnippet>1326</a>    <span class="prelude-val">Ok</span>(())
-<a href=#1327 id=1327 data-nosnippet>1327</a>}
-<a href=#1328 id=1328 data-nosnippet>1328</a>
-<a href=#1329 id=1329 data-nosnippet>1329</a><span class="doccomment">/// Contains the messages that are produced by committing. The messages can be accessed individually
-<a href=#1330 id=1330 data-nosnippet>1330</a>/// using getters or through the [`IntoIterator`] interface.
-<a href=#1331 id=1331 data-nosnippet>1331</a></span><span class="attr">#[derive(Debug, Clone)]
-<a href=#1332 id=1332 data-nosnippet>1332</a></span><span class="kw">pub struct </span>CommitMessageBundle {
-<a href=#1333 id=1333 data-nosnippet>1333</a>    version: ProtocolVersion,
-<a href=#1334 id=1334 data-nosnippet>1334</a>    commit: MlsMessageOut,
-<a href=#1335 id=1335 data-nosnippet>1335</a>    welcome: <span class="prelude-ty">Option</span>&lt;Welcome&gt;,
-<a href=#1336 id=1336 data-nosnippet>1336</a>    group_info: <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;,
+<a href=#1200 id=1200 data-nosnippet>1200</a>        <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by the
+<a href=#1201 id=1201 data-nosnippet>1201</a>        // configuration.
+<a href=#1202 id=1202 data-nosnippet>1202</a>        //
+<a href=#1203 id=1203 data-nosnippet>1203</a>        // Note that this performs writes to the storage, so we should do that here, rather than
+<a href=#1204 id=1204 data-nosnippet>1204</a>        // when working with the result.
+<a href=#1205 id=1205 data-nosnippet>1205</a>        </span><span class="kw">let </span>mls_message = group.content_to_mls_message(create_commit_result.commit, provider)<span class="question-mark">?</span>;
+<a href=#1206 id=1206 data-nosnippet>1206</a>
+<a href=#1207 id=1207 data-nosnippet>1207</a>        <span class="prelude-val">Ok</span>(CommitMessageBundle {
+<a href=#1208 id=1208 data-nosnippet>1208</a>            version: group.version(),
+<a href=#1209 id=1209 data-nosnippet>1209</a>            commit: mls_message,
+<a href=#1210 id=1210 data-nosnippet>1210</a>            welcome: create_commit_result.welcome_option,
+<a href=#1211 id=1211 data-nosnippet>1211</a>            group_info: create_commit_result.group_info,
+<a href=#1212 id=1212 data-nosnippet>1212</a>        })
+<a href=#1213 id=1213 data-nosnippet>1213</a>    }
+<a href=#1214 id=1214 data-nosnippet>1214</a>}
+<a href=#1215 id=1215 data-nosnippet>1215</a>
+<a href=#1216 id=1216 data-nosnippet>1216</a><span class="doccomment">/// Build the path-secret + leaf-keypair override from the
+<a href=#1217 id=1217 data-nosnippet>1217</a>/// [`OperationSecret`] allocated in [`CommitBuilder::vc_emulation`] and
+<a href=#1218 id=1218 data-nosnippet>1218</a>/// inject the corresponding `DerivationInfo` blob into
+<a href=#1219 id=1219 data-nosnippet>1219</a>/// `leaf_node_parameters`'s `app_data_dictionary` extension.
+<a href=#1220 id=1220 data-nosnippet>1220</a>///
+<a href=#1221 id=1221 data-nosnippet>1221</a>/// The `DerivationInfoTbe` wrapping stays in the emulation epoch's
+<a href=#1222 id=1222 data-nosnippet>1222</a>/// ciphersuite, while the operation secret is expanded under the
+<a href=#1223 id=1223 data-nosnippet>1223</a>/// higher-level group ciphersuite to produce MLS path material for this
+<a href=#1224 id=1224 data-nosnippet>1224</a>/// group. The generation was consumed and the advanced tree persisted when
+<a href=#1225 id=1225 data-nosnippet>1225</a>/// `vc_emulation` was called, so this helper neither allocates nor
+<a href=#1226 id=1226 data-nosnippet>1226</a>/// persists anything.
+<a href=#1227 id=1227 data-nosnippet>1227</a></span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#1228 id=1228 data-nosnippet>1228</a></span><span class="kw">fn </span>apply_vc_emulation(
+<a href=#1229 id=1229 data-nosnippet>1229</a>    loaded: <span class="kw-2">&amp;</span>VcLoaded,
+<a href=#1230 id=1230 data-nosnippet>1230</a>    leaf_node_parameters: <span class="kw-2">&amp;mut </span>LeafNodeParameters,
+<a href=#1231 id=1231 data-nosnippet>1231</a>    resolved_dictionary: AppDataDictionary,
+<a href=#1232 id=1232 data-nosnippet>1232</a>    crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+<a href=#1233 id=1233 data-nosnippet>1233</a>    group_ciphersuite: openmls_traits::types::Ciphersuite,
+<a href=#1234 id=1234 data-nosnippet>1234</a>    external_init_secret: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">crate</span>::schedule::InitSecret&gt;,
+<a href=#1235 id=1235 data-nosnippet>1235</a>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">crate</span>::treesync::diff::OwnUpdatePathOverride, CreateCommitError&gt; {
+<a href=#1236 id=1236 data-nosnippet>1236</a>    <span class="kw">let </span>emulation_ciphersuite = loaded.emulation_ciphersuite;
+<a href=#1237 id=1237 data-nosnippet>1237</a>
+<a href=#1238 id=1238 data-nosnippet>1238</a>    <span class="kw">let </span>path_secret = loaded
+<a href=#1239 id=1239 data-nosnippet>1239</a>        .operation_secret
+<a href=#1240 id=1240 data-nosnippet>1240</a>        .derive_path_generation_secret(crypto, group_ciphersuite)<span class="question-mark">?
+<a href=#1241 id=1241 data-nosnippet>1241</a>        </span>.into();
+<a href=#1242 id=1242 data-nosnippet>1242</a>    <span class="kw">let </span>leaf_encryption_keypair = loaded
+<a href=#1243 id=1243 data-nosnippet>1243</a>        .operation_secret
+<a href=#1244 id=1244 data-nosnippet>1244</a>        .derive_encryption_key_secret(crypto, group_ciphersuite)<span class="question-mark">?
+<a href=#1245 id=1245 data-nosnippet>1245</a>        </span>.generate_encryption_key_pair(crypto, group_ciphersuite)<span class="question-mark">?</span>;
+<a href=#1246 id=1246 data-nosnippet>1246</a>
+<a href=#1247 id=1247 data-nosnippet>1247</a>    <span class="comment">// Wrap the TBE under the per-epoch AEAD key, bound to the new leaf via
+<a href=#1248 id=1248 data-nosnippet>1248</a>    // its serialized encryption key as derivation context.
+<a href=#1249 id=1249 data-nosnippet>1249</a>    </span><span class="kw">let </span>leaf_encryption_key = leaf_encryption_keypair
+<a href=#1250 id=1250 data-nosnippet>1250</a>        .public_key()
+<a href=#1251 id=1251 data-nosnippet>1251</a>        .tls_serialize_detached()
+<a href=#1252 id=1252 data-nosnippet>1252</a>        .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
+<a href=#1253 id=1253 data-nosnippet>1253</a>    <span class="comment">// leaf_node operations are not batched, so the TBE carries no
+<a href=#1254 id=1254 data-nosnippet>1254</a>    // key_package_index. For an external commit the commit-case
+<a href=#1255 id=1255 data-nosnippet>1255</a>    // `external_init_secret` is present; for a regular commit it is absent.
+<a href=#1256 id=1256 data-nosnippet>1256</a>    </span><span class="kw">let </span>tbe = DerivationInfoTbe::LeafNode {
+<a href=#1257 id=1257 data-nosnippet>1257</a>        leaf_index: loaded.emulation_leaf_index,
+<a href=#1258 id=1258 data-nosnippet>1258</a>        generation: loaded.generation,
+<a href=#1259 id=1259 data-nosnippet>1259</a>        external_init_secret: external_init_secret
+<a href=#1260 id=1260 data-nosnippet>1260</a>            .map(|init_secret| ExternalInitSecret::from_slice(init_secret.as_slice())),
+<a href=#1261 id=1261 data-nosnippet>1261</a>    };
+<a href=#1262 id=1262 data-nosnippet>1262</a>    <span class="kw">let </span>derivation_info = DerivationInfo::encrypt(
+<a href=#1263 id=1263 data-nosnippet>1263</a>        crypto,
+<a href=#1264 id=1264 data-nosnippet>1264</a>        emulation_ciphersuite,
+<a href=#1265 id=1265 data-nosnippet>1265</a>        <span class="kw-2">&amp;</span>loaded.epoch_encryption_key,
+<a href=#1266 id=1266 data-nosnippet>1266</a>        loaded.epoch_id.clone(),
+<a href=#1267 id=1267 data-nosnippet>1267</a>        <span class="kw-2">&amp;</span>leaf_encryption_key,
+<a href=#1268 id=1268 data-nosnippet>1268</a>        <span class="kw-2">&amp;</span>tbe,
+<a href=#1269 id=1269 data-nosnippet>1269</a>    )<span class="question-mark">?</span>;
+<a href=#1270 id=1270 data-nosnippet>1270</a>    <span class="kw">let </span>derivation_info_bytes = derivation_info
+<a href=#1271 id=1271 data-nosnippet>1271</a>        .tls_serialize_detached()
+<a href=#1272 id=1272 data-nosnippet>1272</a>        .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
+<a href=#1273 id=1273 data-nosnippet>1273</a>
+<a href=#1274 id=1274 data-nosnippet>1274</a>    inject_vc_derivation_info(
+<a href=#1275 id=1275 data-nosnippet>1275</a>        leaf_node_parameters,
+<a href=#1276 id=1276 data-nosnippet>1276</a>        resolved_dictionary,
+<a href=#1277 id=1277 data-nosnippet>1277</a>        derivation_info_bytes,
+<a href=#1278 id=1278 data-nosnippet>1278</a>    )<span class="question-mark">?</span>;
+<a href=#1279 id=1279 data-nosnippet>1279</a>
+<a href=#1280 id=1280 data-nosnippet>1280</a>    <span class="prelude-val">Ok</span>(<span class="kw">crate</span>::treesync::diff::OwnUpdatePathOverride {
+<a href=#1281 id=1281 data-nosnippet>1281</a>        path_secret,
+<a href=#1282 id=1282 data-nosnippet>1282</a>        leaf_encryption_keypair,
+<a href=#1283 id=1283 data-nosnippet>1283</a>    })
+<a href=#1284 id=1284 data-nosnippet>1284</a>}
+<a href=#1285 id=1285 data-nosnippet>1285</a>
+<a href=#1286 id=1286 data-nosnippet>1286</a><span class="doccomment">/// Verify that the effective leaf for this commit (= the merged view of
+<a href=#1287 id=1287 data-nosnippet>1287</a>/// `leaf_node_parameters` over the existing leaf, or `leaf_node_parameters`
+<a href=#1288 id=1288 data-nosnippet>1288</a>/// alone for external commits) declares `AppDataDictionary` and lists
+<a href=#1289 id=1289 data-nosnippet>1289</a>/// [`VC_COMPONENT_ID`] in its `AppComponents` entry. Without both, the
+<a href=#1290 id=1290 data-nosnippet>1290</a>/// receiver cannot reliably surface the derivation-info entry to the
+<a href=#1291 id=1291 data-nosnippet>1291</a>/// virtual-clients consumer, so we reject the commit at build time.
+<a href=#1292 id=1292 data-nosnippet>1292</a>///
+<a href=#1293 id=1293 data-nosnippet>1293</a>/// Returns the resolved `AppDataDictionary` (caller's override merged
+<a href=#1294 id=1294 data-nosnippet>1294</a>/// over the existing leaf's, with the caller winning on duplicate keys)
+<a href=#1295 id=1295 data-nosnippet>1295</a>/// so subsequent injection of the VC derivation-info preserves the
+<a href=#1296 id=1296 data-nosnippet>1296</a>/// AppComponents entry across commits.
+<a href=#1297 id=1297 data-nosnippet>1297</a></span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#1298 id=1298 data-nosnippet>1298</a></span><span class="kw">fn </span>check_vc_leaf_configuration(
+<a href=#1299 id=1299 data-nosnippet>1299</a>    leaf_node_parameters: <span class="kw-2">&amp;</span>LeafNodeParameters,
+<a href=#1300 id=1300 data-nosnippet>1300</a>    group: <span class="kw-2">&amp;</span>MlsGroup,
+<a href=#1301 id=1301 data-nosnippet>1301</a>    own_leaf_index: LeafNodeIndex,
+<a href=#1302 id=1302 data-nosnippet>1302</a>    is_external_commit: bool,
+<a href=#1303 id=1303 data-nosnippet>1303</a>) -&gt; <span class="prelude-ty">Result</span>&lt;AppDataDictionary, CreateCommitError&gt; {
+<a href=#1304 id=1304 data-nosnippet>1304</a>    <span class="kw">let </span>current_leaf = <span class="kw">if </span>is_external_commit {
+<a href=#1305 id=1305 data-nosnippet>1305</a>        <span class="prelude-val">None
+<a href=#1306 id=1306 data-nosnippet>1306</a>    </span>} <span class="kw">else </span>{
+<a href=#1307 id=1307 data-nosnippet>1307</a>        <span class="prelude-val">Some</span>(group.public_group().leaf(own_leaf_index).ok_or_else(|| {
+<a href=#1308 id=1308 data-nosnippet>1308</a>            LibraryError::custom(<span class="string">"Couldn't find own leaf for VC capability check"</span>)
+<a href=#1309 id=1309 data-nosnippet>1309</a>        })<span class="question-mark">?</span>)
+<a href=#1310 id=1310 data-nosnippet>1310</a>    };
+<a href=#1311 id=1311 data-nosnippet>1311</a>
+<a href=#1312 id=1312 data-nosnippet>1312</a>    <span class="kw">crate</span>::components::vc_derivation_info::resolve_vc_leaf_dictionary(
+<a href=#1313 id=1313 data-nosnippet>1313</a>        leaf_node_parameters.capabilities(),
+<a href=#1314 id=1314 data-nosnippet>1314</a>        leaf_node_parameters.extensions(),
+<a href=#1315 id=1315 data-nosnippet>1315</a>        current_leaf,
+<a href=#1316 id=1316 data-nosnippet>1316</a>    )
+<a href=#1317 id=1317 data-nosnippet>1317</a>    .map_err(CreateCommitError::VirtualClientsError)
+<a href=#1318 id=1318 data-nosnippet>1318</a>}
+<a href=#1319 id=1319 data-nosnippet>1319</a>
+<a href=#1320 id=1320 data-nosnippet>1320</a><span class="doccomment">/// Merge a virtual-clients derivation info blob into
+<a href=#1321 id=1321 data-nosnippet>1321</a>/// `leaf_node_parameters.app_data_dictionary[VC_COMPONENT_ID]`,
+<a href=#1322 id=1322 data-nosnippet>1322</a>/// preserving every other component id from `resolved_dictionary` and
+<a href=#1323 id=1323 data-nosnippet>1323</a>/// every non-`AppDataDictionary` leaf-node extension the caller put in.
+<a href=#1324 id=1324 data-nosnippet>1324</a></span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#1325 id=1325 data-nosnippet>1325</a></span><span class="kw">fn </span>inject_vc_derivation_info(
+<a href=#1326 id=1326 data-nosnippet>1326</a>    leaf_node_parameters: <span class="kw-2">&amp;mut </span>LeafNodeParameters,
+<a href=#1327 id=1327 data-nosnippet>1327</a>    resolved_dictionary: AppDataDictionary,
+<a href=#1328 id=1328 data-nosnippet>1328</a>    derivation_info_bytes: Vec&lt;u8&gt;,
+<a href=#1329 id=1329 data-nosnippet>1329</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), CreateCommitError&gt; {
+<a href=#1330 id=1330 data-nosnippet>1330</a>    <span class="kw">let </span>extensions = <span class="kw">crate</span>::components::vc_derivation_info::merge_vc_derivation_info(
+<a href=#1331 id=1331 data-nosnippet>1331</a>        leaf_node_parameters.extensions(),
+<a href=#1332 id=1332 data-nosnippet>1332</a>        resolved_dictionary,
+<a href=#1333 id=1333 data-nosnippet>1333</a>        derivation_info_bytes,
+<a href=#1334 id=1334 data-nosnippet>1334</a>    )<span class="question-mark">?</span>;
+<a href=#1335 id=1335 data-nosnippet>1335</a>    leaf_node_parameters.set_extensions(extensions);
+<a href=#1336 id=1336 data-nosnippet>1336</a>    <span class="prelude-val">Ok</span>(())
 <a href=#1337 id=1337 data-nosnippet>1337</a>}
 <a href=#1338 id=1338 data-nosnippet>1338</a>
-<a href=#1339 id=1339 data-nosnippet>1339</a><span class="doccomment">/// The result of a commit with an add proposal. This includes
-<a href=#1340 id=1340 data-nosnippet>1340</a>/// - The Commit as an [`MlsMessageOut`]
-<a href=#1341 id=1341 data-nosnippet>1341</a>/// - The [`Welcome`] as an [`MlsMessageOut`]
-<a href=#1342 id=1342 data-nosnippet>1342</a>/// - Optionally a [`GroupInfo`] as an [`MlsMessageOut`]
-<a href=#1343 id=1343 data-nosnippet>1343</a></span><span class="kw">pub struct </span>WelcomeCommitMessages {
-<a href=#1344 id=1344 data-nosnippet>1344</a>    <span class="doccomment">/// The Commit as an [`MlsMessageOut`].
-<a href=#1345 id=1345 data-nosnippet>1345</a>    </span><span class="kw">pub </span>commit: MlsMessageOut,
-<a href=#1346 id=1346 data-nosnippet>1346</a>
-<a href=#1347 id=1347 data-nosnippet>1347</a>    <span class="doccomment">/// The [`Welcome`] as an [`MlsMessageOut`].
-<a href=#1348 id=1348 data-nosnippet>1348</a>    </span><span class="kw">pub </span>welcome: MlsMessageOut,
-<a href=#1349 id=1349 data-nosnippet>1349</a>
-<a href=#1350 id=1350 data-nosnippet>1350</a>    <span class="doccomment">/// Optionally a [`GroupInfo`] as an [`MlsMessageOut`].
-<a href=#1351 id=1351 data-nosnippet>1351</a>    </span><span class="kw">pub </span>group_info: <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;,
-<a href=#1352 id=1352 data-nosnippet>1352</a>}
-<a href=#1353 id=1353 data-nosnippet>1353</a>
-<a href=#1354 id=1354 data-nosnippet>1354</a><span class="kw">impl </span>TryFrom&lt;CommitMessageBundle&gt; <span class="kw">for </span>WelcomeCommitMessages {
-<a href=#1355 id=1355 data-nosnippet>1355</a>    <span class="kw">type </span>Error = LibraryError;
+<a href=#1339 id=1339 data-nosnippet>1339</a><span class="doccomment">/// Contains the messages that are produced by committing. The messages can be accessed individually
+<a href=#1340 id=1340 data-nosnippet>1340</a>/// using getters or through the [`IntoIterator`] interface.
+<a href=#1341 id=1341 data-nosnippet>1341</a></span><span class="attr">#[derive(Debug, Clone)]
+<a href=#1342 id=1342 data-nosnippet>1342</a></span><span class="kw">pub struct </span>CommitMessageBundle {
+<a href=#1343 id=1343 data-nosnippet>1343</a>    version: ProtocolVersion,
+<a href=#1344 id=1344 data-nosnippet>1344</a>    commit: MlsMessageOut,
+<a href=#1345 id=1345 data-nosnippet>1345</a>    welcome: <span class="prelude-ty">Option</span>&lt;Welcome&gt;,
+<a href=#1346 id=1346 data-nosnippet>1346</a>    group_info: <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;,
+<a href=#1347 id=1347 data-nosnippet>1347</a>}
+<a href=#1348 id=1348 data-nosnippet>1348</a>
+<a href=#1349 id=1349 data-nosnippet>1349</a><span class="doccomment">/// The result of a commit with an add proposal. This includes
+<a href=#1350 id=1350 data-nosnippet>1350</a>/// - The Commit as an [`MlsMessageOut`]
+<a href=#1351 id=1351 data-nosnippet>1351</a>/// - The [`Welcome`] as an [`MlsMessageOut`]
+<a href=#1352 id=1352 data-nosnippet>1352</a>/// - Optionally a [`GroupInfo`] as an [`MlsMessageOut`]
+<a href=#1353 id=1353 data-nosnippet>1353</a></span><span class="kw">pub struct </span>WelcomeCommitMessages {
+<a href=#1354 id=1354 data-nosnippet>1354</a>    <span class="doccomment">/// The Commit as an [`MlsMessageOut`].
+<a href=#1355 id=1355 data-nosnippet>1355</a>    </span><span class="kw">pub </span>commit: MlsMessageOut,
 <a href=#1356 id=1356 data-nosnippet>1356</a>
-<a href=#1357 id=1357 data-nosnippet>1357</a>    <span class="kw">fn </span>try_from(value: CommitMessageBundle) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-<a href=#1358 id=1358 data-nosnippet>1358</a>        <span class="kw">let </span>(commit, welcome_opt, group_info) = value.into_messages();
-<a href=#1359 id=1359 data-nosnippet>1359</a>        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-<a href=#1360 id=1360 data-nosnippet>1360</a>            commit,
-<a href=#1361 id=1361 data-nosnippet>1361</a>            welcome: welcome_opt.ok_or(LibraryError::custom(
-<a href=#1362 id=1362 data-nosnippet>1362</a>                <span class="string">"WelcomeCommitMessages must only be used with commits that produce a welcome."</span>,
-<a href=#1363 id=1363 data-nosnippet>1363</a>            ))<span class="question-mark">?</span>,
-<a href=#1364 id=1364 data-nosnippet>1364</a>            group_info,
-<a href=#1365 id=1365 data-nosnippet>1365</a>        })
-<a href=#1366 id=1366 data-nosnippet>1366</a>    }
-<a href=#1367 id=1367 data-nosnippet>1367</a>}
-<a href=#1368 id=1368 data-nosnippet>1368</a>
-<a href=#1369 id=1369 data-nosnippet>1369</a><span class="attr">#[cfg(test)]
-<a href=#1370 id=1370 data-nosnippet>1370</a></span><span class="kw">impl </span>CommitMessageBundle {
-<a href=#1371 id=1371 data-nosnippet>1371</a>    <span class="kw">pub fn </span>new(
-<a href=#1372 id=1372 data-nosnippet>1372</a>        version: ProtocolVersion,
-<a href=#1373 id=1373 data-nosnippet>1373</a>        commit: MlsMessageOut,
-<a href=#1374 id=1374 data-nosnippet>1374</a>        welcome: <span class="prelude-ty">Option</span>&lt;Welcome&gt;,
-<a href=#1375 id=1375 data-nosnippet>1375</a>        group_info: <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;,
-<a href=#1376 id=1376 data-nosnippet>1376</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#1377 id=1377 data-nosnippet>1377</a>        <span class="self">Self </span>{
-<a href=#1378 id=1378 data-nosnippet>1378</a>            version,
-<a href=#1379 id=1379 data-nosnippet>1379</a>            commit,
-<a href=#1380 id=1380 data-nosnippet>1380</a>            welcome,
-<a href=#1381 id=1381 data-nosnippet>1381</a>            group_info,
-<a href=#1382 id=1382 data-nosnippet>1382</a>        }
-<a href=#1383 id=1383 data-nosnippet>1383</a>    }
-<a href=#1384 id=1384 data-nosnippet>1384</a>}
-<a href=#1385 id=1385 data-nosnippet>1385</a>
-<a href=#1386 id=1386 data-nosnippet>1386</a><span class="kw">impl </span>CommitMessageBundle {
-<a href=#1387 id=1387 data-nosnippet>1387</a>    <span class="comment">// borrowed getters
-<a href=#1388 id=1388 data-nosnippet>1388</a>
-<a href=#1389 id=1389 data-nosnippet>1389</a>    </span><span class="doccomment">/// Gets the Commit messsage. For owned version, see [`Self::into_commit`].
-<a href=#1390 id=1390 data-nosnippet>1390</a>    </span><span class="kw">pub fn </span>commit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsMessageOut {
-<a href=#1391 id=1391 data-nosnippet>1391</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.commit
-<a href=#1392 id=1392 data-nosnippet>1392</a>    }
-<a href=#1393 id=1393 data-nosnippet>1393</a>
-<a href=#1394 id=1394 data-nosnippet>1394</a>    <span class="doccomment">/// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
-<a href=#1395 id=1395 data-nosnippet>1395</a>    /// For owned version, see [`Self::into_welcome`].
-<a href=#1396 id=1396 data-nosnippet>1396</a>    </span><span class="kw">pub fn </span>welcome(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Welcome&gt; {
-<a href=#1397 id=1397 data-nosnippet>1397</a>        <span class="self">self</span>.welcome.as_ref()
-<a href=#1398 id=1398 data-nosnippet>1398</a>    }
-<a href=#1399 id=1399 data-nosnippet>1399</a>
-<a href=#1400 id=1400 data-nosnippet>1400</a>    <span class="doccomment">/// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
-<a href=#1401 id=1401 data-nosnippet>1401</a>    /// Performs a copy of the Welcome. For owned version, see [`Self::into_welcome_msg`].
-<a href=#1402 id=1402 data-nosnippet>1402</a>    </span><span class="kw">pub fn </span>to_welcome_msg(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt; {
-<a href=#1403 id=1403 data-nosnippet>1403</a>        <span class="self">self</span>.welcome
-<a href=#1404 id=1404 data-nosnippet>1404</a>            .as_ref()
-<a href=#1405 id=1405 data-nosnippet>1405</a>            .map(|welcome| MlsMessageOut::from_welcome(welcome.clone(), <span class="self">self</span>.version))
-<a href=#1406 id=1406 data-nosnippet>1406</a>    }
-<a href=#1407 id=1407 data-nosnippet>1407</a>
-<a href=#1408 id=1408 data-nosnippet>1408</a>    <span class="doccomment">/// Gets the GroupInfo message. Only [`Some`] if new clients have been added or the group
-<a href=#1409 id=1409 data-nosnippet>1409</a>    /// configuration has `use_ratchet_tree_extension` set.
-<a href=#1410 id=1410 data-nosnippet>1410</a>    /// For owned version, see [`Self::into_group_info`].
-<a href=#1411 id=1411 data-nosnippet>1411</a>    </span><span class="kw">pub fn </span>group_info(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>GroupInfo&gt; {
-<a href=#1412 id=1412 data-nosnippet>1412</a>        <span class="self">self</span>.group_info.as_ref()
-<a href=#1413 id=1413 data-nosnippet>1413</a>    }
-<a href=#1414 id=1414 data-nosnippet>1414</a>
-<a href=#1415 id=1415 data-nosnippet>1415</a>    <span class="doccomment">/// Gets all three messages, some of which optional. For owned version, see
-<a href=#1416 id=1416 data-nosnippet>1416</a>    /// [`Self::into_contents`].
-<a href=#1417 id=1417 data-nosnippet>1417</a>    </span><span class="kw">pub fn </span>contents(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="kw-2">&amp;</span>MlsMessageOut, <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Welcome&gt;, <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>GroupInfo&gt;) {
-<a href=#1418 id=1418 data-nosnippet>1418</a>        (
-<a href=#1419 id=1419 data-nosnippet>1419</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.commit,
-<a href=#1420 id=1420 data-nosnippet>1420</a>            <span class="self">self</span>.welcome.as_ref(),
-<a href=#1421 id=1421 data-nosnippet>1421</a>            <span class="self">self</span>.group_info.as_ref(),
-<a href=#1422 id=1422 data-nosnippet>1422</a>        )
+<a href=#1357 id=1357 data-nosnippet>1357</a>    <span class="doccomment">/// The [`Welcome`] as an [`MlsMessageOut`].
+<a href=#1358 id=1358 data-nosnippet>1358</a>    </span><span class="kw">pub </span>welcome: MlsMessageOut,
+<a href=#1359 id=1359 data-nosnippet>1359</a>
+<a href=#1360 id=1360 data-nosnippet>1360</a>    <span class="doccomment">/// Optionally a [`GroupInfo`] as an [`MlsMessageOut`].
+<a href=#1361 id=1361 data-nosnippet>1361</a>    </span><span class="kw">pub </span>group_info: <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;,
+<a href=#1362 id=1362 data-nosnippet>1362</a>}
+<a href=#1363 id=1363 data-nosnippet>1363</a>
+<a href=#1364 id=1364 data-nosnippet>1364</a><span class="kw">impl </span>TryFrom&lt;CommitMessageBundle&gt; <span class="kw">for </span>WelcomeCommitMessages {
+<a href=#1365 id=1365 data-nosnippet>1365</a>    <span class="kw">type </span>Error = LibraryError;
+<a href=#1366 id=1366 data-nosnippet>1366</a>
+<a href=#1367 id=1367 data-nosnippet>1367</a>    <span class="kw">fn </span>try_from(value: CommitMessageBundle) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+<a href=#1368 id=1368 data-nosnippet>1368</a>        <span class="kw">let </span>(commit, welcome_opt, group_info) = value.into_messages();
+<a href=#1369 id=1369 data-nosnippet>1369</a>        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+<a href=#1370 id=1370 data-nosnippet>1370</a>            commit,
+<a href=#1371 id=1371 data-nosnippet>1371</a>            welcome: welcome_opt.ok_or(LibraryError::custom(
+<a href=#1372 id=1372 data-nosnippet>1372</a>                <span class="string">"WelcomeCommitMessages must only be used with commits that produce a welcome."</span>,
+<a href=#1373 id=1373 data-nosnippet>1373</a>            ))<span class="question-mark">?</span>,
+<a href=#1374 id=1374 data-nosnippet>1374</a>            group_info,
+<a href=#1375 id=1375 data-nosnippet>1375</a>        })
+<a href=#1376 id=1376 data-nosnippet>1376</a>    }
+<a href=#1377 id=1377 data-nosnippet>1377</a>}
+<a href=#1378 id=1378 data-nosnippet>1378</a>
+<a href=#1379 id=1379 data-nosnippet>1379</a><span class="attr">#[cfg(test)]
+<a href=#1380 id=1380 data-nosnippet>1380</a></span><span class="kw">impl </span>CommitMessageBundle {
+<a href=#1381 id=1381 data-nosnippet>1381</a>    <span class="kw">pub fn </span>new(
+<a href=#1382 id=1382 data-nosnippet>1382</a>        version: ProtocolVersion,
+<a href=#1383 id=1383 data-nosnippet>1383</a>        commit: MlsMessageOut,
+<a href=#1384 id=1384 data-nosnippet>1384</a>        welcome: <span class="prelude-ty">Option</span>&lt;Welcome&gt;,
+<a href=#1385 id=1385 data-nosnippet>1385</a>        group_info: <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;,
+<a href=#1386 id=1386 data-nosnippet>1386</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#1387 id=1387 data-nosnippet>1387</a>        <span class="self">Self </span>{
+<a href=#1388 id=1388 data-nosnippet>1388</a>            version,
+<a href=#1389 id=1389 data-nosnippet>1389</a>            commit,
+<a href=#1390 id=1390 data-nosnippet>1390</a>            welcome,
+<a href=#1391 id=1391 data-nosnippet>1391</a>            group_info,
+<a href=#1392 id=1392 data-nosnippet>1392</a>        }
+<a href=#1393 id=1393 data-nosnippet>1393</a>    }
+<a href=#1394 id=1394 data-nosnippet>1394</a>}
+<a href=#1395 id=1395 data-nosnippet>1395</a>
+<a href=#1396 id=1396 data-nosnippet>1396</a><span class="kw">impl </span>CommitMessageBundle {
+<a href=#1397 id=1397 data-nosnippet>1397</a>    <span class="comment">// borrowed getters
+<a href=#1398 id=1398 data-nosnippet>1398</a>
+<a href=#1399 id=1399 data-nosnippet>1399</a>    </span><span class="doccomment">/// Gets the Commit messsage. For owned version, see [`Self::into_commit`].
+<a href=#1400 id=1400 data-nosnippet>1400</a>    </span><span class="kw">pub fn </span>commit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsMessageOut {
+<a href=#1401 id=1401 data-nosnippet>1401</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.commit
+<a href=#1402 id=1402 data-nosnippet>1402</a>    }
+<a href=#1403 id=1403 data-nosnippet>1403</a>
+<a href=#1404 id=1404 data-nosnippet>1404</a>    <span class="doccomment">/// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+<a href=#1405 id=1405 data-nosnippet>1405</a>    /// For owned version, see [`Self::into_welcome`].
+<a href=#1406 id=1406 data-nosnippet>1406</a>    </span><span class="kw">pub fn </span>welcome(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Welcome&gt; {
+<a href=#1407 id=1407 data-nosnippet>1407</a>        <span class="self">self</span>.welcome.as_ref()
+<a href=#1408 id=1408 data-nosnippet>1408</a>    }
+<a href=#1409 id=1409 data-nosnippet>1409</a>
+<a href=#1410 id=1410 data-nosnippet>1410</a>    <span class="doccomment">/// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+<a href=#1411 id=1411 data-nosnippet>1411</a>    /// Performs a copy of the Welcome. For owned version, see [`Self::into_welcome_msg`].
+<a href=#1412 id=1412 data-nosnippet>1412</a>    </span><span class="kw">pub fn </span>to_welcome_msg(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt; {
+<a href=#1413 id=1413 data-nosnippet>1413</a>        <span class="self">self</span>.welcome
+<a href=#1414 id=1414 data-nosnippet>1414</a>            .as_ref()
+<a href=#1415 id=1415 data-nosnippet>1415</a>            .map(|welcome| MlsMessageOut::from_welcome(welcome.clone(), <span class="self">self</span>.version))
+<a href=#1416 id=1416 data-nosnippet>1416</a>    }
+<a href=#1417 id=1417 data-nosnippet>1417</a>
+<a href=#1418 id=1418 data-nosnippet>1418</a>    <span class="doccomment">/// Gets the GroupInfo message. Only [`Some`] if new clients have been added or the group
+<a href=#1419 id=1419 data-nosnippet>1419</a>    /// configuration has `use_ratchet_tree_extension` set.
+<a href=#1420 id=1420 data-nosnippet>1420</a>    /// For owned version, see [`Self::into_group_info`].
+<a href=#1421 id=1421 data-nosnippet>1421</a>    </span><span class="kw">pub fn </span>group_info(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>GroupInfo&gt; {
+<a href=#1422 id=1422 data-nosnippet>1422</a>        <span class="self">self</span>.group_info.as_ref()
 <a href=#1423 id=1423 data-nosnippet>1423</a>    }
 <a href=#1424 id=1424 data-nosnippet>1424</a>
-<a href=#1425 id=1425 data-nosnippet>1425</a>    <span class="comment">// owned getters
-<a href=#1426 id=1426 data-nosnippet>1426</a>    </span><span class="doccomment">/// Gets the Commit messsage. This method consumes the [`CommitMessageBundle`]. For a borrowed
-<a href=#1427 id=1427 data-nosnippet>1427</a>    /// version see [`Self::commit`].
-<a href=#1428 id=1428 data-nosnippet>1428</a>    </span><span class="kw">pub fn </span>into_commit(<span class="self">self</span>) -&gt; MlsMessageOut {
-<a href=#1429 id=1429 data-nosnippet>1429</a>        <span class="self">self</span>.commit
-<a href=#1430 id=1430 data-nosnippet>1430</a>    }
-<a href=#1431 id=1431 data-nosnippet>1431</a>
-<a href=#1432 id=1432 data-nosnippet>1432</a>    <span class="doccomment">/// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
-<a href=#1433 id=1433 data-nosnippet>1433</a>    /// This method consumes the [`CommitMessageBundle`]. For a borrowed version see
-<a href=#1434 id=1434 data-nosnippet>1434</a>    /// [`Self::welcome`].
-<a href=#1435 id=1435 data-nosnippet>1435</a>    </span><span class="kw">pub fn </span>into_welcome(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Welcome&gt; {
-<a href=#1436 id=1436 data-nosnippet>1436</a>        <span class="self">self</span>.welcome
-<a href=#1437 id=1437 data-nosnippet>1437</a>    }
-<a href=#1438 id=1438 data-nosnippet>1438</a>
-<a href=#1439 id=1439 data-nosnippet>1439</a>    <span class="doccomment">/// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
-<a href=#1440 id=1440 data-nosnippet>1440</a>    /// For a borrowed version, see [`Self::to_welcome_msg`].
-<a href=#1441 id=1441 data-nosnippet>1441</a>    </span><span class="kw">pub fn </span>into_welcome_msg(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt; {
-<a href=#1442 id=1442 data-nosnippet>1442</a>        <span class="self">self</span>.welcome
-<a href=#1443 id=1443 data-nosnippet>1443</a>            .map(|welcome| MlsMessageOut::from_welcome(welcome, <span class="self">self</span>.version))
-<a href=#1444 id=1444 data-nosnippet>1444</a>    }
-<a href=#1445 id=1445 data-nosnippet>1445</a>
-<a href=#1446 id=1446 data-nosnippet>1446</a>    <span class="doccomment">/// Gets the GroupInfo message. Only [`Some`] if new clients have been added or the group
-<a href=#1447 id=1447 data-nosnippet>1447</a>    /// configuration has `use_ratchet_tree_extension` set.
-<a href=#1448 id=1448 data-nosnippet>1448</a>    /// This method consumes the [`CommitMessageBundle`]. For a borrowed version see
-<a href=#1449 id=1449 data-nosnippet>1449</a>    /// [`Self::group_info`].
-<a href=#1450 id=1450 data-nosnippet>1450</a>    </span><span class="kw">pub fn </span>into_group_info(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;GroupInfo&gt; {
-<a href=#1451 id=1451 data-nosnippet>1451</a>        <span class="self">self</span>.group_info
-<a href=#1452 id=1452 data-nosnippet>1452</a>    }
-<a href=#1453 id=1453 data-nosnippet>1453</a>
-<a href=#1454 id=1454 data-nosnippet>1454</a>    <span class="doccomment">/// Gets the GroupInfo messsage. Only [`Some`] if new clients have been added in the commit.
-<a href=#1455 id=1455 data-nosnippet>1455</a>    </span><span class="kw">pub fn </span>into_group_info_msg(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt; {
-<a href=#1456 id=1456 data-nosnippet>1456</a>        <span class="self">self</span>.group_info.map(|group_info| group_info.into())
-<a href=#1457 id=1457 data-nosnippet>1457</a>    }
-<a href=#1458 id=1458 data-nosnippet>1458</a>
-<a href=#1459 id=1459 data-nosnippet>1459</a>    <span class="doccomment">/// Gets all three messages, some of which optional. This method consumes the
-<a href=#1460 id=1460 data-nosnippet>1460</a>    /// [`CommitMessageBundle`]. For a borrowed version see [`Self::contents`].
-<a href=#1461 id=1461 data-nosnippet>1461</a>    </span><span class="kw">pub fn </span>into_contents(<span class="self">self</span>) -&gt; (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;Welcome&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;) {
-<a href=#1462 id=1462 data-nosnippet>1462</a>        (<span class="self">self</span>.commit, <span class="self">self</span>.welcome, <span class="self">self</span>.group_info)
-<a href=#1463 id=1463 data-nosnippet>1463</a>    }
-<a href=#1464 id=1464 data-nosnippet>1464</a>
-<a href=#1465 id=1465 data-nosnippet>1465</a>    <span class="doccomment">/// Gets all three messages, some of which optional, as [`MlsMessageOut`].
-<a href=#1466 id=1466 data-nosnippet>1466</a>    /// This method consumes the [`CommitMessageBundle`].
-<a href=#1467 id=1467 data-nosnippet>1467</a>    </span><span class="kw">pub fn </span>into_messages(<span class="self">self</span>) -&gt; (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;) {
-<a href=#1468 id=1468 data-nosnippet>1468</a>        (
-<a href=#1469 id=1469 data-nosnippet>1469</a>            <span class="self">self</span>.commit,
-<a href=#1470 id=1470 data-nosnippet>1470</a>            <span class="self">self</span>.welcome
-<a href=#1471 id=1471 data-nosnippet>1471</a>                .map(|welcome| MlsMessageOut::from_welcome(welcome, <span class="self">self</span>.version)),
-<a href=#1472 id=1472 data-nosnippet>1472</a>            <span class="self">self</span>.group_info.map(|group_info| group_info.into()),
-<a href=#1473 id=1473 data-nosnippet>1473</a>        )
-<a href=#1474 id=1474 data-nosnippet>1474</a>    }
-<a href=#1475 id=1475 data-nosnippet>1475</a>}
-<a href=#1476 id=1476 data-nosnippet>1476</a>
-<a href=#1477 id=1477 data-nosnippet>1477</a><span class="kw">impl </span>IntoIterator <span class="kw">for </span>CommitMessageBundle {
-<a href=#1478 id=1478 data-nosnippet>1478</a>    <span class="kw">type </span>Item = MlsMessageOut;
-<a href=#1479 id=1479 data-nosnippet>1479</a>
-<a href=#1480 id=1480 data-nosnippet>1480</a>    <span class="kw">type </span>IntoIter = core::iter::Chain&lt;
-<a href=#1481 id=1481 data-nosnippet>1481</a>        core::iter::Chain&lt;
-<a href=#1482 id=1482 data-nosnippet>1482</a>            core::option::IntoIter&lt;MlsMessageOut&gt;,
-<a href=#1483 id=1483 data-nosnippet>1483</a>            core::option::IntoIter&lt;MlsMessageOut&gt;,
-<a href=#1484 id=1484 data-nosnippet>1484</a>        &gt;,
-<a href=#1485 id=1485 data-nosnippet>1485</a>        core::option::IntoIter&lt;MlsMessageOut&gt;,
-<a href=#1486 id=1486 data-nosnippet>1486</a>    &gt;;
-<a href=#1487 id=1487 data-nosnippet>1487</a>
-<a href=#1488 id=1488 data-nosnippet>1488</a>    <span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
-<a href=#1489 id=1489 data-nosnippet>1489</a>        <span class="kw">let </span>welcome = <span class="self">self</span>.to_welcome_msg();
-<a href=#1490 id=1490 data-nosnippet>1490</a>        <span class="kw">let </span>group_info = <span class="self">self</span>.group_info.map(|group_info| group_info.into());
-<a href=#1491 id=1491 data-nosnippet>1491</a>
-<a href=#1492 id=1492 data-nosnippet>1492</a>        <span class="prelude-val">Some</span>(<span class="self">self</span>.commit)
-<a href=#1493 id=1493 data-nosnippet>1493</a>            .into_iter()
-<a href=#1494 id=1494 data-nosnippet>1494</a>            .chain(welcome)
-<a href=#1495 id=1495 data-nosnippet>1495</a>            .chain(group_info)
-<a href=#1496 id=1496 data-nosnippet>1496</a>    }
-<a href=#1497 id=1497 data-nosnippet>1497</a>}
+<a href=#1425 id=1425 data-nosnippet>1425</a>    <span class="doccomment">/// Gets all three messages, some of which optional. For owned version, see
+<a href=#1426 id=1426 data-nosnippet>1426</a>    /// [`Self::into_contents`].
+<a href=#1427 id=1427 data-nosnippet>1427</a>    </span><span class="kw">pub fn </span>contents(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="kw-2">&amp;</span>MlsMessageOut, <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Welcome&gt;, <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>GroupInfo&gt;) {
+<a href=#1428 id=1428 data-nosnippet>1428</a>        (
+<a href=#1429 id=1429 data-nosnippet>1429</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.commit,
+<a href=#1430 id=1430 data-nosnippet>1430</a>            <span class="self">self</span>.welcome.as_ref(),
+<a href=#1431 id=1431 data-nosnippet>1431</a>            <span class="self">self</span>.group_info.as_ref(),
+<a href=#1432 id=1432 data-nosnippet>1432</a>        )
+<a href=#1433 id=1433 data-nosnippet>1433</a>    }
+<a href=#1434 id=1434 data-nosnippet>1434</a>
+<a href=#1435 id=1435 data-nosnippet>1435</a>    <span class="comment">// owned getters
+<a href=#1436 id=1436 data-nosnippet>1436</a>    </span><span class="doccomment">/// Gets the Commit messsage. This method consumes the [`CommitMessageBundle`]. For a borrowed
+<a href=#1437 id=1437 data-nosnippet>1437</a>    /// version see [`Self::commit`].
+<a href=#1438 id=1438 data-nosnippet>1438</a>    </span><span class="kw">pub fn </span>into_commit(<span class="self">self</span>) -&gt; MlsMessageOut {
+<a href=#1439 id=1439 data-nosnippet>1439</a>        <span class="self">self</span>.commit
+<a href=#1440 id=1440 data-nosnippet>1440</a>    }
+<a href=#1441 id=1441 data-nosnippet>1441</a>
+<a href=#1442 id=1442 data-nosnippet>1442</a>    <span class="doccomment">/// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+<a href=#1443 id=1443 data-nosnippet>1443</a>    /// This method consumes the [`CommitMessageBundle`]. For a borrowed version see
+<a href=#1444 id=1444 data-nosnippet>1444</a>    /// [`Self::welcome`].
+<a href=#1445 id=1445 data-nosnippet>1445</a>    </span><span class="kw">pub fn </span>into_welcome(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Welcome&gt; {
+<a href=#1446 id=1446 data-nosnippet>1446</a>        <span class="self">self</span>.welcome
+<a href=#1447 id=1447 data-nosnippet>1447</a>    }
+<a href=#1448 id=1448 data-nosnippet>1448</a>
+<a href=#1449 id=1449 data-nosnippet>1449</a>    <span class="doccomment">/// Gets the Welcome messsage. Only [`Some`] if new clients have been added in the commit.
+<a href=#1450 id=1450 data-nosnippet>1450</a>    /// For a borrowed version, see [`Self::to_welcome_msg`].
+<a href=#1451 id=1451 data-nosnippet>1451</a>    </span><span class="kw">pub fn </span>into_welcome_msg(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt; {
+<a href=#1452 id=1452 data-nosnippet>1452</a>        <span class="self">self</span>.welcome
+<a href=#1453 id=1453 data-nosnippet>1453</a>            .map(|welcome| MlsMessageOut::from_welcome(welcome, <span class="self">self</span>.version))
+<a href=#1454 id=1454 data-nosnippet>1454</a>    }
+<a href=#1455 id=1455 data-nosnippet>1455</a>
+<a href=#1456 id=1456 data-nosnippet>1456</a>    <span class="doccomment">/// Gets the GroupInfo message. Only [`Some`] if new clients have been added or the group
+<a href=#1457 id=1457 data-nosnippet>1457</a>    /// configuration has `use_ratchet_tree_extension` set.
+<a href=#1458 id=1458 data-nosnippet>1458</a>    /// This method consumes the [`CommitMessageBundle`]. For a borrowed version see
+<a href=#1459 id=1459 data-nosnippet>1459</a>    /// [`Self::group_info`].
+<a href=#1460 id=1460 data-nosnippet>1460</a>    </span><span class="kw">pub fn </span>into_group_info(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;GroupInfo&gt; {
+<a href=#1461 id=1461 data-nosnippet>1461</a>        <span class="self">self</span>.group_info
+<a href=#1462 id=1462 data-nosnippet>1462</a>    }
+<a href=#1463 id=1463 data-nosnippet>1463</a>
+<a href=#1464 id=1464 data-nosnippet>1464</a>    <span class="doccomment">/// Gets the GroupInfo messsage. Only [`Some`] if new clients have been added in the commit.
+<a href=#1465 id=1465 data-nosnippet>1465</a>    </span><span class="kw">pub fn </span>into_group_info_msg(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt; {
+<a href=#1466 id=1466 data-nosnippet>1466</a>        <span class="self">self</span>.group_info.map(|group_info| group_info.into())
+<a href=#1467 id=1467 data-nosnippet>1467</a>    }
+<a href=#1468 id=1468 data-nosnippet>1468</a>
+<a href=#1469 id=1469 data-nosnippet>1469</a>    <span class="doccomment">/// Gets all three messages, some of which optional. This method consumes the
+<a href=#1470 id=1470 data-nosnippet>1470</a>    /// [`CommitMessageBundle`]. For a borrowed version see [`Self::contents`].
+<a href=#1471 id=1471 data-nosnippet>1471</a>    </span><span class="kw">pub fn </span>into_contents(<span class="self">self</span>) -&gt; (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;Welcome&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;) {
+<a href=#1472 id=1472 data-nosnippet>1472</a>        (<span class="self">self</span>.commit, <span class="self">self</span>.welcome, <span class="self">self</span>.group_info)
+<a href=#1473 id=1473 data-nosnippet>1473</a>    }
+<a href=#1474 id=1474 data-nosnippet>1474</a>
+<a href=#1475 id=1475 data-nosnippet>1475</a>    <span class="doccomment">/// Gets all three messages, some of which optional, as [`MlsMessageOut`].
+<a href=#1476 id=1476 data-nosnippet>1476</a>    /// This method consumes the [`CommitMessageBundle`].
+<a href=#1477 id=1477 data-nosnippet>1477</a>    </span><span class="kw">pub fn </span>into_messages(<span class="self">self</span>) -&gt; (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;) {
+<a href=#1478 id=1478 data-nosnippet>1478</a>        (
+<a href=#1479 id=1479 data-nosnippet>1479</a>            <span class="self">self</span>.commit,
+<a href=#1480 id=1480 data-nosnippet>1480</a>            <span class="self">self</span>.welcome
+<a href=#1481 id=1481 data-nosnippet>1481</a>                .map(|welcome| MlsMessageOut::from_welcome(welcome, <span class="self">self</span>.version)),
+<a href=#1482 id=1482 data-nosnippet>1482</a>            <span class="self">self</span>.group_info.map(|group_info| group_info.into()),
+<a href=#1483 id=1483 data-nosnippet>1483</a>        )
+<a href=#1484 id=1484 data-nosnippet>1484</a>    }
+<a href=#1485 id=1485 data-nosnippet>1485</a>}
+<a href=#1486 id=1486 data-nosnippet>1486</a>
+<a href=#1487 id=1487 data-nosnippet>1487</a><span class="kw">impl </span>IntoIterator <span class="kw">for </span>CommitMessageBundle {
+<a href=#1488 id=1488 data-nosnippet>1488</a>    <span class="kw">type </span>Item = MlsMessageOut;
+<a href=#1489 id=1489 data-nosnippet>1489</a>
+<a href=#1490 id=1490 data-nosnippet>1490</a>    <span class="kw">type </span>IntoIter = core::iter::Chain&lt;
+<a href=#1491 id=1491 data-nosnippet>1491</a>        core::iter::Chain&lt;
+<a href=#1492 id=1492 data-nosnippet>1492</a>            core::option::IntoIter&lt;MlsMessageOut&gt;,
+<a href=#1493 id=1493 data-nosnippet>1493</a>            core::option::IntoIter&lt;MlsMessageOut&gt;,
+<a href=#1494 id=1494 data-nosnippet>1494</a>        &gt;,
+<a href=#1495 id=1495 data-nosnippet>1495</a>        core::option::IntoIter&lt;MlsMessageOut&gt;,
+<a href=#1496 id=1496 data-nosnippet>1496</a>    &gt;;
+<a href=#1497 id=1497 data-nosnippet>1497</a>
+<a href=#1498 id=1498 data-nosnippet>1498</a>    <span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
+<a href=#1499 id=1499 data-nosnippet>1499</a>        <span class="kw">let </span>welcome = <span class="self">self</span>.to_welcome_msg();
+<a href=#1500 id=1500 data-nosnippet>1500</a>        <span class="kw">let </span>group_info = <span class="self">self</span>.group_info.map(|group_info| group_info.into());
+<a href=#1501 id=1501 data-nosnippet>1501</a>
+<a href=#1502 id=1502 data-nosnippet>1502</a>        <span class="prelude-val">Some</span>(<span class="self">self</span>.commit)
+<a href=#1503 id=1503 data-nosnippet>1503</a>            .into_iter()
+<a href=#1504 id=1504 data-nosnippet>1504</a>            .chain(welcome)
+<a href=#1505 id=1505 data-nosnippet>1505</a>            .chain(group_info)
+<a href=#1506 id=1506 data-nosnippet>1506</a>    }
+<a href=#1507 id=1507 data-nosnippet>1507</a>}
 </code></pre></div></section></main></body></html>

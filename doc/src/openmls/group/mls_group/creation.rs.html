@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/creation.rs`."><title>creation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (c4af71034 2026-07-06)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>creation.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>errors::NewGroupError;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/mls_group/creation.rs`."><title>creation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (f10db292a 2026-07-07)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/mls_group/</div>creation.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>errors::NewGroupError;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider <span class="kw">as </span>StorageProviderTrait};
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use super</span>::{builder::MlsGroupBuilder, <span class="kw-2">*</span>};
@@ -876,79 +876,208 @@
 <a href=#876 id=876 data-nosnippet>876</a>    <span class="prelude-val">Ok</span>(own_index)
 <a href=#877 id=877 data-nosnippet>877</a>}
 <a href=#878 id=878 data-nosnippet>878</a>
-<a href=#879 id=879 data-nosnippet>879</a><span class="doccomment">/// Verify or skip the validation of leaf node lifetimes in the ratchet tree
-<a href=#880 id=880 data-nosnippet>880</a>/// when joining a group.
-<a href=#881 id=881 data-nosnippet>881</a></span><span class="attr">#[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-<a href=#882 id=882 data-nosnippet>882</a></span><span class="kw">pub enum </span>LeafNodeLifetimePolicy {
-<a href=#883 id=883 data-nosnippet>883</a>    <span class="doccomment">/// Verify the lifetime of leaf nodes in the ratchet tree.
+<a href=#879 id=879 data-nosnippet>879</a><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#880 id=880 data-nosnippet>880</a></span><span class="kw">impl </span>MlsGroup {
+<a href=#881 id=881 data-nosnippet>881</a>    <span class="doccomment">/// Bootstrap a virtual client's sibling emulator client into a higher-level
+<a href=#882 id=882 data-nosnippet>882</a>    /// group by processing another sibling's external commit, when this client
+<a href=#883 id=883 data-nosnippet>883</a>    /// is not yet a member of that group.
 <a href=#884 id=884 data-nosnippet>884</a>    ///
-<a href=#885 id=885 data-nosnippet>885</a>    /// **NOTE:** Only leaf nodes that have never been updated have a lifetime.
-<a href=#886 id=886 data-nosnippet>886</a>    </span><span class="attr">#[default]
-<a href=#887 id=887 data-nosnippet>887</a>    </span>Verify,
-<a href=#888 id=888 data-nosnippet>888</a>
-<a href=#889 id=889 data-nosnippet>889</a>    <span class="doccomment">/// Skip the verification of the lifeimte in leaf nodes in the ratchet tree.
-<a href=#890 id=890 data-nosnippet>890</a>    </span>Skip,
-<a href=#891 id=891 data-nosnippet>891</a>}
-<a href=#892 id=892 data-nosnippet>892</a>
-<a href=#893 id=893 data-nosnippet>893</a><span class="doccomment">/// Builder for joining a group.
-<a href=#894 id=894 data-nosnippet>894</a>///
-<a href=#895 id=895 data-nosnippet>895</a>/// Create this with [`StagedWelcome::build_from_welcome`].
-<a href=#896 id=896 data-nosnippet>896</a></span><span class="kw">pub struct </span>JoinBuilder&lt;<span class="lifetime">'a</span>, Provider: OpenMlsProvider&gt; {
-<a href=#897 id=897 data-nosnippet>897</a>    provider: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Provider,
-<a href=#898 id=898 data-nosnippet>898</a>    processed_welcome: ProcessedWelcome,
-<a href=#899 id=899 data-nosnippet>899</a>    ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
-<a href=#900 id=900 data-nosnippet>900</a>    validate_lifetimes: LeafNodeLifetimePolicy,
-<a href=#901 id=901 data-nosnippet>901</a>    replace_old_group: bool,
-<a href=#902 id=902 data-nosnippet>902</a>}
-<a href=#903 id=903 data-nosnippet>903</a>
-<a href=#904 id=904 data-nosnippet>904</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, Provider: OpenMlsProvider&gt; JoinBuilder&lt;<span class="lifetime">'a</span>, Provider&gt; {
-<a href=#905 id=905 data-nosnippet>905</a>    <span class="doccomment">/// Create a new builder for the [`JoinBuilder`].
-<a href=#906 id=906 data-nosnippet>906</a>    </span><span class="kw">pub fn </span>new(provider: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Provider, processed_welcome: ProcessedWelcome) -&gt; <span class="self">Self </span>{
-<a href=#907 id=907 data-nosnippet>907</a>        <span class="self">Self </span>{
-<a href=#908 id=908 data-nosnippet>908</a>            provider,
-<a href=#909 id=909 data-nosnippet>909</a>            processed_welcome,
-<a href=#910 id=910 data-nosnippet>910</a>            ratchet_tree: <span class="prelude-val">None</span>,
-<a href=#911 id=911 data-nosnippet>911</a>            replace_old_group: <span class="bool-val">false</span>,
-<a href=#912 id=912 data-nosnippet>912</a>            validate_lifetimes: LeafNodeLifetimePolicy::Verify,
-<a href=#913 id=913 data-nosnippet>913</a>        }
-<a href=#914 id=914 data-nosnippet>914</a>    }
-<a href=#915 id=915 data-nosnippet>915</a>
-<a href=#916 id=916 data-nosnippet>916</a>    <span class="doccomment">/// The ratchet tree to use for the new group.
-<a href=#917 id=917 data-nosnippet>917</a>    </span><span class="kw">pub fn </span>with_ratchet_tree(<span class="kw-2">mut </span><span class="self">self</span>, ratchet_tree: RatchetTreeIn) -&gt; <span class="self">Self </span>{
-<a href=#918 id=918 data-nosnippet>918</a>        <span class="self">self</span>.ratchet_tree = <span class="prelude-val">Some</span>(ratchet_tree);
-<a href=#919 id=919 data-nosnippet>919</a>        <span class="self">self
-<a href=#920 id=920 data-nosnippet>920</a>    </span>}
-<a href=#921 id=921 data-nosnippet>921</a>
-<a href=#922 id=922 data-nosnippet>922</a>    <span class="doccomment">/// Instruct the builder to replace any existing group with the same ID.
-<a href=#923 id=923 data-nosnippet>923</a>    </span><span class="kw">pub fn </span>replace_old_group(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-<a href=#924 id=924 data-nosnippet>924</a>        <span class="self">self</span>.replace_old_group = <span class="bool-val">true</span>;
-<a href=#925 id=925 data-nosnippet>925</a>        <span class="self">self
-<a href=#926 id=926 data-nosnippet>926</a>    </span>}
-<a href=#927 id=927 data-nosnippet>927</a>
-<a href=#928 id=928 data-nosnippet>928</a>    <span class="doccomment">/// Skip the validation of lifetimes in leaf nodes in the ratchet tree.
-<a href=#929 id=929 data-nosnippet>929</a>    /// Note that only the leaf nodes are checked that were never updated.
-<a href=#930 id=930 data-nosnippet>930</a>    ///
-<a href=#931 id=931 data-nosnippet>931</a>    /// By default they are validated.
-<a href=#932 id=932 data-nosnippet>932</a>    </span><span class="kw">pub fn </span>skip_lifetime_validation(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-<a href=#933 id=933 data-nosnippet>933</a>        <span class="self">self</span>.validate_lifetimes = LeafNodeLifetimePolicy::Skip;
-<a href=#934 id=934 data-nosnippet>934</a>        <span class="self">self
-<a href=#935 id=935 data-nosnippet>935</a>    </span>}
-<a href=#936 id=936 data-nosnippet>936</a>
-<a href=#937 id=937 data-nosnippet>937</a>    <span class="doccomment">/// Get a reference to the [`ProcessedWelcome`].
-<a href=#938 id=938 data-nosnippet>938</a>    ///
-<a href=#939 id=939 data-nosnippet>939</a>    /// Use this to inspect the [`Welcome`] message before validation.
-<a href=#940 id=940 data-nosnippet>940</a>    </span><span class="kw">pub fn </span>processed_welcome(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProcessedWelcome {
-<a href=#941 id=941 data-nosnippet>941</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.processed_welcome
-<a href=#942 id=942 data-nosnippet>942</a>    }
-<a href=#943 id=943 data-nosnippet>943</a>
-<a href=#944 id=944 data-nosnippet>944</a>    <span class="doccomment">/// Build the [`StagedWelcome`].
-<a href=#945 id=945 data-nosnippet>945</a>    </span><span class="kw">pub fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;StagedWelcome, WelcomeError&lt;Provider::StorageError&gt;&gt; {
-<a href=#946 id=946 data-nosnippet>946</a>        <span class="self">self</span>.processed_welcome.into_staged_welcome_inner(
-<a href=#947 id=947 data-nosnippet>947</a>            <span class="self">self</span>.provider,
-<a href=#948 id=948 data-nosnippet>948</a>            <span class="self">self</span>.ratchet_tree,
-<a href=#949 id=949 data-nosnippet>949</a>            <span class="self">self</span>.validate_lifetimes,
-<a href=#950 id=950 data-nosnippet>950</a>            <span class="self">self</span>.replace_old_group,
-<a href=#951 id=951 data-nosnippet>951</a>        )
-<a href=#952 id=952 data-nosnippet>952</a>    }
-<a href=#953 id=953 data-nosnippet>953</a>}
+<a href=#885 id=885 data-nosnippet>885</a>    /// The first emulator client joined the higher-level group via an external
+<a href=#886 id=886 data-nosnippet>886</a>    /// commit. A second emulator client (this one), sharing the same emulation
+<a href=#887 id=887 data-nosnippet>887</a>    /// epoch (`epoch_id`), reconstructs the resulting group state from that
+<a href=#888 id=888 data-nosnippet>888</a>    /// commit. It cannot decapsulate the external init secret from the previous
+<a href=#889 id=889 data-nosnippet>889</a>    /// epoch's `external_secret` (it never held it), so it uses the external
+<a href=#890 id=890 data-nosnippet>890</a>    /// init secret the committing sibling carried in the commit's
+<a href=#891 id=891 data-nosnippet>891</a>    /// `DerivationInfoTBE` (mls-virtual-clients draft), and recreates
+<a href=#892 id=892 data-nosnippet>892</a>    /// the commit path from the shared operation secret tree.
+<a href=#893 id=893 data-nosnippet>893</a>    ///
+<a href=#894 id=894 data-nosnippet>894</a>    /// `verifiable_group_info` and `ratchet_tree` describe the higher-level
+<a href=#895 id=895 data-nosnippet>895</a>    /// group at the epoch *before* the external commit (the ratchet tree may
+<a href=#896 id=896 data-nosnippet>896</a>    /// instead travel in the GroupInfo's `ratchet_tree` extension).
+<a href=#897 id=897 data-nosnippet>897</a>    /// `external_commit` is the sibling's external commit. On success the
+<a href=#898 id=898 data-nosnippet>898</a>    /// returned group sits at the epoch the commit installs, with this client
+<a href=#899 id=899 data-nosnippet>899</a>    /// on the shared virtual-client leaf.
+<a href=#900 id=900 data-nosnippet>900</a>    </span><span class="kw">pub fn </span>vc_join_via_sibling_external_commit&lt;Provider: OpenMlsProvider&gt;(
+<a href=#901 id=901 data-nosnippet>901</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#902 id=902 data-nosnippet>902</a>        join_config: <span class="kw-2">&amp;</span>MlsGroupJoinConfig,
+<a href=#903 id=903 data-nosnippet>903</a>        verifiable_group_info: VerifiableGroupInfo,
+<a href=#904 id=904 data-nosnippet>904</a>        ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
+<a href=#905 id=905 data-nosnippet>905</a>        external_commit: <span class="kw">impl </span>Into&lt;<span class="kw">crate</span>::framing::ProtocolMessage&gt;,
+<a href=#906 id=906 data-nosnippet>906</a>        epoch_id: <span class="kw">crate</span>::components::vc_derivation_info::EpochId,
+<a href=#907 id=907 data-nosnippet>907</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, <span class="kw">crate</span>::group::errors::VcExternalCommitJoinError&lt;Provider::StorageError&gt;&gt;
+<a href=#908 id=908 data-nosnippet>908</a>    {
+<a href=#909 id=909 data-nosnippet>909</a>        <span class="kw">use crate</span>::{
+<a href=#910 id=910 data-nosnippet>910</a>            framing::Sender,
+<a href=#911 id=911 data-nosnippet>911</a>            group::config::PastEpochDeletionPolicy,
+<a href=#912 id=912 data-nosnippet>912</a>            group::errors::{ProcessMessageError, VcExternalCommitJoinError <span class="kw">as </span>Error},
+<a href=#913 id=913 data-nosnippet>913</a>            group::public_group::PublicGroup,
+<a href=#914 id=914 data-nosnippet>914</a>            prelude::mls_content::FramedContentBody,
+<a href=#915 id=915 data-nosnippet>915</a>            schedule::{EpochSecrets, InitSecret},
+<a href=#916 id=916 data-nosnippet>916</a>        };
+<a href=#917 id=917 data-nosnippet>917</a>
+<a href=#918 id=918 data-nosnippet>918</a>        <span class="comment">// Resolve the prior-epoch ratchet tree (from the GroupInfo extension or
+<a href=#919 id=919 data-nosnippet>919</a>        // the argument) and rebuild the prior-epoch public group.
+<a href=#920 id=920 data-nosnippet>920</a>        </span><span class="kw">let </span>ratchet_tree = <span class="kw">match </span>verifiable_group_info.extensions().ratchet_tree() {
+<a href=#921 id=921 data-nosnippet>921</a>            <span class="prelude-val">Some</span>(extension) =&gt; extension.ratchet_tree().clone(),
+<a href=#922 id=922 data-nosnippet>922</a>            <span class="prelude-val">None </span>=&gt; ratchet_tree.ok_or(Error::MissingRatchetTree)<span class="question-mark">?</span>,
+<a href=#923 id=923 data-nosnippet>923</a>        };
+<a href=#924 id=924 data-nosnippet>924</a>        <span class="kw">let </span>(public_group, _group_info) = PublicGroup::from_ratchet_tree(
+<a href=#925 id=925 data-nosnippet>925</a>            provider.crypto(),
+<a href=#926 id=926 data-nosnippet>926</a>            ratchet_tree,
+<a href=#927 id=927 data-nosnippet>927</a>            verifiable_group_info,
+<a href=#928 id=928 data-nosnippet>928</a>            ProposalStore::new(),
+<a href=#929 id=929 data-nosnippet>929</a>            LeafNodeLifetimePolicy::default(),
+<a href=#930 id=930 data-nosnippet>930</a>        )<span class="question-mark">?</span>;
+<a href=#931 id=931 data-nosnippet>931</a>
+<a href=#932 id=932 data-nosnippet>932</a>        <span class="comment">// Assemble a transient group at the prior epoch. Its epoch secrets are
+<a href=#933 id=933 data-nosnippet>933</a>        // never used cryptographically here: the external commit carries the
+<a href=#934 id=934 data-nosnippet>934</a>        // external init secret and the operation secret tree supplies the path,
+<a href=#935 id=935 data-nosnippet>935</a>        // so a random init-secret stub is sufficient. The own leaf index is the
+<a href=#936 id=936 data-nosnippet>936</a>        // leftmost free index, where the committing sibling installs the shared
+<a href=#937 id=937 data-nosnippet>937</a>        // virtual-client leaf.
+<a href=#938 id=938 data-nosnippet>938</a>        </span><span class="kw">let </span>ciphersuite = public_group.ciphersuite();
+<a href=#939 id=939 data-nosnippet>939</a>        <span class="kw">let </span>serialized_group_context = public_group
+<a href=#940 id=940 data-nosnippet>940</a>            .group_context()
+<a href=#941 id=941 data-nosnippet>941</a>            .tls_serialize_detached()
+<a href=#942 id=942 data-nosnippet>942</a>            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+<a href=#943 id=943 data-nosnippet>943</a>        <span class="kw">let </span>own_leaf_index = public_group.leftmost_free_index(std::iter::empty())<span class="question-mark">?</span>;
+<a href=#944 id=944 data-nosnippet>944</a>        <span class="kw">let </span>init_secret = InitSecret::random(ciphersuite, provider.rand())
+<a href=#945 id=945 data-nosnippet>945</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#946 id=946 data-nosnippet>946</a>        <span class="kw">let </span>epoch_secrets =
+<a href=#947 id=947 data-nosnippet>947</a>            EpochSecrets::with_init_secret(provider.crypto(), ciphersuite, init_secret)
+<a href=#948 id=948 data-nosnippet>948</a>                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#949 id=949 data-nosnippet>949</a>        <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+<a href=#950 id=950 data-nosnippet>950</a>            serialized_group_context,
+<a href=#951 id=951 data-nosnippet>951</a>            public_group.tree_size(),
+<a href=#952 id=952 data-nosnippet>952</a>            LeafNodeIndex::new(<span class="number">0u32</span>),
+<a href=#953 id=953 data-nosnippet>953</a>        );
+<a href=#954 id=954 data-nosnippet>954</a>        <span class="comment">// Do not retain the synthetic prior-epoch secrets used only to stage
+<a href=#955 id=955 data-nosnippet>955</a>        // this external commit.
+<a href=#956 id=956 data-nosnippet>956</a>        </span><span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(
+<a href=#957 id=957 data-nosnippet>957</a>            <span class="kw-2">&amp;</span>PastEpochDeletionPolicy::MaxEpochs(<span class="number">0</span>),
+<a href=#958 id=958 data-nosnippet>958</a>            message_secrets,
+<a href=#959 id=959 data-nosnippet>959</a>        );
+<a href=#960 id=960 data-nosnippet>960</a>        <span class="kw">let </span><span class="kw-2">mut </span>group = MlsGroup {
+<a href=#961 id=961 data-nosnippet>961</a>            mls_group_config: join_config.clone(),
+<a href=#962 id=962 data-nosnippet>962</a>            own_leaf_nodes: <span class="macro">vec!</span>[],
+<a href=#963 id=963 data-nosnippet>963</a>            aad: <span class="macro">vec!</span>[],
+<a href=#964 id=964 data-nosnippet>964</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#965 id=965 data-nosnippet>965</a>            </span>safe_aad: <span class="kw">crate</span>::framing::SafeAad::empty(),
+<a href=#966 id=966 data-nosnippet>966</a>            group_state: MlsGroupState::Operational,
+<a href=#967 id=967 data-nosnippet>967</a>            public_group,
+<a href=#968 id=968 data-nosnippet>968</a>            group_epoch_secrets,
+<a href=#969 id=969 data-nosnippet>969</a>            own_leaf_index,
+<a href=#970 id=970 data-nosnippet>970</a>            message_secrets_store,
+<a href=#971 id=971 data-nosnippet>971</a>            resumption_psk_store: ResumptionPskStore::new(join_config.number_of_resumption_psks),
+<a href=#972 id=972 data-nosnippet>972</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#973 id=973 data-nosnippet>973</a>            </span>application_export_tree: <span class="prelude-val">None</span>,
+<a href=#974 id=974 data-nosnippet>974</a>        };
+<a href=#975 id=975 data-nosnippet>975</a>
+<a href=#976 id=976 data-nosnippet>976</a>        <span class="comment">// Parse and verify the external commit against the prior-epoch group.
+<a href=#977 id=977 data-nosnippet>977</a>        </span><span class="kw">let </span>unverified = group.unprotect_message(provider, external_commit)<span class="question-mark">?</span>;
+<a href=#978 id=978 data-nosnippet>978</a>        <span class="kw">let </span>verified = unverified
+<a href=#979 id=979 data-nosnippet>979</a>            .verify(group.ciphersuite(), provider.crypto(), group.version())
+<a href=#980 id=980 data-nosnippet>980</a>            .map_err(ProcessMessageError::from)<span class="question-mark">?</span>;
+<a href=#981 id=981 data-nosnippet>981</a>        <span class="kw">if </span>!<span class="macro">matches!</span>(verified.content.sender(), Sender::NewMemberCommit) {
+<a href=#982 id=982 data-nosnippet>982</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NotAnExternalCommit);
+<a href=#983 id=983 data-nosnippet>983</a>        }
+<a href=#984 id=984 data-nosnippet>984</a>        <span class="kw">let </span>content = verified.content;
+<a href=#985 id=985 data-nosnippet>985</a>        <span class="kw">let </span>FramedContentBody::Commit(commit) = content.content() <span class="kw">else </span>{
+<a href=#986 id=986 data-nosnippet>986</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NotAnExternalCommit);
+<a href=#987 id=987 data-nosnippet>987</a>        };
+<a href=#988 id=988 data-nosnippet>988</a>
+<a href=#989 id=989 data-nosnippet>989</a>        <span class="comment">// Recover the sibling-VC commit material (operation secret + emulation
+<a href=#990 id=990 data-nosnippet>990</a>        // epoch id + carried external init secret) from the leaf's derivation
+<a href=#991 id=991 data-nosnippet>991</a>        // info, then stage and merge the commit through the sibling-VC path.
+<a href=#992 id=992 data-nosnippet>992</a>        </span><span class="kw">let </span>material = group
+<a href=#993 id=993 data-nosnippet>993</a>            .load_vc_commit_material(provider, commit)<span class="question-mark">?
+<a href=#994 id=994 data-nosnippet>994</a>            </span>.ok_or(Error::MissingDerivationInfo)<span class="question-mark">?</span>;
+<a href=#995 id=995 data-nosnippet>995</a>        <span class="kw">if </span>material.epoch_id != epoch_id {
+<a href=#996 id=996 data-nosnippet>996</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::EpochIdMismatch);
+<a href=#997 id=997 data-nosnippet>997</a>        }
+<a href=#998 id=998 data-nosnippet>998</a>        <span class="kw">let </span>staged = group.stage_commit(<span class="kw-2">&amp;</span>content, <span class="macro">vec!</span>[], <span class="macro">vec!</span>[], provider, <span class="prelude-val">Some</span>(material))<span class="question-mark">?</span>;
+<a href=#999 id=999 data-nosnippet>999</a>        group.merge_staged_commit(provider, staged)<span class="question-mark">?</span>;
+<a href=#1000 id=1000 data-nosnippet>1000</a>        group.resize_message_secrets_store(join_config.past_epoch_deletion_policy());
+<a href=#1001 id=1001 data-nosnippet>1001</a>        group
+<a href=#1002 id=1002 data-nosnippet>1002</a>            .store(provider.storage())
+<a href=#1003 id=1003 data-nosnippet>1003</a>            .map_err(Error::StorageError)<span class="question-mark">?</span>;
+<a href=#1004 id=1004 data-nosnippet>1004</a>        <span class="prelude-val">Ok</span>(group)
+<a href=#1005 id=1005 data-nosnippet>1005</a>    }
+<a href=#1006 id=1006 data-nosnippet>1006</a>}
+<a href=#1007 id=1007 data-nosnippet>1007</a>
+<a href=#1008 id=1008 data-nosnippet>1008</a><span class="doccomment">/// Verify or skip the validation of leaf node lifetimes in the ratchet tree
+<a href=#1009 id=1009 data-nosnippet>1009</a>/// when joining a group.
+<a href=#1010 id=1010 data-nosnippet>1010</a></span><span class="attr">#[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+<a href=#1011 id=1011 data-nosnippet>1011</a></span><span class="kw">pub enum </span>LeafNodeLifetimePolicy {
+<a href=#1012 id=1012 data-nosnippet>1012</a>    <span class="doccomment">/// Verify the lifetime of leaf nodes in the ratchet tree.
+<a href=#1013 id=1013 data-nosnippet>1013</a>    ///
+<a href=#1014 id=1014 data-nosnippet>1014</a>    /// **NOTE:** Only leaf nodes that have never been updated have a lifetime.
+<a href=#1015 id=1015 data-nosnippet>1015</a>    </span><span class="attr">#[default]
+<a href=#1016 id=1016 data-nosnippet>1016</a>    </span>Verify,
+<a href=#1017 id=1017 data-nosnippet>1017</a>
+<a href=#1018 id=1018 data-nosnippet>1018</a>    <span class="doccomment">/// Skip the verification of the lifeimte in leaf nodes in the ratchet tree.
+<a href=#1019 id=1019 data-nosnippet>1019</a>    </span>Skip,
+<a href=#1020 id=1020 data-nosnippet>1020</a>}
+<a href=#1021 id=1021 data-nosnippet>1021</a>
+<a href=#1022 id=1022 data-nosnippet>1022</a><span class="doccomment">/// Builder for joining a group.
+<a href=#1023 id=1023 data-nosnippet>1023</a>///
+<a href=#1024 id=1024 data-nosnippet>1024</a>/// Create this with [`StagedWelcome::build_from_welcome`].
+<a href=#1025 id=1025 data-nosnippet>1025</a></span><span class="kw">pub struct </span>JoinBuilder&lt;<span class="lifetime">'a</span>, Provider: OpenMlsProvider&gt; {
+<a href=#1026 id=1026 data-nosnippet>1026</a>    provider: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Provider,
+<a href=#1027 id=1027 data-nosnippet>1027</a>    processed_welcome: ProcessedWelcome,
+<a href=#1028 id=1028 data-nosnippet>1028</a>    ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
+<a href=#1029 id=1029 data-nosnippet>1029</a>    validate_lifetimes: LeafNodeLifetimePolicy,
+<a href=#1030 id=1030 data-nosnippet>1030</a>    replace_old_group: bool,
+<a href=#1031 id=1031 data-nosnippet>1031</a>}
+<a href=#1032 id=1032 data-nosnippet>1032</a>
+<a href=#1033 id=1033 data-nosnippet>1033</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, Provider: OpenMlsProvider&gt; JoinBuilder&lt;<span class="lifetime">'a</span>, Provider&gt; {
+<a href=#1034 id=1034 data-nosnippet>1034</a>    <span class="doccomment">/// Create a new builder for the [`JoinBuilder`].
+<a href=#1035 id=1035 data-nosnippet>1035</a>    </span><span class="kw">pub fn </span>new(provider: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Provider, processed_welcome: ProcessedWelcome) -&gt; <span class="self">Self </span>{
+<a href=#1036 id=1036 data-nosnippet>1036</a>        <span class="self">Self </span>{
+<a href=#1037 id=1037 data-nosnippet>1037</a>            provider,
+<a href=#1038 id=1038 data-nosnippet>1038</a>            processed_welcome,
+<a href=#1039 id=1039 data-nosnippet>1039</a>            ratchet_tree: <span class="prelude-val">None</span>,
+<a href=#1040 id=1040 data-nosnippet>1040</a>            replace_old_group: <span class="bool-val">false</span>,
+<a href=#1041 id=1041 data-nosnippet>1041</a>            validate_lifetimes: LeafNodeLifetimePolicy::Verify,
+<a href=#1042 id=1042 data-nosnippet>1042</a>        }
+<a href=#1043 id=1043 data-nosnippet>1043</a>    }
+<a href=#1044 id=1044 data-nosnippet>1044</a>
+<a href=#1045 id=1045 data-nosnippet>1045</a>    <span class="doccomment">/// The ratchet tree to use for the new group.
+<a href=#1046 id=1046 data-nosnippet>1046</a>    </span><span class="kw">pub fn </span>with_ratchet_tree(<span class="kw-2">mut </span><span class="self">self</span>, ratchet_tree: RatchetTreeIn) -&gt; <span class="self">Self </span>{
+<a href=#1047 id=1047 data-nosnippet>1047</a>        <span class="self">self</span>.ratchet_tree = <span class="prelude-val">Some</span>(ratchet_tree);
+<a href=#1048 id=1048 data-nosnippet>1048</a>        <span class="self">self
+<a href=#1049 id=1049 data-nosnippet>1049</a>    </span>}
+<a href=#1050 id=1050 data-nosnippet>1050</a>
+<a href=#1051 id=1051 data-nosnippet>1051</a>    <span class="doccomment">/// Instruct the builder to replace any existing group with the same ID.
+<a href=#1052 id=1052 data-nosnippet>1052</a>    </span><span class="kw">pub fn </span>replace_old_group(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+<a href=#1053 id=1053 data-nosnippet>1053</a>        <span class="self">self</span>.replace_old_group = <span class="bool-val">true</span>;
+<a href=#1054 id=1054 data-nosnippet>1054</a>        <span class="self">self
+<a href=#1055 id=1055 data-nosnippet>1055</a>    </span>}
+<a href=#1056 id=1056 data-nosnippet>1056</a>
+<a href=#1057 id=1057 data-nosnippet>1057</a>    <span class="doccomment">/// Skip the validation of lifetimes in leaf nodes in the ratchet tree.
+<a href=#1058 id=1058 data-nosnippet>1058</a>    /// Note that only the leaf nodes are checked that were never updated.
+<a href=#1059 id=1059 data-nosnippet>1059</a>    ///
+<a href=#1060 id=1060 data-nosnippet>1060</a>    /// By default they are validated.
+<a href=#1061 id=1061 data-nosnippet>1061</a>    </span><span class="kw">pub fn </span>skip_lifetime_validation(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+<a href=#1062 id=1062 data-nosnippet>1062</a>        <span class="self">self</span>.validate_lifetimes = LeafNodeLifetimePolicy::Skip;
+<a href=#1063 id=1063 data-nosnippet>1063</a>        <span class="self">self
+<a href=#1064 id=1064 data-nosnippet>1064</a>    </span>}
+<a href=#1065 id=1065 data-nosnippet>1065</a>
+<a href=#1066 id=1066 data-nosnippet>1066</a>    <span class="doccomment">/// Get a reference to the [`ProcessedWelcome`].
+<a href=#1067 id=1067 data-nosnippet>1067</a>    ///
+<a href=#1068 id=1068 data-nosnippet>1068</a>    /// Use this to inspect the [`Welcome`] message before validation.
+<a href=#1069 id=1069 data-nosnippet>1069</a>    </span><span class="kw">pub fn </span>processed_welcome(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProcessedWelcome {
+<a href=#1070 id=1070 data-nosnippet>1070</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.processed_welcome
+<a href=#1071 id=1071 data-nosnippet>1071</a>    }
+<a href=#1072 id=1072 data-nosnippet>1072</a>
+<a href=#1073 id=1073 data-nosnippet>1073</a>    <span class="doccomment">/// Build the [`StagedWelcome`].
+<a href=#1074 id=1074 data-nosnippet>1074</a>    </span><span class="kw">pub fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;StagedWelcome, WelcomeError&lt;Provider::StorageError&gt;&gt; {
+<a href=#1075 id=1075 data-nosnippet>1075</a>        <span class="self">self</span>.processed_welcome.into_staged_welcome_inner(
+<a href=#1076 id=1076 data-nosnippet>1076</a>            <span class="self">self</span>.provider,
+<a href=#1077 id=1077 data-nosnippet>1077</a>            <span class="self">self</span>.ratchet_tree,
+<a href=#1078 id=1078 data-nosnippet>1078</a>            <span class="self">self</span>.validate_lifetimes,
+<a href=#1079 id=1079 data-nosnippet>1079</a>            <span class="self">self</span>.replace_old_group,
+<a href=#1080 id=1080 data-nosnippet>1080</a>        )
+<a href=#1081 id=1081 data-nosnippet>1081</a>    }
+<a href=#1082 id=1082 data-nosnippet>1082</a>}
 </code></pre></div></section></main></body></html>
