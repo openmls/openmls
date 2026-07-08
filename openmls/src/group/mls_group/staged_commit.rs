@@ -50,17 +50,14 @@ fn validate_vc_external_init_secret(
     has_external_init_proposal: bool,
     has_vc_external_init_secret: bool,
 ) -> Result<(), StageCommitError> {
-    if is_sibling_resync && !has_vc_external_init_secret {
-        return Err(
-            crate::components::vc_derivation_info::VirtualClientsError::DerivationInfoMalformed
-                .into(),
-        );
-    }
-    if has_vc_external_init_secret && !has_external_init_proposal {
-        return Err(
-            crate::components::vc_derivation_info::VirtualClientsError::DerivationInfoMalformed
-                .into(),
-        );
+    use crate::components::vc_derivation_info::VirtualClientsError;
+
+    // A sibling-resync commit MUST carry the external init secret, and the
+    // secret MUST only appear alongside an external-init proposal.
+    let sibling_resync_missing_secret = is_sibling_resync && !has_vc_external_init_secret;
+    let secret_without_proposal = has_vc_external_init_secret && !has_external_init_proposal;
+    if sibling_resync_missing_secret || secret_without_proposal {
+        return Err(VirtualClientsError::DerivationInfoMalformed.into());
     }
     Ok(())
 }

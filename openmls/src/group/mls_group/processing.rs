@@ -750,14 +750,8 @@ impl MlsGroup {
                 // via the VC path below rather than treated as our own (see the
                 // own-commit handling further down). The receiver only loads it
                 // when the commit shape lets it identify itself as a sibling:
-                //
-                // * `Sender::Member(idx)` with `idx == own_leaf_index`: the
-                //   sender committed through our shared higher-level leaf, so
-                //   we are a sibling.
-                // * `Sender::NewMemberCommit` with an inline `Remove(own_leaf)`:
-                //   the sender is a sibling joining externally and the
-                //   auto-Remove targets our previous leaf, so we are the
-                //   sibling being resynced.
+                // own-leaf sender, or external commit with an inline
+                // `Remove(own_leaf)`.
                 #[cfg(feature = "virtual-clients-draft")]
                 let vc_commit_material =
                     if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
@@ -870,10 +864,9 @@ impl MlsGroup {
                 // for the rationale. We load VC derivation info for a sibling's
                 // Commit with an UpdatePath through a shared leaf, and
                 // otherwise apply the own-commit handling below. The receiver
-                // only loads VC material
-                // when the commit shape lets it identify itself as a sibling:
-                // own-leaf sender, or external commit with an inline
-                // `Remove(own_leaf)`.
+                // only loads VC material when the commit shape lets it identify
+                // itself as a sibling: own-leaf sender, or external commit with
+                // an inline `Remove(own_leaf)`.
                 #[cfg(feature = "virtual-clients-draft")]
                 let vc_commit_material =
                     if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
@@ -1124,13 +1117,15 @@ fn is_sibling_vc_commit(
 
     match sender {
         super::Sender::Member(idx) => *idx == own_leaf_index,
-        super::Sender::NewMemberCommit => commit.proposals.iter().any(|p| {
-            matches!(
-                p,
-                ProposalOrRef::Proposal(boxed)
-                    if matches!(boxed.as_ref(), Proposal::Remove(r) if r.removed() == own_leaf_index)
-            )
+        super::Sender::NewMemberCommit => commit.proposals.iter().any(|proposal| {
+            let ProposalOrRef::Proposal(boxed) = proposal else {
+                return false;
+            };
+            let Proposal::Remove(remove) = boxed.as_ref() else {
+                return false;
+            };
+            remove.removed() == own_leaf_index
         }),
-        _ => false,
+        super::Sender::External(_) | super::Sender::NewMemberProposal => false,
     }
 }
