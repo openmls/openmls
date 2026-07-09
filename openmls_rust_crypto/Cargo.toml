@@ -21,16 +21,16 @@ hpke = { version = "0.6.1", package = "hpke-rs", default-features = false, featu
 ] }
 # Rust Crypto dependencies
 sha2 = { version = "0.11" }
-aes-gcm = { version = "0.10" }
-chacha20poly1305 = { version = "0.10" }
+aes-gcm = { version = "0.11" }
+chacha20poly1305 = { version = "0.11" }
 hmac = { version = "0.13" }
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 rand_core_0_10 = { package = "rand_core", version = "0.10" }
-p256 = { version = "0.13" }
-p384 = { version = "0.13" }
+p256 = { version = "0.14" }
+p384 = { version = "0.14" }
 hkdf = { version = "0.13" }
-rand_chacha = { version = "0.3" }
+rand_chacha = { version = "0.10" }
 hpke-rs-crypto = { version = "0.6.1" }
 hpke-rs-rust-crypto = { version = "0.6.1", features = ["experimental"] }
 tls_codec = { workspace = true }
@@ -38,7 +38,7 @@ ml-dsa = "0.1.0"
 thiserror = { workspace = true }
 # FF1-AES128 backing for the virtual-clients-draft reuse-guard PRP.
 fpe = { version = "0.6", optional = true }
-aes = { version = "0.8", optional = true }
+aes = { version = "0.9", optional = true }
 
 [features]
 test-utils = ["openmls_memory_storage/test-utils"]
