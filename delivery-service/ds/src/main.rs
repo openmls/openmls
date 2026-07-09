@@ -264,7 +264,7 @@ async fn send_welcome(State(data): State<Arc<DsData>>, body: Bytes) -> Response 
     let mut clients = data.clients.lock();
     for secret in welcome.secrets().iter() {
         let key_package_hash = &secret.new_member();
-        for (_client_name, client) in clients.iter_mut() {
+        for client in clients.values_mut() {
             match client
                 .reserved_key_pkg_hash
                 .take(key_package_hash.as_slice())
