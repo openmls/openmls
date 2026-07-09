@@ -21,9 +21,9 @@ use crate::{
 /// Component ID under which the virtual-clients derivation info is carried in
 /// the leaf node's `app_data_dictionary` extension.
 ///
-/// `0x0006` is the value the draft suggests for IANA registration, which is
-/// still pending.
-pub const VC_COMPONENT_ID: u16 = 0x0006;
+/// `0x667A` is the temporary, random value until the draft is further along the
+/// publication process.
+pub const VC_COMPONENT_ID: u16 = 0x667A;
 
 // Operation-secret child labels. Each child is derived from the per-operation
 // secret produced by the per-epoch operation secret tree. `Encryption Key`
