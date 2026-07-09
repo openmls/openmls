@@ -50,9 +50,13 @@ pub enum Propose {
 
     /// A re-init proposal gets the [`GroupId`], [`ProtocolVersion`], [`Ciphersuite`], and [`Extensions`].
     ReInit {
+        /// The group id of the new group.
         group_id: GroupId,
+        /// The protocol version of the new group.
         version: ProtocolVersion,
+        /// The ciphersuite of the new group.
         ciphersuite: Ciphersuite,
+        /// The group context extensions of the new group.
         extensions: Extensions<GroupContext>,
     },
 
@@ -63,7 +67,8 @@ pub enum Propose {
     GroupContextExtensions(Extensions<GroupContext>),
 
     #[cfg(feature = "extensions-draft")]
-    /// Propose an update to a component in the [`AppDataDictionary`]
+    /// Propose an update to a component in the
+    /// [`AppDataDictionary`](crate::extensions::AppDataDictionary)
     UpdateAppDataComponent {
         /// The component_id to update in the dictionary
         component_id: ComponentId,
@@ -71,7 +76,8 @@ pub enum Propose {
         update: Vec<u8>,
     },
     #[cfg(feature = "extensions-draft")]
-    /// Propose removal of a component in the [`AppDataDictionary`]
+    /// Propose removal of a component in the
+    /// [`AppDataDictionary`](crate::extensions::AppDataDictionary)
     RemoveAppDataComponent {
         /// The component_id to remove in the dictionary
         component_id: ComponentId,
@@ -82,7 +88,7 @@ pub enum Propose {
 }
 
 macro_rules! impl_propose_fun {
-    ($name:ident, $impl_name:ident, $value_ty:ty, $group_fun:ident, $ref_or_value:expr) => {
+    ($name:ident, $impl_name:ident, $value_ty:ty, $group_fun:ident, $ref_or_value:expr, $doc:expr) => {
         /// Builds the proposal, queues it, and frames it, returning the framing
         /// output so callers can surface the handshake confirmation data.
         fn $impl_name<Provider: OpenMlsProvider>(
@@ -118,8 +124,7 @@ macro_rules! impl_propose_fun {
             Ok((framing, proposal_ref))
         }
 
-        // TODO: Documentation wrong.
-        /// Creates proposals to add an external PSK to the key schedule.
+        #[doc = $doc]
         ///
         /// Returns an error if there is a pending commit.
         pub fn $name<Provider: OpenMlsProvider>(
@@ -140,7 +145,8 @@ impl MlsGroup {
         propose_add_member_by_value_impl,
         KeyPackage,
         create_add_proposal,
-        ProposalOrRefType::Proposal
+        ProposalOrRefType::Proposal,
+        "Creates a proposal to add a member to the group, committed by value."
     );
 
     impl_propose_fun!(
@@ -148,7 +154,8 @@ impl MlsGroup {
         propose_remove_member_by_value_impl,
         LeafNodeIndex,
         create_remove_proposal,
-        ProposalOrRefType::Proposal
+        ProposalOrRefType::Proposal,
+        "Creates a proposal to remove a member from the group, committed by value."
     );
 
     impl_propose_fun!(
@@ -156,7 +163,8 @@ impl MlsGroup {
         propose_pre_shared_key_impl,
         PreSharedKeyId,
         create_presharedkey_proposal,
-        ProposalOrRefType::Reference
+        ProposalOrRefType::Reference,
+        "Creates a proposal to add a pre-shared key to the key schedule, committed by reference."
     );
 
     impl_propose_fun!(
@@ -164,7 +172,8 @@ impl MlsGroup {
         propose_pre_shared_key_by_value_impl,
         PreSharedKeyId,
         create_presharedkey_proposal,
-        ProposalOrRefType::Proposal
+        ProposalOrRefType::Proposal,
+        "Creates a proposal to add a pre-shared key to the key schedule, committed by value."
     );
 
     /// Creates proposals to add a non-resumption PSK to the key schedule.
@@ -198,7 +207,8 @@ impl MlsGroup {
         propose_custom_proposal_by_value_impl,
         CustomProposal,
         create_custom_proposal,
-        ProposalOrRefType::Proposal
+        ProposalOrRefType::Proposal,
+        "Creates a custom proposal, committed by value."
     );
 
     impl_propose_fun!(
@@ -206,7 +216,8 @@ impl MlsGroup {
         propose_custom_proposal_by_reference_impl,
         CustomProposal,
         create_custom_proposal,
-        ProposalOrRefType::Reference
+        ProposalOrRefType::Reference,
+        "Creates a custom proposal, committed by reference."
     );
 
     /// Generate a proposal
