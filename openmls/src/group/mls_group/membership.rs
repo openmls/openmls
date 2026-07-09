@@ -258,7 +258,9 @@ impl MlsGroup {
         self.proposal_store_mut().add(queued_remove_proposal);
 
         self.reset_aad();
-        Ok(self.content_to_mls_message(remove_proposal, provider)?)
+        Ok(self
+            .content_to_mls_message(remove_proposal, provider)?
+            .message)
     }
 
     /// Leave the group via a SelfRemove proposal.
@@ -307,7 +309,9 @@ impl MlsGroup {
         self.proposal_store_mut().add(queued_self_remove_proposal);
 
         self.reset_aad();
-        Ok(self.content_to_mls_message(self_remove_proposal, provider)?)
+        Ok(self
+            .content_to_mls_message(self_remove_proposal, provider)?
+            .message)
     }
 
     /// Returns a list of [`Member`]s in the group.

@@ -7,12 +7,13 @@ use openmls::{
     framing::errors::{MessageDecryptionError, SecretTreeError},
     group::{
         ConfirmMessageError, GroupEpoch, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig,
-        StagedWelcome, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        Propose, StagedWelcome, MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
     prelude::{
         test_utils::new_credential, Capabilities, LeafNode, LeafNodeParameters,
-        ProcessMessageError, ProcessedMessageContent, ValidationError,
+        ProcessMessageError, ProcessedMessageContent, ProposalOrRefType, ValidationError,
     },
 };
 use openmls_basic_credential::SignatureKeyPair;
@@ -221,6 +222,27 @@ fn new_vc_main_group<P: OpenMlsProvider>(
 ) -> MlsGroup {
     let group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    MlsGroup::new(provider, signer, &group_config, credential).expect("create vc main group")
+}
+
+/// A VC main group created with an explicit wire format policy. Used to frame
+/// handshake messages as PrivateMessage while still accepting the incoming
+/// sibling-resync external commit, which is always a PublicMessage.
+fn new_vc_main_group_with_policy<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider: &P,
+    signer: &SignatureKeyPair,
+    credential: openmls::credentials::CredentialWithKey,
+    wire_format_policy: openmls::group::WireFormatPolicy,
+) -> MlsGroup {
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(wire_format_policy)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .capabilities(vc_capabilities())
@@ -4010,4 +4032,429 @@ fn vc_group_creation_double_join_consumes_generation() {
         err,
         VcGroupCreationJoinError::VirtualClientsError(_)
     ));
+}
+
+/// `propose_unconfirmed` surfaces the handshake confirmation data end to end.
+/// On a group that is not bound to an emulation epoch, the `generation_id` is
+/// `None`. Confirming the proposal deletes its retained handshake secret, so
+/// its own echo then surfaces as `OwnPrivateMessage`, while an unconfirmed
+/// control proposal still decrypts back to a `ProposalMessage`.
+#[openmls_test::openmls_test]
+fn propose_unconfirmed_confirm_flow() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signer) = new_credential(
+        alice_provider,
+        b"Charlie",
+        ciphersuite.signature_algorithm(),
+    );
+    let (dave_credential, dave_signer) =
+        new_credential(alice_provider, b"Dave", ciphersuite.signature_algorithm());
+
+    // Pure-ciphertext framing so proposals are sent as PrivateMessage.
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &alice_signer,
+        &group_config,
+        alice_credential,
+    )
+    .expect("alice create group");
+
+    let bob_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_commit, _welcome, _gi) = alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .expect("alice add bob");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("alice merge add");
+
+    let charlie_key_package = KeyPackage::builder()
+        .build(
+            ciphersuite,
+            alice_provider,
+            &charlie_signer,
+            charlie_credential,
+        )
+        .expect("charlie KP build")
+        .key_package()
+        .to_owned();
+    let dave_key_package = KeyPackage::builder()
+        .build(ciphersuite, alice_provider, &dave_signer, dave_credential)
+        .expect("dave KP build")
+        .key_package()
+        .to_owned();
+
+    let epoch = alice_group.epoch();
+
+    // The confirmation is present for a ciphertext-framed proposal. The group
+    // is not bound to an emulation epoch, so there is no generation id.
+    let (proposal_a, _ref_a, confirmation_a) = alice_group
+        .propose_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            Propose::Add(charlie_key_package),
+            ProposalOrRefType::Reference,
+        )
+        .expect("propose_unconfirmed add charlie");
+    let confirmation_a = confirmation_a.expect("ciphertext-framed proposal carries confirmation");
+    assert_eq!(confirmation_a.epoch, epoch);
+    assert!(confirmation_a.generation_id.is_none());
+
+    // Confirming deletes the retained handshake secret, so proposal A's own
+    // echo surfaces OwnPrivateMessage.
+    alice_group
+        .confirm_handshake_message(
+            alice_provider.storage(),
+            confirmation_a.epoch,
+            confirmation_a.generation,
+        )
+        .expect("confirm proposal A");
+    let processed = alice_group
+        .process_message(alice_provider, proposal_a.into_protocol_message().unwrap())
+        .expect("process proposal A echo");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
+
+    // A control proposal that is not confirmed retains its secret, so its echo
+    // decrypts back to a ProposalMessage.
+    let (proposal_b, _ref_b, _confirmation_b) = alice_group
+        .propose_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            Propose::Add(dave_key_package),
+            ProposalOrRefType::Reference,
+        )
+        .expect("propose_unconfirmed add dave");
+    let processed = alice_group
+        .process_message(alice_provider, proposal_b.into_protocol_message().unwrap())
+        .expect("process proposal B echo");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::ProposalMessage(_)
+    ));
+}
+
+/// Flagship end-to-end test for private virtual-client handshake framing.
+/// Two sibling emulators (alice_a, alice_b) share a virtual-client leaf
+/// alongside a regular member (bob), with handshake messages framed as
+/// PrivateMessage. Exercises the own-commit echo, sibling decryption, a
+/// private proposal, and the ack-without-echo confirm flow.
+#[openmls_test::openmls_test]
+fn vc_private_commit_end_to_end() {
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signer) = new_credential(
+        &alice_a_provider,
+        b"Charlie",
+        ciphersuite.signature_algorithm(),
+    );
+
+    // Mixed-ciphertext framing: handshake messages go out as PrivateMessage,
+    // but the group still accepts the sibling-resync external commit, which is
+    // always a PublicMessage.
+    let mut alice_a_main = new_vc_main_group_with_policy(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+        MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
+    );
+
+    // Add bob as a regular member.
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_commit, welcome, _gi) = alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp])
+        .expect("alice add bob");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice merge add");
+
+    let bob_join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &bob_join_config,
+        welcome.into_welcome().expect("welcome present"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join");
+
+    // alice_b joins as a sibling emulator and resyncs into the group.
+    let main_join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let (sib, resync_commit) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        main_join_config,
+    );
+    let SiblingEmulators {
+        mut alice_b_main,
+        epoch_id,
+        ..
+    } = sib;
+
+    // alice_a and bob process the resync external commit (PublicMessage). This
+    // is what binds alice_a_main to the emulation epoch.
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, resync_commit.clone());
+    process_and_merge_commit(&mut bob_main, &bob_provider, resync_commit);
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator()
+    );
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        bob_main.epoch_authenticator()
+    );
+
+    // alice_a builds a VC commit framed as PrivateMessage.
+    let bundle = alice_a_main
+        .commit_builder()
+        .vc_emulation(
+            alice_a_provider.crypto(),
+            alice_a_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("vc emulation")
+        .load_psks(alice_a_provider.storage())
+        .expect("load psks")
+        .build(
+            alice_a_provider.rand(),
+            alice_a_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build commit")
+        .stage_commit(&alice_a_provider)
+        .expect("stage commit");
+    let confirmation = bundle
+        .confirmation()
+        .expect("private VC commit carries confirmation")
+        .clone();
+    assert!(
+        confirmation.generation_id.is_some(),
+        "a VC-bound private commit carries a generation id"
+    );
+    let vc_commit = bundle.commit().clone();
+
+    // Before merging, alice_a processes her own private commit echo. The
+    // retained own handshake secret decrypts it, and the own-pending-commit
+    // check runs before any VC material is loaded, so it surfaces as
+    // OwnPendingCommit.
+    let processed = alice_a_main
+        .process_message(
+            &alice_a_provider,
+            vc_commit.clone().into_protocol_message().unwrap(),
+        )
+        .expect("alice_a processes her own private VC commit echo");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge VC commit");
+
+    // alice_b decrypts via the shared handshake ratchet and stages via the VC
+    // path; bob decrypts via the regular HPKE path.
+    process_and_merge_commit(&mut alice_b_main, &alice_b_provider, vc_commit.clone());
+    process_and_merge_commit(&mut bob_main, &bob_provider, vc_commit);
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator()
+    );
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        bob_main.epoch_authenticator()
+    );
+
+    // alice_a sends a private proposal; alice_b recovers the sibling emulator
+    // leaf index and sees a ProposalMessage.
+    let charlie_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(
+            ciphersuite,
+            &alice_a_provider,
+            &charlie_signer,
+            charlie_credential,
+        )
+        .expect("charlie KP build")
+        .key_package()
+        .to_owned();
+    let (proposal_msg, _pref, proposal_confirmation) = alice_a_main
+        .propose_unconfirmed(
+            &alice_a_provider,
+            &vc_signer,
+            Propose::Add(charlie_kp),
+            ProposalOrRefType::Reference,
+        )
+        .expect("alice_a proposes add charlie");
+    assert!(proposal_confirmation
+        .expect("private proposal carries confirmation")
+        .generation_id
+        .is_some());
+    let processed_proposal = alice_b_main
+        .process_message(
+            &alice_b_provider,
+            proposal_msg.into_protocol_message().unwrap(),
+        )
+        .expect("alice_b processes alice_a's private proposal");
+    assert!(processed_proposal.emulator_sender_leaf_index().is_some());
+    assert!(matches!(
+        processed_proposal.into_content(),
+        ProcessedMessageContent::ProposalMessage(_)
+    ));
+    // Drop the pending proposal so the next commit is a clean self-update.
+    alice_a_main
+        .clear_pending_proposals(alice_a_provider.storage())
+        .expect("clear pending proposal");
+
+    // Ack-without-echo: alice_a builds a second private VC commit, merges it
+    // directly, and confirms it using the pre-merge epoch, which is now a past
+    // epoch. This exercises the epoch-scoped confirm.
+    let second_bundle = alice_a_main
+        .commit_builder()
+        .vc_emulation(
+            alice_a_provider.crypto(),
+            alice_a_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("vc emulation")
+        .load_psks(alice_a_provider.storage())
+        .expect("load psks")
+        .build(
+            alice_a_provider.rand(),
+            alice_a_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build second commit")
+        .stage_commit(&alice_a_provider)
+        .expect("stage second commit");
+    let second_confirmation = second_bundle
+        .confirmation()
+        .expect("private VC commit carries confirmation")
+        .clone();
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("merge second VC commit");
+    alice_a_main
+        .confirm_handshake_message(
+            alice_a_provider.storage(),
+            second_confirmation.epoch,
+            second_confirmation.generation,
+        )
+        .expect("confirm second VC commit");
+}
+
+/// Two consecutive private handshake sends on a VC-bound group produce
+/// generation ids that are both present and distinct.
+#[openmls_test::openmls_test]
+fn handshake_generation_ids_are_distinct() {
+    let provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(provider, b"Alice", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signer) =
+        new_credential(provider, b"Charlie", ciphersuite.signature_algorithm());
+    let (dave_credential, dave_signer) =
+        new_credential(provider, b"Dave", ciphersuite.signature_algorithm());
+
+    // Ciphertext framing so the proposals are PrivateMessages that carry a
+    // generation id.
+    let mut alice_group = new_vc_main_group_with_policy(
+        ciphersuite,
+        provider,
+        &alice_signer,
+        alice_credential,
+        MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
+    );
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, provider, b"AliceEmulator");
+
+    // Bind alice_group's current epoch to the emulation epoch via a VC commit.
+    let _ = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        provider,
+        &alice_signer,
+    );
+
+    let charlie_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, provider, &charlie_signer, charlie_credential)
+        .expect("charlie KP build")
+        .key_package()
+        .to_owned();
+    let dave_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, provider, &dave_signer, dave_credential)
+        .expect("dave KP build")
+        .key_package()
+        .to_owned();
+
+    let (_msg_a, _ref_a, confirmation_a) = alice_group
+        .propose_unconfirmed(
+            provider,
+            &alice_signer,
+            Propose::Add(charlie_kp),
+            ProposalOrRefType::Reference,
+        )
+        .expect("first private proposal");
+    let (_msg_b, _ref_b, confirmation_b) = alice_group
+        .propose_unconfirmed(
+            provider,
+            &alice_signer,
+            Propose::Add(dave_kp),
+            ProposalOrRefType::Reference,
+        )
+        .expect("second private proposal");
+
+    let generation_id_a = confirmation_a
+        .expect("bound group proposal carries confirmation")
+        .generation_id
+        .expect("bound group proposal carries a generation id");
+    let generation_id_b = confirmation_b
+        .expect("bound group proposal carries confirmation")
+        .generation_id
+        .expect("bound group proposal carries a generation id");
+    assert_ne!(
+        generation_id_a, generation_id_b,
+        "consecutive private handshake sends must yield distinct generation ids"
+    );
 }

@@ -57,6 +57,7 @@ mod updates;
 
 #[cfg(feature = "virtual-clients-draft")]
 pub use application::UnconfirmedMessage;
+pub use proposal::Propose;
 
 use config::*;
 
@@ -774,24 +775,27 @@ impl MlsGroup {
 
         // When the group is bound to an emulation epoch, derive the generation
         // ID the application hands to the DS to detect generation collisions
-        // between siblings. Only application messages carry one for now,
-        // matching the deferral of handshake VC framing in higher-level groups.
+        // between siblings. Application content draws it from the application
+        // ratchet, proposals and commits from the handshake ratchet.
         #[cfg(feature = "virtual-clients-draft")]
         let msg = {
+            use crate::components::vc_derivation_info::RatchetType;
             let mut msg = msg;
             if let Some(state) = &emulation_state {
-                if public_message.content().content_type() == ContentType::Application {
-                    let generation_id = state
-                        .derive_generation_id(
-                            provider.crypto(),
-                            self.group_id(),
-                            self.epoch(),
-                            msg.generation,
-                            crate::components::vc_derivation_info::RatchetType::Application,
-                        )
-                        .map_err(MessageEncryptionError::VirtualClientsError)?;
-                    msg.generation_id = Some(generation_id);
-                }
+                let ratchet_type = match public_message.content().content_type() {
+                    ContentType::Application => RatchetType::Application,
+                    ContentType::Proposal | ContentType::Commit => RatchetType::Handshake,
+                };
+                let generation_id = state
+                    .derive_generation_id(
+                        provider.crypto(),
+                        self.group_id(),
+                        self.epoch(),
+                        msg.generation,
+                        ratchet_type,
+                    )
+                    .map_err(MessageEncryptionError::VirtualClientsError)?;
+                msg.generation_id = Some(generation_id);
             }
             msg
         };
@@ -892,6 +896,44 @@ impl MlsGroup {
     }
 }
 
+/// Bookkeeping a virtual client needs to confirm a handshake message
+/// (proposal or commit) that was framed as a PrivateMessage.
+///
+/// Pass `epoch` and `generation` to [`MlsGroup::confirm_handshake_message`]
+/// once the DS has accepted the message, to delete the retained handshake
+/// secret. `generation_id` is present when the group is bound to an emulation
+/// epoch and is attached to the fanned-out message so a strongly-consistent DS
+/// can detect generation collisions between siblings; it is `None` otherwise.
+///
+/// [`MlsGroup::confirm_handshake_message`]: crate::group::MlsGroup::confirm_handshake_message
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Debug, Clone)]
+pub struct HandshakeConfirmationData {
+    /// The epoch the message was encrypted in, which is the epoch before a
+    /// commit is merged.
+    pub epoch: GroupEpoch,
+    /// The handshake-ratchet generation used for encryption.
+    pub generation: u32,
+    /// The [`GenerationId`] to attach to the fanned-out message, present when
+    /// the group is bound to an emulation epoch and `None` otherwise.
+    ///
+    /// [`GenerationId`]: crate::components::vc_derivation_info::GenerationId
+    pub generation_id: Option<crate::components::vc_derivation_info::GenerationId>,
+}
+
+/// Result of framing an [`AuthenticatedContent`] handshake message into an
+/// [`MlsMessageOut`]. Mirrors the cfg-gated field pattern of
+/// [`EncryptionOutput`]: with the `virtual-clients-draft` feature it also
+/// carries the [`HandshakeConfirmationData`] for a ciphertext-framed message
+/// (`None` when the message was framed as a plaintext PublicMessage).
+///
+/// [`EncryptionOutput`]: crate::framing::EncryptionOutput
+pub(crate) struct HandshakeFramingOutput {
+    pub(crate) message: MlsMessageOut,
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) confirmation: Option<HandshakeConfirmationData>,
+}
+
 // Private methods of MlsGroup
 impl MlsGroup {
     /// Store the given [`EncryptionKeyPair`]s in the `provider`'s key store
@@ -988,8 +1030,8 @@ impl MlsGroup {
         &mut self,
         mls_auth_content: AuthenticatedContent,
         provider: &impl OpenMlsProvider,
-    ) -> Result<MlsMessageOut, LibraryError> {
-        let msg = match self.configuration().wire_format_policy().outgoing() {
+    ) -> Result<HandshakeFramingOutput, LibraryError> {
+        let output = match self.configuration().wire_format_policy().outgoing() {
             OutgoingWireFormatPolicy::AlwaysPlaintext => {
                 let mut plaintext: PublicMessage = mls_auth_content.into();
                 // Set the membership tag only if the sender type is `Member`.
@@ -1001,21 +1043,38 @@ impl MlsGroup {
                         self.message_secrets().serialized_context(),
                     )?;
                 }
-                plaintext.into()
+                HandshakeFramingOutput {
+                    message: plaintext.into(),
+                    #[cfg(feature = "virtual-clients-draft")]
+                    confirmation: None,
+                }
             }
             OutgoingWireFormatPolicy::AlwaysCiphertext => {
-                // Decrypting own handshake messages is not supported yet with
-                // the `virtual-clients` feature, so the generation is unused.
-                let EncryptionOutput {
-                    private_message, ..
-                } = self
+                // A ciphertext-framed handshake message ties its confirmation
+                // to the epoch it was encrypted in, which is the current epoch
+                // at framing time, before a commit is merged.
+                #[cfg(feature = "virtual-clients-draft")]
+                let epoch = self.epoch();
+                let encryption_output = self
                     .encrypt(mls_auth_content, provider)
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
-                MlsMessageOut::from_private_message(private_message, self.version())
+                let message = MlsMessageOut::from_private_message(
+                    encryption_output.private_message,
+                    self.version(),
+                );
+                HandshakeFramingOutput {
+                    message,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    confirmation: Some(HandshakeConfirmationData {
+                        epoch,
+                        generation: encryption_output.generation,
+                        generation_id: encryption_output.generation_id,
+                    }),
+                }
             }
         };
-        Ok(msg)
+        Ok(output)
     }
 
     /// Check if the group is operational. Throws an error if the group is

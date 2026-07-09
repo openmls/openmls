@@ -171,13 +171,14 @@ impl MlsGroup {
         Ok(update_proposal)
     }
 
-    fn propose_self_update_internal<Provider: OpenMlsProvider, S: Signer>(
+    pub(crate) fn propose_self_update_internal<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
         old_signer: &impl Signer,
         new_signer: Option<NewSignerBundle<'_, S>>,
         leaf_node_parameters: LeafNodeParameters,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
+    ) -> Result<(HandshakeFramingOutput, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>>
+    {
         let update_proposal = self.create_self_update_proposal_internal(
             provider,
             old_signer,
@@ -196,10 +197,10 @@ impl MlsGroup {
             .map_err(ProposeSelfUpdateError::StorageError)?;
         self.proposal_store_mut().add(proposal);
 
-        let mls_message = self.content_to_mls_message(update_proposal, provider)?;
+        let framing = self.content_to_mls_message(update_proposal, provider)?;
 
         self.reset_aad();
-        Ok((mls_message, proposal_ref))
+        Ok((framing, proposal_ref))
     }
 
     /// Creates a proposal to update the own leaf node. The application can
@@ -211,12 +212,13 @@ impl MlsGroup {
         signer: &S,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        self.propose_self_update_internal(
+        let (framing, proposal_ref) = self.propose_self_update_internal(
             provider,
             signer,
             None::<NewSignerBundle<'_, S>>,
             leaf_node_parameters,
-        )
+        )?;
+        Ok((framing.message, proposal_ref))
     }
 
     /// Creates an Update proposal that rotates the sender's signature key.
@@ -241,11 +243,12 @@ impl MlsGroup {
         new_signer: NewSignerBundle<'_, S>,
         leaf_node_parameters: LeafNodeParameters,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<Provider::StorageError>> {
-        self.propose_self_update_internal(
+        let (framing, proposal_ref) = self.propose_self_update_internal(
             provider,
             old_signer,
             Some(new_signer),
             leaf_node_parameters,
-        )
+        )?;
+        Ok((framing.message, proposal_ref))
     }
 }

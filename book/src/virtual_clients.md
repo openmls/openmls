@@ -169,6 +169,67 @@ message from an earlier higher-level epoch must be processed with the emulation
 epoch that was active then. Bindings follow the same retention window as the
 message secrets store.
 
+## Confirming handshake messages
+
+When the group frames handshake messages as PrivateMessage (a ciphertext
+outgoing wire format policy), proposals and commits draw their generations from
+the per-leaf handshake ratchet, the same way application messages draw from the
+application ratchet. Like an application send, a private handshake send retains
+its key and nonce until the Delivery Service accepts it, so two emulator clients
+that race for the same handshake generation can both recover.
+
+A commit framed as PrivateMessage exposes its confirmation data on the bundle:
+
+```rust,no_run,noplayground
+let bundle = main_group
+    .commit_builder()
+    .vc_emulation(provider.crypto(), provider.storage(), epoch_id)?
+    .load_psks(provider.storage())?
+    .build(provider.rand(), provider.crypto(), &vc_signer, |_| true)?
+    .stage_commit(provider)?;
+
+if let Some(confirmation) = bundle.confirmation() {
+    // Attach confirmation.generation_id when fanning out the commit, so the
+    // Delivery Service can detect a generation collision with a sibling.
+    send_to_delivery_service(bundle.commit().clone(), confirmation.generation_id.clone());
+}
+```
+
+For standalone proposals, `propose_unconfirmed` mirrors `propose` but also
+returns the confirmation data alongside the framed proposal:
+
+```rust,no_run,noplayground
+let (proposal, proposal_ref, confirmation) = main_group.propose_unconfirmed(
+    provider,
+    &vc_signer,
+    Propose::Add(key_package),
+    ProposalOrRefType::Reference,
+)?;
+```
+
+The confirmation from either path is `Some` when the message was framed as
+PrivateMessage and `None` when it was framed as a plaintext PublicMessage. As
+with application messages, the `generation_id` is `Some` only on a group bound
+to an emulation epoch.
+
+Once the Delivery Service accepts the message, drop the retained key with
+`confirm_handshake_message`, passing the confirmation's `epoch` and
+`generation`:
+
+```rust,no_run,noplayground
+main_group.confirm_handshake_message(
+    provider.storage(),
+    confirmation.epoch,
+    confirmation.generation,
+)?;
+```
+
+The epoch carried by a commit's confirmation is the epoch the commit was
+encrypted in, which is the epoch before the commit is merged. Confirming is
+epoch-scoped, so it stays correct even when called after the merge has advanced
+the group to a later epoch. Proposals and commits share the handshake ratchet,
+so this single endpoint covers both.
+
 ## Application messages
 
 With the feature enabled, the single-shot `create_message` is replaced by a two

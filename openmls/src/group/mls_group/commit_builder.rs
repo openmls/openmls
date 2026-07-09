@@ -89,6 +89,9 @@ use super::{
     MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use super::HandshakeConfirmationData;
+
 #[derive(Debug)]
 struct ExternalCommitInfo {
     aad: Vec<u8>,
@@ -1202,13 +1205,15 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
         //
         // Note that this performs writes to the storage, so we should do that here, rather than
         // when working with the result.
-        let mls_message = group.content_to_mls_message(create_commit_result.commit, provider)?;
+        let framing = group.content_to_mls_message(create_commit_result.commit, provider)?;
 
         Ok(CommitMessageBundle {
             version: group.version(),
-            commit: mls_message,
+            commit: framing.message,
             welcome: create_commit_result.welcome_option,
             group_info: create_commit_result.group_info,
+            #[cfg(feature = "virtual-clients-draft")]
+            confirmation: framing.confirmation,
         })
     }
 }
@@ -1344,6 +1349,10 @@ pub struct CommitMessageBundle {
     commit: MlsMessageOut,
     welcome: Option<Welcome>,
     group_info: Option<GroupInfo>,
+    /// Confirmation data for a commit framed as a PrivateMessage, `None` for a
+    /// plaintext-framed commit.
+    #[cfg(feature = "virtual-clients-draft")]
+    confirmation: Option<HandshakeConfirmationData>,
 }
 
 /// The result of a commit with an add proposal. This includes
@@ -1389,6 +1398,8 @@ impl CommitMessageBundle {
             commit,
             welcome,
             group_info,
+            #[cfg(feature = "virtual-clients-draft")]
+            confirmation: None,
         }
     }
 }
@@ -1420,6 +1431,18 @@ impl CommitMessageBundle {
     /// For owned version, see [`Self::into_group_info`].
     pub fn group_info(&self) -> Option<&GroupInfo> {
         self.group_info.as_ref()
+    }
+
+    /// Gets the confirmation data for this commit. Present when the commit was
+    /// framed as a PrivateMessage, `None` when it was framed as a plaintext
+    /// PublicMessage. Pass its `epoch` and `generation` to
+    /// [`MlsGroup::confirm_handshake_message`] once the DS has accepted the
+    /// commit.
+    ///
+    /// [`MlsGroup::confirm_handshake_message`]: crate::group::MlsGroup::confirm_handshake_message
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn confirmation(&self) -> Option<&HandshakeConfirmationData> {
+        self.confirmation.as_ref()
     }
 
     /// Gets all three messages, some of which optional. For owned version, see

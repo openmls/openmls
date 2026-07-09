@@ -378,8 +378,12 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
             ..
         } = self;
 
-        // Convert AuthenticatedContent messages to MLSMessage.
-        let mls_message = group.content_to_mls_message(create_commit_result.commit, provider)?;
+        // Convert AuthenticatedContent messages to MLSMessage. An external
+        // commit is always framed as a PublicMessage, so it carries no
+        // handshake confirmation data.
+        let mls_message = group
+            .content_to_mls_message(create_commit_result.commit, provider)?
+            .message;
 
         group.reset_aad();
 
@@ -406,6 +410,8 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
             commit: mls_message,
             welcome: create_commit_result.welcome_option,
             group_info: create_commit_result.group_info,
+            #[cfg(feature = "virtual-clients-draft")]
+            confirmation: None,
         };
 
         Ok((group, bundle))
