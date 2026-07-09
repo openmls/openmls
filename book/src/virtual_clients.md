@@ -198,7 +198,7 @@ size, and encrypts it with a small-space PRP keyed from `reuse_guard_secret`.
 Once the Delivery Service accepts the message, drop the retained key:
 
 ```rust,no_run,noplayground
-main_group.confirm_message(provider.storage(), unconfirmed.generation)?;
+main_group.confirm_message(provider.storage(), unconfirmed.epoch, unconfirmed.generation)?;
 ```
 
 If the Delivery Service reports a collision, the sibling won that generation.

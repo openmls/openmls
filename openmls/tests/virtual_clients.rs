@@ -6,13 +6,13 @@ use openmls::{
     },
     framing::errors::{MessageDecryptionError, SecretTreeError},
     group::{
-        MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, StagedWelcome,
-        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ConfirmMessageError, GroupEpoch, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig,
+        StagedWelcome, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
     prelude::{
-        test_utils::new_credential, Capabilities, LeafNode, ProcessMessageError,
-        ProcessedMessageContent, ValidationError,
+        test_utils::new_credential, Capabilities, LeafNode, LeafNodeParameters,
+        ProcessMessageError, ProcessedMessageContent, ValidationError,
     },
 };
 use openmls_basic_credential::SignatureKeyPair;
@@ -2082,7 +2082,11 @@ fn processing_own_application_message() {
         .unwrap();
     let ciphertext = unconfirmed.message;
     alice_group
-        .confirm_message(alice_provider.storage(), unconfirmed.generation)
+        .confirm_message(
+            alice_provider.storage(),
+            unconfirmed.epoch,
+            unconfirmed.generation,
+        )
         .unwrap();
 
     let processed_message = alice_group
@@ -2093,6 +2097,340 @@ fn processing_own_application_message() {
         .expect("Expected processing a confirmed message to succeed.");
     assert!(matches!(
         processed_message.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
+}
+
+/// Confirming a message deletes the secret of its own creation epoch, even
+/// after the group has advanced past that epoch, and never the secret of a
+/// different message that happens to share the generation number in a newer
+/// epoch.
+#[openmls_test::openmls_test]
+fn confirm_targets_creation_epoch() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+
+    // Alice keeps one past epoch so the secret retained at epoch N survives
+    // into epoch N+1.
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .max_past_epochs(1)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("alice create group");
+
+    let bob_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+
+    let (_commit, welcome, _gi) = alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .expect("alice add bob");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("alice merge add");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(bob_provider))
+    .expect("bob join");
+
+    // Epoch N: Alice creates the first application message of the epoch.
+    let msg1 = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, b"epoch N message")
+        .expect("create msg1");
+
+    // Bob commits, Alice processes and merges, moving to epoch N+1.
+    let bob_commit = bob_group
+        .self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
+        .expect("bob self-update")
+        .into_commit();
+    bob_group
+        .merge_pending_commit(bob_provider)
+        .expect("bob merge self-update");
+    let processed = alice_group
+        .process_message(alice_provider, bob_commit.into_protocol_message().unwrap())
+        .expect("alice process bob commit");
+    let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
+        panic!("expected a staged commit");
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, *staged)
+        .expect("alice merge bob commit");
+
+    // Epoch N+1: Alice creates the first application message of the epoch.
+    let msg2 = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, b"epoch N+1 message")
+        .expect("create msg2");
+
+    assert_ne!(
+        msg1.epoch, msg2.epoch,
+        "the commit must have advanced the epoch"
+    );
+    assert_eq!(
+        msg1.generation, msg2.generation,
+        "both are the first application send of their epoch"
+    );
+
+    // Confirming msg1 at its creation epoch must not touch msg2's secret,
+    // which shares the generation number in the newer epoch.
+    alice_group
+        .confirm_message(alice_provider.storage(), msg1.epoch, msg1.generation)
+        .expect("confirm msg1");
+
+    // msg2's secret is intact, so its echo decrypts.
+    let processed = alice_group
+        .process_message(
+            alice_provider,
+            msg2.message.into_protocol_message().unwrap(),
+        )
+        .expect("process msg2 echo");
+    let ProcessedMessageContent::ApplicationMessage(app) = processed.into_content() else {
+        panic!("expected msg2 to decrypt to an application message");
+    };
+    assert_eq!(app.into_bytes().as_slice(), b"epoch N+1 message");
+
+    // msg1's secret was deleted, so its echo surfaces OwnPrivateMessage.
+    let processed = alice_group
+        .process_message(
+            alice_provider,
+            msg1.message.into_protocol_message().unwrap(),
+        )
+        .expect("process msg1 echo");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
+}
+
+/// Confirming a message whose creation epoch has aged out of the message
+/// secrets store is a no-op success.
+#[openmls_test::openmls_test]
+fn confirm_aged_out_epoch_is_noop() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+
+    // Default config keeps no past epochs.
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("alice create group");
+
+    let bob_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+
+    let (_commit, welcome, _gi) = alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .expect("alice add bob");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("alice merge add");
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(bob_provider))
+    .expect("bob join");
+
+    let msg = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, b"epoch N message")
+        .expect("create msg");
+
+    // Bob commits, Alice advances to epoch N+1. With no retained past epochs,
+    // the epoch-N secret tree is dropped.
+    let bob_commit = bob_group
+        .self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
+        .expect("bob self-update")
+        .into_commit();
+    bob_group
+        .merge_pending_commit(bob_provider)
+        .expect("bob merge self-update");
+    let processed = alice_group
+        .process_message(alice_provider, bob_commit.into_protocol_message().unwrap())
+        .expect("alice process bob commit");
+    let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
+        panic!("expected a staged commit");
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, *staged)
+        .expect("alice merge bob commit");
+
+    alice_group
+        .confirm_message(alice_provider.storage(), msg.epoch, msg.generation)
+        .expect("confirming an aged-out epoch must be a no-op success");
+}
+
+/// Confirming a message whose secret was already consumed by processing its
+/// own echo is a no-op success.
+#[openmls_test::openmls_test]
+fn confirm_after_processing_own_echo_is_noop() {
+    let alice_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("alice create group");
+
+    let unconfirmed = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, b"echo me")
+        .expect("create unconfirmed message");
+    let epoch = unconfirmed.epoch;
+    let generation = unconfirmed.generation;
+
+    let processed = alice_group
+        .process_message(
+            alice_provider,
+            unconfirmed.message.into_protocol_message().unwrap(),
+        )
+        .expect("process own echo");
+    let ProcessedMessageContent::ApplicationMessage(app) = processed.into_content() else {
+        panic!("expected the own echo to decrypt");
+    };
+    assert_eq!(app.into_bytes().as_slice(), b"echo me");
+
+    alice_group
+        .confirm_message(alice_provider.storage(), epoch, generation)
+        .expect("confirming an already-consumed generation must be a no-op success");
+}
+
+/// Confirming an epoch newer than the group's current epoch errors.
+#[openmls_test::openmls_test]
+fn confirm_future_epoch_errors() {
+    let alice_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("alice create group");
+
+    let future_epoch = GroupEpoch::from(alice_group.epoch().as_u64() + 1);
+    let err = alice_group
+        .confirm_message(alice_provider.storage(), future_epoch, 0)
+        .expect_err("confirming a future epoch must error");
+    assert!(matches!(err, ConfirmMessageError::FutureEpoch));
+}
+
+/// A retained own handshake secret decrypts the message's own echo, and
+/// `confirm_handshake_message` deletes it.
+#[openmls_test::openmls_test]
+fn confirm_handshake_message_deletes_retained_secret() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let (charlie_credential, charlie_signer) = new_credential(
+        alice_provider,
+        b"Charlie",
+        ciphersuite.signature_algorithm(),
+    );
+    let (dave_credential, dave_signer) =
+        new_credential(alice_provider, b"Dave", ciphersuite.signature_algorithm());
+
+    // Pure-ciphertext framing so proposals are sent and accepted as
+    // PrivateMessage.
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &alice_signer,
+        &group_config,
+        alice_credential,
+    )
+    .expect("alice create group");
+
+    let bob_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_commit, _welcome, _gi) = alice_group
+        .add_members(alice_provider, &alice_signer, &[bob_key_package])
+        .expect("alice add bob");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("alice merge add");
+
+    let charlie_key_package = KeyPackage::builder()
+        .build(
+            ciphersuite,
+            alice_provider,
+            &charlie_signer,
+            charlie_credential,
+        )
+        .expect("charlie KP build")
+        .key_package()
+        .to_owned();
+    let dave_key_package = KeyPackage::builder()
+        .build(ciphersuite, alice_provider, &dave_signer, dave_credential)
+        .expect("dave KP build")
+        .key_package()
+        .to_owned();
+
+    let epoch = alice_group.epoch();
+
+    // The first handshake send of this epoch uses generation 0. The send API
+    // does not surface the handshake generation yet.
+    let (proposal_a, _ref_a) = alice_group
+        .propose_add_member(alice_provider, &alice_signer, &charlie_key_package)
+        .expect("propose add charlie");
+
+    // Processing proposal A's own echo without confirming decrypts it, which
+    // proves the own handshake ratchet retains the secret.
+    let processed = alice_group
+        .process_message(alice_provider, proposal_a.into_protocol_message().unwrap())
+        .expect("process proposal A echo");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::ProposalMessage(_)
+    ));
+
+    // Proposal B uses handshake generation 1.
+    let (proposal_b, _ref_b) = alice_group
+        .propose_add_member(alice_provider, &alice_signer, &dave_key_package)
+        .expect("propose add dave");
+    alice_group
+        .confirm_handshake_message(alice_provider.storage(), epoch, 1)
+        .expect("confirm proposal B");
+
+    // Proposal B's secret was deleted, so its echo surfaces OwnPrivateMessage.
+    let processed = alice_group
+        .process_message(alice_provider, proposal_b.into_protocol_message().unwrap())
+        .expect("process proposal B echo");
+    assert!(matches!(
+        processed.into_content(),
         ProcessedMessageContent::OwnPrivateMessage
     ));
 }
@@ -2121,7 +2459,7 @@ fn unconfirmed_message_decrypts_after_next_message_is_confirmed() {
         .expect("Could not create second message.");
     assert_eq!(second.generation, 1);
     alice_group
-        .confirm_message(alice_provider.storage(), second.generation)
+        .confirm_message(alice_provider.storage(), second.epoch, second.generation)
         .expect("Could not confirm second message.");
 
     let processed_message = alice_group
@@ -2168,7 +2506,7 @@ fn old_unconfirmed_own_message_survives_later_confirmations() {
             )
             .expect("Could not create later unconfirmed message.");
         alice_group
-            .confirm_message(alice_provider.storage(), later.generation)
+            .confirm_message(alice_provider.storage(), later.epoch, later.generation)
             .expect("Could not confirm later message.");
     }
 
@@ -2368,7 +2706,7 @@ fn create_unconfirmed_message_returns_generation_id_when_bound() {
         ciphersuite.hash_length()
     );
     alice_group
-        .confirm_message(provider.storage(), first.generation)
+        .confirm_message(provider.storage(), first.epoch, first.generation)
         .expect("confirm first message");
 
     let second = alice_group

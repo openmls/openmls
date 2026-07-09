@@ -616,6 +616,9 @@ mod virtual_clients_draft {
         /// See [`SecretTreeError`] for more details.
         #[error(transparent)]
         SecretTreeError(#[from] SecretTreeError),
+        /// The requested epoch is newer than the group's current epoch.
+        #[error("The requested epoch is newer than the group's current epoch.")]
+        FutureEpoch,
         /// Error writing to storage.
         #[error("Error writing to storage: {0}")]
         StorageError(StorageError),
@@ -629,6 +632,11 @@ mod virtual_clients_draft {
                         MessageEncryptionError::SecretTreeError(e),
                     )
                 }
+                // Unreachable: `create_message` confirms at the current epoch,
+                // which never triggers the future-epoch guard.
+                ConfirmMessageError::FutureEpoch => CreateMessageError::LibraryError(
+                    LibraryError::custom("confirm_message reported a future epoch"),
+                ),
                 ConfirmMessageError::StorageError(e) => CreateMessageError::StorageError(e),
             }
         }
