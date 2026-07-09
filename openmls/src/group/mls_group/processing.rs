@@ -877,32 +877,8 @@ impl MlsGroup {
                 }
             }
             FramedContentBody::Commit(commit) => {
-                // Load virtual-client derivation info when this commit was
-                // authored by a sibling emulator through a leaf shared with us.
-                // A Commit with an UpdatePath carrying this material is staged
-                // via the VC path below rather than treated as our own (see the
-                // own-commit handling further down). The receiver only loads it
-                // when the commit shape lets it identify itself as a sibling:
-                //
-                // * `Sender::Member(idx)` with `idx == own_leaf_index`: the
-                //   sender committed through our shared higher-level leaf, so
-                //   we are a sibling.
-                // * `Sender::NewMemberCommit` with an inline `Remove(own_leaf)`:
-                //   the sender is a sibling joining externally and the
-                //   auto-Remove targets our previous leaf, so we are the
-                //   sibling being resynced.
-                #[cfg(feature = "virtual-clients-draft")]
-                let vc_commit_material =
-                    if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
-                        self.load_vc_commit_material(provider, commit)?
-                    } else {
-                        None
-                    };
-
                 let is_own_commit =
                     matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
-                #[cfg(feature = "virtual-clients-draft")]
-                let is_own_commit = is_own_commit && vc_commit_material.is_none();
 
                 if is_own_commit {
                     let received_tag = content
@@ -924,16 +900,45 @@ impl MlsGroup {
                             emulator_sender_leaf_index,
                         ));
                     }
-                    // Not our pending commit. We cannot decrypt a path we
-                    // encrypted to the other members, so a Commit with an
-                    // UpdatePath is unprocessable. A Commit without an
-                    // UpdatePath carries no author-private material and falls
-                    // through to staging (a sibling's Commit without an
-                    // UpdatePath, or our own commit replayed after the pending
-                    // commit was cleared).
-                    if commit.path.is_some() {
-                        return Err(StageCommitError::OwnCommitMismatch.into());
-                    }
+                }
+
+                // Load virtual-client derivation info when this commit was
+                // authored by a sibling emulator through a leaf shared with us.
+                // The pending-commit match above already ran, so an own commit
+                // echoed back by the delivery service never reaches this load
+                // and no operation-secret generation is consumed for it. A
+                // sibling's commit never matches our pending commit's
+                // confirmation tag, so sibling commits still take this path.
+                // The receiver only loads the material when the commit shape
+                // lets it identify itself as a sibling:
+                //
+                // * `Sender::Member(idx)` with `idx == own_leaf_index`: the
+                //   sender committed through our shared higher-level leaf, so
+                //   we are a sibling.
+                // * `Sender::NewMemberCommit` with an inline `Remove(own_leaf)`:
+                //   the sender is a sibling joining externally and the
+                //   auto-Remove targets our previous leaf, so we are the
+                //   sibling being resynced.
+                #[cfg(feature = "virtual-clients-draft")]
+                let vc_commit_material =
+                    if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
+                        self.load_vc_commit_material(provider, commit)?
+                    } else {
+                        None
+                    };
+
+                #[cfg(feature = "virtual-clients-draft")]
+                let is_own_commit = is_own_commit && vc_commit_material.is_none();
+
+                // An own Commit that did not match the pending commit above
+                // cannot be staged when it carries an UpdatePath: we cannot
+                // decrypt a path we encrypted to the other members. A Commit
+                // without an UpdatePath carries no author-private material and
+                // falls through to staging (a sibling's Commit without an
+                // UpdatePath, or our own commit replayed after the pending
+                // commit was cleared).
+                if is_own_commit && commit.path.is_some() {
+                    return Err(StageCommitError::OwnCommitMismatch.into());
                 }
 
                 // A commit covering AppDataUpdate proposals cannot be staged
