@@ -920,15 +920,18 @@ impl MlsGroup {
                 //   auto-Remove targets our previous leaf, so we are the
                 //   sibling being resynced.
                 #[cfg(feature = "virtual-clients-draft")]
-                let vc_commit_material =
-                    if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
-                        self.load_vc_commit_material(provider, commit)?
-                    } else {
-                        None
-                    };
+                let (vc_commit_material, is_own_commit) = {
+                    let vc_commit_material =
+                        if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
+                            self.load_vc_commit_material(provider, commit)?
+                        } else {
+                            None
+                        };
 
-                #[cfg(feature = "virtual-clients-draft")]
-                let is_own_commit = is_own_commit && vc_commit_material.is_none();
+                    let is_own_commit = is_own_commit && vc_commit_material.is_none();
+
+                    (vc_commit_material, is_own_commit)
+                };
 
                 // An own Commit that did not match the pending commit above
                 // cannot be staged when it carries an UpdatePath: we cannot
