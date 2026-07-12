@@ -11,6 +11,7 @@ use crate::{
         ExternalCommitBuilderError, MlsGroup, MlsGroupJoinConfig, NewGroupError, StagedWelcome,
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
+    prelude::KeyPackageBundle,
     test_utils::restricted_provider::RestrictedProvider,
 };
 
@@ -102,6 +103,21 @@ fn welcome_rejects_unsupported_ciphersuite() {
         err,
         WelcomeError::UnsupportedCiphersuite(cs) if cs == GROUP_CIPHERSUITE
     ));
+
+    // The rejection must not have consumed Bob's key package: a welcome for an
+    // unsupported ciphersuite is rejected before any stored key material is
+    // touched.
+    let hash_ref = bob_key_package
+        .key_package()
+        .hash_ref(bob_provider.inner().crypto())
+        .unwrap();
+    let stored: Option<KeyPackageBundle> =
+        openmls_traits::storage::StorageProvider::key_package(bob_provider.storage(), &hash_ref)
+            .unwrap();
+    assert!(
+        stored.is_some(),
+        "key package must remain stored after the welcome is rejected"
+    );
 }
 
 #[test]
