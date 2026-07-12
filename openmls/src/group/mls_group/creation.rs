@@ -149,6 +149,10 @@ impl ProcessedWelcome {
             keys_for_welcome(mls_group_config, &welcome, provider)?;
 
         let ciphersuite = welcome.ciphersuite();
+        provider
+            .crypto()
+            .supports(ciphersuite)
+            .map_err(|_| WelcomeError::UnsupportedCiphersuite(ciphersuite))?;
         let Some(egs) =
             welcome.find_encrypted_group_secret(key_material.key_package_ref(provider.crypto())?)
         else {

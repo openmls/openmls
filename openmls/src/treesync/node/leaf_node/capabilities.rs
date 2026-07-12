@@ -1,4 +1,7 @@
-use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    types::{Ciphersuite, VerifiableCiphersuite},
+};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
@@ -98,6 +101,24 @@ impl Capabilities {
     /// Creates a new [`CapabilitiesBuilder`] for constructing [`Capabilities`]
     pub fn builder() -> CapabilitiesBuilder {
         CapabilitiesBuilder(Self::default())
+    }
+
+    /// Creates [`Capabilities`] advertising exactly the ciphersuites supported
+    /// by the given crypto provider, with defaults for all other fields.
+    ///
+    /// In contrast to [`Capabilities::default()`], which advertises a
+    /// hardcoded ciphersuite list independently of what the crypto provider
+    /// can actually perform, this constructor derives the advertised list from
+    /// [`OpenMlsCrypto::supported_ciphersuites()`].
+    pub fn for_provider(crypto: &impl OpenMlsCrypto) -> Self {
+        Capabilities {
+            ciphersuites: crypto
+                .supported_ciphersuites()
+                .into_iter()
+                .map(VerifiableCiphersuite::from)
+                .collect(),
+            ..Default::default()
+        }
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -414,7 +435,10 @@ pub(super) fn default_credentials() -> Vec<CredentialType> {
 
 #[cfg(test)]
 mod tests {
-    use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
+    use openmls_traits::{
+        crypto::OpenMlsCrypto,
+        types::{Ciphersuite, VerifiableCiphersuite},
+    };
     use tls_codec::{Deserialize, Serialize};
 
     use super::Capabilities;
@@ -472,5 +496,18 @@ mod tests {
         let got = Capabilities::tls_deserialize_exact(test_serialized).unwrap();
 
         assert_eq!(expected, got);
+    }
+
+    #[test]
+    fn for_provider_advertises_exactly_the_supported_ciphersuites() {
+        let crypto = openmls_rust_crypto::RustCrypto::default();
+        let capabilities = Capabilities::for_provider(&crypto);
+
+        let expected: Vec<VerifiableCiphersuite> = crypto
+            .supported_ciphersuites()
+            .into_iter()
+            .map(VerifiableCiphersuite::from)
+            .collect();
+        assert_eq!(capabilities.ciphersuites(), expected.as_slice());
     }
 }

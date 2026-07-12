@@ -24,4 +24,5 @@ mod key_package_in;
 mod past_secrets;
 mod proposal_validation;
 mod remove_operation;
+mod unsupported_ciphersuite;
 mod wire_format_policy;

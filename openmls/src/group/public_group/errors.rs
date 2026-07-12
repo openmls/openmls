@@ -1,3 +1,4 @@
+use openmls_traits::types::Ciphersuite;
 use thiserror::Error;
 
 use crate::{
@@ -27,6 +28,9 @@ pub enum CreationFromExternalError<StorageError> {
     /// We don't support the version of the group we are trying to join.
     #[error("We don't support the version of the group we are trying to join.")]
     UnsupportedMlsVersion,
+    /// The ciphersuite is not supported by the crypto provider.
+    #[error("Ciphersuite {0:?} is not supported by the crypto provider.")]
+    UnsupportedCiphersuite(Ciphersuite),
     /// See [`LeafNodeValidationError`]
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),

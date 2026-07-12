@@ -147,6 +147,9 @@ impl PublicGroup {
         validate_lifetimes: LeafNodeLifetimePolicy,
     ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>> {
         let ciphersuite = verifiable_group_info.ciphersuite();
+        crypto
+            .supports(ciphersuite)
+            .map_err(|_| CreationFromExternalError::UnsupportedCiphersuite(ciphersuite))?;
 
         let group_id = verifiable_group_info.group_id();
         let ratchet_tree = ratchet_tree

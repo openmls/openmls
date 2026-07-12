@@ -297,6 +297,11 @@ impl KeyPackage {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
 
+        provider
+            .crypto()
+            .supports(ciphersuite)
+            .map_err(|_| KeyPackageNewError::UnsupportedCiphersuite(ciphersuite))?;
+
         // Create a new HPKE key pair
         let ikm = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?;
@@ -686,6 +691,11 @@ impl KeyPackageBuilder {
         if ciphersuite.signature_algorithm() != signer.signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
+
+        provider
+            .crypto()
+            .supports(ciphersuite)
+            .map_err(|_| KeyPackageNewError::UnsupportedCiphersuite(ciphersuite))?;
 
         // Reject an empty batch before loading state or consuming a generation.
         if count == 0 {

@@ -1,4 +1,4 @@
-use openmls_traits::{signatures::Signer, types::Ciphersuite};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, types::Ciphersuite};
 use tls_codec::Serialize;
 
 #[cfg(feature = "extensions-draft")]
@@ -105,6 +105,11 @@ impl MlsGroupBuilder {
             .group_id
             .unwrap_or_else(|| GroupId::random(provider.rand()));
         let ciphersuite = mls_group_create_config.ciphersuite;
+
+        provider
+            .crypto()
+            .supports(ciphersuite)
+            .map_err(|_| NewGroupError::UnsupportedCiphersuite(ciphersuite))?;
 
         #[cfg(feature = "virtual-clients-draft")]
         if let Some(epoch_id) = self.vc_epoch_id.clone() {

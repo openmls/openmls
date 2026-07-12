@@ -48,6 +48,39 @@ fn key_package_builder_leaf_node_extensions_validation() {
     );
 }
 
+#[test]
+fn key_package_rejects_unsupported_ciphersuite() {
+    use crate::test_utils::restricted_provider::RestrictedProvider;
+
+    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    // The provider supports some ciphersuite, but not `ciphersuite`.
+    let provider =
+        RestrictedProvider::new(vec![Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256]);
+
+    // The signer matches the ciphersuite's signature scheme, so the
+    // ciphersuite/signature-scheme mismatch check passes and the provider
+    // support check is what fails.
+    let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    let credential = BasicCredential::new(b"Sasha".to_vec());
+
+    let err = KeyPackage::builder()
+        .build(
+            ciphersuite,
+            &provider,
+            &signer,
+            CredentialWithKey {
+                credential: credential.into(),
+                signature_key: signer.to_public_vec().into(),
+            },
+        )
+        .expect_err("key package creation should fail for an unsupported ciphersuite");
+
+    assert!(matches!(
+        err,
+        KeyPackageNewError::UnsupportedCiphersuite(cs) if cs == ciphersuite
+    ));
+}
+
 #[openmls_test::openmls_test]
 fn generate_key_package() {
     let provider = &Provider::default();
