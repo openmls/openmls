@@ -1,7 +1,8 @@
 //! Key package facilities for virtual clients
 
 use openmls_traits::{
-    signatures::Signer, storage::StorageProvider, types::Ciphersuite, OpenMlsProvider,
+    crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider, types::Ciphersuite,
+    OpenMlsProvider,
 };
 use tls_codec::Serialize;
 
@@ -113,7 +114,7 @@ impl VcKeyPackageBatchBuilder {
         &mut self,
         builder: KeyPackageBuilder,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<&KeyPackageInfo, KeyPackageNewError> {
@@ -132,7 +133,7 @@ impl VcKeyPackageBatchBuilder {
         self.key_packages.push(self.build_vc_key_package_for_index(
             builder,
             ciphersuite,
-            provider,
+            crypto,
             signer,
             credential_with_key,
             &resolved_dictionary,
@@ -186,7 +187,7 @@ impl VcKeyPackageBatchBuilder {
         &self,
         mut builder: KeyPackageBuilder,
         ciphersuite: Ciphersuite,
-        provider: &impl OpenMlsProvider,
+        crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         resolved_dictionary: &AppDataDictionary,
@@ -196,16 +197,16 @@ impl VcKeyPackageBatchBuilder {
         // init and leaf encryption keys from the seed under the KeyPackage's
         // own ciphersuite.
         let seed = self.operation_secret.derive_key_package_seed_secret(
-            provider.crypto(),
+            crypto,
             self.emulation_ciphersuite,
             key_package_index,
         )?;
         let init_key_pair = seed
-            .derive_init_key_secret(provider.crypto(), ciphersuite)?
-            .generate_init_key_pair(provider.crypto(), ciphersuite)?;
+            .derive_init_key_secret(crypto, ciphersuite)?
+            .generate_init_key_pair(crypto, ciphersuite)?;
         let encryption_key_pair = seed
-            .derive_encryption_key_secret(provider.crypto(), ciphersuite)?
-            .generate_encryption_key_pair(provider.crypto(), ciphersuite)?;
+            .derive_encryption_key_secret(crypto, ciphersuite)?
+            .generate_encryption_key_pair(crypto, ciphersuite)?;
 
         // Wrap the TBE bound to the new leaf via its serialized encryption key.
         // The leaf dictionary was resolved and validated once for the whole
@@ -220,7 +221,7 @@ impl VcKeyPackageBatchBuilder {
             key_package_index,
         };
         let derivation_info = DerivationInfo::encrypt(
-            provider.crypto(),
+            crypto,
             self.emulation_ciphersuite,
             &self.epoch_encryption_key,
             self.epoch_id.clone(),
@@ -253,7 +254,7 @@ impl VcKeyPackageBatchBuilder {
             encryption_key_pair,
         )?;
 
-        let key_package_ref = key_package.hash_ref(provider.crypto())?;
+        let key_package_ref = key_package.hash_ref(crypto)?;
         let full_kp = KeyPackageBundle {
             key_package,
             private_init_key: init_key_pair.private,

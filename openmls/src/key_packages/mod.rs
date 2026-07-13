@@ -690,7 +690,7 @@ impl KeyPackageBuilder {
             builder.add_key_package(
                 self.clone(),
                 ciphersuite,
-                provider,
+                provider.crypto(),
                 signer,
                 credential_with_key.clone(),
             )?;
