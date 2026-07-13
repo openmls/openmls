@@ -125,7 +125,7 @@ impl MemoryStorage {
         list.push(value);
 
         // write back, reusing the old buffer
-        list_bytes.truncate(0);
+        list_bytes.clear();
         serde_json::to_writer(list_bytes, &list)?;
 
         Ok(())
@@ -154,7 +154,7 @@ impl MemoryStorage {
         }
 
         // write back, reusing the old buffer
-        list_bytes.truncate(0);
+        list_bytes.clear();
         serde_json::to_writer(list_bytes, &list)?;
 
         Ok(())
