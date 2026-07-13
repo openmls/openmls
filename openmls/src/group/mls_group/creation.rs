@@ -25,7 +25,6 @@ use crate::{
     },
 };
 
-#[cfg(doc)]
 use crate::key_packages::KeyPackage;
 
 impl MlsGroup {
@@ -516,6 +515,14 @@ impl ProcessedWelcome {
             .exporter_secret()
             .derive_exported_secret(self.ciphersuite, crypto, label, context, key_length)
             .map_err(LibraryError::unexpected_crypto_error)?)
+    }
+
+    /// Retrieve a reference to the own [`KeyPackage`] that was retrieved from local storage as
+    /// part of [`Welcome`] processing, and is used to build the group
+    pub fn own_key_package(&self) -> Option<&KeyPackage> {
+        self.key_material
+            .key_package_bundle()
+            .map(|bundle| bundle.key_package())
     }
 }
 
