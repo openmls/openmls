@@ -510,8 +510,8 @@ impl ProcessedWelcome {
             .map_err(LibraryError::unexpected_crypto_error)?)
     }
 
-    /// Retrieve a reference to the own [`KeyPackage`] used
-    /// to build the group
+    /// Retrieve a reference to the own [`KeyPackage`] that was retrieved from local storage as
+    /// part of [`Welcome`] processing, and is used to build the group
     pub fn own_key_package(&self) -> Option<&KeyPackage> {
         self.key_material
             .key_package_bundle()
