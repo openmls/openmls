@@ -635,7 +635,7 @@ mod virtual_clients_draft {
                 // Unreachable: `create_message` confirms at the current epoch,
                 // which never triggers the future-epoch guard.
                 ConfirmMessageError::FutureEpoch => CreateMessageError::LibraryError(
-                    LibraryError::custom("confirm_message reported a future epoch"),
+                    LibraryError::custom("confirm_application_message reported a future epoch"),
                 ),
                 ConfirmMessageError::StorageError(e) => CreateMessageError::StorageError(e),
             }

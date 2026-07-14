@@ -284,7 +284,7 @@ size, and encrypts it with a small-space PRP keyed from `reuse_guard_secret`.
 Once the Delivery Service accepts the message, drop the retained key:
 
 ```rust,no_run,noplayground
-main_group.confirm_message(provider.storage(), unconfirmed.epoch, unconfirmed.generation)?;
+main_group.confirm_application_message(provider.storage(), unconfirmed.epoch, unconfirmed.generation)?;
 ```
 
 If the Delivery Service reports a collision, the sibling won that generation.
@@ -294,7 +294,8 @@ the retained key for that generation, so no explicit cleanup is needed. Then
 call `create_unconfirmed_message` again to re-encrypt from the ratchet head.
 There is no explicit discard call. A retained unconfirmed key is, from the
 receiving side, the same as a skipped-generation key. It is cleaned up by
-`confirm_message`, by decrypting a sibling's message at that generation, or by
+`confirm_application_message`, by decrypting a sibling's message at that
+generation, or by
 aging out under bounded retention.
 
 On the receiving side, `process_message` inverts the reuse guard PRP and

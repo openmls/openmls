@@ -2125,7 +2125,7 @@ fn processing_own_application_message() {
         .unwrap();
     let ciphertext = unconfirmed.message;
     alice_group
-        .confirm_message(
+        .confirm_application_message(
             alice_provider.storage(),
             unconfirmed.epoch,
             unconfirmed.generation,
@@ -2228,7 +2228,7 @@ fn confirm_targets_creation_epoch() {
     // Confirming msg1 at its creation epoch must not touch msg2's secret,
     // which shares the generation number in the newer epoch.
     alice_group
-        .confirm_message(alice_provider.storage(), msg1.epoch, msg1.generation)
+        .confirm_application_message(alice_provider.storage(), msg1.epoch, msg1.generation)
         .expect("confirm msg1");
 
     // msg2's secret is intact, so its echo decrypts.
@@ -2320,7 +2320,7 @@ fn confirm_aged_out_epoch_is_noop() {
         .expect("alice merge bob commit");
 
     alice_group
-        .confirm_message(alice_provider.storage(), msg.epoch, msg.generation)
+        .confirm_application_message(alice_provider.storage(), msg.epoch, msg.generation)
         .expect("confirming an aged-out epoch must be a no-op success");
 }
 
@@ -2356,7 +2356,7 @@ fn confirm_after_processing_own_echo_is_noop() {
     assert_eq!(app.into_bytes().as_slice(), b"echo me");
 
     alice_group
-        .confirm_message(alice_provider.storage(), epoch, generation)
+        .confirm_application_message(alice_provider.storage(), epoch, generation)
         .expect("confirming an already-consumed generation must be a no-op success");
 }
 
@@ -2375,7 +2375,7 @@ fn confirm_future_epoch_errors() {
 
     let future_epoch = GroupEpoch::from(alice_group.epoch().as_u64() + 1);
     let err = alice_group
-        .confirm_message(alice_provider.storage(), future_epoch, 0)
+        .confirm_application_message(alice_provider.storage(), future_epoch, 0)
         .expect_err("confirming a future epoch must error");
     assert!(matches!(err, ConfirmMessageError::FutureEpoch));
 }
@@ -2512,7 +2512,7 @@ fn unconfirmed_message_decrypts_after_next_message_is_confirmed() {
         .expect("Could not create second message.");
     assert_eq!(second.generation, 1);
     alice_group
-        .confirm_message(alice_provider.storage(), second.epoch, second.generation)
+        .confirm_application_message(alice_provider.storage(), second.epoch, second.generation)
         .expect("Could not confirm second message.");
 
     let processed_message = alice_group
@@ -2559,7 +2559,7 @@ fn old_unconfirmed_own_message_survives_later_confirmations() {
             )
             .expect("Could not create later unconfirmed message.");
         alice_group
-            .confirm_message(alice_provider.storage(), later.epoch, later.generation)
+            .confirm_application_message(alice_provider.storage(), later.epoch, later.generation)
             .expect("Could not confirm later message.");
     }
 
@@ -2759,7 +2759,7 @@ fn create_unconfirmed_message_returns_generation_id_when_bound() {
         ciphersuite.hash_length()
     );
     alice_group
-        .confirm_message(provider.storage(), first.epoch, first.generation)
+        .confirm_application_message(provider.storage(), first.epoch, first.generation)
         .expect("confirm first message");
 
     let second = alice_group
