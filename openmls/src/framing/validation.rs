@@ -640,7 +640,8 @@ pub enum ProcessedMessageContent {
     /// normally. This variant is then only returned in groups that do not
     /// use virtual clients (no emulation state registered for the message's
     /// epoch), when decryption of an own message fails, e.g. because the
-    /// send was already confirmed via `MlsGroup::confirm_message()`.
+    /// send was already confirmed via
+    /// `MlsGroup::confirm_application_message()`.
     OwnPrivateMessage,
     /// A Commit message covering AppDataUpdate proposals.
     ///

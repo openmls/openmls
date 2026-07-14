@@ -18,12 +18,12 @@ pub struct UnconfirmedMessage {
     /// The encrypted application message to fan out.
     pub message: MlsMessageOut,
     /// The epoch the message was encrypted in. Pass it together with
-    /// `generation` to [`MlsGroup::confirm_message`] once the DS has accepted
-    /// the message, to delete the retained encryption secret.
+    /// `generation` to [`MlsGroup::confirm_application_message`] once the DS
+    /// has accepted the message, to delete the retained encryption secret.
     pub epoch: GroupEpoch,
     /// The ratchet generation used for encryption. Pass it together with
-    /// `epoch` to [`MlsGroup::confirm_message`] once the DS has accepted the
-    /// message, to delete the retained encryption secret.
+    /// `epoch` to [`MlsGroup::confirm_application_message`] once the DS has
+    /// accepted the message, to delete the retained encryption secret.
     pub generation: u32,
     /// The [`GenerationId`] to attach to the fanned-out message, present when
     /// the group is bound to an emulation epoch and `None` otherwise. A
@@ -155,16 +155,17 @@ impl MlsGroup {
     }
 
     /// Creates an application message. Encryption secrets are only deleted
-    /// after the message has been confirmed via `confirm_message()`.
+    /// after the message has been confirmed via
+    /// `confirm_application_message()`.
     ///
     /// Returns the ratchet `generation` used for encryption, an optional
     /// [`GenerationId`], and the encrypted message. The `generation` is passed
-    /// back to `confirm_message` to delete the retained encryption secret once
-    /// the DS has accepted the message. The [`GenerationId`] is present when
-    /// the group is bound to an emulation epoch and `None` otherwise. When
-    /// present, the application attaches it to the fanned-out message so a
-    /// strongly-consistent DS can detect generation collisions between
-    /// siblings.
+    /// back to `confirm_application_message` to delete the retained encryption
+    /// secret once the DS has accepted the message. The [`GenerationId`] is
+    /// present when the group is bound to an emulation epoch and `None`
+    /// otherwise. When present, the application attaches it to the fanned-out
+    /// message so a strongly-consistent DS can detect generation collisions
+    /// between siblings.
     ///
     /// Returns `CreateMessageError::MlsGroupStateError::UseAfterEviction` if
     /// the member is no longer part of the group. Returns
