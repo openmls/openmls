@@ -1950,7 +1950,7 @@ fn vc_batch_key_packages_join_in_any_order() {
         .expect("alice_a build_vc_batch");
     let generation = batch.generation;
     assert_eq!(generation, 0, "the batch consumes a single generation");
-    assert_eq!(batch.key_packages.len(), count as usize);
+    assert_eq!(batch.key_packages.len(), count);
 
     let kp_infos = batch
         .key_packages
@@ -1959,6 +1959,7 @@ fn vc_batch_key_packages_join_in_any_order() {
         .map(
             |info| openmls::components::vc_derivation_info::KeyPackageInfo {
                 key_package_ref: info.key_package_ref.clone(),
+                cipher_suite: info.cipher_suite,
                 key_package_index: info.key_package_index,
             },
         )
@@ -1974,10 +1975,7 @@ fn vc_batch_key_packages_join_in_any_order() {
 
     // The sibling joins via a HIGH batch index first and a LOW one second,
     // each through a separate higher-level group.
-    let high_bundle = batch.key_packages[(count - 1) as usize]
-        .0
-        .key_package()
-        .clone();
+    let high_bundle = batch.key_packages[count - 1].0.key_package().clone();
     let low_bundle = batch.key_packages[0].0.key_package().clone();
 
     for (label, kp) in [

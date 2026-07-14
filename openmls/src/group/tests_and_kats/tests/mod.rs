@@ -24,4 +24,9 @@ mod key_package_in;
 mod past_secrets;
 mod proposal_validation;
 mod remove_operation;
+#[cfg(all(
+    feature = "virtual-clients-draft",
+    feature = "draft-ietf-mls-pq-ciphersuites"
+))]
+mod virtual_clients;
 mod wire_format_policy;

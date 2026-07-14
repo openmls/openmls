@@ -450,13 +450,13 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     // The creator batch consists of this single derivation and is closed
     // immediately: no `KeyPackageUpload` is sent and no
     // `RetainedKeyPackageMaterial` is written, because a creator leaf has no
-    // KeyPackage / KeyPackageRef. Derive the per-KeyPackage seed (index 0) under
-    // the emulation ciphersuite, then the creator leaf's encryption keypair and
-    // the epoch-0 secret from that seed under the created group's ciphersuite.
+    // KeyPackage / KeyPackageRef. Import the per-KeyPackage seed (index 0) under
+    // the created group's ciphersuite, then derive the creator leaf's encryption
+    // keypair and the epoch-0 secret from that seed.
     let key_package_index = 0;
     let key_package_seed = operation_secret.derive_key_package_seed_secret(
         provider.crypto(),
-        emulation_ciphersuite,
+        ciphersuite,
         key_package_index,
     )?;
     let leaf_encryption_keypair = key_package_seed

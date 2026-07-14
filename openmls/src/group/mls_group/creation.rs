@@ -759,6 +759,10 @@ fn vc_welcome_material<Provider: OpenMlsProvider>(
         return Ok(None);
     };
 
+    if material.key_package_ciphersuite != ciphersuite {
+        return Err(WelcomeError::CiphersuiteMismatch);
+    }
+
     let crypto = provider.crypto();
     // The material is consumed once, mirroring the non-last-resort
     // `delete_key_package` on the bundle path.
@@ -769,7 +773,7 @@ fn vc_welcome_material<Provider: OpenMlsProvider>(
             VirtualClientsError::StorageError
         })?;
 
-    // The seed was derived under the emulation ciphersuite at
+    // The seed is imported into the KeyPackage's ciphersuite at
     // upload-processing time. The init and leaf-encryption keys are derived
     // from it under the KeyPackage's own (the welcome's) ciphersuite.
     let init_key_pair = material
@@ -1148,7 +1152,7 @@ impl MlsGroup {
         )?;
         let key_package_seed = operation_secret.derive_key_package_seed_secret(
             provider.crypto(),
-            emulation_ciphersuite,
+            ciphersuite,
             key_package_index,
         )?;
         let leaf_keypair = key_package_seed

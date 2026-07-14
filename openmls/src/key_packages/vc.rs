@@ -193,12 +193,9 @@ impl VcKeyPackageBatchBuilder {
         resolved_dictionary: &AppDataDictionary,
         key_package_index: u32,
     ) -> Result<(KeyPackageBundle, KeyPackageInfo), KeyPackageNewError> {
-        // Derive the per-index seed under the emulation ciphersuite, then the
-        // init and leaf encryption keys from the seed under the KeyPackage's
-        // own ciphersuite.
         let seed = self.operation_secret.derive_key_package_seed_secret(
             crypto,
-            self.emulation_ciphersuite,
+            ciphersuite,
             key_package_index,
         )?;
         let init_key_pair = seed
@@ -265,6 +262,7 @@ impl VcKeyPackageBatchBuilder {
             full_kp,
             KeyPackageInfo {
                 key_package_ref,
+                cipher_suite: ciphersuite,
                 key_package_index,
             },
         ))
