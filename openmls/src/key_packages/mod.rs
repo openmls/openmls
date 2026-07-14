@@ -123,6 +123,8 @@ pub mod errors;
 pub mod key_package_in;
 
 mod lifetime;
+#[cfg(feature = "virtual-clients-draft")]
+mod vc;
 
 // Tests
 #[cfg(test)]
@@ -131,6 +133,8 @@ pub(crate) mod tests;
 // Public types
 pub use key_package_in::KeyPackageIn;
 pub use lifetime::Lifetime;
+#[cfg(feature = "virtual-clients-draft")]
+pub use vc::{VcKeyPackageBatch, VcKeyPackageBatchBuilder};
 
 /// The unsigned payload of a key package.
 /// Any modification must happen on this unsigned struct. Use `sign` to get a
@@ -681,250 +685,30 @@ impl KeyPackageBuilder {
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         epoch_id: crate::components::vc_derivation_info::EpochId,
-        count: u32,
+        count: usize,
     ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
-        use crate::components::vc_derivation_info::{
-            EmulationEpochState, VirtualClientOperationType, VirtualClientsError,
-        };
-        use crate::components::vc_operation_tree::OperationSecretTree;
-
-        if ciphersuite.signature_algorithm() != signer.signature_scheme() {
-            return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
-        }
-
+        // Reject an unsupported ciphersuite and an empty batch before loading
+        // state or consuming a generation.
         provider
             .crypto()
             .supports(ciphersuite)
             .map_err(|_| KeyPackageNewError::UnsupportedCiphersuite(ciphersuite))?;
 
-        // Reject an empty batch before loading state or consuming a generation.
         if count == 0 {
             return Err(KeyPackageNewError::EmptyBatch);
         }
-
-        // Resolve and validate the leaf configuration once for the whole batch
-        // (it does not depend on the per-KeyPackage index) before consuming a
-        // generation, so a misconfigured leaf fails without burning one.
-        let resolved_dictionary =
-            crate::components::vc_derivation_info::resolve_vc_leaf_dictionary(
-                self.leaf_node_capabilities.as_ref(),
-                self.leaf_node_extensions.as_ref(),
-                None,
-            )?;
-
-        // Allocate a single generation of the key_package operation ratchet
-        // for the whole batch. The advanced tree is held in memory and only
-        // persisted once every KeyPackage has been built, so a failure during
-        // building consumes no generation.
-        let state: EmulationEpochState = provider
-            .storage()
-            .vc_emulation_epoch_state(&epoch_id)
-            .map_err(|e| {
-                log::error!("vc: load emulation epoch state in build_vc_batch failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?
-            .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
-        let mut operation_tree: OperationSecretTree = provider
-            .storage()
-            .vc_operation_tree(&epoch_id)
-            .map_err(|e| {
-                log::error!("vc: load operation tree in build_vc_batch failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?
-            .ok_or(VirtualClientsError::MissingOperationTree)?;
-        let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) =
-            state.into_parts();
-
-        // The operation context for KeyPackage operations is empty, since a
-        // KeyPackage is not tied to a higher-level group at build time.
-        let (generation, operation_secret) = operation_tree.next_operation_secret(
-            provider.crypto(),
-            emulation_ciphersuite,
-            &epoch_id,
-            emulation_leaf_index,
-            VirtualClientOperationType::KeyPackage,
-            b"",
-        )?;
-
-        let batch_ctx = VcBatchContext {
-            ciphersuite,
-            epoch_id,
-            emulation_ciphersuite,
-            epoch_encryption_key,
-            emulation_leaf_index,
-            generation,
-            operation_secret,
-            resolved_dictionary,
-        };
-
-        let mut key_packages = Vec::with_capacity(count as usize);
-        for key_package_index in 0..count {
-            let entry = self.build_vc_key_package_for_index(
-                provider,
+        let mut builder = VcKeyPackageBatchBuilder::with_capacity(provider, epoch_id, count)?;
+        for _ in 0..count {
+            builder.add_key_package(
+                self.clone(),
+                ciphersuite,
+                provider.crypto(),
                 signer,
                 credential_with_key.clone(),
-                &batch_ctx,
-                key_package_index,
             )?;
-            key_packages.push(entry);
         }
-
-        // Persist the advanced operation tree before the KeyPackages it backs.
-        // If a KeyPackage write fails after this, the burned generation is
-        // harmless, but writing KeyPackages first would let the next batch
-        // reuse the same key material under an unconsumed generation.
-        provider
-            .storage()
-            .write_vc_operation_tree(&batch_ctx.epoch_id, &operation_tree)
-            .map_err(|e| {
-                log::error!("vc: persist advanced operation tree in build_vc_batch failed: {e:?}");
-                VirtualClientsError::StorageError
-            })?;
-        for (full_kp, info) in &key_packages {
-            provider
-                .storage()
-                .write_key_package(&info.key_package_ref, full_kp)
-                .map_err(|_| KeyPackageNewError::StorageError)?;
-        }
-
-        Ok(VcKeyPackageBatch {
-            generation,
-            key_packages,
-        })
+        builder.finalize(provider)
     }
-
-    /// Derive and build a single KeyPackage at `key_package_index` from the
-    /// batch's shared `operation_secret`. Used by [`Self::build_vc_batch`].
-    #[cfg(feature = "virtual-clients-draft")]
-    fn build_vc_key_package_for_index(
-        &self,
-        provider: &impl OpenMlsProvider,
-        signer: &impl Signer,
-        credential_with_key: CredentialWithKey,
-        batch_ctx: &VcBatchContext,
-        key_package_index: u32,
-    ) -> Result<
-        (
-            KeyPackageBundle,
-            crate::components::vc_derivation_info::KeyPackageInfo,
-        ),
-        KeyPackageNewError,
-    > {
-        use crate::components::vc_derivation_info::{
-            DerivationInfo, DerivationInfoTbe, KeyPackageInfo, VirtualClientsError,
-        };
-        use tls_codec::Serialize as _;
-
-        let ciphersuite = batch_ctx.ciphersuite;
-
-        // Derive the per-index seed under the emulation ciphersuite, then the
-        // init and leaf encryption keys from the seed under the KeyPackage's
-        // own ciphersuite.
-        let seed = batch_ctx.operation_secret.derive_key_package_seed_secret(
-            provider.crypto(),
-            batch_ctx.emulation_ciphersuite,
-            key_package_index,
-        )?;
-        let init_key_pair = seed
-            .derive_init_key_secret(provider.crypto(), ciphersuite)?
-            .generate_init_key_pair(provider.crypto(), ciphersuite)?;
-        let encryption_key_pair = seed
-            .derive_encryption_key_secret(provider.crypto(), ciphersuite)?
-            .generate_encryption_key_pair(provider.crypto(), ciphersuite)?;
-
-        // Wrap the TBE bound to the new leaf via its serialized encryption key.
-        // The leaf dictionary was resolved and validated once for the whole
-        // batch, so reuse a clone here.
-        let resolved_dictionary = batch_ctx.resolved_dictionary.clone();
-        let leaf_encryption_key = encryption_key_pair
-            .public_key()
-            .tls_serialize_detached()
-            .map_err(VirtualClientsError::from)?;
-        let tbe = DerivationInfoTbe::KeyPackage {
-            leaf_index: batch_ctx.emulation_leaf_index,
-            generation: batch_ctx.generation,
-            key_package_index,
-        };
-        let derivation_info = DerivationInfo::encrypt(
-            provider.crypto(),
-            batch_ctx.emulation_ciphersuite,
-            &batch_ctx.epoch_encryption_key,
-            batch_ctx.epoch_id.clone(),
-            &leaf_encryption_key,
-            &tbe,
-        )?;
-        let derivation_info_bytes = derivation_info
-            .tls_serialize_detached()
-            .map_err(VirtualClientsError::from)?;
-        let mut builder = self.clone();
-        builder.ensure_last_resort();
-        let leaf_node_extensions = crate::components::vc_derivation_info::merge_vc_derivation_info(
-            builder.leaf_node_extensions.as_ref(),
-            resolved_dictionary,
-            derivation_info_bytes,
-        )
-        .map_err(KeyPackageNewError::LibraryError)?;
-
-        let leaf_node_params = KeyPackageLeafNodeParams {
-            lifetime: builder.key_package_lifetime.unwrap_or_default(),
-            capabilities: builder.leaf_node_capabilities.unwrap_or_default(),
-            extensions: leaf_node_extensions,
-        };
-        let (key_package, encryption_key_pair) = KeyPackage::new_from_vc_keys(
-            ciphersuite,
-            signer,
-            credential_with_key,
-            builder.key_package_extensions.unwrap_or_default(),
-            leaf_node_params,
-            init_key_pair.public.into(),
-            encryption_key_pair,
-        )?;
-
-        let key_package_ref = key_package.hash_ref(provider.crypto())?;
-        let full_kp = KeyPackageBundle {
-            key_package,
-            private_init_key: init_key_pair.private,
-            private_encryption_key: encryption_key_pair.private_key().clone(),
-        };
-
-        Ok((
-            full_kp,
-            KeyPackageInfo {
-                key_package_ref,
-                key_package_index,
-            },
-        ))
-    }
-}
-
-/// Shared inputs for building each KeyPackage in a `build_vc_batch` call:
-/// the batch's single operation secret plus the epoch material every
-/// KeyPackage in the batch derives against.
-#[cfg(feature = "virtual-clients-draft")]
-struct VcBatchContext {
-    ciphersuite: Ciphersuite,
-    epoch_id: crate::components::vc_derivation_info::EpochId,
-    emulation_ciphersuite: Ciphersuite,
-    epoch_encryption_key: crate::components::vc_derivation_info::EpochEncryptionKey,
-    emulation_leaf_index: crate::binary_tree::LeafNodeIndex,
-    generation: u32,
-    operation_secret: crate::components::vc_derivation_info::OperationSecret,
-    resolved_dictionary: crate::extensions::AppDataDictionary,
-}
-
-/// The result of [`KeyPackageBuilder::build_vc_batch`]: the single
-/// `key_package` operation generation the batch consumed, and one
-/// `(KeyPackageBundle, KeyPackageInfo)` per KeyPackage built.
-#[cfg(feature = "virtual-clients-draft")]
-#[derive(Debug)]
-pub struct VcKeyPackageBatch {
-    /// The `key_package` operation generation consumed for the whole batch.
-    pub generation: u32,
-    /// One entry per KeyPackage built, in batch-index order. Never empty.
-    pub key_packages: Vec<(
-        KeyPackageBundle,
-        crate::components::vc_derivation_info::KeyPackageInfo,
-    )>,
 }
 
 /// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the init and encryption
