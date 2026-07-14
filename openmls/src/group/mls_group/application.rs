@@ -72,7 +72,7 @@ impl MlsGroup {
     ) -> Result<MlsMessageOut, CreateMessageError<Provider::StorageError>> {
         let (generation, _generation_id, output) =
             self.create_message_internal(provider, signer, message)?;
-        self.confirm_message(provider.storage(), self.epoch(), generation)?;
+        self.confirm_application_message(provider.storage(), self.epoch(), generation)?;
         Ok(output)
     }
 
@@ -244,7 +244,7 @@ impl MlsGroup {
     /// collision), the secret must not be confirmed, since it is what decrypts
     /// the sibling's winning message at the same generation.
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn confirm_message<Storage: StorageProvider>(
+    pub fn confirm_application_message<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         epoch: GroupEpoch,
