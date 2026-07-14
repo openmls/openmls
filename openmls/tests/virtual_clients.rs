@@ -2990,6 +2990,175 @@ fn vc_sibling_applies_commit_without_update_path() {
     }
 }
 
+/// Regression test: a virtual client's own VC commit fanned back by the
+/// delivery service must surface as `OwnPendingCommit`, not fail while loading
+/// sibling-commit material.
+///
+/// alice_a and alice_b are sibling emulators sharing the higher-level leaf and
+/// one emulation epoch, in a group that also holds the regular member bob.
+/// alice_a builds a VC commit and, before merging it, processes the copy the
+/// delivery service echoed back. The commit is framed as
+/// `Sender::Member(own_leaf_index)` with an UpdatePath carrying VC material, so
+/// its shape is indistinguishable from a sibling's commit. Because it matches
+/// alice_a's pending commit it must be reported as `OwnPendingCommit` without
+/// consuming an operation-secret generation. Before the fix this failed with
+/// `VirtualClientsError::OperationGenerationConsumed`.
+#[openmls_test]
+fn vc_own_commit_echo_surfaces_as_own_pending_commit() {
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    // alice_a founds the higher-level group and adds bob.
+    let mut alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+    );
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_, welcome, _) = alice_a_main
+        .add_members(&alice_a_provider, &vc_signer, &[bob_kp])
+        .expect("alice_a add bob");
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge add bob");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_a_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join");
+
+    // alice_b joins as a sibling emulator and resyncs into the higher-level
+    // group, so both Alice clients share `own_leaf_index` and the same
+    // emulation epoch.
+    let (siblings, resync_commit) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        vc_join_config(),
+    );
+    let mut alice_b_main = siblings.alice_b_main;
+    let epoch_id = siblings.epoch_id;
+
+    for (group, provider) in [
+        (&mut alice_a_main, &alice_a_provider),
+        (&mut bob_main, &bob_provider),
+    ] {
+        process_and_merge_commit(group, provider, resync_commit.clone());
+    }
+    assert_eq!(
+        alice_a_main.own_leaf_index(),
+        alice_b_main.own_leaf_index(),
+        "both Alice clients must share the higher-level leaf"
+    );
+
+    // alice_a builds a VC commit on the shared emulation epoch but does not
+    // merge it, so it is still her pending commit when the delivery service
+    // fans the copy back to her.
+    let bundle = alice_a_main
+        .commit_builder()
+        .vc_emulation(
+            alice_a_provider.crypto(),
+            alice_a_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("alice_a bind commit to emulation epoch")
+        .load_psks(alice_a_provider.storage())
+        .expect("alice_a load psks")
+        .build(
+            alice_a_provider.rand(),
+            alice_a_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("alice_a build vc commit")
+        .stage_commit(&alice_a_provider)
+        .expect("alice_a stage vc commit");
+    let commit = bundle.into_commit();
+
+    // alice_a processes her own commit echoed back. It is framed like a
+    // sibling's VC commit, but it matches her pending commit and must surface
+    // as `OwnPendingCommit` without consuming an operation-secret generation.
+    let processed = alice_a_main
+        .process_message(
+            &alice_a_provider,
+            commit.clone().into_protocol_message().unwrap(),
+        )
+        .expect("alice_a processes her own fanned-back vc commit");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+    alice_a_main
+        .merge_pending_commit(&alice_a_provider)
+        .expect("alice_a merge her own vc commit");
+
+    // The sibling and bob apply the same commit through the ordinary staging
+    // path.
+    let processed = alice_b_main
+        .process_message(
+            &alice_b_provider,
+            commit.clone().into_protocol_message().unwrap(),
+        )
+        .expect("alice_b processes sibling vc commit");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(s) => *s,
+        other => panic!("expected staged commit, got {other:?}"),
+    };
+    alice_b_main
+        .merge_staged_commit(&alice_b_provider, staged)
+        .expect("alice_b merge sibling vc commit");
+    process_and_merge_commit(&mut bob_main, &bob_provider, commit);
+
+    let authenticator = alice_a_main.epoch_authenticator();
+    assert_eq!(
+        alice_b_main.epoch_authenticator(),
+        authenticator,
+        "sibling must converge with the committer"
+    );
+    assert_eq!(
+        bob_main.epoch_authenticator(),
+        authenticator,
+        "bob must converge with the committer"
+    );
+
+    // A second VC commit on the same emulation epoch, this time from alice_b,
+    // proves the operation secret tree stayed healthy after the echo.
+    let second_commit =
+        send_vc_commit_with_epoch(&mut alice_b_main, &alice_b_provider, &vc_signer, epoch_id);
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, second_commit.clone());
+    process_and_merge_commit(&mut bob_main, &bob_provider, second_commit);
+
+    let authenticator = alice_b_main.epoch_authenticator();
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        authenticator,
+        "committer's sibling must converge after the second commit"
+    );
+    assert_eq!(
+        bob_main.epoch_authenticator(),
+        authenticator,
+        "bob must converge after the second commit"
+    );
+}
+
 /// Set up two sibling emulator clients sharing one emulation group and epoch.
 /// `alice_a` founds the emulation group, `alice_b` joins it via Welcome, and
 /// both register the same emulation epoch, so both hold its
