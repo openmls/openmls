@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-134f05b9.js";
+            window.path_to_searchindex_js = "searchindex-d133d0e4.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-6ca32bdb.js"></script>
@@ -3212,7 +3212,7 @@ client resolves the emulation epoch through the <code>(GroupId, GroupEpoch)</cod
 picks a value congruent to its emulation leaf index modulo the emulation group
 size, and encrypts it with a small-space PRP keyed from <code>reuse_guard_secret</code>.</p>
 <p>Once the Delivery Service accepts the message, drop the retained key:</p>
-<pre><code class="language-rust no_run noplayground">main_group.confirm_message(provider.storage(), unconfirmed.generation)?;</code></pre>
+<pre><code class="language-rust no_run noplayground">main_group.confirm_application_message(provider.storage(), unconfirmed.epoch, unconfirmed.generation)?;</code></pre>
 <p>If the Delivery Service reports a collision, the sibling won that generation.
 Process the winning message through <code>process_message</code>, which has a carve-out for
 messages arriving from the receiver’s own leaf. Decrypting the winner consumes
@@ -3220,7 +3220,8 @@ the retained key for that generation, so no explicit cleanup is needed. Then
 call <code>create_unconfirmed_message</code> again to re-encrypt from the ratchet head.
 There is no explicit discard call. A retained unconfirmed key is, from the
 receiving side, the same as a skipped-generation key. It is cleaned up by
-<code>confirm_message</code>, by decrypting a sibling’s message at that generation, or by
+<code>confirm_application_message</code>, by decrypting a sibling’s message at that
+generation, or by
 aging out under bounded retention.</p>
 <p>On the receiving side, <code>process_message</code> inverts the reuse guard PRP and
 recovers the sender’s leaf index in the emulation group, so the application can
