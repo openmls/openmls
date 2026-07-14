@@ -616,7 +616,11 @@ pub enum ProcessedMessageContent {
     /// [`OwnPrivateMessage`](Self::OwnPrivateMessage). The exception is the
     /// `virtual-clients-draft` feature, where an own private Commit whose
     /// encryption secret is still retained (not yet confirmed) decrypts and
-    /// can produce this variant as well.
+    /// can produce this variant as well. Under that feature the pending-commit
+    /// match is checked before any sibling-commit (virtual clients) material is
+    /// loaded, so an own Commit fanned back by the delivery service surfaces as
+    /// `OwnPendingCommit` without consuming an operation-secret generation from
+    /// the emulation epoch's operation secret tree.
     OwnPendingCommit,
     /// A PrivateMessage whose sender data claims this client's own leaf index,
     /// i.e. a message this client authored that the delivery service fanned
