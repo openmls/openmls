@@ -122,6 +122,10 @@ impl VcKeyPackageBatchBuilder {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
 
+        crypto
+            .supports(ciphersuite)
+            .map_err(|_| KeyPackageNewError::UnsupportedCiphersuite(ciphersuite))?;
+
         // Resolve and validate the leaf configuration
         let resolved_dictionary = resolve_vc_leaf_dictionary(
             builder.leaf_node_capabilities.as_ref(),

@@ -2,6 +2,7 @@
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
 
+use openmls_traits::types::Ciphersuite;
 use thiserror::Error;
 
 #[cfg(feature = "extensions-draft")]
@@ -64,6 +65,9 @@ pub enum WelcomeError<StorageError> {
     /// We don't support all capabilities of the group.
     #[error("We don't support all capabilities of the group.")]
     UnsupportedCapability,
+    /// The crypto provider doesn't support the ciphersuite of the group we are trying to join.
+    #[error("Ciphersuite {0:?} of the group we are trying to join is not supported by the crypto provider.")]
+    UnsupportedCiphersuite(Ciphersuite),
     /// Sender not found in tree.
     #[error("Sender not found in tree.")]
     UnknownSender,
@@ -127,8 +131,8 @@ pub enum ExternalCommitError<StorageError> {
     #[error("No external_pub extension available to join group by external commit.")]
     MissingExternalPub,
     /// We don't support the ciphersuite of the group we are trying to join.
-    #[error("We don't support the ciphersuite of the group we are trying to join.")]
-    UnsupportedCiphersuite,
+    #[error("Ciphersuite {0:?} of the group we are trying to join is not supported by the crypto provider.")]
+    UnsupportedCiphersuite(Ciphersuite),
     /// Sender not found in tree.
     #[error("Sender not found in tree.")]
     UnknownSender,
@@ -164,8 +168,8 @@ impl<StorageError> From<ExternalCommitBuilderError<StorageError>>
             ExternalCommitBuilderError::MissingExternalPub => {
                 ExternalCommitError::MissingExternalPub
             }
-            ExternalCommitBuilderError::UnsupportedCiphersuite => {
-                ExternalCommitError::UnsupportedCiphersuite
+            ExternalCommitBuilderError::UnsupportedCiphersuite(ciphersuite) => {
+                ExternalCommitError::UnsupportedCiphersuite(ciphersuite)
             }
             ExternalCommitBuilderError::PublicGroupError(creation_from_external_error) => {
                 ExternalCommitError::PublicGroupError(creation_from_external_error)

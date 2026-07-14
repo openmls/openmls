@@ -24,6 +24,7 @@ mod key_package_in;
 mod past_secrets;
 mod proposal_validation;
 mod remove_operation;
+mod unsupported_ciphersuite;
 #[cfg(all(
     feature = "virtual-clients-draft",
     feature = "draft-ietf-mls-pq-ciphersuites"

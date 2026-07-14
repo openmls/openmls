@@ -5,6 +5,7 @@
 
 // These errors are exposed through `crate::group::errors`.
 
+use openmls_traits::types::Ciphersuite;
 use thiserror::Error;
 
 use crate::{
@@ -54,6 +55,9 @@ pub enum NewGroupError<StorageError> {
     /// A group with the given [`GroupId`] already exists.
     #[error("A group with the given GroupId already exists.")]
     GroupAlreadyExists,
+    /// The ciphersuite is not supported by the crypto provider.
+    #[error("Ciphersuite {0:?} is not supported by the crypto provider.")]
+    UnsupportedCiphersuite(Ciphersuite),
     /// A virtual-clients processing error occurred.
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]

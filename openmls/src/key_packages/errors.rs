@@ -2,6 +2,7 @@
 //!
 //! `KeyPackageError` are thrown on errors handling `KeyPackage`s.
 
+use openmls_traits::types::Ciphersuite;
 use thiserror::Error;
 
 use crate::{
@@ -61,6 +62,9 @@ pub enum KeyPackageNewError {
     /// The ciphersuite does not match the signature scheme.
     #[error("The ciphersuite does not match the signature scheme.")]
     CiphersuiteSignatureSchemeMismatch,
+    /// The ciphersuite is not supported by the crypto provider.
+    #[error("Ciphersuite {0:?} is not supported by the crypto provider.")]
+    UnsupportedCiphersuite(Ciphersuite),
     /// Accessing storage failed.
     #[error("Accessing storage failed.")]
     StorageError,
