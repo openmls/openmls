@@ -574,6 +574,8 @@ pub struct RetainedKeyPackageMaterial {
     pub generation: u32,
     /// Position of this KeyPackage within the batch.
     pub key_package_index: u32,
+    /// The emulation group's ciphersuite.
+    pub emulation_ciphersuite: Ciphersuite,
     /// Per-KeyPackage seed secret from which the init and leaf-encryption keys
     /// are derived at Welcome time.
     pub key_package_seed_secret: KeyPackageSeedSecret,
@@ -704,6 +706,7 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
             leaf_index: upload.leaf_index,
             generation: upload.generation,
             key_package_index: info.key_package_index,
+            emulation_ciphersuite,
             key_package_seed_secret,
         };
         materials.push((info.key_package_ref.clone(), material));
@@ -1212,6 +1215,8 @@ pub(crate) struct VcCommitMaterial {
     pub(crate) operation_secret: OperationSecret,
     /// External init secret carried by an external commit, `None` otherwise.
     pub(crate) external_init_secret: Option<ExternalInitSecret>,
+    /// Ciphersuite of the emulation group.
+    pub(crate) emulation_ciphersuite: Ciphersuite,
 }
 
 /// AEAD plaintext attached to the leaf via the VC component

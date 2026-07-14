@@ -1220,7 +1220,7 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
 ///
 /// The `DerivationInfoTbe` wrapping stays in the emulation epoch's
 /// ciphersuite, while the operation secret is expanded under the
-/// higher-level group ciphersuite to produce MLS path material for this
+/// emulation group ciphersuite to produce MLS path material for this
 /// group. The generation was consumed and the advanced tree persisted when
 /// `vc_emulation` was called, so this helper neither allocates nor
 /// persists anything.
@@ -1237,11 +1237,11 @@ fn apply_vc_emulation(
 
     let path_secret = loaded
         .operation_secret
-        .derive_path_generation_secret(crypto, group_ciphersuite)?
+        .derive_path_generation_secret(crypto, emulation_ciphersuite)?
         .into();
     let leaf_encryption_keypair = loaded
         .operation_secret
-        .derive_encryption_key_secret(crypto, group_ciphersuite)?
+        .derive_encryption_key_secret(crypto, emulation_ciphersuite)?
         .generate_encryption_key_pair(crypto, group_ciphersuite)?;
 
     // Wrap the TBE under the per-epoch AEAD key, bound to the new leaf via

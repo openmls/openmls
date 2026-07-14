@@ -460,7 +460,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         key_package_index,
     )?;
     let leaf_encryption_keypair = key_package_seed
-        .derive_encryption_key_secret(provider.crypto(), ciphersuite)?
+        .derive_encryption_key_secret(provider.crypto(), emulation_ciphersuite)?
         .generate_encryption_key_pair(provider.crypto(), ciphersuite)?;
     let epoch_secret =
         key_package_seed.derive_group_creation_secret(provider.crypto(), ciphersuite)?;

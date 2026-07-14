@@ -320,32 +320,17 @@ impl MlsGroup {
     ) -> Result<StagedCommit, StageCommitError> {
         let ciphersuite = self.ciphersuite();
 
-        // Unbundle the sibling-VC commit material: the per-commit operation
-        // secret recreates the path, the emulation `epoch_id` is recorded on
-        // the staged commit, and the external init secret (external commits
-        // only) feeds the key schedule.
-        #[cfg(feature = "virtual-clients-draft")]
-        let (vc_material, vc_emulation_epoch_id, vc_external_init_secret) = match vc_commit_material
-        {
-            Some(material) => (
-                Some(material.operation_secret),
-                Some(material.epoch_id),
-                material.external_init_secret,
-            ),
-            None => (None, None, None),
-        };
-
         // A sibling-resync external commit is a VC external commit sent by a
         // sibling emulator client to onboard itself into this higher-level
         // group, inline-removing our existing leaf. The receiver-side gate in
         // `process_internal_authenticated_content[_with_app_data_updates]` (see
-        // `is_sibling_vc_commit`) sets `vc_material = Some(_)` only for
+        // `is_sibling_vc_commit`) sets `vc_commit_material = Some(_)` only for
         // own-leaf VC commits and sibling-resync external commits, so here the
         // two-condition check fully identifies the resync case:
         //
-        //   - `vc_material` is `Some`, which after the upstream gate means the
-        //     commit carries a VC derivation-info entry and we hold per-epoch
-        //     state for the referenced `epoch_id`.
+        //   - `vc_commit_material` is `Some`, which after the upstream gate
+        //     means the commit carries a VC derivation-info entry and we hold
+        //     per-epoch state for the referenced `epoch_id`.
         //   - the sender is `NewMemberCommit`, since own-leaf VC commits arrive as
         //     `Sender::Member`, so this disambiguates the two sibling shapes.
         //
@@ -357,7 +342,7 @@ impl MlsGroup {
         // encryption keypairs.
         #[cfg(feature = "virtual-clients-draft")]
         let is_sibling_resync =
-            vc_material.is_some() && matches!(mls_content.sender(), Sender::NewMemberCommit);
+            vc_commit_material.is_some() && matches!(mls_content.sender(), Sender::NewMemberCommit);
         #[cfg(not(feature = "virtual-clients-draft"))]
         let is_sibling_resync = false;
 
@@ -371,7 +356,9 @@ impl MlsGroup {
             apply_proposals_values
                 .external_init_proposal_option
                 .is_some(),
-            vc_external_init_secret.is_some(),
+            vc_commit_material
+                .as_ref()
+                .is_some_and(|material| material.external_init_secret.is_some()),
         )?;
 
         // Determine if Commit has a path
@@ -426,7 +413,7 @@ impl MlsGroup {
                     == self.own_leaf_index()
                     || is_sibling_resync
                 {
-                    let operation_secret = vc_material.ok_or(
+                    let material = vc_commit_material.as_ref().ok_or(
                             crate::components::vc_derivation_info::VirtualClientsError::MissingOperationTree,
                         )?;
                     Some(self.recreate_path_for_own_commit(
@@ -435,7 +422,7 @@ impl MlsGroup {
                         ciphersuite,
                         provider.crypto(),
                         sender_index,
-                        operation_secret,
+                        material,
                     )?)
                 } else {
                     None
@@ -542,7 +529,9 @@ impl MlsGroup {
             commit_secret,
             &serialized_provisional_group_context,
             #[cfg(feature = "virtual-clients-draft")]
-            vc_external_init_secret.as_ref(),
+            vc_commit_material
+                .as_ref()
+                .and_then(|material| material.external_init_secret.as_ref()),
         )?;
         let (provisional_group_secrets, provisional_message_secrets) = epoch_secrets.split_secrets(
             serialized_provisional_group_context,
@@ -599,7 +588,7 @@ impl MlsGroup {
             proposal_queue,
             staged_commit_state,
             #[cfg(feature = "virtual-clients-draft")]
-            vc_emulation_epoch_id,
+            vc_commit_material.map(|material| material.epoch_id),
         );
 
         Ok(staged_commit)
@@ -634,20 +623,28 @@ impl MlsGroup {
         ciphersuite: openmls_traits::types::Ciphersuite,
         crypto: &impl OpenMlsCrypto,
         sender_index: LeafNodeIndex,
-        operation_secret: crate::components::vc_derivation_info::OperationSecret,
+        vc_commit_material: &crate::components::vc_derivation_info::VcCommitMaterial,
     ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), StageCommitError> {
         use crate::components::vc_derivation_info::VirtualClientsError;
 
-        let path_secret = operation_secret
-            .derive_path_generation_secret(crypto, ciphersuite)?
+        // The path-generation and leaf-encryption key secrets expand from
+        // the operation secret under the emulation group's ciphersuite
+        // (pinned in the material), matching the sender. Only the final
+        // DeriveKeyPair and the path recreation itself run under the
+        // group's ciphersuite.
+        let emulation_ciphersuite = vc_commit_material.emulation_ciphersuite;
+        let path_secret = vc_commit_material
+            .operation_secret
+            .derive_path_generation_secret(crypto, emulation_ciphersuite)?
             .into();
         let (encryption_key_pairs, commit_secret) =
             diff.recreate_path_from_path_secret(crypto, path_secret, sender_index, path.nodes())?;
 
         // Verify that the leaf encryption key in the path matches the one
         // derived from the operation secret.
-        let leaf_keypair = operation_secret
-            .derive_encryption_key_secret(crypto, ciphersuite)?
+        let leaf_keypair = vc_commit_material
+            .operation_secret
+            .derive_encryption_key_secret(crypto, emulation_ciphersuite)?
             .generate_encryption_key_pair(crypto, ciphersuite)?;
         if leaf_keypair.public_key() != path.leaf_node().encryption_key() {
             return Err(VirtualClientsError::EncryptionKeyMismatch.into());

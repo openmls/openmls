@@ -193,19 +193,19 @@ impl VcKeyPackageBatchBuilder {
         resolved_dictionary: &AppDataDictionary,
         key_package_index: u32,
     ) -> Result<(KeyPackageBundle, KeyPackageInfo), KeyPackageNewError> {
-        // Derive the per-index seed under the emulation ciphersuite, then the
-        // init and leaf encryption keys from the seed under the KeyPackage's
-        // own ciphersuite.
+        // Derive the per-index seed and the init and leaf encryption key
+        // secrets under the emulation ciphersuite. Only the final DeriveKeyPair
+        // uses the KeyPackage's own ciphersuite.
         let seed = self.operation_secret.derive_key_package_seed_secret(
             crypto,
             self.emulation_ciphersuite,
             key_package_index,
         )?;
         let init_key_pair = seed
-            .derive_init_key_secret(crypto, ciphersuite)?
+            .derive_init_key_secret(crypto, self.emulation_ciphersuite)?
             .generate_init_key_pair(crypto, ciphersuite)?;
         let encryption_key_pair = seed
-            .derive_encryption_key_secret(crypto, ciphersuite)?
+            .derive_encryption_key_secret(crypto, self.emulation_ciphersuite)?
             .generate_encryption_key_pair(crypto, ciphersuite)?;
 
         // Wrap the TBE bound to the new leaf via its serialized encryption key.

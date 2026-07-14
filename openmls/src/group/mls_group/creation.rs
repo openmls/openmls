@@ -769,16 +769,16 @@ fn vc_welcome_material<Provider: OpenMlsProvider>(
             VirtualClientsError::StorageError
         })?;
 
-    // The seed was derived under the emulation ciphersuite at
-    // upload-processing time. The init and leaf-encryption keys are derived
-    // from it under the KeyPackage's own (the welcome's) ciphersuite.
+    // The seed and the key secrets expand under the emulation ciphersuite
+    // (pinned in the material), matching the upload side. Only the final
+    // DeriveKeyPair uses the KeyPackage's own (the welcome's) ciphersuite.
     let init_key_pair = material
         .key_package_seed_secret
-        .derive_init_key_secret(crypto, ciphersuite)?
+        .derive_init_key_secret(crypto, material.emulation_ciphersuite)?
         .generate_init_key_pair(crypto, ciphersuite)?;
     let encryption_keypair = material
         .key_package_seed_secret
-        .derive_encryption_key_secret(crypto, ciphersuite)?
+        .derive_encryption_key_secret(crypto, material.emulation_ciphersuite)?
         .generate_encryption_key_pair(crypto, ciphersuite)?;
 
     Ok(Some(VcWelcomeMaterial {
@@ -1152,7 +1152,7 @@ impl MlsGroup {
             key_package_index,
         )?;
         let leaf_keypair = key_package_seed
-            .derive_encryption_key_secret(provider.crypto(), ciphersuite)?
+            .derive_encryption_key_secret(provider.crypto(), emulation_ciphersuite)?
             .generate_encryption_key_pair(provider.crypto(), ciphersuite)?;
         if leaf_keypair.public_key() != creator_leaf.encryption_key() {
             return Err(Error::LeafKeyMismatch);

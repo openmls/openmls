@@ -697,6 +697,7 @@ impl MlsGroup {
                 epoch_id: epoch_id.clone(),
                 operation_secret,
                 external_init_secret,
+                emulation_ciphersuite,
             },
         ))
     }
