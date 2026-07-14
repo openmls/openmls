@@ -1935,7 +1935,7 @@ fn vc_batch_key_packages_join_in_any_order() {
     );
 
     // One batch of 40 KeyPackages, larger than OUT_OF_ORDER_TOLERANCE (32).
-    let count: u32 = 40;
+    let count = 40;
     let batch = KeyPackage::builder()
         .leaf_node_capabilities(vc_capabilities())
         .leaf_node_extensions(vc_leaf_extensions())
