@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/validation.rs`."><title>validation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (77cf889bc 2026-07-12)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/framing/</div>validation.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Validation steps for incoming messages
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/validation.rs`."><title>validation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ddecd707.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (daf2e5e18 2026-07-13)" data-channel="nightly" data-search-js="search-cf4fc35e.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/framing/</div>validation.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Validation steps for incoming messages
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! ```text
 <a href=#4 id=4 data-nosnippet>4</a>//!
@@ -616,64 +616,68 @@
 <a href=#616 id=616 data-nosnippet>616</a>    /// [`OwnPrivateMessage`](Self::OwnPrivateMessage). The exception is the
 <a href=#617 id=617 data-nosnippet>617</a>    /// `virtual-clients-draft` feature, where an own private Commit whose
 <a href=#618 id=618 data-nosnippet>618</a>    /// encryption secret is still retained (not yet confirmed) decrypts and
-<a href=#619 id=619 data-nosnippet>619</a>    /// can produce this variant as well.
-<a href=#620 id=620 data-nosnippet>620</a>    </span>OwnPendingCommit,
-<a href=#621 id=621 data-nosnippet>621</a>    <span class="doccomment">/// A PrivateMessage whose sender data claims this client's own leaf index,
-<a href=#622 id=622 data-nosnippet>622</a>    /// i.e. a message this client authored that the delivery service fanned
-<a href=#623 id=623 data-nosnippet>623</a>    /// back.
-<a href=#624 id=624 data-nosnippet>624</a>    ///
-<a href=#625 id=625 data-nosnippet>625</a>    /// The content cannot be decrypted (the own sender ratchet is
-<a href=#626 id=626 data-nosnippet>626</a>    /// encryption-only) and the signature cannot be verified.
-<a href=#627 id=627 data-nosnippet>627</a>    ///
-<a href=#628 id=628 data-nosnippet>628</a>    /// Applications should treat this variant as a hint to skip the message.
-<a href=#629 id=629 data-nosnippet>629</a>    /// The content type of the incoming message (application/proposal/commit)
-<a href=#630 id=630 data-nosnippet>630</a>    /// is available via `ProtocolMessage::content_type()` before processing,
-<a href=#631 id=631 data-nosnippet>631</a>    /// and is unauthenticated plaintext in the PrivateMessage framing.
-<a href=#632 id=632 data-nosnippet>632</a>    ///
-<a href=#633 id=633 data-nosnippet>633</a>    /// With the `virtual-clients-draft` feature, own-leaf messages are
-<a href=#634 id=634 data-nosnippet>634</a>    /// decryptable while their secrets are retained: unconfirmed own sends
-<a href=#635 id=635 data-nosnippet>635</a>    /// and messages from sibling emulator clients decrypt and process
-<a href=#636 id=636 data-nosnippet>636</a>    /// normally. This variant is then only returned in groups that do not
-<a href=#637 id=637 data-nosnippet>637</a>    /// use virtual clients (no emulation state registered for the message's
-<a href=#638 id=638 data-nosnippet>638</a>    /// epoch), when decryption of an own message fails, e.g. because the
-<a href=#639 id=639 data-nosnippet>639</a>    /// send was already confirmed via `MlsGroup::confirm_message()`.
-<a href=#640 id=640 data-nosnippet>640</a>    </span>OwnPrivateMessage,
-<a href=#641 id=641 data-nosnippet>641</a>    <span class="doccomment">/// A Commit message covering AppDataUpdate proposals.
-<a href=#642 id=642 data-nosnippet>642</a>    ///
-<a href=#643 id=643 data-nosnippet>643</a>    /// The proposals carry diffs in an application-defined format, so the
-<a href=#644 id=644 data-nosnippet>644</a>    /// commit cannot be staged before the application has interpreted them and
-<a href=#645 id=645 data-nosnippet>645</a>    /// computed the resulting dictionary entries. Inspect the proposals via
-<a href=#646 id=646 data-nosnippet>646</a>    /// [`UnresolvedAppDataCommit::app_data_update_proposals()`], compute the
-<a href=#647 id=647 data-nosnippet>647</a>    /// updates with the help of
-<a href=#648 id=648 data-nosnippet>648</a>    /// [`MlsGroup::app_data_dictionary_updater()`](crate::group::mls_group::MlsGroup::app_data_dictionary_updater)
-<a href=#649 id=649 data-nosnippet>649</a>    /// and resume staging via
-<a href=#650 id=650 data-nosnippet>650</a>    /// [`MlsGroup::stage_app_data_commit()`](crate::group::mls_group::MlsGroup::stage_app_data_commit).
-<a href=#651 id=651 data-nosnippet>651</a>    ///
-<a href=#652 id=652 data-nosnippet>652</a>    /// This variant is likewise returned by
-<a href=#653 id=653 data-nosnippet>653</a>    /// [`PublicGroup::process_message()`](crate::group::public_group::PublicGroup::process_message),
-<a href=#654 id=654 data-nosnippet>654</a>    /// where the updates are computed with
-<a href=#655 id=655 data-nosnippet>655</a>    /// [`PublicGroup::app_data_dictionary_updater()`](crate::group::public_group::PublicGroup::app_data_dictionary_updater)
-<a href=#656 id=656 data-nosnippet>656</a>    /// and staging resumes via
-<a href=#657 id=657 data-nosnippet>657</a>    /// [`PublicGroup::stage_app_data_commit()`](crate::group::public_group::PublicGroup::stage_app_data_commit).
-<a href=#658 id=658 data-nosnippet>658</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#659 id=659 data-nosnippet>659</a>    </span>UnresolvedAppDataCommit(Box&lt;UnresolvedAppDataCommit&gt;),
-<a href=#660 id=660 data-nosnippet>660</a>}
-<a href=#661 id=661 data-nosnippet>661</a>
-<a href=#662 id=662 data-nosnippet>662</a><span class="doccomment">/// Application message received through a [ProcessedMessage].
-<a href=#663 id=663 data-nosnippet>663</a></span><span class="attr">#[derive(Debug, PartialEq, Eq)]
-<a href=#664 id=664 data-nosnippet>664</a></span><span class="kw">pub struct </span>ApplicationMessage {
-<a href=#665 id=665 data-nosnippet>665</a>    bytes: Vec&lt;u8&gt;,
-<a href=#666 id=666 data-nosnippet>666</a>}
-<a href=#667 id=667 data-nosnippet>667</a>
-<a href=#668 id=668 data-nosnippet>668</a><span class="kw">impl </span>ApplicationMessage {
-<a href=#669 id=669 data-nosnippet>669</a>    <span class="doccomment">/// Create a new [ApplicationMessage].
-<a href=#670 id=670 data-nosnippet>670</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(bytes: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
-<a href=#671 id=671 data-nosnippet>671</a>        <span class="self">Self </span>{ bytes }
-<a href=#672 id=672 data-nosnippet>672</a>    }
-<a href=#673 id=673 data-nosnippet>673</a>
-<a href=#674 id=674 data-nosnippet>674</a>    <span class="doccomment">/// Returns the inner bytes and consumes the [`ApplicationMessage`].
-<a href=#675 id=675 data-nosnippet>675</a>    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
-<a href=#676 id=676 data-nosnippet>676</a>        <span class="self">self</span>.bytes
-<a href=#677 id=677 data-nosnippet>677</a>    }
-<a href=#678 id=678 data-nosnippet>678</a>}
+<a href=#619 id=619 data-nosnippet>619</a>    /// can produce this variant as well. Under that feature the pending-commit
+<a href=#620 id=620 data-nosnippet>620</a>    /// match is checked before any sibling-commit (virtual clients) material is
+<a href=#621 id=621 data-nosnippet>621</a>    /// loaded, so an own Commit fanned back by the delivery service surfaces as
+<a href=#622 id=622 data-nosnippet>622</a>    /// `OwnPendingCommit` without consuming an operation-secret generation from
+<a href=#623 id=623 data-nosnippet>623</a>    /// the emulation epoch's operation secret tree.
+<a href=#624 id=624 data-nosnippet>624</a>    </span>OwnPendingCommit,
+<a href=#625 id=625 data-nosnippet>625</a>    <span class="doccomment">/// A PrivateMessage whose sender data claims this client's own leaf index,
+<a href=#626 id=626 data-nosnippet>626</a>    /// i.e. a message this client authored that the delivery service fanned
+<a href=#627 id=627 data-nosnippet>627</a>    /// back.
+<a href=#628 id=628 data-nosnippet>628</a>    ///
+<a href=#629 id=629 data-nosnippet>629</a>    /// The content cannot be decrypted (the own sender ratchet is
+<a href=#630 id=630 data-nosnippet>630</a>    /// encryption-only) and the signature cannot be verified.
+<a href=#631 id=631 data-nosnippet>631</a>    ///
+<a href=#632 id=632 data-nosnippet>632</a>    /// Applications should treat this variant as a hint to skip the message.
+<a href=#633 id=633 data-nosnippet>633</a>    /// The content type of the incoming message (application/proposal/commit)
+<a href=#634 id=634 data-nosnippet>634</a>    /// is available via `ProtocolMessage::content_type()` before processing,
+<a href=#635 id=635 data-nosnippet>635</a>    /// and is unauthenticated plaintext in the PrivateMessage framing.
+<a href=#636 id=636 data-nosnippet>636</a>    ///
+<a href=#637 id=637 data-nosnippet>637</a>    /// With the `virtual-clients-draft` feature, own-leaf messages are
+<a href=#638 id=638 data-nosnippet>638</a>    /// decryptable while their secrets are retained: unconfirmed own sends
+<a href=#639 id=639 data-nosnippet>639</a>    /// and messages from sibling emulator clients decrypt and process
+<a href=#640 id=640 data-nosnippet>640</a>    /// normally. This variant is then only returned in groups that do not
+<a href=#641 id=641 data-nosnippet>641</a>    /// use virtual clients (no emulation state registered for the message's
+<a href=#642 id=642 data-nosnippet>642</a>    /// epoch), when decryption of an own message fails, e.g. because the
+<a href=#643 id=643 data-nosnippet>643</a>    /// send was already confirmed via `MlsGroup::confirm_message()`.
+<a href=#644 id=644 data-nosnippet>644</a>    </span>OwnPrivateMessage,
+<a href=#645 id=645 data-nosnippet>645</a>    <span class="doccomment">/// A Commit message covering AppDataUpdate proposals.
+<a href=#646 id=646 data-nosnippet>646</a>    ///
+<a href=#647 id=647 data-nosnippet>647</a>    /// The proposals carry diffs in an application-defined format, so the
+<a href=#648 id=648 data-nosnippet>648</a>    /// commit cannot be staged before the application has interpreted them and
+<a href=#649 id=649 data-nosnippet>649</a>    /// computed the resulting dictionary entries. Inspect the proposals via
+<a href=#650 id=650 data-nosnippet>650</a>    /// [`UnresolvedAppDataCommit::app_data_update_proposals()`], compute the
+<a href=#651 id=651 data-nosnippet>651</a>    /// updates with the help of
+<a href=#652 id=652 data-nosnippet>652</a>    /// [`MlsGroup::app_data_dictionary_updater()`](crate::group::mls_group::MlsGroup::app_data_dictionary_updater)
+<a href=#653 id=653 data-nosnippet>653</a>    /// and resume staging via
+<a href=#654 id=654 data-nosnippet>654</a>    /// [`MlsGroup::stage_app_data_commit()`](crate::group::mls_group::MlsGroup::stage_app_data_commit).
+<a href=#655 id=655 data-nosnippet>655</a>    ///
+<a href=#656 id=656 data-nosnippet>656</a>    /// This variant is likewise returned by
+<a href=#657 id=657 data-nosnippet>657</a>    /// [`PublicGroup::process_message()`](crate::group::public_group::PublicGroup::process_message),
+<a href=#658 id=658 data-nosnippet>658</a>    /// where the updates are computed with
+<a href=#659 id=659 data-nosnippet>659</a>    /// [`PublicGroup::app_data_dictionary_updater()`](crate::group::public_group::PublicGroup::app_data_dictionary_updater)
+<a href=#660 id=660 data-nosnippet>660</a>    /// and staging resumes via
+<a href=#661 id=661 data-nosnippet>661</a>    /// [`PublicGroup::stage_app_data_commit()`](crate::group::public_group::PublicGroup::stage_app_data_commit).
+<a href=#662 id=662 data-nosnippet>662</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#663 id=663 data-nosnippet>663</a>    </span>UnresolvedAppDataCommit(Box&lt;UnresolvedAppDataCommit&gt;),
+<a href=#664 id=664 data-nosnippet>664</a>}
+<a href=#665 id=665 data-nosnippet>665</a>
+<a href=#666 id=666 data-nosnippet>666</a><span class="doccomment">/// Application message received through a [ProcessedMessage].
+<a href=#667 id=667 data-nosnippet>667</a></span><span class="attr">#[derive(Debug, PartialEq, Eq)]
+<a href=#668 id=668 data-nosnippet>668</a></span><span class="kw">pub struct </span>ApplicationMessage {
+<a href=#669 id=669 data-nosnippet>669</a>    bytes: Vec&lt;u8&gt;,
+<a href=#670 id=670 data-nosnippet>670</a>}
+<a href=#671 id=671 data-nosnippet>671</a>
+<a href=#672 id=672 data-nosnippet>672</a><span class="kw">impl </span>ApplicationMessage {
+<a href=#673 id=673 data-nosnippet>673</a>    <span class="doccomment">/// Create a new [ApplicationMessage].
+<a href=#674 id=674 data-nosnippet>674</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(bytes: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+<a href=#675 id=675 data-nosnippet>675</a>        <span class="self">Self </span>{ bytes }
+<a href=#676 id=676 data-nosnippet>676</a>    }
+<a href=#677 id=677 data-nosnippet>677</a>
+<a href=#678 id=678 data-nosnippet>678</a>    <span class="doccomment">/// Returns the inner bytes and consumes the [`ApplicationMessage`].
+<a href=#679 id=679 data-nosnippet>679</a>    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+<a href=#680 id=680 data-nosnippet>680</a>        <span class="self">self</span>.bytes
+<a href=#681 id=681 data-nosnippet>681</a>    }
+<a href=#682 id=682 data-nosnippet>682</a>}
 </code></pre></div></section></main></body></html>
