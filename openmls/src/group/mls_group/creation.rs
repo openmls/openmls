@@ -144,10 +144,17 @@ impl ProcessedWelcome {
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
+        let ciphersuite = welcome.ciphersuite();
+        // Check this before touching any stored key material: `keys_for_welcome`
+        // consumes a matching (non-last-resort) key package.
+        provider
+            .crypto()
+            .supports(ciphersuite)
+            .map_err(|_| WelcomeError::UnsupportedCiphersuite(ciphersuite))?;
+
         let (resumption_psk_store, key_material) =
             keys_for_welcome(mls_group_config, &welcome, provider)?;
 
-        let ciphersuite = welcome.ciphersuite();
         let Some(egs) =
             welcome.find_encrypted_group_secret(key_material.key_package_ref(provider.crypto())?)
         else {

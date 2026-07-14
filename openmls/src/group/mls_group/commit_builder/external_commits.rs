@@ -1,3 +1,4 @@
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use thiserror::Error;
 use tls_codec::Serialize as _;
 
@@ -43,8 +44,8 @@ pub enum ExternalCommitBuilderError<StorageError> {
     #[error("No external_pub extension available to join group by external commit.")]
     MissingExternalPub,
     /// We don't support the ciphersuite of the group we are trying to join.
-    #[error("We don't support the ciphersuite of the group we are trying to join.")]
-    UnsupportedCiphersuite,
+    #[error("Ciphersuite {0:?} of the group we are trying to join is not supported by the crypto provider.")]
+    UnsupportedCiphersuite(Ciphersuite),
     /// This error indicates the public tree is invalid. See
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
@@ -150,6 +151,12 @@ impl ExternalCommitBuilder {
             validate_lifetimes,
         } = self;
 
+        let group_ciphersuite = verifiable_group_info.ciphersuite();
+        provider
+            .crypto()
+            .supports(group_ciphersuite)
+            .map_err(|_| ExternalCommitBuilderError::UnsupportedCiphersuite(group_ciphersuite))?;
+
         // Build the ratchet tree
 
         // Set nodes either from the extension or from the `ratchet_tree`.
@@ -182,7 +189,9 @@ impl ExternalCommitBuilder {
             group_context,
             external_pub.as_slice(),
         )
-        .map_err(|_| ExternalCommitBuilderError::UnsupportedCiphersuite)?;
+        .map_err(|_| {
+            ExternalCommitBuilderError::UnsupportedCiphersuite(group_context.ciphersuite())
+        })?;
 
         // The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the

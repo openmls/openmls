@@ -301,6 +301,11 @@ impl KeyPackage {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
 
+        provider
+            .crypto()
+            .supports(ciphersuite)
+            .map_err(|_| KeyPackageNewError::UnsupportedCiphersuite(ciphersuite))?;
+
         // Create a new HPKE key pair
         let ikm = Secret::random(ciphersuite, provider.rand())
             .map_err(LibraryError::unexpected_crypto_error)?;
@@ -682,6 +687,13 @@ impl KeyPackageBuilder {
         epoch_id: crate::components::vc_derivation_info::EpochId,
         count: usize,
     ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
+        // Reject an unsupported ciphersuite and an empty batch before loading
+        // state or consuming a generation.
+        provider
+            .crypto()
+            .supports(ciphersuite)
+            .map_err(|_| KeyPackageNewError::UnsupportedCiphersuite(ciphersuite))?;
+
         if count == 0 {
             return Err(KeyPackageNewError::EmptyBatch);
         }
