@@ -1,13 +1,16 @@
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
 
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+use super::CreateGroupContextExtProposalError;
 #[cfg(feature = "virtual-clients-draft")]
 use super::HandshakeConfirmationData;
 use super::{
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError, RemoveProposalError},
-    AddProposal, CreateGroupContextExtProposalError, CustomProposal, FramingParameters,
-    HandshakeFramingOutput, MlsGroup, PreSharedKeyProposal, Proposal, QueuedProposal,
-    RemoveProposal, UpdateProposal, WireFormat,
+    AddProposal, CustomProposal, FramingParameters, HandshakeFramingOutput, MlsGroup,
+    PreSharedKeyProposal, Proposal, QueuedProposal, RemoveProposal, UpdateProposal, WireFormat,
 };
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+use crate::messages::group_info::GroupInfo;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
@@ -17,7 +20,7 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut},
     group::{errors::CreateAddProposalError, GroupContext, GroupId, ValidationError},
     key_packages::KeyPackage,
-    messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
+    messages::proposals::ProposalOrRefType,
     schedule::PreSharedKeyId,
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{LeafNode, LeafNodeParameters},
@@ -127,6 +130,11 @@ macro_rules! impl_propose_fun {
         #[doc = $doc]
         ///
         /// Returns an error if there is a pending commit.
+        ///
+        /// Under the `virtual-clients-draft` feature this function is
+        /// unavailable. Use [`Self::propose_unconfirmed`], which retains the
+        /// handshake secret and returns the confirmation data.
+        #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
         pub fn $name<Provider: OpenMlsProvider>(
             &mut self,
             provider: &Provider,
@@ -177,6 +185,7 @@ impl MlsGroup {
     );
 
     /// Creates proposals to add a non-resumption PSK to the key schedule.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[deprecated(
         note = "Renamed to `propose_pre_shared_key`; works for any non-resumption PSK, not just external"
     )]
@@ -190,6 +199,7 @@ impl MlsGroup {
     }
 
     /// Creates proposals to add a non-resumption PSK to the key schedule by value.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[deprecated(
         note = "Renamed to `propose_pre_shared_key_by_value`; works for any non-resumption PSK, not just external"
     )]
@@ -220,7 +230,12 @@ impl MlsGroup {
         "Creates a custom proposal, committed by reference."
     );
 
-    /// Generate a proposal
+    /// Generate a proposal.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     pub fn propose<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -343,9 +358,8 @@ impl MlsGroup {
             Propose::ExternalInit(_) => Err(ProposalError::LibraryError(LibraryError::custom(
                 "Unsupported proposal type ExternalInit",
             ))),
-            Propose::GroupContextExtensions(_) => Err(ProposalError::LibraryError(
-                LibraryError::custom("Unsupported proposal type GroupContextExtensions"),
-            )),
+            Propose::GroupContextExtensions(extensions) => self
+                .propose_group_context_extensions_impl(provider, extensions, signer, ref_or_value),
             // extensions-draft
             #[cfg(feature = "extensions-draft")]
             Propose::UpdateAppDataComponent {
@@ -382,6 +396,11 @@ impl MlsGroup {
     /// Creates proposals to add members to the group.
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     pub fn propose_add_member<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -435,6 +454,11 @@ impl MlsGroup {
     /// The `member` has to be the member's leaf index.
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     pub fn propose_remove_member<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -485,6 +509,11 @@ impl MlsGroup {
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     pub fn propose_remove_member_by_credential<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -524,6 +553,11 @@ impl MlsGroup {
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     pub fn propose_remove_member_by_credential_by_value<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -561,12 +595,34 @@ impl MlsGroup {
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions`.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`] with
+    /// [`Propose::GroupContextExtensions`], which retains the handshake secret
+    /// and returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     pub fn propose_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         extensions: Extensions<GroupContext>,
         signer: &impl Signer,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        let (framing, proposal_ref) = self.propose_group_context_extensions_impl(
+            provider,
+            extensions,
+            signer,
+            ProposalOrRefType::Reference,
+        )?;
+        Ok((framing.message, proposal_ref))
+    }
+
+    fn propose_group_context_extensions_impl<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        extensions: Extensions<GroupContext>,
+        signer: &impl Signer,
+        ref_or_value: ProposalOrRefType,
+    ) -> Result<(HandshakeFramingOutput, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
         let aad = self.outgoing_authenticated_data()?;
@@ -577,10 +633,11 @@ impl MlsGroup {
             signer,
         )?;
 
-        let queued_proposal = QueuedProposal::from_authenticated_content_by_ref(
+        let queued_proposal = QueuedProposal::from_authenticated_content(
             self.ciphersuite(),
             provider.crypto(),
             proposal.clone(),
+            ref_or_value,
         )?;
 
         let proposal_ref = queued_proposal.proposal_reference();
@@ -590,10 +647,10 @@ impl MlsGroup {
             .map_err(ProposalError::StorageError)?;
         self.proposal_store_mut().add(queued_proposal);
 
-        let mls_message = self.content_to_mls_message(proposal, provider)?.message;
+        let framing = self.content_to_mls_message(proposal, provider)?;
 
         self.reset_aad();
-        Ok((mls_message, proposal_ref))
+        Ok((framing, proposal_ref))
     }
 
     /// Updates Group Context Extensions
@@ -602,7 +659,13 @@ impl MlsGroup {
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions` or if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`MlsGroup::commit_builder`], whose
+    /// [`CommitMessageBundle::confirmation`](crate::group::CommitMessageBundle::confirmation)
+    /// surfaces the handshake confirmation data.
     //// FIXME: #1217
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
     pub fn update_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
@@ -631,7 +694,14 @@ impl MlsGroup {
     }
 
     /// Updates the AppDataDictionary
-    #[cfg(feature = "extensions-draft")]
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(all(
+        feature = "extensions-draft",
+        any(not(feature = "virtual-clients-draft"), feature = "test-utils", test)
+    ))]
     pub fn propose_app_data_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,

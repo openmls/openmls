@@ -2,15 +2,20 @@
 
 use std::mem;
 
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+use errors::CommitToPendingProposalsError;
+use errors::MergePendingCommitError;
 #[cfg(feature = "extensions-draft")]
 use errors::ResolveAppDataCommitError;
-use errors::{CommitToPendingProposalsError, MergePendingCommitError};
-use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+use openmls_traits::signatures::Signer;
+use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider as _};
 
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+use crate::messages::group_info::GroupInfo;
 use crate::{
     framing::mls_content::FramedContentBody,
     group::{errors::MergeCommitError, StageCommitError, ValidationError},
-    messages::group_info::GroupInfo,
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
@@ -415,8 +420,15 @@ impl MlsGroup {
     /// tuple of `Commit, Option<Welcome>, Option<GroupInfo>`, where `Commit`
     /// and [`Welcome`] are MlsMessages of the type [`MlsMessageOut`].
     ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`MlsGroup::commit_builder`], whose
+    /// [`CommitMessageBundle::confirmation`] surfaces the handshake confirmation
+    /// data.
+    ///
     /// [`Welcome`]: crate::messages::Welcome
+    /// [`CommitMessageBundle::confirmation`]: crate::group::CommitMessageBundle::confirmation
     // FIXME: #1217
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
     pub fn commit_to_pending_proposals<Provider: OpenMlsProvider>(
         &mut self,

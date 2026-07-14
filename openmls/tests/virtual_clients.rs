@@ -1,6 +1,7 @@
 #![cfg(feature = "virtual-clients-draft")]
 use openmls::{
     components::vc_derivation_info::{EpochId, VcEmulationBindings, VC_COMPONENT_ID},
+    credentials::NewSignerBundle,
     extensions::{
         AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
     },
@@ -57,13 +58,30 @@ fn setup_alice_bob_group<P: OpenMlsProvider>(
     alice_provider: &P,
     bob_provider: &P,
 ) -> (MlsGroup, SignatureKeyPair, MlsGroup, SignatureKeyPair) {
+    setup_alice_bob_group_with_policy(
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+    )
+}
+
+/// Like [`setup_alice_bob_group`], but with an explicit wire format policy on
+/// both the create and join configs, so tests can exercise private (ciphertext)
+/// handshake framing between the two members.
+fn setup_alice_bob_group_with_policy<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    alice_provider: &P,
+    bob_provider: &P,
+    wire_format_policy: openmls::group::WireFormatPolicy,
+) -> (MlsGroup, SignatureKeyPair, MlsGroup, SignatureKeyPair) {
     let (alice_credential, alice_signer) =
         new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
     let (bob_credential, bob_signer) =
         new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
 
     let group_config = MlsGroupCreateConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .wire_format_policy(wire_format_policy)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .capabilities(vc_capabilities())
@@ -81,6 +99,8 @@ fn setup_alice_bob_group<P: OpenMlsProvider>(
 
     let bob_key_package = KeyPackage::builder()
         .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
         .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
         .expect("bob KP build")
         .key_package()
@@ -94,7 +114,8 @@ fn setup_alice_bob_group<P: OpenMlsProvider>(
         .expect("alice merge add");
 
     let join_config = MlsGroupJoinConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .wire_format_policy(wire_format_policy)
+        .use_ratchet_tree_extension(true)
         .build();
     let bob_group = StagedWelcome::new_from_welcome(
         bob_provider,
@@ -2423,10 +2444,15 @@ fn confirm_handshake_message_deletes_retained_secret() {
 
     let epoch = alice_group.epoch();
 
-    // The first handshake send of this epoch uses generation 0. The send API
-    // does not surface the handshake generation yet.
-    let (proposal_a, _ref_a) = alice_group
-        .propose_add_member(alice_provider, &alice_signer, &charlie_key_package)
+    // The first handshake send of this epoch uses generation 0.
+    // `propose_unconfirmed` retains the handshake secret.
+    let (proposal_a, _ref_a, _confirmation_a) = alice_group
+        .propose_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            Propose::Add(charlie_key_package),
+            ProposalOrRefType::Reference,
+        )
         .expect("propose add charlie");
 
     // Processing proposal A's own echo without confirming decrypts it, which
@@ -2440,8 +2466,13 @@ fn confirm_handshake_message_deletes_retained_secret() {
     ));
 
     // Proposal B uses handshake generation 1.
-    let (proposal_b, _ref_b) = alice_group
-        .propose_add_member(alice_provider, &alice_signer, &dave_key_package)
+    let (proposal_b, _ref_b, _confirmation_b) = alice_group
+        .propose_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            Propose::Add(dave_key_package),
+            ProposalOrRefType::Reference,
+        )
         .expect("propose add dave");
     alice_group
         .confirm_handshake_message(alice_provider.storage(), epoch, 1)
@@ -4457,4 +4488,102 @@ fn handshake_generation_ids_are_distinct() {
         generation_id_a, generation_id_b,
         "consecutive private handshake sends must yield distinct generation ids"
     );
+}
+
+/// `propose_unconfirmed` with `Propose::GroupContextExtensions` under ciphertext
+/// framing surfaces the confirmation data, the proposal processes at a
+/// receiver, and confirming the retained handshake secret succeeds.
+#[openmls_test::openmls_test]
+fn propose_unconfirmed_group_context_extensions_flow() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (mut alice_group, alice_signer, mut bob_group, _bob_signer) =
+        setup_alice_bob_group_with_policy(
+            ciphersuite,
+            alice_provider,
+            bob_provider,
+            PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        );
+
+    let epoch = alice_group.epoch();
+    let (proposal, _pref, confirmation) = alice_group
+        .propose_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            Propose::GroupContextExtensions(Extensions::empty()),
+            ProposalOrRefType::Reference,
+        )
+        .expect("propose_unconfirmed group context extensions");
+    let confirmation = confirmation.expect("ciphertext-framed GCE proposal carries confirmation");
+    assert_eq!(confirmation.epoch, epoch);
+    assert!(confirmation.generation_id.is_none());
+
+    let processed = bob_group
+        .process_message(bob_provider, proposal.into_protocol_message().unwrap())
+        .expect("bob processes the GCE proposal");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::ProposalMessage(_)
+    ));
+
+    alice_group
+        .confirm_handshake_message(
+            alice_provider.storage(),
+            confirmation.epoch,
+            confirmation.generation,
+        )
+        .expect("confirm GCE proposal");
+}
+
+/// `propose_self_update_with_new_signer_unconfirmed` surfaces the confirmation
+/// data and the proposal processes at a receiver.
+#[openmls_test::openmls_test]
+fn propose_self_update_with_new_signer_unconfirmed_flow() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (mut alice_group, alice_signer, mut bob_group, _bob_signer) =
+        setup_alice_bob_group_with_policy(
+            ciphersuite,
+            alice_provider,
+            bob_provider,
+            PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        );
+
+    let epoch = alice_group.epoch();
+    let (new_credential, new_signer_kp) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let new_signer = NewSignerBundle {
+        signer: &new_signer_kp,
+        credential_with_key: new_credential,
+    };
+
+    let (proposal, _pref, confirmation) = alice_group
+        .propose_self_update_with_new_signer_unconfirmed(
+            alice_provider,
+            &alice_signer,
+            new_signer,
+            LeafNodeParameters::builder().build(),
+        )
+        .expect("propose_self_update_with_new_signer_unconfirmed");
+    let confirmation =
+        confirmation.expect("ciphertext-framed update proposal carries confirmation");
+    assert_eq!(confirmation.epoch, epoch);
+
+    let processed = bob_group
+        .process_message(bob_provider, proposal.into_protocol_message().unwrap())
+        .expect("bob processes the update proposal");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::ProposalMessage(_)
+    ));
+
+    alice_group
+        .confirm_handshake_message(
+            alice_provider.storage(),
+            confirmation.epoch,
+            confirmation.generation,
+        )
+        .expect("confirm update proposal");
 }

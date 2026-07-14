@@ -1,5 +1,8 @@
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
 use commit_builder::CommitMessageBundle;
-use errors::{ProposeSelfUpdateError, SelfUpdateError};
+use errors::ProposeSelfUpdateError;
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+use errors::SelfUpdateError;
 use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 use crate::{credentials::NewSignerBundle, storage::OpenMlsProvider, treesync::LeafNodeParameters};
@@ -19,7 +22,13 @@ impl MlsGroup {
     ///
     /// Returns an error if there is a pending commit.
     ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`MlsGroup::commit_builder`], whose
+    /// [`CommitMessageBundle::confirmation`](crate::group::CommitMessageBundle::confirmation)
+    /// surfaces the handshake confirmation data.
+    ///
     /// [`Welcome`]: crate::messages::Welcome
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     pub fn self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -58,7 +67,13 @@ impl MlsGroup {
     ///
     /// Returns an error if there is a pending commit.
     ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`MlsGroup::commit_builder`], whose
+    /// [`CommitMessageBundle::confirmation`](crate::group::CommitMessageBundle::confirmation)
+    /// surfaces the handshake confirmation data.
+    ///
     /// [`Welcome`]: crate::messages::Welcome
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     pub fn self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
@@ -206,6 +221,12 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. The application can
     /// choose to update the credential, the capabilities, and the extensions by
     /// building the [`LeafNodeParameters`].
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`] with
+    /// [`Propose::Update`](crate::group::Propose::Update), which retains the
+    /// handshake secret and returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     pub fn propose_self_update<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
@@ -236,6 +257,11 @@ impl MlsGroup {
     /// is folded in automatically.
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_self_update_with_new_signer_unconfirmed`], which
+    /// retains the handshake secret and returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     pub fn propose_self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
@@ -250,5 +276,37 @@ impl MlsGroup {
             leaf_node_parameters,
         )?;
         Ok((framing.message, proposal_ref))
+    }
+
+    /// Like [`Self::propose_self_update_with_new_signer`], but retains the
+    /// handshake secret and returns the [`HandshakeConfirmationData`] alongside
+    /// the framed proposal, so a virtual client can confirm the proposal with
+    /// [`MlsGroup::confirm_handshake_message`] once the Delivery Service has
+    /// accepted it. The confirmation is `None` for a proposal framed as a
+    /// plaintext PublicMessage.
+    ///
+    /// [`MlsGroup::confirm_handshake_message`]: crate::group::MlsGroup::confirm_handshake_message
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn propose_self_update_with_new_signer_unconfirmed<Provider: OpenMlsProvider, S: Signer>(
+        &mut self,
+        provider: &Provider,
+        old_signer: &impl Signer,
+        new_signer: NewSignerBundle<'_, S>,
+        leaf_node_parameters: LeafNodeParameters,
+    ) -> Result<
+        (
+            MlsMessageOut,
+            ProposalRef,
+            Option<HandshakeConfirmationData>,
+        ),
+        ProposeSelfUpdateError<Provider::StorageError>,
+    > {
+        let (framing, proposal_ref) = self.propose_self_update_internal(
+            provider,
+            old_signer,
+            Some(new_signer),
+            leaf_node_parameters,
+        )?;
+        Ok((framing.message, proposal_ref, framing.confirmation))
     }
 }

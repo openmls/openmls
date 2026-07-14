@@ -230,6 +230,31 @@ epoch-scoped, so it stays correct even when called after the merge has advanced
 the group to a later epoch. Proposals and commits share the handshake ratchet,
 so this single endpoint covers both.
 
+### Classic proposal functions
+
+The classic proposal functions (`propose`, `propose_add_member`,
+`propose_self_update`, `propose_self_update_with_new_signer`,
+`propose_group_context_extensions`, `leave_group`, and the rest) are not
+available with the feature, the same way the committing convenience functions
+are not. They return only the framed `MlsMessageOut` and discard the handshake
+confirmation data.
+
+Use `propose_unconfirmed` instead. It retains the handshake secret and returns
+the confirmation data alongside the framed proposal, which you confirm with
+`confirm_handshake_message` once the Delivery Service accepts the send. For a
+signature-key rotation use `propose_self_update_with_new_signer_unconfirmed`,
+which returns the same confirmation data.
+
+`propose_unconfirmed` dispatches on the `Propose` variant, so it also covers
+`Propose::GroupContextExtensions` and the AppDataDictionary update variants.
+
+The committing convenience functions (`add_members`, `add_members_without_update`,
+`swap_members`, `remove_members`, `self_update`, `self_update_with_new_signer`,
+`commit_to_pending_proposals`, and `update_group_context_extensions`) are not
+available with the feature. They return only the commit and discard its
+confirmation data. Build commits through `commit_builder` instead, and read the
+confirmation from the bundle's `confirmation()` as shown above.
+
 ## Application messages
 
 With the feature enabled, the single-shot `create_message` is replaced by a two
@@ -361,8 +386,6 @@ KeyPackage is no longer live anyway.
 
 The implementation tracks the draft but does not yet cover everything in it:
 
-- Handshake messages framed as PrivateMessages in higher-level groups do not
-  carry a generation ID or computed reuse guard. Only application messages do.
 - Onboarding a new emulator client by state transfer (the draft's
   `NewEmulatorClientState`, Variant A) is not implemented. Onboarding through an
   external commit (Variant B) works, because it is an application-orchestrated
