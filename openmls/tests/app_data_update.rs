@@ -641,6 +641,54 @@ fn test_public_group_app_data_commit_by_reference() {
         .unwrap();
 }
 
+/// `propose` queues an app data update proposal with the requested
+/// `ref_or_value`, so the next own commit covers it by reference or by value
+/// accordingly.
+#[openmls_test]
+fn test_propose_app_data_update_honors_ref_or_value() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+    let [alice, _bob] = group_state.members_mut(&["alice", "bob"]);
+
+    let (_message, by_ref) = alice
+        .group
+        .propose(
+            &alice_party.provider,
+            &alice.party.signer,
+            Propose::UpdateAppDataComponent {
+                component_id: 0xf042,
+                update: b"by_reference".to_vec(),
+            },
+            ProposalOrRefType::Reference,
+        )
+        .unwrap();
+    let (_message, by_value) = alice
+        .group
+        .propose(
+            &alice_party.provider,
+            &alice.party.signer,
+            Propose::RemoveAppDataComponent {
+                component_id: 0xf043,
+            },
+            ProposalOrRefType::Proposal,
+        )
+        .unwrap();
+
+    let mut by_ref_type = None;
+    let mut by_value_type = None;
+    for queued in alice.group.pending_proposals() {
+        if *queued.proposal_reference_ref() == by_ref {
+            by_ref_type = Some(queued.proposal_or_ref_type());
+        } else if *queued.proposal_reference_ref() == by_value {
+            by_value_type = Some(queued.proposal_or_ref_type());
+        }
+    }
+    assert_eq!(by_ref_type, Some(ProposalOrRefType::Reference));
+    assert_eq!(by_value_type, Some(ProposalOrRefType::Proposal));
+}
+
 /// Staging an unresolved app data commit on a `PublicGroup` without supplying
 /// the updates fails with `MissingAppDataUpdates`.
 #[openmls_test]

@@ -340,9 +340,10 @@ impl GenerationIdSecret {
 /// } RatchetType
 /// ```
 ///
-/// Only [`Application`](Self::Application) is produced today: handshake
-/// messages framed as PrivateMessages in higher-level groups are deferred, so
-/// no generation ID is derived for the handshake ratchet yet.
+/// [`Application`](Self::Application) covers application messages, and
+/// [`Handshake`](Self::Handshake) covers proposals and commits framed as
+/// PrivateMessages in a higher-level group. Both draw a generation ID from
+/// their respective per-leaf ratchet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, TlsSize, TlsSerialize)]
 #[repr(u8)]
 pub enum RatchetType {
