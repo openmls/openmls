@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d133d0e4.js";
+            window.path_to_searchindex_js = "searchindex-1dba5123.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-6ca32bdb.js"></script>
@@ -3192,6 +3192,74 @@ binding is keyed by epoch, not just group id, because a delayed application
 message from an earlier higher-level epoch must be processed with the emulation
 epoch that was active then. Bindings follow the same retention window as the
 message secrets store.</p>
+<h2 id="confirming-handshake-messages"><a class="header" href="#confirming-handshake-messages">Confirming handshake messages</a></h2>
+<p>When the group frames handshake messages as PrivateMessage (a ciphertext
+outgoing wire format policy), proposals and commits draw their generations from
+the per-leaf handshake ratchet, the same way application messages draw from the
+application ratchet. Like an application send, a private handshake send retains
+its key and nonce until the Delivery Service accepts it, so two emulator clients
+that race for the same handshake generation can both recover.</p>
+<p>A commit framed as PrivateMessage exposes its confirmation data on the bundle.
+Take it out with <code>take_confirmation</code> before consuming the bundle, since the
+consuming accessors (<code>into_commit</code>, <code>into_contents</code>, <code>into_messages</code>) drop the
+confirmation data:</p>
+<pre><code class="language-rust no_run noplayground">let mut bundle = main_group
+    .commit_builder()
+    .vc_emulation(provider.crypto(), provider.storage(), epoch_id)?
+    .load_psks(provider.storage())?
+    .build(provider.rand(), provider.crypto(), &amp;vc_signer, |_| true)?
+    .stage_commit(provider)?;
+
+if let Some(confirmation) = bundle.take_confirmation() {
+    // Attach confirmation.generation_id when fanning out the commit, so the
+    // Delivery Service can detect a generation collision with a sibling.
+    send_to_delivery_service(bundle.into_commit(), confirmation.generation_id.clone());
+}</code></pre>
+<p>For standalone proposals, <code>propose_unconfirmed</code> mirrors <code>propose</code> but also
+returns the confirmation data alongside the framed proposal:</p>
+<pre><code class="language-rust no_run noplayground">let (proposal, proposal_ref, confirmation) = main_group.propose_unconfirmed(
+    provider,
+    &amp;vc_signer,
+    Propose::Add(key_package),
+    ProposalOrRefType::Reference,
+)?;</code></pre>
+<p>The confirmation from either path is <code>Some</code> when the message was framed as
+PrivateMessage and <code>None</code> when it was framed as a plaintext PublicMessage. As
+with application messages, the <code>generation_id</code> is <code>Some</code> only on a group bound
+to an emulation epoch.</p>
+<p>Once the Delivery Service accepts the message, drop the retained key with
+<code>confirm_handshake_message</code>, passing the confirmation’s <code>epoch</code> and
+<code>generation</code>:</p>
+<pre><code class="language-rust no_run noplayground">main_group.confirm_handshake_message(
+    provider.storage(),
+    confirmation.epoch,
+    confirmation.generation,
+)?;</code></pre>
+<p>The epoch carried by a commit’s confirmation is the epoch the commit was
+encrypted in, which is the epoch before the commit is merged. Confirming is
+epoch-scoped, so it stays correct even when called after the merge has advanced
+the group to a later epoch. Proposals and commits share the handshake ratchet,
+so this single endpoint covers both.</p>
+<h3 id="classic-proposal-functions"><a class="header" href="#classic-proposal-functions">Classic proposal functions</a></h3>
+<p>The classic proposal functions (<code>propose</code>, <code>propose_add_member</code>,
+<code>propose_self_update</code>, <code>propose_self_update_with_new_signer</code>,
+<code>propose_group_context_extensions</code>, <code>leave_group</code>, and the rest) are not
+available with the feature, the same way the committing convenience functions
+are not. They return only the framed <code>MlsMessageOut</code> and discard the handshake
+confirmation data.</p>
+<p>Use <code>propose_unconfirmed</code> instead. It retains the handshake secret and returns
+the confirmation data alongside the framed proposal, which you confirm with
+<code>confirm_handshake_message</code> once the Delivery Service accepts the send. For a
+signature-key rotation use <code>propose_self_update_with_new_signer_unconfirmed</code>,
+which returns the same confirmation data.</p>
+<p><code>propose_unconfirmed</code> dispatches on the <code>Propose</code> variant, so it also covers
+<code>Propose::GroupContextExtensions</code> and the AppDataDictionary update variants.</p>
+<p>The committing convenience functions (<code>add_members</code>, <code>add_members_without_update</code>,
+<code>swap_members</code>, <code>remove_members</code>, <code>self_update</code>, <code>self_update_with_new_signer</code>,
+<code>commit_to_pending_proposals</code>, and <code>update_group_context_extensions</code>) are not
+available with the feature. They return only the commit and discard its
+confirmation data. Build commits through <code>commit_builder</code> instead, and read the
+confirmation from the bundle’s <code>confirmation()</code> as shown above.</p>
 <h2 id="application-messages-1"><a class="header" href="#application-messages-1">Application messages</a></h2>
 <p>With the feature enabled, the single-shot <code>create_message</code> is replaced by a two
 step send flow, because two emulator clients can race for the same ratchet
@@ -3290,8 +3358,6 @@ KeyPackage is no longer live anyway.</p>
 <h2 id="what-is-not-implemented-yet"><a class="header" href="#what-is-not-implemented-yet">What is not implemented yet</a></h2>
 <p>The implementation tracks the draft but does not yet cover everything in it:</p>
 <ul>
-<li>Handshake messages framed as PrivateMessages in higher-level groups do not
-carry a generation ID or computed reuse guard. Only application messages do.</li>
 <li>Onboarding a new emulator client by state transfer (the draft’s
 <code>NewEmulatorClientState</code>, Variant A) is not implemented. Onboarding through an
 external commit (Variant B) works, because it is an application-orchestrated
