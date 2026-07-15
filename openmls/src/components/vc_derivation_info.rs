@@ -750,6 +750,26 @@ pub(crate) struct VcWelcomeMaterial {
     pub(crate) encryption_keypair: EncryptionKeyPair,
 }
 
+/// The emulation epoch an emulation group registered at one of its own group
+/// epochs, recorded by [`MlsGroup::register_vc_emulation_epoch`] so that a
+/// repeated call in the same group epoch returns the existing [`EpochId`]
+/// instead of consuming the forward-secure exporter again (the exporter is
+/// punctured by the first call and cannot be re-evaluated).
+///
+/// Not folded into [`VcEmulationBindings`]: bindings are carried forward to
+/// the new epoch when a merged commit installs no virtual-client leaf, so
+/// they cannot distinguish a registration in the current epoch from a
+/// carry-forward of an older one.
+///
+/// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub(crate) struct RegisteredVcEmulationEpoch {
+    /// The emulation group's own epoch at registration time.
+    pub(crate) group_epoch: crate::group::GroupEpoch,
+    /// The emulation epoch id derived by that registration.
+    pub(crate) epoch_id: EpochId,
+}
+
 /// Per-higher-level-group record of which emulation-group epoch produced the
 /// virtual-client LeafNode that was active at each recent epoch of that
 /// group.

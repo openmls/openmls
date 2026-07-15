@@ -264,6 +264,8 @@ const VC_EMULATION_EPOCH_STATE_LABEL: &[u8] = b"VcEmulationEpochState";
 #[cfg(feature = "virtual-clients-draft")]
 const VC_EMULATION_BINDING_LABEL: &[u8] = b"VcEmulationBinding";
 #[cfg(feature = "virtual-clients-draft")]
+const REGISTERED_VC_EMULATION_EPOCH_LABEL: &[u8] = b"RegisteredVcEmulationEpoch";
+#[cfg(feature = "virtual-clients-draft")]
 const VC_OPERATION_TREE_LABEL: &[u8] = b"VcOperationTree";
 #[cfg(feature = "virtual-clients-draft")]
 const RETAINED_KEY_PACKAGE_MATERIAL_LABEL: &[u8] = b"RetainedKeyPackageMaterial";
@@ -1140,6 +1142,50 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
             VC_EMULATION_BINDING_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_registered_vc_emulation_epoch<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        registered: &RegisteredVcEmulationEpoch,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            REGISTERED_VC_EMULATION_EPOCH_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+            serde_json::to_vec(registered).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn registered_vc_emulation_epoch<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<RegisteredVcEmulationEpoch>, Self::Error> {
+        let values = self.values.read().unwrap();
+        let key =
+            build_key::<CURRENT_VERSION, &GroupId>(REGISTERED_VC_EMULATION_EPOCH_LABEL, group_id);
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        Ok(serde_json::from_slice(value).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_registered_vc_emulation_epoch<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(
+            REGISTERED_VC_EMULATION_EPOCH_LABEL,
             &serde_json::to_vec(group_id).unwrap(),
         )
     }
