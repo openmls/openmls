@@ -1437,12 +1437,22 @@ impl CommitMessageBundle {
     /// framed as a PrivateMessage, `None` when it was framed as a plaintext
     /// PublicMessage. Pass its `epoch` and `generation` to
     /// [`MlsGroup::confirm_handshake_message`] once the DS has accepted the
-    /// commit.
+    /// commit. For an owning version, see [`Self::take_confirmation`].
     ///
     /// [`MlsGroup::confirm_handshake_message`]: crate::group::MlsGroup::confirm_handshake_message
     #[cfg(feature = "virtual-clients-draft")]
     pub fn confirmation(&self) -> Option<&HandshakeConfirmationData> {
         self.confirmation.as_ref()
+    }
+
+    /// Takes the confirmation data out of the bundle, leaving `None` in its
+    /// place. Call this before handing the bundle to a consuming accessor such
+    /// as [`Self::into_commit`], [`Self::into_contents`], or
+    /// [`Self::into_messages`], which drop the confirmation data. For a
+    /// borrowed version, see [`Self::confirmation`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn take_confirmation(&mut self) -> Option<HandshakeConfirmationData> {
+        self.confirmation.take()
     }
 
     /// Gets all three messages, some of which optional. For owned version, see

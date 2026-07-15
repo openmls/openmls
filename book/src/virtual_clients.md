@@ -178,20 +178,23 @@ application ratchet. Like an application send, a private handshake send retains
 its key and nonce until the Delivery Service accepts it, so two emulator clients
 that race for the same handshake generation can both recover.
 
-A commit framed as PrivateMessage exposes its confirmation data on the bundle:
+A commit framed as PrivateMessage exposes its confirmation data on the bundle.
+Take it out with `take_confirmation` before consuming the bundle, since the
+consuming accessors (`into_commit`, `into_contents`, `into_messages`) drop the
+confirmation data:
 
 ```rust,no_run,noplayground
-let bundle = main_group
+let mut bundle = main_group
     .commit_builder()
     .vc_emulation(provider.crypto(), provider.storage(), epoch_id)?
     .load_psks(provider.storage())?
     .build(provider.rand(), provider.crypto(), &vc_signer, |_| true)?
     .stage_commit(provider)?;
 
-if let Some(confirmation) = bundle.confirmation() {
+if let Some(confirmation) = bundle.take_confirmation() {
     // Attach confirmation.generation_id when fanning out the commit, so the
     // Delivery Service can detect a generation collision with a sibling.
-    send_to_delivery_service(bundle.commit().clone(), confirmation.generation_id.clone());
+    send_to_delivery_service(bundle.into_commit(), confirmation.generation_id.clone());
 }
 ```
 

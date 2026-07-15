@@ -4274,7 +4274,7 @@ fn vc_private_commit_end_to_end() {
     );
 
     // alice_a builds a VC commit framed as PrivateMessage.
-    let bundle = alice_a_main
+    let mut bundle = alice_a_main
         .commit_builder()
         .vc_emulation(
             alice_a_provider.crypto(),
@@ -4294,14 +4294,13 @@ fn vc_private_commit_end_to_end() {
         .stage_commit(&alice_a_provider)
         .expect("stage commit");
     let confirmation = bundle
-        .confirmation()
-        .expect("private VC commit carries confirmation")
-        .clone();
+        .take_confirmation()
+        .expect("private VC commit carries confirmation");
     assert!(
         confirmation.generation_id.is_some(),
         "a VC-bound private commit carries a generation id"
     );
-    let vc_commit = bundle.commit().clone();
+    let vc_commit = bundle.into_commit();
 
     // Before merging, alice_a processes her own private commit echo. The
     // retained own handshake secret decrypts it, and the own-pending-commit

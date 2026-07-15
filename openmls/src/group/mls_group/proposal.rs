@@ -1,4 +1,4 @@
-use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
 #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
 use super::CreateGroupContextExtProposalError;
@@ -18,13 +18,12 @@ use crate::{
     error::LibraryError,
     extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut},
-    group::{errors::CreateAddProposalError, GroupContext, GroupId, ValidationError},
+    group::{errors::CreateAddProposalError, GroupContext, ValidationError},
     key_packages::KeyPackage,
     messages::proposals::ProposalOrRefType,
     schedule::PreSharedKeyId,
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{LeafNode, LeafNodeParameters},
-    versions::ProtocolVersion,
 };
 
 #[cfg(feature = "extensions-draft")]
@@ -40,6 +39,9 @@ pub enum Propose {
     Add(KeyPackage),
 
     /// An update proposal requires a new leaf node.
+    ///
+    /// An update proposal is always queued by reference as per RFC 9420 a
+    /// member must not commit its own update proposal.
     Update(LeafNodeParameters),
 
     /// A remove proposal consists of the leaf index of the leaf to be removed.
@@ -50,21 +52,6 @@ pub enum Propose {
 
     /// A PSK proposal gets a pre shared key id.
     PreSharedKey(PreSharedKeyId),
-
-    /// A re-init proposal gets the [`GroupId`], [`ProtocolVersion`], [`Ciphersuite`], and [`Extensions`].
-    ReInit {
-        /// The group id of the new group.
-        group_id: GroupId,
-        /// The protocol version of the new group.
-        version: ProtocolVersion,
-        /// The ciphersuite of the new group.
-        ciphersuite: Ciphersuite,
-        /// The group context extensions of the new group.
-        extensions: Extensions<GroupContext>,
-    },
-
-    /// An external init proposal gets the raw bytes from the KEM output.
-    ExternalInit(Vec<u8>),
 
     /// Propose adding new group context extensions.
     GroupContextExtensions(Extensions<GroupContext>),
@@ -347,17 +334,6 @@ impl MlsGroup {
                     }
                 }
             }
-            Propose::ReInit {
-                group_id: _,
-                version: _,
-                ciphersuite: _,
-                extensions: _,
-            } => Err(ProposalError::LibraryError(LibraryError::custom(
-                "Unsupported proposal type ReInit",
-            ))),
-            Propose::ExternalInit(_) => Err(ProposalError::LibraryError(LibraryError::custom(
-                "Unsupported proposal type ExternalInit",
-            ))),
             Propose::GroupContextExtensions(extensions) => self
                 .propose_group_context_extensions_impl(provider, extensions, signer, ref_or_value),
             // extensions-draft
@@ -370,6 +346,7 @@ impl MlsGroup {
                 signer,
                 component_id,
                 AppDataUpdateOperation::Update(update.into()),
+                ref_or_value,
             ),
             #[cfg(feature = "extensions-draft")]
             Propose::RemoveAppDataComponent { component_id } => self.propose_app_data_update_impl(
@@ -377,6 +354,7 @@ impl MlsGroup {
                 signer,
                 component_id,
                 AppDataUpdateOperation::Remove,
+                ref_or_value,
             ),
 
             // custom
@@ -693,7 +671,7 @@ impl MlsGroup {
         Ok((commit, welcome, group_info))
     }
 
-    /// Updates the AppDataDictionary
+    /// Updates the AppDataDictionary, committed by value.
     ///
     /// Under the `virtual-clients-draft` feature this function is unavailable.
     /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
@@ -709,8 +687,13 @@ impl MlsGroup {
         component_id: ComponentId,
         operation: AppDataUpdateOperation,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
-        let (framing, proposal_ref) =
-            self.propose_app_data_update_impl(provider, signer, component_id, operation)?;
+        let (framing, proposal_ref) = self.propose_app_data_update_impl(
+            provider,
+            signer,
+            component_id,
+            operation,
+            ProposalOrRefType::Proposal,
+        )?;
         Ok((framing.message, proposal_ref))
     }
 
@@ -721,6 +704,7 @@ impl MlsGroup {
         signer: &impl Signer,
         component_id: ComponentId,
         operation: AppDataUpdateOperation,
+        ref_or_value: ProposalOrRefType,
     ) -> Result<(HandshakeFramingOutput, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
@@ -737,7 +721,7 @@ impl MlsGroup {
             self.ciphersuite(),
             provider.crypto(),
             proposal.clone(),
-            ProposalOrRefType::Proposal,
+            ref_or_value,
         )?;
         let proposal_ref = queued_proposal.proposal_reference();
 
