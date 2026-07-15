@@ -631,7 +631,7 @@ pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
 /// per [`KeyPackageInfo`] (keyed by the info's [`KeyPackageRef`]) in a single
 /// atomic batch write.
 ///
-/// The batch operation secret is derived under the emulatio ciphersuite (the
+/// The batch operation secret is derived under the emulation ciphersuite (the
 /// operation tree's ciphersuite). Each per-KeyPackage seed is imported from
 /// it into the ciphersuite the upload names for this KeyPackage. The init and
 /// leaf-encryption keys are later derived from each seed under the same
@@ -928,29 +928,6 @@ impl EmulationEpochState {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OperationSecret(Secret);
 
-impl OperationSecret {
-    pub(crate) fn derive_target_operation_secret(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        target_ciphersuite: Ciphersuite,
-        group_id: &GroupId,
-    ) -> Result<TargetOperationSecret, VirtualClientsError> {
-        let context = TargetOperationContext {
-            cipher_suite: target_ciphersuite,
-            group_id: VLByteSlice(group_id.as_slice()),
-        }
-        .tls_serialize_detached()?;
-        let secret = import_secret(
-            crypto,
-            target_ciphersuite,
-            &self.0,
-            TARGET_OPERATION_LABEL,
-            &context,
-        )?;
-        Ok(TargetOperationSecret(secret))
-    }
-}
-
 impl From<Secret> for OperationSecret {
     fn from(secret: Secret) -> Self {
         Self(secret)
@@ -983,6 +960,42 @@ impl OperationSecret {
     #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.0.as_slice()
+    }
+
+    /// Derive the `target_operation_secret` of a `leaf_node` operation: this
+    /// operation secret imported into the higher-level group's ciphersuite:
+    ///
+    /// ```text
+    /// target_operation_secret = ImportSecret(operation_secret,
+    ///                                        "vc target operation",
+    ///                                        TargetOperationContext)
+    /// ```
+    ///
+    /// The context binds the target ciphersuite and the higher-level group's
+    /// `group_id`, so one operation secret yields independent path material
+    /// per target group. The commit path's encryption-key and path-generation
+    /// secrets are derived from the returned [`TargetOperationSecret`], not
+    /// from the operation secret directly. The committing emulator and the
+    /// sibling recreating the commit derive the same value.
+    pub(crate) fn derive_target_operation_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        target_ciphersuite: Ciphersuite,
+        group_id: &GroupId,
+    ) -> Result<TargetOperationSecret, VirtualClientsError> {
+        let context = TargetOperationContext {
+            cipher_suite: target_ciphersuite,
+            group_id: VLByteSlice(group_id.as_slice()),
+        }
+        .tls_serialize_detached()?;
+        let secret = import_secret(
+            crypto,
+            target_ciphersuite,
+            &self.0,
+            TARGET_OPERATION_LABEL,
+            &context,
+        )?;
+        Ok(TargetOperationSecret(secret))
     }
 
     /// Derive the per-KeyPackage seed secret for the KeyPackage at
