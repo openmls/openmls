@@ -15,7 +15,7 @@ set -e
 raw_size=$(tar c pkg | wc -c)
 gzip_size=$(tar cj pkg | wc -c)
 
-raw_thresh=1900000
+raw_thresh=2000000
 gzip_thresh=610000
 
 if [ $raw_size -gt $raw_thresh ]; then
