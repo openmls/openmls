@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-17cf7c36.js";
+            window.path_to_searchindex_js = "searchindex-35124223.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-6ca32bdb.js"></script>
@@ -2447,6 +2447,8 @@ pub mod traits {
     pub trait VcEmulationEpochState&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcEmulationBindings&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait RegisteredVcEmulationEpoch&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcOperationTree&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     #[cfg(feature = "virtual-clients-draft")]
