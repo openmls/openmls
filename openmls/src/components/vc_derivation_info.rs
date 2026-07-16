@@ -6,8 +6,8 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{
-    DeserializeBytes, SecretVLBytes, Serialize as _, Size as _, TlsDeserializeBytes, TlsSerialize,
-    TlsSize, VLByteSlice, VLBytes,
+    DeserializeBytes, SecretVLByteVec, Serialize as _, Size as _, TlsDeserializeBytes,
+    TlsSerialize, TlsSize, VLByteSlice, VLByteVec,
 };
 
 use crate::{
@@ -368,7 +368,7 @@ pub(crate) struct PrivateMessageContext<'a> {
 ///
 /// [`MlsGroup::create_unconfirmed_message`]: crate::group::MlsGroup::create_unconfirmed_message
 #[derive(Debug, Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
-pub struct GenerationId(VLBytes);
+pub struct GenerationId(VLByteVec);
 
 impl GenerationId {
     /// The raw generation-ID bytes the application hands to the DS.
@@ -395,7 +395,7 @@ impl GenerationId {
 #[derive(Debug, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub(crate) struct DerivationInfo {
     epoch_id: EpochId,
-    ciphertext: VLBytes,
+    ciphertext: VLByteVec,
 }
 
 impl DerivationInfo {
@@ -469,7 +469,19 @@ impl DerivationInfo {
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserializeBytes,
 )]
-pub struct EpochId(VLBytes);
+pub struct EpochId(VLByteVec);
+
+impl EpochId {
+    /// Create an epoch ID from raw bytes.
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes.into())
+    }
+
+    /// The raw epoch-ID bytes.
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+}
 
 /// Wire struct a virtual client hands to a sibling so the sibling can fetch
 /// and process the matching KeyPackage (mls-virtual-clients draft):
@@ -1179,7 +1191,7 @@ pub enum VirtualClientOperationType {
 /// decapsulating from the previous epoch's `external_secret`, which it may not
 /// hold.
 #[derive(Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
-pub(crate) struct ExternalInitSecret(SecretVLBytes);
+pub(crate) struct ExternalInitSecret(SecretVLByteVec);
 
 impl std::fmt::Debug for ExternalInitSecret {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
