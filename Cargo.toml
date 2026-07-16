@@ -24,7 +24,7 @@ rust-version = "1.91.0"
 
 # Central dependency management for some crates
 [workspace.dependencies]
-tls_codec = { version = "0.4.2", features = ["derive", "serde", "mls"] }
+tls_codec = { version = "0.5", features = ["derive", "serde", "mls"] }
 serde = { version = "^1.0" }
 thiserror = { version = "^2.0" }
 

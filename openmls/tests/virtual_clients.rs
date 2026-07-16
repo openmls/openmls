@@ -2002,6 +2002,7 @@ fn vc_batch_key_packages_join_in_any_order() {
         .map(
             |info| openmls::components::vc_derivation_info::KeyPackageInfo {
                 key_package_ref: info.key_package_ref.clone(),
+                cipher_suite: info.cipher_suite,
                 key_package_index: info.key_package_index,
             },
         )

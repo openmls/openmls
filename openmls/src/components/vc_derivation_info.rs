@@ -34,12 +34,15 @@ pub const VC_COMPONENT_ID: u16 = 0x667A;
 const ENCRYPTION_KEY_LABEL: &str = "Encryption Key";
 const PATH_GENERATION_LABEL: &str = "Path Generation";
 const INIT_KEY_LABEL: &str = "Init Key";
-/// `ExpandWithLabel` label for the per-KeyPackage seed secret derived from a
+/// `ImportSecret` label for the per-KeyPackage seed secret derived from a
 /// `key_package` operation secret (mls-virtual-clients draft, batch KeyPackage
 /// derivation). One operation secret covers a batch of KeyPackages, and each
-/// KeyPackage's seed is expanded from it using the KeyPackage's index as the
-/// context.
-const KEY_PACKAGE_SEED_LABEL: &str = "key package seed";
+/// KeyPackage's seed is imported from it using the KeyPackage's ciphersuite
+/// and index as the context.
+const KEY_PACKAGE_SEED_LABEL: &str = "vc key package seed";
+/// `ImportSecret` label for `target_operation_secret` of a `leaf_node`:
+/// imports operation secret into the higher-level group's ciphersuite.
+const TARGET_OPERATION_LABEL: &str = "vc target operation";
 /// `DeriveSecret` label for the epoch-0 `epoch_secret` a group creator derives
 /// from its KeyPackage seed secret (mls-virtual-clients draft, group creation).
 const GROUP_CREATION_LABEL: &str = "Group Creation";
@@ -155,16 +158,8 @@ pub enum VirtualClientsError {
 /// `safe_export_secret(VC_COMPONENT_ID)`.
 ///
 /// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct EmulatorEpochSecret(Secret);
-
-impl std::fmt::Debug for EmulatorEpochSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EmulatorEpochSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
 
 impl EmulatorEpochSecret {
     /// Construct an `EmulatorEpochSecret` from raw bytes. Bytes are
@@ -235,16 +230,8 @@ impl EmulatorEpochSecret {
 /// Per-emulation-epoch secret used to derive the FF1 PRP key for
 /// `reuse_guard` values sent by this virtual client. Derived from
 /// [`EmulatorEpochSecret`] via [`EmulatorEpochSecret::derive_reuse_guard_secret`].
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct ReuseGuardSecret(Secret);
-
-impl std::fmt::Debug for ReuseGuardSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ReuseGuardSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
 
 impl ReuseGuardSecret {
     /// Test-only constructor from raw bytes.
@@ -288,16 +275,8 @@ impl ReuseGuardSecret {
 /// collision detection (mls-virtual-clients draft, "Coordinating ratchet
 /// generations with the DS" section). Derived from [`EmulatorEpochSecret`]
 /// via [`EmulatorEpochSecret::derive_generation_id_secret`].
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct GenerationIdSecret(Secret);
-
-impl std::fmt::Debug for GenerationIdSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GenerationIdSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
 
 impl GenerationIdSecret {
     /// Derive the [`GenerationId`] for a message sent with the given
@@ -498,6 +477,7 @@ pub struct EpochId(VLBytes);
 /// ```text
 /// struct {
 ///   opaque key_package_ref<V>;
+///   CipherSuite cipher_suite;
 ///   uint32 key_package_index;
 /// } KeyPackageInfo
 /// ```
@@ -514,6 +494,8 @@ pub struct EpochId(VLBytes);
 pub struct KeyPackageInfo {
     /// Hash reference of the virtual client's KeyPackage.
     pub key_package_ref: KeyPackageRef,
+    /// Ciphersuite of the virtual client's KeyPackage.
+    pub cipher_suite: Ciphersuite,
     /// Position of this KeyPackage within the operation batch.
     pub key_package_index: u32,
 }
@@ -573,6 +555,8 @@ pub struct RetainedKeyPackageMaterial {
     pub leaf_index: LeafNodeIndex,
     /// Operation-ratchet generation consumed for the whole batch.
     pub generation: u32,
+    /// Ciphersuite of the KeyPackage.
+    pub key_package_ciphersuite: Ciphersuite,
     /// Position of this KeyPackage within the batch.
     pub key_package_index: u32,
     /// Per-KeyPackage seed secret from which the init and leaf-encryption keys
@@ -648,12 +632,12 @@ pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
 /// per [`KeyPackageInfo`] (keyed by the info's [`KeyPackageRef`]) in a single
 /// atomic batch write.
 ///
-/// The operation secret and the per-index seeds are derived under the
-/// emulation ciphersuite (the operation tree's ciphersuite). The init and
-/// leaf-encryption keys are later derived from each seed under the KeyPackage's
-/// own ciphersuite at Welcome time. The operation secret is dropped once all
-/// seeds are derived. The batch generation is consumed in the tree exactly
-/// once.
+/// The batch operation secret is derived under the emulation ciphersuite (the
+/// operation tree's ciphersuite). Each per-KeyPackage seed is imported from
+/// it into the ciphersuite the upload names for this KeyPackage. The init and
+/// leaf-encryption keys are later derived from each seed under the same
+/// ciphersuite at Welcome time. The operation secret is dropped once all seeds
+/// are derived. The batch generation is consumed in the tree exactly once.
 pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
     provider: &Provider,
     upload: &KeyPackageUpload,
@@ -697,13 +681,14 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
     for info in &upload.key_package_info {
         let key_package_seed_secret = operation_secret.derive_key_package_seed_secret(
             crypto,
-            emulation_ciphersuite,
+            info.cipher_suite,
             info.key_package_index,
         )?;
         let material = RetainedKeyPackageMaterial {
             epoch_id: upload.epoch_id.clone(),
             leaf_index: upload.leaf_index,
             generation: upload.generation,
+            key_package_ciphersuite: info.cipher_suite,
             key_package_index: info.key_package_index,
             key_package_seed_secret,
         };
@@ -833,16 +818,8 @@ impl VcEmulationBindings {
 /// by [`MlsGroup::register_vc_emulation_epoch`].
 ///
 /// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct EpochEncryptionKey(Secret);
-
-impl std::fmt::Debug for EpochEncryptionKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EpochEncryptionKey")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
 
 impl EpochEncryptionKey {
     /// Derive the AEAD key and nonce for one [`DerivationInfoTbe`] wrap,
@@ -969,21 +946,34 @@ impl EmulationEpochState {
 /// from the same per-epoch state.
 ///
 /// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OperationSecret(Secret);
-
-impl std::fmt::Debug for OperationSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("OperationSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
 
 impl From<Secret> for OperationSecret {
     fn from(secret: Secret) -> Self {
         Self(secret)
     }
+}
+
+/// Imports a secret from the emulation group's ciphersuite to the target ciphersuite.
+///
+/// The import MUST be performed even when the emulation group and target use the same ciphersuite.
+fn import_secret(
+    crypto: &impl OpenMlsCrypto,
+    target_ciphersuite: Ciphersuite,
+    source_secret: &Secret,
+    label: &str,
+    context: &[u8],
+) -> Result<Secret, CryptoError> {
+    let salt = Secret::from_slice(&[]);
+    let target_prk = salt.hkdf_extract(crypto, target_ciphersuite, source_secret)?;
+    target_prk.kdf_expand_label(
+        crypto,
+        target_ciphersuite,
+        label,
+        context,
+        target_ciphersuite.hash_length(),
+    )
 }
 
 impl OperationSecret {
@@ -993,35 +983,49 @@ impl OperationSecret {
         self.0.as_slice()
     }
 
-    pub(crate) fn derive_encryption_key_secret(
+    /// Derive the `target_operation_secret` of a `leaf_node` operation: this
+    /// operation secret imported into the higher-level group's ciphersuite:
+    ///
+    /// ```text
+    /// target_operation_secret = ImportSecret(operation_secret,
+    ///                                        "vc target operation",
+    ///                                        TargetOperationContext)
+    /// ```
+    ///
+    /// The context binds the target ciphersuite and the higher-level group's
+    /// `group_id`, so one operation secret yields independent path material
+    /// per target group. The commit path's encryption-key and path-generation
+    /// secrets are derived from the returned [`TargetOperationSecret`], not
+    /// from the operation secret directly. The committing emulator and the
+    /// sibling recreating the commit derive the same value.
+    pub(crate) fn derive_target_operation_secret(
         &self,
         crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
-    ) -> Result<EncryptionKeySecret, VirtualClientsError> {
-        let encryption_key_secret =
-            self.0
-                .derive_secret(crypto, ciphersuite, ENCRYPTION_KEY_LABEL)?;
-        Ok(EncryptionKeySecret(encryption_key_secret))
-    }
-
-    pub(crate) fn derive_path_generation_secret(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
-    ) -> Result<PathGenerationSecret, VirtualClientsError> {
-        let path_generation_secret =
-            self.0
-                .derive_secret(crypto, ciphersuite, PATH_GENERATION_LABEL)?;
-        Ok(PathGenerationSecret(path_generation_secret))
+        target_ciphersuite: Ciphersuite,
+        group_id: &GroupId,
+    ) -> Result<TargetOperationSecret, VirtualClientsError> {
+        let context = TargetOperationContext {
+            cipher_suite: target_ciphersuite,
+            group_id: VLByteSlice(group_id.as_slice()),
+        }
+        .tls_serialize_detached()?;
+        let secret = import_secret(
+            crypto,
+            target_ciphersuite,
+            &self.0,
+            TARGET_OPERATION_LABEL,
+            &context,
+        )?;
+        Ok(TargetOperationSecret(secret))
     }
 
     /// Derive the per-KeyPackage seed secret for the KeyPackage at
     /// `key_package_index` within this operation's batch:
     ///
     /// ```text
-    /// key_package_seed_secret = ExpandWithLabel(operation_secret,
-    ///                                           "key package seed",
-    ///                                           KeyPackageSeedContext, Kdf.Nh)
+    /// key_package_seed_secret = ImportSecret(operation_secret,
+    ///                                        "vc key package seed",
+    ///                                        KeyPackageSeedContext)
     /// ```
     ///
     /// The KeyPackage's init and leaf-encryption keys are then derived from the
@@ -1031,16 +1035,20 @@ impl OperationSecret {
     pub(crate) fn derive_key_package_seed_secret(
         &self,
         crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
+        target_ciphersuite: Ciphersuite,
         key_package_index: u32,
     ) -> Result<KeyPackageSeedSecret, VirtualClientsError> {
-        let context = KeyPackageSeedContext { key_package_index }.tls_serialize_detached()?;
-        let seed = self.0.kdf_expand_label(
+        let context = KeyPackageSeedContext {
+            cipher_suite: target_ciphersuite,
+            key_package_index,
+        }
+        .tls_serialize_detached()?;
+        let seed = import_secret(
             crypto,
-            ciphersuite,
+            target_ciphersuite,
+            &self.0,
             KEY_PACKAGE_SEED_LABEL,
             &context,
-            ciphersuite.hash_length(),
         )?;
         Ok(KeyPackageSeedSecret(seed))
     }
@@ -1051,6 +1059,7 @@ impl OperationSecret {
 ///
 /// ```text
 /// struct {
+///   CipherSuite cipher_suite;
 ///   uint32 key_package_index;
 /// } KeyPackageSeedContext
 /// ```
@@ -1059,6 +1068,7 @@ impl OperationSecret {
 /// needs serialization only.
 #[derive(Debug, TlsSize, TlsSerialize)]
 struct KeyPackageSeedContext {
+    cipher_suite: Ciphersuite,
     key_package_index: u32,
 }
 
@@ -1068,16 +1078,8 @@ struct KeyPackageSeedContext {
 /// `key_package` operation's batch. Persisted in [`RetainedKeyPackageMaterial`]
 /// so the Welcome path can rederive the keys without re-walking the operation
 /// tree.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct KeyPackageSeedSecret(Secret);
-
-impl std::fmt::Debug for KeyPackageSeedSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("KeyPackageSeedSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
 
 impl KeyPackageSeedSecret {
     pub(crate) fn derive_init_key_secret(
@@ -1214,6 +1216,48 @@ impl ExternalInitSecret {
 
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.0.as_slice()
+    }
+}
+
+/// ```text
+/// struct {
+///   CipherSuite cipher_suite;
+///   opaque group_id<V>;
+/// } TargetOperationContext
+/// ```
+#[derive(Debug, TlsSize, TlsSerialize)]
+struct TargetOperationContext<'a> {
+    cipher_suite: Ciphersuite,
+    group_id: VLByteSlice<'a>,
+}
+
+/// A leaf node operation secret imported into the higher-level group's ciphersuite.
+///
+/// Must be immediately deleted after the encryption key/path generation secrets are derived.
+#[derive(Debug)]
+pub(crate) struct TargetOperationSecret(Secret);
+
+impl TargetOperationSecret {
+    pub(crate) fn derive_encryption_key_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+    ) -> Result<EncryptionKeySecret, VirtualClientsError> {
+        let encryption_key_secret =
+            self.0
+                .derive_secret(crypto, ciphersuite, ENCRYPTION_KEY_LABEL)?;
+        Ok(EncryptionKeySecret(encryption_key_secret))
+    }
+
+    pub(crate) fn derive_path_generation_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+    ) -> Result<PathGenerationSecret, VirtualClientsError> {
+        let path_generation_secret =
+            self.0
+                .derive_secret(crypto, ciphersuite, PATH_GENERATION_LABEL)?;
+        Ok(PathGenerationSecret(path_generation_secret))
     }
 }
 
@@ -1609,10 +1653,12 @@ mod tests {
         let infos = vec![
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
             },
         ];
@@ -1654,10 +1700,12 @@ mod tests {
             key_package_info: vec![
                 KeyPackageInfo {
                     key_package_ref: ref_a.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
                 },
             ],
@@ -1676,6 +1724,7 @@ mod tests {
         assert_eq!(material_a.leaf_index, leaf_index);
         assert_eq!(material_a.generation, 0);
         assert_eq!(material_a.key_package_index, 0);
+        assert_eq!(material_a.key_package_ciphersuite, CIPHERSUITE);
 
         let material_b: RetainedKeyPackageMaterial = <MemoryStorage as StorageProvider<
             CURRENT_VERSION,
@@ -1688,6 +1737,7 @@ mod tests {
         assert_eq!(material_b.leaf_index, leaf_index);
         assert_eq!(material_b.generation, 0);
         assert_eq!(material_b.key_package_index, 1);
+        assert_eq!(material_b.key_package_ciphersuite, CIPHERSUITE);
     }
 
     /// `delete_key_package` removes the associated retained VC material.
@@ -1703,6 +1753,7 @@ mod tests {
             generation: 0,
             key_package_info: vec![KeyPackageInfo {
                 key_package_ref: kp_ref.clone(),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
             }],
         };
@@ -1995,6 +2046,87 @@ mod tests {
         );
     }
 
+    /// The per-KeyPackage seed is imported into the target ciphersuite: the
+    /// same operation secret and index yield different seeds for different
+    /// target ciphersuites, because the target ciphersuite is bound into the
+    /// `KeyPackageSeedContext` and the import runs under the target's KDF.
+    #[test]
+    fn key_package_seed_binds_target_ciphersuite() {
+        let provider = OpenMlsRustCrypto::default();
+        let operation_secret = OperationSecret::from(Secret::from_slice(
+            &provider
+                .rand()
+                .random_vec(CIPHERSUITE.hash_length())
+                .expect("randomness"),
+        ));
+        // Same KDF hash (SHA-256) as `CIPHERSUITE`, so the two seeds have
+        // equal length and differ only through the ciphersuite binding.
+        let other_ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
+
+        let seed = operation_secret
+            .derive_key_package_seed_secret(provider.crypto(), CIPHERSUITE, 0)
+            .expect("derive seed");
+        let seed_other_suite = operation_secret
+            .derive_key_package_seed_secret(provider.crypto(), other_ciphersuite, 0)
+            .expect("derive seed under other target ciphersuite");
+
+        assert_ne!(seed.0.as_slice(), seed_other_suite.0.as_slice());
+    }
+
+    /// The `target_operation_secret` of a `leaf_node` operation is
+    /// deterministic and binds both the target ciphersuite and the
+    /// higher-level group's id; the encryption and path-generation secrets
+    /// derived from it are label-separated.
+    #[test]
+    fn target_operation_secret_binds_ciphersuite_and_group_id() {
+        let provider = OpenMlsRustCrypto::default();
+        let operation_secret = OperationSecret::from(Secret::from_slice(
+            &provider
+                .rand()
+                .random_vec(CIPHERSUITE.hash_length())
+                .expect("randomness"),
+        ));
+        let group_id = GroupId::from_slice(b"group-a");
+        let other_ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
+
+        let target = operation_secret
+            .derive_target_operation_secret(provider.crypto(), CIPHERSUITE, &group_id)
+            .expect("derive target operation secret");
+        let target_again = operation_secret
+            .derive_target_operation_secret(provider.crypto(), CIPHERSUITE, &group_id)
+            .expect("derive target operation secret again");
+        let target_other_group = operation_secret
+            .derive_target_operation_secret(
+                provider.crypto(),
+                CIPHERSUITE,
+                &GroupId::from_slice(b"group-b"),
+            )
+            .expect("derive target operation secret for other group");
+        let target_other_suite = operation_secret
+            .derive_target_operation_secret(provider.crypto(), other_ciphersuite, &group_id)
+            .expect("derive target operation secret under other target ciphersuite");
+
+        // Same inputs derive deterministically.
+        assert_eq!(target.0.as_slice(), target_again.0.as_slice());
+        // A different group id or a different target ciphersuite derives a
+        // distinct secret.
+        assert_ne!(target.0.as_slice(), target_other_group.0.as_slice());
+        assert_ne!(target.0.as_slice(), target_other_suite.0.as_slice());
+
+        // Encryption and path-generation secrets from one target operation
+        // secret are label-separated.
+        let encryption_key_secret = target
+            .derive_encryption_key_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive encryption key secret");
+        let path_generation_secret = target
+            .derive_path_generation_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive path generation secret");
+        assert_ne!(
+            encryption_key_secret.0.as_slice(),
+            path_generation_secret.0.as_slice()
+        );
+    }
+
     /// The group-creation epoch secret is deterministic for a given seed,
     /// distinct across seeds, and label-separated from the encryption key
     /// secret derived from the same seed.
@@ -2051,10 +2183,12 @@ mod tests {
         let infos = vec![
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 2,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 2,
             },
         ];
@@ -2068,10 +2202,12 @@ mod tests {
         let infos = vec![
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
             },
         ];
@@ -2085,10 +2221,12 @@ mod tests {
         let infos = vec![
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
             },
         ];
@@ -2113,10 +2251,12 @@ mod tests {
             key_package_info: vec![
                 KeyPackageInfo {
                     key_package_ref: ref_a.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
                 },
             ],
@@ -2132,10 +2272,12 @@ mod tests {
             key_package_info: vec![
                 KeyPackageInfo {
                     key_package_ref: ref_a.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
                 },
             ],

@@ -433,6 +433,7 @@ impl MlsGroup {
                         &diff,
                         &path,
                         ciphersuite,
+                        self.group_id(),
                         provider.crypto(),
                         sender_index,
                         operation_secret,
@@ -627,28 +628,34 @@ impl MlsGroup {
     /// path leaf is already authenticated by the commit's standard
     /// path-validation against the previous signature key.
     #[cfg(feature = "virtual-clients-draft")]
+    #[expect(clippy::too_many_arguments)]
     fn recreate_path_for_own_commit(
         &self,
         diff: &PublicGroupDiff,
         path: &crate::treesync::treekem::UpdatePath,
-        ciphersuite: openmls_traits::types::Ciphersuite,
+        group_ciphersuite: openmls_traits::types::Ciphersuite,
+        group_id: &crate::prelude::GroupId,
         crypto: &impl OpenMlsCrypto,
         sender_index: LeafNodeIndex,
         operation_secret: crate::components::vc_derivation_info::OperationSecret,
     ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), StageCommitError> {
         use crate::components::vc_derivation_info::VirtualClientsError;
 
-        let path_secret = operation_secret
-            .derive_path_generation_secret(crypto, ciphersuite)?
+        let target_operation_secret =
+            operation_secret.derive_target_operation_secret(crypto, group_ciphersuite, group_id)?;
+
+        let path_secret = target_operation_secret
+            .derive_path_generation_secret(crypto, group_ciphersuite)?
             .into();
         let (encryption_key_pairs, commit_secret) =
             diff.recreate_path_from_path_secret(crypto, path_secret, sender_index, path.nodes())?;
 
         // Verify that the leaf encryption key in the path matches the one
         // derived from the operation secret.
-        let leaf_keypair = operation_secret
-            .derive_encryption_key_secret(crypto, ciphersuite)?
-            .generate_encryption_key_pair(crypto, ciphersuite)?;
+        let leaf_keypair = target_operation_secret
+            .derive_encryption_key_secret(crypto, group_ciphersuite)?
+            .generate_encryption_key_pair(crypto, group_ciphersuite)?;
+        drop(target_operation_secret);
         if leaf_keypair.public_key() != path.leaf_node().encryption_key() {
             return Err(VirtualClientsError::EncryptionKeyMismatch.into());
         }
