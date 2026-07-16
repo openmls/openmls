@@ -31,7 +31,7 @@ use std::collections::BTreeMap;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
-use tls_codec::{Serialize as _, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{Serialize as _, TlsSerialize, TlsSize, VLByteVec};
 
 use crate::{
     binary_tree::{
@@ -548,7 +548,7 @@ struct OperationContext {
     leaf_index: LeafNodeIndex,
     generation: u32,
     operation_type: VirtualClientOperationType,
-    operation_context: VLBytes,
+    operation_context: VLByteVec,
 }
 
 impl OperationContext {
