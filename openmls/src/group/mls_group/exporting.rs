@@ -15,7 +15,8 @@ use crate::{
 #[cfg(feature = "virtual-clients-draft")]
 use crate::{
     components::vc_derivation_info::{
-        EmulationEpochState, EmulatorEpochSecret, EpochId, VC_COMPONENT_ID,
+        EmulationEpochState, EmulatorEpochSecret, EpochId, RegisteredVcEmulationEpoch,
+        VC_COMPONENT_ID,
     },
     components::vc_operation_tree::OperationSecretTree,
     group::mls_group::errors::RegisterVcEmulationEpochError,
@@ -119,6 +120,14 @@ impl MlsGroup {
     /// `EpochId` so the caller can reference this emulation epoch on
     /// subsequent virtual-clients commits.
     ///
+    /// Idempotent per *group epoch*: the registration is recorded keyed on the
+    /// group id, and a repeated call in the same group epoch returns the
+    /// recorded `EpochId` without touching the exporter (which the first
+    /// call punctured and which cannot be re-evaluated). The already
+    /// persisted operation secret tree keeps its state, so a caller retrying
+    /// an operation allocates the next generation rather than re-deriving a
+    /// consumed one.
+    ///
     /// The emulation group must support `safe_export_secret`, which requires
     /// the appropriate `AppDataDictionary` capability and extension wiring at
     /// group creation. Otherwise this returns
@@ -130,6 +139,24 @@ impl MlsGroup {
         crypto: &Crypto,
         storage: &Storage,
     ) -> Result<EpochId, RegisterVcEmulationEpochError<Storage::Error>> {
+        // A registration consumes the forward-secure exporter, so it can run
+        // at most once per group epoch. Return the recorded epoch id if *this*
+        // epoch is already registered.
+        let registered: Option<RegisteredVcEmulationEpoch> = storage
+            .registered_vc_emulation_epoch(self.group_id())
+            .map_err(|e| {
+                log::error!(
+                    "vc: load registered emulation epoch in register_vc_emulation_epoch \
+                     failed: {e:?}"
+                );
+                RegisterVcEmulationEpochError::Storage(e)
+            })?;
+        if let Some(registered) = registered {
+            if registered.group_epoch == self.epoch() {
+                return Ok(registered.epoch_id);
+            }
+        }
+
         let ciphersuite = self.ciphersuite();
         let leaf_index = self.own_leaf_index();
         let emulation_group_size = self.public_group().tree_size();
@@ -153,9 +180,13 @@ impl MlsGroup {
             emulation_group_size,
             ciphersuite,
         );
+        let registered = RegisteredVcEmulationEpoch {
+            group_epoch: self.epoch(),
+            epoch_id,
+        };
 
         storage
-            .write_vc_operation_tree(&epoch_id, &operation_tree)
+            .write_vc_operation_tree(&registered.epoch_id, &operation_tree)
             .map_err(|e| {
                 log::error!(
                     "vc: persist operation tree in register_vc_emulation_epoch failed: {e:?}"
@@ -163,15 +194,24 @@ impl MlsGroup {
                 RegisterVcEmulationEpochError::Storage(e)
             })?;
         storage
-            .write_vc_emulation_epoch_state(&epoch_id, &state)
+            .write_vc_emulation_epoch_state(&registered.epoch_id, &state)
             .map_err(|e| {
                 log::error!(
                     "vc: persist emulation epoch state in register_vc_emulation_epoch failed: {e:?}"
                 );
                 RegisterVcEmulationEpochError::Storage(e)
             })?;
+        storage
+            .write_registered_vc_emulation_epoch(self.group_id(), &registered)
+            .map_err(|e| {
+                log::error!(
+                    "vc: record registered emulation epoch in register_vc_emulation_epoch \
+                     failed: {e:?}"
+                );
+                RegisterVcEmulationEpochError::Storage(e)
+            })?;
 
-        Ok(epoch_id)
+        Ok(registered.epoch_id)
     }
 
     /// Returns the epoch authenticator of the current epoch.

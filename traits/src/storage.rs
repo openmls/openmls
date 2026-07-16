@@ -204,6 +204,21 @@ pub trait StorageProvider<const VERSION: u16> {
         bindings: &VcEmulationBindings,
     ) -> Result<(), Self::Error>;
 
+    /// Record the emulation epoch an emulation group registered for its
+    /// current group epoch. Written by the register call itself so that a
+    /// repeated call in the same group epoch returns the already-derived
+    /// epoch id instead of consuming the forward-secure exporter again. A
+    /// subsequent write replaces any previously stored record.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_registered_vc_emulation_epoch<
+        GroupId: traits::GroupId<VERSION>,
+        RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        registered: &RegisteredVcEmulationEpoch,
+    ) -> Result<(), Self::Error>;
+
     /// Write the per-emulation-epoch Virtual Client Operation Secret Tree
     /// (the lazily derived node secrets plus the per-leaf operation
     /// ratchets) for the given epoch. The tree is written back after every
@@ -536,6 +551,18 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<Option<VcEmulationBindings>, Self::Error>;
 
+    /// Load the emulation epoch the given emulation group registered (see
+    /// [`Self::write_registered_vc_emulation_epoch`]). Returns `None` if the
+    /// group never registered an emulation epoch.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn registered_vc_emulation_epoch<
+        GroupId: traits::GroupId<VERSION>,
+        RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<RegisteredVcEmulationEpoch>, Self::Error>;
+
     /// Get the per-emulation-epoch Virtual Client Operation Secret Tree for
     /// the given epoch (the lazily derived node secrets plus the per-leaf
     /// operation ratchets).
@@ -749,6 +776,15 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
+    /// Remove the registered emulation epoch record of the given group (see
+    /// [`Self::write_registered_vc_emulation_epoch`]). Called when the group
+    /// is being deleted or the member removed itself.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_registered_vc_emulation_epoch<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
     /// Delete the retained virtual clients KeyPackage material stored for the
     /// given KeyPackage reference. Called from [`Self::delete_key_package`] so
     /// the material is removed together with the KeyPackage it describes.
@@ -818,6 +854,8 @@ pub mod traits {
     pub trait VcEmulationEpochState<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcEmulationBindings<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait RegisteredVcEmulationEpoch<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcOperationTree<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]

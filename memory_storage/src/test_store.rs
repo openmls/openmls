@@ -626,6 +626,37 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
+    fn write_registered_vc_emulation_epoch<
+        GroupId: traits::GroupId<V_TEST>,
+        RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _registered: &RegisteredVcEmulationEpoch,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn registered_vc_emulation_epoch<
+        GroupId: traits::GroupId<V_TEST>,
+        RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<Option<RegisteredVcEmulationEpoch>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_registered_vc_emulation_epoch<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
     fn write_vc_operation_tree<
         EpochId: traits::VcEpochId<V_TEST>,
         VcOperationTree: traits::VcOperationTree<V_TEST>,

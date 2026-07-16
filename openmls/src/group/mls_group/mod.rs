@@ -523,12 +523,15 @@ impl MlsGroup {
         #[cfg(feature = "extensions-draft")]
         storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
 
-        // Drop this group's emulation-epoch bindings. `EmulationEpochState`
-        // and the operation secret tree are keyed on the emulation epoch
-        // and may still be referenced by other higher-level groups, so
-        // they're not deleted here.
+        // Drop this group's emulation-epoch bindings and its registration
+        // record. `EmulationEpochState` and the operation secret tree are
+        // keyed on the emulation epoch and may still be referenced by other
+        // higher-level groups, so they're not deleted here.
         #[cfg(feature = "virtual-clients-draft")]
-        storage.delete_vc_emulation_bindings(self.group_id())?;
+        {
+            storage.delete_vc_emulation_bindings(self.group_id())?;
+            storage.delete_registered_vc_emulation_epoch(self.group_id())?;
+        }
 
         self.proposal_store_mut().empty();
         storage.delete_encryption_epoch_key_pairs(

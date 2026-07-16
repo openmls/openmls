@@ -255,6 +255,88 @@ impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId
     }
 }
 
+/// The emulation epoch an emulation group registered for its current group
+/// epoch. One row per emulation group, holding the serialized registration
+/// record. Written by `register_vc_emulation_epoch`.
+pub(super) struct StorableRegisteredVcEmulationEpochRef<
+    'a,
+    RegisteredVcEmulationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>,
+>(pub &'a RegisteredVcEmulationEpoch);
+
+impl<'a, RegisteredVcEmulationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>>
+    StorableRegisteredVcEmulationEpochRef<'a, RegisteredVcEmulationEpoch>
+{
+    pub(super) fn store_registered_vc_emulation_epoch<
+        C: Codec,
+        GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        connection: &rusqlite::Connection,
+        group_id: &GroupId,
+    ) -> Result<(), rusqlite::Error> {
+        connection.execute(
+            "INSERT INTO registered_vc_emulation_epochs (provider_version, group_id, registration)
+            VALUES (?1, ?2, ?3)
+            ON CONFLICT(group_id) DO UPDATE SET
+                registration = excluded.registration,
+                provider_version = excluded.provider_version",
+            params![
+                STORAGE_PROVIDER_VERSION,
+                KeyRefWrapper::<C, _>(group_id, PhantomData),
+                EntityRefWrapper::<C, _>(self.0, PhantomData)
+            ],
+        )?;
+        Ok(())
+    }
+}
+
+impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId> {
+    pub(super) fn load_registered_vc_emulation_epoch<
+        C: Codec,
+        RegisteredVcEmulationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        connection: &rusqlite::Connection,
+    ) -> Result<Option<RegisteredVcEmulationEpoch>, rusqlite::Error> {
+        let Self(group_id) = self;
+        let mut stmt = connection.prepare(
+            "SELECT registration
+            FROM registered_vc_emulation_epochs
+            WHERE group_id = ?1
+                AND provider_version = ?2",
+        )?;
+        stmt.query_row(
+            params![
+                KeyRefWrapper::<C, GroupId>(group_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+            |row| {
+                let EntityWrapper::<C, RegisteredVcEmulationEpoch>(registration, ..) =
+                    row.get(0)?;
+                Ok(registration)
+            },
+        )
+        .optional()
+    }
+
+    pub(super) fn delete_registered_vc_emulation_epoch<C: Codec>(
+        &self,
+        connection: &rusqlite::Connection,
+    ) -> Result<(), rusqlite::Error> {
+        let Self(group_id) = self;
+        connection.execute(
+            "DELETE FROM registered_vc_emulation_epochs
+            WHERE group_id = ?1
+                AND provider_version = ?2",
+            params![
+                KeyRefWrapper::<C, GroupId>(group_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+        )?;
+        Ok(())
+    }
+}
+
 /// Per-emulation-epoch Virtual Client Operation Secret Tree. One row per
 /// emulation epoch, holding the serialized tree (node secrets plus per-leaf
 /// operation ratchets). Written back after every ratchet advance.
