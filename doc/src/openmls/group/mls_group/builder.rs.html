@@ -455,13 +455,13 @@
 <a href=#455 id=455 data-nosnippet>455</a>    <span class="comment">// The creator batch consists of this single derivation and is closed
 <a href=#456 id=456 data-nosnippet>456</a>    // immediately: no `KeyPackageUpload` is sent and no
 <a href=#457 id=457 data-nosnippet>457</a>    // `RetainedKeyPackageMaterial` is written, because a creator leaf has no
-<a href=#458 id=458 data-nosnippet>458</a>    // KeyPackage / KeyPackageRef. Derive the per-KeyPackage seed (index 0) under
-<a href=#459 id=459 data-nosnippet>459</a>    // the emulation ciphersuite, then the creator leaf's encryption keypair and
-<a href=#460 id=460 data-nosnippet>460</a>    // the epoch-0 secret from that seed under the created group's ciphersuite.
+<a href=#458 id=458 data-nosnippet>458</a>    // KeyPackage / KeyPackageRef. Import the per-KeyPackage seed (index 0) under
+<a href=#459 id=459 data-nosnippet>459</a>    // the created group's ciphersuite, then derive the creator leaf's encryption
+<a href=#460 id=460 data-nosnippet>460</a>    // keypair and the epoch-0 secret from that seed.
 <a href=#461 id=461 data-nosnippet>461</a>    </span><span class="kw">let </span>key_package_index = <span class="number">0</span>;
 <a href=#462 id=462 data-nosnippet>462</a>    <span class="kw">let </span>key_package_seed = operation_secret.derive_key_package_seed_secret(
 <a href=#463 id=463 data-nosnippet>463</a>        provider.crypto(),
-<a href=#464 id=464 data-nosnippet>464</a>        emulation_ciphersuite,
+<a href=#464 id=464 data-nosnippet>464</a>        ciphersuite,
 <a href=#465 id=465 data-nosnippet>465</a>        key_package_index,
 <a href=#466 id=466 data-nosnippet>466</a>    )<span class="question-mark">?</span>;
 <a href=#467 id=467 data-nosnippet>467</a>    <span class="kw">let </span>leaf_encryption_keypair = key_package_seed

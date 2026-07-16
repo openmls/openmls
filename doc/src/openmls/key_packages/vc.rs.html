@@ -197,81 +197,79 @@
 <a href=#197 id=197 data-nosnippet>197</a>        resolved_dictionary: <span class="kw-2">&amp;</span>AppDataDictionary,
 <a href=#198 id=198 data-nosnippet>198</a>        key_package_index: u32,
 <a href=#199 id=199 data-nosnippet>199</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(KeyPackageBundle, KeyPackageInfo), KeyPackageNewError&gt; {
-<a href=#200 id=200 data-nosnippet>200</a>        <span class="comment">// Derive the per-index seed under the emulation ciphersuite, then the
-<a href=#201 id=201 data-nosnippet>201</a>        // init and leaf encryption keys from the seed under the KeyPackage's
-<a href=#202 id=202 data-nosnippet>202</a>        // own ciphersuite.
-<a href=#203 id=203 data-nosnippet>203</a>        </span><span class="kw">let </span>seed = <span class="self">self</span>.operation_secret.derive_key_package_seed_secret(
-<a href=#204 id=204 data-nosnippet>204</a>            crypto,
-<a href=#205 id=205 data-nosnippet>205</a>            <span class="self">self</span>.emulation_ciphersuite,
-<a href=#206 id=206 data-nosnippet>206</a>            key_package_index,
-<a href=#207 id=207 data-nosnippet>207</a>        )<span class="question-mark">?</span>;
-<a href=#208 id=208 data-nosnippet>208</a>        <span class="kw">let </span>init_key_pair = seed
-<a href=#209 id=209 data-nosnippet>209</a>            .derive_init_key_secret(crypto, ciphersuite)<span class="question-mark">?
-<a href=#210 id=210 data-nosnippet>210</a>            </span>.generate_init_key_pair(crypto, ciphersuite)<span class="question-mark">?</span>;
-<a href=#211 id=211 data-nosnippet>211</a>        <span class="kw">let </span>encryption_key_pair = seed
-<a href=#212 id=212 data-nosnippet>212</a>            .derive_encryption_key_secret(crypto, ciphersuite)<span class="question-mark">?
-<a href=#213 id=213 data-nosnippet>213</a>            </span>.generate_encryption_key_pair(crypto, ciphersuite)<span class="question-mark">?</span>;
-<a href=#214 id=214 data-nosnippet>214</a>
-<a href=#215 id=215 data-nosnippet>215</a>        <span class="comment">// Wrap the TBE bound to the new leaf via its serialized encryption key.
-<a href=#216 id=216 data-nosnippet>216</a>        // The leaf dictionary was resolved and validated once for the whole
-<a href=#217 id=217 data-nosnippet>217</a>        // batch, so reuse a clone here.
-<a href=#218 id=218 data-nosnippet>218</a>        </span><span class="kw">let </span>leaf_encryption_key = encryption_key_pair
-<a href=#219 id=219 data-nosnippet>219</a>            .public_key()
-<a href=#220 id=220 data-nosnippet>220</a>            .tls_serialize_detached()
-<a href=#221 id=221 data-nosnippet>221</a>            .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
-<a href=#222 id=222 data-nosnippet>222</a>        <span class="kw">let </span>tbe = DerivationInfoTbe::KeyPackage {
-<a href=#223 id=223 data-nosnippet>223</a>            leaf_index: <span class="self">self</span>.emulation_leaf_index,
-<a href=#224 id=224 data-nosnippet>224</a>            generation: <span class="self">self</span>.generation,
-<a href=#225 id=225 data-nosnippet>225</a>            key_package_index,
-<a href=#226 id=226 data-nosnippet>226</a>        };
-<a href=#227 id=227 data-nosnippet>227</a>        <span class="kw">let </span>derivation_info = DerivationInfo::encrypt(
-<a href=#228 id=228 data-nosnippet>228</a>            crypto,
-<a href=#229 id=229 data-nosnippet>229</a>            <span class="self">self</span>.emulation_ciphersuite,
-<a href=#230 id=230 data-nosnippet>230</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.epoch_encryption_key,
-<a href=#231 id=231 data-nosnippet>231</a>            <span class="self">self</span>.epoch_id.clone(),
-<a href=#232 id=232 data-nosnippet>232</a>            <span class="kw-2">&amp;</span>leaf_encryption_key,
-<a href=#233 id=233 data-nosnippet>233</a>            <span class="kw-2">&amp;</span>tbe,
-<a href=#234 id=234 data-nosnippet>234</a>        )<span class="question-mark">?</span>;
-<a href=#235 id=235 data-nosnippet>235</a>        <span class="kw">let </span>derivation_info_bytes = derivation_info
-<a href=#236 id=236 data-nosnippet>236</a>            .tls_serialize_detached()
-<a href=#237 id=237 data-nosnippet>237</a>            .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
-<a href=#238 id=238 data-nosnippet>238</a>        builder.ensure_last_resort();
-<a href=#239 id=239 data-nosnippet>239</a>        <span class="kw">let </span>leaf_node_extensions = merge_vc_derivation_info(
-<a href=#240 id=240 data-nosnippet>240</a>            builder.leaf_node_extensions.as_ref(),
-<a href=#241 id=241 data-nosnippet>241</a>            resolved_dictionary.clone(),
-<a href=#242 id=242 data-nosnippet>242</a>            derivation_info_bytes,
-<a href=#243 id=243 data-nosnippet>243</a>        )
-<a href=#244 id=244 data-nosnippet>244</a>        .map_err(KeyPackageNewError::LibraryError)<span class="question-mark">?</span>;
-<a href=#245 id=245 data-nosnippet>245</a>
-<a href=#246 id=246 data-nosnippet>246</a>        <span class="kw">let </span>leaf_node_params = KeyPackageLeafNodeParams {
-<a href=#247 id=247 data-nosnippet>247</a>            lifetime: builder.key_package_lifetime.unwrap_or_default(),
-<a href=#248 id=248 data-nosnippet>248</a>            capabilities: builder.leaf_node_capabilities.unwrap_or_default(),
-<a href=#249 id=249 data-nosnippet>249</a>            extensions: leaf_node_extensions,
-<a href=#250 id=250 data-nosnippet>250</a>        };
-<a href=#251 id=251 data-nosnippet>251</a>        <span class="kw">let </span>(key_package, encryption_key_pair) = KeyPackage::new_from_vc_keys(
-<a href=#252 id=252 data-nosnippet>252</a>            ciphersuite,
-<a href=#253 id=253 data-nosnippet>253</a>            signer,
-<a href=#254 id=254 data-nosnippet>254</a>            credential_with_key,
-<a href=#255 id=255 data-nosnippet>255</a>            builder.key_package_extensions.unwrap_or_default(),
-<a href=#256 id=256 data-nosnippet>256</a>            leaf_node_params,
-<a href=#257 id=257 data-nosnippet>257</a>            init_key_pair.public.into(),
-<a href=#258 id=258 data-nosnippet>258</a>            encryption_key_pair,
-<a href=#259 id=259 data-nosnippet>259</a>        )<span class="question-mark">?</span>;
-<a href=#260 id=260 data-nosnippet>260</a>
-<a href=#261 id=261 data-nosnippet>261</a>        <span class="kw">let </span>key_package_ref = key_package.hash_ref(crypto)<span class="question-mark">?</span>;
-<a href=#262 id=262 data-nosnippet>262</a>        <span class="kw">let </span>full_kp = KeyPackageBundle {
-<a href=#263 id=263 data-nosnippet>263</a>            key_package,
-<a href=#264 id=264 data-nosnippet>264</a>            private_init_key: init_key_pair.private,
-<a href=#265 id=265 data-nosnippet>265</a>            private_encryption_key: encryption_key_pair.private_key().clone(),
-<a href=#266 id=266 data-nosnippet>266</a>        };
-<a href=#267 id=267 data-nosnippet>267</a>
-<a href=#268 id=268 data-nosnippet>268</a>        <span class="prelude-val">Ok</span>((
-<a href=#269 id=269 data-nosnippet>269</a>            full_kp,
-<a href=#270 id=270 data-nosnippet>270</a>            KeyPackageInfo {
-<a href=#271 id=271 data-nosnippet>271</a>                key_package_ref,
-<a href=#272 id=272 data-nosnippet>272</a>                key_package_index,
-<a href=#273 id=273 data-nosnippet>273</a>            },
-<a href=#274 id=274 data-nosnippet>274</a>        ))
-<a href=#275 id=275 data-nosnippet>275</a>    }
-<a href=#276 id=276 data-nosnippet>276</a>}
+<a href=#200 id=200 data-nosnippet>200</a>        <span class="kw">let </span>seed = <span class="self">self</span>.operation_secret.derive_key_package_seed_secret(
+<a href=#201 id=201 data-nosnippet>201</a>            crypto,
+<a href=#202 id=202 data-nosnippet>202</a>            ciphersuite,
+<a href=#203 id=203 data-nosnippet>203</a>            key_package_index,
+<a href=#204 id=204 data-nosnippet>204</a>        )<span class="question-mark">?</span>;
+<a href=#205 id=205 data-nosnippet>205</a>        <span class="kw">let </span>init_key_pair = seed
+<a href=#206 id=206 data-nosnippet>206</a>            .derive_init_key_secret(crypto, ciphersuite)<span class="question-mark">?
+<a href=#207 id=207 data-nosnippet>207</a>            </span>.generate_init_key_pair(crypto, ciphersuite)<span class="question-mark">?</span>;
+<a href=#208 id=208 data-nosnippet>208</a>        <span class="kw">let </span>encryption_key_pair = seed
+<a href=#209 id=209 data-nosnippet>209</a>            .derive_encryption_key_secret(crypto, ciphersuite)<span class="question-mark">?
+<a href=#210 id=210 data-nosnippet>210</a>            </span>.generate_encryption_key_pair(crypto, ciphersuite)<span class="question-mark">?</span>;
+<a href=#211 id=211 data-nosnippet>211</a>
+<a href=#212 id=212 data-nosnippet>212</a>        <span class="comment">// Wrap the TBE bound to the new leaf via its serialized encryption key.
+<a href=#213 id=213 data-nosnippet>213</a>        // The leaf dictionary was resolved and validated once for the whole
+<a href=#214 id=214 data-nosnippet>214</a>        // batch, so reuse a clone here.
+<a href=#215 id=215 data-nosnippet>215</a>        </span><span class="kw">let </span>leaf_encryption_key = encryption_key_pair
+<a href=#216 id=216 data-nosnippet>216</a>            .public_key()
+<a href=#217 id=217 data-nosnippet>217</a>            .tls_serialize_detached()
+<a href=#218 id=218 data-nosnippet>218</a>            .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
+<a href=#219 id=219 data-nosnippet>219</a>        <span class="kw">let </span>tbe = DerivationInfoTbe::KeyPackage {
+<a href=#220 id=220 data-nosnippet>220</a>            leaf_index: <span class="self">self</span>.emulation_leaf_index,
+<a href=#221 id=221 data-nosnippet>221</a>            generation: <span class="self">self</span>.generation,
+<a href=#222 id=222 data-nosnippet>222</a>            key_package_index,
+<a href=#223 id=223 data-nosnippet>223</a>        };
+<a href=#224 id=224 data-nosnippet>224</a>        <span class="kw">let </span>derivation_info = DerivationInfo::encrypt(
+<a href=#225 id=225 data-nosnippet>225</a>            crypto,
+<a href=#226 id=226 data-nosnippet>226</a>            <span class="self">self</span>.emulation_ciphersuite,
+<a href=#227 id=227 data-nosnippet>227</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.epoch_encryption_key,
+<a href=#228 id=228 data-nosnippet>228</a>            <span class="self">self</span>.epoch_id.clone(),
+<a href=#229 id=229 data-nosnippet>229</a>            <span class="kw-2">&amp;</span>leaf_encryption_key,
+<a href=#230 id=230 data-nosnippet>230</a>            <span class="kw-2">&amp;</span>tbe,
+<a href=#231 id=231 data-nosnippet>231</a>        )<span class="question-mark">?</span>;
+<a href=#232 id=232 data-nosnippet>232</a>        <span class="kw">let </span>derivation_info_bytes = derivation_info
+<a href=#233 id=233 data-nosnippet>233</a>            .tls_serialize_detached()
+<a href=#234 id=234 data-nosnippet>234</a>            .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
+<a href=#235 id=235 data-nosnippet>235</a>        builder.ensure_last_resort();
+<a href=#236 id=236 data-nosnippet>236</a>        <span class="kw">let </span>leaf_node_extensions = merge_vc_derivation_info(
+<a href=#237 id=237 data-nosnippet>237</a>            builder.leaf_node_extensions.as_ref(),
+<a href=#238 id=238 data-nosnippet>238</a>            resolved_dictionary.clone(),
+<a href=#239 id=239 data-nosnippet>239</a>            derivation_info_bytes,
+<a href=#240 id=240 data-nosnippet>240</a>        )
+<a href=#241 id=241 data-nosnippet>241</a>        .map_err(KeyPackageNewError::LibraryError)<span class="question-mark">?</span>;
+<a href=#242 id=242 data-nosnippet>242</a>
+<a href=#243 id=243 data-nosnippet>243</a>        <span class="kw">let </span>leaf_node_params = KeyPackageLeafNodeParams {
+<a href=#244 id=244 data-nosnippet>244</a>            lifetime: builder.key_package_lifetime.unwrap_or_default(),
+<a href=#245 id=245 data-nosnippet>245</a>            capabilities: builder.leaf_node_capabilities.unwrap_or_default(),
+<a href=#246 id=246 data-nosnippet>246</a>            extensions: leaf_node_extensions,
+<a href=#247 id=247 data-nosnippet>247</a>        };
+<a href=#248 id=248 data-nosnippet>248</a>        <span class="kw">let </span>(key_package, encryption_key_pair) = KeyPackage::new_from_vc_keys(
+<a href=#249 id=249 data-nosnippet>249</a>            ciphersuite,
+<a href=#250 id=250 data-nosnippet>250</a>            signer,
+<a href=#251 id=251 data-nosnippet>251</a>            credential_with_key,
+<a href=#252 id=252 data-nosnippet>252</a>            builder.key_package_extensions.unwrap_or_default(),
+<a href=#253 id=253 data-nosnippet>253</a>            leaf_node_params,
+<a href=#254 id=254 data-nosnippet>254</a>            init_key_pair.public.into(),
+<a href=#255 id=255 data-nosnippet>255</a>            encryption_key_pair,
+<a href=#256 id=256 data-nosnippet>256</a>        )<span class="question-mark">?</span>;
+<a href=#257 id=257 data-nosnippet>257</a>
+<a href=#258 id=258 data-nosnippet>258</a>        <span class="kw">let </span>key_package_ref = key_package.hash_ref(crypto)<span class="question-mark">?</span>;
+<a href=#259 id=259 data-nosnippet>259</a>        <span class="kw">let </span>full_kp = KeyPackageBundle {
+<a href=#260 id=260 data-nosnippet>260</a>            key_package,
+<a href=#261 id=261 data-nosnippet>261</a>            private_init_key: init_key_pair.private,
+<a href=#262 id=262 data-nosnippet>262</a>            private_encryption_key: encryption_key_pair.private_key().clone(),
+<a href=#263 id=263 data-nosnippet>263</a>        };
+<a href=#264 id=264 data-nosnippet>264</a>
+<a href=#265 id=265 data-nosnippet>265</a>        <span class="prelude-val">Ok</span>((
+<a href=#266 id=266 data-nosnippet>266</a>            full_kp,
+<a href=#267 id=267 data-nosnippet>267</a>            KeyPackageInfo {
+<a href=#268 id=268 data-nosnippet>268</a>                key_package_ref,
+<a href=#269 id=269 data-nosnippet>269</a>                cipher_suite: ciphersuite,
+<a href=#270 id=270 data-nosnippet>270</a>                key_package_index,
+<a href=#271 id=271 data-nosnippet>271</a>            },
+<a href=#272 id=272 data-nosnippet>272</a>        ))
+<a href=#273 id=273 data-nosnippet>273</a>    }
+<a href=#274 id=274 data-nosnippet>274</a>}
 </code></pre></div></section></main></body></html>
