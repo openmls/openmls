@@ -773,6 +773,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 loaded.resolved_dictionary.clone(),
                 crypto,
                 ciphersuite,
+                group.group_id(),
                 external_init_secret,
             )?)
         } else {
@@ -1224,7 +1225,7 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
 /// `leaf_node_parameters`'s `app_data_dictionary` extension.
 ///
 /// The `DerivationInfoTbe` wrapping stays in the emulation epoch's
-/// ciphersuite, while the operation secret is expanded under the
+/// ciphersuite, while the operation secret is imported into the
 /// higher-level group ciphersuite to produce MLS path material for this
 /// group. The generation was consumed and the advanced tree persisted when
 /// `vc_emulation` was called, so this helper neither allocates nor
@@ -1236,18 +1237,21 @@ fn apply_vc_emulation(
     resolved_dictionary: AppDataDictionary,
     crypto: &impl OpenMlsCrypto,
     group_ciphersuite: openmls_traits::types::Ciphersuite,
+    group_id: &crate::prelude::GroupId,
     external_init_secret: Option<&crate::schedule::InitSecret>,
 ) -> Result<crate::treesync::diff::OwnUpdatePathOverride, CreateCommitError> {
-    let emulation_ciphersuite = loaded.emulation_ciphersuite;
-
-    let path_secret = loaded
-        .operation_secret
+    let target_operation_secret = loaded.operation_secret.derive_target_operation_secret(
+        crypto,
+        group_ciphersuite,
+        group_id,
+    )?;
+    let path_secret = target_operation_secret
         .derive_path_generation_secret(crypto, group_ciphersuite)?
         .into();
-    let leaf_encryption_keypair = loaded
-        .operation_secret
+    let leaf_encryption_keypair = target_operation_secret
         .derive_encryption_key_secret(crypto, group_ciphersuite)?
         .generate_encryption_key_pair(crypto, group_ciphersuite)?;
+    drop(target_operation_secret);
 
     // Wrap the TBE under the per-epoch AEAD key, bound to the new leaf via
     // its serialized encryption key as derivation context.
@@ -1266,7 +1270,7 @@ fn apply_vc_emulation(
     };
     let derivation_info = DerivationInfo::encrypt(
         crypto,
-        emulation_ciphersuite,
+        loaded.emulation_ciphersuite,
         &loaded.epoch_encryption_key,
         loaded.epoch_id.clone(),
         &leaf_encryption_key,
