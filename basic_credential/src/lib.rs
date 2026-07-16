@@ -86,6 +86,18 @@ impl Signer for SignatureKeyPair {
                 Ok(signature.to_bytes().into())
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA44 => {
+                use ml_dsa::Signer;
+                let seed: &ml_dsa::Seed = self
+                    .private
+                    .as_slice()
+                    .try_into()
+                    .map_err(|_| SignerError::SigningError)?;
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa44>::from_seed(seed);
+                let signature = k.sign(payload);
+                Ok(signature.encode().to_vec())
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA65 => {
                 use ml_dsa::Signer;
                 let seed: &ml_dsa::Seed = self
@@ -152,6 +164,14 @@ impl SignatureKeyPair {
                 // Use as_bytes() to avoid an unzeroed stack copy from to_bytes().
                 // sk itself implements ZeroizeOnDrop.
                 (sk.as_bytes().as_slice().into(), pk)
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA44 => {
+                use ml_dsa::{Generate, Keypair};
+                let sk = ml_dsa::SigningKey::<ml_dsa::MlDsa44>::generate();
+                let pk = sk.verifying_key().encode().to_vec();
+                let sk = sk.to_seed().to_vec();
+                (sk.into(), pk)
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA65 => {
