@@ -557,7 +557,7 @@ fn confirmation_tag_presence<Provider: OpenMlsProvider>() {
     let pm = match PublicMessageIn::tls_deserialize(&mut serialized_pm.as_slice()) {
         Ok(pm) => pm,
         Err(err) => {
-            assert!(matches!(err, tls_codec::Error::InvalidVectorLength));
+            assert!(matches!(err, tls_codec::Error::EndOfStream));
             return;
         }
     };

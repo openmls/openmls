@@ -1,6 +1,6 @@
 use hpke_rs_libcrux::HpkeLibcrux;
 
-use std::sync::{Mutex, MutexGuard};
+use std::sync::Mutex;
 
 #[cfg(feature = "targeted-messages-draft")]
 use openmls_traits::crypto::HpkeSealPskResolvedAadError;
@@ -10,25 +10,53 @@ use openmls_traits::types::{
     HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
 };
 
-use rand::{rngs::OsRng, rngs::ReseedingRng, CryptoRng, RngCore};
-use rand_chacha::ChaCha20Core;
+use libcrux_hmac_drbg::{HmacDrbgSha256, MAX_GENERATE_BYTES};
+use rand::rngs::SysRng;
 
 use tls_codec::SecretVLBytes;
 
+/// Application-specific personalization string mixed into the HMAC-DRBG seed.
+const PERSONALIZATION: &[u8] = b"openmls-libcrux-hmac-drbg-v1";
+
 /// The libcrux-backed cryptography provider for OpenMLS
 pub struct CryptoProvider {
-    pub(super) rng: Mutex<ReseedingRng<ChaCha20Core, OsRng>>,
+    pub(super) rng: Mutex<HmacDrbgSha256>,
 }
 
 impl CryptoProvider {
     /// Instantiate a libcrux-based CryptoProvider
     pub fn new() -> Result<Self, CryptoError> {
-        let reseeding_rng = ReseedingRng::<ChaCha20Core, _>::new(0x100000000, OsRng)
+        // Seed the HMAC-DRBG from the operating system's entropy source.
+        let drbg = HmacDrbgSha256::new_from_sys_rng(PERSONALIZATION)
             .map_err(|_| CryptoError::InsufficientRandomness)?;
 
         Ok(Self {
-            rng: Mutex::new(reseeding_rng),
+            rng: Mutex::new(drbg),
         })
+    }
+
+    /// Fill `out` with fresh randomness from the HMAC-DRBG.
+    ///
+    /// Reseeds from the operating system's entropy source when the DRBG's
+    /// reseed interval is reached, and splits requests larger than
+    /// [`MAX_GENERATE_BYTES`] into multiple `generate` calls. Any failure to
+    /// obtain OS entropy for a reseed is propagated rather than panicking.
+    pub(super) fn fill_random(&self, out: &mut [u8]) -> Result<(), CryptoError> {
+        let mut drbg = self
+            .rng
+            .lock()
+            .map_err(|_| CryptoError::CryptoLibraryError)?;
+
+        for chunk in out.chunks_mut(MAX_GENERATE_BYTES) {
+            if drbg.needs_reseed() {
+                drbg.reseed_from_rng(&mut SysRng, &[])
+                    .map_err(|_| CryptoError::InsufficientRandomness)?;
+            }
+            drbg.generate(chunk, &[])
+                .map_err(|_| CryptoError::InsufficientRandomness)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -211,20 +239,29 @@ impl OpenMlsCrypto for CryptoProvider {
             return Err(CryptoError::UnsupportedSignatureScheme);
         }
 
-        let mut rng = self
-            .rng
-            .lock()
-            .map_err(|_| CryptoError::CryptoLibraryError)
-            .map(GuardedRng)?;
+        // Ed25519 key generation is just sampling a non-zero 32-byte secret and
+        // deriving the public point. We do it here (rather than via
+        // `libcrux_ed25519::generate_key_pair`, which requires an infallible
+        // `CryptoRng`) so that a DRBG reseed failure is propagated as an error.
+        const LIMIT: usize = 100;
+        let mut sk = [0u8; 32];
+        let mut found = false;
+        for _ in 0..LIMIT {
+            self.fill_random(&mut sk)?;
+            // Reject the all-zero secret key.
+            if sk.iter().any(|&b| b != 0) {
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            return Err(CryptoError::SigningError);
+        }
 
-        libcrux_ed25519::generate_key_pair(&mut rng)
-            .map_err(|_| CryptoError::SigningError)
-            .map(|(signing_key, verification_key)| {
-                (
-                    signing_key.into_bytes().to_vec(),
-                    verification_key.into_bytes().to_vec(),
-                )
-            })
+        let mut pk = [0u8; 32];
+        libcrux_ed25519::secret_to_public(&mut pk, &sk);
+
+        Ok((sk.to_vec(), pk.to_vec()))
     }
 
     fn verify_signature(
@@ -524,21 +561,3 @@ fn aead_alg(alg_type: AeadType) -> libcrux_aead::Aead {
         AeadType::Aes256Gcm => libcrux_aead::Aead::AesGcm256,
     }
 }
-
-struct GuardedRng<'a, Rng: RngCore>(MutexGuard<'a, Rng>);
-
-impl<Rng: RngCore> RngCore for GuardedRng<'_, Rng> {
-    fn next_u32(&mut self) -> u32 {
-        self.0.next_u32()
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        self.0.next_u64()
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.0.fill_bytes(dest)
-    }
-}
-
-impl<Rng: RngCore + CryptoRng> CryptoRng for GuardedRng<'_, Rng> {}
