@@ -226,6 +226,19 @@ impl Capabilities {
         required.all(|e| supported.contains(&e))
     }
 
+    /// Check if these [`Capabilities`] contain the extension.
+    #[cfg(test)]
+    pub(crate) fn contains_extension_type(&self, extension: &ExtensionType) -> bool {
+        // Many leaf nodes carry no non-default extensions. Skip building the
+        // lookup set for them.
+        if extension.is_default() {
+            return true;
+        }
+
+        let supported: HashSet<ExtensionType> = self.extensions().iter().copied().collect();
+        supported.contains(extension)
+    }
+
     /// Check if these [`Capabilities`] contains the credential.
     pub(crate) fn contains_credential(&self, credential_type: CredentialType) -> bool {
         self.credentials().contains(&credential_type)
