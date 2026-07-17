@@ -25,8 +25,8 @@ use crate::{
         Commit, Welcome,
     },
     prelude::{
-        CredentialWithKey, InvalidExtensionError, LeafNodeParameters, LibraryError, NewSignerBundle,
-        PreSharedKeyProposal,
+        CredentialWithKey, InvalidExtensionError, LeafNodeParameters, LibraryError,
+        NewSignerBundle, PreSharedKeyProposal,
     },
     schedule::{
         psk::{load_psks, PskSecret, ResumptionPsk, ResumptionPskUsage},
