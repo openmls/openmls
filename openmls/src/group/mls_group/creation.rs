@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use errors::NewGroupError;
 use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider as StorageProviderTrait};
 
@@ -17,7 +15,7 @@ use crate::{
     },
     schedule::{
         psk::{store::ResumptionPskStore, PreSharedKeyId},
-        EpochSecretsResult,
+        EpochSecretsResult, ResumptionPskSecret,
     },
     storage::OpenMlsProvider,
     treesync::{
@@ -146,6 +144,22 @@ impl ProcessedWelcome {
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
+        Self::new_from_welcome_inner(provider, mls_group_config, welcome, None)
+    }
+
+    /// Like [`ProcessedWelcome::new_from_welcome`], but allows injecting a
+    /// resumption PSK secret that is not held in storage.
+    ///
+    /// This is used for subgroup branching (RFC 9420 §11.3): the branch PSK
+    /// secret comes from the parent group and is injected at the sentinel epoch
+    /// 0, where [`load_psks`](crate::schedule::psk::load_psks) looks it up for
+    /// branch usage. See [`StagedWelcome::new_from_branch`].
+    pub(crate) fn new_from_welcome_inner<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+        injected_resumption_psk: Option<ResumptionPskSecret>,
+    ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let ciphersuite = welcome.ciphersuite();
         // Check this before touching any stored key material: `keys_for_welcome`
         // consumes a matching (non-last-resort) key package.
@@ -154,8 +168,14 @@ impl ProcessedWelcome {
             .supports(ciphersuite)
             .map_err(|_| WelcomeError::UnsupportedCiphersuite(ciphersuite))?;
 
-        let (resumption_psk_store, key_material) =
+        let (mut resumption_psk_store, key_material) =
             keys_for_welcome(mls_group_config, &welcome, provider)?;
+
+        // For subgroup branching, inject the parent group's resumption PSK at
+        // the sentinel epoch 0 before the PSKs are loaded.
+        if let Some(secret) = injected_resumption_psk {
+            resumption_psk_store.add(0.into(), secret);
+        }
 
         let Some(egs) =
             welcome.find_encrypted_group_secret(key_material.key_package_ref(provider.crypto())?)
@@ -528,94 +548,6 @@ impl ProcessedWelcome {
     }
 }
 
-/// Prepare the key schedule.
-pub(super) fn prepare_key_schedule<Provider: OpenMlsCrypto, E>(
-    provider: &Provider,
-    welcome: Welcome,
-    key_package_bundle: &KeyPackageBundle,
-    group_secrets: &GroupSecrets,
-    ciphersuite: Ciphersuite,
-    psks: Vec<(impl Borrow<PreSharedKeyId>, crate::prelude::Secret)>,
-) -> Result<(EpochSecretsResult, VerifiableGroupInfo), WelcomeError<E>> {
-    let psk_secret = PskSecret::new(provider, ciphersuite, psks)?;
-    let mut key_schedule = KeySchedule::init(
-        ciphersuite,
-        provider,
-        &group_secrets.joiner_secret,
-        psk_secret,
-    )?;
-
-    let (welcome_key, welcome_nonce) = key_schedule
-        .welcome(provider, ciphersuite)
-        .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
-        .derive_welcome_key_nonce(provider, ciphersuite)
-        .map_err(LibraryError::unexpected_crypto_error)?;
-
-    let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
-        &welcome_key,
-        &welcome_nonce,
-        welcome.encrypted_group_info(),
-        &[],
-        provider,
-    )?;
-
-    if let Some(required_capabilities) = verifiable_group_info.extensions().required_capabilities()
-    {
-        // Also check that our key package actually supports the extensions.
-        // As per the spec, the sender must have checked this. But you never know.
-        key_package_bundle
-            .key_package()
-            .leaf_node()
-            .capabilities()
-            .supports_required_capabilities(required_capabilities)?;
-    }
-
-    if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
-        let e = WelcomeError::CiphersuiteMismatch;
-        return Err(e);
-    }
-
-    let serialized_group_context = verifiable_group_info
-        .group_context()
-        .tls_serialize_detached()
-        .map_err(LibraryError::missing_bound_check)?;
-
-    // TODO #751: Implement PSK
-    key_schedule.add_context(provider, &serialized_group_context)?;
-
-    let epoch_secrets = key_schedule.epoch_secrets(provider, ciphersuite)?;
-
-    Ok((epoch_secrets, verifiable_group_info))
-}
-
-/// Decrypt the welcome message and get the decrypted group secrets.
-pub(super) fn decrypt_group_secrets<Provider: OpenMlsCrypto, T>(
-    provider: &Provider,
-    welcome: &Welcome,
-    key_package_bundle: &KeyPackageBundle,
-    // XXX: Fix error type
-) -> Result<GroupSecrets, WelcomeError<T>> {
-    let ciphersuite = welcome.ciphersuite();
-    let Some(egs) =
-        welcome.find_encrypted_group_secret(key_package_bundle.key_package().hash_ref(provider)?)
-    else {
-        return Err(WelcomeError::JoinerSecretNotFound);
-    };
-    if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
-        let e = WelcomeError::CiphersuiteMismatch;
-        return Err(e);
-    }
-    let group_secrets = GroupSecrets::try_from_ciphertext(
-        key_package_bundle.init_private_key(),
-        egs.encrypted_group_secrets(),
-        welcome.encrypted_group_info(),
-        ciphersuite,
-        provider,
-    )?;
-    PreSharedKeyId::validate_in_welcome(&group_secrets.psks, ciphersuite)?;
-    Ok(group_secrets)
-}
-
 impl StagedWelcome {
     /// Creates a new staged welcome from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
@@ -650,6 +582,66 @@ impl StagedWelcome {
 
         // processed_welcome.into_staged_welcome(provider, ratchet_tree)
         Ok(JoinBuilder::new(provider, processed_welcome))
+    }
+
+    /// Creates a [`StagedWelcome`] for a subgroup branched from `parent`, as
+    /// described in [RFC 9420 §11.3].
+    ///
+    /// In addition to the regular [`StagedWelcome::new_from_welcome`] processing,
+    /// this injects `parent`'s resumption PSK secret (which is required to derive
+    /// the subgroup's key schedule from the branch PSK) and enforces the
+    /// receiver-side checks the RFC mandates when joining a branched subgroup:
+    ///
+    /// * the protocol version and ciphersuite match `parent`,
+    /// * the subgroup is at epoch 1, and
+    /// * every member of the subgroup matches a member of `parent`.
+    ///
+    /// Matching members is left to the application by the RFC; here we use
+    /// credential equality for equivalent identifiers when `check_members` is
+    /// `true`.
+    ///
+    /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
+    pub fn new_from_branch<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+        ratchet_tree: Option<RatchetTreeIn>,
+        parent: &MlsGroup,
+        check_members: bool,
+    ) -> Result<Self, WelcomeError<Provider::StorageError>> {
+        let processed_welcome = ProcessedWelcome::new_from_welcome_inner(
+            provider,
+            mls_group_config,
+            welcome,
+            Some(parent.resumption_psk_secret().clone()),
+        )?;
+
+        // RFC 9420 §11.3 receiver checks (a) and (b): the version and ciphersuite
+        // must match the parent group, and the subgroup must be at epoch 1.
+        let group_info = processed_welcome.unverified_group_info();
+        if group_info.group_context().protocol_version() != parent.version()
+            || group_info.ciphersuite() != parent.ciphersuite()
+        {
+            return Err(WelcomeError::SubgroupParameterMismatch);
+        }
+        if group_info.group_context().epoch().as_u64() != 1 {
+            return Err(WelcomeError::SubgroupEpochInvalid);
+        }
+
+        let staged_welcome = processed_welcome.into_staged_welcome(provider, ratchet_tree)?;
+
+        if check_members {
+            // RFC 9420 §11.3 receiver check (c): every LeafNode in the subgroup must
+            // match a LeafNode in the parent group.
+            let parent_credentials: Vec<_> = parent.members().map(|m| m.credential).collect();
+            for member in staged_welcome.members() {
+                if !parent_credentials.contains(&member.credential) {
+                    return Err(WelcomeError::SubgroupLeafMismatch);
+                }
+            }
+        }
+
+        Ok(staged_welcome)
     }
 
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
@@ -777,7 +769,7 @@ impl StagedWelcome {
 }
 
 /// Read keys for decrypting the welcome message.
-pub(super) fn keys_for_welcome<Provider: OpenMlsProvider>(
+fn keys_for_welcome<Provider: OpenMlsProvider>(
     mls_group_config: &MlsGroupJoinConfig,
     welcome: &Welcome,
     provider: &Provider,

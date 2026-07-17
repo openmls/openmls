@@ -116,6 +116,18 @@ pub enum WelcomeError<StorageError> {
     /// This error indicates that computing the key schedule failed
     #[error(transparent)]
     KeySchedule(#[from] KeyScheduleError),
+    /// The subgroup's protocol version or ciphersuite does not match the parent
+    /// group (RFC 9420 §11.3).
+    #[error("The subgroup's protocol version or ciphersuite does not match the parent group.")]
+    SubgroupParameterMismatch,
+    /// The subgroup is not at epoch 1, as required for a branched subgroup
+    /// (RFC 9420 §11.3).
+    #[error("The subgroup is not at epoch 1.")]
+    SubgroupEpochInvalid,
+    /// A member of the subgroup does not match any member of the parent group
+    /// (RFC 9420 §11.3).
+    #[error("A member of the subgroup does not match any member of the parent group.")]
+    SubgroupLeafMismatch,
 }
 
 /// External Commit error

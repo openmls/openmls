@@ -605,39 +605,25 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
     let mut psk_bundles = Vec::new();
 
     for psk_id in psk_ids.iter() {
-        // log_crypto!(trace, "PSK store {:?}", resumption_psk_store);
+        log_crypto!(trace, "PSK store {:?}", resumption_psk_store);
 
         match &psk_id.psk {
             Psk::Resumption(resumption) => {
-                // eprintln!("resumption.psk_epoch(): {}", resumption.psk_epoch());
-                // eprintln!("resumption_psk_store: {:?}", resumption_psk_store);
-                match resumption.usage() {
-                    ResumptionPskUsage::Application => {
-                        // Application PSKs can be from any previous epoch.
-                        if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
-                            psk_bundles.push((psk_id, psk_bundle.secret.clone()));
-                        } else {
-                            debug_assert!(false, "Couldn't find resumption PSK key.");
-                            return Err(PskError::KeyNotFound);
-                        }
+                let psk_epoch = match resumption.usage() {
+                    // Application and Reinit PSKs are looked up by their own epoch.
+                    ResumptionPskUsage::Application | ResumptionPskUsage::Reinit => {
+                        resumption.psk_epoch()
                     }
-                    ResumptionPskUsage::Reinit => {
-                        debug_assert!(false, "Couldn't find resumption PSK key.");
-                        return Err(PskError::LibraryError(LibraryError::custom(
-                            "ReInit is not implemented yet. See #1685.",
-                        )));
-                    }
-                    ResumptionPskUsage::Branch => {
-                        // The branching PSK is not actually in the resumption store.
-                        // This PSK is from a different group and must have been
-                        // loaded into the store beforehand for epoch 0.
-                        if let Some(psk_bundle) = resumption_psk_store.get(0.into()) {
-                            psk_bundles.push((psk_id, psk_bundle.secret.clone()));
-                        } else {
-                            debug_assert!(false, "Couldn't find resumption PSK key.");
-                            return Err(PskError::KeyNotFound);
-                        }
-                    }
+                    // The branch PSK is not in this group's resumption store: it
+                    // comes from the parent group and is injected at the sentinel
+                    // epoch 0 (see `CommitBuilder::branch` and
+                    // `ProcessedWelcome::new_from_welcome_inner`).
+                    ResumptionPskUsage::Branch => 0.into(),
+                };
+                if let Some(psk_bundle) = resumption_psk_store.get(psk_epoch) {
+                    psk_bundles.push((psk_id, psk_bundle.secret.clone()));
+                } else {
+                    return Err(PskError::KeyNotFound);
                 }
             }
             Psk::External(_) => {

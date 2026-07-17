@@ -536,8 +536,8 @@ impl PublicGroup {
                     if self.group_context.epoch().as_u64() != 0 {
                         return Err(PskError::NotAllowed.into());
                     }
-
-                    // FIXME: check for https://validation.openmls.tech/#valn1401
+                    // Note: branch/reinit exclusivity (valn1401) is enforced for
+                    // the Welcome PSK list in `PreSharedKeyId::validate_in_welcome`.
                 }
             }
 
