@@ -384,9 +384,9 @@ fn migrate_group(
         .expect("error reading the old storage")
         .expect("no group with this id in the old storage");
 
-    // 2. Bridge the bundle through a self-describing serde format (here JSON) into
-    //    the *current* version's migration bundle. The intermediate buffer is
-    //    zeroized on drop (see `serde_json_bridge`).
+    // 2. Bridge the bundle through `serde_json` into the *current* version's
+    //    migration bundle. The intermediate buffer is zeroized on drop (see
+    //    `serde_json_bridge`).
     let bundle: openmls_current::storage::GroupMigrationBundle =
         serde_json_bridge(&bundle).expect("error bridging the migration bundle through serde_json");
 
@@ -1150,8 +1150,8 @@ fn current_credential(
 
 // ANCHOR: migrate_signature_key_pair
 /// Migrate one application-managed signature key pair by bridging it through
-/// serde: serialize the previous version's `SignatureKeyPair`, deserialize it as
-/// the current version's type, and store it in the current provider.
+/// `serde_json`: serialize the previous version's `SignatureKeyPair`, deserialize
+/// it as the current version's type, and store it in the current provider.
 fn migrate_signature_key_pair(
     old_signer: &openmls_basic_credential_compat::SignatureKeyPair,
     new_storage: &SerdeJsonProvider<'_>,
@@ -1169,7 +1169,7 @@ fn migrate_signature_key_pair(
 /// Migrate one key package. The application supplies the hash reference
 /// it tracks (OpenMLS keys stored key packages by it). We read the stored
 /// `KeyPackageBundle` with the previous version's storage API, bridge it through
-/// serde, and write it to the current store under its current-version hash
+/// `serde_json`, and write it to the current store under its current-version hash
 /// reference. Returns the bridged bundle so the caller can use its `KeyPackage`.
 ///
 /// The two `StorageProvider` traits (previous and current version) are brought
@@ -1190,7 +1190,7 @@ fn migrate_key_package(
             .expect("no key package stored under this hash ref")
     };
 
-    // 2. Bridge it through serde into the current version's type.
+    // 2. Bridge it through `serde_json` into the current version's type.
     let bundle: openmls_current::prelude::KeyPackageBundle =
         serde_json_bridge(&old_bundle).expect("bridge key package into the current version");
 

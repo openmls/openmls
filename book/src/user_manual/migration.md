@@ -74,7 +74,7 @@ and swap that instead of overwriting.
 ## Performing the migration
 
 For each group, the migration is performed by exporting it using the previous version's API,
-then bridging the bundle through `serde`, and storing it with the current version:
+then bridging the bundle through `serde_json`, and storing it with the current version:
 
 ```rust,no_run,noplayground
 {{#include ../../../compat_tests/tests/test_migration.rs:migration}}
@@ -93,9 +93,9 @@ The same helper is reused for the application-managed material further down.
 This migration flow should be performed once per group.
 Afterwards the group can be loaded normally with the current-version `MlsGroup::load`.
 
-Groups should be migrated this within a single storage transaction, observing the invariants in
-[Requirements](#requirements) above. **NOTE**: queued proposals and pending commits are
-migrated along with the rest of the group state.
+Migrate each group within a single storage transaction, observing the invariants in
+[Migration requirements](#migration-requirements) above. **NOTE**: queued proposals and pending
+commits are migrated along with the rest of the group state.
 
 ## What is not migrated
 
@@ -112,7 +112,7 @@ All three cases below use the existing public storage APIs. Each takes a value (
 id) from the previous version and produces the current-version equivalent in the
 new store.
 
-**Signature key pairs** bridge directly through serde:
+**Signature key pairs** bridge directly through `serde_json`:
 
 ```rust,no_run,noplayground
 {{#include ../../../compat_tests/tests/test_migration.rs:migrate_signature_key_pair}}
