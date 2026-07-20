@@ -68,6 +68,7 @@ struct Data {
     // virtual-clients-draft
     vc_emulation_epoch_state: Table,
     vc_emulation_bindings: Table,
+    registered_vc_emulation_epoch: Table,
     vc_operation_tree: Table,
     retained_key_package_material: Table,
     retained_key_package_epoch: Table,
@@ -964,6 +965,18 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
+        fn registered_vc_emulation_epoch<
+            GroupId: traits::GroupId<$version>,
+            RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<$version>,
+        >(
+            &self,
+            group_id: &GroupId,
+        ) -> Result<Option<RegisteredVcEmulationEpoch>, $error> {
+            let data = self.0 .0.lock().unwrap();
+            read(group_id, &data.registered_vc_emulation_epoch)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
         fn vc_operation_tree<
             EpochId: traits::VcEpochId<$version>,
             VcOperationTree: traits::VcOperationTree<$version>,
@@ -1024,6 +1037,23 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         ) -> Result<(), $error> {
             let mut data = self.0 .0.lock().unwrap();
             write(group_id, bindings, &mut data.vc_emulation_bindings)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn write_registered_vc_emulation_epoch<
+            GroupId: traits::GroupId<$version>,
+            RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<$version>,
+        >(
+            &self,
+            group_id: &GroupId,
+            registered: &RegisteredVcEmulationEpoch,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            write(
+                group_id,
+                registered,
+                &mut data.registered_vc_emulation_epoch,
+            )
         }
 
         #[cfg(feature = "virtual-clients-draft")]
@@ -1095,6 +1125,15 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         ) -> Result<(), $error> {
             let mut data = self.0 .0.lock().unwrap();
             delete(group_id, &mut data.vc_emulation_bindings)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn delete_registered_vc_emulation_epoch<GroupId: traits::GroupId<$version>>(
+            &self,
+            group_id: &GroupId,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            delete(group_id, &mut data.registered_vc_emulation_epoch)
         }
 
         #[cfg(feature = "virtual-clients-draft")]
