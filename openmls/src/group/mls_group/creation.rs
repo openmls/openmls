@@ -175,12 +175,15 @@ impl ProcessedWelcome {
     }
 
     /// Like [`ProcessedWelcome::new_from_welcome`], but allows injecting a
-    /// resumption PSK secret that is not held in storage.
+    /// resumption PSK secret that is not held in storage, at a given epoch.
     ///
-    /// This is used for subgroup branching (RFC 9420 §11.3): the branch PSK
-    /// secret comes from the parent group and is injected at the sentinel epoch
-    /// 0, where [`load_psks`](crate::schedule::psk::load_psks) looks it up for
-    /// branch usage. See [`StagedWelcome::build_from_branch`].
+    /// This is used for subgroup branching (RFC 9420 §11.3) and
+    /// reinitialization (RFC 9420 §11.2): the branch resp. reinit PSK secret
+    /// comes from another group and is injected at the epoch where
+    /// [`load_psks`](crate::schedule::psk::load_psks) looks it up — the sentinel
+    /// epoch 0 for branch usage, and the old group's (reinit) epoch for reinit
+    /// usage. See [`StagedWelcome::new_from_branch`] and
+    /// [`StagedWelcome::new_from_reinit`].
     pub(crate) fn new_from_welcome_inner<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
@@ -576,7 +579,7 @@ impl StagedWelcome {
         let (resumption_psk_store, key_material, group_secrets) =
             decrypt_group_secrets(provider, mls_group_config, &welcome)?;
 
-        Ok(PendingBranchWelcome {
+        Ok(PendingBranchWelcome { 
             mls_group_config: mls_group_config.clone(),
             ciphersuite: welcome.ciphersuite(),
             welcome,
@@ -584,6 +587,97 @@ impl StagedWelcome {
             key_material,
             group_secrets,
         })
+    }
+
+    /// Creates a [`StagedWelcome`] for a group reinitialized from `old_group`, as
+    /// described in [RFC 9420 §11.2].
+    ///
+    /// `old_group` must have merged the commit containing `reinit_proposal` (so
+    /// it is suspended). The caller supplies that same `reinit_proposal` (it was
+    /// covered by the ReInit commit both members merged) so the successor's
+    /// parameters can be validated against it, and is responsible for not reusing
+    /// a suspended group to join more than one successor.
+    ///
+    /// In addition to the regular [`StagedWelcome::new_from_welcome`] processing,
+    /// this injects `old_group`'s resumption PSK secret (required to derive the
+    /// successor group's key schedule from the reinit PSK) and enforces the
+    /// receiver-side checks the RFC mandates when joining a reinitialized group:
+    ///
+    /// * the successor's group id, protocol version, ciphersuite and extensions
+    ///   match the ReInit proposal,
+    /// * the successor is at epoch 1, and
+    /// * every member of the successor group matches a member of `old_group`.
+    ///
+    /// Matching members is left to the application by the RFC; here we use
+    /// credential equality for equivalent identifiers when `check_members` is
+    /// `true`.
+    ///
+    /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
+    pub fn new_from_reinit<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+        ratchet_tree: Option<RatchetTreeIn>,
+        old_group: &MlsGroup,
+        reinit_proposal: &ReInitProposal,
+        check_members: bool,
+    ) -> Result<Self, WelcomeError<Provider::StorageError>> {
+        // The reinit PSK is looked up by the old group's (reinit) epoch.
+        let reinit_epoch = old_group.epoch(); // use the psk's epoch instead?
+
+        // TODO: Temporary hack for minimally invasive rebase; clean up later with own or unified struct
+        let branch_info = BranchInfo {
+                version: old_group.version(), // this is allowed to change in ReInit
+                ciphersuite: old_group.ciphersuite(), // this is allowed to change in ReInit
+                group_id: old_group.group_id().clone(),
+                epoch: reinit_epoch,
+                resumption_psk_secret: old_group.resumption_psk_secret().clone(), // works because old group is suspended in the right epoch
+                member_credentials: old_group.members().map(|member| member.credential).collect(),
+            };
+
+        let processed_welcome = ProcessedWelcome::new_from_welcome_inner(
+            provider,
+            mls_group_config,
+            welcome,
+            Some(&branch_info),
+            // Some((reinit_epoch, old_group.resumption_psk_secret().clone())),
+        )?;
+
+
+        // RFC 9420 §11.2 receiver checks: the successor's parameters must match
+        // the ReInit proposal, and it must be at epoch 1.
+        let group_info = processed_welcome.unverified_group_info();
+        let group_context = group_info.group_context();
+        // https://validation.openmls.tech/#valn1413 (parameters match the ReInit
+        // proposal).
+        if group_context.protocol_version() != reinit_proposal.version()
+            || group_info.ciphersuite() != reinit_proposal.ciphersuite()
+            || group_context.group_id() != reinit_proposal.group_id()
+            || group_context.extensions() != reinit_proposal.extensions()
+        {
+            return Err(WelcomeError::ReInitParameterMismatch);
+        }
+        // https://validation.openmls.tech/#valn1412 (reinit/branch PSK => epoch 1).
+        if group_context.epoch().as_u64() != 1 {
+            return Err(WelcomeError::ReInitEpochInvalid);
+        }
+
+        let staged_welcome = processed_welcome.into_staged_welcome(provider, ratchet_tree)?;
+
+        if check_members {
+            // RFC 9420 §11.2 receiver check: every LeafNode in the successor group
+            // must match a LeafNode in the old group.
+            // https://validation.openmls.tech/#valn1413 (all old-group members are
+            // members of the successor group).
+            let old_credentials: Vec<_> = old_group.members().map(|m| m.credential).collect();
+            for member in staged_welcome.members() {
+                if !old_credentials.contains(&member.credential) {
+                    return Err(WelcomeError::ReInitLeafMismatch);
+                }
+            }
+        }
+
+        Ok(staged_welcome)
     }
 
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.

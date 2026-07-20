@@ -55,10 +55,9 @@ pub use crate::treesync::{
 };
 
 // PSKs
-// TODO #751
-// pub use crate::schedule::psk::{
-//    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskBundle, PskType, ReinitPsk,
-// };
+pub use crate::schedule::psk::{
+    ExternalPsk, PreSharedKeyId, Psk, PskType, ResumptionPsk, ResumptionPskUsage,
+};
 
 // Targeted messages
 #[cfg(feature = "targeted-messages-draft")]
