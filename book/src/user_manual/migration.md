@@ -5,6 +5,9 @@ a group, together with all the group-associated data it owns, is exported with t
 previous version of the library, serialized into `serde_json`, and
 then imported into the *current* version of the library, which writes it back out in the new storage format.
 
+The storage migration is a re-encoding of a member's own stored, local state:
+it doesn't change anything on the wire, and doesn't need coordination with other group members.
+
 This migration approach requires the `migration-export` feature on the previous version's `openmls`
 crate and the `migration-import` feature on the current one.
 
@@ -41,19 +44,18 @@ may silently shift the layout used for serialization, and corrupt existing data.
 
 The following requirements must be satisfied when migrating:
 
-- **Quiescence.** The migration must run while the MLS state is at rest: no
+- **Quiescence.** The migration must run while the local MLS state is at rest: no
   message is mid-processing, and nothing else — no other thread or process —
-  touches the store until the migration completes. Group state that is
+  touches the store being migrated until the migration completes. Group state that is
   legitimately pending at rest is fine: queued (uncommitted) proposals and a
   pending, not yet merged commit are both migrated and preserved.
 - **Atomicity.** Perform the migration (together with any cleanup of the old
   data, see below) within a single storage transaction, so that an interruption
-  cannot leave a group partially migrated. The transaction comes from the
-  *backing store* (e.g. SQLite) — the OpenMLS storage traits have no transaction
-  API. Alternatives: per-group transactions with a per-group
-  “migrated” marker (allowing an interrupted migration to resume), or —
-  recommended — migrating into a **fresh store**, verifying, then
-  atomically swapping it in and discarding the old one.
+  cannot leave a group partially migrated. Any such transaction has to come from
+  the *backing store* (e.g. SQLite) — the OpenMLS storage traits have no
+  transaction API — so it is only available if your backing store supports one.
+  When it does not — and recommended in general — migrate into a **fresh store**,
+  verify, then atomically swap it in and discard the old one.
 - **Interruption tolerance.** Import is a *replace*, not an append, so it is
   idempotent: re-running the migration after a crash is safe as long as the old
   data is still intact.
@@ -174,9 +176,7 @@ mobile app):
   it on the schema-version marker.
 - **Expect interruption.** Mobile operating systems terminate apps freely, so
   the migration can be cut short at any point — the transactional, idempotent
-  design above makes this safe. Run the migration off the main thread, and prefer the
-  per-group-marker shape if group counts are large enough to make resumability
-  matter.
+  design above makes this safe. The migration should be run off of the main thread.
 - **Check disk space.** Migrating into a fresh store temporarily roughly doubles
   the storage footprint.
 - **Plan the release lifecycle.** One “migration release” of the application
