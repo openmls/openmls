@@ -17,13 +17,16 @@ use mls_client::{
 use mls_interop_proto::mls_client;
 use openmls::{
     credentials::{BasicCredential, Credential, CredentialType, CredentialWithKey},
+    extensions::{Extension, Extensions, ExternalSender, SenderExtensionIndex},
     framing::{MlsMessageBodyIn, MlsMessageIn, MlsMessageOut, ProcessedMessageContent},
     group::{
-        GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig, StagedWelcome,
-        WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        BranchInfo, GroupContext, GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig,
+        MlsGroupJoinConfig, StagedWelcome, WireFormatPolicy, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::{KeyPackage, KeyPackageBundle},
-    prelude::{Capabilities, ExtensionType, SenderRatchetConfiguration},
+    messages::external_proposals::{ExternalProposal, JoinProposal},
+    prelude::{Capabilities, ProposalOrRefType, Propose, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::{LeafNodeParameters, RatchetTreeIn},
     versions::ProtocolVersion,
@@ -31,20 +34,13 @@ use openmls::{
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, types::Ciphersuite, OpenMlsProvider};
-use tls_codec::{Deserialize, Serialize};
+use tls_codec::{Deserialize, Serialize, VLBytes};
 use tonic::{async_trait, transport::Server, Code, Request, Response, Status};
 use tracing::{debug, error, info, instrument, trace, Span};
 use tracing_subscriber::EnvFilter;
 
 const IMPLEMENTATION_NAME: &str = "OpenMLS";
 const CREDENTIAL_TYPES: [CredentialType; 1] = [CredentialType::Basic];
-const EXTENSION_TYPES: [ExtensionType; 5] = [
-    ExtensionType::ApplicationId,
-    ExtensionType::ExternalSenders,
-    ExtensionType::RequiredCapabilities,
-    ExtensionType::ExternalPub,
-    ExtensionType::RatchetTree,
-];
 
 /// This struct contains the state for a single MLS client. The interop client
 /// doesn't consider scenarios where a credential is re-used across groups, so
@@ -64,14 +60,30 @@ type PendingState = (
     OpenMlsRustCrypto,
 );
 
+/// State for an external signer created via `create_external_signer` and later
+/// used by `external_signer_proposal`. Keyed by the `u32` signer id we mint and
+/// return to the test-runner. The signer is not a group member, so we only need
+/// its signing keypair (the credential is retained for symmetry / debugging).
+type ExternalSignerState = (SignatureKeyPair, Credential);
+
 /// This is the main state struct of the interop client. It keeps track of the
 /// individual MLS clients, as well as pending key packages that it was told to
-/// create. It also contains a transaction id map, that maps the `u32`
-/// transaction ids to key package hashes.
+/// create. Pending key packages are keyed by their `u32` transaction id, which
+/// the test-runner assigns per key package and echoes back (e.g. in `JoinGroup`
+/// and `StorePsk`). Keying by transaction id -- rather than by identity, which
+/// is reused across scenarios -- is what keeps concurrently running scenarios
+/// from clobbering each other's pending key packages.
 pub struct MlsClientImpl {
     groups: Mutex<Vec<InteropGroup>>,
-    pending_state: Mutex<HashMap<Vec<u8>, PendingState>>,
-    transaction_id_map: Mutex<HashMap<u32, Vec<u8>>>, // Indirection, linking to pending key packages
+    pending_state: Mutex<HashMap<u32, PendingState>>,
+    external_signers: Mutex<HashMap<u32, ExternalSignerState>>,
+    // `BranchInfo` snapshotted for every group this client is a member of,
+    // keyed by (group_id, epoch) at snapshot time -- see `record_branch_info`.
+    // `handle_branch` must select the entry matching the epoch the Welcome's
+    // branch PSK actually references, not the parent's live/current epoch
+    // (which may have advanced since the branch was created) -- see the
+    // comment in `handle_branch` for details.
+    branch_infos: Mutex<HashMap<(GroupId, GroupEpoch), BranchInfo>>,
 }
 
 impl MlsClientImpl {
@@ -80,8 +92,79 @@ impl MlsClientImpl {
         MlsClientImpl {
             groups: Mutex::new(Vec::new()),
             pending_state: Mutex::new(HashMap::new()),
-            transaction_id_map: Mutex::new(HashMap::new()),
+            external_signers: Mutex::new(HashMap::new()),
+            branch_infos: Mutex::new(HashMap::new()),
         }
+    }
+
+    // Lock accessors that recover from a poisoned mutex instead of panicking.
+    //
+    // The gRPC handlers do a lot of `.unwrap()`ing while holding these locks, so
+    // a single failing request can panic mid-handler and poison the mutex. With
+    // plain `.lock().unwrap()` that poison is permanent: every subsequent
+    // request panics on lock acquisition and the server is bricked until it is
+    // restarted. Recovering the guard via `into_inner()` keeps one bad request
+    // from taking the whole server down with it.
+
+    fn groups(&self) -> std::sync::MutexGuard<'_, Vec<InteropGroup>> {
+        self.groups.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn pending_state(&self) -> std::sync::MutexGuard<'_, HashMap<u32, PendingState>> {
+        self.pending_state.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn external_signers(&self) -> std::sync::MutexGuard<'_, HashMap<u32, ExternalSignerState>> {
+        self.external_signers
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn branch_infos(
+        &self,
+    ) -> std::sync::MutexGuard<'_, HashMap<(GroupId, GroupEpoch), BranchInfo>> {
+        self.branch_infos.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Snapshot `group`'s `BranchInfo` at its current epoch into the
+    /// `branch_infos` cache. Called every time a group's local epoch is
+    /// established or advances, so that if another implementation later
+    /// branches off this exact epoch, `handle_branch` can find the matching
+    /// entry even though this client never called `create_branch` itself.
+    fn record_branch_info(&self, group: &MlsGroup) {
+        self.branch_infos().insert(
+            (group.group_id().clone(), group.epoch()),
+            group.branch_info(),
+        );
+    }
+
+    /// Pop the pending key package minted for `transaction_id` (via
+    /// `create_key_package`) and write it into its own key store, keyed by its
+    /// hash reference, for retrieval when a (possibly branch) welcome message
+    /// referencing it is later parsed.
+    fn take_pending_key_package(&self, transaction_id: u32) -> Result<PendingState, Status> {
+        let (key_package, credential, signature_keys, crypto_provider) = self
+            .pending_state()
+            .remove(&transaction_id)
+            .ok_or_else(|| {
+                Status::aborted(format!(
+                    "failed to find key package for transaction id {transaction_id}"
+                ))
+            })?;
+
+        use openmls_traits::storage::StorageProvider as _;
+        crypto_provider
+            .storage()
+            .write_key_package(
+                &key_package
+                    .key_package()
+                    .hash_ref(crypto_provider.crypto())
+                    .map_err(into_status)?,
+                &key_package,
+            )
+            .map_err(into_status)?;
+
+        Ok((key_package, credential, signature_keys, crypto_provider))
     }
 }
 
@@ -89,6 +172,44 @@ fn into_status<E: Display>(e: E) -> Status {
     let message = "mls group error ".to_string() + &e.to_string();
     error!("{message}");
     Status::new(Code::Aborted, message)
+}
+
+/// The `MlsGroupJoinConfig` used throughout the interop client: we just use
+/// some values here that let it exercise past-epoch decryption and
+/// resumption PSKs, and always keep the ratchet tree extension on.
+fn default_join_config(wire_format_policy: WireFormatPolicy) -> MlsGroupJoinConfig {
+    MlsGroupJoinConfig::builder()
+        .max_past_epochs(32)
+        .number_of_resumption_psks(32)
+        .use_ratchet_tree_extension(true)
+        .wire_format_policy(wire_format_policy)
+        .build()
+}
+
+/// Rebuild `Extensions<GroupContext>` from the test-runner's proto extensions.
+/// The runner splits each extension into its type and its raw data; we
+/// re-serialize the TLS wire form (ExtensionType u16 || opaque<V> data) and let
+/// OpenMLS parse it back. Known types get their structured variant; unknown
+/// types become `Extension::Unknown`.
+fn group_context_extensions_from_proto(
+    extensions: &[mls_client::Extension],
+) -> Result<Extensions<GroupContext>, Status> {
+    let extensions = extensions
+        .iter()
+        .map(|ext| {
+            let mut wire = Vec::new();
+            (ext.extension_type as u16)
+                .tls_serialize(&mut wire)
+                .map_err(|_| Status::aborted("failed to serialize extension type"))?;
+            VLBytes::new(ext.extension_data.clone())
+                .tls_serialize(&mut wire)
+                .map_err(|_| Status::aborted("failed to serialize extension data"))?;
+            Extension::tls_deserialize(&mut wire.as_slice())
+                .map_err(|_| Status::aborted("failed to deserialize extension"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Extensions::<GroupContext>::from_vec(extensions)
+        .map_err(|err| Status::aborted(format!("invalid group context extensions: {err}")))
 }
 
 fn to_ciphersuite(cs: u32) -> Result<&'static Ciphersuite, Status> {
@@ -243,6 +364,7 @@ impl MlsClient for MlsClientImpl {
         .map_err(into_status)?;
 
         trace!(epoch=?group.epoch(), "Current group state.");
+        self.record_branch_info(&group);
 
         let interop_group = InteropGroup {
             group,
@@ -252,7 +374,7 @@ impl MlsClient for MlsClientImpl {
             crypto_provider: provider,
         };
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let state_id = groups.len() as u32;
         groups.push(interop_group);
 
@@ -290,7 +412,13 @@ impl MlsClient for MlsClientImpl {
                     Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
                     Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
                 ]),
-                Some(&EXTENSION_TYPES),
+                // The extensions capability MUST NOT list "default" extension
+                // types (those defined in RFC 9420, i.e. types 1..=5). Support
+                // for them is implied, and strict implementations (e.g. mls-rs)
+                // reject a leaf node that lists them, silently dropping the Add
+                // proposal for this key package. We support no non-default
+                // extensions, so this list stays empty.
+                None,
                 None,
                 Some(&CREDENTIAL_TYPES),
             ))
@@ -325,12 +453,8 @@ impl MlsClient for MlsClientImpl {
             signature_priv: signature_keys.private().to_vec(),
         };
 
-        self.transaction_id_map
-            .lock()
-            .unwrap()
-            .insert(transaction_id, request.identity.clone());
-        self.pending_state.lock().unwrap().insert(
-            request.identity.clone(),
+        self.pending_state().insert(
+            transaction_id,
             (
                 key_package,
                 credential.into(),
@@ -354,47 +478,15 @@ impl MlsClient for MlsClientImpl {
         trace!(identity = String::from_utf8_lossy(&request.identity).to_string());
 
         let wire_format_policy = wire_format_policy(request.encrypt_handshake);
-        // Note: We just use some values here that make live testing work.
-        //       There is nothing special about the used numbers and they
-        //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_config = MlsGroupJoinConfig::builder()
-            .max_past_epochs(32)
-            .number_of_resumption_psks(32)
-            .sender_ratchet_configuration(SenderRatchetConfiguration::default())
-            .use_ratchet_tree_extension(true)
-            .wire_format_policy(wire_format_policy)
-            .build();
+        let mls_group_config = default_join_config(wire_format_policy);
 
-        let mut pending_key_packages = self.pending_state.lock().unwrap();
-        let (my_key_package, _my_credential, my_signature_keys, crypto_provider) =
-            pending_key_packages
-                .remove(&request.identity)
-                .ok_or_else(|| {
-                    Status::aborted(format!(
-                        "failed to find key package for identity {:x?}",
-                        request.identity
-                    ))
-                })?;
-
-        use openmls_traits::storage::StorageProvider as _;
-
-        // Store the key package in the key store with the hash reference as id
-        // for retrieval when parsing welcome messages.
-        crypto_provider
-            .storage()
-            .write_key_package(
-                &my_key_package
-                    .key_package()
-                    .hash_ref(crypto_provider.crypto())
-                    .map_err(into_status)?,
-                &my_key_package,
-            )
-            .map_err(into_status)?;
+        let (_my_key_package, _my_credential, my_signature_keys, crypto_provider) =
+            self.take_pending_key_package(request.transaction_id)?;
 
         let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?
             .into_welcome()
-            .expect("expected a welcome");
+            .ok_or_else(|| Status::aborted("expected an MlsMessage carrying a Welcome"))?;
 
         let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
 
@@ -407,6 +499,7 @@ impl MlsClient for MlsClientImpl {
         .map_err(into_status)?
         .into_group(&crypto_provider)
         .map_err(into_status)?;
+        self.record_branch_info(&group);
 
         let interop_group = InteropGroup {
             wire_format_policy,
@@ -423,7 +516,7 @@ impl MlsClient for MlsClientImpl {
             .as_slice()
             .to_vec();
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let state_id = groups.len() as u32;
         groups.push(interop_group);
 
@@ -449,12 +542,18 @@ impl MlsClient for MlsClientImpl {
         let (interop_group, commit) = {
             debug!("Deserializing `MlsMessageIn` (to obtain group info).");
             let verifiable_group_info = {
-                let msg =
-                    MlsMessageIn::tls_deserialize(&mut request.group_info.as_slice()).unwrap();
+                let msg = MlsMessageIn::tls_deserialize(&mut request.group_info.as_slice())
+                    .map_err(|_| {
+                        Status::aborted("failed to deserialize group info (MlsMessage)")
+                    })?;
 
                 match msg.extract() {
                     MlsMessageBodyIn::GroupInfo(verifiable_group_info) => verifiable_group_info,
-                    other => panic!("Expected `MlsMessageBodyIn::GroupInfo`, got {other:?}."),
+                    other => {
+                        return Err(Status::aborted(format!(
+                            "expected MlsMessageBodyIn::GroupInfo, got {other:?}"
+                        )))
+                    }
                 }
             };
             debug!("Got `VerifiableGroupInfo`.");
@@ -465,33 +564,64 @@ impl MlsClient for MlsClientImpl {
             let provider = OpenMlsRustCrypto::default();
             let ciphersuite = verifiable_group_info.ciphersuite();
 
-            let (credential_with_key, signer) = {
-                let credential = BasicCredential::new(request.identity.to_vec());
+            let credential: Credential = BasicCredential::new(request.identity.to_vec()).into();
 
-                let signature_keypair =
-                    SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+            // When the harness asks us to remove our prior appearance
+            // (`remove_prior`), reuse the signing keypair of our existing leaf in
+            // *this* group instead of minting a fresh one. Removing the prior leaf
+            // by *identity* is the application's job -- OpenMLS does not interpret
+            // credentials -- so OpenMLS offers only a convenience: its external
+            // commit builder auto-adds the remove-prior proposal for a member whose
+            // *signature key* matches ours. We opt into that convenience by reusing
+            // our prior signing key, which is entirely our choice since we own it.
+            // (Minting a fresh key would leave the old leaf in place, producing a
+            // duplicate-identity tree that RFC-compliant peers such as mls-rs reject
+            // with `DuplicateLeafData`.)
+            //
+            // We must find *our own* prior group, matching on both the group id and
+            // our leaf identity: in self-interop both actors (e.g. alice and bob)
+            // run on the same server, so several `InteropGroup`s share the same
+            // group id. Matching on group id alone would pick the wrong actor's
+            // group and reuse *their* signature key, which makes the remove-prior
+            // target the wrong leaf (removing e.g. alice instead of our own prior
+            // leaf).
+            let group_id = verifiable_group_info.group_id().clone();
+            let prior_signer = if request.remove_prior {
+                let groups = self.groups();
+                groups.iter().find_map(|g| {
+                    let is_ours = g.group.group_id() == &group_id
+                        && g.group
+                            .own_leaf_node()
+                            .is_some_and(|leaf| leaf.credential() == &credential);
+                    is_ours.then(|| {
+                        SignatureKeyPair::from_raw(
+                            ciphersuite.signature_algorithm(),
+                            g.signature_keys.private().to_vec(),
+                            g.signature_keys.public().to_vec(),
+                        )
+                    })
+                })
+            } else {
+                None
+            };
+
+            let (credential_with_key, signer) = {
+                let signature_keypair = prior_signer.unwrap_or_else(|| {
+                    SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap()
+                });
 
                 signature_keypair.store(provider.storage()).unwrap();
 
                 let credential_with_key = CredentialWithKey {
-                    credential: credential.into(),
+                    credential: credential.clone(),
                     signature_key: signature_keypair.public().into(),
                 };
 
                 (credential_with_key, signature_keypair)
             };
 
-            let mls_group_config = {
-                let wire_format_policy = wire_format_policy(request.encrypt_handshake);
-
-                MlsGroupJoinConfig::builder()
-                    .max_past_epochs(32)
-                    .number_of_resumption_psks(32)
-                    .sender_ratchet_configuration(SenderRatchetConfiguration::default())
-                    .use_ratchet_tree_extension(true)
-                    .wire_format_policy(wire_format_policy)
-                    .build()
-            };
+            let mls_group_config =
+                default_join_config(wire_format_policy(request.encrypt_handshake));
 
             let builder = MlsGroup::external_commit_builder().with_config(mls_group_config.clone());
 
@@ -515,6 +645,7 @@ impl MlsClient for MlsClientImpl {
 
             let commit = commit_bundle.into_commit();
             trace!(?commit, "Commit created.");
+            self.record_branch_info(&group);
 
             (
                 InteropGroup {
@@ -534,7 +665,7 @@ impl MlsClient for MlsClientImpl {
             .as_slice()
             .to_vec();
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let state_id = groups.len() as u32;
         groups.push(interop_group);
 
@@ -556,7 +687,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let groups = self.groups.lock().unwrap();
+        let groups = self.groups();
         let interop_group = groups
             .get(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
@@ -580,7 +711,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let groups = self.groups.lock().unwrap();
+        let groups = self.groups();
         let interop_group = groups
             .get(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
@@ -610,7 +741,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
@@ -644,7 +775,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
@@ -676,10 +807,10 @@ impl MlsClient for MlsClientImpl {
             ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
             ProcessedMessageContent::OwnPendingCommit => unreachable!(),
             ProcessedMessageContent::OwnPrivateMessage => unreachable!(),
+            // The `extensions-draft` feature has no interop scenarios, so an
+            // AppData commit can never reach the client here.
             #[cfg(feature = "extensions-draft")]
-            ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
-                unimplemented!("the interop client does not support AppDataUpdate proposals")
-            }
+            ProcessedMessageContent::UnresolvedAppDataCommit(_) => unreachable!(),
         };
 
         let response = UnprotectResponse {
@@ -718,15 +849,8 @@ impl MlsClient for MlsClientImpl {
         }
 
         // This might be for a transaction ID or a state ID, so either a group, or not.
-        // Transaction IDs are random. We assume that if it exists, it is what we want.
-        let transaction_id_map = self.transaction_id_map.lock().unwrap();
-        let pending_state_id = transaction_id_map.get(&request.state_or_transaction_id);
-        if let Some(pending_state_id) = pending_state_id {
-            let mut pending_state = self.pending_state.lock().unwrap();
-            let pending_state = pending_state
-                .get_mut(pending_state_id)
-                .ok_or_else(|| Status::internal("Unable to retrieve pending state"))?;
-
+        let mut pending_state = self.pending_state();
+        if let Some(pending_state) = pending_state.get_mut(&request.state_or_transaction_id) {
             store(
                 pending_state.0.key_package().ciphersuite(),
                 &pending_state.3,
@@ -734,8 +858,9 @@ impl MlsClient for MlsClientImpl {
                 &request.psk_secret,
             )?;
         } else {
+            drop(pending_state);
             // So we have a group
-            let mut groups = self.groups.lock().unwrap();
+            let mut groups = self.groups();
             let interop_group = groups
                 .get_mut(request.state_or_transaction_id as usize)
                 .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
@@ -763,7 +888,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
@@ -779,15 +904,7 @@ impl MlsClient for MlsClientImpl {
                 .hash_ref(interop_group.crypto_provider.crypto())
                 .unwrap()
         );
-        // Note: We just use some values here that make live testing work.
-        //       There is nothing special about the used numbers and they
-        //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_config = MlsGroupJoinConfig::builder()
-            .use_ratchet_tree_extension(true)
-            .max_past_epochs(32)
-            .number_of_resumption_psks(32)
-            .wire_format_policy(interop_group.wire_format_policy)
-            .build();
+        let mls_group_config = default_join_config(interop_group.wire_format_policy);
         interop_group
             .group
             .set_configuration(interop_group.crypto_provider.storage(), &mls_group_config)
@@ -822,21 +939,13 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         trace!("   in epoch {:?}", interop_group.group.epoch());
 
-        // Note: We just use some values here that make live testing work.
-        //       There is nothing special about the used numbers and they
-        //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_config = MlsGroupJoinConfig::builder()
-            .max_past_epochs(32)
-            .number_of_resumption_psks(32)
-            .use_ratchet_tree_extension(true)
-            .wire_format_policy(interop_group.wire_format_policy)
-            .build();
+        let mls_group_config = default_join_config(interop_group.wire_format_policy);
         interop_group
             .group
             .set_configuration(interop_group.crypto_provider.storage(), &mls_group_config)
@@ -876,21 +985,13 @@ impl MlsClient for MlsClientImpl {
         let removed_credential = BasicCredential::new(request.removed_id.clone());
         trace!("   for credential: {removed_credential:x?}");
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         trace!("   in epoch {:?}", interop_group.group.epoch());
 
-        // Note: We just use some values here that make live testing work.
-        //       There is nothing special about the used numbers and they
-        //       can be increased (or decreased) depending on the available scenarios.
-        let mls_group_config = MlsGroupJoinConfig::builder()
-            .max_past_epochs(32)
-            .number_of_resumption_psks(32)
-            .use_ratchet_tree_extension(true)
-            .wire_format_policy(interop_group.wire_format_policy)
-            .build();
+        let mls_group_config = default_join_config(interop_group.wire_format_policy);
         interop_group
             .group
             .set_configuration(interop_group.crypto_provider.storage(), &mls_group_config)
@@ -942,7 +1043,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
@@ -979,14 +1080,29 @@ impl MlsClient for MlsClientImpl {
                             tonic::Status::internal(format!("error storing proposal: {err}"))
                         })?;
                 }
-                ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
+                // An external self-Add (`new_member_add_proposal`) committed by
+                // reference: store it alongside regular proposals.
+                ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
+                    group
+                        .store_pending_proposal(interop_group.crypto_provider.storage(), *proposal)
+                        .map_err(|err| {
+                            tonic::Status::internal(format!(
+                                "error storing external join proposal: {err}"
+                            ))
+                        })?;
+                }
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
                 ProcessedMessageContent::OwnPendingCommit => unreachable!(),
-                ProcessedMessageContent::OwnPrivateMessage => unreachable!(),
-                #[cfg(feature = "extensions-draft")]
-                ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
-                    unimplemented!("the interop client does not support AppDataUpdate proposals")
+                // A referenced proposal we authored ourselves comes back as our
+                // own PrivateMessage; the content can't be decrypted and it is
+                // already in our proposal store, so we skip it.
+                ProcessedMessageContent::OwnPrivateMessage => {
+                    trace!("Skipping own private message (proposal by reference)");
                 }
+                // The `extensions-draft` feature has no interop scenarios, so an
+                // AppData commit can never reach the client here.
+                #[cfg(feature = "extensions-draft")]
+                ProcessedMessageContent::UnresolvedAppDataCommit(_) => unreachable!(),
             }
         }
 
@@ -1042,11 +1158,16 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::internal("Unable to generate proposal by value"))?
                 }
                 "resumptionPSK" => {
+                    let psk_nonce = interop_group
+                        .crypto_provider
+                        .rand()
+                        .random_vec(group.ciphersuite().hash_length())
+                        .map_err(|_| Status::internal("insufficient randomness for psk nonce"))?;
                     let psk_id = PreSharedKeyId::resumption(
                         ResumptionPskUsage::Application,
                         group.group_id().clone(),
                         GroupEpoch::from(proposal.epoch_id),
-                        "B".repeat(group.ciphersuite().hash_length()).into_bytes(),
+                        psk_nonce,
                     );
 
                     // TODO: epoch_id vs epoch?
@@ -1056,7 +1177,7 @@ impl MlsClient for MlsClientImpl {
                             &interop_group.signature_keys,
                             psk_id,
                         )
-                        .unwrap();
+                        .map_err(into_status)?;
                     debug!("Resumption PSK proposal created.");
                     trace!(proposal = ?msg_out);
                     trace!(proposal_ref = ?proposal_ref);
@@ -1064,9 +1185,15 @@ impl MlsClient for MlsClientImpl {
                     (msg_out, proposal_ref)
                 }
                 "groupContextExtensions" => {
-                    return Err(Status::internal(
-                        "Unsupported proposal type (group context extension)",
-                    ))
+                    let extensions = group_context_extensions_from_proto(&proposal.extensions)?;
+                    group
+                        .propose(
+                            &interop_group.crypto_provider,
+                            &interop_group.signature_keys,
+                            Propose::GroupContextExtensions(extensions),
+                            ProposalOrRefType::Proposal,
+                        )
+                        .map_err(into_status)?
                 }
                 _ => return Err(Status::invalid_argument("Invalid proposal type")),
             };
@@ -1102,6 +1229,7 @@ impl MlsClient for MlsClientImpl {
         group
             .merge_pending_commit(&interop_group.crypto_provider)
             .map_err(into_status)?;
+        self.record_branch_info(group);
 
         debug!("Merged pending commit.");
 
@@ -1132,7 +1260,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
@@ -1169,14 +1297,29 @@ impl MlsClient for MlsClientImpl {
                             ))
                         })?;
                 }
-                ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
+                // An external self-Add (`new_member_add_proposal`) committed by
+                // reference: store it alongside regular proposals.
+                ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
+                    group
+                        .store_pending_proposal(interop_group.crypto_provider.storage(), *proposal)
+                        .map_err(|err| {
+                            tonic::Status::internal(format!(
+                                "error storing external join proposal: {err}"
+                            ))
+                        })?;
+                }
                 ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
                 ProcessedMessageContent::OwnPendingCommit => unreachable!(),
-                ProcessedMessageContent::OwnPrivateMessage => unreachable!(),
-                #[cfg(feature = "extensions-draft")]
-                ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
-                    unimplemented!("the interop client does not support AppDataUpdate proposals")
+                // A referenced proposal we authored ourselves comes back as our
+                // own PrivateMessage; the content can't be decrypted and it is
+                // already in our proposal store, so we skip it.
+                ProcessedMessageContent::OwnPrivateMessage => {
+                    trace!("Skipping own private message (proposal by reference)");
                 }
+                // The `extensions-draft` feature has no interop scenarios, so an
+                // AppData commit can never reach the client here.
+                #[cfg(feature = "extensions-draft")]
+                ProcessedMessageContent::UnresolvedAppDataCommit(_) => unreachable!(),
             }
         }
 
@@ -1208,13 +1351,14 @@ impl MlsClient for MlsClientImpl {
                 group
                     .merge_staged_commit(&interop_group.crypto_provider, *staged_commit)
                     .map_err(into_status)?;
+                self.record_branch_info(group);
             }
             ProcessedMessageContent::OwnPendingCommit => unreachable!(),
             ProcessedMessageContent::OwnPrivateMessage => unreachable!(),
+            // The `extensions-draft` feature has no interop scenarios, so an
+            // AppData commit can never reach the client here.
             #[cfg(feature = "extensions-draft")]
-            ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
-                unimplemented!("the interop client does not support AppDataUpdate proposals")
-            }
+            ProcessedMessageContent::UnresolvedAppDataCommit(_) => unreachable!(),
         }
 
         trace!(epoch=?group.epoch(), "New group state.");
@@ -1238,7 +1382,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
@@ -1253,6 +1397,7 @@ impl MlsClient for MlsClientImpl {
                 trace!("Error merging pending commit: `{e:?}`");
                 Status::aborted("failed to apply pending commits")
             })?;
+        self.record_branch_info(group);
         trace!(epoch=?group.epoch(), "New group state.");
 
         let epoch_authenticator = group.epoch_authenticator().as_slice().to_vec();
@@ -1273,7 +1418,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
@@ -1315,7 +1460,7 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
@@ -1361,17 +1506,22 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let mut groups = self.groups.lock().unwrap();
+        let mut groups = self.groups();
         let interop_group = groups
             .get_mut(request.state_id as usize)
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
         let group = &mut interop_group.group;
 
+        let psk_nonce = interop_group
+            .crypto_provider
+            .rand()
+            .random_vec(group.ciphersuite().hash_length())
+            .map_err(|_| Status::internal("insufficient randomness for psk nonce"))?;
         let psk_id = PreSharedKeyId::resumption(
             ResumptionPskUsage::Application,
             group.group_id().clone(),
             GroupEpoch::from(request.epoch_id),
-            "A".repeat(group.ciphersuite().hash_length()).into_bytes(),
+            psk_nonce,
         );
 
         let (msg_out, _proposal_ref) = interop_group
@@ -1381,9 +1531,16 @@ impl MlsClient for MlsClientImpl {
                 &interop_group.signature_keys,
                 psk_id,
             )
-            .unwrap();
+            .map_err(into_status)?;
         debug!("Resumption PSK proposal created.");
         trace!(proposal = ?msg_out);
+
+        // Record our own proposal so that, when we later commit to it by
+        // reference, we skip re-processing it. Without this the proposal is
+        // processed again and ends up folded into the PSK secret twice, which
+        // desyncs our confirmation tag from the emitted commit. Matches every
+        // other proposal RPC.
+        interop_group.messages_out.push(msg_out.clone().into());
 
         let response = ProposalResponse {
             proposal: msg_out.tls_serialize_detached().unwrap(),
@@ -1396,88 +1553,668 @@ impl MlsClient for MlsClientImpl {
     #[instrument(skip_all, fields(actor))]
     async fn group_context_extensions_proposal(
         &self,
-        _request: Request<GroupContextExtensionsProposalRequest>,
+        request: Request<GroupContextExtensionsProposalRequest>,
     ) -> Result<Response<ProposalResponse>, Status> {
-        Err(Status::unimplemented(
-            "Group context extension is not implemented yet",
-        ))
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        let mut groups = self.groups();
+        let interop_group = groups
+            .get_mut(request.state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
+        trace!("   in epoch {:?}", interop_group.group.epoch());
+
+        let extensions = group_context_extensions_from_proto(&request.extensions)?;
+
+        let mls_group_config = default_join_config(interop_group.wire_format_policy);
+        interop_group
+            .group
+            .set_configuration(interop_group.crypto_provider.storage(), &mls_group_config)
+            .map_err(|err| {
+                tonic::Status::internal(format!("error setting configuration: {err}"))
+            })?;
+
+        let (proposal, _) = interop_group
+            .group
+            .propose_group_context_extensions(
+                &interop_group.crypto_provider,
+                extensions,
+                &interop_group.signature_keys,
+            )
+            .map_err(into_status)?;
+
+        // Store the proposal for potential future use.
+        interop_group.messages_out.push(proposal.clone().into());
+
+        let proposal = proposal.to_bytes().unwrap();
+
+        let response = ProposalResponse { proposal };
+
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
+    // ReInit is not implemented in OpenMLS. Return a clean `Unimplemented` status
+    // (rather than `todo!()`, which panics the handler and tears down the stream
+    // as an ambiguous RST_STREAM CANCEL) so the interop runner reports these as
+    // unsupported rather than as crashes.
     async fn re_init_commit(
         &self,
         _: Request<CommitRequest>,
     ) -> Result<Response<CommitResponse>, Status> {
-        todo!()
+        Err(Status::unimplemented("Re-init is not implemented"))
     }
 
     async fn handle_pending_re_init_commit(
         &self,
         _: Request<HandlePendingCommitRequest>,
     ) -> Result<Response<HandleReInitCommitResponse>, Status> {
-        todo!()
+        Err(Status::unimplemented("Re-init is not implemented"))
     }
 
     async fn handle_re_init_commit(
         &self,
         _: Request<HandleCommitRequest>,
     ) -> Result<Response<HandleReInitCommitResponse>, Status> {
-        todo!()
+        Err(Status::unimplemented("Re-init is not implemented"))
     }
 
     async fn re_init_welcome(
         &self,
         _: Request<ReInitWelcomeRequest>,
     ) -> Result<Response<CreateSubgroupResponse>, Status> {
-        todo!()
+        Err(Status::unimplemented("Re-init is not implemented"))
     }
 
     async fn handle_re_init_welcome(
         &self,
         _: Request<HandleReInitWelcomeRequest>,
     ) -> Result<Response<JoinGroupResponse>, Status> {
-        todo!()
+        Err(Status::unimplemented("Re-init is not implemented"))
     }
 
+    // Subgroup branching (RFC 9420 §11.3): a subset of an existing group's
+    // members forms a new group, mixing the parent's resumption PSK (usage
+    // `Branch`) into the new group's key schedule. `create_branch` is the creator
+    // side (mirrors `create_group` + `commit`); `handle_branch` is the joiner side
+    // (mirrors `join_group`, with `new_from_welcome` swapped for `new_from_branch`).
+    #[instrument(skip_all)]
     async fn create_branch(
         &self,
-        _: Request<CreateBranchRequest>,
+        request: Request<CreateBranchRequest>,
     ) -> Result<Response<CreateSubgroupResponse>, Status> {
-        todo!()
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        let mut groups = self.groups();
+        let parent = groups
+            .get(request.state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
+
+        trace!(epoch=?parent.group.epoch(), "Parent group state.");
+
+        // The subgroup reuses the parent member's credential + signing key and
+        // must match the parent's ciphersuite / wire-format policy.
+        let ciphersuite = parent.group.ciphersuite();
+        let credential = parent.group.credential().map_err(into_status)?.clone();
+        // `SignatureKeyPair` is not `Clone` here (the `clonable` feature is off),
+        // so reconstruct it from the raw key material.
+        let signature_keys = SignatureKeyPair::from_raw(
+            ciphersuite.signature_algorithm(),
+            parent.signature_keys.private().to_vec(),
+            parent.signature_keys.public().to_vec(),
+        );
+        let wire_format_policy = parent.wire_format_policy;
+        // Exported before the `branch()` call below so the API can inject it into
+        // the subgroup's key schedule; carries the parent's resumption PSK secret.
+        // Cached below (keyed by parent group_id + epoch) so `handle_branch` can
+        // look up the matching `BranchInfo` for the epoch the Welcome actually
+        // references, rather than the parent's (possibly since-advanced) current
+        // epoch.
+        let parent_key = (parent.group.group_id().clone(), parent.group.epoch());
+        let branch_info = parent.group.branch_info();
+
+        // A fresh provider is sufficient: `branch()` injects the parent's
+        // resumption-PSK secret (cloned in-memory), so no shared storage with the
+        // parent is needed. Store the signing keys for the subgroup's operations.
+        let provider = OpenMlsRustCrypto::default();
+        signature_keys
+            .store(provider.storage())
+            .map_err(into_status)?;
+
+        // Members to add to the subgroup. Each key package arrives as an
+        // MlsMessage-wrapped KeyPackage, like the `commit` handler's "add" branch.
+        let key_packages = request
+            .key_packages
+            .iter()
+            .map(|kp| {
+                let msg = MlsMessageIn::tls_deserialize_exact(kp.clone())
+                    .map_err(|_| Status::invalid_argument("Invalid key package"))?;
+                msg.into_keypackage()
+                    .ok_or_else(|| Status::invalid_argument("Message was not a key package"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Build the sub-group and its branch commit. `branch()` mixes in the
+        // parent's resumption PSK; the sub-group's ciphersuite comes from
+        // `branch_info` (it must match the parent's).
+        let mut branch_builder = MlsGroup::builder()
+            .with_group_id(GroupId::from_slice(&request.group_id))
+            .max_past_epochs(32)
+            .number_of_resumption_psks(32)
+            .sender_ratchet_configuration(SenderRatchetConfiguration::default())
+            .use_ratchet_tree_extension(true)
+            .with_wire_format_policy(wire_format_policy)
+            .branch(branch_info.clone());
+        if !request.extensions.is_empty() {
+            let extensions = group_context_extensions_from_proto(&request.extensions)?;
+            branch_builder = branch_builder.propose_group_context_extensions(extensions);
+        }
+        if request.force_path {
+            branch_builder = branch_builder.force_self_update(true);
+        }
+        let (mut sub_group, bundle) = branch_builder
+            .build_branch(
+                &provider,
+                &signature_keys,
+                CredentialWithKey {
+                    credential,
+                    signature_key: signature_keys.public().into(),
+                },
+                key_packages,
+            )
+            .map_err(into_status)?;
+
+        // Only cache on success, so a failed branch attempt doesn't leave a
+        // stale/unused entry behind.
+        self.branch_infos().insert(parent_key, branch_info);
+
+        let welcome = MlsMessageOut::from_welcome(
+            bundle
+                .welcome()
+                .ok_or_else(|| Status::internal("branch commit produced no welcome"))?
+                .clone(),
+            ProtocolVersion::Mls10,
+        )
+        .tls_serialize_detached()
+        .map_err(|_| Status::aborted("failed to serialize welcome"))?;
+
+        sub_group
+            .merge_pending_commit(&provider)
+            .map_err(into_status)?;
+
+        let ratchet_tree = if request.external_tree {
+            sub_group
+                .export_ratchet_tree()
+                .tls_serialize_detached()
+                .map_err(|_| Status::aborted("failed to serialize ratchet tree"))?
+        } else {
+            vec![]
+        };
+
+        let epoch_authenticator = sub_group.epoch_authenticator().as_slice().to_vec();
+
+        let interop_group = InteropGroup {
+            group: sub_group,
+            wire_format_policy,
+            signature_keys,
+            messages_out: Vec::new(),
+            crypto_provider: provider,
+        };
+
+        let state_id = groups.len() as u32;
+        groups.push(interop_group);
+
+        let response = CreateSubgroupResponse {
+            state_id,
+            welcome,
+            ratchet_tree,
+            epoch_authenticator,
+        };
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
+    #[instrument(skip_all)]
     async fn handle_branch(
         &self,
-        _: Request<HandleBranchRequest>,
+        request: Request<HandleBranchRequest>,
     ) -> Result<Response<HandleBranchResponse>, Status> {
-        todo!()
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        // Pick up the joiner's pending key package (minted via `create_key_package`
+        // and keyed by transaction id), exactly like `join_group`.
+        let (_my_key_package, _my_credential, my_signature_keys, crypto_provider) =
+            self.take_pending_key_package(request.transaction_id)?;
+
+        let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
+            .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?
+            .into_welcome()
+            .ok_or_else(|| Status::aborted("expected an MlsMessage carrying a Welcome"))?;
+
+        let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
+
+        let mut groups = self.groups();
+        let parent = groups
+            .get(request.state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
+        let wire_format_policy = parent.wire_format_policy;
+
+        let mls_group_config = default_join_config(wire_format_policy);
+
+        // `build_from_branch` injects the parent's resumption-PSK secret and enforces
+        // the RFC §11.3 receiver checks. `check_members(true)`: the runner re-mints
+        // key packages with the same BasicCredential identities, so the
+        // credential-equality check passes.
+        //
+        // The `BranchInfo` must match the parent epoch the Welcome's branch PSK
+        // actually references -- which may not be the parent's current/live epoch
+        // if it has advanced since `create_branch` was called. Decrypt the Welcome
+        // once to read that reference, then look up the cached `BranchInfo` for it
+        // (populated by `create_branch`) instead of using `parent.group.branch_info()`.
+        let pending_branch_welcome =
+            StagedWelcome::process_branch_welcome(&crypto_provider, &mls_group_config, welcome)
+                .map_err(into_status)?;
+        let (parent_group_id, parent_epoch) = pending_branch_welcome
+            .parent()
+            .ok_or_else(|| Status::aborted("welcome is not a subgroup-branch welcome"))?;
+        let branch_info = self
+            .branch_infos()
+            .get(&(parent_group_id, parent_epoch))
+            .cloned()
+            .ok_or_else(|| {
+                Status::aborted(
+                    "no cached BranchInfo for the parent epoch referenced by the welcome",
+                )
+            })?;
+        let mut join_builder = pending_branch_welcome
+            .build_from_branch(&crypto_provider, branch_info)
+            .map_err(into_status)?
+            .check_members(true);
+        if let Some(ratchet_tree) = ratchet_tree {
+            join_builder = join_builder.with_ratchet_tree(ratchet_tree);
+        }
+        let group = join_builder
+            .build()
+            .map_err(into_status)?
+            .into_group(&crypto_provider)
+            .map_err(into_status)?;
+
+        let epoch_authenticator = group.epoch_authenticator().as_slice().to_vec();
+
+        let interop_group = InteropGroup {
+            group,
+            wire_format_policy,
+            signature_keys: my_signature_keys,
+            messages_out: Vec::new(),
+            crypto_provider,
+        };
+
+        let state_id = groups.len() as u32;
+        groups.push(interop_group);
+
+        let response = HandleBranchResponse {
+            state_id,
+            epoch_authenticator,
+        };
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
+    #[instrument(skip_all, fields(actor))]
     async fn new_member_add_proposal(
         &self,
-        _: Request<NewMemberAddProposalRequest>,
+        request: Request<NewMemberAddProposalRequest>,
     ) -> Result<Response<NewMemberAddProposalResponse>, Status> {
-        todo!()
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        Span::current().record("actor", bytes_to_string(&request.identity));
+
+        // Learn the group we want to join from the provided GroupInfo.
+        let verifiable_group_info = {
+            let msg = MlsMessageIn::tls_deserialize(&mut request.group_info.as_slice())
+                .map_err(|_| Status::aborted("failed to deserialize group info (MlsMessage)"))?;
+            match msg.extract() {
+                MlsMessageBodyIn::GroupInfo(verifiable_group_info) => verifiable_group_info,
+                other => {
+                    return Err(Status::aborted(format!(
+                        "expected MlsMessageBodyIn::GroupInfo, got {other:?}"
+                    )))
+                }
+            }
+        };
+        let ciphersuite = verifiable_group_info.ciphersuite();
+        let group_id = verifiable_group_info.group_id().clone();
+        let epoch = verifiable_group_info.epoch();
+
+        // Create a fresh identity + key package for the joiner, mirroring
+        // `create_key_package` so the eventual `join_group` (driven by the
+        // fullCommit's welcome) can pick up the private material.
+        let crypto_provider = OpenMlsRustCrypto::default();
+        let credential = BasicCredential::new(request.identity.clone());
+        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm())
+            .map_err(|_| Status::internal("failed to create signature keys"))?;
+
+        let key_package = KeyPackage::builder()
+            .leaf_node_capabilities(Capabilities::new(
+                Some(&[ProtocolVersion::Mls10, ProtocolVersion::Other(999)]),
+                Some(&[
+                    Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                    Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+                    Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                ]),
+                // See the note in `create_key_package`: default extension types
+                // must not be listed here, and we support no non-default ones.
+                None,
+                None,
+                Some(&CREDENTIAL_TYPES),
+            ))
+            .build(
+                ciphersuite,
+                &crypto_provider,
+                &signature_keys,
+                CredentialWithKey {
+                    credential: credential.clone().into(),
+                    signature_key: signature_keys.public().into(),
+                },
+            )
+            .map_err(into_status)?;
+
+        // Build the external (self-signed) Add proposal.
+        let proposal =
+            JoinProposal::new::<<OpenMlsRustCrypto as OpenMlsProvider>::StorageProvider>(
+                key_package.key_package().clone(),
+                group_id,
+                epoch,
+                &signature_keys,
+            )
+            .map_err(into_status)?;
+
+        let transaction_id: [u8; 4] = crypto_provider
+            .rand()
+            .random_array()
+            .map_err(|_| Status::internal("insufficient randomness for transaction id"))?;
+        let transaction_id = u32::from_be_bytes(transaction_id);
+
+        let response = NewMemberAddProposalResponse {
+            transaction_id,
+            proposal: proposal
+                .tls_serialize_detached()
+                .map_err(|_| Status::internal("error serializing proposal"))?,
+            encryption_priv: key_package
+                .encryption_private_key()
+                .tls_serialize_detached()
+                .unwrap(),
+            init_priv: key_package
+                .init_private_key()
+                .tls_serialize_detached()
+                .unwrap(),
+            signature_priv: signature_keys.private().to_vec(),
+        };
+
+        self.pending_state().insert(
+            transaction_id,
+            (
+                key_package,
+                credential.into(),
+                signature_keys,
+                crypto_provider,
+            ),
+        );
+
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
+    #[instrument(skip_all, fields(actor))]
     async fn create_external_signer(
         &self,
-        _: Request<CreateExternalSignerRequest>,
+        request: Request<CreateExternalSignerRequest>,
     ) -> Result<Response<CreateExternalSignerResponse>, Status> {
-        todo!()
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        Span::current().record("actor", bytes_to_string(&request.identity));
+
+        let ciphersuite = *to_ciphersuite(request.cipher_suite)?;
+        let credential = BasicCredential::new(request.identity.clone());
+        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm())
+            .map_err(|_| Status::internal("failed to create signature keys"))?;
+
+        // The `ExternalSender` is what group members embed in their
+        // `ExternalSenders` group context extension to authorize this signer.
+        let external_sender =
+            ExternalSender::new(signature_keys.public().into(), credential.clone().into());
+        let external_sender = external_sender
+            .tls_serialize_detached()
+            .map_err(|_| Status::internal("error serializing external sender"))?;
+
+        // Mint a signer id that `external_signer_proposal` uses to find the key.
+        let crypto_provider = OpenMlsRustCrypto::default();
+        let signer_id: [u8; 4] = crypto_provider
+            .rand()
+            .random_array()
+            .map_err(|_| Status::internal("insufficient randomness for signer id"))?;
+        let signer_id = u32::from_be_bytes(signer_id);
+
+        self.external_signers()
+            .insert(signer_id, (signature_keys, credential.into()));
+
+        let response = CreateExternalSignerResponse {
+            signer_id,
+            external_sender,
+        };
+
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
+    #[instrument(skip_all)]
     async fn add_external_signer(
         &self,
-        _: Request<AddExternalSignerRequest>,
+        request: Request<AddExternalSignerRequest>,
     ) -> Result<Response<ProposalResponse>, Status> {
-        todo!()
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        let mut groups = self.groups();
+        let interop_group = groups
+            .get_mut(request.state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
+        trace!("   in epoch {:?}", interop_group.group.epoch());
+
+        let external_sender =
+            ExternalSender::tls_deserialize(&mut request.external_sender.as_slice())
+                .map_err(|_| Status::aborted("failed to deserialize external sender"))?;
+
+        // Append to any existing external senders so we don't drop previously
+        // added signers (e.g. the `multiple_external` scenario). Note: this reads
+        // committed extensions only, so two calls in the same epoch before either
+        // commits will race and one signer will be dropped.
+        let mut external_senders = interop_group
+            .group
+            .extensions()
+            .external_senders()
+            .cloned()
+            .unwrap_or_default();
+        external_senders.push(external_sender);
+        let mut extensions = interop_group.group.extensions().clone();
+        extensions
+            .add_or_replace(Extension::ExternalSenders(external_senders))
+            .map_err(|err| Status::aborted(format!("invalid external senders extension: {err}")))?;
+
+        let mls_group_config = default_join_config(interop_group.wire_format_policy);
+        interop_group
+            .group
+            .set_configuration(interop_group.crypto_provider.storage(), &mls_group_config)
+            .map_err(|err| {
+                tonic::Status::internal(format!("error setting configuration: {err}"))
+            })?;
+
+        let (proposal, _) = interop_group
+            .group
+            .propose_group_context_extensions(
+                &interop_group.crypto_provider,
+                extensions,
+                &interop_group.signature_keys,
+            )
+            .map_err(into_status)?;
+
+        // Store the proposal so the committer's by-reference loop skips it.
+        interop_group.messages_out.push(proposal.clone().into());
+
+        let response = ProposalResponse {
+            proposal: proposal.to_bytes().unwrap(),
+        };
+
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
+    #[instrument(skip_all)]
     async fn external_signer_proposal(
         &self,
-        _: Request<ExternalSignerProposalRequest>,
+        request: Request<ExternalSignerProposalRequest>,
     ) -> Result<Response<ProposalResponse>, Status> {
-        todo!()
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        // Find the signer we minted in `create_external_signer`.
+        let signers = self.external_signers();
+        let (signature_keys, _credential) = signers
+            .get(&request.signer_id)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown signer_id"))?;
+
+        // The external signer is not a member; it works off the provided
+        // GroupInfo (+ ratchet tree for removes).
+        let verifiable_group_info = {
+            let msg = MlsMessageIn::tls_deserialize(&mut request.group_info.as_slice())
+                .map_err(|_| Status::aborted("failed to deserialize group info (MlsMessage)"))?;
+            match msg.extract() {
+                MlsMessageBodyIn::GroupInfo(verifiable_group_info) => verifiable_group_info,
+                other => {
+                    return Err(Status::aborted(format!(
+                        "expected MlsMessageBodyIn::GroupInfo, got {other:?}"
+                    )))
+                }
+            }
+        };
+        let group_id = verifiable_group_info.group_id().clone();
+        let epoch = verifiable_group_info.epoch();
+        let sender_index = SenderExtensionIndex::new(request.signer_index);
+
+        let description = request
+            .description
+            .as_ref()
+            .ok_or_else(|| Status::aborted("missing proposal description"))?;
+        let proposal_type = String::from_utf8_lossy(&description.proposal_type).to_string();
+
+        let proposal: MlsMessageOut = match proposal_type.as_str() {
+            "add" => {
+                let key_package =
+                    MlsMessageIn::tls_deserialize(&mut description.key_package.as_slice())
+                        .map_err(|_| {
+                            Status::aborted("failed to deserialize key package (MlsMessage)")
+                        })?
+                        .into_keypackage()
+                        .ok_or(Status::aborted("failed to deserialize key package"))?;
+                ExternalProposal::new_add::<OpenMlsRustCrypto>(
+                    key_package,
+                    group_id,
+                    epoch,
+                    signature_keys,
+                    sender_index,
+                )
+                .map_err(into_status)?
+            }
+            "remove" => {
+                // Map the removed identity to a leaf index using the ratchet tree.
+                let ratchet_tree =
+                    RatchetTreeIn::tls_deserialize(&mut request.ratchet_tree.as_slice())
+                        .map_err(|_| Status::aborted("failed to deserialize ratchet tree"))?;
+                let removed_credential: Credential =
+                    BasicCredential::new(description.removed_id.clone()).into();
+                let leaf_index = ratchet_tree
+                    .full_leaves()
+                    .find(|(_, leaf)| leaf.credential() == &removed_credential)
+                    .map(|(index, _)| index)
+                    .ok_or_else(|| Status::aborted("removed member not found in ratchet tree"))?;
+                ExternalProposal::new_remove::<OpenMlsRustCrypto>(
+                    leaf_index,
+                    group_id,
+                    epoch,
+                    signature_keys,
+                    sender_index,
+                )
+                .map_err(into_status)?
+            }
+            "groupContextExtensions" => {
+                let extensions = group_context_extensions_from_proto(&description.extensions)?;
+                ExternalProposal::new_group_context_extensions::<OpenMlsRustCrypto>(
+                    extensions,
+                    group_id,
+                    epoch,
+                    signature_keys,
+                    sender_index,
+                )
+                .map_err(into_status)?
+            }
+            "externalPSK" => {
+                // RFC 9420 §12.1.8.2 permits external senders to send PSK proposals.
+                let provider = OpenMlsRustCrypto::default();
+                let psk_id = PreSharedKeyId::new(
+                    verifiable_group_info.ciphersuite(),
+                    provider.rand(),
+                    Psk::External(ExternalPsk::new(description.psk_id.clone())),
+                )
+                .map_err(|_| Status::internal("unable to create external PreSharedKeyId"))?;
+                ExternalProposal::new_pre_shared_key(
+                    psk_id,
+                    group_id,
+                    epoch,
+                    signature_keys,
+                    sender_index,
+                )
+                .map_err(into_status)?
+            }
+            "resumptionPSK" => {
+                let provider = OpenMlsRustCrypto::default();
+                let psk_nonce = provider
+                    .rand()
+                    .random_vec(verifiable_group_info.ciphersuite().hash_length())
+                    .map_err(|_| Status::internal("insufficient randomness for psk nonce"))?;
+                let psk_id = PreSharedKeyId::resumption(
+                    ResumptionPskUsage::Application,
+                    group_id.clone(),
+                    GroupEpoch::from(description.epoch_id),
+                    psk_nonce,
+                );
+                ExternalProposal::new_pre_shared_key(
+                    psk_id,
+                    group_id,
+                    epoch,
+                    signature_keys,
+                    sender_index,
+                )
+                .map_err(into_status)?
+            }
+            other => {
+                return Err(Status::unimplemented(format!(
+                    "external sender {other} proposals are not supported by OpenMLS"
+                )))
+            }
+        };
+
+        let response = ProposalResponse {
+            proposal: proposal
+                .tls_serialize_detached()
+                .map_err(|_| Status::internal("error serializing proposal"))?,
+        };
+
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
     async fn free(&self, _request: Request<FreeRequest>) -> Result<Response<FreeResponse>, Status> {
