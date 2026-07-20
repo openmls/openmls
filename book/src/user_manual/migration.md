@@ -1,6 +1,6 @@
 # Migrating the storage provider
 
-OpenMLS supports migrating between storage versions through a serialization bridge:
+OpenMLS supports migrating the storage provider between versions through a serialization bridge:
 a group, together with all the group-associated data it owns, is exported with the
 previous version of the library, serialized into `serde_json`, and
 then imported into the *current* version of the library, which writes it back out in the new storage format.
