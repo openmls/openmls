@@ -186,12 +186,15 @@ mobile app):
   keep the schema-version marker check and ship a fallback — resetting the local
   MLS state and rejoining groups — because users can jump arbitrary version gaps
   when updating.
+<!-- TODO: determine guidelines on binary size -->
+<!--
 - **Binary size is usually a non-issue.** Only code reachable from
   `export_for_migration` is linked from the previous version — storage reads and
   serde impls, no crypto backend, no protocol machinery — and the linker strips
   the rest. Measure (e.g. with `cargo bloat`) before optimizing, and do **not**
   hand-prune or `#[cfg]`strip the old crate: its fidelity to the released
   serialization code is exactly what makes the migration correct.
+-->
 
 ### Key material hygiene
 
