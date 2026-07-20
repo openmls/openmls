@@ -266,7 +266,7 @@ pub struct MlsGroup {
     // alongside `aad`. Only consulted when the group's GroupContext requires
     // Safe AAD framing.
     #[cfg(feature = "extensions-draft")]
-    // Migration bridge: new v0.8.2 and
+    // Migration bridge:
     // absent from older serializations, so default it to empty on import — it is
     // ephemeral, so a freshly migrated group has nothing staged anyway.
     #[cfg_attr(
