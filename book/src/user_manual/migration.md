@@ -1,4 +1,4 @@
-# Migrating from a previous version
+# Migrating the storage provider
 
 OpenMLS supports migrating between storage versions through a serialization bridge:
 a group, together with all the group-associated data it owns, is exported with the
@@ -10,13 +10,15 @@ crate and the `migration-import` feature on the current one.
 
 ## When to use this
 
-The main migration use case is upgrading between `openmls` versions with incompatible
-storage formats.
-This approach can be used to migrate data serialized using `0.7.0`, `0.7.4` or `0.8.1` 
+The main migration use case is switching to a self-describing `serde` storage format,
+between `openmls` versions that introduce breaking changes when using non-self-describing formats.
+
+The approach described here can be used to migrate data serialized using `0.7.0`, `0.7.4` or `0.8.1`
 into the format used by `0.9.0`, which requires a self-describing format. 
-As of this version, non-self-describing formats are no longer supported; adding,
-removing, or renaming a field silently shifts the layout and corrupts existing
-data.
+
+**NOTE**: As of this version, non-self-describing formats are no longer supported.
+When using non-self-describing formats, changes in struct layouts between `openmls` versions
+may silently shift the layout used for serialization, and corrupt existing data.
 
 > **The migration target must use a self-describing format** (such as JSON), even
 > when the source did not: a current-version group cannot currently be stored in or loaded
@@ -24,21 +26,20 @@ data.
 > staying on a non-self-describing format* is therefore not supported — a
 > self-describing format should be used for the current-version store.
 
-## Prerequisites
-
-<!-- TODO: document the concrete dependency declarations for the previous-version
-bridge crates + `migration_export` feature -->.
+## Migration prerequisites
 
 - Both the previous-version and the current-version OpenMLS crates should be in the
   dependency tree (e.g. `openmls_0_8_1` and `openmls`), the previous version with
   its `migration-export` feature, and the current one with `migration-import` enabled.
+    - `openmls-v0.7.4-migration-helpers`
+    - `openmls-v0.8.1-migration-helpers`
 - A storage provider for each version: one implementing the *previous* version's
   storage traits (holding the existing data), and one implementing the *current*
   version's storage traits (receiving the migrated data).
 
-## Requirements
+## Migration requirements
 
-The following requirements must be satisfied:
+The following requirements must be satisfied when migrating:
 
 - **Quiescence.** The migration must run while the MLS state is at rest: no
   message is mid-processing, and nothing else — no other thread or process —
@@ -67,37 +68,37 @@ where anything missed lingers silently. Migrating into a fresh store keeps the
 source intact for verification and rollback, tolerates interruption even
 without a transactional store, and makes cleanup a simple discard. If the
 store itself cannot be swapped (e.g. it shares a database with other
-application data), migrate into a fresh table set or namespace within it and
-swap that instead of overwriting.
+application data), it is better to migrate into a fresh table set or namespace within it,
+and swap that instead of overwriting.
 
 ## Performing the migration
 
-For each group, export it with the previous version's API, bridge the bundle
-through `serde`, and store it with the current version:
+For each group, the migration is performed by exporting it using the previous version's API,
+then bridging the bundle through `serde`, and storing it with the current version:
 
 ```rust,no_run,noplayground
 {{#include ../../../compat_tests/tests/test_migration.rs:migration}}
 ```
 
-Then run this once per group. Afterwards the group can be loaded normally with
-the current-version `MlsGroup::load`.
+This migration flow should be performed once per group.
+Afterwards the group can be loaded normally with the current-version `MlsGroup::load`.
 
-Run this within a single storage transaction and observe the invariants in
-[Requirements](#requirements) above; queued proposals and a pending commit are
+Groups should be migrated this within a single storage transaction, observing the invariants in
+[Requirements](#requirements) above. **NOTE**: queued proposals and pending commits are
 migrated along with the rest of the group state.
 
 ## What is not migrated
 
 The migration bundle carries the group and all group-associated data OpenMLS owns
-— group state, queued proposals, a pending commit, and the group's encryption key
+— group state, queued proposals, a pending commit if stored, and the group's encryption key
 pairs. Application-managed material that OpenMLS does *not* own — signature key
-pairs, PSKs, and published key packages — is not group-scoped and is not part of
-the bundle. If you keep it in the same store, migrate it separately with the same
-read → bridge → write pattern over the ids your application tracks.
+pairs, PSKs, and key packages — is not group-scoped, and is not part of
+the migration bundle. If you keep this data in the same store, migrate it separately with the same
+read → bridge → write pattern over the ids that your application tracks.
 
 ### Migrating data that is managed by the application
 
-All three cases below use only existing public APIs. Each takes a value (or its
+All three cases below use the existing public storage APIs. Each takes a value (or its
 id) from the previous version and produces the current-version equivalent in the
 new store.
 
@@ -114,17 +115,17 @@ application tracks, bridged, and written to the new store:
 {{#include ../../../compat_tests/tests/test_migration.rs:migrate_key_package}}
 ```
 
-## Recommendations
+## Migration recommendations
 
 ### Verifying the migration
 
-Before relying on the migrated store (and before any cleanup), load each group
+Before relying on the migrated store, and before any cleanup, load each group
 with the current-version `MlsGroup::load` and sanity-check what the application
-expects — at minimum the epoch and the member list. If any group fails to export,
-bridge, or load, fail closed: abort the migration, keep the old data, and report
+expects (e.g., the epoch and the member list). If any group fails to export,
+bridge, or load, then fail closed: abort the migration, keep the old data, and report
 the error, rather than continuing with a partially migrated store.
 
-Store a **schema-version marker** alongside the data so the migration runs
+**Recommendation**: Store a **schema-version marker** alongside the data so the migration runs
 exactly once and the application always knows which format the store holds.
 
 ## Cleaning up the old data
@@ -143,10 +144,10 @@ Whether the old data needs to be removed depends on how you migrate:
   separate cleanup is needed — and deleting would remove the freshly migrated
   data.
 
-**Rolling back to retained old data is only safe before first use.** Once a
-migrated group sends or processes anything, the old store holds stale ratchet
-state: reverting to it forks the group and risks key reuse. If you keep the old
-store as a rollback path, that path expires the moment the group is used.
+**NOTE: Rolling back to retained old data is only safe before the first use after migration.**
+Afterwards, once a migrated group sends or processes anything, the ratchet state in the old store
+becomes stale, and reverting to it forks the group and risks key reuse. The old store should not
+be kept as a rollback path after the migrated state is used.
 
 ## Running the migration in an application
 
@@ -156,9 +157,7 @@ mobile app):
 
 - **Run at startup, before any MLS traffic.** Application startup is the natural
   quiescence point: gate all message processing and outbound operations on the
-  migration having completed (checked via the schema-version marker). A separate
-  process buys nothing — the requirement is exclusive access to the store, not
-  process isolation.
+  migration having completed (checked via the schema-version marker).
 - **Watch for other processes touching the store.** For example, an iOS
   Notification Service Extension that decrypts MLS messages runs in a different
   process and can wake on a push mid-migration; hold a cross-process lock or gate
@@ -186,9 +185,12 @@ mobile app):
 
 ### Key material hygiene
 
-- Never log or upload the bundle. The serialized `GroupMigrationBundle` contains private encryption keys in plaintext JSON. Error reports and
-  diagnostics must not include the bundle, value diffs, or deserialization error messages that embed the offending content — and the bundle should stay
-  in memory, never written to a temp file for debugging.
+- **Never log or upload the migration bundle.** The serialized `GroupMigrationBundle` contains
+private encryption keys in plaintext JSON. Error reports and diagnostics must not
+include the migration bundle, value diffs, or any deserialization error messages
+that embed the offending content. The bundle should also stay in memory, and never
+be written to a temp file for debugging.
 
-- Create the fresh store with the same protections as the old. Same at-rest encryption (e.g. SQLCipher key), and on desktop, restrictive file
-  permissions set before data is written, not fixed up after.
+- Create the fresh store with the same protections as the old. Same at-rest encryption
+  (e.g. SQLCipher key), and on desktop, restrictive file permissions set before the data is written,
+  not fixed up after.
