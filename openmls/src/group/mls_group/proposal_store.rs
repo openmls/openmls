@@ -12,7 +12,7 @@ use crate::{
     group::errors::*,
     messages::proposals::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
-        ProposalType, RemoveProposal, UpdateProposal,
+        ProposalType, ReInitProposal, RemoveProposal, UpdateProposal,
     },
     schedule::PreSharedKeyId,
     utils::vector_converter,
@@ -461,6 +461,19 @@ impl ProposalQueue {
         })
     }
 
+    /// Returns the ReInit proposal in the queue, if any. A validated commit
+    /// contains at most one ReInit proposal (and no other proposals), so this
+    /// returns the first one found.
+    pub(crate) fn reinit_proposal(&self) -> Option<&ReInitProposal> {
+        self.queued_proposals().find_map(|queued_proposal| {
+            if let Proposal::ReInit(reinit_proposal) = queued_proposal.proposal() {
+                Some(reinit_proposal.as_ref())
+            } else {
+                None
+            }
+        })
+    }
+
     #[cfg(feature = "extensions-draft")]
     /// Returns an iterator over all AppEphemeral proposals in the queue
     /// in the order of the Commit message
@@ -549,6 +562,7 @@ impl ProposalQueue {
         let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
         let mut contains_own_updates = false;
         let mut contains_external_init = false;
+        let mut contains_reinit = false;
 
         let mut member_specific_proposals: HashMap<LeafNodeIndex, QueuedProposal> = HashMap::new();
         let mut register_member_specific_proposal =
@@ -606,7 +620,19 @@ impl ProposalQueue {
                     valid_proposals.add(queued_proposal.proposal_reference());
                 }
                 Proposal::ReInit(_) => {
-                    // TODO #751: Only keep one ReInit
+                    // Only keep the first ReInit proposal we find. A commit
+                    // containing a ReInit must not contain any other proposals
+                    // (enforced during commit validation), so keeping one is
+                    // sufficient here.
+                    // TODO: like the other arms here, this silently drops
+                    // additional (here: duplicate ReInit) proposals rather than
+                    // surfacing an error. Silently dropping proposals hides
+                    // malformed commits from the caller; this filtering should
+                    // eventually return an error instead of quietly discarding.
+                    if !contains_reinit {
+                        valid_proposals.add(queued_proposal.proposal_reference());
+                        contains_reinit = true;
+                    }
                 }
                 Proposal::ExternalInit(_) => {
                     // Only use the first external init proposal we find.

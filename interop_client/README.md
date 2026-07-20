@@ -141,8 +141,8 @@ list every genuine bug up front under **Genuine interop failures** (with a real 
 | branch | ✅ 24/24 | 🔶 630/720 | ✅ 720/720 |
 | commit | ✅ 54/54 | ✅ 2508/2508 | 🔶 744/2508 |
 | external_join | ✅ 30/30 | ✅ 228/228 | ✅ 228/228 |
-| external_proposals | 🚫 42/48 | 🚫 612/696 | 🚫 576/696 |
-| reinit | 🚫 0/36 | 🚫 0/1080 | 🚫 0/1080 |
+| external_proposals | ✅ 48/48 | ✅ 696/696 | 🔶 658/696 |
+| reinit | ✅ 36/36 | ✅ 1080/1080 | ✅ 1080/1080 |
 | welcome_join | ✅ 24/24 | ✅ 48/48 | ✅ 48/48 |
 <!-- INTEROP-TABLE:END -->
 
@@ -157,48 +157,18 @@ The per-script failures behind the table above, grouped by pairing, each with a 
 
 _No genuine interop failures._
 
-**OpenMLS ↔ OpenMLS — unsupported (expected)**
-
-- `external_proposals / external_reinit` — 6/6 unsupported — step 3 `externalSignerProposal`: rpc error: code = Unimplemented desc = external sender reinit proposals are not supported by OpenMLS
-- `reinit / all_same_actor` — 6/6 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / change_ciphersuite` — 6/6 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / change_extensions` — 6/6 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / change_group_id` — 6/6 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / external_tree` — 6/6 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / force_path` — 6/6 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-
 **OpenMLS ↔ mls-rs — peer-side limitation (not counted)**
 
 - `branch / with_extensions` — 90/180 affected — step 1 `branch`: rpc error: code = Aborted desc = Aborted with error ReInitExtensionsMismatch
 
-**OpenMLS ↔ mls-rs — unsupported (expected)**
-
-- `external_proposals / external_reinit` — 84/84 unsupported — step 4 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / all_same_actor` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / change_ciphersuite` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / change_extensions` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / change_group_id` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / external_tree` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / force_path` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-
 **OpenMLS ↔ MLS++ — peer-side limitation (not counted)**
 
-- `commit / add` — 1310/1524 affected — step 12 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
-- `commit / all_together_alice_proposes` — 166/372 affected — step 15 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
-- `commit / all_together_bob_proposes` — 209/372 affected — step 16 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
-- `commit / remove` — 79/180 affected — step 7 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
-- `external_proposals / external_add` — 32/84 affected — step 5 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
-- `external_proposals / joiner_signed_add` — 4/12 affected — step 2 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
-
-**OpenMLS ↔ MLS++ — unsupported (expected)**
-
-- `external_proposals / external_reinit` — 84/84 unsupported — step 3 `externalSignerProposal`: rpc error: code = Unimplemented desc = external sender reinit proposals are not supported by OpenMLS
-- `reinit / all_same_actor` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / change_ciphersuite` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / change_extensions` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / change_group_id` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / external_tree` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
-- `reinit / force_path` — 180/180 unsupported — step 1 `reinit`: rpc error: code = Unimplemented desc = Re-init is not implemented
+- `commit / add` — 1309/1524 affected — step 6 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
+- `commit / all_together_alice_proposes` — 169/372 affected — step 15 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
+- `commit / all_together_bob_proposes` — 206/372 affected — step 16 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
+- `commit / remove` — 78/180 affected — step 7 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
+- `external_proposals / external_add` — 33/84 affected — step 5 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
+- `external_proposals / joiner_signed_add` — 5/12 affected — step 2 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
 <!-- INTEROP-FAILURES:END -->
 
 ## Client capabilities and known gaps
@@ -206,19 +176,20 @@ _No genuine interop failures._
 The interop client implements the full `MlsClient` surface exercised by the configs above, including
 external commits, external self-Add (`new_member_add_proposal`), external signers
 (`create_external_signer` / `add_external_signer`), and external-sender proposals for Add / Remove /
-GroupContextExtensions / PreSharedKey (external and resumption; see `ExternalProposal` in
+GroupContextExtensions / PreSharedKey (external and resumption) / ReInit (see `ExternalProposal` in
 `openmls/src/messages/external_proposals.rs`).
 
-`external_proposals` has no genuine OpenMLS failures: every sub-script passes on our side except
-`external_reinit`, which is 🚫 because full **ReInit** is unimplemented (both the external-sender reinit
-proposal and the subsequent `reinit` rebuild — see below). The `external_add` / `joiner_signed_add`
-sub-scripts fail 🔶 **only** against MLS++, from its GREASE non-conformance (see below); they pass against
-mls-rs and OpenMLS-self.
+`external_proposals` has no genuine OpenMLS failures: every sub-script passes on our side, including
+`external_reinit` — external-sender ReInit proposals are now supported (`ExternalProposal::new_reinit`,
+accepted on the receiving side and committed into the existing suspend/successor flow). The
+`external_add` / `joiner_signed_add` sub-scripts fail 🔶 **only** against MLS++, from its GREASE
+non-conformance (see below); they pass against mls-rs and OpenMLS-self.
 
 ### Unimplemented (🚫, reported as gRPC `Unimplemented`, never counted as a failure)
 
-- **ReInit** — `re_init_proposal`, `re_init_commit`, `handle_*_re_init_*`, `re_init_welcome`, and the
-  `external_signer_proposal` `reinit` sub-type. ReInit is not implemented in OpenMLS.
+_None across the configs exercised above._ Both member-initiated and external-sender **ReInit** are now
+implemented (`re_init_proposal`, `re_init_commit`, `handle_*_re_init_*`, `re_init_welcome`, and the
+`external_signer_proposal` `reinit` sub-type).
 
 ### Peer-side limitations (🔶, not counted)
 

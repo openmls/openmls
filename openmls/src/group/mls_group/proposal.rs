@@ -7,7 +7,8 @@ use super::HandshakeConfirmationData;
 use super::{
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError, RemoveProposalError},
     AddProposal, CustomProposal, FramingParameters, HandshakeFramingOutput, MlsGroup,
-    PreSharedKeyProposal, Proposal, QueuedProposal, RemoveProposal, UpdateProposal, WireFormat,
+    PreSharedKeyProposal, Proposal, QueuedProposal, ReInitProposal, RemoveProposal, UpdateProposal,
+    WireFormat,
 };
 #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
 use crate::messages::group_info::GroupInfo;
@@ -631,6 +632,52 @@ impl MlsGroup {
         Ok((framing, proposal_ref))
     }
 
+    /// Creates proposals to reinitialize the group into a successor group with
+    /// the parameters described by `reinit_proposal` (a new group id, protocol
+    /// version, ciphersuite and group context extensions).
+    ///
+    /// Committing to a ReInit proposal suspends the group: once the commit is
+    /// merged, the group becomes inoperable and can only be used to seed the
+    /// successor group (see [`CommitBuilder::reinit`] and
+    /// [`StagedWelcome::new_from_reinit`]).
+    ///
+    /// Returns an error if the group is not operational (e.g. there is a pending
+    /// commit).
+    ///
+    /// [`CommitBuilder::reinit`]: crate::group::CommitBuilder::reinit
+    /// [`StagedWelcome::new_from_reinit`]: crate::group::StagedWelcome::new_from_reinit
+    pub fn propose_reinit<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        reinit_proposal: ReInitProposal,
+        signer: &impl Signer,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        self.is_operational()?;
+
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
+        let proposal = self.create_reinit_proposal(framing_parameters, reinit_proposal, signer)?;
+
+        let queued_proposal = QueuedProposal::from_authenticated_content(
+            self.ciphersuite(),
+            provider.crypto(),
+            proposal.clone(),
+            ProposalOrRefType::Reference,
+        )?;
+
+        let proposal_ref = queued_proposal.proposal_reference();
+        provider
+            .storage()
+            .queue_proposal(self.group_id(), &proposal_ref, &queued_proposal)
+            .map_err(ProposalError::StorageError)?;
+        self.proposal_store_mut().add(queued_proposal);
+
+        let framing = self.content_to_mls_message(proposal, provider)?;
+
+        self.reset_aad();
+        Ok((framing.message, proposal_ref))
+    }
+
     /// Updates Group Context Extensions
     ///
     /// Commits to the Group Context Extension inline proposal using the [`Extensions`]
@@ -854,7 +901,6 @@ impl MlsGroup {
     // struct {
     //     PreSharedKeyID psk;
     // } PreSharedKey;
-    // TODO: #751
     pub(crate) fn create_presharedkey_proposal(
         &self,
         framing_parameters: FramingParameters,
@@ -863,6 +909,29 @@ impl MlsGroup {
     ) -> Result<AuthenticatedContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::psk(presharedkey_proposal);
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            self.own_leaf_index(),
+            proposal,
+            self.context(),
+            signer,
+        )
+    }
+
+    // 12.1.5. ReInit
+    // struct {
+    //     opaque group_id<V>;
+    //     ProtocolVersion version;
+    //     CipherSuite cipher_suite;
+    //     Extension extensions<V>;
+    // } ReInit;
+    pub(crate) fn create_reinit_proposal(
+        &self,
+        framing_parameters: FramingParameters,
+        reinit_proposal: ReInitProposal,
+        signer: &impl Signer,
+    ) -> Result<AuthenticatedContent, LibraryError> {
+        let proposal = Proposal::re_init(reinit_proposal);
         AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
