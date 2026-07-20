@@ -80,6 +80,16 @@ then bridging the bundle through `serde`, and storing it with the current versio
 {{#include ../../../compat_tests/tests/test_migration.rs:migration}}
 ```
 
+The bundle is bridged with the small helper below, which serializes to JSON and
+deserializes into the current version's type. Because the intermediate JSON buffer
+holds the group's private keys in plaintext, it is kept in a `Zeroizing` buffer
+that is wiped when the helper returns (see [Key material hygiene](#key-material-hygiene)).
+The same helper is reused for the application-managed material further down.
+
+```rust,no_run,noplayground
+{{#include ../../../compat_tests/tests/test_migration.rs:serde_json_bridge}}
+```
+
 This migration flow should be performed once per group.
 Afterwards the group can be loaded normally with the current-version `MlsGroup::load`.
 
@@ -194,3 +204,9 @@ be written to a temp file for debugging.
 - Create the fresh store with the same protections as the old. Same at-rest encryption
   (e.g. SQLCipher key), and on desktop, restrictive file permissions set before the data is written,
   not fixed up after.
+
+- **Wipe the intermediate serialized buffer.** The `serde_json_bridge` helper keeps
+  the plaintext-JSON buffer in a `Zeroizing` wrapper so it is scrubbed on drop. This approach is best-effort,
+since `serde_json` may make intermediate copies during (de)serialization that cannot be reached and cleared.
+  Keep the bridge on the `to_vec` / `from_slice` byte path rather than
+  `serde_json::Value`. <!-- TODO: add more details on this -->

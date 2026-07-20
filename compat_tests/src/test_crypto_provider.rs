@@ -46,8 +46,8 @@ use openmls_0_7_4::prelude::tls_codec as tls_codec_compat;
 
 use openmls_traits_compat::types as compat;
 
-// XXX: This is the previous line's `tls_codec` (0.4), pinned as a direct
-// dependency so we can name `SecretVLBytes` in the previous-version trait
+// The previous line's `SecretVLBytes`, taken from the previous-version crate's
+// `tls_codec` re-export (0.4) so we can name it in the previous-version trait
 // signatures below. It is a *different* type from the current line's 0.5
 // `SecretVLBytes`, so return values are bridged through their bytes for conversion
 // between the two types (see the `as_slice()` + `.into()` conversions below).

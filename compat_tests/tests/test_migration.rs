@@ -343,6 +343,27 @@ fn migrate_and_check(
     after
 }
 
+// ANCHOR: serde_json_bridge
+/// Bridge a value across the serde_json version boundary: serialize `source` (a
+/// previous-version type) to JSON, then deserialize it as the current-version type
+/// `T`.
+///
+/// The intermediate JSON buffer holds the value's secret key material in plaintext.
+/// Unlike the typed `source` and returned `T` — whose secret fields are
+/// `SecretVLBytes` and are wiped on their own drop — a plain `Vec<u8>` is not
+/// scrubbed when freed, so it is held in a `Zeroizing` buffer that is wiped when
+/// this function returns, on the error path as well as on success.
+///
+/// Keep the bridge on this byte-buffer path (`to_vec` / `from_slice`)
+/// rather than routing it through `serde_json::Value`.
+fn serde_json_bridge<S: serde::Serialize, T: serde::de::DeserializeOwned>(
+    source: &S,
+) -> Result<T, serde_json::Error> {
+    let serialized = zeroize::Zeroizing::new(serde_json::to_vec(source)?);
+    serde_json::from_slice(&serialized)
+}
+// ANCHOR_END: serde_json_bridge
+
 // ANCHOR: migration
 /// Migrate a single group from the previous OpenMLS version to the current one.
 ///
@@ -363,15 +384,13 @@ fn migrate_group(
         .expect("error reading the old storage")
         .expect("no group with this id in the old storage");
 
-    // 2. Serialize the bundle to a self-describing format. Any `serde` format
-    //    works; this example uses JSON.
-    let serialized = serde_json::to_vec(&bundle).expect("error serializing the migration bundle");
-
-    // 3. Deserialize into the *current* version's migration bundle.
+    // 2. Bridge the bundle through a self-describing serde format (here JSON) into
+    //    the *current* version's migration bundle. The intermediate buffer is
+    //    zeroized on drop (see `serde_json_bridge`).
     let bundle: openmls_current::storage::GroupMigrationBundle =
-        serde_json::from_slice(&serialized).expect("error deserializing the migration bundle");
+        serde_json_bridge(&bundle).expect("error bridging the migration bundle through serde_json");
 
-    // 4. Write the group and all its data to storage in the current version's
+    // 3. Write the group and all its data to storage in the current version's
     //    format.
     bundle
         .store(new_provider)
@@ -1048,8 +1067,7 @@ fn test_migration_replaces_existing_group() {
             openmls_compat::prelude::MlsGroup::export_for_migration(&old_provider, &group_id)
                 .expect("exporting the group")
                 .expect("no group with this id in the old storage");
-        let serialized = serde_json::to_vec(&exported).expect("serializing the bundle");
-        serde_json::from_slice(&serialized).expect("deserializing the bundle")
+        serde_json_bridge(&exported).expect("bridging the bundle")
     };
 
     // Store the bundle into one target serde_json store twice. What creates the
@@ -1139,8 +1157,7 @@ fn migrate_signature_key_pair(
     new_storage: &SerdeJsonProvider<'_>,
 ) -> openmls_basic_credential_current::SignatureKeyPair {
     let signer: openmls_basic_credential_current::SignatureKeyPair =
-        serde_json::from_slice(&serde_json::to_vec(old_signer).expect("serialize signer"))
-            .expect("deserialize signer into the current version");
+        serde_json_bridge(old_signer).expect("bridge signer into the current version");
     signer
         .store(new_storage)
         .expect("store the migrated signer");
@@ -1175,8 +1192,7 @@ fn migrate_key_package(
 
     // 2. Bridge it through serde into the current version's type.
     let bundle: openmls_current::prelude::KeyPackageBundle =
-        serde_json::from_slice(&serde_json::to_vec(&old_bundle).expect("serialize key package"))
-            .expect("deserialize key package into the current version");
+        serde_json_bridge(&old_bundle).expect("bridge key package into the current version");
 
     // 3. Write it to the current store, keyed by its current-version hash ref.
     let new_hash_ref = bundle
