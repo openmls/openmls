@@ -462,6 +462,27 @@ impl PublicGroup {
                     None,
                 ))
             }
+            // RFC 9420 §12.1.8.2 permits external senders to send PreSharedKey
+            // proposals.
+            FramedContentBody::Proposal(Proposal::PreSharedKey(_)) => {
+                let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                    QueuedProposal::from_authenticated_content_by_ref(
+                        self.ciphersuite(),
+                        crypto,
+                        content,
+                    )?,
+                ));
+                Ok(ProcessedMessage::new(
+                    self.group_id().clone(),
+                    self.group_context().epoch(),
+                    sender,
+                    data,
+                    content,
+                    credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
+                ))
+            }
             // TODO #151/#106
             FramedContentBody::Proposal(_) => {
                 Err(PublicProcessMessageError::UnsupportedProposalType)
