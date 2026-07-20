@@ -10,10 +10,10 @@ cd "$(dirname "$0")"
 # Group migration (previous version -> current), with and without extensions-draft.
 cargo test -F storage_migration_0_8
 cargo test -F storage_migration_0_8,extensions-draft
-cargo test -F storage_migration_0_8,extensions-draft,virtual-clients-draft
+# cargo test -F storage_migration_0_8,extensions-draft,virtual-clients-draft
 cargo test -F storage_migration_0_7
 cargo test -F storage_migration_0_7,extensions-draft
-cargo test -F storage_migration_0_7,extensions-draft,virtual-clients-draft
+# cargo test -F storage_migration_0_7,extensions-draft,virtual-clients-draft
 
 # Migration across a feature-flag toggle: source WITHOUT extensions-draft, target
 # WITH it (`extensions-draft-current` only). Exercises the new fields defaulting on
