@@ -26,6 +26,3 @@ cargo test -F storage_migration_0_7,extensions-draft-current
 cargo test -F compat_0_7_1
 cargo test -F compat_0_8_1
 cargo test -F compat_0_8_1,extensions-draft
-# NOTE: `compat_0_7_4` builds but has no storage-tag-stability test yet (the tag
-# tests are gated on `compat_0_7_1` / `compat_0_8_1`). Add a `compat_0_7_4` arm in
-# `tests/test_storage_tag_stability.rs` to cover it.
