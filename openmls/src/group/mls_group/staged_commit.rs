@@ -15,6 +15,7 @@ use super::{
     super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
     JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, MlsGroupState,
     OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue, PskSecret, QueuedProposal,
+    ReInitProposal,
 };
 use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;
@@ -902,6 +903,15 @@ impl StagedCommit {
     /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].
     pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal<'_>> {
         self.staged_proposal_queue.psk_proposals()
+    }
+
+    /// Returns the [`ReInitProposal`] covered by the Commit message, if any.
+    ///
+    /// A commit that carries a ReInit proposal reinitializes the group: on
+    /// merge the group is suspended and this proposal describes the parameters
+    /// of the successor group.
+    pub fn reinit_proposal(&self) -> Option<&ReInitProposal> {
+        self.staged_proposal_queue.reinit_proposal()
     }
 
     #[cfg(feature = "extensions-draft")]

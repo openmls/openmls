@@ -2,7 +2,10 @@
 //!
 //! Contains the types and methods to build external proposal to add/remove a client from a MLS group
 //!
-//! `ReInit` is not yet implemented
+//! External `ReInit` proposals are supported via
+//! [`ExternalProposal::new_reinit`]. See
+//! [`MlsGroup::propose_reinit`](crate::group::MlsGroup::propose_reinit) for
+//! member-initiated ReInit proposals.
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -15,7 +18,7 @@ use crate::{
         GroupContext, GroupEpoch, GroupId,
     },
     key_packages::KeyPackage,
-    messages::{AddProposal, Proposal},
+    messages::{AddProposal, Proposal, ReInitProposal},
     schedule::psk::PreSharedKeyId,
     storage::{OpenMlsProvider, StorageProvider},
 };
@@ -174,6 +177,40 @@ impl ExternalProposal {
     ) -> Result<MlsMessageOut, LibraryError> {
         AuthenticatedContent::new_external_proposal(
             Proposal::psk(PreSharedKeyProposal::new(psk_id)),
+            group_id,
+            epoch,
+            signer,
+            sender_index,
+        )
+        .map(PublicMessage::from)
+        .map(MlsMessageOut::from)
+    }
+
+    /// Creates an external ReInit proposal. For delivery services requesting to
+    /// reinitialize the group as a new group with new parameters (RFC 9420
+    /// §12.1.8.2 permits external senders to send ReInit proposals). This
+    /// proposal will have to be committed later by a group member, which
+    /// suspends the old group; a member then creates the successor group from
+    /// the ReInit parameters.
+    ///
+    /// # Arguments
+    /// * `reinit` - the successor group's parameters (its own new group id,
+    ///   protocol version, ciphersuite, and group context extensions)
+    /// * `group_id` - unique group identifier of the *old* group the proposal
+    ///   is sent into
+    /// * `epoch` - old group's epoch
+    /// * `signer` - of the sender to sign the message
+    /// * `sender_index` - index of the sender of the proposal (in the
+    ///   [crate::extensions::ExternalSendersExtension] array from the Group Context)
+    pub fn new_reinit(
+        reinit: ReInitProposal,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        signer: &impl Signer,
+        sender_index: SenderExtensionIndex,
+    ) -> Result<MlsMessageOut, LibraryError> {
+        AuthenticatedContent::new_external_proposal(
+            Proposal::re_init(reinit),
             group_id,
             epoch,
             signer,

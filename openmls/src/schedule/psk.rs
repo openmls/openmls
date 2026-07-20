@@ -376,16 +376,12 @@ impl PreSharedKeyId {
                 // https://validation.openmls.tech/#valn0802
                 match resumption_psk.usage {
                     ResumptionPskUsage::Application => {}
-                    ResumptionPskUsage::Reinit => {
-                        return Err(PskError::UsageMismatch {
-                            allowed: vec![ResumptionPskUsage::Application],
-                            got: resumption_psk.usage,
-                        });
-                    }
-                    ResumptionPskUsage::Branch => {
+                    ResumptionPskUsage::Reinit | ResumptionPskUsage::Branch => {
                         // We can't check anything in here since we need more
-                        // information about the commit. We do this check
-                        // on the outside.
+                        // information about the commit. Reinit and Branch PSKs
+                        // are only valid in the initial commit of the successor
+                        // resp. sub-group (epoch 0); this is checked on the
+                        // outside in `validate_pre_shared_key_proposals`.
                     }
                 }
             }

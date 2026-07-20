@@ -128,6 +128,18 @@ pub enum WelcomeError<StorageError> {
     /// (RFC 9420 §11.3).
     #[error("A member of the subgroup does not match any member of the parent group.")]
     SubgroupLeafMismatch,
+    /// The successor group's parameters (group id, protocol version, ciphersuite
+    /// or extensions) do not match the ReInit proposal (RFC 9420 §11.2).
+    #[error("The successor group's parameters do not match the ReInit proposal.")]
+    ReInitParameterMismatch,
+    /// The successor group is not at epoch 1, as required for reinitialization
+    /// (RFC 9420 §11.2).
+    #[error("The successor group is not at epoch 1.")]
+    ReInitEpochInvalid,
+    /// A member of the successor group does not match any member of the old
+    /// group (RFC 9420 §11.2).
+    #[error("A member of the successor group does not match any member of the old group.")]
+    ReInitLeafMismatch,
 }
 
 /// External Commit error
@@ -642,6 +654,14 @@ pub enum ProposalValidationError {
     /// Regular Commits may not contain ExternalInit proposals, but one was found
     #[error("Found ExternalInit proposal in regular commit")]
     ExternalInitProposalInRegularCommit,
+    /// A Commit that references a ReInit proposal must contain no other
+    /// proposals, but at least one other proposal was found (RFC 9420 §12.2).
+    #[error("Found a ReInit proposal alongside other proposals in a commit")]
+    ReInitProposalNotAlone,
+    /// A ReInit proposal's protocol version is lower than the current group's
+    /// (RFC 9420 §12.1.5).
+    #[error("ReInit proposal downgrades the protocol version")]
+    ReInitDowngrade,
 }
 
 /// External Commit validaton error
