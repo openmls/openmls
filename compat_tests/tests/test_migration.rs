@@ -44,8 +44,6 @@ use openmls_0_8_1 as openmls_compat;
 #[cfg(feature = "compat_0_8_1")]
 use openmls_basic_credential_0_8 as openmls_basic_credential_compat;
 #[cfg(feature = "compat_0_8_1")]
-use openmls_libcrux_crypto_0_8 as openmls_libcrux_crypto_compat;
-#[cfg(feature = "compat_0_8_1")]
 use openmls_traits_0_5_0 as openmls_traits_compat;
 
 #[cfg(feature = "compat_0_7_4")]
@@ -53,14 +51,19 @@ use openmls_0_7_4 as openmls_compat;
 #[cfg(feature = "compat_0_7_4")]
 use openmls_basic_credential_0_7 as openmls_basic_credential_compat;
 #[cfg(feature = "compat_0_7_4")]
-use openmls_libcrux_crypto_0_7 as openmls_libcrux_crypto_compat;
-#[cfg(feature = "compat_0_7_4")]
 use openmls_traits_0_4_1 as openmls_traits_compat;
+
+// The previous-version crypto/rand provider is a local wrapper around the current
+// libcrux provider (see `openmls_compat_tests::test_crypto_provider`), aliased to
+// the name the previous-version libcrux crate used so the call sites below (and
+// the providers in `test_storage_provider`) are unchanged.
+use openmls_compat_tests::test_crypto_provider as openmls_libcrux_crypto_compat;
 
 use openmls_compat::prelude::{
     tls_codec::{Deserialize as _, Serialize as _},
     *,
 };
+use openmls_current::prelude::tls_codec::{Deserialize as _, Serialize as _};
 use openmls_traits_compat::signatures::Signer;
 
 use openmls as openmls_current;
@@ -1197,9 +1200,9 @@ fn migrate_key_package(
 /// owner joins from the welcome using the migrated bundle.
 #[test]
 fn test_migration_key_package() {
-    let old_ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let old_ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
     let current_ciphersuite =
-        openmls_current::prelude::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+        openmls_current::prelude::Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
 
     // Bob publishes a key package into the previous version's store.
     let bob_old_state = StorageProviderState::default();

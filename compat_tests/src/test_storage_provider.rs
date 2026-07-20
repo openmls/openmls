@@ -85,11 +85,10 @@ impl StorageProviderState {
     }
 }
 
-#[cfg(feature = "storage_migration_0_8")]
-use openmls_libcrux_crypto_0_8 as openmls_libcrux_crypto_compat;
-
-#[cfg(feature = "storage_migration_0_7")]
-use openmls_libcrux_crypto_0_7 as openmls_libcrux_crypto_compat;
+// The previous-version crypto/rand provider is a local wrapper around the current
+// libcrux provider (see `crate::test_crypto_provider`), aliased here to the name
+// the previous-version libcrux crate used, so it drops in unchanged below.
+use crate::test_crypto_provider as openmls_libcrux_crypto_compat;
 
 #[cfg(feature = "storage_migration_0_8")]
 use openmls_traits_0_5_0 as openmls_traits_compat;

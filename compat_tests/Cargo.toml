@@ -14,17 +14,13 @@ compat_0_8_1 = ["dep:openmls_0_8_1", "openmls/0-8-1-storage-format"]
 # line, `extensions-draft-compat` only for the *previous* (source) line, and
 # `extensions-draft` (the common case) turns it on for both.
 #
-# Enabling `openmls_traits/extensions-draft(-08)` adds the extensions-draft
-# storage-trait methods to that line's `StorageProvider`. The `openmls_memory_storage`
-# pulled in transitively via a libcrux crypto provider only implements them under
-# its *own* feature, so each libcrux `extensions-draft(-08)` feature (which chains
-# to its matching `memory_storage`) is enabled alongside.
+# Enabling `openmls_<version>/extensions-draft-08` adds the extensions-draft
+# storage-trait methods to that previous-version line's `StorageProvider`, which
+# our custom storage provider then implements (gated on `extensions-draft-compat`).
 extensions-draft = ["extensions-draft-current", "extensions-draft-compat"]
 extensions-draft-compat = [
     "openmls_0_8_1?/extensions-draft-08",
     "openmls_0_7_4?/extensions-draft-08",
-    "openmls_libcrux_crypto_0_8?/extensions-draft-08",
-    "openmls_libcrux_crypto_0_7?/extensions-draft-08",
 ]
 extensions-draft-current = [
     "openmls/extensions-draft",
@@ -40,7 +36,6 @@ storage_migration_0_7 = [
     "openmls_traits_0_4_1",
     "openmls/migration-test-utils",
     "openmls_0_7_4?/migration-export",
-    "dep:openmls_libcrux_crypto_0_7",
     "dep:openmls_basic_credential_0_7",
 ]
 storage_migration_0_8 = [
@@ -48,7 +43,6 @@ storage_migration_0_8 = [
     "openmls_traits_0_5_0",
     "openmls/migration-test-utils",
     "openmls_0_8_1?/migration-export",
-    "dep:openmls_libcrux_crypto_0_8",
     "dep:openmls_basic_credential_0_8",
 ]
 
@@ -66,12 +60,10 @@ openmls_0_7_1 = { package = "openmls", version = "=0.7.1", optional = true }
 # and its matching traits / crypto / credential providers.
 openmls_0_8_1 = { git = "https://github.com/openmls/openmls.git", branch = "openmls-v0.8.1-migration-helpers", package = "openmls", optional = true }
 openmls_basic_credential_0_8 = { git = "https://github.com/openmls/openmls.git", branch = "openmls-v0.8.1-migration-helpers", package = "openmls_basic_credential", optional = true }
-openmls_libcrux_crypto_0_8 = { git = "https://github.com/openmls/openmls.git", branch = "openmls-v0.8.1-migration-helpers", package = "openmls_libcrux_crypto", optional = true }
 openmls_traits_0_5_0 = { git = "https://github.com/openmls/openmls.git", branch = "openmls-v0.8.1-migration-helpers", package = "openmls_traits", optional = true }
 
 openmls_0_7_4 = { git = "https://github.com/openmls/openmls.git", branch = "openmls-v0.7.4-migration-helpers", package = "openmls", optional = true }
 openmls_basic_credential_0_7 = { git = "https://github.com/openmls/openmls.git", branch = "openmls-v0.7.4-migration-helpers", package = "openmls_basic_credential", optional = true }
-openmls_libcrux_crypto_0_7 = { git = "https://github.com/openmls/openmls.git", branch = "openmls-v0.7.4-migration-helpers", package = "openmls_libcrux_crypto", optional = true }
 openmls_traits_0_4_1 = { git = "https://github.com/openmls/openmls.git", branch = "openmls-v0.7.4-migration-helpers", package = "openmls_traits", optional = true }
 
 # 0.7.4 migration bridge (previous-version source line, with `migration-export`)
