@@ -1418,14 +1418,12 @@ impl GroupMigrationBundle {
     /// Store the migrated group and all of its group-associated data in the
     /// current storage format.
     ///
-    /// **NOTE**: This replaces any existing state for the group's [`GroupId`] (see
-    /// [`MlsGroup::store_for_migration`]), under the same [`GroupId`] encoding.
+    /// **NOTE**: This replaces any existing state for the group's [`GroupId`], under the same [`GroupId`] encoding.
     ///
     /// Single-value tables are overwritten and the accumulate-style data
     /// (own leaf nodes, proposal queue) are cleared before writing.
     ///
-    /// Old-format entries under a different key encoding are not changed; see the
-    /// note on [`MlsGroup::store_for_migration`] for cleaning those up.
+    /// Old-format entries under a different key encoding are not changed.
     pub fn store<Storage: crate::storage::StorageProvider>(
         &self,
         storage: &Storage,
