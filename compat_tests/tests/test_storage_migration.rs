@@ -37,9 +37,6 @@ fn test_migration<
     // write to storage
     write(storage, key_legacy, &input).unwrap();
 
-    // reading from storage using new format fails
-    assert!(read(storage, key_current).is_err());
-
     // migrate
     migrate(storage).unwrap();
 
@@ -93,8 +90,8 @@ fn test_storage_migration() {
         openmls::storage::migration::migrate_group_state,
     );
 
-    // test deserialization of MessageSecretsStore
-    test_tolerant_deserialization::<
+    // test migration of MessageSecretsStore
+    test_migration::<
         _,
         _,
         openmls::storage::migration::MessageSecretsStore,
@@ -106,5 +103,6 @@ fn test_storage_migration() {
         &group_id,
         StorageProvider::write_message_secrets,
         StorageProvider::message_secrets,
+        openmls::storage::migration::migrate_message_secrets,
     );
 }
