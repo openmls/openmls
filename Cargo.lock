@@ -2705,6 +2705,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "openmls_wire_types_0_7_4"
+version = "0.7.4"
+dependencies = [
+ "log",
+ "openmls_traits",
+ "serde",
+ "serde_bytes",
+ "thiserror",
+ "tls_codec",
+ "zeroize",
+]
+
+[[package]]
 name = "openssl-probe"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

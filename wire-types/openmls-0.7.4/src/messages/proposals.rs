@@ -1,0 +1,523 @@
+//! # Proposals
+//!
+//! This module defines all the different types of Proposals.
+
+use std::io::{Read, Write};
+
+use openmls_traits::types::Ciphersuite;
+use serde::{Deserialize, Serialize};
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, DeserializeBytes, Error, Serialize as TlsSerializeTrait,
+    Size, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes,
+};
+
+use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
+    ciphersuite::hash_ref::{KeyPackageRef, ProposalRef},
+    extensions::Extensions,
+    group::GroupId,
+    key_packages::*,
+    prelude::LeafNode,
+    schedule::psk::*,
+    versions::ProtocolVersion,
+};
+
+/// ## MLS Proposal Types
+///
+///
+/// ```c
+/// // RFC 9420
+/// // See IANA registry for registered values
+/// uint16 ProposalType;
+/// ```
+///
+/// | Value           | Name                     | R | Ext | Path | Ref      |
+/// |-----------------|--------------------------|---|-----|------|----------|
+/// | 0x0000          | RESERVED                 | - | -   | -    | RFC 9420 |
+/// | 0x0001          | add                      | Y | Y   | N    | RFC 9420 |
+/// | 0x0002          | update                   | Y | N   | Y    | RFC 9420 |
+/// | 0x0003          | remove                   | Y | Y   | Y    | RFC 9420 |
+/// | 0x0004          | psk                      | Y | Y   | N    | RFC 9420 |
+/// | 0x0005          | reinit                   | Y | Y   | N    | RFC 9420 |
+/// | 0x0006          | external_init            | Y | N   | Y    | RFC 9420 |
+/// | 0x0007          | group_context_extensions | Y | Y   | Y    | RFC 9420 |
+/// | 0x0A0A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x1A1A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x2A2A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x3A3A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x4A4A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x5A5A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x6A6A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x7A7A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x8A8A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0x9A9A          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xAAAA          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xBABA          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xCACA          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xDADA          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xEAEA          | GREASE                   | Y | -   | -    | RFC 9420 |
+/// | 0xF000 - 0xFFFF | Reserved for Private Use | - | -   | -    | RFC 9420 |
+///
+/// # Extensions
+///
+/// | Value  | Name        | Recommended | Path Required | Reference | Notes                        |
+/// |:=======|:============|:============|:==============|:==========|:=============================|
+/// | 0x000a | self_remove | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-07 |
+/// | 0x000b | app_ack     | Y           | N             | RFC XXXX  | draft-ietf-mls-extensions-07 |
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Serialize, Deserialize, Hash)]
+#[allow(missing_docs)]
+pub enum ProposalType {
+    Add,
+    Update,
+    Remove,
+    PreSharedKey,
+    Reinit,
+    ExternalInit,
+    GroupContextExtensions,
+    AppAck,
+    SelfRemove,
+    Custom(u16),
+}
+
+impl Size for ProposalType {
+    fn tls_serialized_len(&self) -> usize {
+        2
+    }
+}
+
+impl TlsDeserializeTrait for ProposalType {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let mut proposal_type = [0u8; 2];
+        bytes.read_exact(&mut proposal_type)?;
+
+        Ok(ProposalType::from(u16::from_be_bytes(proposal_type)))
+    }
+}
+
+impl TlsSerializeTrait for ProposalType {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        writer.write_all(&u16::from(*self).to_be_bytes())?;
+
+        Ok(2)
+    }
+}
+
+impl DeserializeBytes for ProposalType {
+    fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes_ref = bytes;
+        let proposal_type = ProposalType::tls_deserialize(&mut bytes_ref)?;
+        let remainder = &bytes[proposal_type.tls_serialized_len()..];
+        Ok((proposal_type, remainder))
+    }
+}
+
+impl From<u16> for ProposalType {
+    fn from(value: u16) -> Self {
+        match value {
+            1 => ProposalType::Add,
+            2 => ProposalType::Update,
+            3 => ProposalType::Remove,
+            4 => ProposalType::PreSharedKey,
+            5 => ProposalType::Reinit,
+            6 => ProposalType::ExternalInit,
+            7 => ProposalType::GroupContextExtensions,
+            0x000a => ProposalType::SelfRemove,
+            0x000b => ProposalType::AppAck,
+            other => ProposalType::Custom(other),
+        }
+    }
+}
+
+impl From<ProposalType> for u16 {
+    fn from(value: ProposalType) -> Self {
+        match value {
+            ProposalType::Add => 1,
+            ProposalType::Update => 2,
+            ProposalType::Remove => 3,
+            ProposalType::PreSharedKey => 4,
+            ProposalType::Reinit => 5,
+            ProposalType::ExternalInit => 6,
+            ProposalType::GroupContextExtensions => 7,
+            ProposalType::SelfRemove => 0x000a,
+            ProposalType::AppAck => 0x000b,
+            ProposalType::Custom(id) => id,
+        }
+    }
+}
+
+/// Proposal.
+///
+/// This `enum` contains the different proposals in its variants.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     ProposalType msg_type;
+///     select (Proposal.msg_type) {
+///         case add:                      Add;
+///         case update:                   Update;
+///         case remove:                   Remove;
+///         case psk:                      PreSharedKey;
+///         case reinit:                   ReInit;
+///         case external_init:            ExternalInit;
+///         case group_context_extensions: GroupContextExtensions;
+///     };
+/// } Proposal;
+/// ```
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[allow(missing_docs)]
+#[repr(u16)]
+pub enum Proposal {
+    Add(Box<AddProposal>),
+    Update(Box<UpdateProposal>),
+    Remove(Box<RemoveProposal>),
+    PreSharedKey(Box<PreSharedKeyProposal>),
+    ReInit(Box<ReInitProposal>),
+    ExternalInit(Box<ExternalInitProposal>),
+    GroupContextExtensions(Box<GroupContextExtensionProposal>),
+    // # Extensions
+    // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
+    //             was moved to `draft-ietf-mls-extensions-00`.
+    AppAck(Box<AppAckProposal>),
+    // A SelfRemove proposal is an empty struct.
+    SelfRemove,
+    Custom(Box<CustomProposal>),
+}
+
+impl Proposal {
+    /// Returns the proposal type.
+    pub fn proposal_type(&self) -> ProposalType {
+        match self {
+            Proposal::Add(_) => ProposalType::Add,
+            Proposal::Update(_) => ProposalType::Update,
+            Proposal::Remove(_) => ProposalType::Remove,
+            Proposal::PreSharedKey(_) => ProposalType::PreSharedKey,
+            Proposal::ReInit(_) => ProposalType::Reinit,
+            Proposal::ExternalInit(_) => ProposalType::ExternalInit,
+            Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            Proposal::AppAck(_) => ProposalType::AppAck,
+            Proposal::SelfRemove => ProposalType::SelfRemove,
+            Proposal::Custom(custom) => ProposalType::Custom(custom.proposal_type.to_owned()),
+        }
+    }
+}
+
+/// Add Proposal.
+///
+/// An Add proposal requests that a client with a specified [`KeyPackage`] be
+/// added to the group.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     KeyPackage key_package;
+/// } Add;
+/// ```
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
+pub struct AddProposal {
+    pub(crate) key_package: KeyPackage,
+}
+
+/// Update Proposal.
+///
+/// An Update proposal is a similar mechanism to [`AddProposal`] with the
+/// distinction that it replaces the sender's [`LeafNode`] in the tree instead
+/// of adding a new leaf to the tree.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     LeafNode leaf_node;
+/// } Update;
+/// ```
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
+pub struct UpdateProposal {
+    pub(crate) leaf_node: LeafNode,
+}
+
+/// Remove Proposal.
+///
+/// A Remove proposal requests that the member with the leaf index removed be
+/// removed from the group.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     uint32 removed;
+/// } Remove;
+/// ```
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
+pub struct RemoveProposal {
+    pub(crate) removed: LeafNodeIndex,
+}
+
+/// PreSharedKey Proposal.
+///
+/// A PreSharedKey proposal can be used to request that a pre-shared key be
+/// injected into the key schedule in the process of advancing the epoch.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     PreSharedKeyID psk;
+/// } PreSharedKey;
+/// ```
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
+pub struct PreSharedKeyProposal {
+    psk: PreSharedKeyId,
+}
+
+/// ReInit Proposal.
+///
+/// A ReInit proposal represents a request to reinitialize the group with
+/// different parameters, for example, to increase the version number or to
+/// change the ciphersuite. The reinitialization is done by creating a
+/// completely new group and shutting down the old one.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     opaque group_id<V>;
+///     ProtocolVersion version;
+///     CipherSuite cipher_suite;
+///     Extension extensions<V>;
+/// } ReInit;
+/// ```
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
+pub struct ReInitProposal {
+    pub(crate) group_id: GroupId,
+    pub(crate) version: ProtocolVersion,
+    pub(crate) ciphersuite: Ciphersuite,
+    pub(crate) extensions: Extensions,
+}
+
+/// ExternalInit Proposal.
+///
+/// An ExternalInit proposal is used by new members that want to join a group by
+/// using an external commit. This proposal can only be used in that context.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///   opaque kem_output<V>;
+/// } ExternalInit;
+/// ```
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
+pub struct ExternalInitProposal {
+    kem_output: VLBytes,
+}
+
+/// AppAck Proposal.
+///
+/// This is not yet supported.
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
+pub struct AppAckProposal {
+    received_ranges: Vec<MessageRange>,
+}
+
+/// GroupContextExtensions Proposal.
+///
+/// A GroupContextExtensions proposal is used to update the list of extensions
+/// in the GroupContext for the group.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///   Extension extensions<V>;
+/// } GroupContextExtensions;
+/// ```
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
+pub struct GroupContextExtensionProposal {
+    extensions: Extensions,
+}
+
+impl GroupContextExtensionProposal {
+    /// Get the extensions of the proposal
+    pub fn extensions(&self) -> &Extensions {
+        &self.extensions
+    }
+}
+
+// Crate-only types
+
+/// 11.2 Commit
+///
+/// enum {
+///   reserved(0),
+///   proposal(1)
+///   reference(2),
+///   (255)
+/// } ProposalOrRefType;
+///
+/// struct {
+///   ProposalOrRefType type;
+///   select (ProposalOrRef.type) {
+///     case proposal:  Proposal proposal;
+///     case reference: opaque hash<0..255>;
+///   }
+/// } ProposalOrRef;
+///
+/// Type of Proposal, either by value or by reference
+/// We only implement the values (1, 2), other values are not valid
+/// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.
+#[derive(
+    PartialEq,
+    Clone,
+    Copy,
+    Debug,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSize,
+    Serialize,
+    Deserialize,
+)]
+#[repr(u8)]
+pub enum ProposalOrRefType {
+    /// Proposal by value.
+    Proposal = 1,
+    /// Proposal by reference
+    Reference = 2,
+}
+
+/// Type of Proposal, either by value or by reference.
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
+#[repr(u8)]
+#[allow(missing_docs)]
+pub(crate) enum ProposalOrRef {
+    #[tls_codec(discriminant = 1)]
+    Proposal(Box<Proposal>),
+    Reference(Box<ProposalRef>),
+}
+
+/// ```text
+/// struct {
+///     KeyPackageRef sender;
+///     uint32 first_generation;
+///     uint32 last_generation;
+/// } MessageRange;
+/// ```
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+)]
+pub(crate) struct MessageRange {
+    sender: KeyPackageRef,
+    first_generation: u32,
+    last_generation: u32,
+}
+
+/// A custom proposal with semantics to be implemented by the application.
+#[derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+)]
+pub struct CustomProposal {
+    proposal_type: u16,
+    payload: Vec<u8>,
+}
+
+impl CustomProposal {
+    /// Generate a new custom proposal.
+    pub fn new(proposal_type: u16, payload: Vec<u8>) -> Self {
+        Self {
+            proposal_type,
+            payload,
+        }
+    }
+
+    /// Returns the proposal type of this [`CustomProposal`].
+    pub fn proposal_type(&self) -> u16 {
+        self.proposal_type
+    }
+
+    /// Returns the payload of this [`CustomProposal`].
+    pub fn payload(&self) -> &[u8] {
+        &self.payload
+    }
+}

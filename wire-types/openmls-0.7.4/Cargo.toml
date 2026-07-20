@@ -1,0 +1,37 @@
+[package]
+name = "openmls_wire_types_0_7_4"
+version = "0.7.4"
+authors = ["OpenMLS Authors"]
+edition = "2021"
+description = "A Rust implementation of the Messaging Layer Security (MLS) protocol, as defined in RFC 9420."
+license = "MIT"
+documentation = "https://docs.rs/openmls"
+repository = "https://github.com/openmls/openmls/"
+readme = "../README.md"
+keywords = ["MLS", "IETF", "RFC9420", "Encryption", "E2EE"]
+exclude = ["/test_vectors"]
+
+[dependencies]
+openmls_traits = { workspace = true, features = ["draft-ietf-mls-pq-ciphersuites"] }
+
+serde = { version = "^1.0", features = ["derive"] }
+log = { version = "0.4", features = ["std"] }
+tls_codec = { workspace = true }
+thiserror = "^2.0"
+# Only required for tests.
+# TODO: is this needed?
+zeroize = { version = "1.8.1", features = ["zeroize_derive"] }
+serde_bytes = "0.11.17"
+
+[features]
+crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
+# export a group (and the associated data it owns) for migration to a newer
+# OpenMLS version; storage format is unchanged
+migration-export = []
+crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
+content-debug = [] # ☣️ Enable logging of sensitive message content
+
+extensions-draft-08 = [
+   "openmls_traits/extensions-draft",
+]
+
