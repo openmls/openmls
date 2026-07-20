@@ -1078,7 +1078,8 @@ impl MlsGroup {
             // any stale entry so the group's persisted state is fully replaced
             // rather than left pointing at a previously stored tree.
             None => {
-                storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
+                storage
+                    .delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
             }
         }
 
