@@ -1596,32 +1596,32 @@ dependencies = [
 [[package]]
 name = "openmls"
 version = "0.8.1"
-source = "git+https://github.com/openmls/openmls.git?branch=openmls-v0.8.1-migration-helpers#c2fc93330d4b0d40518920e253ea3645f2adb3af"
-dependencies = [
- "log",
- "openmls_traits 0.5.0",
- "rayon",
- "serde",
- "serde_bytes",
- "thiserror 2.0.18",
- "tls_codec 0.4.2",
- "zeroize",
-]
-
-[[package]]
-name = "openmls"
-version = "0.9.0"
 dependencies = [
  "log",
  "openmls_libcrux_crypto",
  "openmls_rust_crypto",
  "openmls_serialization_helpers",
- "openmls_traits 0.5.1",
+ "openmls_traits 0.5.0",
  "rayon",
  "serde",
  "serde_bytes",
  "thiserror 2.0.18",
  "tls_codec 0.5.0",
+ "zeroize",
+]
+
+[[package]]
+name = "openmls"
+version = "0.8.1"
+source = "git+https://github.com/openmls/openmls.git?branch=openmls-v0.8.1-migration-helpers#c2fc93330d4b0d40518920e253ea3645f2adb3af"
+dependencies = [
+ "log",
+ "openmls_traits 0.5.0 (git+https://github.com/openmls/openmls.git?branch=openmls-v0.8.1-migration-helpers)",
+ "rayon",
+ "serde",
+ "serde_bytes",
+ "thiserror 2.0.18",
+ "tls_codec 0.4.2",
  "zeroize",
 ]
 
@@ -1641,23 +1641,10 @@ dependencies = [
 [[package]]
 name = "openmls_basic_credential"
 version = "0.5.0"
-source = "git+https://github.com/openmls/openmls.git?branch=openmls-v0.8.1-migration-helpers#c2fc93330d4b0d40518920e253ea3645f2adb3af"
-dependencies = [
- "ed25519-dalek",
- "openmls_traits 0.5.0",
- "p256",
- "rand 0.8.6",
- "serde",
- "tls_codec 0.4.2",
-]
-
-[[package]]
-name = "openmls_basic_credential"
-version = "0.5.1"
 dependencies = [
  "ed25519-dalek",
  "ml-dsa",
- "openmls_traits 0.5.1",
+ "openmls_traits 0.5.0",
  "p256",
  "p384",
  "rand_core 0.6.4",
@@ -1667,20 +1654,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "openmls_basic_credential"
+version = "0.5.0"
+source = "git+https://github.com/openmls/openmls.git?branch=openmls-v0.8.1-migration-helpers#c2fc93330d4b0d40518920e253ea3645f2adb3af"
+dependencies = [
+ "ed25519-dalek",
+ "openmls_traits 0.5.0 (git+https://github.com/openmls/openmls.git?branch=openmls-v0.8.1-migration-helpers)",
+ "p256",
+ "rand 0.8.6",
+ "serde",
+ "tls_codec 0.4.2",
+]
+
+[[package]]
 name = "openmls_compat_tests"
 version = "0.1.0"
 dependencies = [
  "openmls 0.7.1",
  "openmls 0.7.4",
  "openmls 0.8.1",
- "openmls 0.9.0",
+ "openmls 0.8.1 (git+https://github.com/openmls/openmls.git?branch=openmls-v0.8.1-migration-helpers)",
  "openmls_basic_credential 0.4.1",
  "openmls_basic_credential 0.5.0",
- "openmls_basic_credential 0.5.1",
+ "openmls_basic_credential 0.5.0 (git+https://github.com/openmls/openmls.git?branch=openmls-v0.8.1-migration-helpers)",
  "openmls_libcrux_crypto",
  "openmls_traits 0.4.1 (git+https://github.com/openmls/openmls.git?branch=openmls-v0.7.4-migration-helpers)",
  "openmls_traits 0.5.0",
- "openmls_traits 0.5.1",
+ "openmls_traits 0.5.0 (git+https://github.com/openmls/openmls.git?branch=openmls-v0.8.1-migration-helpers)",
  "postcard",
  "serde",
  "serde_json",
@@ -1689,7 +1689,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_libcrux_crypto"
-version = "0.3.2"
+version = "0.3.1"
 dependencies = [
  "aes",
  "fpe",
@@ -1703,8 +1703,8 @@ dependencies = [
  "libcrux-hmac-drbg",
  "libcrux-sha2",
  "libcrux-traits",
- "openmls_memory_storage 0.5.1",
- "openmls_traits 0.5.1",
+ "openmls_memory_storage 0.5.0",
+ "openmls_traits 0.5.0",
  "rand 0.10.1",
  "tls_codec 0.5.0",
 ]
@@ -1724,10 +1724,10 @@ dependencies = [
 
 [[package]]
 name = "openmls_memory_storage"
-version = "0.5.1"
+version = "0.5.0"
 dependencies = [
  "log",
- "openmls_traits 0.5.1",
+ "openmls_traits 0.5.0",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -1748,8 +1748,8 @@ dependencies = [
  "hpke-rs-crypto",
  "hpke-rs-rust-crypto",
  "ml-dsa",
- "openmls_memory_storage 0.5.1",
- "openmls_traits 0.5.1",
+ "openmls_memory_storage 0.5.0",
+ "openmls_traits 0.5.0",
  "p256",
  "p384",
  "rand_chacha 0.3.1",
@@ -1805,18 +1805,18 @@ dependencies = [
 [[package]]
 name = "openmls_traits"
 version = "0.5.0"
-source = "git+https://github.com/openmls/openmls.git?branch=openmls-v0.8.1-migration-helpers#c2fc93330d4b0d40518920e253ea3645f2adb3af"
 dependencies = [
  "serde",
- "tls_codec 0.4.2",
+ "tls_codec 0.5.0",
 ]
 
 [[package]]
 name = "openmls_traits"
-version = "0.5.1"
+version = "0.5.0"
+source = "git+https://github.com/openmls/openmls.git?branch=openmls-v0.8.1-migration-helpers#c2fc93330d4b0d40518920e253ea3645f2adb3af"
 dependencies = [
  "serde",
- "tls_codec 0.5.0",
+ "tls_codec 0.4.2",
 ]
 
 [[package]]

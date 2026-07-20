@@ -2518,7 +2518,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
 name = "openmls"
-version = "0.8.2"
+version = "0.8.1"
 dependencies = [
  "backtrace",
  "base64",
@@ -2583,7 +2583,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_basic_credential"
-version = "0.5.1"
+version = "0.5.0"
 dependencies = [
  "ed25519-dalek",
  "ml-dsa",
@@ -2599,7 +2599,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_libcrux_crypto"
-version = "0.3.2"
+version = "0.3.1"
 dependencies = [
  "aes",
  "fpe",
@@ -2621,7 +2621,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_memory_storage"
-version = "0.5.1"
+version = "0.5.0"
 dependencies = [
  "base64",
  "hex",
@@ -2698,7 +2698,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_traits"
-version = "0.5.1"
+version = "0.5.0"
 dependencies = [
  "serde",
  "tls_codec",
