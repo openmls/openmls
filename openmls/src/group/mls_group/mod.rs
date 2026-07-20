@@ -1069,8 +1069,17 @@ impl MlsGroup {
 
         storage.write_group_state(self.group_id(), &self.group_state)?;
         #[cfg(feature = "extensions-draft")]
-        if let Some(application_export_tree) = &self.application_export_tree {
-            storage.write_application_export_tree(self.group_id(), application_export_tree)?;
+        match &self.application_export_tree {
+            Some(application_export_tree) => {
+                storage.write_application_export_tree(self.group_id(), application_export_tree)?;
+            }
+            // No tree to write (migrating in from a version/config without
+            // `extensions-draft`, or a migration whose source has none). Delete
+            // any stale entry so the group's persisted state is fully replaced
+            // rather than left pointing at a previously stored tree.
+            None => {
+                storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
+            }
         }
 
         Ok(())
