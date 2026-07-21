@@ -441,7 +441,6 @@ impl MlsGroup {
         self.is_operational()?;
 
         // Build and stage the commit using the commit builder
-        // TODO #751
         let (commit, welcome, group_info) = self
             .commit_builder()
             // This forces committing to the proposals in the proposal store:
@@ -466,6 +465,12 @@ impl MlsGroup {
         provider: &Provider,
         staged_commit: StagedCommit,
     ) -> Result<(), MergeCommitError<Provider::StorageError>> {
+        // A commit containing a ReInit proposal reinitializes the group: once
+        // merged, the group is suspended (RFC 9420 §11.2). Detect it before
+        // `staged_commit` is consumed by `merge_commit` below. A validated
+        // commit carries at most one ReInit and no other proposals alongside it.
+        let is_reinit = staged_commit.reinit_proposal().is_some();
+
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
@@ -547,6 +552,19 @@ impl MlsGroup {
         // Delete a potential pending commit
         self.clear_pending_commit(provider.storage())
             .map_err(MergeCommitError::StorageError)?;
+
+        // If this commit reinitialized the group, suspend it now that the commit
+        // is merged: the group becomes inactive (like eviction) so it can no
+        // longer be used for regular operations. Its resumption PSK for this
+        // (final) epoch was stored above and is what the successor group mixes
+        // in via [`CommitBuilder::reinit`] / [`StagedWelcome::new_from_reinit`].
+        if is_reinit {
+            self.group_state = MlsGroupState::Inactive;
+            provider
+                .storage()
+                .write_group_state(self.group_id(), &self.group_state)
+                .map_err(MergeCommitError::StorageError)?;
+        }
 
         Ok(())
     }
@@ -1111,6 +1129,27 @@ impl MlsGroup {
             // RFC 9420 §12.1.8.2 permits external senders to send PreSharedKey
             // proposals.
             FramedContentBody::Proposal(Proposal::PreSharedKey(_)) => {
+                let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                    QueuedProposal::from_authenticated_content_by_ref(
+                        self.ciphersuite(),
+                        provider.crypto(),
+                        content,
+                    )?,
+                ));
+                Ok(ProcessedMessage::new(
+                    self.group_id().clone(),
+                    self.context().epoch(),
+                    sender,
+                    data,
+                    content,
+                    credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    emulator_sender_leaf_index,
+                ))
+            }
+            // RFC 9420 §12.1.8.2 permits external senders to send ReInit
+            // proposals.
+            FramedContentBody::Proposal(Proposal::ReInit(_)) => {
                 let content = ProcessedMessageContent::ProposalMessage(Box::new(
                     QueuedProposal::from_authenticated_content_by_ref(
                         self.ciphersuite(),

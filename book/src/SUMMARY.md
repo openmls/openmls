@@ -14,6 +14,7 @@
   - [Updating own key package](user_manual/updates.md)
   - [Using Additional Authenticated Data (AAD)](user_manual/aad.md)
   - [Leaving a group](user_manual/leaving.md)
+  - [Reinitializing a group](user_manual/reinit.md)
   - [Custom proposals](user_manual/custom_proposals.md)
   - [Creating application messages](user_manual/application_messages.md)
   - [Committing to pending proposals](user_manual/commit_to_proposals.md)

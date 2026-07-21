@@ -25,7 +25,10 @@ use openmls::{
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::{KeyPackage, KeyPackageBundle},
-    messages::external_proposals::{ExternalProposal, JoinProposal},
+    messages::{
+        external_proposals::{ExternalProposal, JoinProposal},
+        proposals::ReInitProposal,
+    },
     prelude::{
         Capabilities, LeafNodeIndex, ProposalOrRefType, Propose, SenderRatchetConfiguration,
     },
@@ -68,6 +71,28 @@ type PendingState = (
 /// its signing keypair (the credential is retained for symmetry / debugging).
 type ExternalSignerState = (SignatureKeyPair, Credential);
 
+/// State captured after a member merges a ReInit commit (RFC 9420 §11.2). Keyed
+/// by the `u32` `reinit_id` we mint and return to the test-runner. It carries
+/// everything needed to later create (`re_init_welcome`) or join
+/// (`handle_re_init_welcome`) the successor group:
+/// * the index of the suspended old group in `groups` (used to seed the
+///   successor via [`CommitBuilder::reinit`] / [`StagedWelcome::new_from_reinit`]),
+/// * a fresh provider holding this member's freshly minted successor key package
+///   and signer (the successor ciphersuite may use a different signature scheme),
+/// * that key package bundle, signer and credential (same identity as before).
+struct ReInitState {
+    old_state_id: u32,
+    crypto_provider: OpenMlsRustCrypto,
+    signature_keys: SignatureKeyPair,
+    credential: CredentialWithKey,
+    key_package: KeyPackageBundle,
+    wire_format_policy: WireFormatPolicy,
+    // The ReInit proposal that was committed. It describes the successor
+    // group's parameters and is needed both to create the successor group and
+    // to validate it when joining (the old group no longer carries it).
+    reinit_proposal: ReInitProposal,
+}
+
 /// This is the main state struct of the interop client. It keeps track of the
 /// individual MLS clients, as well as pending key packages that it was told to
 /// create. Pending key packages are keyed by their `u32` transaction id, which
@@ -79,6 +104,7 @@ pub struct MlsClientImpl {
     groups: Mutex<Vec<InteropGroup>>,
     pending_state: Mutex<HashMap<u32, PendingState>>,
     external_signers: Mutex<HashMap<u32, ExternalSignerState>>,
+    pending_reinits: Mutex<HashMap<u32, ReInitState>>,
 }
 
 impl MlsClientImpl {
@@ -88,6 +114,7 @@ impl MlsClientImpl {
             groups: Mutex::new(Vec::new()),
             pending_state: Mutex::new(HashMap::new()),
             external_signers: Mutex::new(HashMap::new()),
+            pending_reinits: Mutex::new(HashMap::new()),
         }
     }
 
@@ -112,6 +139,116 @@ impl MlsClientImpl {
         self.external_signers
             .lock()
             .unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn pending_reinits(&self) -> std::sync::MutexGuard<'_, HashMap<u32, ReInitState>> {
+        self.pending_reinits
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// After a member has merged a ReInit commit (so `interop_group.group` is
+    /// suspended), mint a fresh key package for the successor group, store the
+    /// resulting [`ReInitState`], and build the response the runner expects.
+    ///
+    /// The successor ciphersuite (from the merged ReInit proposal) may use a
+    /// different signature scheme, so a fresh signer/credential is generated
+    /// while preserving the member's identity (credential equality — which the
+    /// receiver checks — compares only the identity, not the signature key).
+    fn build_reinit_state(
+        &self,
+        interop_group: &mut InteropGroup,
+        old_state_id: u32,
+        reinit_proposal: ReInitProposal,
+    ) -> Result<HandleReInitCommitResponse, Status> {
+        let successor_ciphersuite = reinit_proposal.ciphersuite();
+
+        let epoch_authenticator = interop_group
+            .group
+            .epoch_authenticator()
+            .as_slice()
+            .to_vec();
+
+        // Preserve the member's identity across the reinitialization. Read it
+        // from the own leaf node rather than `MlsGroup::credential()`, because
+        // the group is already suspended (inactive) at this point and
+        // `credential()` would return `UseAfterEviction`.
+        let own_credential = interop_group
+            .group
+            .own_leaf_node()
+            .ok_or_else(|| Status::internal("missing own leaf node"))?
+            .credential()
+            .clone();
+        let identity = BasicCredential::try_from(own_credential)
+            .map_err(|_| Status::internal("expected a basic credential"))?
+            .identity()
+            .to_vec();
+
+        // Fresh provider + signer for the successor ciphersuite's signature
+        // scheme. This provider will back the successor group.
+        let crypto_provider = OpenMlsRustCrypto::default();
+        let signature_keys = SignatureKeyPair::new(successor_ciphersuite.signature_algorithm())
+            .map_err(|_| Status::internal("failed to create successor signer"))?;
+        signature_keys
+            .store(crypto_provider.storage())
+            .map_err(into_status)?;
+        let credential = CredentialWithKey {
+            credential: BasicCredential::new(identity).into(),
+            signature_key: signature_keys.public().into(),
+        };
+
+        // Advertise support for the successor ciphersuite (plus the common
+        // interop suites) so the successor group accepts this leaf.
+        let mut ciphersuites = vec![
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        ];
+        if !ciphersuites.contains(&successor_ciphersuite) {
+            ciphersuites.push(successor_ciphersuite);
+        }
+
+        let key_package = KeyPackage::builder()
+            .leaf_node_capabilities(Capabilities::new(
+                Some(&[ProtocolVersion::Mls10, ProtocolVersion::Other(999)]),
+                Some(&ciphersuites),
+                None,
+                None,
+                Some(&CREDENTIAL_TYPES),
+            ))
+            .build(
+                successor_ciphersuite,
+                &crypto_provider,
+                &signature_keys,
+                credential.clone(),
+            )
+            .map_err(|_| Status::internal("failed to build successor key package"))?;
+
+        let key_package_bytes = MlsMessageOut::from(key_package.key_package().clone())
+            .tls_serialize_detached()
+            .map_err(|_| Status::aborted("failed to serialize successor key package"))?;
+
+        let reinit_id: [u8; 4] = crypto_provider.rand().random_array().unwrap();
+        let reinit_id = u32::from_be_bytes(reinit_id);
+
+        self.pending_reinits().insert(
+            reinit_id,
+            ReInitState {
+                old_state_id,
+                crypto_provider,
+                signature_keys,
+                credential,
+                key_package,
+                wire_format_policy: interop_group.wire_format_policy,
+                reinit_proposal,
+            },
+        );
+
+        Ok(HandleReInitCommitResponse {
+            reinit_id,
+            key_package: key_package_bytes,
+            epoch_authenticator,
+        })
     }
 }
 
@@ -1019,10 +1156,41 @@ impl MlsClient for MlsClientImpl {
         let request = request.get_ref();
         info!(?request, "Request");
 
-        let response = Status::unimplemented("Re-init is not implemented");
+        let mut groups = self.groups();
+        let interop_group = groups
+            .get_mut(request.state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
+
+        let ciphersuite = *to_ciphersuite(request.cipher_suite)?;
+        let extensions = group_context_extensions_from_proto(&request.extensions)?;
+        let reinit = ReInitProposal::new(
+            GroupId::from_slice(&request.group_id),
+            ProtocolVersion::Mls10,
+            ciphersuite,
+            extensions,
+        );
+
+        let (proposal, _proposal_ref) = interop_group
+            .group
+            .propose_reinit(
+                &interop_group.crypto_provider,
+                reinit,
+                &interop_group.signature_keys,
+            )
+            .map_err(into_status)?;
+
+        // Remember our own proposal so we skip re-processing it if it comes back
+        // to us by reference.
+        interop_group.messages_out.push(proposal.clone().into());
+
+        let response = ProposalResponse {
+            proposal: proposal
+                .tls_serialize_detached()
+                .map_err(|_| Status::aborted("failed to serialize reinit proposal"))?,
+        };
 
         info!(?response, "Response");
-        Err(response)
+        Ok(Response::new(response))
     }
 
     #[instrument(skip_all, fields(actor))]
@@ -1593,39 +1761,396 @@ impl MlsClient for MlsClientImpl {
     // (rather than `todo!()`, which panics the handler and tears down the stream
     // as an ambiguous RST_STREAM CANCEL) so the interop runner reports these as
     // unsupported rather than as crashes.
+    // Reinitialization (RFC 9420 §11.2). The old group is committed with a
+    // single ReInit proposal (`re_init_commit`), which suspends it once merged
+    // (`handle_pending_re_init_commit` for the committer,
+    // `handle_re_init_commit` for the others). Each member then mints a fresh
+    // key package for the successor group and gets a `reinit_id` handle. The
+    // welcomer creates the successor group (`re_init_welcome`, mirroring
+    // `create_branch` but with `CommitBuilder::reinit`); everyone else joins it
+    // (`handle_re_init_welcome`, mirroring `handle_branch` with
+    // `StagedWelcome::new_from_reinit`).
+
+    #[instrument(skip_all)]
     async fn re_init_commit(
         &self,
-        _: Request<CommitRequest>,
+        request: Request<CommitRequest>,
     ) -> Result<Response<CommitResponse>, Status> {
-        Err(Status::unimplemented("Re-init is not implemented"))
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        let mut groups = self.groups();
+        let interop_group = groups
+            .get_mut(request.state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
+        let group = &mut interop_group.group;
+
+        // The ReInit proposal is committed by reference (the runner only
+        // supports by-reference for ReInit): process and store it.
+        for proposal in &request.by_reference {
+            let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
+                .map_err(|_| Status::aborted("failed to deserialize proposal"))?;
+            if interop_group.messages_out.contains(&message) {
+                continue;
+            }
+            let processed_message = group
+                .process_message(
+                    &interop_group.crypto_provider,
+                    message.try_into_protocol_message().unwrap(),
+                )
+                .map_err(into_status)?;
+            match processed_message.into_content() {
+                ProcessedMessageContent::ProposalMessage(proposal) => group
+                    .store_pending_proposal(interop_group.crypto_provider.storage(), *proposal)
+                    .map_err(|err| {
+                        Status::internal(format!("error storing reinit proposal: {err}"))
+                    })?,
+                ProcessedMessageContent::OwnPrivateMessage => {}
+                other => {
+                    return Err(Status::aborted(format!(
+                        "unexpected message while committing reinit: {other:?}"
+                    )))
+                }
+            }
+        }
+
+        // Build and stage the ReInit commit, but do NOT merge it yet: the
+        // committer advances its state in `handle_pending_re_init_commit`.
+        let (commit, _welcome, _group_info) = group
+            .commit_to_pending_proposals(
+                &interop_group.crypto_provider,
+                &interop_group.signature_keys,
+            )
+            .map_err(into_status)?;
+
+        let response = CommitResponse {
+            commit: commit
+                .tls_serialize_detached()
+                .map_err(|_| Status::aborted("failed to serialize reinit commit"))?,
+            // A ReInit commit contains no Add proposals and therefore no Welcome.
+            welcome: vec![],
+            ratchet_tree: vec![],
+        };
+
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
+    #[instrument(skip_all)]
     async fn handle_pending_re_init_commit(
         &self,
-        _: Request<HandlePendingCommitRequest>,
+        request: Request<HandlePendingCommitRequest>,
     ) -> Result<Response<HandleReInitCommitResponse>, Status> {
-        Err(Status::unimplemented("Re-init is not implemented"))
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        let mut groups = self.groups();
+        let interop_group = groups
+            .get_mut(request.state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
+
+        // Capture the committed ReInit proposal from the pending commit before
+        // merging (merging consumes it and suspends the group).
+        let reinit_proposal = interop_group
+            .group
+            .pending_commit()
+            .and_then(|staged| staged.reinit_proposal().cloned())
+            .ok_or_else(|| Status::internal("pending commit does not contain a ReInit proposal"))?;
+
+        // Merging the committer's own pending ReInit commit suspends the group.
+        interop_group
+            .group
+            .merge_pending_commit(&interop_group.crypto_provider)
+            .map_err(into_status)?;
+
+        let response = self.build_reinit_state(interop_group, request.state_id, reinit_proposal)?;
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
+    #[instrument(skip_all)]
     async fn handle_re_init_commit(
         &self,
-        _: Request<HandleCommitRequest>,
+        request: Request<HandleCommitRequest>,
     ) -> Result<Response<HandleReInitCommitResponse>, Status> {
-        Err(Status::unimplemented("Re-init is not implemented"))
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        let mut groups = self.groups();
+        let interop_group = groups
+            .get_mut(request.state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown state_id"))?;
+        let group = &mut interop_group.group;
+
+        // Process and store the referenced ReInit proposal(s).
+        for proposal in &request.proposal {
+            let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
+                .map_err(|_| Status::aborted("failed to deserialize proposal"))?;
+            if interop_group.messages_out.contains(&message) {
+                continue;
+            }
+            let processed_message = group
+                .process_message(
+                    &interop_group.crypto_provider,
+                    message.try_into_protocol_message().unwrap(),
+                )
+                .map_err(into_status)?;
+            match processed_message.into_content() {
+                ProcessedMessageContent::ProposalMessage(proposal) => group
+                    .store_pending_proposal(interop_group.crypto_provider.storage(), *proposal)
+                    .map_err(|err| {
+                        Status::internal(format!("error storing reinit proposal: {err}"))
+                    })?,
+                ProcessedMessageContent::OwnPrivateMessage => {}
+                other => {
+                    return Err(Status::aborted(format!(
+                        "unexpected proposal message in reinit commit: {other:?}"
+                    )))
+                }
+            }
+        }
+
+        // Process and merge the ReInit commit, suspending the group.
+        let message = MlsMessageIn::tls_deserialize(&mut request.commit.as_slice())
+            .map_err(|_| Status::aborted("failed to deserialize reinit commit"))?;
+        let processed_message = group
+            .process_message(
+                &interop_group.crypto_provider,
+                message.try_into_protocol_message().unwrap(),
+            )
+            .map_err(into_status)?;
+        let reinit_proposal = match processed_message.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
+                // Capture the committed ReInit proposal before merging consumes
+                // the staged commit.
+                let reinit_proposal =
+                    staged_commit.reinit_proposal().cloned().ok_or_else(|| {
+                        Status::aborted("reinit commit does not contain a ReInit proposal")
+                    })?;
+                group
+                    .merge_staged_commit(&interop_group.crypto_provider, *staged_commit)
+                    .map_err(into_status)?;
+                reinit_proposal
+            }
+            other => {
+                return Err(Status::aborted(format!(
+                    "expected a staged reinit commit, got {other:?}"
+                )))
+            }
+        };
+
+        let response = self.build_reinit_state(interop_group, request.state_id, reinit_proposal)?;
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
+    #[instrument(skip_all)]
     async fn re_init_welcome(
         &self,
-        _: Request<ReInitWelcomeRequest>,
+        request: Request<ReInitWelcomeRequest>,
     ) -> Result<Response<CreateSubgroupResponse>, Status> {
-        Err(Status::unimplemented("Re-init is not implemented"))
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        // Take our reinit state (fresh provider + successor signer/credential).
+        let reinit_state = self
+            .pending_reinits()
+            .remove(&request.reinit_id)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown reinit_id"))?;
+        let ReInitState {
+            old_state_id,
+            crypto_provider,
+            signature_keys,
+            credential,
+            key_package: _,
+            wire_format_policy,
+            reinit_proposal,
+        } = reinit_state;
+
+        // Key packages of the other successor members.
+        let key_packages = request
+            .key_package
+            .iter()
+            .map(|kp| {
+                let msg = MlsMessageIn::tls_deserialize_exact(kp.clone())
+                    .map_err(|_| Status::invalid_argument("Invalid key package"))?;
+                msg.into_keypackage()
+                    .ok_or_else(|| Status::invalid_argument("Message was not a key package"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let mut groups = self.groups();
+        let old_group = &groups
+            .get(old_state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown reinit old state_id"))?
+            .group;
+
+        // Create the successor group with the ReInit parameters.
+        let mut successor = MlsGroup::builder()
+            .with_group_id(reinit_proposal.group_id().clone())
+            .ciphersuite(reinit_proposal.ciphersuite())
+            .with_group_context_extensions(reinit_proposal.extensions().clone())
+            .use_ratchet_tree_extension(true)
+            .max_past_epochs(32)
+            .number_of_resumption_psks(32)
+            .with_wire_format_policy(wire_format_policy)
+            .build(&crypto_provider, &signature_keys, credential.clone())
+            .map_err(into_status)?;
+
+        // Build the reinit commit that adds the other members and mixes in the
+        // old group's resumption PSK (usage `Reinit`).
+        let mut builder = successor
+            .commit_builder()
+            .reinit(crypto_provider.rand(), old_group)
+            .map_err(into_status)?
+            .propose_adds(key_packages);
+        if request.force_path {
+            builder = builder.force_self_update(true);
+        }
+        let bundle = builder
+            .load_psks(crypto_provider.storage())
+            .map_err(into_status)?
+            .build(
+                crypto_provider.rand(),
+                crypto_provider.crypto(),
+                &signature_keys,
+                |_| true,
+            )
+            .map_err(into_status)?
+            .stage_commit(&crypto_provider)
+            .map_err(into_status)?;
+
+        let welcome = MlsMessageOut::from_welcome(
+            bundle
+                .welcome()
+                .ok_or_else(|| Status::internal("reinit commit produced no welcome"))?
+                .clone(),
+            ProtocolVersion::Mls10,
+        )
+        .tls_serialize_detached()
+        .map_err(|_| Status::aborted("failed to serialize welcome"))?;
+
+        successor
+            .merge_pending_commit(&crypto_provider)
+            .map_err(into_status)?;
+
+        let ratchet_tree = if request.external_tree {
+            successor
+                .export_ratchet_tree()
+                .tls_serialize_detached()
+                .map_err(|_| Status::aborted("failed to serialize ratchet tree"))?
+        } else {
+            vec![]
+        };
+        let epoch_authenticator = successor.epoch_authenticator().as_slice().to_vec();
+
+        let interop_group = InteropGroup {
+            group: successor,
+            wire_format_policy,
+            signature_keys,
+            messages_out: Vec::new(),
+            crypto_provider,
+        };
+        let state_id = groups.len() as u32;
+        groups.push(interop_group);
+
+        let response = CreateSubgroupResponse {
+            state_id,
+            welcome,
+            ratchet_tree,
+            epoch_authenticator,
+        };
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
+    #[instrument(skip_all)]
     async fn handle_re_init_welcome(
         &self,
-        _: Request<HandleReInitWelcomeRequest>,
+        request: Request<HandleReInitWelcomeRequest>,
     ) -> Result<Response<JoinGroupResponse>, Status> {
-        Err(Status::unimplemented("Re-init is not implemented"))
+        let request = request.get_ref();
+        info!(?request, "Request");
+
+        let reinit_state = self
+            .pending_reinits()
+            .remove(&request.reinit_id)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown reinit_id"))?;
+        let ReInitState {
+            old_state_id,
+            crypto_provider,
+            signature_keys,
+            credential: _,
+            key_package,
+            wire_format_policy,
+            reinit_proposal,
+        } = reinit_state;
+
+        use openmls_traits::storage::StorageProvider as _;
+
+        // Store our freshly minted successor key package so the Welcome can be
+        // resolved against it (mirrors `handle_branch`).
+        crypto_provider
+            .storage()
+            .write_key_package(
+                &key_package
+                    .key_package()
+                    .hash_ref(crypto_provider.crypto())
+                    .map_err(into_status)?,
+                &key_package,
+            )
+            .map_err(into_status)?;
+
+        let welcome = MlsMessageIn::tls_deserialize(&mut request.welcome.as_slice())
+            .map_err(|_| Status::aborted("failed to deserialize welcome"))?
+            .into_welcome()
+            .ok_or_else(|| Status::aborted("expected a welcome message"))?;
+        let ratchet_tree = ratchet_tree_from_config(request.ratchet_tree.clone());
+
+        let mut groups = self.groups();
+        let old_group = &groups
+            .get(old_state_id as usize)
+            .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown reinit old state_id"))?
+            .group;
+
+        let join_config = MlsGroupJoinConfig::builder()
+            .max_past_epochs(32)
+            .number_of_resumption_psks(32)
+            .use_ratchet_tree_extension(true)
+            .wire_format_policy(wire_format_policy)
+            .build();
+
+        let group = StagedWelcome::new_from_reinit(
+            &crypto_provider,
+            &join_config,
+            welcome,
+            ratchet_tree,
+            old_group,
+            &reinit_proposal,
+            true,
+        )
+        .map_err(into_status)?
+        .into_group(&crypto_provider)
+        .map_err(into_status)?;
+
+        let epoch_authenticator = group.epoch_authenticator().as_slice().to_vec();
+
+        let interop_group = InteropGroup {
+            group,
+            wire_format_policy,
+            signature_keys,
+            messages_out: Vec::new(),
+            crypto_provider,
+        };
+        let state_id = groups.len() as u32;
+        groups.push(interop_group);
+
+        let response = JoinGroupResponse {
+            state_id,
+            epoch_authenticator,
+        };
+        info!(?response, "Response");
+        Ok(Response::new(response))
     }
 
     // Subgroup branching (RFC 9420 §11.3): a subset of an existing group's
@@ -1665,7 +2190,9 @@ impl MlsClient for MlsClientImpl {
         // resumption-PSK secret (cloned in-memory), so no shared storage with the
         // parent is needed. Store the signing keys for the subgroup's operations.
         let provider = OpenMlsRustCrypto::default();
-        signature_keys.store(provider.storage()).map_err(into_status)?;
+        signature_keys
+            .store(provider.storage())
+            .map_err(into_status)?;
 
         let mls_group_config = MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
@@ -1720,7 +2247,9 @@ impl MlsClient for MlsClientImpl {
         let bundle = builder
             .load_psks(provider.storage())
             .map_err(into_status)?
-            .build(provider.rand(), provider.crypto(), &signature_keys, |_| true)
+            .build(provider.rand(), provider.crypto(), &signature_keys, |_| {
+                true
+            })
             .map_err(into_status)?
             .stage_commit(&provider)
             .map_err(into_status)?;
@@ -2202,6 +2731,21 @@ impl MlsClient for MlsClientImpl {
                     sender_index,
                 )
                 .map_err(into_status)?
+            }
+            "reinit" => {
+                // RFC 9420 §12.1.8.2 permits external senders to send ReInit
+                // proposals. The description carries the *successor* group's
+                // parameters; the old group id/epoch come from the group info.
+                let ciphersuite = *to_ciphersuite(description.cipher_suite)?;
+                let extensions = group_context_extensions_from_proto(&description.extensions)?;
+                let reinit = ReInitProposal::new(
+                    GroupId::from_slice(&description.group_id),
+                    ProtocolVersion::Mls10,
+                    ciphersuite,
+                    extensions,
+                );
+                ExternalProposal::new_reinit(reinit, group_id, epoch, signature_keys, sender_index)
+                    .map_err(into_status)?
             }
             other => {
                 return Err(Status::unimplemented(format!(

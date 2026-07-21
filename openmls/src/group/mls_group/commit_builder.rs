@@ -377,6 +377,57 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         Ok(self)
     }
 
+    /// Reinitializes `old_group` into this (freshly created) successor group, as
+    /// described in [RFC 9420 §11.2].
+    ///
+    /// `old_group` must have merged a commit containing a ReInit proposal, so it
+    /// is suspended (inactive); see [`MlsGroup::propose_reinit`]. The caller is
+    /// responsible for creating this successor group with the parameters from
+    /// that ReInit proposal (group id, protocol version, ciphersuite and group
+    /// context extensions) and for not reusing a suspended group to seed more
+    /// than one successor.
+    ///
+    /// This adds a resumption [`PreSharedKeyId`] of usage `Reinit` to the initial
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh (of *this*,
+    /// possibly different, ciphersuite), and injects the old group's resumption
+    /// PSK secret so it is mixed into the successor group's key schedule.
+    ///
+    /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
+    pub fn reinit(
+        mut self,
+        rand: &impl OpenMlsRand,
+        old_group: &MlsGroup,
+    ) -> Result<Self, CreateCommitError> {
+        // Sample a fresh random nonce of length KDF.Nh. Unlike branching, the
+        // successor group may use a different ciphersuite than the old group, so
+        // the nonce length is that of the successor group's ciphersuite.
+        let successor_ciphersuite = self.group.borrow_mut().ciphersuite();
+        let psk_id = PreSharedKeyId::new(
+            successor_ciphersuite,
+            rand,
+            Psk::Resumption(ResumptionPsk::new(
+                ResumptionPskUsage::Reinit,
+                old_group.group_id().clone(),
+                old_group.epoch(),
+            )),
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+        self = self.propose_psks([psk_id]);
+
+        // The reinit PSK secret comes from the old group. Reinit PSKs are looked
+        // up by their own epoch (the old group's final, reinit epoch), so we
+        // clear this group's resumption PSK store and inject the secret at that
+        // epoch (see `load_psks`).
+        let secret = old_group.resumption_psk_secret().clone();
+        let reinit_epoch = old_group.epoch();
+        self.group.borrow_mut().resumption_psk_store.clear();
+        self.group
+            .borrow_mut()
+            .resumption_psk_store
+            .add(reinit_epoch, secret);
+        Ok(self)
+    }
+
     /// Adds a proposal to the proposals to be committed. To add multiple
     /// proposals, use [`Self::add_proposals`].
     pub fn add_proposal(mut self, proposal: Proposal) -> Self {

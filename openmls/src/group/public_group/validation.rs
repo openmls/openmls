@@ -529,10 +529,14 @@ impl PublicGroup {
             // https://validation.openmls.tech/#valn0803
             let psk_id = psk_id.validate_in_proposal(self.ciphersuite())?;
             if let Psk::Resumption(psk) = psk_id.psk() {
-                if matches!(psk.usage(), ResumptionPskUsage::Branch) {
+                if matches!(
+                    psk.usage(),
+                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit
+                ) {
                     // https://validation.openmls.tech/#valn0802
-                    // Branching PSKs must only be processed as part of the
-                    // initial commit, adding the other members.
+                    // Branching and reinit PSKs must only be processed as part
+                    // of the initial commit of the new sub-group resp. successor
+                    // group, adding the other members.
                     if self.group_context.epoch().as_u64() != 0 {
                         return Err(PskError::NotAllowed.into());
                     }

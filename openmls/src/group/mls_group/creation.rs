@@ -148,17 +148,20 @@ impl ProcessedWelcome {
     }
 
     /// Like [`ProcessedWelcome::new_from_welcome`], but allows injecting a
-    /// resumption PSK secret that is not held in storage.
+    /// resumption PSK secret that is not held in storage, at a given epoch.
     ///
-    /// This is used for subgroup branching (RFC 9420 §11.3): the branch PSK
-    /// secret comes from the parent group and is injected at the sentinel epoch
-    /// 0, where [`load_psks`](crate::schedule::psk::load_psks) looks it up for
-    /// branch usage. See [`StagedWelcome::new_from_branch`].
+    /// This is used for subgroup branching (RFC 9420 §11.3) and
+    /// reinitialization (RFC 9420 §11.2): the branch resp. reinit PSK secret
+    /// comes from another group and is injected at the epoch where
+    /// [`load_psks`](crate::schedule::psk::load_psks) looks it up — the sentinel
+    /// epoch 0 for branch usage, and the old group's (reinit) epoch for reinit
+    /// usage. See [`StagedWelcome::new_from_branch`] and
+    /// [`StagedWelcome::new_from_reinit`].
     pub(crate) fn new_from_welcome_inner<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-        injected_resumption_psk: Option<ResumptionPskSecret>,
+        injected_resumption_psk: Option<(GroupEpoch, ResumptionPskSecret)>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let ciphersuite = welcome.ciphersuite();
         // Check this before touching any stored key material: `keys_for_welcome`
@@ -171,10 +174,11 @@ impl ProcessedWelcome {
         let (mut resumption_psk_store, key_material) =
             keys_for_welcome(mls_group_config, &welcome, provider)?;
 
-        // For subgroup branching, inject the parent group's resumption PSK at
-        // the sentinel epoch 0 before the PSKs are loaded.
-        if let Some(secret) = injected_resumption_psk {
-            resumption_psk_store.add(0.into(), secret);
+        // For subgroup branching / reinitialization, inject the other group's
+        // resumption PSK at the epoch where `load_psks` looks it up (0 for
+        // branch, the old group's reinit epoch for reinit) before loading PSKs.
+        if let Some((epoch, secret)) = injected_resumption_psk {
+            resumption_psk_store.add(epoch, secret);
         }
 
         let Some(egs) =
@@ -243,7 +247,6 @@ impl ProcessedWelcome {
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
-        // TODO #751: Implement PSK
         key_schedule.add_context(provider.crypto(), &serialized_group_context)?;
 
         let epoch_secrets = key_schedule.epoch_secrets(provider.crypto(), ciphersuite)?;
@@ -613,7 +616,8 @@ impl StagedWelcome {
             provider,
             mls_group_config,
             welcome,
-            Some(parent.resumption_psk_secret().clone()),
+            // Branch PSKs are injected at the sentinel epoch 0.
+            Some((0.into(), parent.resumption_psk_secret().clone())),
         )?;
 
         // RFC 9420 §11.3 receiver checks (a) and (b): the version and ciphersuite
@@ -624,6 +628,7 @@ impl StagedWelcome {
         {
             return Err(WelcomeError::SubgroupParameterMismatch);
         }
+        // https://validation.openmls.tech/#valn1412 (reinit/branch PSK => epoch 1).
         if group_info.group_context().epoch().as_u64() != 1 {
             return Err(WelcomeError::SubgroupEpochInvalid);
         }
@@ -637,6 +642,85 @@ impl StagedWelcome {
             for member in staged_welcome.members() {
                 if !parent_credentials.contains(&member.credential) {
                     return Err(WelcomeError::SubgroupLeafMismatch);
+                }
+            }
+        }
+
+        Ok(staged_welcome)
+    }
+
+    /// Creates a [`StagedWelcome`] for a group reinitialized from `old_group`, as
+    /// described in [RFC 9420 §11.2].
+    ///
+    /// `old_group` must have merged the commit containing `reinit_proposal` (so
+    /// it is suspended). The caller supplies that same `reinit_proposal` (it was
+    /// covered by the ReInit commit both members merged) so the successor's
+    /// parameters can be validated against it, and is responsible for not reusing
+    /// a suspended group to join more than one successor.
+    ///
+    /// In addition to the regular [`StagedWelcome::new_from_welcome`] processing,
+    /// this injects `old_group`'s resumption PSK secret (required to derive the
+    /// successor group's key schedule from the reinit PSK) and enforces the
+    /// receiver-side checks the RFC mandates when joining a reinitialized group:
+    ///
+    /// * the successor's group id, protocol version, ciphersuite and extensions
+    ///   match the ReInit proposal,
+    /// * the successor is at epoch 1, and
+    /// * every member of the successor group matches a member of `old_group`.
+    ///
+    /// Matching members is left to the application by the RFC; here we use
+    /// credential equality for equivalent identifiers when `check_members` is
+    /// `true`.
+    ///
+    /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
+    pub fn new_from_reinit<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+        ratchet_tree: Option<RatchetTreeIn>,
+        old_group: &MlsGroup,
+        reinit_proposal: &ReInitProposal,
+        check_members: bool,
+    ) -> Result<Self, WelcomeError<Provider::StorageError>> {
+        // The reinit PSK is looked up by the old group's (reinit) epoch.
+        let reinit_epoch = old_group.epoch();
+
+        let processed_welcome = ProcessedWelcome::new_from_welcome_inner(
+            provider,
+            mls_group_config,
+            welcome,
+            Some((reinit_epoch, old_group.resumption_psk_secret().clone())),
+        )?;
+
+        // RFC 9420 §11.2 receiver checks: the successor's parameters must match
+        // the ReInit proposal, and it must be at epoch 1.
+        let group_info = processed_welcome.unverified_group_info();
+        let group_context = group_info.group_context();
+        // https://validation.openmls.tech/#valn1413 (parameters match the ReInit
+        // proposal).
+        if group_context.protocol_version() != reinit_proposal.version()
+            || group_info.ciphersuite() != reinit_proposal.ciphersuite()
+            || group_context.group_id() != reinit_proposal.group_id()
+            || group_context.extensions() != reinit_proposal.extensions()
+        {
+            return Err(WelcomeError::ReInitParameterMismatch);
+        }
+        // https://validation.openmls.tech/#valn1412 (reinit/branch PSK => epoch 1).
+        if group_context.epoch().as_u64() != 1 {
+            return Err(WelcomeError::ReInitEpochInvalid);
+        }
+
+        let staged_welcome = processed_welcome.into_staged_welcome(provider, ratchet_tree)?;
+
+        if check_members {
+            // RFC 9420 §11.2 receiver check: every LeafNode in the successor group
+            // must match a LeafNode in the old group.
+            // https://validation.openmls.tech/#valn1413 (all old-group members are
+            // members of the successor group).
+            let old_credentials: Vec<_> = old_group.members().map(|m| m.credential).collect();
+            for member in staged_welcome.members() {
+                if !old_credentials.contains(&member.credential) {
+                    return Err(WelcomeError::ReInitLeafMismatch);
                 }
             }
         }

@@ -203,6 +203,11 @@ impl PublicGroup {
                 self.validate_update_proposals(&proposal_queue, *committer_leaf_index)?;
 
                 self.validate_no_external_init_proposals(&proposal_queue)?;
+
+                // A Commit referencing a ReInit proposal must contain no other
+                // proposals (RFC 9420 §12.2). ReInit is not part of the external
+                // commit allowlist, so this only applies to member commits.
+                self.validate_reinit_proposals(&proposal_queue)?;
             }
             Sender::External(_) => {
                 // A commit cannot be issued by a pre-configured sender.
@@ -247,6 +252,38 @@ impl PublicGroup {
             ) {
                 return Err(ProposalValidationError::ExternalInitProposalInRegularCommit);
             }
+        }
+
+        Ok(())
+    }
+
+    /// Validate a Commit that references a ReInit proposal:
+    ///
+    /// * it must contain no other proposals
+    ///   ([valn0309](https://validation.openmls.tech/#valn0309)), and
+    /// * the ReInit's protocol version must not be lower than the current
+    ///   group's ([valn0901](https://validation.openmls.tech/#valn0901)).
+    fn validate_reinit_proposals(
+        &self,
+        proposal_queue: &ProposalQueue,
+    ) -> Result<(), ProposalValidationError> {
+        let Some(reinit) = proposal_queue.reinit_proposal() else {
+            return Ok(());
+        };
+
+        // https://validation.openmls.tech/#valn0309
+        if proposal_queue.queued_proposals().count() != 1 {
+            return Err(ProposalValidationError::ReInitProposalNotAlone);
+        }
+
+        // https://validation.openmls.tech/#valn0901
+        let version_number = |v: ProtocolVersion| match v {
+            ProtocolVersion::Mls10 => 1u16,
+            ProtocolVersion::Other(v) => v,
+        };
+        if version_number(reinit.version()) < version_number(self.group_context.protocol_version())
+        {
+            return Err(ProposalValidationError::ReInitDowngrade);
         }
 
         Ok(())

@@ -2034,3 +2034,202 @@ fn external_commit_builder() {
         .iter()
         .any(|m| m.credential == charlie_credential_with_key.credential));
 }
+
+/// This test walks through a group reinitialization (ReInit):
+///  - Alice and Bob form a group
+///  - Alice proposes and commits a ReInit
+///  - Both suspend the old group and create/join the successor group
+#[openmls_test]
+fn reinit_group() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .build();
+
+    let (alice_credential_with_key, alice_signer) = generate_credential(
+        b"Alice".to_vec(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+    let (bob_credential_with_key, bob_signer) = generate_credential(
+        b"Bob".to_vec(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        bob_credential_with_key.clone(),
+        Extensions::empty(),
+        bob_provider,
+        &bob_signer,
+    );
+
+    // Alice creates the group and adds Bob.
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &alice_signer,
+        &create_config,
+        alice_credential_with_key.clone(),
+    )
+    .unwrap();
+    let (_, welcome, _) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
+        .unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    let welcome = welcome.into_welcome().unwrap();
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        create_config.join_config(),
+        welcome,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .unwrap()
+    .into_group(bob_provider)
+    .unwrap();
+
+    // ANCHOR: reinit_propose
+    // Alice proposes to reinitialize the group as a new group with a fresh
+    // group id (and, optionally, a new protocol version, ciphersuite or
+    // extensions).
+    let new_group_id = GroupId::from_slice(b"reinitialized group");
+    let reinit_proposal = ReInitProposal::new(
+        new_group_id.clone(),
+        ProtocolVersion::Mls10,
+        ciphersuite,
+        Extensions::empty(),
+    );
+    let (proposal_message, _proposal_ref) = alice_group
+        .propose_reinit(alice_provider, reinit_proposal.clone(), &alice_signer)
+        .unwrap();
+    // ANCHOR_END: reinit_propose
+
+    // Bob receives and stores the ReInit proposal.
+    let processed = bob_group
+        .process_message(
+            bob_provider,
+            proposal_message.into_protocol_message().unwrap(),
+        )
+        .unwrap();
+    let ProcessedMessageContent::ProposalMessage(queued) = processed.into_content() else {
+        panic!("expected a proposal message")
+    };
+    bob_group
+        .store_pending_proposal(bob_provider.storage(), *queued)
+        .unwrap();
+
+    // ANCHOR: reinit_commit
+    // Alice commits the ReInit proposal. Merging it suspends the old group: it
+    // becomes inactive and can only be used to seed the successor group.
+    let bundle = alice_group
+        .commit_builder()
+        .consume_proposal_store(true)
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+    let commit_message = bundle.into_commit();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    assert!(!alice_group.is_active());
+    // ANCHOR_END: reinit_commit
+
+    // ANCHOR: reinit_process
+    // Bob processes and merges the ReInit commit, suspending his group too.
+    let processed = bob_group
+        .process_message(
+            bob_provider,
+            commit_message.into_protocol_message().unwrap(),
+        )
+        .unwrap();
+    let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
+        panic!("expected a staged commit message")
+    };
+    bob_group
+        .merge_staged_commit(bob_provider, *staged)
+        .unwrap();
+    assert!(!bob_group.is_active());
+    // ANCHOR_END: reinit_process
+
+    // ANCHOR: reinit_successor
+    // Alice creates the successor group with the ReInit parameters and welcomes
+    // Bob, mixing in the old group's resumption PSK via `reinit`.
+    let bob_new_key_package = generate_key_package(
+        ciphersuite,
+        bob_credential_with_key,
+        Extensions::empty(),
+        bob_provider,
+        &bob_signer,
+    );
+
+    let mut alice_successor = MlsGroup::builder()
+        .with_group_id(new_group_id)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .build(alice_provider, &alice_signer, alice_credential_with_key)
+        .unwrap();
+
+    let bundle = alice_successor
+        .commit_builder()
+        .reinit(alice_provider.rand(), &alice_group)
+        .unwrap()
+        .propose_adds([bob_new_key_package.key_package().clone()])
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+    let successor_welcome = bundle.into_welcome().unwrap();
+    alice_successor
+        .merge_pending_commit(alice_provider)
+        .unwrap();
+    // ANCHOR_END: reinit_successor
+
+    // ANCHOR: reinit_join
+    // Bob joins the successor group from the reinit welcome, validating it
+    // against his suspended old group.
+    let join_config = MlsGroupJoinConfig::builder()
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .build();
+    let bob_successor = StagedWelcome::new_from_reinit(
+        bob_provider,
+        &join_config,
+        successor_welcome,
+        Some(alice_successor.export_ratchet_tree().into()),
+        &bob_group,
+        &reinit_proposal,
+        true,
+    )
+    .unwrap()
+    .into_group(bob_provider)
+    .unwrap();
+    // ANCHOR_END: reinit_join
+
+    assert_eq!(
+        alice_successor.confirmation_tag(),
+        bob_successor.confirmation_tag()
+    );
+}
