@@ -179,7 +179,7 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
         }
 
 
-        /// A visitor for enum deserialization, codec-agnostic (see #variant_id).
+        /// A visitor for enum deserialization, codec-agnostic.
         struct #enum_visitor;
 
         impl <'de> serde::de::Visitor<'de> for #enum_visitor {
