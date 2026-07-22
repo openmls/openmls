@@ -126,16 +126,28 @@ pub(crate) fn deserialize(input: TokenStream) -> TokenStream {
                 f.write_str("variant storage tag or name")
             }
 
+            // NOTE: only tags that can be converted to a valid `u32` are accepted
             fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
-                Ok(#variant_id::Tag(v as u32))
+                u32::try_from(v).map(#variant_id::Tag).map_err(|_| {
+                    E::invalid_value(
+                        serde::de::Unexpected::Unsigned(v),
+                        &"a variant storage tag that fits in a u32",
+                    )
+                })
             }
 
             fn visit_u32<E: serde::de::Error>(self, v: u32) -> Result<Self::Value, E> {
                 Ok(#variant_id::Tag(v))
             }
 
+            // NOTE: only tags that can be converted to a valid `u32` are accepted
             fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                Ok(#variant_id::Tag(v as u32))
+                u32::try_from(v).map(#variant_id::Tag).map_err(|_| {
+                    E::invalid_value(
+                        serde::de::Unexpected::Signed(v),
+                        &"a variant storage tag that fits in a u32",
+                    )
+                })
             }
 
             fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
