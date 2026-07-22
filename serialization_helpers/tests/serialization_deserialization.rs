@@ -105,10 +105,7 @@ fn test_serialization_deserialization_serde_json() {
 /// (CBOR).
 ///
 /// This is the case the codec-agnostic `Deserialize` derive exists for: ciborium
-/// reports `is_human_readable() == false` yet encodes enum variants *by name*. A
-/// tag-only deserialize path rejects the by-name variant identifier ("invalid
-/// type: string, expected integer"); accepting either a storage tag or a name lets
-/// it round-trip.
+/// reports `is_human_readable() == false` yet encodes enum variants by name.
 fn test_serialization_deserialization_ciborium() {
     for TestCase { data, .. } in TEST_CASES {
         // serialize the variant
