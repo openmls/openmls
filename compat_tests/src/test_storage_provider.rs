@@ -3,12 +3,17 @@
 //! [`StorageProviderState`] holds the group state as a set of in-memory
 //! `Table`s (`HashMap<Vec<u8>, Vec<u8>>`, keyed and valued by serialized bytes),
 //! shared behind an `Arc<Mutex<_>>` so a provider can be handed out repeatedly for
-//! the same underlying state. Two thin views wrap it, one per serde codec:
+//! the same underlying state. Three thin views wrap it, one per serde codec:
 //!
 //! - [`PostcardProvider`] — a **non-self-describing** (binary) codec, standing in
 //!   for a previous version's on-disk format.
 //! - [`SerdeJsonProvider`] — a **self-describing** codec, used as the migration
 //!   bridge format and the current version's store.
+//! - [`CiboriumProvider`] — a **self-describing** binary (CBOR) codec, an
+//!   alternative current-version store: like JSON it supports `deserialize_any`
+//!   (required by the current `MlsGroupJoinConfig`), but encodes compactly rather
+//!   than as text. Only the current-version line is implemented, since it is used
+//!   purely as a migration *target*.
 //!
 //! Each is paired with a libcrux crypto/rand provider into a full
 //! `OpenMlsProvider` (the `*OpenMlsProvider` structs) so real group operations can
@@ -22,6 +27,7 @@
 //! |---------------------|--------------|-----------------------------------|
 //! | `serde_json_current`| `serde_json` | current crate                     |
 //! | `serde_json_compat` | `serde_json` | previous-version crate (`_compat`)|
+//! | `ciborium_current`  | `ciborium`   | current crate                     |
 //! | `postcard_current`  | `postcard`   | current crate                     |
 //! | `postcard_compat`   | `postcard`   | previous-version crate (`_compat`)|
 //!
@@ -62,6 +68,13 @@ struct Data {
     key_packages: Table,
     psks: Table,
 
+    // Application-managed per-group migration markers (see
+    // `CiboriumProvider::mark_group_migrated`). Not part of any OpenMLS storage
+    // trait — this is application bookkeeping that records which groups have already
+    // been migrated, so a lazy (per-group, on first access) migration runs each
+    // group exactly once.
+    migration_marker: Table,
+
     // extensions-draft
     application_export_tree: Table,
 
@@ -83,6 +96,9 @@ impl StorageProviderState {
     }
     pub fn as_serde_json_provider(&self) -> SerdeJsonProvider<'_> {
         SerdeJsonProvider(self)
+    }
+    pub fn as_ciborium_provider(&self) -> CiboriumProvider<'_> {
+        CiboriumProvider(self)
     }
 }
 
@@ -155,6 +171,80 @@ impl<'a> SerdeJsonProvider<'a> {
                 .expect("failed to initialize libcrux crypto provider"),
         }
     }
+}
+
+/// A **self-describing binary** (CBOR, via `ciborium`) view over the shared state,
+/// used as an alternative current-version migration *target*. Only the
+/// current-version `StorageProvider` is implemented (see `ciborium_current`).
+pub struct CiboriumProvider<'a>(&'a StorageProviderState);
+
+/// A full [`OpenMlsProvider`](openmls_traits::OpenMlsProvider) for the *current*
+/// API that pairs a [`CiboriumProvider`] (storage) with a libcrux-backed
+/// crypto/rand provider, so a migrated group can be driven through real
+/// operations against a CBOR store.
+pub struct CiboriumOpenMlsProvider<'a> {
+    storage: &'a CiboriumProvider<'a>,
+    crypto: openmls_libcrux_crypto_current::CryptoProvider,
+}
+
+/// Value written for a per-group migration marker. Only its *presence* under the
+/// group's key signifies "migrated"; the value itself is an opaque non-empty
+/// sentinel.
+const MIGRATION_MARKER: &[u8] = &[1];
+
+impl<'a> CiboriumProvider<'a> {
+    pub fn as_openmls_provider(&'a self) -> CiboriumOpenMlsProvider<'a> {
+        CiboriumOpenMlsProvider {
+            storage: self,
+            crypto: openmls_libcrux_crypto_current::CryptoProvider::new()
+                .expect("failed to initialize libcrux crypto provider"),
+        }
+    }
+
+    /// Whether the group with `group_id` has already been migrated into this store.
+    ///
+    /// The marker is application bookkeeping for a *lazy*, per-group migration
+    /// (migrate each group on first access, exactly once). It models a row in the
+    /// application's own database — e.g. a `migrated_groups(group_id)` table in the
+    /// same DB as the migrated OpenMLS data, keyed by the group id with the *same*
+    /// (CBOR) codec the store uses for every other key. It is deliberately *not* an
+    /// OpenMLS storage-trait method: the marker is application-managed, checked and
+    /// set through the app's own queries against its store.
+    pub fn is_group_migrated<GroupId: serde::Serialize>(&self, group_id: &GroupId) -> bool {
+        let key = ciborium_current::to_vec(group_id).expect("serializing the group id");
+        self.0 .0.lock().unwrap().migration_marker.contains_key(&key)
+    }
+
+    /// Record that the group with `group_id` has been fully migrated into this store.
+    ///
+    /// In a real DB the group's migrated rows and this marker would be written in a
+    /// single transaction, so they commit atomically. The OpenMLS storage traits
+    /// expose no transaction API (nor does this in-memory store), so instead the
+    /// marker is set *after* a successful `store` and the migration is idempotent
+    /// (`store` is a replace): an interruption before the marker is set simply
+    /// re-runs the migration on the next access.
+    pub fn mark_group_migrated<GroupId: serde::Serialize>(&self, group_id: &GroupId) {
+        let key = ciborium_current::to_vec(group_id).expect("serializing the group id");
+        self.0 .0
+            .lock()
+            .unwrap()
+            .migration_marker
+            .insert(key, MIGRATION_MARKER.to_vec());
+    }
+}
+
+/// Error type for the `ciborium` storage view. Unlike `serde_json` and `postcard`
+/// — which each expose a single `Error` — `ciborium` splits (de)serialization into
+/// distinct `ser::Error` / `de::Error` types (both generic over the underlying
+/// I/O error), so the storage macros, which take a single error type, are given
+/// this small unifying wrapper. The failing side's message is captured as a
+/// string to avoid naming the I/O generic parameter.
+#[derive(Debug, thiserror::Error)]
+pub enum CiboriumError {
+    #[error("ciborium serialization error: {0}")]
+    Serialize(String),
+    #[error("ciborium deserialization error: {0}")]
+    Deserialize(String),
 }
 
 macro_rules! impl_storage_provider_basic {
@@ -1473,6 +1563,66 @@ mod serde_json_current {
         serde_json::to_vec,
         serde_json::from_slice
     );
+}
+
+mod ciborium_current {
+    use super::{CiboriumError, CiboriumProvider, Data, Table};
+    use openmls_traits::storage::CURRENT_VERSION;
+
+    use openmls_traits::storage::{traits, Entity, Key, StorageProvider};
+
+    impl StorageProvider<CURRENT_VERSION> for CiboriumProvider<'_> {
+        type Error = CiboriumError;
+        impl_storage_provider_basic!(CURRENT_VERSION, read, write, delete, CiboriumError);
+        impl_storage_provider_extensions_draft!(
+            CURRENT_VERSION,
+            CiboriumError,
+            "extensions-draft-current"
+        );
+        impl_storage_provider_virtual_clients_draft!(CURRENT_VERSION, CiboriumError);
+    }
+
+    // The full current-version `OpenMlsProvider` (storage + crypto + rand) used to
+    // drive a migrated group through real operations against a CBOR store.
+    impl<'a> openmls_traits::OpenMlsProvider for super::CiboriumOpenMlsProvider<'a> {
+        type CryptoProvider = openmls_libcrux_crypto_current::CryptoProvider;
+        type RandProvider = openmls_libcrux_crypto_current::CryptoProvider;
+        type StorageProvider = super::CiboriumProvider<'a>;
+
+        fn storage(&self) -> &Self::StorageProvider {
+            self.storage
+        }
+
+        fn crypto(&self) -> &Self::CryptoProvider {
+            &self.crypto
+        }
+
+        fn rand(&self) -> &Self::RandProvider {
+            &self.crypto
+        }
+    }
+
+    // `ciborium` has no single `to_vec` / `from_slice` on the `serde_json` /
+    // `postcard` shape: it (de)serializes through its own `Write` / `Read` traits
+    // and returns distinct `ser` / `de` error types. These two adapters give the
+    // storage macros the byte-buffer signature they expect, and funnel both error
+    // kinds into the unifying `CiboriumError`. `to_vec` is also reused by
+    // `CiboriumProvider`'s migration-marker methods, so the marker key is serialized
+    // exactly like every other key in this store.
+    pub(super) fn to_vec<T: serde::Serialize + ?Sized>(
+        value: &T,
+    ) -> Result<Vec<u8>, CiboriumError> {
+        let mut buf = Vec::new();
+        ciborium::into_writer(value, &mut buf)
+            .map_err(|e| CiboriumError::Serialize(e.to_string()))?;
+        Ok(buf)
+    }
+
+    fn from_slice<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, CiboriumError> {
+        ciborium::from_reader(bytes).map_err(|e| CiboriumError::Deserialize(e.to_string()))
+    }
+
+    storage_helpers!(CURRENT_VERSION, CiboriumError, to_vec, from_slice);
 }
 
 mod serde_json_compat {
