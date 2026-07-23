@@ -25,11 +25,12 @@ use crate::{
         Commit, Welcome,
     },
     prelude::{
-        CredentialWithKey, InvalidExtensionError, LeafNodeParameters, LibraryError, NewSignerBundle,
+        CredentialWithKey, InvalidExtensionError, LeafNodeParameters, LibraryError,
+        NewSignerBundle, PreSharedKeyProposal,
     },
     schedule::{
-        psk::{load_psks, PskSecret},
-        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId,
+        psk::{load_psks, PskSecret, ResumptionPsk, ResumptionPskUsage},
+        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk,
     },
     storage::{OpenMlsProvider, StorageProvider},
     treesync::errors::LeafNodeValidationError,
@@ -83,6 +84,7 @@ pub use external_commits::{ExternalCommitBuilder, ExternalCommitBuilderError};
 use super::MlsGroupJoinConfig;
 
 use super::{
+    branch::BranchInfo,
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
     AddProposal, CreateCommitResult, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
@@ -318,6 +320,68 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         self.stage
             .own_proposals
             .push(Proposal::group_context_extensions(proposal));
+        Ok(self)
+    }
+    /// Adds a PreSharedKey proposal for the provided [`PreSharedKeyId`]s to the
+    /// list of proposals to be committed.
+    ///
+    /// Note that this should not be used for sub-group branching, as those PSKs
+    /// are not allowed in regular proposals. Please use
+    /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) instead.
+    pub fn propose_psks(mut self, psk_ids: impl IntoIterator<Item = PreSharedKeyId>) -> Self {
+        self.stage.own_proposals.extend(
+            psk_ids
+                .into_iter()
+                .map(|psk_id| Proposal::psk(PreSharedKeyProposal::new(psk_id))),
+        );
+        self
+    }
+
+    /// Branches from a parent group into this (freshly created) group to form a
+    /// subgroup, as described in [RFC 9420 §11.3].
+    ///
+    /// This is the internal engine driven by
+    /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch), which
+    /// is the public entry point for sub-group branching and guarantees this is
+    /// called on a fresh (epoch-0) group with the parent's parameters.
+    ///
+    /// The parent group's parameters are provided via `branch_info`, which the
+    /// parent exports with
+    /// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info).
+    ///
+    /// This adds a resumption [`PreSharedKeyId`] of usage `Branch` to the initial
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
+    /// the parent group's resumption PSK secret so it is mixed into this
+    /// subgroup's key schedule.
+    ///
+    /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
+    pub(crate) fn branch(
+        mut self,
+        rand: &impl OpenMlsRand,
+        branch_info: &BranchInfo,
+    ) -> Result<Self, CreateCommitError> {
+        // Sample a fresh random nonce of length KDF.Nh, as required by the RFC.
+        let psk_id = PreSharedKeyId::new(
+            branch_info.ciphersuite(),
+            rand,
+            Psk::Resumption(ResumptionPsk::new(
+                ResumptionPskUsage::Branch,
+                branch_info.group_id().clone(),
+                branch_info.epoch(),
+            )),
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+        self = self.propose_psks([psk_id]);
+
+        // The branch PSK secret comes from a different group, so we clear this
+        // group's resumption PSK store and inject it at the sentinel epoch 0,
+        // where `load_psks` looks it up for branch usage.
+        let secret = branch_info.resumption_psk_secret().clone();
+        self.group.borrow_mut().resumption_psk_store.clear();
+        self.group
+            .borrow_mut()
+            .resumption_psk_store
+            .add(0.into(), secret);
         Ok(self)
     }
 
@@ -583,6 +647,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
 
         Ok(self)
     }
+
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
@@ -658,7 +723,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .filter(|_| cur_stage.consume_proposal_store)
             .cloned();
 
-        // prepare the iterator for the proposal validation and seletion function. That function
+        // prepare the iterator for the proposal validation and selection function. That function
         // assumes that "earlier in the list" means "older", so since our own proposals are
         // newest, we have to put them last.
         let proposal_queue = group_proposal_store_queue.chain(own_proposals).filter(f);
@@ -699,6 +764,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         group
             .public_group
             .validate_remove_proposals(&proposal_queue)?;
+        // Also validates branch PSK proposals: a resumption PSK of usage `Branch`
+        // is only accepted at epoch 0 (i.e. in the initial commit of a subgroup),
+        // see `validate_pre_shared_key_proposals`.
         group
             .public_group
             .validate_pre_shared_key_proposals(&proposal_queue)?;
@@ -936,7 +1004,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Prepare the PskSecret
-        let psk_secret = { PskSecret::new(crypto, ciphersuite, psks)? };
+        let psk_secret = PskSecret::new(crypto, ciphersuite, psks)?;
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(ciphersuite, crypto, &joiner_secret, psk_secret)?;
@@ -1540,5 +1608,68 @@ impl IntoIterator for CommitMessageBundle {
             .into_iter()
             .chain(welcome)
             .chain(group_info)
+    }
+}
+
+#[cfg(test)]
+mod branch_tests {
+    use crate::{
+        group::{
+            mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client},
+            CreateCommitError, MlsGroup, ProposalValidationError,
+        },
+        schedule::errors::PskError,
+    };
+
+    /// A resumption PSK of usage `Branch` must only appear in the initial commit
+    /// of a subgroup (i.e. at epoch 0). Using it in any later commit must be
+    /// rejected.
+    ///
+    /// This exercises the internal [`CommitBuilder::branch`] engine directly, on
+    /// an already-established group, which the public `MlsGroupBuilder::branch`
+    /// entry point does not allow.
+    #[openmls_test::openmls_test]
+    fn subgroup_branch_psk_rejected_outside_initial_commit() {
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+        let parent_provider = &Provider::default();
+
+        // `alice_group` is at epoch 1 after adding Bob, so a branch PSK in a
+        // commit on it must be rejected.
+        let (mut alice_group, alice_signer, _bob_group, _bob_signer, _alice_cwk, _bob_cwk) =
+            setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+
+        // Use a separate group as the (arbitrary) source of the branch PSK
+        // secret, so that `load_psks` succeeds and we actually reach the
+        // proposal validation.
+        let (parent_cwk, _parent_kpb, parent_signer, _parent_pk) =
+            setup_client("Parent", ciphersuite, parent_provider);
+        let parent_group = MlsGroup::builder()
+            .ciphersuite(ciphersuite)
+            .build(parent_provider, &parent_signer, parent_cwk)
+            .unwrap();
+
+        let result = alice_group
+            .commit_builder()
+            .branch(alice_provider.rand(), &parent_group.branch_info())
+            .unwrap()
+            .load_psks(alice_provider.storage())
+            .unwrap()
+            .build(
+                alice_provider.rand(),
+                alice_provider.crypto(),
+                &alice_signer,
+                |_| true,
+            );
+
+        assert!(
+            matches!(
+                result,
+                Err(CreateCommitError::ProposalValidationError(
+                    ProposalValidationError::Psk(PskError::NotAllowed)
+                ))
+            ),
+            "expected a branch PSK outside the initial commit to be rejected, got {result:?}"
+        );
     }
 }

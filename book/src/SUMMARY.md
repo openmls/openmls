@@ -25,6 +25,7 @@
   - [GREASE Support](user_manual/grease.md)
   - [WebAssembly](user_manual/wasm.md)
   - [Fork Resolution](user_manual/fork-resolution.md)
+  - [Sub-group branching](user_manual/sub-groups.md)
 - [Traits & External Types](./traits/README.md)
   - [Traits](./traits/traits.md)
   - [Types](./traits/types.md)

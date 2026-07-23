@@ -1,7 +1,7 @@
 //! Serialization helpers for enums.
 //!
-//! These helpers provide custom implementations of [`serde::Serialize`]
-//! and [`serde::Deserialize`] for the provided enums.
+//! These helpers provide custom implementations of `serde::Serialize`
+//! and `serde::Deserialize` for the provided enums.
 //!
 //! These affect non-self-describing serializations, ensuring that the storage tag
 //! specified on each enum variant is used as the numeric tag for that variant
@@ -12,7 +12,7 @@
 //!
 //! ### Usage
 //! Annotate an enum with the [`Serialize`] and [`Deserialize`] macros
-//! to derive [`serde::Serialize`] and [`serde::Deserialize`] traits
+//! to derive `serde::Serialize` and `serde::Deserialize` traits
 //! automatically for these enums.
 //! ```rust
 //! #[derive(

@@ -368,17 +368,25 @@ impl PreSharedKeyId {
 
     // ----- Validation ----------------------------------------------------------------------------
 
-    pub(crate) fn validate_in_proposal(self, ciphersuite: Ciphersuite) -> Result<(), PskError> {
+    pub(crate) fn validate_in_proposal(self, ciphersuite: Ciphersuite) -> Result<Self, PskError> {
         // ValSem402
         match self.psk() {
             Psk::Resumption(resumption_psk) => {
                 // https://validation.openmls.tech/#valn0801
                 // https://validation.openmls.tech/#valn0802
-                if resumption_psk.usage != ResumptionPskUsage::Application {
-                    return Err(PskError::UsageMismatch {
-                        allowed: vec![ResumptionPskUsage::Application],
-                        got: resumption_psk.usage,
-                    });
+                match resumption_psk.usage {
+                    ResumptionPskUsage::Application => {}
+                    ResumptionPskUsage::Reinit => {
+                        return Err(PskError::UsageMismatch {
+                            allowed: vec![ResumptionPskUsage::Application],
+                            got: resumption_psk.usage,
+                        });
+                    }
+                    ResumptionPskUsage::Branch => {
+                        // We can't check anything in here since we need more
+                        // information about the commit. We do this check
+                        // on the outside.
+                    }
                 }
             }
             Psk::External(_) => {}
@@ -400,7 +408,7 @@ impl PreSharedKeyId {
             }
         }
 
-        Ok(())
+        Ok(self)
     }
 
     pub(crate) fn validate_in_welcome(
@@ -588,6 +596,7 @@ impl From<Secret> for PskSecret {
     }
 }
 
+/// Load PSKs from storage
 pub(crate) fn load_psks<'p, Storage: StorageProvider>(
     storage: &Storage,
     resumption_psk_store: &ResumptionPskStore,
@@ -600,7 +609,18 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
 
         match &psk_id.psk {
             Psk::Resumption(resumption) => {
-                if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
+                let psk_epoch = match resumption.usage() {
+                    // Application and Reinit PSKs are looked up by their own epoch.
+                    ResumptionPskUsage::Application | ResumptionPskUsage::Reinit => {
+                        resumption.psk_epoch()
+                    }
+                    // The branch PSK is not in this group's resumption store: it
+                    // comes from the parent group and is injected at the sentinel
+                    // epoch 0 (see `CommitBuilder::branch` and
+                    // `ProcessedWelcome::new_from_welcome_inner`).
+                    ResumptionPskUsage::Branch => 0.into(),
+                };
+                if let Some(psk_bundle) = resumption_psk_store.get(psk_epoch) {
                     psk_bundles.push((psk_id, psk_bundle.secret.clone()));
                 } else {
                     return Err(PskError::KeyNotFound);
@@ -658,6 +678,12 @@ pub mod store {
                 resumption_psk: vec![],
                 cursor: 0,
             }
+        }
+
+        /// Clear all PSKs.
+        pub(crate) fn clear(&mut self) {
+            self.resumption_psk = vec![];
+            self.cursor = 0;
         }
 
         /// Adds a new entry to the store.
