@@ -56,31 +56,40 @@ through, e.g. the delivery service has confirmed it.
 
 ## Receiver: joining the sub-group
 
-A receiver joins the branched sub-group with `StagedWelcome::build_from_branch`,
-which returns a `JoinBuilder`. In addition to the regular join processing, this
-injects the parent's resumption PSK secret and enforces the [RFC 9420 §11.3]
-receiver checks. `build_from_branch` itself verifies that the branch PSK in the
-`Welcome` references the same parent group and epoch as the `BranchInfo` you
-passed in (before that secret is mixed into the key schedule). The remaining
-checks run when `build` is called: the protocol version and ciphersuite must
-match the parent, the sub-group must be at epoch 1, and every sub-group member
-must also be a member of the parent group. The membership check is on by default
-and can be disabled with `.check_members(false)`.
+A receiver's view of the parent group may have advanced between when the branch
+was taken and when its `Welcome` arrives, so the receiver first needs to find out
+*which* parent epoch the branch derives from before it can pick the matching
+`BranchInfo`. The branch PSK that carries the parent group and epoch lives inside
+the `Welcome`'s encrypted `GroupSecrets`, so reading it requires decrypting the
+`Welcome`.
 
-If the `BranchInfo` is from a different parent epoch than the one the sender
-branched from, `build_from_branch` fails with
-`WelcomeError::SubgroupParentMismatch`. Handle this by retrying with the
-`BranchInfo` for the parent epoch the branch was taken from (see the
-sliding-window note above).
+`StagedWelcome::process_branch_welcome` does exactly one decryption and returns a
+`PendingBranchWelcome`. Call `parent()` on it to read the parent `(group_id,
+epoch)` the branch was taken from (see [RFC 9420 §8.4]), select the `BranchInfo` for
+that parent epoch (e.g. from the sliding window above), then finish the join with
+`build_from_branch`, which reuses the already-decrypted state.
+
+In addition to the regular join processing, this injects the parent's resumption
+PSK secret and enforces the [RFC 9420 §11.3] receiver checks. `build_from_branch`
+verifies that the branch PSK in the `Welcome` references the same parent group and
+epoch as the `BranchInfo` you selected (before that secret is mixed into the key
+schedule); a `BranchInfo` from the wrong parent epoch fails with
+`WelcomeError::SubgroupParentMismatch`. The remaining checks run when `build` is
+called: the protocol version and ciphersuite must match the parent, the sub-group
+must be at epoch 1, and every sub-group member must also be a member of the parent
+group. The membership check is on by default and can be disabled with
+`.check_members(false)`.
 
 ```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code_sub_groups.rs:receiver_join_branch}}
+{{#include ../../../openmls/tests/book_code_sub_groups.rs:receiver_peek_branch}}
 ```
 
-In the end, both sides have derived the same sub-group:
+If you already know the parent epoch (so no peek is needed), the one-shot
+`StagedWelcome::build_from_branch(provider, join_config, welcome, branch_info)`
+takes the `Welcome` and `BranchInfo` directly and also decrypts only once. It
+fails with `WelcomeError::SubgroupParentMismatch` if the `BranchInfo` is from the
+wrong parent epoch.
 
-```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code_sub_groups.rs:verify}}
-```
+[RFC 9420 §8.4]: https://www.rfc-editor.org/rfc/rfc9420.html#name-pre-shared-keys
 
 [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching

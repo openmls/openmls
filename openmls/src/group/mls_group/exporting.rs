@@ -228,7 +228,7 @@ impl MlsGroup {
     /// as described in [RFC 9420 §11.3].
     ///
     /// Hand the resulting [`BranchInfo`] to the sender
-    /// ([`CommitBuilder::branch`](crate::group::CommitBuilder::branch)) and to
+    /// ([`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch)) and to
     /// the receiver
     /// ([`StagedWelcome::build_from_branch`](crate::group::StagedWelcome::build_from_branch)).
     ///

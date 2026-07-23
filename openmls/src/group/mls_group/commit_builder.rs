@@ -326,7 +326,8 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// list of proposals to be committed.
     ///
     /// Note that this should not be used for sub-group branching, as those PSKs
-    /// are not allowed in regular proposals. Please use [`Self::branch()`] instead.
+    /// are not allowed in regular proposals. Please use
+    /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) instead.
     pub fn propose_psks(mut self, psk_ids: impl IntoIterator<Item = PreSharedKeyId>) -> Self {
         self.stage.own_proposals.extend(
             psk_ids

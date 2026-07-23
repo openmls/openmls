@@ -160,154 +160,19 @@ impl ProcessedWelcome {
         welcome: Welcome,
         branch_info: Option<&BranchInfo>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
-        let ciphersuite = welcome.ciphersuite();
-        // Check this before touching any stored key material: `keys_for_welcome`
-        // consumes a matching (non-last-resort) key package.
-        provider
-            .crypto()
-            .supports(ciphersuite)
-            .map_err(|_| WelcomeError::UnsupportedCiphersuite(ciphersuite))?;
+        let (resumption_psk_store, key_material, group_secrets) =
+            decrypt_group_secrets(provider, mls_group_config, &welcome)?;
 
-        let (mut resumption_psk_store, key_material) =
-            keys_for_welcome(mls_group_config, &welcome, provider)?;
-
-        // For subgroup branching, inject the parent group's resumption PSK at
-        // the sentinel epoch 0 before the PSKs are loaded.
-        if let Some(branch_info) = branch_info {
-            resumption_psk_store.add(0.into(), branch_info.resumption_psk_secret().clone());
-        }
-
-        let Some(egs) =
-            welcome.find_encrypted_group_secret(key_material.key_package_ref(provider.crypto())?)
-        else {
-            return Err(WelcomeError::JoinerSecretNotFound);
-        };
-
-        // This check seems to be superfluous from the perspective of the RFC, but still doesn't
-        // seem like a bad idea. There is no local KeyPackage to compare against on the
-        // virtual-client path, where the derived material is implicitly the welcome's ciphersuite.
-        if let Some(key_package_bundle) = key_material.key_package_bundle() {
-            if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
-                let e = WelcomeError::CiphersuiteMismatch;
-                log::debug!("new_from_welcome {e:?}");
-                return Err(e);
-            }
-        }
-
-        let group_secrets = GroupSecrets::try_from_ciphertext(
-            key_material.init_private_key(),
-            egs.encrypted_group_secrets(),
-            welcome.encrypted_group_info(),
-            ciphersuite,
-            provider.crypto(),
-        )?;
-
-        // Validate PSKs
-        PreSharedKeyId::validate_in_welcome(&group_secrets.psks, ciphersuite)?;
-
-        // When joining a subgroup branch, the branch resumption
-        // PSK carried in the Welcome must reference the same parent group and
-        // epoch the receiver is branching from. This must be checked here, before
-        // the injected PSK secret is mixed into the key schedule: a wrong-epoch
-        // secret would otherwise only surface as an opaque group-info decryption
-        // failure further down.
-        if let Some(branch_info) = branch_info {
-            let parent_matches = group_secrets
-                .psks
-                .iter()
-                .filter_map(|id| match id.psk() {
-                    Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Branch => Some(r),
-                    _ => None,
-                })
-                .any(|r| {
-                    r.psk_group_id() == branch_info.group_id()
-                        && r.psk_epoch() == branch_info.epoch()
-                });
-            if !parent_matches {
-                return Err(WelcomeError::SubgroupParentMismatch);
-            }
-        }
-
-        let psk_secret = {
-            let psks = load_psks(
-                provider.storage(),
-                &resumption_psk_store,
-                &group_secrets.psks,
-            )?;
-
-            PskSecret::new(provider.crypto(), ciphersuite, psks)?
-        };
-
-        // prepare the key schedule
-        let mut key_schedule = KeySchedule::init(
-            ciphersuite,
-            provider.crypto(),
-            &group_secrets.joiner_secret,
-            psk_secret,
-        )?;
-
-        // derive the keys for decrypting the group info
-        let (welcome_key, welcome_nonce) = key_schedule
-            .welcome(provider.crypto(), ciphersuite)
-            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
-            .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
-            .map_err(LibraryError::unexpected_crypto_error)?;
-
-        let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
-            &welcome_key,
-            &welcome_nonce,
-            welcome.encrypted_group_info(),
-            &[],
-            provider.crypto(),
-        )?;
-
-        let serialized_group_context = verifiable_group_info
-            .group_context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-
-        // TODO #751: Implement PSK
-        key_schedule.add_context(provider.crypto(), &serialized_group_context)?;
-
-        let epoch_secrets = key_schedule.epoch_secrets(provider.crypto(), ciphersuite)?;
-
-        // On the bundle path, check the required capabilities and the
-        // ciphersuite against the local KeyPackage. On the virtual-client path
-        // there is no local KeyPackage: these are checked in staging against
-        // the own tree leaf instead.
-        if let Some(key_package_bundle) = key_material.key_package_bundle() {
-            if let Some(required_capabilities) =
-                verifiable_group_info.extensions().required_capabilities()
-            {
-                // Also check that our key package actually supports the extensions.
-                // As per the spec, the sender must have checked this. But you never know.
-                key_package_bundle
-                    .key_package()
-                    .leaf_node()
-                    .capabilities()
-                    .supports_required_capabilities(required_capabilities)?;
-            }
-
-            // https://validation.openmls.tech/#valn1404
-            // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
-            // KeyPackage.
-            if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite()
-            {
-                let e = WelcomeError::CiphersuiteMismatch;
-                log::debug!("new_from_welcome {e:?}");
-                return Err(e);
-            }
-        }
-
-        Ok(Self {
-            mls_group_config: mls_group_config.clone(),
-            ciphersuite,
-            group_secrets,
-            epoch_secrets,
-            verifiable_group_info,
+        finish_processed_welcome(
+            provider,
+            mls_group_config,
+            welcome.ciphersuite(),
             resumption_psk_store,
             key_material,
-        })
+            group_secrets,
+            &welcome,
+            branch_info,
+        )
     }
 
     /// Get a reference to the GroupInfo in this Welcome message.
@@ -636,6 +501,14 @@ impl StagedWelcome {
     /// Matching members is left to the application by the RFC; here we use
     /// credential equality for equivalent identifiers.
     ///
+    /// If the receiver does not yet know which parent epoch the branch was taken
+    /// from (its own view of the parent group may have advanced), use
+    /// [`StagedWelcome::process_branch_welcome`] to read the parent reference
+    /// from the `Welcome` first and then pick the matching `branch_info`. That
+    /// path decrypts the `Welcome` only once. This one-shot method is a
+    /// convenience for callers that already know the parent epoch; it also
+    /// decrypts only once, via the same carrier.
+    ///
     /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
     pub fn build_from_branch<'a, Provider: OpenMlsProvider>(
         provider: &'a Provider,
@@ -643,14 +516,44 @@ impl StagedWelcome {
         welcome: Welcome,
         branch_info: BranchInfo,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
-        let processed_welcome = ProcessedWelcome::new_from_welcome_inner(
-            provider,
-            mls_group_config,
-            welcome,
-            Some(&branch_info),
-        )?;
+        Self::process_branch_welcome(provider, mls_group_config, welcome)?
+            .build_from_branch(provider, branch_info)
+    }
 
-        Ok(JoinBuilder::new(provider, processed_welcome).with_branch_info(branch_info))
+    /// Decrypt a subgroup-branch `Welcome` once so its parent reference can be
+    /// inspected before selecting the matching [`BranchInfo`].
+    ///
+    /// The branch PSK's parent group and epoch live inside the `Welcome`'s
+    /// encrypted `GroupSecrets`, so reading them requires decryption. This
+    /// returns a [`PendingBranchWelcome`] holding the decrypted state: call
+    /// [`PendingBranchWelcome::parent`] to read the parent `(group_id, epoch)`
+    /// the branch derives from (RFC 9420 §8.4), select the `BranchInfo` for that
+    /// parent epoch (e.g. from a sliding window of recent epochs), then finish
+    /// with [`PendingBranchWelcome::build_from_branch`] — without decrypting the
+    /// `Welcome` a second time.
+    ///
+    /// **Note:** like [`StagedWelcome::build_from_branch`], this path assumes a
+    /// subgroup-branch `Welcome`. It consumes the matching key package from
+    /// storage. If [`PendingBranchWelcome::parent`] returns `None` the `Welcome`
+    /// is not a branch welcome and the carrier cannot complete a regular join
+    /// (the key package is already consumed); use the normal
+    /// [`ProcessedWelcome`] flow when the message may not be a branch welcome.
+    pub fn process_branch_welcome<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+    ) -> Result<PendingBranchWelcome, WelcomeError<Provider::StorageError>> {
+        let (resumption_psk_store, key_material, group_secrets) =
+            decrypt_group_secrets(provider, mls_group_config, &welcome)?;
+
+        Ok(PendingBranchWelcome {
+            mls_group_config: mls_group_config.clone(),
+            ciphersuite: welcome.ciphersuite(),
+            welcome,
+            resumption_psk_store,
+            key_material,
+            group_secrets,
+        })
     }
 
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
@@ -775,6 +678,263 @@ impl StagedWelcome {
             )
             .map_err(LibraryError::unexpected_crypto_error)?)
     }
+}
+
+/// A subgroup-branch `Welcome` whose `GroupSecrets` have been decrypted but not
+/// yet staged.
+///
+/// This lets a receiver read which parent group and epoch the branch derives
+/// from before committing to a [`BranchInfo`].
+/// The decrypted state is carried here and reused when finishing the join.
+/// Create it with [`StagedWelcome::process_branch_welcome`], read the parent
+/// reference with [`Self::parent`], then finish with [`Self::build_from_branch`].
+pub struct PendingBranchWelcome {
+    mls_group_config: MlsGroupJoinConfig,
+    ciphersuite: Ciphersuite,
+    welcome: Welcome,
+    resumption_psk_store: ResumptionPskStore,
+    key_material: WelcomeKeyMaterial,
+    group_secrets: GroupSecrets,
+}
+
+impl PendingBranchWelcome {
+    /// The parent group and epoch this branch derives from, read from the branch
+    /// resumption PSK carried in the `Welcome`.
+    ///
+    /// Use this to select the [`BranchInfo`] exported from the matching parent
+    /// epoch before calling [`Self::build_from_branch`].
+    ///
+    /// Returns `None` if the `Welcome` carries no branch resumption PSK, i.e. it
+    /// is not a subgroup-branch welcome.
+    pub fn parent(&self) -> Option<(GroupId, GroupEpoch)> {
+        self.group_secrets
+            .psks
+            .iter()
+            .find_map(|id| match id.psk() {
+                Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Branch => {
+                    Some((r.psk_group_id().clone(), r.psk_epoch()))
+                }
+                _ => None,
+            })
+    }
+
+    /// Finish the subgroup-branch join with the selected [`BranchInfo`], reusing
+    /// the already-decrypted state (no second decrypt of the `Welcome`).
+    ///
+    /// The branch PSK's parent reference is checked against `branch_info` (see
+    /// [`StagedWelcome::build_from_branch`]); a `branch_info` from the wrong
+    /// parent epoch fails with [`WelcomeError::SubgroupParentMismatch`]. The
+    /// remaining receiver checks run when [`JoinBuilder::build`] is called.
+    pub fn build_from_branch<'a, Provider: OpenMlsProvider>(
+        self,
+        provider: &'a Provider,
+        branch_info: BranchInfo,
+    ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
+        let processed_welcome = finish_processed_welcome(
+            provider,
+            &self.mls_group_config,
+            self.ciphersuite,
+            self.resumption_psk_store,
+            self.key_material,
+            self.group_secrets,
+            &self.welcome,
+            Some(&branch_info),
+        )?;
+
+        Ok(JoinBuilder::new(provider, processed_welcome).with_branch_info(branch_info))
+    }
+}
+
+/// Decrypt a `Welcome`'s `GroupSecrets`.
+///
+/// This is the first half of welcome processing, shared between the regular
+/// join and the subgroup-branch peek (see [`PendingBranchWelcome`]). It consumes
+/// the matching (non-last-resort) key package from storage via
+/// [`keys_for_welcome`] and decrypts the encrypted group secrets addressed to
+/// it. The branch resumption PSK secret is not injected here: injection and
+/// the parent-reference check happen in [`finish_processed_welcome`], so this
+/// step is identical on both paths.
+fn decrypt_group_secrets<Provider: OpenMlsProvider>(
+    provider: &Provider,
+    mls_group_config: &MlsGroupJoinConfig,
+    welcome: &Welcome,
+) -> Result<
+    (ResumptionPskStore, WelcomeKeyMaterial, GroupSecrets),
+    WelcomeError<<Provider as OpenMlsProvider>::StorageError>,
+> {
+    let ciphersuite = welcome.ciphersuite();
+    // Check this before touching any stored key material: `keys_for_welcome`
+    // consumes a matching (non-last-resort) key package.
+    provider
+        .crypto()
+        .supports(ciphersuite)
+        .map_err(|_| WelcomeError::UnsupportedCiphersuite(ciphersuite))?;
+
+    let (resumption_psk_store, key_material) =
+        keys_for_welcome(mls_group_config, welcome, provider)?;
+
+    let Some(egs) =
+        welcome.find_encrypted_group_secret(key_material.key_package_ref(provider.crypto())?)
+    else {
+        return Err(WelcomeError::JoinerSecretNotFound);
+    };
+
+    // This check seems to be superfluous from the perspective of the RFC, but still doesn't
+    // seem like a bad idea. There is no local KeyPackage to compare against on the
+    // virtual-client path, where the derived material is implicitly the welcome's ciphersuite.
+    if let Some(key_package_bundle) = key_material.key_package_bundle() {
+        if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+            let e = WelcomeError::CiphersuiteMismatch;
+            log::debug!("new_from_welcome {e:?}");
+            return Err(e);
+        }
+    }
+
+    let group_secrets = GroupSecrets::try_from_ciphertext(
+        key_material.init_private_key(),
+        egs.encrypted_group_secrets(),
+        welcome.encrypted_group_info(),
+        ciphersuite,
+        provider.crypto(),
+    )?;
+
+    // Validate PSKs
+    PreSharedKeyId::validate_in_welcome(&group_secrets.psks, ciphersuite)?;
+
+    Ok((resumption_psk_store, key_material, group_secrets))
+}
+
+/// Finish processing a `Welcome` from its already-decrypted `GroupSecrets`.
+///
+/// This is the second half of welcome processing (the tail of
+/// [`ProcessedWelcome::new_from_welcome_inner`]): it derives the key schedule,
+/// decrypts the group info, and runs the capability/ciphersuite checks,
+/// producing a [`ProcessedWelcome`]. It still needs the `welcome` for its
+/// encrypted group info.
+///
+/// For subgroup branching (`branch_info` set), the parent group's resumption
+/// PSK secret is injected at the sentinel epoch 0 and the branch PSK carried in
+/// the `Welcome` is checked to reference the same parent group and epoch as
+/// `branch_info` — both before the secret is mixed into the key schedule, so a
+/// wrong-epoch secret fails cleanly with [`WelcomeError::SubgroupParentMismatch`]
+/// rather than as an opaque group-info decryption failure further down.
+#[allow(clippy::too_many_arguments)]
+fn finish_processed_welcome<Provider: OpenMlsProvider>(
+    provider: &Provider,
+    mls_group_config: &MlsGroupJoinConfig,
+    ciphersuite: Ciphersuite,
+    mut resumption_psk_store: ResumptionPskStore,
+    key_material: WelcomeKeyMaterial,
+    group_secrets: GroupSecrets,
+    welcome: &Welcome,
+    branch_info: Option<&BranchInfo>,
+) -> Result<ProcessedWelcome, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
+    // For subgroup branching, inject the parent group's resumption PSK at
+    // the sentinel epoch 0 before the PSKs are loaded.
+    if let Some(branch_info) = branch_info {
+        resumption_psk_store.add(0.into(), branch_info.resumption_psk_secret().clone());
+    }
+
+    // When joining a subgroup branch, the branch resumption
+    // PSK carried in the Welcome must reference the same parent group and
+    // epoch the receiver is branching from. This must be checked here, before
+    // the injected PSK secret is mixed into the key schedule: a wrong-epoch
+    // secret would otherwise only surface as an opaque group-info decryption
+    // failure further down.
+    if let Some(branch_info) = branch_info {
+        let parent_matches = group_secrets
+            .psks
+            .iter()
+            .filter_map(|id| match id.psk() {
+                Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Branch => Some(r),
+                _ => None,
+            })
+            .any(|r| {
+                r.psk_group_id() == branch_info.group_id() && r.psk_epoch() == branch_info.epoch()
+            });
+        if !parent_matches {
+            return Err(WelcomeError::SubgroupParentMismatch);
+        }
+    }
+
+    let psk_secret = {
+        let psks = load_psks(
+            provider.storage(),
+            &resumption_psk_store,
+            &group_secrets.psks,
+        )?;
+
+        PskSecret::new(provider.crypto(), ciphersuite, psks)?
+    };
+
+    // prepare the key schedule
+    let mut key_schedule = KeySchedule::init(
+        ciphersuite,
+        provider.crypto(),
+        &group_secrets.joiner_secret,
+        psk_secret,
+    )?;
+
+    // derive the keys for decrypting the group info
+    let (welcome_key, welcome_nonce) = key_schedule
+        .welcome(provider.crypto(), ciphersuite)
+        .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
+        .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
+        .map_err(LibraryError::unexpected_crypto_error)?;
+
+    let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
+        &welcome_key,
+        &welcome_nonce,
+        welcome.encrypted_group_info(),
+        &[],
+        provider.crypto(),
+    )?;
+
+    let serialized_group_context = verifiable_group_info
+        .group_context()
+        .tls_serialize_detached()
+        .map_err(LibraryError::missing_bound_check)?;
+
+    key_schedule.add_context(provider.crypto(), &serialized_group_context)?;
+
+    let epoch_secrets = key_schedule.epoch_secrets(provider.crypto(), ciphersuite)?;
+
+    // On the bundle path, check the required capabilities and the
+    // ciphersuite against the local KeyPackage. On the virtual-client path
+    // there is no local KeyPackage: these are checked in staging against
+    // the own tree leaf instead.
+    if let Some(key_package_bundle) = key_material.key_package_bundle() {
+        if let Some(required_capabilities) =
+            verifiable_group_info.extensions().required_capabilities()
+        {
+            // Also check that our key package actually supports the extensions.
+            // As per the spec, the sender must have checked this. But you never know.
+            key_package_bundle
+                .key_package()
+                .leaf_node()
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)?;
+        }
+
+        // https://validation.openmls.tech/#valn1404
+        // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
+        // KeyPackage.
+        if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+            let e = WelcomeError::CiphersuiteMismatch;
+            log::debug!("new_from_welcome {e:?}");
+            return Err(e);
+        }
+    }
+
+    Ok(ProcessedWelcome {
+        mls_group_config: mls_group_config.clone(),
+        ciphersuite,
+        group_secrets,
+        epoch_secrets,
+        verifiable_group_info,
+        resumption_psk_store,
+        key_material,
+    })
 }
 
 /// Read keys for decrypting the welcome message.
