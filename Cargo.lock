@@ -2664,6 +2664,7 @@ dependencies = [
 name = "openmls_serialization_helpers"
 version = "0.1.0"
 dependencies = [
+ "ciborium",
  "postcard",
  "proc-macro2",
  "quote",
