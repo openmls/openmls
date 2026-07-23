@@ -212,7 +212,7 @@ impl PublicGroup {
     }
 
     /// Create an empty  [`PublicGroupDiff`] based on this [`PublicGroup`].
-    pub(crate) fn empty_diff(&self) -> PublicGroupDiff {
+    pub(crate) fn empty_diff(&self) -> PublicGroupDiff<'_> {
         PublicGroupDiff::new(self)
     }
 

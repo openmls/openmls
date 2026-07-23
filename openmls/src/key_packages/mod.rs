@@ -707,6 +707,7 @@ impl KeyPackageBuilder {
 
 /// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the corresponding private
 /// key.
+#[cfg(test)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct KeyPackageBundle {

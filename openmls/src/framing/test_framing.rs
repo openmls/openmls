@@ -617,7 +617,7 @@ pub(crate) async fn setup_alice_bob_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (
-    FramingParameters,
+    FramingParameters<'_>,
     CoreGroup,
     SignatureKeyPair,
     CoreGroup,

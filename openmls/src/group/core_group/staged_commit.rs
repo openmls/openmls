@@ -347,7 +347,7 @@ impl CoreGroup {
         let epoch_keypairs: EpochEncryptionKeyPair = old_epoch_keypairs
             .0
             .into_iter()
-            .chain(state.new_keypairs.into_iter())
+            .chain(state.new_keypairs)
             .filter(|keypair| new_owned_encryption_keys.contains(keypair.public_key()))
             .collect::<Vec<_>>()
             .into();
@@ -433,22 +433,22 @@ impl StagedCommit {
     }
 
     /// Returns the Add proposals that are covered by the Commit message as in iterator over [QueuedAddProposal].
-    pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
+    pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal<'_>> {
         self.staged_proposal_queue.add_proposals()
     }
 
     /// Returns the Remove proposals that are covered by the Commit message as in iterator over [QueuedRemoveProposal].
-    pub fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
+    pub fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal<'_>> {
         self.staged_proposal_queue.remove_proposals()
     }
 
     /// Returns the Update proposals that are covered by the Commit message as in iterator over [QueuedUpdateProposal].
-    pub fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
+    pub fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal<'_>> {
         self.staged_proposal_queue.update_proposals()
     }
 
     /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].
-    pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
+    pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal<'_>> {
         self.staged_proposal_queue.psk_proposals()
     }
 

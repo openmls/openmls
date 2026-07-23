@@ -397,7 +397,7 @@ impl MlsGroup {
     }
 
     /// Group framing parameters
-    pub(crate) fn framing_parameters(&self) -> FramingParameters {
+    pub(crate) fn framing_parameters(&self) -> FramingParameters<'_> {
         FramingParameters::new(
             &self.aad,
             self.mls_group_config.wire_format_policy().outgoing(),
@@ -465,7 +465,7 @@ impl MlsGroup {
 }
 
 /// `Enum` that indicates whether the inner group state has been modified since the last time it was persisted.
-/// `InnerState::Changed` indicates that the state has changed and that [`.save()`] should be called.
+/// `InnerState::Changed` indicates that the state has changed and that `MlsGroup.save` should be called.
 /// `InnerState::Persisted` indicates that the state has not been modified and therefore doesn't need to be persisted.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum InnerState {

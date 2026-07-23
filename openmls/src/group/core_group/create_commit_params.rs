@@ -93,7 +93,7 @@ impl CreateCommitParams<'_> {
     pub(crate) fn builder() -> TempBuilderCCPM0 {
         TempBuilderCCPM0 {}
     }
-    pub(crate) fn framing_parameters(&self) -> &FramingParameters {
+    pub(crate) fn framing_parameters(&self) -> &FramingParameters<'_> {
         &self.framing_parameters
     }
     pub(crate) fn proposal_store(&self) -> &ProposalStore {

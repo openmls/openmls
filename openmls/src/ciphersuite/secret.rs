@@ -184,7 +184,7 @@ impl Secret {
         let full_label = format!("{} {}", self.mls_version, label);
         log::trace!(
             "KDF expand with label \"{}\" and {:?} with context {:x?}",
-            &full_label,
+            full_label,
             self.ciphersuite,
             context
         );

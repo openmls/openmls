@@ -43,7 +43,7 @@ use openmls_traits::{
     OpenMlsCryptoProvider,
 };
 use std::collections::HashMap;
-use tls_codec::*;
+use tls_codec::{Deserialize as _, Serialize as _};
 
 pub mod client;
 pub mod errors;

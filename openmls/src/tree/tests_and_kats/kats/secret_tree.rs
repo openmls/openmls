@@ -70,6 +70,9 @@ pub struct Leaf {
     handshake_nonce: String,
 }
 
+// clippy complains this type is never constructed, but that is not technically true since
+// construction happens implicitly via deserialization, which clippy is unaware of
+#[allow(unused)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SecretTree {
     cipher_suite: u16,
