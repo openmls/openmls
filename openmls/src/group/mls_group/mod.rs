@@ -60,11 +60,13 @@ pub(crate) mod migration_import;
 
 #[cfg(feature = "virtual-clients-draft")]
 pub use application::UnconfirmedMessage;
+pub use branch::BranchInfo;
 pub use proposal::Propose;
 
 use config::*;
 
 // Crate
+pub(crate) mod branch;
 pub(crate) mod builder;
 pub(crate) mod commit_builder;
 pub(crate) mod config;
@@ -1465,7 +1467,7 @@ impl WelcomeKeyMaterial {
 
     /// The local [`KeyPackageBundle`] on the regular path, or `None` on the
     /// virtual-client path. Checks that only apply when there is a local
-    /// KeyPackage to compare against branch on this.
+    /// KeyPackage to compare against branch on this value.
     pub fn key_package_bundle(&self) -> Option<&KeyPackageBundle> {
         match &self.inner {
             WelcomeKeyMaterialInner::KeyPackage(bundle) => Some(bundle),
