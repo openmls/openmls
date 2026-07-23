@@ -82,6 +82,21 @@ then bridging the bundle through `serde_json`, and storing it with the current v
 {{#include ../../../compat_tests/tests/test_migration.rs:migration}}
 ```
 
+The target store need not be `serde_json`: the `new_provider` can be any current-version
+storage provider that uses a self-describing format. Only its type changes, and the
+migration body is identical. For example, to migrate into a CBOR-based (`ciborium`) store
+instead:
+
+```rust,no_run,noplayground
+fn migrate_group(
+    old_provider: &PostcardProvider<'_>,
+    new_provider: &CiboriumProvider<'_>,
+    group_id: &openmls_compat::prelude::GroupId,
+) {
+    // ... migration ...
+}
+```
+
 The bundle is bridged with the small helper below, which serializes to JSON and
 deserializes into the current version's type. Because the intermediate JSON buffer
 holds the group's private keys in plaintext, it is kept in a `Zeroizing` buffer
