@@ -19,5 +19,5 @@ percent-encoding = "2.3"
 
 # Rust Crypto
 secrecy = { version = "0.8", features = ["serde"] }
-x509-cert = "0.2"
+x509-cert = "0.3"
 const-oid = "0.9"

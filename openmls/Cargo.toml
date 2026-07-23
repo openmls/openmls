@@ -20,7 +20,7 @@ hex = "0.4"
 async-trait = { workspace = true }
 openmls_basic_credential = { version = "0.2.0", path = "../basic_credential", features = ["clonable", "test-utils"] }
 openmls_x509_credential = { version = "0.2.0", path = "../x509_credential" }
-x509-cert = "0.2"
+x509-cert = "0.3"
 subtle = "2.5"
 web-time = "1.1.0"
 indexmap = "2.0"
