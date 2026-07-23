@@ -14,8 +14,8 @@ use crate::{
         Welcome,
     },
     schedule::{
-        psk::{store::ResumptionPskStore, PreSharedKeyId},
-        EpochSecretsResult, ResumptionPskSecret,
+        psk::{store::ResumptionPskStore, PreSharedKeyId, Psk, ResumptionPskUsage},
+        EpochSecretsResult,
     },
     storage::OpenMlsProvider,
     treesync::{
@@ -153,12 +153,12 @@ impl ProcessedWelcome {
     /// This is used for subgroup branching (RFC 9420 §11.3): the branch PSK
     /// secret comes from the parent group and is injected at the sentinel epoch
     /// 0, where [`load_psks`](crate::schedule::psk::load_psks) looks it up for
-    /// branch usage. See [`StagedWelcome::new_from_branch`].
+    /// branch usage. See [`StagedWelcome::build_from_branch`].
     pub(crate) fn new_from_welcome_inner<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-        injected_resumption_psk: Option<ResumptionPskSecret>,
+        branch_info: Option<&BranchInfo>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let ciphersuite = welcome.ciphersuite();
         // Check this before touching any stored key material: `keys_for_welcome`
@@ -173,8 +173,8 @@ impl ProcessedWelcome {
 
         // For subgroup branching, inject the parent group's resumption PSK at
         // the sentinel epoch 0 before the PSKs are loaded.
-        if let Some(secret) = injected_resumption_psk {
-            resumption_psk_store.add(0.into(), secret);
+        if let Some(branch_info) = branch_info {
+            resumption_psk_store.add(0.into(), branch_info.resumption_psk_secret().clone());
         }
 
         let Some(egs) =
@@ -204,6 +204,29 @@ impl ProcessedWelcome {
 
         // Validate PSKs
         PreSharedKeyId::validate_in_welcome(&group_secrets.psks, ciphersuite)?;
+
+        // When joining a subgroup branch, the branch resumption
+        // PSK carried in the Welcome must reference the same parent group and
+        // epoch the receiver is branching from. This must be checked here, before
+        // the injected PSK secret is mixed into the key schedule: a wrong-epoch
+        // secret would otherwise only surface as an opaque group-info decryption
+        // failure further down.
+        if let Some(branch_info) = branch_info {
+            let parent_matches = group_secrets
+                .psks
+                .iter()
+                .filter_map(|id| match id.psk() {
+                    Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Branch => Some(r),
+                    _ => None,
+                })
+                .any(|r| {
+                    r.psk_group_id() == branch_info.group_id()
+                        && r.psk_epoch() == branch_info.epoch()
+                });
+            if !parent_matches {
+                return Err(WelcomeError::SubgroupParentMismatch);
+            }
+        }
 
         let psk_secret = {
             let psks = load_psks(
@@ -584,64 +607,50 @@ impl StagedWelcome {
         Ok(JoinBuilder::new(provider, processed_welcome))
     }
 
-    /// Creates a [`StagedWelcome`] for a subgroup branched from `parent`, as
-    /// described in [RFC 9420 §11.3].
+    /// Builder to create a [`StagedWelcome`] for a subgroup branched from a
+    /// parent group, as described in [RFC 9420 §11.3].
     ///
-    /// In addition to the regular [`StagedWelcome::new_from_welcome`] processing,
-    /// this injects `parent`'s resumption PSK secret (which is required to derive
-    /// the subgroup's key schedule from the branch PSK) and enforces the
-    /// receiver-side checks the RFC mandates when joining a branched subgroup:
+    /// The parent group's parameters are provided via `branch_info`, which the
+    /// parent exports with
+    /// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info).
     ///
-    /// * the protocol version and ciphersuite match `parent`,
+    /// In addition to the regular [`StagedWelcome::build_from_welcome`]
+    /// processing, this injects the parent's resumption PSK secret (which is
+    /// required to derive the subgroup's key schedule from the branch PSK) and
+    /// enforces the receiver-side checks the RFC mandates when joining a branched
+    /// subgroup.
+    ///
+    /// The branch PSK carried in the `Welcome` must reference the same parent
+    /// group and epoch as the supplied `branch_info`; otherwise the injected
+    /// resumption PSK secret would be for the wrong epoch. This is checked here,
+    /// before the secret is mixed into the key schedule, and fails with
+    /// [`WelcomeError::SubgroupParentMismatch`].
+    ///
+    /// The remaining checks run when [`JoinBuilder::build`] is called:
+    ///
+    /// * the protocol version and ciphersuite match the parent group,
     /// * the subgroup is at epoch 1, and
-    /// * every member of the subgroup matches a member of `parent`.
+    /// * every member of the subgroup matches a member of the parent group
+    ///   (unless disabled via [`JoinBuilder::check_members`]).
     ///
     /// Matching members is left to the application by the RFC; here we use
-    /// credential equality for equivalent identifiers when `check_members` is
-    /// `true`.
+    /// credential equality for equivalent identifiers.
     ///
     /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
-    pub fn new_from_branch<Provider: OpenMlsProvider>(
-        provider: &Provider,
+    pub fn build_from_branch<'a, Provider: OpenMlsProvider>(
+        provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-        ratchet_tree: Option<RatchetTreeIn>,
-        parent: &MlsGroup,
-        check_members: bool,
-    ) -> Result<Self, WelcomeError<Provider::StorageError>> {
+        branch_info: BranchInfo,
+    ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
         let processed_welcome = ProcessedWelcome::new_from_welcome_inner(
             provider,
             mls_group_config,
             welcome,
-            Some(parent.resumption_psk_secret().clone()),
+            Some(&branch_info),
         )?;
 
-        // RFC 9420 §11.3 receiver checks (a) and (b): the version and ciphersuite
-        // must match the parent group, and the subgroup must be at epoch 1.
-        let group_info = processed_welcome.unverified_group_info();
-        if group_info.group_context().protocol_version() != parent.version()
-            || group_info.ciphersuite() != parent.ciphersuite()
-        {
-            return Err(WelcomeError::SubgroupParameterMismatch);
-        }
-        if group_info.group_context().epoch().as_u64() != 1 {
-            return Err(WelcomeError::SubgroupEpochInvalid);
-        }
-
-        let staged_welcome = processed_welcome.into_staged_welcome(provider, ratchet_tree)?;
-
-        if check_members {
-            // RFC 9420 §11.3 receiver check (c): every LeafNode in the subgroup must
-            // match a LeafNode in the parent group.
-            let parent_credentials: Vec<_> = parent.members().map(|m| m.credential).collect();
-            for member in staged_welcome.members() {
-                if !parent_credentials.contains(&member.credential) {
-                    return Err(WelcomeError::SubgroupLeafMismatch);
-                }
-            }
-        }
-
-        Ok(staged_welcome)
+        Ok(JoinBuilder::new(provider, processed_welcome).with_branch_info(branch_info))
     }
 
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
@@ -1364,6 +1373,12 @@ pub struct JoinBuilder<'a, Provider: OpenMlsProvider> {
     ratchet_tree: Option<RatchetTreeIn>,
     validate_lifetimes: LeafNodeLifetimePolicy,
     replace_old_group: bool,
+    /// Set when joining a subgroup branch (see [`StagedWelcome::build_from_branch`]).
+    /// Triggers the receiver checks in [`Self::build`].
+    branch: Option<BranchInfo>,
+    /// Whether to check that every subgroup member is also a parent-group
+    /// member. Only relevant when [`Self::branch`] is set. Defaults to `true`.
+    check_members: bool,
 }
 
 impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
@@ -1375,7 +1390,26 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
             ratchet_tree: None,
             replace_old_group: false,
             validate_lifetimes: LeafNodeLifetimePolicy::Verify,
+            branch: None,
+            check_members: true,
         }
+    }
+
+    /// Seed this builder with the parent group's [`BranchInfo`], turning it into
+    /// a subgroup-branch join (see [`StagedWelcome::build_from_branch`]).
+    fn with_branch_info(mut self, branch_info: BranchInfo) -> Self {
+        self.branch = Some(branch_info);
+        self
+    }
+
+    /// When joining a subgroup branch, controls whether [`Self::build`] checks
+    /// that every subgroup member is also a member of the parent group receiver
+    /// check (c)). Defaults to `true`.
+    ///
+    /// This has no effect on a regular (non-branch) join.
+    pub fn check_members(mut self, check_members: bool) -> Self {
+        self.check_members = check_members;
+        self
     }
 
     /// The ratchet tree to use for the new group.
@@ -1408,11 +1442,40 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
 
     /// Build the [`StagedWelcome`].
     pub fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
-        self.processed_welcome.into_staged_welcome_inner(
+        // Receiver checks (a) and (b): when joining a subgroup branch, the
+        // version and ciphersuite must match the parent group, and the subgroup
+        // must be at epoch 1.
+        if let Some(branch_info) = &self.branch {
+            let group_info = self.processed_welcome.unverified_group_info();
+            if group_info.group_context().protocol_version() != branch_info.version()
+                || group_info.ciphersuite() != branch_info.ciphersuite()
+            {
+                return Err(WelcomeError::SubgroupParameterMismatch);
+            }
+            if group_info.group_context().epoch().as_u64() != 1 {
+                return Err(WelcomeError::SubgroupEpochInvalid);
+            }
+        }
+
+        let staged_welcome = self.processed_welcome.into_staged_welcome_inner(
             self.provider,
             self.ratchet_tree,
             self.validate_lifetimes,
             self.replace_old_group,
-        )
+        )?;
+
+        // Receiver check (c): every LeafNode in the subgroup must
+        // match a LeafNode in the parent group.
+        if let Some(branch_info) = &self.branch {
+            if self.check_members {
+                for member in staged_welcome.members() {
+                    if !branch_info.member_credentials().contains(&member.credential) {
+                        return Err(WelcomeError::SubgroupLeafMismatch);
+                    }
+                }
+            }
+        }
+
+        Ok(staged_welcome)
     }
 }

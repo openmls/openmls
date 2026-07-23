@@ -128,6 +128,10 @@ pub enum WelcomeError<StorageError> {
     /// (RFC 9420 §11.3).
     #[error("A member of the subgroup does not match any member of the parent group.")]
     SubgroupLeafMismatch,
+    /// The parent group or epoch referenced by the subgroup's branch PSK does not
+    /// match the provided parent group information (RFC 9420 §11.3).
+    #[error("The subgroup's branch PSK does not reference the provided parent group/epoch.")]
+    SubgroupParentMismatch,
 }
 
 /// External Commit error

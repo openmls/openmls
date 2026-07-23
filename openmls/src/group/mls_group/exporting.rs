@@ -224,6 +224,29 @@ impl MlsGroup {
         self.group_epoch_secrets().resumption_psk()
     }
 
+    /// Export the information a sub-group branch needs from this (parent) group,
+    /// as described in [RFC 9420 §11.3].
+    ///
+    /// Hand the resulting [`BranchInfo`] to the sender
+    /// ([`CommitBuilder::branch`](crate::group::CommitBuilder::branch)) and to
+    /// the receiver
+    /// ([`StagedWelcome::build_from_branch`](crate::group::StagedWelcome::build_from_branch)).
+    ///
+    /// The returned [`BranchInfo`] carries this group's resumption PSK secret,
+    /// which is sensitive key material.
+    ///
+    /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
+    pub fn branch_info(&self) -> BranchInfo {
+        BranchInfo {
+            version: self.version(),
+            ciphersuite: self.ciphersuite(),
+            group_id: self.group_id().clone(),
+            epoch: self.epoch(),
+            resumption_psk_secret: self.resumption_psk_secret().clone(),
+            member_credentials: self.members().map(|m| m.credential).collect(),
+        }
+    }
+
     /// Returns a resumption psk for a given epoch. If no resumption psk
     /// is available for that epoch,  `None` is returned.
     pub fn get_past_resumption_psk(&self, epoch: GroupEpoch) -> Option<&ResumptionPskSecret> {
