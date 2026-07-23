@@ -12,7 +12,7 @@ use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 /// Bundle used to import a group exported from a previous OpenMLS version. See
 /// [`GroupMigrationBundle::store`].
 #[cfg(feature = "migration-import")]
-pub use crate::group::GroupMigrationBundle;
+pub use crate::group::migration_import::GroupMigrationBundle;
 
 use crate::binary_tree::LeafNodeIndex;
 use crate::group::proposal_store::QueuedProposal;
