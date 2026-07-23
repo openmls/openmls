@@ -212,7 +212,12 @@ impl<'a> CiboriumProvider<'a> {
     /// set through the app's own queries against its store.
     pub fn is_group_migrated<GroupId: serde::Serialize>(&self, group_id: &GroupId) -> bool {
         let key = ciborium_current::to_vec(group_id).expect("serializing the group id");
-        self.0 .0.lock().unwrap().migration_marker.contains_key(&key)
+        self.0
+             .0
+            .lock()
+            .unwrap()
+            .migration_marker
+            .contains_key(&key)
     }
 
     /// Record that the group with `group_id` has been fully migrated into this store.
@@ -225,7 +230,8 @@ impl<'a> CiboriumProvider<'a> {
     /// re-runs the migration on the next access.
     pub fn mark_group_migrated<GroupId: serde::Serialize>(&self, group_id: &GroupId) {
         let key = ciborium_current::to_vec(group_id).expect("serializing the group id");
-        self.0 .0
+        self.0
+             .0
             .lock()
             .unwrap()
             .migration_marker
