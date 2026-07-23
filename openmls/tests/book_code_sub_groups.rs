@@ -124,26 +124,49 @@ fn book_example_sub_group_branching() {
         .expect("Expected the message to be a welcome message.");
     let sub_group_ratchet_tree = alice_sub_group.export_ratchet_tree();
 
-    // ANCHOR: receiver_join_branch
-    // Bob joins the sub-group with the builder returned by `build_from_branch`,
-    // passing his own view of the parent group as `BranchInfo`. `build_from_branch`
-    // checks that the branch PSK references the same parent group/epoch as the
-    // `BranchInfo`; the remaining receiver checks (matching version, ciphersuite,
-    // sub-group epoch, and membership) run when `build` is called.
-    let bob_sub_group = StagedWelcome::build_from_branch(
+    // A receiver's view of the parent group may have advanced since the branch
+    // was taken, so keep a sliding window of recent `BranchInfo`s keyed by epoch.
+    let bob_branch_window = [(bob_branch_info.epoch(), bob_branch_info)];
+
+    // ANCHOR: receiver_peek_branch
+    // Bob decrypts the branch welcome once with `process_branch_welcome`, then
+    // reads which parent group and epoch it derives from. This lets him pick the
+    // matching `BranchInfo` from his window even if his view of the parent group
+    // has advanced (see the sliding-window note above), without decrypting the
+    // welcome twice.
+    let pending = StagedWelcome::process_branch_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
         welcome,
-        bob_branch_info,
     )
-    .expect("Error processing the branch welcome.")
-    .with_ratchet_tree(sub_group_ratchet_tree.into())
-    // .check_members(false) // optional; the membership check is on by default
-    .build()
-    .expect("Error joining the sub-group.")
-    .into_group(bob_provider)
-    .expect("Error creating the sub-group.");
-    // ANCHOR_END: receiver_join_branch
+    .expect("Error processing the branch welcome.");
+
+    // The parent group and epoch the branch was taken from.
+    let (_parent_group_id, parent_epoch) = pending
+        .parent()
+        .expect("This is a sub-group branch welcome.");
+
+    // Select the `BranchInfo` exported from that parent epoch.
+    let bob_branch_info = bob_branch_window
+        .into_iter()
+        .find_map(|(epoch, info)| (epoch == parent_epoch).then_some(info))
+        .expect("No BranchInfo for the branch's parent epoch.");
+
+    // Finish the join from the same carrier, reusing the already-decrypted state.
+    // `build_from_branch` checks that the branch PSK references the same parent
+    // group/epoch as the `BranchInfo`; the remaining receiver checks (matching
+    // version, ciphersuite, sub-group epoch, and membership) run when `build` is
+    // called.
+    let bob_sub_group = pending
+        .build_from_branch(bob_provider, bob_branch_info)
+        .expect("Error joining the branch.")
+        .with_ratchet_tree(sub_group_ratchet_tree.into())
+        // .check_members(false) // optional; the membership check is on by default
+        .build()
+        .expect("Error joining the sub-group.")
+        .into_group(bob_provider)
+        .expect("Error creating the sub-group.");
+    // ANCHOR_END: receiver_peek_branch
 
     // ANCHOR: verify
     // Both sides derived the same sub-group state.

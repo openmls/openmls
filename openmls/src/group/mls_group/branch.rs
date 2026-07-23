@@ -5,7 +5,7 @@
 //! [`MlsGroup`](crate::group::MlsGroup) through the branch APIs, the parent
 //! exports these values once into a [`BranchInfo`] via
 //! [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info), and hands the
-//! owned struct to the sender ([`CommitBuilder::branch`](crate::group::CommitBuilder::branch))
+//! owned struct to the sender ([`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch))
 //! and receiver ([`StagedWelcome::build_from_branch`](crate::group::StagedWelcome::build_from_branch)).
 
 use crate::{
@@ -21,7 +21,7 @@ use openmls_traits::types::Ciphersuite;
 /// Export this from the parent group with
 /// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info) and pass it to
 /// the branch APIs: the sender uses
-/// [`CommitBuilder::branch`](crate::group::CommitBuilder::branch) and the
+/// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) and the
 /// receiver uses
 /// [`StagedWelcome::build_from_branch`](crate::group::StagedWelcome::build_from_branch).
 ///

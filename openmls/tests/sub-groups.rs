@@ -395,6 +395,228 @@ fn build_from_branch_rejects_non_branch_welcome() {
     );
 }
 
+/// The receiver can peek the parent `(group_id, epoch)` a branch derives from
+/// via [`StagedWelcome::process_branch_welcome`] + [`PendingBranchWelcome::parent`],
+/// pick the matching `BranchInfo`, and finish the join from the same carrier —
+/// decrypting the `Welcome` only once.
+#[openmls_test]
+fn subgroup_branch_peek_parent_then_build() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .build();
+
+    let ((alice_credential, alice_signer), (bob_credential, bob_signer), alice_group, bob_group) =
+        setup_group(
+            ciphersuite,
+            &mls_group_create_config,
+            alice_provider,
+            bob_provider,
+            charlie_provider,
+        );
+
+    // The parent group/epoch the branch will reference.
+    let parent_group_id = alice_group.group_id().clone();
+    let parent_epoch = alice_group.epoch();
+
+    let bob_new_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .unwrap();
+
+    let (mut alice_bob_sub_group, commit_message_bundle) = MlsGroup::builder()
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .branch(alice_group.branch_info())
+        .build_branch(
+            alice_provider,
+            &alice_signer,
+            alice_credential,
+            vec![bob_new_key_package.key_package().clone()],
+        )
+        .unwrap();
+    alice_bob_sub_group
+        .merge_pending_commit(alice_provider)
+        .unwrap();
+
+    let welcome = MlsMessageOut::from_welcome(
+        commit_message_bundle.welcome().unwrap().clone(),
+        ProtocolVersion::Mls10,
+    );
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome.into_welcome().unwrap();
+
+    // Bob decrypts the branch welcome once and reads which parent epoch it
+    // derives from, before committing to a `BranchInfo`.
+    let pending = StagedWelcome::process_branch_welcome(
+        bob_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+    )
+    .expect("Bob could not process the branch welcome");
+
+    assert_eq!(
+        pending.parent(),
+        Some((parent_group_id, parent_epoch)),
+        "peeked parent reference must match the epoch Alice branched from"
+    );
+
+    // Bob picks the `BranchInfo` for that parent epoch and finishes the join
+    // from the same carrier (no second decrypt).
+    let bob_alice_sub_group = pending
+        .build_from_branch(bob_provider, bob_group.branch_info())
+        .expect("Bob could not join the subgroup")
+        .build()
+        .expect("Bob could not build the subgroup")
+        .into_group(bob_provider)
+        .expect("Error creating group from StagedWelcome");
+
+    assert_eq!(
+        alice_bob_sub_group.confirmation_tag(),
+        bob_alice_sub_group.confirmation_tag()
+    );
+}
+
+/// Finishing a peeked branch welcome with a `BranchInfo` from the wrong parent
+/// epoch still fails with [`WelcomeError::SubgroupParentMismatch`] (the
+/// authoritative check runs in [`PendingBranchWelcome::build_from_branch`]).
+#[openmls_test]
+fn subgroup_branch_carrier_rejects_wrong_epoch() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .build();
+
+    let (
+        (alice_credential, alice_signer),
+        (bob_credential, bob_signer),
+        alice_group,
+        mut bob_group,
+    ) = setup_group(
+        ciphersuite,
+        &mls_group_create_config,
+        alice_provider,
+        bob_provider,
+        charlie_provider,
+    );
+
+    let bob_new_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .unwrap();
+
+    let (mut sub_group, commit_message_bundle) = MlsGroup::builder()
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .branch(alice_group.branch_info())
+        .build_branch(
+            alice_provider,
+            &alice_signer,
+            alice_credential,
+            vec![bob_new_key_package.key_package().clone()],
+        )
+        .unwrap();
+    sub_group.merge_pending_commit(alice_provider).unwrap();
+
+    let welcome = MlsMessageOut::from_welcome(
+        commit_message_bundle.welcome().unwrap().clone(),
+        ProtocolVersion::Mls10,
+    );
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome.into_welcome().unwrap();
+
+    let pending = StagedWelcome::process_branch_welcome(
+        bob_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+    )
+    .expect("Bob could not process the branch welcome");
+
+    // Bob's view of the parent advances, so `branch_info()` now reports a
+    // different parent epoch than the one the branch was taken from.
+    bob_group
+        .self_update(bob_provider, &bob_signer, LeafNodeParameters::default())
+        .unwrap();
+    bob_group.merge_pending_commit(bob_provider).unwrap();
+
+    let result = pending.build_from_branch(bob_provider, bob_group.branch_info());
+
+    assert!(
+        matches!(result, Err(WelcomeError::SubgroupParentMismatch)),
+        "expected a wrong-epoch BranchInfo to be rejected, got {:?}",
+        result.map(|_| ())
+    );
+}
+
+/// A plain (non-branch) welcome carries no branch resumption PSK, so
+/// [`PendingBranchWelcome::parent`] returns `None`.
+#[openmls_test]
+fn process_branch_welcome_parent_none_for_plain_welcome() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+    let eve_provider = &Provider::default();
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .build();
+
+    let ((_, alice_signer), _, mut alice_group, _bob_group) = setup_group(
+        ciphersuite,
+        &mls_group_create_config,
+        alice_provider,
+        bob_provider,
+        charlie_provider,
+    );
+
+    // Alice adds Eve with a regular (non-branch) commit.
+    let (eve_credential, eve_signer) = generate_credential(
+        b"Eve".to_vec(),
+        ciphersuite.signature_algorithm(),
+        eve_provider,
+    );
+    let eve_key_package = KeyPackage::builder()
+        .build(ciphersuite, eve_provider, &eve_signer, eve_credential)
+        .unwrap();
+
+    let (_, welcome, _) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signer,
+            &[eve_key_package.key_package().clone()],
+        )
+        .unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome.into_welcome().unwrap();
+
+    // Eve decrypts the welcome via the branch carrier; it carries no branch PSK,
+    // so `parent()` reports `None`.
+    let pending = StagedWelcome::process_branch_welcome(
+        eve_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+    )
+    .expect("Eve could not process the welcome");
+
+    assert_eq!(
+        pending.parent(),
+        None,
+        "a plain welcome has no branch parent reference"
+    );
+}
+
 // TODO: To test the following two error cases we'd need to build an invalid
 //       commit message.
 // - `SubgroupParameterMismatch`
