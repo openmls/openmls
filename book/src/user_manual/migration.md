@@ -92,12 +92,9 @@ The same helper is reused for the application-managed material further down.
 {{#include ../../../compat_tests/tests/test_migration.rs:serde_json_bridge}}
 ```
 
-This migration flow should be performed once per group.
-Afterwards the group can be loaded normally with the current-version `MlsGroup::load`.
-
-Migrate each group within a single storage transaction, observing the invariants in
-[Migration requirements](#migration-requirements) above. **NOTE**: queued proposals and pending
-commits are migrated along with the rest of the group state.
+This flow is performed once per group, observing the invariants in
+[Migration requirements](#migration-requirements); afterwards the group loads normally
+with the current-version `MlsGroup::load`.
 
 ## What is not migrated
 
@@ -163,29 +160,96 @@ be kept as a rollback path after the migrated state is used.
 
 ## Running the migration in an application
 
-Requirements and brief best practices for shipping this in a deployed
-application, particularly one with local storage on end-user devices (e.g. a
-mobile app):
+There are two strategies for *when* to migrate. An application chooses based on how
+much local state it holds and how much startup latency it can absorb:
 
-- **Run at startup, before any MLS traffic.** Application startup is the natural
-  quiescence point: gate all message processing and outbound operations on the
-  migration having completed (checked via the schema-version marker).
+1. **Migrate everything at startup** — simplest, and lets you discard the old store
+   promptly, but blocks startup for as long as the migration takes.
+2. **Migrate lazily, one group at a time** — no startup stall, at the cost of the
+   old and new stores coexisting for the whole support window.
+
+The following apply to **both** strategies (particularly for an application with
+local storage on end-user devices, e.g. a mobile app):
+
 - **Watch for other processes touching the store.** For example, an iOS
   Notification Service Extension that decrypts MLS messages runs in a different
   process and can wake on a push mid-migration; hold a cross-process lock or gate
-  it on the schema-version marker.
-- **Expect interruption.** Mobile operating systems terminate apps freely, so
-  the migration can be cut short at any point — the transactional, idempotent
-  design above makes this safe. The migration should be run off of the main thread.
+  it on the migration marker.
+- **Expect interruption.** Mobile operating systems terminate apps freely, so the
+  migration can be cut short at any point — the idempotent design above makes this
+  safe. The migration should be run off of the main thread.
+- **Plan the release lifecycle.** One “migration release” of the application ships
+  both OpenMLS versions; keep the migration path for a defined support window (an
+  enforced minimum client version, telemetry on remaining un-migrated installs, or
+  a stated time period). The release that finally removes it must keep the marker
+  check and ship a fallback — resetting the local MLS state and rejoining groups —
+  because users can jump arbitrary version gaps when updating.
+
+### Option 1: migrate everything at startup
+
+- **Run at startup, before any MLS traffic.** Application startup is a natural
+  quiescence point: gate all message processing and outbound operations on the
+  migration having completed, checked via a single, store-wide schema-version
+  marker.
+- **Migrate into a fresh store, then swap.** Following
+  [Migration requirements](#migration-requirements), migrate into a fresh store,
+  verify every group, then atomically swap it in and discard the old one.
 - **Check disk space.** Migrating into a fresh store temporarily roughly doubles
   the storage footprint.
-- **Plan the release lifecycle.** One “migration release” of the application
-  ships both OpenMLS versions; keep the migration path for a defined support
-  window (an enforced minimum client version, telemetry on remaining un-migrated
-  installs, or a stated time period). The release that finally removes it must
-  keep the schema-version marker check and ship a fallback — resetting the local
-  MLS state and rejoining groups — because users can jump arbitrary version gaps
-  when updating.
+
+This option is the simplest and cleans up after itself, but the startup delay is
+proportional to the *total* stored state — every group's ratchet tree and retained
+epochs. For an install with many or large groups that stall may be unacceptable;
+use Option 2 instead.
+
+### Option 2: migrate lazily, one group at a time
+
+Migrate each group the first time the application loads it, recording a **per-group**
+marker so each group is migrated exactly once and already-migrated groups load
+directly from the current store:
+
+```rust,no_run,noplayground
+{{#include ../../../compat_tests/tests/test_migration.rs:lazy_load_or_migrate}}
+```
+
+The helper above is deliberately minimal: it assumes every group still lives in the
+old store. A shipped version must also handle groups **created or joined under the
+new version** — those were never in the old store, so they should load directly from
+the current store rather than attempt an export that would find nothing. Setting the
+marker when the application creates or joins a group lets them skip the check.
+
+Guidance specific to this strategy:
+
+- **The marker is per-group, not store-wide.** Store it in the current store, keyed
+  by group id the same way the store keys the group's own data, and set it only
+  *after* that group's migrated state has been written. Because import is an
+  idempotent replace, an interruption before the marker is set simply re-runs that
+  group's migration on the next access — no transaction required.
+- **Lock per group.** A group's first access can come from more than one place at
+  the same time — e.g. the UI opening a conversation while a push handler processes a
+  message for it, possibly in a different process. Take a lock keyed by the group id
+  that spans the marker check, the migration, and setting the marker, so a given
+  group is accessed by only one caller at a time. (A single global lock also works —
+  e.g. relying on SQLite's single-writer — trading some concurrency for simplicity.)
+  A single, shared group-loading path can be a convenient place to enforce this
+  together with the migrate-on-access check.
+- **Migrate application-managed material eagerly.** Signature key pairs, key
+  packages, and PSKs are not group-scoped (a signature key pair can back several
+  groups), so they cannot be partitioned per group. They are also small, so migrate
+  them up front: this keeps any residual startup cost tiny while the expensive
+  per-group state migrates on demand, and guarantees a lazily-migrated group is
+  immediately operable.
+- **Quiescence is per-group.** Migrate a group before processing its traffic, and
+  gate that group's processing (including from other processes) on its marker.
+- **The two stores coexist for the whole support window.** You cannot discard the
+  old store promptly or swap it out, because un-accessed groups still live there.
+  Clean up each group's old data after it has been migrated (via the previous
+  version's `MlsGroup::delete`, see [Cleaning up the old data](#cleaning-up-the-old-data))
+  . Track how many groups remain
+  un-migrated, so you know when it is safe to retire the old-version code.
+- **Rollback is per-group.** The “rollback only before first use” rule applies to
+  each group independently: once a lazily-migrated group has been used, its old copy
+  is stale and must not be reverted to.
 <!-- TODO: determine guidelines on binary size -->
 <!--
 - **Binary size is usually a non-issue.** Only code reachable from
