@@ -562,6 +562,10 @@ fn serde_json_bridge<S: serde::Serialize, T: serde::de::DeserializeOwned>(
 ///
 /// This requires the `migration-export` feature on the previous version's
 /// `openmls` crate and the `migration-import` feature on the current one.
+///
+/// **NOTE**: The `migration-export` feature is not available on the current
+/// `openmls` version, since there are no supported migration paths that would
+/// utilize this feature yet, although it may be added later, if needed.
 fn migrate_group(
     old_provider: &PostcardProvider<'_>,
     new_provider: &SerdeJsonProvider<'_>,
