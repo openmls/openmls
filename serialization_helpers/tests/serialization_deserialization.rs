@@ -100,6 +100,28 @@ fn test_serialization_deserialization_serde_json() {
     }
 }
 
+#[test]
+/// Test *self-describing binary* serialization/deserialization with `ciborium`
+/// (CBOR).
+///
+/// This is the case the codec-agnostic `Deserialize` derive exists for: ciborium
+/// reports `is_human_readable() == false` yet encodes enum variants by name.
+fn test_serialization_deserialization_ciborium() {
+    for TestCase { data, .. } in TEST_CASES {
+        // serialize the variant
+        let mut serialized = Vec::new();
+        ciborium::into_writer(&data, &mut serialized).expect("serialization failed");
+
+        // deserialize the variant
+        let deserialized: TestEnum =
+            ciborium::from_reader(serialized.as_slice()).expect("deserialization failed");
+
+        // check that the deserialized data matches the
+        // original data
+        assert_eq!(data, &deserialized);
+    }
+}
+
 const TEST_CASES: &[TestCase] = &[
     TestCase {
         data: TestEnum::Unit,
