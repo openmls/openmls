@@ -184,6 +184,57 @@ fn test_group_context_update_dictionary() {
 }
 
 /// Commit creation:
+/// Regression: a GroupContextExtensions proposal that modifies the AppDataDictionary MUST be
+/// rejected even when the commit carries NO AppDataUpdate proposals. Otherwise a bare
+/// GroupContextExtensions proposal bypasses the AppDataUpdate machinery and rewrites the
+/// dictionary directly, in violation of draft-ietf-mls-extensions §4.7-6.
+#[openmls_test]
+fn test_group_context_update_dictionary_without_app_data_update() {
+    // Set up parties
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let required_capabilities_extension =
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+            &[ExtensionType::AppDataDictionary],
+            &[ProposalType::AppDataUpdate],
+            &[],
+        ));
+
+    let dictionary_extension = Extension::AppDataDictionary(AppDataDictionaryExtension::default());
+
+    // Bare GroupContextExtensions proposal that touches the dictionary, with NO accompanying
+    // AppDataUpdate proposal.
+    alice
+        .group
+        .propose_group_context_extensions(
+            &alice_party.provider,
+            Extensions::from_vec(vec![required_capabilities_extension, dictionary_extension])
+                .unwrap(),
+            &alice.party.signer,
+        )
+        .unwrap();
+
+    let err = alice
+        .group
+        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        CommitToPendingProposalsError::CreateCommitError(
+            CreateCommitError::AppDataUpdateValidationError(
+                AppDataUpdateValidationError::CannotUpdateDictionaryDirectly
+            )
+        )
+    );
+}
+
+/// Commit creation:
 /// Test the case where a GroupContextExtensionProposal updates the AppDataDictionary after
 /// removing AppDataUpdate from the required capabilities.
 #[openmls_test]
