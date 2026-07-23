@@ -22,7 +22,7 @@ proc-macro = true
 test-feature = []
 
 [dependencies]
-syn = { version = "2.0" }
+syn = { version = "3.0" }
 quote = "1.0"
 proc-macro2 = { version = "1.0.10", features = ["span-locations"] }
 thiserror = { workspace = true }
