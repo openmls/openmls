@@ -1469,7 +1469,10 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
         if let Some(branch_info) = &self.branch {
             if self.check_members {
                 for member in staged_welcome.members() {
-                    if !branch_info.member_credentials().contains(&member.credential) {
+                    if !branch_info
+                        .member_credentials()
+                        .contains(&member.credential)
+                    {
                         return Err(WelcomeError::SubgroupLeafMismatch);
                     }
                 }

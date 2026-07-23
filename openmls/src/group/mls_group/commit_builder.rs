@@ -84,10 +84,11 @@ pub use external_commits::{ExternalCommitBuilder, ExternalCommitBuilderError};
 use super::MlsGroupJoinConfig;
 
 use super::{
+    branch::BranchInfo,
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
-    branch::BranchInfo, AddProposal, CreateCommitResult, GroupContextExtensionProposal, MlsGroup,
-    MlsGroupState, MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
+    AddProposal, CreateCommitResult, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
+    MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
 
 #[cfg(feature = "virtual-clients-draft")]
