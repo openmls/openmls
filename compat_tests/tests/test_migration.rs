@@ -40,12 +40,7 @@ use openmls_compat_tests::test_storage_provider::{
     SerdeJsonOpenMlsProvider, SerdeJsonProvider, StorageProviderState,
 };
 
-// The previous-version OpenMLS crate under test (and its matching credential,
-// crypto, and traits crates), aliased so the test body is agnostic to the
-// specific version being migrated from. Exactly one source version is active per
-// build. Adding another source version is purely additive: introduce a new
-// `cfg`-gated alias arm (and the corresponding dependency/feature wiring)
-// alongside these.
+// Imports for `compat_0_8_1` tests
 #[cfg(feature = "compat_0_8_1")]
 use openmls_0_8_1 as openmls_compat;
 #[cfg(feature = "compat_0_8_1")]
@@ -53,6 +48,7 @@ use openmls_basic_credential_0_8 as openmls_basic_credential_compat;
 #[cfg(feature = "compat_0_8_1")]
 use openmls_traits_0_5_0 as openmls_traits_compat;
 
+// Imports for `compat_0_7_4` tests
 #[cfg(feature = "compat_0_7_4")]
 use openmls_0_7_4 as openmls_compat;
 #[cfg(feature = "compat_0_7_4")]
@@ -60,10 +56,7 @@ use openmls_basic_credential_0_7 as openmls_basic_credential_compat;
 #[cfg(feature = "compat_0_7_4")]
 use openmls_traits_0_4_1 as openmls_traits_compat;
 
-// The previous-version crypto/rand provider is a local wrapper around the current
-// libcrux provider (see `openmls_compat_tests::test_crypto_provider`), aliased to
-// the name the previous-version libcrux crate used so the call sites below (and
-// the providers in `test_storage_provider`) are unchanged.
+// The test crypto provider implements the compat crypto trait
 use openmls_compat_tests::test_crypto_provider as openmls_libcrux_crypto_compat;
 
 use openmls_compat::prelude::{
@@ -75,14 +68,11 @@ use openmls_traits_compat::signatures::Signer;
 
 use openmls as openmls_current;
 
-/// The ciphersuite used throughout these tests, unless a test needs a specific
-/// other one.
+/// The ciphersuite used throughout these tests
 const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
-/// A group id held once as raw bytes, handing out the previous-version (`_compat`)
-/// and current-version `GroupId` types — and the raw bytes — on demand. A test
-/// constructs it once from a literal, so the same id never has to be re-typed for
-/// each version's API (and the two can never drift apart).
+/// GroupId wrapper to allow constructing a GroupId for
+/// both `compat` and `current` versions of the library
 struct TestGroupId(Vec<u8>);
 
 impl TestGroupId {
@@ -90,31 +80,20 @@ impl TestGroupId {
         Self(bytes.to_vec())
     }
 
-    /// The previous-version (`_compat`) `GroupId`.
     fn compat(&self) -> openmls_compat::prelude::GroupId {
         openmls_compat::prelude::GroupId::from_slice(&self.0)
     }
 
-    /// The current-version `GroupId`.
     fn current(&self) -> openmls_current::prelude::GroupId {
         openmls_current::prelude::GroupId::from_slice(&self.0)
     }
 }
 
-/// A current-version migration *target* store format. Abstracting the format lets a
-/// test body be written once (generic over `T: StorageMigrationTarget`) and run as
-/// one `#[test]` per format, so each target's migrated-and-reloaded group is
-/// exercised and asserted on independently — a failure names the exact format.
+/// Helper trait that can be implemented for multiple storage format targets.
 trait StorageMigrationTarget {
-    /// The `StorageProvider` view over a [`StorageProviderState`] for this format,
-    /// used for the migration itself (storing and loading the group).
     type Provider<'a>: openmls_current::storage::StorageProvider;
-    /// The full `OpenMlsProvider` (storage + crypto + rand) over a `Provider`, used
-    /// to drive the migrated group through real operations.
     type OpenMlsProvider<'a>: openmls_traits::OpenMlsProvider;
-    /// Open a storage provider of this format over `state`.
     fn provider(state: &StorageProviderState) -> Self::Provider<'_>;
-    /// Wrap a storage provider into a full `OpenMlsProvider`.
     fn openmls_provider<'a, 'b>(provider: &'a Self::Provider<'b>) -> Self::OpenMlsProvider<'a>;
     /// Human-readable format name, for failure messages.
     const NAME: &'static str;
@@ -150,8 +129,8 @@ impl StorageMigrationTarget for Ciborium {
     const NAME: &'static str = "ciborium";
 }
 
-/// Create a basic credential together with a freshly generated signature key
-/// pair, persisting the key pair in the provider's storage.
+/// Helper function to generate a new BasicCredential with a SignatureKeyPair
+/// that is stored in the original store
 fn generate_credential(
     identity: &[u8],
     ciphersuite: Ciphersuite,
@@ -175,7 +154,7 @@ fn generate_credential(
     )
 }
 
-/// Build a key package bundle for the given credential.
+/// Helper function to build a new KeyPackage using the original provider
 fn generate_key_package(
     ciphersuite: Ciphersuite,
     credential_with_key: CredentialWithKey,
@@ -242,9 +221,10 @@ fn diff_json(
     }
 }
 
-/// Create an operational two-member (Alice + Bob) group: Alice creates it and
-/// adds Bob, who joins from the welcome. Each member's state is persisted to its
-/// own provider. Returns Alice's group handle and both members' signers.
+/// Create an operational two-member (Alice + Bob) group:
+///     - Alice creates a group and adds Bob
+///     - Bob joins from the Welcome
+/// Returns Alice's group handle and both members' signers.
 fn setup_alice_bob_group(
     ciphersuite: Ciphersuite,
     group_id: &GroupId,
@@ -285,7 +265,7 @@ fn setup_alice_bob_group(
         .merge_pending_commit(alice_provider)
         .expect("error merging commit");
 
-    // Bob joins from the welcome so he holds his own state.
+    // Bob joins from the welcome
     let welcome_bytes = welcome
         .tls_serialize_detached()
         .expect("error serializing welcome");
@@ -308,20 +288,8 @@ fn setup_alice_bob_group(
     (alice_group, alice_signer, bob_signer)
 }
 
-/// The intentional schema changes between the previous and current versions, which
-/// `migrate_and_check` expects (and ignores) when diffing the bridged bundle. None
-/// lose information, and each can occur at several paths, so they are matched by
-/// suffix:
-///   - `max_past_epochs` → `past_epoch_deletion_policy`: renamed; the current type
-///     reads the old name via `#[serde(alias)]` and both encode the same value.
-///   - `added_at`: new field on `MessageSecrets`, defaults to `null` on import.
-///   - `safe_aad`, `application_export_tree` (target has `extensions-draft`): new in
-///     the current version and absent from every source, so they default on import.
-///   - `EncryptionRatchet` / `DualUse` (`virtual-clients-draft`): the previous
-///     version's `EncryptionRatchet` decodes losslessly into a `DualUse` ratchet, so
-///     only the variant key name differs for the same ratchet.
-///   - `new_own_leaf_index`, `vc_emulation_epoch_id` (`virtual-clients-draft`): new
-///     pending/staged-commit fields, default to `null` on import.
+/// Check the schema changes between serializations,
+/// ignoring fields that were added in later versions (or when enabling a feature)
 fn is_expected_schema_diff(path: &str) -> bool {
     path.ends_with(".max_past_epochs")
         || path.ends_with(".past_epoch_deletion_policy")
@@ -335,9 +303,8 @@ fn is_expected_schema_diff(path: &str) -> bool {
                 || path.ends_with(".vc_emulation_epoch_id")))
 }
 
-/// Assert the migrated bundle matches the exported one field for field, ignoring
-/// the intentional schema changes in [`is_expected_schema_diff`]. Object key order
-/// does not matter, so any dropped, renamed, or defaulted field surfaces as a diff.
+/// Check that a migrated GroupMigration bundle matches the exported one,
+/// field-by-field ignoring the expected differences.
 fn assert_bundle_preserved(before: &serde_json::Value, after: &serde_json::Value) {
     let mut diffs = Vec::new();
     diff_json("$", before, after, &mut diffs);
@@ -356,28 +323,19 @@ fn assert_bundle_preserved(before: &serde_json::Value, after: &serde_json::Value
     );
 }
 
-/// Compare the migrated (current-version) group against the `original`
-/// (previous-version) group it was migrated from, across the two versions'
-/// stable, spec-/wire-defined outputs. This is a strong-but-not-exhaustive set of
-/// migration assertions:
-///
-/// - the epoch,
-/// - the full membership (leaf index + signature key of every member),
-/// - the public ratchet tree (compared by its TLS encoding),
-/// - the epoch authenticator — a digest bound to the epoch's secret state, so
-///   matching it means the *secret* group state migrated faithfully, not just the
-///   public parts, and
-/// - the queued (uncommitted) proposals, in order.
+/// Basic assertions to check a migrated group
 fn migration_assertions(
     original: &openmls_compat::prelude::MlsGroup,
     migrated: &openmls_current::prelude::MlsGroup,
 ) {
+    // chekc that the epoch matches
     assert_eq!(
         original.epoch().as_u64(),
         migrated.epoch().as_u64(),
         "epoch differs between the original and migrated group"
     );
 
+    // check that the index and signature key matches for each member
     let original_members: Vec<(u32, Vec<u8>)> = original
         .members()
         .map(|m| (m.index.u32(), m.signature_key))
@@ -391,6 +349,7 @@ fn migration_assertions(
         "membership differs between the original and migrated group"
     );
 
+    // check that the ratchet tree matches
     assert_eq!(
         original
             .export_ratchet_tree()
@@ -409,10 +368,7 @@ fn migration_assertions(
         "epoch authenticator differs between the original and migrated group"
     );
 
-    // The queued (uncommitted) proposals must match in count, order, and content.
-    // `QueuedProposal` is a different type per version, so compare each through its
-    // `serde` encoding (which the two versions share — the migration bundle relies
-    // on it), iterating in `pending_proposals()` order so a mismatch names its index.
+    // check that the queued proposals match
     let original_proposals: Vec<_> = original.pending_proposals().collect();
     let migrated_proposals: Vec<_> = migrated.pending_proposals().collect();
     assert_eq!(
@@ -433,25 +389,7 @@ fn migration_assertions(
     }
 }
 
-/// Migrate Alice's previous-version group (persisted in `alice_state`) into the
-/// given current-version `target` store and assert the migration preserved the
-/// whole group:
-///
-/// - the bridged bundle matches the exported one field for field (see
-///   [`assert_bundle_preserved`]),
-/// - storing it and reloading with the current API reproduces the bundle's `group`
-///   exactly — a pure current-version round-trip (no schema change), so everything
-///   the bundle persisted (queued proposals, any pending commit) must survive, and
-/// - the reloaded group matches the original group on the outputs in
-///   [`migration_assertions`].
-///
-/// Returns the reloaded group so callers can make scenario-specific assertions on
-/// it — or, since the caller owns `target`, drive it through further operations.
-///
-/// The `target` store (and `format` name, for failure messages) is passed in rather
-/// than created here: each scenario runs this once per supported target
-/// (`serde_json` and `ciborium`, as separate `#[test]`s), owning the store so the
-/// returned group stays operable against it.
+/// Migrate a group, perform checks, and return the migrated group
 fn migrate_and_check<S: openmls_current::storage::StorageProvider>(
     alice_state: &StorageProviderState,
     group_id: &TestGroupId,
@@ -463,52 +401,47 @@ fn migrate_and_check<S: openmls_current::storage::StorageProvider>(
         .expect("error exporting old group")
         .expect("no group state persisted for Alice");
 
-    // The original group, loaded with the previous version's API, to compare the
-    // migrated group against (see `migration_assertions`).
-    let original = openmls_compat::prelude::MlsGroup::load(&alice_storage, &group_id.compat())
-        .expect("error loading the original group")
-        .expect("no original group state persisted");
-
-    // Bridge through `serde_json` exactly as the real migration does (byte path,
-    // zeroized buffer). The bridge codec is independent of the target store codec.
+    // bridge the group via serde_json
     let migrated_group: openmls_current::storage::GroupMigrationBundle =
         serde_json_bridge(&exported).expect("error bridging the migration bundle");
 
+    // check the schema
     let before = serde_json::to_value(&exported).expect("error serializing old group");
     let after = serde_json::to_value(&migrated_group).expect("error serializing migrated group");
     assert_bundle_preserved(&before, &after);
 
-    // Store into the target and reload with the current API; the round-trip must
-    // reproduce the bundle's `group` exactly.
+    // store the migrated group into the target store
     migrated_group
         .store(target)
         .unwrap_or_else(|e| panic!("error storing migrated group into {format} store: {e:?}"));
+
+    // load the group from the store for comparison
     let migrated = openmls_current::prelude::MlsGroup::load(target, &group_id.current())
         .unwrap_or_else(|e| panic!("error loading migrated group from {format} store: {e:?}"))
         .expect("no migrated group state persisted");
+
+    // compare the group in the migrated, serialized bundle to the serialized group
+    // that was loaded from the new store
     assert_eq!(
         after["group"],
         serde_json::to_value(&migrated).expect("error serializing reloaded group"),
         "{format} storage round-trip changed the group"
     );
 
+    // load the original group for comparison
+    let original = openmls_compat::prelude::MlsGroup::load(&alice_storage, &group_id.compat())
+        .expect("error loading the original group")
+        .expect("no original group state persisted");
+
+    // perform basic migration checks
     migration_assertions(&original, &migrated);
+
+    // return the migrated group for further checks
     migrated
 }
 
-/// Merge the pending commit on both the `migrated` group (in its `target` store)
-/// and the original group (reloaded from `alice_state`), then assert the two
-/// results still match via [`migration_assertions`].
-///
-/// A pending commit is an *already-staged* commit — merging it applies fixed,
-/// stored key material rather than generating anything new — so it is deterministic:
-/// merging it on the migrated group must produce exactly the group that merging it
-/// on the original produces. This proves the migrated pending commit is not just
-/// structurally present but functionally identical.
-///
-/// For testing only: this advances *both* groups (writing the merge into the
-/// migrated `target` store and into `alice_state`), so it must be the last thing a
-/// test does with either — it is not a reusable migration step.
+/// For testing only, merge the pending commit on both the migrated and original group,
+/// and compare them
 fn merge_pending_commit_and_compare<'a, 'b: 'a, T: StorageMigrationTarget>(
     alice_state: &StorageProviderState,
     group_id: &TestGroupId,
@@ -706,16 +639,6 @@ fn test_migration_impl<T: StorageMigrationTarget>() {
     }
 }
 
-#[test]
-fn test_migration_serde_json() {
-    test_migration_impl::<SerdeJson>();
-}
-
-#[test]
-fn test_migration_ciborium() {
-    test_migration_impl::<Ciborium>();
-}
-
 /// Migration must preserve the retained message secrets of past epochs.
 fn test_migration_multiple_epochs_impl<T: StorageMigrationTarget>() {
     let ciphersuite = CIPHERSUITE;
@@ -790,18 +713,7 @@ fn test_migration_multiple_epochs_impl<T: StorageMigrationTarget>() {
     assert_eq!(migrated.members().count(), 2);
 }
 
-#[test]
-fn test_migration_multiple_epochs_serde_json() {
-    test_migration_multiple_epochs_impl::<SerdeJson>();
-}
-
-#[test]
-fn test_migration_multiple_epochs_ciborium() {
-    test_migration_multiple_epochs_impl::<Ciborium>();
-}
-
-/// Migration must preserve proposals that are queued in the proposal store but
-/// not yet committed.
+/// Checks that a migration preserves proposals
 fn test_migration_with_proposals_impl<T: StorageMigrationTarget>() {
     let ciphersuite = CIPHERSUITE;
     let group_id = TestGroupId::new(b"migration proposals group");
@@ -828,8 +740,7 @@ fn test_migration_with_proposals_impl<T: StorageMigrationTarget>() {
             &bob_provider,
         );
 
-        // Queue two Add proposals (Charlie and Dave) in Alice's proposal store,
-        // without committing them.
+        // Alice proposes Adds without committing them
         for (identity, provider) in [
             (&b"Charlie"[..], &charlie_provider),
             (&b"Dave"[..], &dave_provider),
@@ -841,97 +752,19 @@ fn test_migration_with_proposals_impl<T: StorageMigrationTarget>() {
                 .expect("error proposing add");
         }
 
-        // The scenario under test: proposals queued, no pending commit.
         assert_eq!(alice_group.pending_proposals().count(), 2);
         assert!(alice_group.pending_commit().is_none());
     }
 
+    // perform the migration
     let target_state = StorageProviderState::default();
     let target = T::provider(&target_state);
+
+    // migrate the group; this also checks that the proposals in the store match
     let migrated = migrate_and_check(&alice_state, &group_id, &target, T::NAME);
-    assert_eq!(
-        migrated.pending_proposals().count(),
-        2,
-        "queued proposals did not survive migration"
-    );
-    assert!(migrated.pending_commit().is_none());
-    assert_eq!(migrated.members().count(), 2);
 }
 
-#[test]
-fn test_migration_with_proposals_serde_json() {
-    test_migration_with_proposals_impl::<SerdeJson>();
-}
-
-#[test]
-fn test_migration_with_proposals_ciborium() {
-    test_migration_with_proposals_impl::<Ciborium>();
-}
-
-/// Migration must preserve the *order* of entries in the accumulate-style tables
-/// (own leaf nodes and the proposal queue), not just their contents. Two update
-/// proposals populate both tables with two entries each; `migrate_and_check`
-/// compares them index-by-index, across the serde bridge and (since `store`
-/// clears then re-appends these tables) the store round-trip.
-fn test_migration_preserves_accumulative_order_impl<T: StorageMigrationTarget>() {
-    let ciphersuite = CIPHERSUITE;
-    let group_id = TestGroupId::new(b"migration order group");
-
-    let alice_state = StorageProviderState::default();
-    let bob_state = StorageProviderState::default();
-    {
-        let alice_storage = alice_state.as_postcard_provider();
-        let bob_storage = bob_state.as_postcard_provider();
-        let alice_provider = alice_storage.as_openmls_provider();
-        let bob_provider = bob_storage.as_openmls_provider();
-        let (mut alice_group, alice_signer, _bob_signer) = setup_alice_bob_group(
-            ciphersuite,
-            &group_id.compat(),
-            &alice_provider,
-            &bob_provider,
-        );
-
-        // Two self-update proposals: each queues a proposal *and* appends an own
-        // leaf node, so both accumulate tables end up with two ordered entries.
-        for _ in 0..2 {
-            alice_group
-                .propose_self_update(
-                    &alice_provider,
-                    &alice_signer,
-                    LeafNodeParameters::default(),
-                )
-                .expect("error proposing self-update");
-        }
-        assert_eq!(alice_group.pending_proposals().count(), 2);
-    }
-
-    let target_state = StorageProviderState::default();
-    let target = T::provider(&target_state);
-    let migrated = migrate_and_check(&alice_state, &group_id, &target, T::NAME);
-    assert_eq!(migrated.pending_proposals().count(), 2);
-    // Confirm the scenario actually exercised multi-entry accumulate tables (so
-    // the order-sensitive comparison in `migrate_and_check` is meaningful).
-    let migrated = serde_json::to_value(&migrated).expect("error serializing migrated group");
-    assert_eq!(
-        migrated["own_leaf_nodes"]
-            .as_array()
-            .map(|nodes| nodes.len()),
-        Some(2),
-        "expected two own leaf nodes to exercise ordering",
-    );
-}
-
-#[test]
-fn test_migration_preserves_accumulative_order_serde_json() {
-    test_migration_preserves_accumulative_order_impl::<SerdeJson>();
-}
-
-#[test]
-fn test_migration_preserves_accumulative_order_ciborium() {
-    test_migration_preserves_accumulative_order_impl::<Ciborium>();
-}
-
-/// Migration must preserve a pending (staged, not yet merged) commit.
+/// Tests that a migration preserves a pending commit.
 fn test_migration_with_pending_commit_impl<T: StorageMigrationTarget>() {
     let ciphersuite = CIPHERSUITE;
     let group_id = TestGroupId::new(b"migration pending commit group");
@@ -952,7 +785,7 @@ fn test_migration_with_pending_commit_impl<T: StorageMigrationTarget>() {
             &bob_provider,
         );
 
-        // Create a pending commit (a self-update) without merging it.
+        // create a (pending) commit including a SelfUpdate proposal
         alice_group
             .self_update(
                 &alice_provider,
@@ -961,7 +794,6 @@ fn test_migration_with_pending_commit_impl<T: StorageMigrationTarget>() {
             )
             .expect("error creating self-update commit");
 
-        // The scenario under test: a pending commit, no queued proposals.
         assert!(alice_group.pending_commit().is_some());
         assert_eq!(alice_group.pending_proposals().count(), 0);
     }
@@ -969,30 +801,16 @@ fn test_migration_with_pending_commit_impl<T: StorageMigrationTarget>() {
     let target_state = StorageProviderState::default();
     let target = T::provider(&target_state);
     let migrated = migrate_and_check(&alice_state, &group_id, &target, T::NAME);
-    assert!(
-        migrated.pending_commit().is_some(),
-        "the pending commit did not survive migration"
-    );
+
+    // check that a pending commit is still present
+    assert!(migrated.pending_commit().is_some(),);
     assert_eq!(migrated.pending_proposals().count(), 0);
 
-    // The migrated pending commit is not just present but usable: merging it yields
-    // exactly the group that merging the original's pending commit yields.
+    // merge and the pending commit and compare state
     merge_pending_commit_and_compare::<T>(&alice_state, &group_id, &target, migrated);
 }
 
-#[test]
-fn test_migration_with_pending_commit_serde_json() {
-    test_migration_with_pending_commit_impl::<SerdeJson>();
-}
-
-#[test]
-fn test_migration_with_pending_commit_ciborium() {
-    test_migration_with_pending_commit_impl::<Ciborium>();
-}
-
-/// Migration must preserve a large group: a deep ratchet tree with many members
-/// (and correspondingly many nodes and epoch encryption key pairs). The full
-/// round-trip diff in `migrate_and_check` catches any dropped node or key pair.
+/// Test that migration preserves a large group
 fn test_migration_large_group_impl<T: StorageMigrationTarget>() {
     // Number of members added after Alice, chosen large enough to build a
     // deep, multi-level ratchet tree.
@@ -1019,8 +837,6 @@ fn test_migration_large_group_impl<T: StorageMigrationTarget>() {
         )
         .expect("creating group");
 
-        // Build the members' key packages (one shared provider is fine — they only
-        // need to be valid to add) and add them all in one commit.
         let addee_state = StorageProviderState::default();
         let addee_storage = addee_state.as_postcard_provider();
         let addee_provider = addee_storage.as_openmls_provider();
@@ -1053,16 +869,6 @@ fn test_migration_large_group_impl<T: StorageMigrationTarget>() {
         ADDED_MEMBERS + 1,
         "the large group lost members in migration"
     );
-}
-
-#[test]
-fn test_migration_large_group_serde_json() {
-    test_migration_large_group_impl::<SerdeJson>();
-}
-
-#[test]
-fn test_migration_large_group_ciborium() {
-    test_migration_large_group_impl::<Ciborium>();
 }
 
 /// Migration must preserve a pending (staged, not merged) commit whose content is
@@ -1159,18 +965,6 @@ fn test_migration_pending_app_ephemeral_commit_impl<T: StorageMigrationTarget>()
     // The migrated pending AppEphemeral commit is usable: merging it yields exactly
     // the group that merging the original's pending commit yields.
     merge_pending_commit_and_compare::<T>(&alice_state, &group_id, &target, migrated);
-}
-
-#[cfg(all(feature = "compat_0_8_1", feature = "extensions-draft"))]
-#[test]
-fn test_migration_pending_app_ephemeral_commit_serde_json() {
-    test_migration_pending_app_ephemeral_commit_impl::<SerdeJson>();
-}
-
-#[cfg(all(feature = "compat_0_8_1", feature = "extensions-draft"))]
-#[test]
-fn test_migration_pending_app_ephemeral_commit_ciborium() {
-    test_migration_pending_app_ephemeral_commit_impl::<Ciborium>();
 }
 
 /// Exercises the `migrate_group` example used in the book, so it stays valid.
@@ -1588,6 +1382,71 @@ fn test_migration_then_process_incoming_commit() {
     assert_eq!(alice.members().count(), 2);
 }
 
+/// test that a migrated group can decrypt an application message
+fn test_migration_then_decrypt_application_message_impl<T: StorageMigrationTarget>() {
+    let ciphersuite = CIPHERSUITE;
+    let group_id = TestGroupId::new(b"migration decrypt application message");
+    const PLAINTEXT: &[u8] = b"hello across the migration boundary";
+
+    let alice_state = StorageProviderState::default();
+    let bob_state = StorageProviderState::default();
+
+    // Previous version: a two-member group where Bob sends an application message
+    // (at the current epoch) that Alice has not yet processed.
+    let message_wire = {
+        let alice_storage = alice_state.as_postcard_provider();
+        let bob_storage = bob_state.as_postcard_provider();
+        let alice_provider = alice_storage.as_openmls_provider();
+        let bob_provider = bob_storage.as_openmls_provider();
+        let (_alice_group, _alice_signer, bob_signer) = setup_alice_bob_group(
+            ciphersuite,
+            &group_id.compat(),
+            &alice_provider,
+            &bob_provider,
+        );
+
+        // Bob (loaded from his own persisted state) creates the application message.
+        let mut bob_group =
+            openmls_compat::prelude::MlsGroup::load(&bob_storage, &group_id.compat())
+                .expect("loading Bob's group")
+                .expect("no group state persisted for Bob");
+        bob_group
+            .create_message(&bob_provider, &bob_signer, PLAINTEXT)
+            .expect("Bob creating an application message")
+            .tls_serialize_detached()
+            .expect("serializing the application message")
+    };
+
+    // Migrate Alice into the target store, then decrypt Bob's message with the
+    // current API against her migrated `message_secrets`.
+    let target_state = StorageProviderState::default();
+    let target = T::provider(&target_state);
+    let mut alice = migrate_and_check(&alice_state, &group_id, &target, T::NAME);
+
+    let provider = T::openmls_provider(&target);
+    let message_in =
+        openmls_current::prelude::MlsMessageIn::tls_deserialize(&mut message_wire.as_slice())
+            .expect("deserializing the application message");
+    let protocol_message = message_in
+        .try_into_protocol_message()
+        .expect("application message is a protocol message");
+    let processed = alice
+        .process_message(&provider, protocol_message)
+        .expect("processing Bob's application message on the migrated group");
+    match processed.into_content() {
+        openmls_current::prelude::ProcessedMessageContent::ApplicationMessage(
+            application_message,
+        ) => {
+            assert_eq!(
+                application_message.into_bytes(),
+                PLAINTEXT,
+                "decrypted application message does not match the original plaintext"
+            );
+        }
+        _ => panic!("expected an application message"),
+    }
+}
+
 /// Migrating into a store that already holds the group under the same key
 /// encoding — an in-place migration, or simply a re-run — must *replace* the
 /// group's state, not accumulate duplicates in the append-style tables (own leaf
@@ -1784,7 +1643,8 @@ fn migrate_key_package<NewProvider: openmls_traits::OpenMlsProvider>(
 /// owner joins from the welcome using the migrated bundle.
 #[test]
 fn test_migration_key_package() {
-    let old_ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
+    const CIPHERSUITE: Ciphersuite =
+        openmls_compat::prelude::Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
     let current_ciphersuite =
         openmls_current::prelude::Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
 
@@ -1792,14 +1652,9 @@ fn test_migration_key_package() {
     let bob_old_state = StorageProviderState::default();
     let bob_old_storage = bob_old_state.as_postcard_provider();
     let bob_old_provider = bob_old_storage.as_openmls_provider();
-    let (bob_credential, bob_signer) =
-        generate_credential(b"Bob", old_ciphersuite, &bob_old_provider);
-    let bob_key_package = generate_key_package(
-        old_ciphersuite,
-        bob_credential,
-        &bob_old_provider,
-        &bob_signer,
-    );
+    let (bob_credential, bob_signer) = generate_credential(b"Bob", CIPHERSUITE, &bob_old_provider);
+    let bob_key_package =
+        generate_key_package(CIPHERSUITE, bob_credential, &bob_old_provider, &bob_signer);
 
     // The application tracks the key package's hash reference (OpenMLS keys stored
     // key packages by it), so it can address the stored bundle for migration.
@@ -1886,7 +1741,6 @@ fn test_migration_key_package() {
 #[cfg(feature = "extensions-draft")]
 #[test]
 fn test_migration_application_export_tree() {
-    let old_ciphersuite = CIPHERSUITE;
     let group_id = TestGroupId::new(b"migration app export tree group");
     let consumed_component_id: u16 = 0x8000;
 
@@ -1897,9 +1751,9 @@ fn test_migration_application_export_tree() {
         let alice_storage = alice_state.as_postcard_provider();
         let alice_provider = alice_storage.as_openmls_provider();
         let (alice_credential, alice_signer) =
-            generate_credential(b"Alice", old_ciphersuite, &alice_provider);
+            generate_credential(b"Alice", CIPHERSUITE, &alice_provider);
         let config = MlsGroupCreateConfig::builder()
-            .ciphersuite(old_ciphersuite)
+            .ciphersuite(CIPHERSUITE)
             .build();
         let mut alice_group = MlsGroup::new_with_group_id(
             &alice_provider,
@@ -2014,4 +1868,270 @@ fn test_migration_enabling_extensions_draft() {
     alice
         .safe_export_secret(&crypto, &new_provider, 0x8000)
         .expect("exporting a component secret after enabling extensions-draft");
+}
+
+/// Test migration when creating a commit loads a pre-shared key from storage
+fn test_migration_with_psk_proposal_impl<T: StorageMigrationTarget>() {
+    let ciphersuite = CIPHERSUITE;
+    let group_id = TestGroupId::new(b"migration psk proposal group");
+
+    let alice_state = StorageProviderState::default();
+    let bob_state = StorageProviderState::default();
+    let alice_signer_old = {
+        let alice_storage = alice_state.as_postcard_provider();
+        let bob_storage = bob_state.as_postcard_provider();
+        let alice_provider = alice_storage.as_openmls_provider();
+        let bob_provider = bob_storage.as_openmls_provider();
+        let (mut alice_group, alice_signer, _bob_signer) = setup_alice_bob_group(
+            ciphersuite,
+            &group_id.compat(),
+            &alice_provider,
+            &bob_provider,
+        );
+
+        // The application stores an external PSK in the (old) store.
+        let psk_id = openmls_compat::schedule::PreSharedKeyId::external(
+            b"migration-test-psk".to_vec(),
+            vec![0u8; 32],
+        );
+        psk_id
+            .store(&alice_provider, &[7u8; 32])
+            .expect("storing the external PSK secret");
+        alice_group
+            .propose_external_psk(&alice_provider, &alice_signer, psk_id)
+            .expect("queuing the PreSharedKey proposal");
+
+        // The scenario under test: a queued PreSharedKey proposal, no pending commit.
+        assert_eq!(alice_group.pending_proposals().count(), 1);
+        assert!(alice_group.pending_commit().is_none());
+        alice_signer
+    };
+
+    let target_state = StorageProviderState::default();
+    let target = T::provider(&target_state);
+    let mut migrated = migrate_and_check(&alice_state, &group_id, &target, T::NAME);
+    assert_eq!(
+        migrated.pending_proposals().count(),
+        1,
+        "the queued PreSharedKey proposal did not survive migration"
+    );
+    assert!(migrated.pending_commit().is_none());
+
+    let signer: openmls_basic_credential_current::SignatureKeyPair =
+        serde_json_bridge(&alice_signer_old)
+            .expect("bridging Alice's signer to the current version");
+    let provider = T::openmls_provider(&target);
+    let error = migrated
+        .commit_to_pending_proposals(&provider, &signer)
+        .expect("PSK not found");
+}
+
+/// Check decryption of a past epoch message after migration
+fn test_migration_then_decrypt_past_epoch_message_impl<T: StorageMigrationTarget>() {
+    let ciphersuite = CIPHERSUITE;
+    let group_id = TestGroupId::new(b"migration decrypt past-epoch message");
+    const PLAINTEXT: &[u8] = b"a message from a past epoch";
+
+    let alice_state = StorageProviderState::default();
+    let bob_state = StorageProviderState::default();
+
+    let message_wire = {
+        let alice_storage = alice_state.as_postcard_provider();
+        let bob_storage = bob_state.as_postcard_provider();
+        let alice_provider = alice_storage.as_openmls_provider();
+        let bob_provider = bob_storage.as_openmls_provider();
+
+        let (alice_credential, alice_signer) =
+            generate_credential(b"Alice", ciphersuite, &alice_provider);
+        let (bob_credential, bob_signer) = generate_credential(b"Bob", ciphersuite, &bob_provider);
+        let bob_key_package =
+            generate_key_package(ciphersuite, bob_credential, &bob_provider, &bob_signer);
+
+        // Alice keeps one past epoch, so a message from before her self-update can
+        // still be decrypted.
+        let config = MlsGroupCreateConfig::builder()
+            .ciphersuite(ciphersuite)
+            .max_past_epochs(1)
+            .build();
+        let mut alice_group = MlsGroup::new_with_group_id(
+            &alice_provider,
+            &alice_signer,
+            &config,
+            group_id.compat(),
+            alice_credential,
+        )
+        .expect("creating the group");
+        let (_commit, welcome, _group_info) = alice_group
+            .add_members(
+                &alice_provider,
+                &alice_signer,
+                &[bob_key_package.key_package().clone()],
+            )
+            .expect("adding Bob");
+        alice_group
+            .merge_pending_commit(&alice_provider)
+            .expect("merging the add commit");
+
+        // Bob joins from the welcome.
+        let welcome_bytes = welcome
+            .tls_serialize_detached()
+            .expect("serializing the welcome");
+        let welcome =
+            openmls_compat::prelude::MlsMessageIn::tls_deserialize(&mut welcome_bytes.as_slice())
+                .expect("deserializing the welcome");
+        let openmls_compat::prelude::MlsMessageBodyIn::Welcome(welcome) = welcome.extract() else {
+            panic!("expected the message to be a welcome")
+        };
+        let mut bob_group = StagedWelcome::new_from_welcome(
+            &bob_provider,
+            config.join_config(),
+            welcome,
+            Some(alice_group.export_ratchet_tree().into()),
+        )
+        .expect("creating Bob's staged welcome")
+        .into_group(&bob_provider)
+        .expect("Bob joining the group");
+
+        // Bob sends an application message at the current epoch (1).
+        let message = bob_group
+            .create_message(&bob_provider, &bob_signer, PLAINTEXT)
+            .expect("Bob creating an application message")
+            .tls_serialize_detached()
+            .expect("serializing the application message");
+
+        // Alice advances one epoch (self-update)
+        alice_group
+            .self_update(
+                &alice_provider,
+                &alice_signer,
+                LeafNodeParameters::default(),
+            )
+            .expect("Alice self-updating");
+        alice_group
+            .merge_pending_commit(&alice_provider)
+            .expect("merging the self-update");
+        assert_eq!(alice_group.epoch().as_u64(), 2);
+
+        message
+    };
+
+    // Migrate Alice into the target store, then decrypt Bob's past-epoch message
+    // against her migrated (retained) `message_secrets`.
+    let target_state = StorageProviderState::default();
+    let target = T::provider(&target_state);
+    let mut alice = migrate_and_check(&alice_state, &group_id, &target, T::NAME);
+    assert_eq!(alice.epoch().as_u64(), 2);
+
+    let provider = T::openmls_provider(&target);
+    let message_in =
+        openmls_current::prelude::MlsMessageIn::tls_deserialize(&mut message_wire.as_slice())
+            .expect("deserializing the application message");
+    let protocol_message = message_in
+        .try_into_protocol_message()
+        .expect("application message is a protocol message");
+    let processed = alice
+        .process_message(&provider, protocol_message)
+        .expect("processing Bob's past-epoch application message on the migrated group");
+    match processed.into_content() {
+        openmls_current::prelude::ProcessedMessageContent::ApplicationMessage(
+            application_message,
+        ) => {
+            assert_eq!(application_message.into_bytes(), PLAINTEXT,);
+        }
+        _ => panic!("expected an application message"),
+    }
+}
+
+#[test]
+fn test_migration_large_group_serde_json() {
+    test_migration_large_group_impl::<SerdeJson>();
+}
+
+#[test]
+fn test_migration_large_group_ciborium() {
+    test_migration_large_group_impl::<Ciborium>();
+}
+
+#[test]
+fn test_migration_with_pending_commit_serde_json() {
+    test_migration_with_pending_commit_impl::<SerdeJson>();
+}
+
+#[test]
+fn test_migration_with_pending_commit_ciborium() {
+    test_migration_with_pending_commit_impl::<Ciborium>();
+}
+
+#[test]
+fn test_migration_serde_json() {
+    test_migration_impl::<SerdeJson>();
+}
+
+#[test]
+fn test_migration_ciborium() {
+    test_migration_impl::<Ciborium>();
+}
+
+#[test]
+fn test_migration_multiple_epochs_serde_json() {
+    test_migration_multiple_epochs_impl::<SerdeJson>();
+}
+
+#[test]
+fn test_migration_multiple_epochs_ciborium() {
+    test_migration_multiple_epochs_impl::<Ciborium>();
+}
+
+#[test]
+fn test_migration_with_proposals_serde_json() {
+    test_migration_with_proposals_impl::<SerdeJson>();
+}
+
+#[test]
+fn test_migration_with_proposals_ciborium() {
+    test_migration_with_proposals_impl::<Ciborium>();
+}
+
+#[test]
+#[ignore]
+fn test_migration_with_psk_proposal_serde_json() {
+    test_migration_with_psk_proposal_impl::<SerdeJson>();
+}
+
+#[test]
+#[ignore]
+fn test_migration_with_psk_proposal_ciborium() {
+    test_migration_with_psk_proposal_impl::<Ciborium>();
+}
+
+#[cfg(all(feature = "compat_0_8_1", feature = "extensions-draft"))]
+#[test]
+fn test_migration_pending_app_ephemeral_commit_serde_json() {
+    test_migration_pending_app_ephemeral_commit_impl::<SerdeJson>();
+}
+
+#[cfg(all(feature = "compat_0_8_1", feature = "extensions-draft"))]
+#[test]
+fn test_migration_pending_app_ephemeral_commit_ciborium() {
+    test_migration_pending_app_ephemeral_commit_impl::<Ciborium>();
+}
+
+#[test]
+fn test_migration_then_decrypt_application_message_serde_json() {
+    test_migration_then_decrypt_application_message_impl::<SerdeJson>();
+}
+
+#[test]
+fn test_migration_then_decrypt_application_message_ciborium() {
+    test_migration_then_decrypt_application_message_impl::<Ciborium>();
+}
+
+#[test]
+fn test_migration_then_decrypt_past_epoch_message_serde_json() {
+    test_migration_then_decrypt_past_epoch_message_impl::<SerdeJson>();
+}
+
+#[test]
+fn test_migration_then_decrypt_past_epoch_message_ciborium() {
+    test_migration_then_decrypt_past_epoch_message_impl::<Ciborium>();
 }
