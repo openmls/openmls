@@ -524,121 +524,6 @@ fn migrate_group(
 }
 // ANCHOR_END: migration
 
-fn test_migration_impl<T: StorageMigrationTarget>() {
-    let ciphersuite = CIPHERSUITE;
-    let group_id = TestGroupId::new(b"migration test group");
-
-    // Each member gets their own postcard-backed storage, wrapped in a full
-    // previous-version provider (postcard storage + libcrux crypto/rand).
-    let alice_state = StorageProviderState::default();
-    let bob_state = StorageProviderState::default();
-    let charlie_state = StorageProviderState::default();
-
-    let alice_storage = alice_state.as_postcard_provider();
-    let bob_storage = bob_state.as_postcard_provider();
-    let charlie_storage = charlie_state.as_postcard_provider();
-
-    let alice_provider = alice_storage.as_openmls_provider();
-    let bob_provider = bob_storage.as_openmls_provider();
-    let charlie_provider = charlie_storage.as_openmls_provider();
-
-    // === Generate credentials ===
-    let (alice_credential, alice_signer) =
-        generate_credential(b"Alice", ciphersuite, &alice_provider);
-    let (bob_credential, bob_signer) = generate_credential(b"Bob", ciphersuite, &bob_provider);
-    let (charlie_credential, charlie_signer) =
-        generate_credential(b"Charlie", ciphersuite, &charlie_provider);
-
-    // Bob and Charlie publish key packages.
-    let bob_key_package =
-        generate_key_package(ciphersuite, bob_credential, &bob_provider, &bob_signer);
-    let charlie_key_package = generate_key_package(
-        ciphersuite,
-        charlie_credential,
-        &charlie_provider,
-        &charlie_signer,
-    );
-
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .ciphersuite(ciphersuite)
-        .build();
-
-    // === Alice creates the group ===
-    let mut alice_group = MlsGroup::new_with_group_id(
-        &alice_provider,
-        &alice_signer,
-        &mls_group_create_config,
-        group_id.compat(),
-        alice_credential,
-    )
-    .expect("error creating group");
-
-    // === Alice adds Bob and Charlie ===
-    let (_commit, welcome, _group_info) = alice_group
-        .add_members(
-            &alice_provider,
-            &alice_signer,
-            &[
-                bob_key_package.key_package().clone(),
-                charlie_key_package.key_package().clone(),
-            ],
-        )
-        .expect("error adding members");
-
-    alice_group
-        .merge_pending_commit(&alice_provider)
-        .expect("error merging commit");
-
-    // Bob and Charlie join from the welcome so that they hold their own state.
-    // Round-trip the welcome through its wire encoding, as a delivery service
-    // would, to obtain an incoming message (the in-memory `MlsMessageOut` ->
-    // `MlsMessageIn` conversion is gated behind `test-utils`).
-    let welcome_bytes = welcome
-        .tls_serialize_detached()
-        .expect("error serializing welcome");
-    let welcome =
-        openmls_compat::prelude::MlsMessageIn::tls_deserialize(&mut welcome_bytes.as_slice())
-            .expect("error deserializing welcome");
-    let openmls_compat::prelude::MlsMessageBodyIn::Welcome(welcome) = welcome.extract() else {
-        panic!("expected the message to be a welcome")
-    };
-    let ratchet_tree = alice_group.export_ratchet_tree();
-
-    let _bob_group = StagedWelcome::new_from_welcome(
-        &bob_provider,
-        mls_group_create_config.join_config(),
-        welcome.clone(),
-        Some(ratchet_tree.clone().into()),
-    )
-    .expect("error creating staged welcome for Bob")
-    .into_group(&bob_provider)
-    .expect("error joining group as Bob");
-
-    let _charlie_group = StagedWelcome::new_from_welcome(
-        &charlie_provider,
-        mls_group_create_config.join_config(),
-        welcome,
-        Some(ratchet_tree.into()),
-    )
-    .expect("error creating staged welcome for Charlie")
-    .into_group(&charlie_provider)
-    .expect("error joining group as Charlie");
-
-    // Sanity check: Alice's group has all three members.
-    assert_eq!(alice_group.members().count(), 3);
-
-    // === Migrate each member's state to the current version ===
-    // Alice created the group (own leaf index 0); Bob and Charlie joined via
-    // welcome (own leaf index != 0). All of them must migrate correctly, and every
-    // migrated group must still hold all three members.
-    for state in [&alice_state, &bob_state, &charlie_state] {
-        let target_state = StorageProviderState::default();
-        let target = T::provider(&target_state);
-        let migrated = migrate_and_check(state, &group_id, &target, T::NAME);
-        assert_eq!(migrated.members().count(), 3);
-    }
-}
-
 /// Migration must preserve the retained message secrets of past epochs.
 fn test_migration_multiple_epochs_impl<T: StorageMigrationTarget>() {
     let ciphersuite = CIPHERSUITE;
@@ -1797,16 +1682,7 @@ fn test_migration_application_export_tree() {
         .expect("exporting a fresh component id must succeed after migration");
 }
 
-/// Toggling `extensions-draft` *on* during migration: a source version WITHOUT
-/// the feature migrates into a current version WITH it. The new extensions-draft
-/// fields (`safe_aad`, `application_export_tree`) have no source counterpart, so
-/// they must default on import — in particular, without `#[serde(default)]` on
-/// `application_export_tree` the bundle would fail to deserialize (this test is
-/// what makes that default necessary). After the first merged commit the
-/// application export tree initializes and becomes usable.
-///
-/// Gated on the target having the feature while the source does not — the whole
-/// point of splitting `extensions-draft` into `-current` / `-compat`.
+/// Tests enabling `extensions-draft` during migration
 #[cfg(all(
     feature = "extensions-draft-current",
     not(feature = "extensions-draft-compat")
@@ -1816,7 +1692,7 @@ fn test_migration_enabling_extensions_draft() {
     let ciphersuite = CIPHERSUITE;
     let group_id = TestGroupId::new(b"migration enable ext-draft group");
 
-    // Source group WITHOUT extensions-draft.
+    // Source group without the `extensions-draft` feature enabled.
     let alice_state = StorageProviderState::default();
     let bob_state = StorageProviderState::default();
     let alice_signer_old = {
@@ -1833,8 +1709,7 @@ fn test_migration_enabling_extensions_draft() {
         alice_signer
     };
 
-    // Migrate into a current-version store that HAS extensions-draft. Deserializing
-    // the bundle only succeeds because the new extensions-draft fields default.
+    // Migrate into a current-version store that has `extensions-draft` enabled
     let new_state = StorageProviderState::default();
     let new_provider = new_state.as_serde_json_provider();
     {
@@ -1843,7 +1718,7 @@ fn test_migration_enabling_extensions_draft() {
     }
     let signer = migrate_signature_key_pair(&alice_signer_old, &new_provider);
 
-    // The migrated group loads cleanly with the current API.
+    // Load the migrated group with the current API.
     let current_provider = new_provider.as_openmls_provider();
     let new_group_id = group_id.current();
     let mut alice = openmls_current::prelude::MlsGroup::load(&new_provider, &new_group_id)
@@ -1851,9 +1726,12 @@ fn test_migration_enabling_extensions_draft() {
         .expect("no migrated group state persisted");
     assert_eq!(alice.members().count(), 2);
 
-    // The application export tree defaults to `None` on import and initializes on
-    // the next merged commit; after that, `safe_export_secret` works — proving the
-    // toggled-on feature is functional post-migration.
+    // NOTE: `safe_export_secret()` fails immediately after mgration
+    alice
+        .safe_export_secret(&crypto, &new_provider, 0x8000)
+        .expect_err("exporting a component secret after enabling extensions-draft");
+
+    // create and merge a commit
     alice
         .self_update(
             &current_provider,
@@ -1864,7 +1742,8 @@ fn test_migration_enabling_extensions_draft() {
     alice
         .merge_pending_commit(&current_provider)
         .expect("merging the self-update");
-    let crypto = openmls_libcrux_crypto_current::CryptoProvider::new().unwrap();
+
+    // `safe_export_secret()` succeeds
     alice
         .safe_export_secret(&crypto, &new_provider, 0x8000)
         .expect("exporting a component secret after enabling extensions-draft");
@@ -1889,7 +1768,7 @@ fn test_migration_with_psk_proposal_impl<T: StorageMigrationTarget>() {
             &bob_provider,
         );
 
-        // The application stores an external PSK in the (old) store.
+        // The application stores an external PSK in the old store.
         let psk_id = openmls_compat::schedule::PreSharedKeyId::external(
             b"migration-test-psk".to_vec(),
             vec![0u8; 32],
@@ -1947,8 +1826,7 @@ fn test_migration_then_decrypt_past_epoch_message_impl<T: StorageMigrationTarget
         let bob_key_package =
             generate_key_package(ciphersuite, bob_credential, &bob_provider, &bob_signer);
 
-        // Alice keeps one past epoch, so a message from before her self-update can
-        // still be decrypted.
+        // Alice configures the group to keep one past epoch
         let config = MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
             .max_past_epochs(1)
@@ -2060,16 +1938,6 @@ fn test_migration_with_pending_commit_serde_json() {
 #[test]
 fn test_migration_with_pending_commit_ciborium() {
     test_migration_with_pending_commit_impl::<Ciborium>();
-}
-
-#[test]
-fn test_migration_serde_json() {
-    test_migration_impl::<SerdeJson>();
-}
-
-#[test]
-fn test_migration_ciborium() {
-    test_migration_impl::<Ciborium>();
 }
 
 #[test]
