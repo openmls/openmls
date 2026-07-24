@@ -1737,16 +1737,17 @@ fn migrate_signature_key_pair(
 /// it tracks (OpenMLS keys stored key packages by it). We read the stored
 /// `KeyPackageBundle` with the previous version's storage API, bridge it through
 /// `serde_json`, and write it to the current store under its current-version hash
-/// reference. Returns the bridged bundle so the caller can use its `KeyPackage`.
+/// reference. Returns that current-version hash reference so the application can
+/// track it and load the migrated key package back from the new store.
 ///
 /// The two `StorageProvider` traits (previous and current version) are brought
 /// into scope in separate blocks: the backing `PostcardProvider` implements both,
 /// so keeping only one in scope per call avoids an ambiguous method resolution.
-fn migrate_key_package(
+fn migrate_key_package<NewProvider: openmls_traits::OpenMlsProvider>(
     old_storage: &PostcardProvider<'_>,
     old_hash_ref: &openmls_compat::prelude::KeyPackageRef,
-    new_provider: &impl openmls_traits::OpenMlsProvider,
-) -> openmls_current::prelude::KeyPackageBundle {
+    new_provider: &NewProvider,
+) -> openmls_current::prelude::KeyPackageRef {
     // 1. Read the stored bundle (public key package + private init and encryption
     //    keys) with the previous version's storage API.
     let old_bundle: KeyPackageBundle = {
@@ -1774,7 +1775,7 @@ fn migrate_key_package(
             .expect("write the migrated key package");
     }
 
-    bundle
+    new_hash_ref
 }
 // ANCHOR_END: migrate_key_package
 
@@ -1808,11 +1809,19 @@ fn test_migration_key_package() {
         .hash_ref(&old_crypto)
         .expect("computing the old key package hash ref");
 
-    // Migrate the published key package into a current-version store.
+    // Migrate the published key package into a current-version store, then load the
+    // migrated bundle back from that store by the returned hash reference.
     let bob_new_state = StorageProviderState::default();
     let bob_new_storage = bob_new_state.as_serde_json_provider();
     let bob_new_provider = bob_new_storage.as_openmls_provider();
-    let current_bundle = migrate_key_package(&bob_old_storage, &old_hash_ref, &bob_new_provider);
+    let new_hash_ref = migrate_key_package(&bob_old_storage, &old_hash_ref, &bob_new_provider);
+    let current_bundle: openmls_current::prelude::KeyPackageBundle = {
+        use openmls_traits::storage::StorageProvider as _;
+        bob_new_storage
+            .key_package(&new_hash_ref)
+            .expect("read the migrated key package")
+            .expect("no migrated key package stored under this hash ref")
+    };
 
     // === Prove the migrated key package is usable with the current API ===
     // A fresh current-version group (Alice) adds Bob via his migrated key package,
