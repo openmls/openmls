@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#2134](https://github.com/openmls/openmls/pull/2134): Known structured extension payloads now reject trailing bytes during decoding instead of silently ignoring them.
 - [#2109](https://github.com/openmls/openmls/pull/2109): `OpenMlsRustCrypto`'s `OpenMlsCrypto::supports` now accepts `MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87`, consistent with its `supported_ciphersuites` list (`draft-ietf-mls-pq-ciphersuites` feature).
 - [#2089](https://github.com/openmls/openmls/pull/2089): A Commit without an UpdatePath from this client's own leaf that does not match the pending commit is now staged as a regular commit instead of being rejected as a mismatched own commit.
 - [#2034](https://github.com/openmls/openmls/pull/2034): Fixes a bug where the integer storage tags for `serde` non-self-describing serializations were changed, leading to incorrect deserializations. By default, storage format compatibility with `openmls` v0.7.1 and earlier is now restored. Enabling the `0-8-1-storage-format` feature maintains storage format compatibility with `openmls` v0.8.1 (the previous `openmls` release).
