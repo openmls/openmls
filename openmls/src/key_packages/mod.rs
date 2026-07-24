@@ -88,6 +88,8 @@
 //!
 //! See [`KeyPackage`] for more details on how to use key packages.
 
+#[cfg(not(feature = "extensions-draft"))]
+use crate::extensions::LastResortExtension;
 use crate::{
     ciphersuite::{
         hash_ref::{make_key_package_ref, KeyPackageRef},
@@ -96,7 +98,7 @@ use crate::{
     },
     credentials::*,
     error::LibraryError,
-    extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
+    extensions::{Extension, ExtensionType, Extensions},
     storage::OpenMlsProvider,
     treesync::{
         node::{
@@ -106,6 +108,11 @@ use crate::{
         LeafNode,
     },
     versions::ProtocolVersion,
+};
+#[cfg(feature = "extensions-draft")]
+use crate::{
+    component::{ComponentId, ComponentType},
+    extensions::AppDataDictionaryExtension,
 };
 use openmls_traits::{
     crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider, types::Ciphersuite,
@@ -222,6 +229,11 @@ impl SignedStruct<KeyPackageTbs> for KeyPackage {
 }
 
 const SIGNATURE_KEY_PACKAGE_LABEL: &str = "KeyPackageTBS";
+
+#[cfg(feature = "extensions-draft")]
+fn last_resort_component_id() -> ComponentId {
+    ComponentType::LastResortKeyPackage.into()
+}
 
 /// The leaf-node-specific parameters used when creating a [`KeyPackage`].
 pub(crate) struct KeyPackageLeafNodeParams {
@@ -483,9 +495,36 @@ impl KeyPackage {
         &self.payload.init_key
     }
 
-    /// Check if this KeyPackage is a last resort key package.
+    /// Check if this KeyPackage is a last-resort KeyPackage.
+    ///
+    /// When the `extensions-draft` feature is enabled, this recognizes the
+    /// `last_resort_key_package` component in the KeyPackage's
+    /// `app_data_dictionary`. The obsolete `last_resort` extension is also
+    /// recognized so that previously stored KeyPackages remain usable.
     pub fn last_resort(&self) -> bool {
+        #[cfg(feature = "extensions-draft")]
+        if matches!(
+            self.payload
+                .extensions
+                .app_data_dictionary()
+                .and_then(|extension| extension.dictionary().get(&last_resort_component_id())),
+            Some(data) if data.is_empty()
+        ) {
+            return true;
+        }
+
         self.payload.extensions.contains(ExtensionType::LastResort)
+    }
+
+    #[cfg(feature = "extensions-draft")]
+    fn has_malformed_last_resort_component(&self) -> bool {
+        matches!(
+            self.payload
+                .extensions
+                .app_data_dictionary()
+                .and_then(|extension| extension.dictionary().get(&last_resort_component_id())),
+            Some(data) if !data.is_empty()
+        )
     }
 
     /// Get the lifetime of the KeyPackage
@@ -539,7 +578,16 @@ impl KeyPackageBuilder {
         self
     }
 
-    /// Mark the key package as a last-resort key package via a [`LastResortExtension`].
+    /// Mark the KeyPackage as a last-resort KeyPackage.
+    ///
+    /// With the `extensions-draft` feature enabled, this adds the
+    /// `last_resort_key_package` component to the KeyPackage's
+    /// `app_data_dictionary`. Otherwise, it adds the legacy `last_resort`
+    /// extension.
+    ///
+    /// The leaf node capabilities must advertise support for the corresponding
+    /// extension. Otherwise, building fails with
+    /// [`KeyPackageNewError::MissingLastResortCapability`].
     pub fn mark_as_last_resort(mut self) -> Self {
         self.last_resort = true;
         self
@@ -559,22 +607,77 @@ impl KeyPackageBuilder {
         self
     }
 
-    /// Ensure that a last-resort extension is present in the key package if the
-    /// `last_resort` flag is set.
-    fn ensure_last_resort(&mut self) {
-        if self.last_resort {
-            let last_resort_extension = Extension::LastResort(LastResortExtension::default());
-            if let Some(extensions) = self.key_package_extensions.as_mut() {
-                extensions
-                    .add_or_replace(last_resort_extension)
-                    .expect("LastResort extensions are allowed in key packages");
-            } else {
-                self.key_package_extensions = Some(
-                    Extensions::single(last_resort_extension)
-                        .expect("LastResort extensions are allowed in key packages"),
-                );
-            }
+    fn ensure_last_resort_capability(
+        &self,
+        extension_type: ExtensionType,
+    ) -> Result<(), KeyPackageNewError> {
+        if self
+            .leaf_node_capabilities
+            .as_ref()
+            .is_some_and(|capabilities| capabilities.contains_extension(extension_type))
+        {
+            Ok(())
+        } else {
+            Err(KeyPackageNewError::MissingLastResortCapability(
+                extension_type,
+            ))
         }
+    }
+
+    /// Ensure that a last-resort marker is present in the KeyPackage if the
+    /// `last_resort` flag is set.
+    #[cfg(feature = "extensions-draft")]
+    fn ensure_last_resort(&mut self) -> Result<(), KeyPackageNewError> {
+        if !self.last_resort {
+            return Ok(());
+        }
+
+        self.ensure_last_resort_capability(ExtensionType::AppDataDictionary)?;
+
+        let mut dictionary = self
+            .key_package_extensions
+            .as_ref()
+            .and_then(Extensions::app_data_dictionary)
+            .map(|extension| extension.dictionary().clone())
+            .unwrap_or_default();
+        dictionary.insert(last_resort_component_id(), Vec::new());
+
+        let last_resort_component =
+            Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary));
+        if let Some(extensions) = self.key_package_extensions.as_mut() {
+            extensions.remove(ExtensionType::LastResort);
+            extensions
+                .add_or_replace(last_resort_component)
+                .expect("AppDataDictionary extensions are allowed in KeyPackages");
+        } else {
+            self.key_package_extensions = Some(
+                Extensions::single(last_resort_component)
+                    .expect("AppDataDictionary extensions are allowed in KeyPackages"),
+            );
+        }
+        Ok(())
+    }
+
+    #[cfg(not(feature = "extensions-draft"))]
+    fn ensure_last_resort(&mut self) -> Result<(), KeyPackageNewError> {
+        if !self.last_resort {
+            return Ok(());
+        }
+
+        self.ensure_last_resort_capability(ExtensionType::LastResort)?;
+
+        let last_resort_extension = Extension::LastResort(LastResortExtension::default());
+        if let Some(extensions) = self.key_package_extensions.as_mut() {
+            extensions
+                .add_or_replace(last_resort_extension)
+                .expect("LastResort extensions are allowed in KeyPackages");
+        } else {
+            self.key_package_extensions = Some(
+                Extensions::single(last_resort_extension)
+                    .expect("LastResort extensions are allowed in KeyPackages"),
+            );
+        }
+        Ok(())
     }
 
     #[cfg(test)]
@@ -585,7 +688,7 @@ impl KeyPackageBuilder {
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError> {
-        self.ensure_last_resort();
+        self.ensure_last_resort()?;
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: self.key_package_lifetime.unwrap_or_default(),
             capabilities: self.leaf_node_capabilities.unwrap_or_default(),
@@ -609,7 +712,7 @@ impl KeyPackageBuilder {
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageBundle, KeyPackageNewError> {
-        self.ensure_last_resort();
+        self.ensure_last_resort()?;
 
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: self.key_package_lifetime.unwrap_or_default(),

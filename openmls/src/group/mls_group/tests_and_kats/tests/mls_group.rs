@@ -2283,7 +2283,7 @@ fn unknown_extensions() {
 }
 
 #[openmls_test]
-fn join_multiple_groups_last_resort_extension() {
+fn join_multiple_groups_last_resort_key_package() {
     // start with alice, bob, charlie, common config items
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
@@ -2294,10 +2294,12 @@ fn join_multiple_groups_last_resort_extension() {
         setup_client("bob", ciphersuite, bob_provider);
     let (charlie_credential_with_key, _charlie_kpb, charlie_signer, _charlie_pk) =
         setup_client("charlie", ciphersuite, charlie_provider);
+    #[cfg(feature = "extensions-draft")]
+    let last_resort_extension_type = ExtensionType::AppDataDictionary;
+    #[cfg(not(feature = "extensions-draft"))]
+    let last_resort_extension_type = ExtensionType::LastResort;
     let leaf_capabilities =
-        Capabilities::new(None, None, Some(&[ExtensionType::LastResort]), None, None);
-    let keypkg_extensions = Extensions::single(Extension::LastResort(LastResortExtension::new()))
-        .expect("failed to create single-element extensions list");
+        Capabilities::new(None, None, Some(&[last_resort_extension_type]), None, None);
     // alice creates MlsGroup
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
@@ -2313,7 +2315,7 @@ fn join_multiple_groups_last_resort_extension() {
     // charlie creates KeyPackage
     let charlie_keypkg = KeyPackage::builder()
         .leaf_node_capabilities(leaf_capabilities)
-        .key_package_extensions(keypkg_extensions.clone())
+        .mark_as_last_resort()
         .build(
             ciphersuite,
             charlie_provider,

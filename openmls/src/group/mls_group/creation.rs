@@ -713,7 +713,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
                     )
                     .map_err(WelcomeError::StorageError)?;
             } else {
-                log::debug!("Key package has last resort extension, not deleting");
+                log::debug!("KeyPackage has a last-resort marker, not deleting");
             }
             return Ok((
                 resumption_psk_store,

@@ -192,6 +192,11 @@ impl KeyPackageIn {
             }
         }
 
+        #[cfg(feature = "extensions-draft")]
+        if key_package.has_malformed_last_resort_component() {
+            return Err(KeyPackageVerifyError::MalformedLastResortComponent);
+        }
+
         // Ensure validity of the life time extension in the leaf node.
         if let Some(life_time) = key_package.payload.leaf_node.life_time() {
             life_time.validate()?;
