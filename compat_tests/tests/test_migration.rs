@@ -756,10 +756,8 @@ fn test_migration_large_group_impl<T: StorageMigrationTarget>() {
     );
 }
 
-/// Migration must preserve a pending (staged, not merged) commit whose content is
-/// a *non-self-update* proposal — here an `AppEphemeral` proposal added via the
-/// commit builder. AppEphemeral is an `extensions-draft` feature introduced in
-/// 0.8.0, so this is gated on the 0.8.1 source with the draft on both sides.
+/// Tests that migration preserves an AppEphemeral proposal
+/// in a pending commit.
 #[cfg(all(feature = "compat_0_8_1", feature = "extensions-draft"))]
 fn test_migration_pending_app_ephemeral_commit_impl<T: StorageMigrationTarget>() {
     const COMPONENT_ID: u16 = 1;
@@ -774,7 +772,7 @@ fn test_migration_pending_app_ephemeral_commit_impl<T: StorageMigrationTarget>()
         let alice_provider = alice_storage.as_openmls_provider();
         let bob_provider = bob_storage.as_openmls_provider();
 
-        // Members must advertise the AppEphemeral proposal type for the commit to
+        // Members must support the AppEphemeral proposal type for the commit to
         // validate.
         let capabilities =
             Capabilities::new(None, None, None, Some(&[ProposalType::AppEphemeral]), None);
@@ -828,17 +826,13 @@ fn test_migration_pending_app_ephemeral_commit_impl<T: StorageMigrationTarget>()
             .stage_commit(&alice_provider)
             .expect("staging the commit");
 
-        // The scenario under test: a pending commit (not a self-update).
         assert!(alice_group.pending_commit().is_some());
     }
 
     let target_state = StorageProviderState::default();
     let target = T::provider(&target_state);
     let migrated = migrate_and_check(&alice_state, &group_id, &target, T::NAME);
-    assert!(
-        migrated.pending_commit().is_some(),
-        "the pending commit did not survive migration"
-    );
+    assert!(migrated.pending_commit().is_some(),);
     // Confirm the staged AppEphemeral proposal actually crossed the bridge (checked
     // before merging, while the commit is still pending).
     let migrated_json = serde_json::to_value(&migrated).expect("error serializing migrated group");
@@ -890,7 +884,7 @@ fn test_migration_book_example() {
 }
 
 /// Post-migration operability: after migrating, the group must be usable with the
-/// *current* API — here Alice performs a self-update and merges it.
+/// current API — here Alice performs a self-update and merges it.
 #[test]
 fn test_migration_then_operate() {
     let ciphersuite = CIPHERSUITE;
@@ -945,13 +939,7 @@ fn test_migration_then_operate() {
 }
 
 /// The migration target need not be JSON. Here the current-version store is CBOR
-/// (via `ciborium`), a self-describing *binary* format. This exercises the same
-/// requirement that rules out postcard — the current `MlsGroupJoinConfig`
-/// deserializes `past_epoch_deletion_policy` through an `#[serde(untagged)]` enum,
-/// which needs `deserialize_any` (a self-describing format). The migrated group is
-/// then driven through a real self-update to prove it is operable against a CBOR
-/// store, not just structurally loadable.
-#[test]
+/// (via `ciborium`), a self-describing *binary* format
 fn test_migration_ciborium_target() {
     let ciphersuite = CIPHERSUITE;
     let group_id = TestGroupId::new(b"migration ciborium group");
@@ -1168,10 +1156,7 @@ fn test_migration_lazy_per_group() {
     assert_eq!(alice_a.members().count(), 2);
 }
 
-/// Post-migration operability across members: a migrated member can process an
-/// incoming commit created at the migrated epoch. Unlike a self-update (which
-/// re-keys), this exercises the migrated epoch encryption key pairs — the
-/// group-associated data the bundle migration carries beyond the group struct.
+/// Test processing an incoming message after migrating a group.
 #[test]
 fn test_migration_then_process_incoming_commit() {
     let ciphersuite = CIPHERSUITE;
@@ -1240,8 +1225,7 @@ fn test_migration_then_process_incoming_commit() {
     bob.merge_pending_commit(&bob_provider)
         .expect("error merging Bob's commit");
 
-    // Alice processes Bob's commit — this decrypts against her migrated epoch
-    // encryption key pairs, so it only succeeds if they crossed the migration.
+    // Alice processes Bob's commit
     let commit_bytes = commit
         .tls_serialize_detached()
         .expect("error serializing commit");
@@ -1433,9 +1417,8 @@ fn test_migration_replaces_existing_group() {
 // APIs, and drive each migrated item through a real current-version operation.
 // =============================================================================
 
-/// Create a current-version basic credential together with a freshly generated
-/// current-version signature key pair, persisting the key pair in `provider`'s
-/// storage. The current-version counterpart of [`generate_credential`].
+/// Helper function to create a BasicCredential, using a SignatureKeyPair
+/// stored in the storage provider
 fn current_credential(
     identity: &[u8],
     ciphersuite: openmls_current::prelude::Ciphersuite,
@@ -1595,7 +1578,7 @@ fn test_migration_key_package() {
         .merge_pending_commit(&alice_provider)
         .expect("merging Alice's add commit");
 
-    // Bob joins from the welcome. `StagedWelcome` looks up his migrated bundle in
+    // Bob joins from the welcome. Staging the welcome looks up his key package in
     // the current store by hash ref, so the join only succeeds if it was migrated.
     let welcome_bytes = welcome
         .tls_serialize_detached()
@@ -1619,10 +1602,7 @@ fn test_migration_key_package() {
     assert_eq!(bob_group.members().count(), 2);
 }
 
-/// The group-owned application export tree (`extensions-draft`) should be migrated.
-/// This test confirms both that the application export tree's *state* crosses
-/// (a component id consumed before migration cannot be exported again afterwards)
-/// and that the tree stays *functional* (a fresh component id can be exported).
+/// Check migration of the application export tree
 #[cfg(feature = "extensions-draft")]
 #[test]
 fn test_migration_application_export_tree() {
@@ -1630,7 +1610,7 @@ fn test_migration_application_export_tree() {
     let consumed_component_id: u16 = 0x8000;
 
     // Create a group with the previous version and consume `consumed_component_id`
-    // via `safe_export_secret`, which advances and persists the export tree.
+    // via `safe_export_secret`
     let alice_state = StorageProviderState::default();
     {
         let alice_storage = alice_state.as_postcard_provider();
