@@ -63,7 +63,10 @@ use openmls_compat::prelude::{
     tls_codec::{Deserialize as _, Serialize as _},
     *,
 };
-use openmls_current::prelude::tls_codec::{Deserialize as _, Serialize as _};
+use openmls_current::prelude::{
+    tls_codec::{Deserialize as _, Serialize as _},
+    OpenMlsProvider as _,
+};
 use openmls_traits_compat::signatures::Signer;
 
 use openmls as openmls_current;
@@ -1708,7 +1711,7 @@ fn test_migration_enabling_extensions_draft() {
 
     // NOTE: `safe_export_secret()` fails immediately after mgration
     alice
-        .safe_export_secret(&crypto, &new_provider, 0x8000)
+        .safe_export_secret(current_provider.crypto(), &new_provider, 0x8000)
         .expect_err("exporting a component secret after enabling extensions-draft");
 
     // create and merge a commit
@@ -1725,7 +1728,7 @@ fn test_migration_enabling_extensions_draft() {
 
     // `safe_export_secret()` succeeds
     alice
-        .safe_export_secret(&crypto, &new_provider, 0x8000)
+        .safe_export_secret(current_provider.crypto(), &new_provider, 0x8000)
         .expect("exporting a component secret after enabling extensions-draft");
 }
 
