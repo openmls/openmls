@@ -165,26 +165,33 @@ impl ExtensionType {
     //  https://validation.openmls.tech/#valn1601
     pub(crate) fn is_valid_in_leaf_node(self) -> bool {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::LastResort
+            ExtensionType::LastResort
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => false,
-            ExtensionType::Unknown(_) | ExtensionType::ApplicationId => true,
+            // GREASE may appear as an extension type in `leaf_node.extensions`
+            // and must be tolerated there. It is still subject to the normal rule
+            // that it be declared in `capabilities` (checked separately), so this
+            // only permits the type, it does not exempt it from that check.
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) | ExtensionType::ApplicationId => {
+                true
+            }
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
         }
     }
     pub(crate) fn is_valid_in_group_info(self) -> Option<bool> {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::LastResort
+            ExtensionType::LastResort
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalSenders
             | ExtensionType::ApplicationId => Some(false),
             ExtensionType::RatchetTree | ExtensionType::ExternalPub => Some(true),
-            ExtensionType::Unknown(_) => None,
+            // GREASE is treated like an unknown extension type (tolerated): a
+            // GREASE-valued extension used to be reported as `Unknown` here, and
+            // must not become stricter now that it maps to `Grease`.
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) => None,
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => Some(true),
         }
@@ -192,13 +199,18 @@ impl ExtensionType {
 
     pub(crate) fn is_valid_in_key_package(self) -> bool {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::RatchetTree
+            ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders
             | ExtensionType::ApplicationId => false,
-            ExtensionType::Unknown(_) | ExtensionType::LastResort => true,
+            // GREASE may appear as an extension type in `key_package.extensions`
+            // and must be tolerated there. It is still subject to the normal rule
+            // that it be declared in `capabilities` (checked separately), so this
+            // only permits the type, it does not exempt it from that check.
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) | ExtensionType::LastResort => {
+                true
+            }
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
         }
@@ -209,6 +221,12 @@ impl ExtensionType {
             ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalSenders
             | ExtensionType::Unknown(_) => true,
+            // GREASE is treated like an unknown extension type: structurally
+            // allowed to appear here, but (like any unknown extension in the
+            // GroupContext) still subject to the per-member support check, which
+            // enforces the consensus rule that every member support it. GREASE
+            // does not bypass that check.
+            ExtensionType::Grease(_) => true,
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
             _ => false,
@@ -817,6 +835,13 @@ impl Extension {
             #[cfg(feature = "extensions-draft")]
             Extension::AppDataDictionary(_) => ExtensionType::AppDataDictionary,
             Extension::LastResort(_) => ExtensionType::LastResort,
+            // Map GREASE-valued extension types to `Grease`, consistent with
+            // `ExtensionType::from(u16)`. Without this an extension carrying a
+            // GREASE value would be reported as `Unknown`, so GREASE-aware
+            // validation (which ignores `Grease(_)`) would not recognize it.
+            Extension::Unknown(kind, _) if crate::grease::is_grease_value(*kind) => {
+                ExtensionType::Grease(*kind)
+            }
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
     }
@@ -885,6 +910,47 @@ mod test {
                 RequiredCapabilitiesExtension::default()
             ))
             .is_err());
+    }
+
+    #[test]
+    fn grease_extension_type_mapping() {
+        // A GREASE-valued extension must report a `Grease` extension type
+        // (consistent with `ExtensionType::from(u16)`), not `Unknown`. Otherwise
+        // GREASE-aware validation would fail to recognize it and reject peers
+        // (e.g. MLS++) that decorate leaf/key-package extensions with GREASE.
+        let grease = Extension::Unknown(0x5A5A, UnknownExtension(vec![1, 2, 3]));
+        assert_eq!(grease.extension_type(), ExtensionType::Grease(0x5A5A));
+        assert!(grease.extension_type().is_grease());
+
+        // A non-GREASE unknown value stays `Unknown`.
+        let unknown = Extension::Unknown(0xABCD, UnknownExtension(vec![]));
+        assert_eq!(unknown.extension_type(), ExtensionType::Unknown(0xABCD));
+    }
+
+    #[test]
+    fn grease_extension_must_be_declared_in_capabilities() {
+        // GREASE does NOT bypass the capability check: a GREASE extension type is
+        // "contained" only if it is advertised in the capabilities (RFC 9420:
+        // extensions in leaf_node.extensions/key_package.extensions MUST be in
+        // capabilities). The fix that makes this work is that a GREASE-valued
+        // extension now reports a `Grease(_)` type that matches the `Grease(_)`
+        // parsed into the capabilities list.
+        let advertised = crate::treesync::node::leaf_node::Capabilities::new(
+            None,
+            None,
+            Some(&[ExtensionType::Grease(0x5A5A)]),
+            None,
+            None,
+        );
+        assert!(advertised.contains_extension(ExtensionType::Grease(0x5A5A)));
+        // A GREASE value that is not advertised is not contained.
+        assert!(!advertised.contains_extension(ExtensionType::Grease(0xAAAA)));
+
+        // Empty capabilities contain no (non-default) extension, GREASE included.
+        let empty =
+            crate::treesync::node::leaf_node::Capabilities::new(None, None, None, None, None);
+        assert!(!empty.contains_extension(ExtensionType::Grease(0x5A5A)));
+        assert!(!empty.contains_extension(ExtensionType::Unknown(0xABCD)));
     }
 
     #[test]

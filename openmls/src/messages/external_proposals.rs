@@ -6,6 +6,7 @@
 
 use crate::{
     binary_tree::LeafNodeIndex,
+    error::LibraryError,
     extensions::{Extensions, SenderExtensionIndex},
     framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut, PublicMessage},
     group::{
@@ -15,11 +16,12 @@ use crate::{
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
+    schedule::psk::PreSharedKeyId,
     storage::{OpenMlsProvider, StorageProvider},
 };
 use openmls_traits::signatures::Signer;
 
-use super::proposals::{GroupContextExtensionProposal, RemoveProposal};
+use super::proposals::{GroupContextExtensionProposal, PreSharedKeyProposal, RemoveProposal};
 
 /// External Add Proposal where sender is [NewMemberProposal](crate::prelude::Sender::NewMemberProposal). A client
 /// outside the group can request joining the group. This proposal should then be committed by a
@@ -147,5 +149,37 @@ impl ExternalProposal {
         .map(PublicMessage::from)
         .map(MlsMessageOut::from)
         .map_err(ProposeAddMemberError::from)
+    }
+
+    /// Creates an external PreSharedKey proposal. For delivery services requesting
+    /// to inject a pre-shared key into the group's key schedule (RFC 9420 §12.1.8.2
+    /// permits external senders to send PSK proposals). This proposal will have to
+    /// be committed later by a group member. The same constructor is used for both
+    /// external and resumption PSKs; the distinction is carried by the
+    /// [`PreSharedKeyId`].
+    ///
+    /// # Arguments
+    /// * `psk_id` - identifier of the pre-shared key to inject
+    /// * `group_id` - unique group identifier of the group
+    /// * `epoch` - group's epoch
+    /// * `signer` - of the sender to sign the message
+    /// * `sender_index` - index of the sender of the proposal (in the
+    ///   [crate::extensions::ExternalSendersExtension] array from the Group Context)
+    pub fn new_pre_shared_key(
+        psk_id: PreSharedKeyId,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        signer: &impl Signer,
+        sender_index: SenderExtensionIndex,
+    ) -> Result<MlsMessageOut, LibraryError> {
+        AuthenticatedContent::new_external_proposal(
+            Proposal::psk(PreSharedKeyProposal::new(psk_id)),
+            group_id,
+            epoch,
+            signer,
+            sender_index,
+        )
+        .map(PublicMessage::from)
+        .map(MlsMessageOut::from)
     }
 }
