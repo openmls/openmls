@@ -478,20 +478,18 @@ pub(crate) fn direct_path(node_index: LeafNodeIndex, size: TreeSize) -> Vec<Pare
 /// Copath of a leaf node.
 #[requires(size.valid() && leaf_index.u32() < size.leaf_count())]
 pub(crate) fn copath(leaf_index: LeafNodeIndex, size: TreeSize) -> Vec<TreeNodeIndex> {
-    // Start with leaf
-    let mut full_path = vec![TreeNodeIndex::Leaf(leaf_index)];
     let mut direct_path = direct_path(leaf_index, size);
-    if !direct_path.is_empty() {
-        // Remove root
-        direct_path.pop();
+    if direct_path.is_empty() {
+        // The leaf is the root: its copath is empty.
+        return vec![];
     }
-    full_path.append(
-        &mut direct_path
-            .iter()
-            .map(|i| TreeNodeIndex::Parent(*i))
-            .collect(),
-    );
-
+    // Remove root
+    direct_path.pop();
+    let mut full_path = Vec::with_capacity(direct_path.len() + 1);
+    full_path.push(TreeNodeIndex::Leaf(leaf_index));
+    for i in &direct_path {
+        full_path.push(TreeNodeIndex::Parent(*i));
+    }
     full_path.into_iter().map(sibling).collect()
 }
 
@@ -531,14 +529,18 @@ pub(crate) fn common_direct_path(
     x_path.reverse();
     y_path.reverse();
 
-    let mut common_path = vec![];
-
-    for (x, y) in x_path.iter().zip(y_path.iter()) {
-        if x == y {
-            common_path.push(*x);
+    let len = core::cmp::min(x_path.len(), y_path.len());
+    let mut common_path = Vec::with_capacity(len);
+    let mut i = 0;
+    while i < len {
+        let xi = x_path[i];
+        let yi = y_path[i];
+        if xi == yi {
+            common_path.push(xi);
         } else {
             break;
         }
+        i += 1;
     }
 
     common_path.reverse();
