@@ -2,16 +2,14 @@ use std::io::{Read, Write};
 
 use tls_codec::{Deserialize, DeserializeBytes, Serialize, Size, VLBytes};
 
-use crate::extensions::{
-    ApplicationIdExtension, Extension, ExtensionType, ExternalPubExtension,
-    ExternalSendersExtension, RatchetTreeExtension, RequiredCapabilitiesExtension,
-    UnknownExtension,
-};
+use crate::extensions::{Extension, ExtensionType, UnknownExtension};
 
-#[cfg(feature = "extensions-draft")]
-use crate::extensions::AppDataDictionaryExtension;
-
-use super::last_resort::LastResortExtension;
+/// Known extension types must consume the bounded payload without silently dropping trailing bytes.
+fn deserialize_extension_exact<T: Deserialize>(
+    extension_data: &[u8],
+) -> Result<T, tls_codec::Error> {
+    T::tls_deserialize_exact(extension_data)
+}
 
 fn vlbytes_len_len(length: usize) -> usize {
     if length < 0x40 {
@@ -105,29 +103,29 @@ impl Deserialize for Extension {
         let extension_data = VLBytes::tls_deserialize(bytes)?;
 
         // Now deserialize the extension itself from the extension data.
-        let mut extension_data = extension_data.as_slice();
+        let extension_data = extension_data.as_slice();
         Ok(match extension_type {
-            ExtensionType::ApplicationId => Extension::ApplicationId(
-                ApplicationIdExtension::tls_deserialize(&mut extension_data)?,
-            ),
+            ExtensionType::ApplicationId => {
+                Extension::ApplicationId(deserialize_extension_exact(extension_data)?)
+            }
             ExtensionType::RatchetTree => {
-                Extension::RatchetTree(RatchetTreeExtension::tls_deserialize(&mut extension_data)?)
+                Extension::RatchetTree(deserialize_extension_exact(extension_data)?)
             }
-            ExtensionType::RequiredCapabilities => Extension::RequiredCapabilities(
-                RequiredCapabilitiesExtension::tls_deserialize(&mut extension_data)?,
-            ),
+            ExtensionType::RequiredCapabilities => {
+                Extension::RequiredCapabilities(deserialize_extension_exact(extension_data)?)
+            }
             ExtensionType::ExternalPub => {
-                Extension::ExternalPub(ExternalPubExtension::tls_deserialize(&mut extension_data)?)
+                Extension::ExternalPub(deserialize_extension_exact(extension_data)?)
             }
-            ExtensionType::ExternalSenders => Extension::ExternalSenders(
-                ExternalSendersExtension::tls_deserialize(&mut extension_data)?,
-            ),
+            ExtensionType::ExternalSenders => {
+                Extension::ExternalSenders(deserialize_extension_exact(extension_data)?)
+            }
             #[cfg(feature = "extensions-draft")]
-            ExtensionType::AppDataDictionary => Extension::AppDataDictionary(
-                AppDataDictionaryExtension::tls_deserialize(&mut extension_data)?,
-            ),
+            ExtensionType::AppDataDictionary => {
+                Extension::AppDataDictionary(deserialize_extension_exact(extension_data)?)
+            }
             ExtensionType::LastResort => {
-                Extension::LastResort(LastResortExtension::tls_deserialize(&mut extension_data)?)
+                Extension::LastResort(deserialize_extension_exact(extension_data)?)
             }
             ExtensionType::Grease(grease) | ExtensionType::Unknown(grease) => {
                 Extension::Unknown(grease, UnknownExtension(extension_data.to_vec()))
@@ -145,5 +143,141 @@ impl DeserializeBytes for Extension {
         let extension = Extension::tls_deserialize(&mut bytes_ref)?;
         let remainder = &bytes[extension.tls_serialized_len()..];
         Ok((extension, remainder))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[cfg(feature = "extensions-draft")]
+    use crate::extensions::AppDataDictionaryExtension;
+    use crate::{
+        credentials::CredentialType,
+        extensions::{
+            ApplicationIdExtension, ExternalPubExtension, ExternalSendersExtension,
+            LastResortExtension, RequiredCapabilitiesExtension,
+        },
+        messages::proposals::ProposalType,
+        treesync::RatchetTreeIn,
+    };
+
+    fn serialize_extension(extension_type: ExtensionType, payload: Vec<u8>) -> Vec<u8> {
+        let mut serialized = extension_type.tls_serialize_detached().unwrap();
+        serialized.extend(VLBytes::from(payload).tls_serialize_detached().unwrap());
+        serialized
+    }
+
+    fn known_extensions() -> Vec<(ExtensionType, Vec<u8>)> {
+        let extensions = vec![
+            (
+                ExtensionType::ApplicationId,
+                ApplicationIdExtension::new(&[1, 2, 3])
+                    .tls_serialize_detached()
+                    .unwrap(),
+            ),
+            (
+                ExtensionType::RatchetTree,
+                RatchetTreeIn::from_nodes(vec![])
+                    .tls_serialize_detached()
+                    .unwrap(),
+            ),
+            (
+                ExtensionType::RequiredCapabilities,
+                RequiredCapabilitiesExtension::new(
+                    &[ExtensionType::ApplicationId],
+                    &[ProposalType::Add],
+                    &[CredentialType::Basic],
+                )
+                .tls_serialize_detached()
+                .unwrap(),
+            ),
+            (
+                ExtensionType::ExternalPub,
+                ExternalPubExtension::new(vec![4, 5, 6].into())
+                    .tls_serialize_detached()
+                    .unwrap(),
+            ),
+            (
+                ExtensionType::ExternalSenders,
+                ExternalSendersExtension::new()
+                    .tls_serialize_detached()
+                    .unwrap(),
+            ),
+            (
+                ExtensionType::LastResort,
+                LastResortExtension::new().tls_serialize_detached().unwrap(),
+            ),
+        ];
+
+        #[cfg(feature = "extensions-draft")]
+        let extensions = {
+            let mut extensions = extensions;
+            extensions.push((
+                ExtensionType::AppDataDictionary,
+                AppDataDictionaryExtension::default()
+                    .tls_serialize_detached()
+                    .unwrap(),
+            ));
+            extensions
+        };
+
+        extensions
+    }
+
+    #[test]
+    fn known_extensions_round_trip() {
+        for (extension_type, payload) in known_extensions() {
+            let serialized = serialize_extension(extension_type, payload);
+            let extension = Extension::tls_deserialize_exact(&serialized).unwrap();
+            assert_eq!(extension.tls_serialize_detached().unwrap(), serialized);
+        }
+    }
+
+    #[test]
+    fn known_extensions_reject_trailing_payload_bytes() {
+        for (extension_type, mut payload) in known_extensions() {
+            payload.extend([0xa5, 0x5a]);
+            let serialized = serialize_extension(extension_type, payload);
+            assert_eq!(
+                Extension::tls_deserialize_exact(&serialized).unwrap_err(),
+                tls_codec::Error::TrailingData
+            );
+        }
+    }
+
+    #[cfg(feature = "extensions-draft")]
+    #[test]
+    fn app_data_dictionary_uses_exact_payload_decoding() {
+        use crate::extensions::AppDataDictionary;
+
+        let mut dictionary = AppDataDictionary::new();
+        dictionary.insert(0x8001, vec![1, 2, 3]);
+        let mut payload = AppDataDictionaryExtension::new(dictionary)
+            .tls_serialize_detached()
+            .unwrap();
+        payload.push(0xff);
+
+        let serialized = serialize_extension(ExtensionType::AppDataDictionary, payload);
+        assert_eq!(
+            Extension::tls_deserialize_exact(serialized).unwrap_err(),
+            tls_codec::Error::TrailingData
+        );
+    }
+
+    #[test]
+    fn opaque_extensions_round_trip_arbitrary_payload() {
+        let payload = vec![0x00, 0xff, 0x01, 0xfe, 0x80];
+        for extension_type in [
+            ExtensionType::Unknown(0xf042),
+            ExtensionType::Grease(0x0a0a),
+        ] {
+            let serialized = serialize_extension(extension_type, payload.clone());
+            let extension = Extension::tls_deserialize_exact(&serialized).unwrap();
+            assert_eq!(
+                extension,
+                Extension::Unknown(u16::from(extension_type), UnknownExtension(payload.clone()))
+            );
+            assert_eq!(extension.tls_serialize_detached().unwrap(), serialized);
+        }
     }
 }
