@@ -19,15 +19,16 @@ between `openmls` versions that introduce breaking changes when using non-self-d
 The approach described here can be used to migrate data serialized using `0.7.0`, `0.7.4` or `0.8.1`
 into the format used by `0.9.0`, which requires a self-describing format. 
 
-**NOTE**: As of this version, non-self-describing formats are no longer supported.
-When using non-self-describing formats, changes in struct layouts between `openmls` versions
-may silently shift the layout used for serialization, and corrupt existing data.
+> [!NOTE]
+> As of this version, non-self-describing formats are no longer supported.
+> When using non-self-describing formats, changes in struct layouts between `openmls` versions
+> may silently shift the layout used for serialization, and corrupt existing data.
 
-> **The migration target must use a self-describing format** (such as JSON), even
-> when the source did not: a current-version group cannot currently be stored in or loaded
-> from a non-self-describing format like postcard. Migrating *in place while
-> staying on a non-self-describing format* is therefore not supported — a
-> self-describing format should be used for the current-version store.
+**The migration target must use a self-describing format** (such as JSON), even
+when the source did not: a current-version group cannot currently be stored in or loaded
+from a non-self-describing format like postcard. Migrating *in place while
+staying on a non-self-describing format* is therefore not supported — a
+self-describing format should be used for the current-version store.
 
 ## Migration prerequisites
 
@@ -154,6 +155,10 @@ persisted (see `PreSharedKeyId::store`), so only the PSK id has to match:
 {{#include ../../../compat_tests/tests/test_migration.rs:migrate_psk}}
 ```
 
+This assumes the application still holds the PSK secret. If an external PSK was stored only
+through OpenMLS and the secret was not retained elsewhere, there is currently no public API
+to read it back out of the old store, so there is no migration path for it.
+
 ## Migration recommendations
 
 ### Verifying the migration
@@ -183,10 +188,11 @@ Whether the old data needs to be removed depends on how you migrate:
   separate cleanup is needed — and deleting would remove the freshly migrated
   data.
 
-**NOTE: Rolling back to retained old data is only safe before the first use after migration.**
-Afterwards, once a migrated group sends or processes anything, the ratchet state in the old store
-becomes stale, and reverting to it forks the group and risks key reuse. The old store should not
-be kept as a rollback path after the migrated state is used.
+> [!NOTE]
+> Rolling back to retained old data is only safe before the first use after migration.
+> Afterwards, once a migrated group sends or processes anything, the ratchet state in the old store
+> becomes stale, and reverting to it forks the group and risks key reuse. The old store should not
+> be kept as a rollback path after the migrated state is used.
 
 ## Running the migration in an application
 
@@ -280,15 +286,10 @@ Guidance specific to this strategy:
 - **Rollback is per-group.** The “rollback only before first use” rule applies to
   each group independently: once a lazily-migrated group has been used, its old copy
   is stale and must not be reverted to.
-<!-- TODO: determine guidelines on binary size -->
-<!--
-- **Binary size is usually a non-issue.** Only code reachable from
-  `export_for_migration` is linked from the previous version — storage reads and
-  serde impls, no crypto backend, no protocol machinery — and the linker strips
-  the rest. Measure (e.g. with `cargo bloat`) before optimizing, and do **not**
-  hand-prune or `#[cfg]`strip the old crate: its fidelity to the released
-  serialization code is exactly what makes the migration correct.
--->
+- **Binary size.** Only code reachable from `export_for_migration` is linked
+  from the previous version — storage reads and serde impls, no crypto backend,
+  no protocol machinery — and the linker strips the rest. Measure (e.g. with
+  `cargo bloat`) if you are concerned about binary size.
 
 ### Key material hygiene
 
