@@ -114,11 +114,12 @@ with the current-version `MlsGroup::load`.
 ## What is not migrated
 
 The migration bundle carries the group and all group-associated data OpenMLS owns
-— group state, queued proposals, a pending commit if stored, and the group's encryption key
-pairs. Application-managed material that OpenMLS does *not* own — signature key
-pairs, PSKs, and key packages — is not group-scoped, and is not part of
-the migration bundle. If you keep this data in the same store, migrate it separately with the same
-read → bridge → write pattern over the ids that your application tracks.
+— group state, queued proposals, a pending commit if stored, the group's encryption key
+pairs, and the group's resumption PSK store (which covers resumption, reinit, and branch PSKs).
+Application-managed material that OpenMLS does *not* own — signature key
+pairs, *external* PSKs (and application-component PSKs), and key packages — is not group-scoped,
+and is not part of the migration bundle. If you keep this data in the same store, migrate it
+separately with the same read → bridge → write pattern over the ids that your application tracks.
 
 ### Migrating data that is managed by the application
 
@@ -137,6 +138,20 @@ application tracks, bridged, and written to the new store:
 
 ```rust,no_run,noplayground
 {{#include ../../../compat_tests/tests/test_migration.rs:migrate_key_package}}
+```
+
+**Pre-shared keys** split by type. *Resumption* PSKs — including the *reinit* and *branch*
+usages — are group-owned: OpenMLS keeps them in the group's resumption PSK store and they
+travel *inside* the group migration bundle, so they need no separate handling. Only
+*external* PSKs (and, under `extensions-draft`, application-component PSKs) are
+application-managed. Their secret is supplied by the application and written with
+`PreSharedKeyId::store`; the stored bundle is not publicly readable, so — unlike the two
+cases above — there is nothing to read and bridge. Migrating one re-stores the
+application-held secret under a current-version `PreSharedKeyId`. The nonce is not
+persisted (see `PreSharedKeyId::store`), so only the PSK id has to match:
+
+```rust,no_run,noplayground
+{{#include ../../../compat_tests/tests/test_migration.rs:migrate_psk}}
 ```
 
 ## Migration recommendations

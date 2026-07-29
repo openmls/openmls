@@ -24,7 +24,7 @@
 //!
 //! The operability tests also exercise the migration of *application-managed*
 //! material — data that is not group-scoped, so the library cannot enumerate it
-//! per group and the application migrates it itself: signature key pairs, PSKs (TODO),
+//! per group and the application migrates it itself: signature key pairs, PSKs,
 //! and published key packages. The group-owned application export tree (under
 //! `extensions-draft`) is carried automatically by the migration, inside the
 //! group state; a test confirms it stays functional afterwards.
@@ -1509,6 +1509,31 @@ fn migrate_key_package<NewProvider: openmls_traits::OpenMlsProvider>(
 }
 // ANCHOR_END: migrate_key_package
 
+// ANCHOR: migrate_psk
+/// Migrate one application-managed pre-shared key (an *external* PSK, or an
+/// `extensions-draft` *application* component PSK).
+///
+/// These PSK secrets are *supplied by the application* and written with
+/// `PreSharedKeyId::store`, and the stored bundle is not publicly readable — so there
+/// is nothing to read back out of the old store. The application already holds the psk
+/// id and the secret bytes it tracks; migrating one is simply re-storing that secret
+/// into the new provider under a current-version `PreSharedKeyId`. (The nonce is not
+/// persisted, so only the psk id identifies the stored secret.)
+///
+/// *Resumption* PSKs (including the reinit and branch usages) are **not** handled here:
+/// they are group-owned, kept in the group's resumption psk store, and are carried
+/// automatically by the group migration bundle.
+fn migrate_psk<NewProvider: openmls_traits::OpenMlsProvider>(
+    psk_id: &openmls_current::schedule::PreSharedKeyId,
+    secret: &[u8],
+    new_provider: &NewProvider,
+) {
+    psk_id
+        .store(new_provider, secret)
+        .expect("store the migrated PSK secret");
+}
+// ANCHOR_END: migrate_psk
+
 /// Migrating a published key package with [`migrate_key_package`], then proving it
 /// is usable: a fresh current-version group adds the migrated key package and its
 /// owner joins from the welcome using the migrated bundle.
@@ -1783,9 +1808,31 @@ fn test_migration_with_psk_proposal_impl<T: StorageMigrationTarget>() {
         serde_json_bridge(&alice_signer_old)
             .expect("bridging Alice's signer to the current version");
     let provider = T::openmls_provider(&target);
-    let error = migrated
+
+    // The external PSK is application-managed: it is not part of the group migration
+    // bundle, so committing the migrated PreSharedKey proposal would fail until the
+    // application re-stores the secret it tracks into the new store.
+    let psk_id = openmls_current::schedule::PreSharedKeyId::external(
+        b"migration-test-psk".to_vec(),
+        vec![0u8; 32],
+    );
+    migrate_psk(&psk_id, &[7u8; 32], &provider);
+
+    // With the PSK migrated, the queued proposal can be committed and merged.
+    migrated
         .commit_to_pending_proposals(&provider, &signer)
-        .expect("PSK not found");
+        .expect("committing the migrated PreSharedKey proposal");
+    migrated
+        .merge_pending_commit(&provider)
+        .expect("merging the PreSharedKey commit");
+
+    assert_eq!(
+        migrated.epoch().as_u64(),
+        2,
+        "the migrated group did not advance an epoch after committing the PSK proposal"
+    );
+    assert_eq!(migrated.members().count(), 2);
+    assert_eq!(migrated.pending_proposals().count(), 0);
 }
 
 /// Check decryption of a past epoch message after migration
@@ -1944,13 +1991,11 @@ fn test_migration_with_proposals_ciborium() {
 }
 
 #[test]
-#[ignore]
 fn test_migration_with_psk_proposal_serde_json() {
     test_migration_with_psk_proposal_impl::<SerdeJson>();
 }
 
 #[test]
-#[ignore]
 fn test_migration_with_psk_proposal_ciborium() {
     test_migration_with_psk_proposal_impl::<Ciborium>();
 }
