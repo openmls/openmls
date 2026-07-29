@@ -369,10 +369,12 @@ impl MlsClient for MlsClientImpl {
         let (my_key_package, _my_credential, my_signature_keys, crypto_provider) =
             pending_key_packages
                 .remove(&request.identity)
-                .ok_or(Status::aborted(format!(
-                    "failed to find key package for identity {:x?}",
-                    request.identity
-                )))?;
+                .ok_or_else(|| {
+                    Status::aborted(format!(
+                        "failed to find key package for identity {:x?}",
+                        request.identity
+                    ))
+                })?;
 
         use openmls_traits::storage::StorageProvider as _;
 
@@ -723,7 +725,7 @@ impl MlsClient for MlsClientImpl {
             let mut pending_state = self.pending_state.lock().unwrap();
             let pending_state = pending_state
                 .get_mut(pending_state_id)
-                .ok_or(Status::internal("Unable to retrieve pending state"))?;
+                .ok_or_else(|| Status::internal("Unable to retrieve pending state"))?;
 
             store(
                 pending_state.0.key_package().ciphersuite(),
@@ -770,7 +772,7 @@ impl MlsClient for MlsClientImpl {
         let key_package = MlsMessageIn::tls_deserialize(&mut request.key_package.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize key package (MlsMessage)"))?
             .into_keypackage()
-            .ok_or(Status::aborted("failed to deserialize key package"))?;
+            .ok_or_else(|| Status::aborted("failed to deserialize key package"))?;
         trace!(
             "   for {:#x?}",
             key_package
@@ -1002,7 +1004,7 @@ impl MlsClient for MlsClientImpl {
                             .map_err(|_| Status::invalid_argument("Invalid key package"))?;
                     let key_package = key_package
                         .into_keypackage()
-                        .ok_or(Status::invalid_argument("Message was not a key package"))?;
+                        .ok_or_else(|| Status::invalid_argument("Message was not a key package"))?;
 
                     group
                         .propose_add_member_by_value(

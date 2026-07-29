@@ -197,6 +197,6 @@ impl StorageTags {
         let mut c = TagSerializer { tags: None };
         value.serialize(&mut c)?;
         c.tags
-            .ok_or(StorageTagError::custom("no storage tag could be retrieved"))
+            .ok_or_else(|| StorageTagError::custom("no storage tag could be retrieved"))
     }
 }
