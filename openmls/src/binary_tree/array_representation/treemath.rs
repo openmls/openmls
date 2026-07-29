@@ -280,15 +280,8 @@ fn log2(x: u32) -> usize {
 }
 
 pub fn level(index: u32) -> usize {
-    let x = index;
-    if (x & 0x01) == 0 {
-        return 0;
-    }
-    let mut k = 0;
-    while ((x >> k) & 0x01) == 1 {
-        k += 1;
-    }
-    k
+    // The cast is always valid, as there is at most 32 trailing ones
+    index.trailing_ones() as usize
 }
 
 pub(crate) fn root(size: TreeSize) -> TreeNodeIndex {
