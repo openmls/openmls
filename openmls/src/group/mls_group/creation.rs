@@ -577,9 +577,7 @@ impl StagedWelcome {
         let sender_index = self.welcome_sender_index();
         self.public_group
             .leaf(sender_index)
-            .ok_or(LibraryError::custom(
-                "no leaf with given welcome sender index exists",
-            ))
+            .ok_or_else(|| LibraryError::custom("no leaf with given welcome sender index exists"))
     }
 
     /// Returns the leaf index of the client in this welcome's [`PublicGroup`].

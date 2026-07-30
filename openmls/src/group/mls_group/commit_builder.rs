@@ -1381,9 +1381,11 @@ impl TryFrom<CommitMessageBundle> for WelcomeCommitMessages {
         let (commit, welcome_opt, group_info) = value.into_messages();
         Ok(Self {
             commit,
-            welcome: welcome_opt.ok_or(LibraryError::custom(
-                "WelcomeCommitMessages must only be used with commits that produce a welcome.",
-            ))?,
+            welcome: welcome_opt.ok_or_else(|| {
+                LibraryError::custom(
+                    "WelcomeCommitMessages must only be used with commits that produce a welcome.",
+                )
+            })?,
             group_info,
         })
     }
