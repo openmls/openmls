@@ -33,7 +33,7 @@ hpke-rs-libcrux = { version = "0.7" }
 # libcrux has no FF1 implementation, so this provider also uses the
 # RustCrypto-based `fpe` crate.
 fpe = { version = "0.6", optional = true }
-aes = { version = "0.8", optional = true }
+aes = { version = "0.9", optional = true }
 
 [features]
 extensions-draft = [
