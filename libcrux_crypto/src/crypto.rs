@@ -76,8 +76,10 @@ impl OpenMlsCrypto for CryptoProvider {
         }?;
 
         match ciphersuite.hpke_aead_algorithm() {
-            HpkeAeadType::ChaCha20Poly1305 => Ok(()),
-            _ => Err(CryptoError::UnsupportedCiphersuite),
+            HpkeAeadType::AesGcm128
+            | HpkeAeadType::AesGcm256
+            | HpkeAeadType::ChaCha20Poly1305
+            | HpkeAeadType::Export => Ok(()),
         }?;
 
         Ok(())
@@ -559,5 +561,79 @@ fn aead_alg(alg_type: AeadType) -> libcrux_aead::Aead {
         AeadType::ChaCha20Poly1305 => libcrux_aead::Aead::ChaCha20Poly1305,
         AeadType::Aes128Gcm => libcrux_aead::Aead::AesGcm128,
         AeadType::Aes256Gcm => libcrux_aead::Aead::AesGcm256,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn advertised_ciphersuites_are_supported() {
+        let provider = CryptoProvider::new().unwrap();
+        for ciphersuite in provider.supported_ciphersuites() {
+            assert!(
+                provider.supports(ciphersuite).is_ok(),
+                "{ciphersuite:?} is advertised by supported_ciphersuites() \
+                 but rejected by supports()"
+            );
+        }
+    }
+
+    #[test]
+    fn advertised_ciphersuites_actually_work() {
+        let provider = CryptoProvider::new().unwrap();
+        for ciphersuite in provider.supported_ciphersuites() {
+            let key = vec![0u8; ciphersuite.aead_key_length()];
+            let nonce = vec![0u8; ciphersuite.aead_nonce_length()];
+            let ciphertext = provider
+                .aead_encrypt(
+                    ciphersuite.aead_algorithm(),
+                    &key,
+                    b"plaintext",
+                    &nonce,
+                    b"aad",
+                )
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: aead_encrypt failed: {e:?}"));
+            let plaintext = provider
+                .aead_decrypt(
+                    ciphersuite.aead_algorithm(),
+                    &key,
+                    &ciphertext,
+                    &nonce,
+                    b"aad",
+                )
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: aead_decrypt failed: {e:?}"));
+            assert_eq!(plaintext, b"plaintext", "{ciphersuite:?}: aead round trip");
+
+            let mut ikm = vec![0u8; ciphersuite.hash_length()];
+            provider.fill_random(&mut ikm).unwrap();
+            let key_pair = provider
+                .derive_hpke_keypair(ciphersuite.hpke_config(), &ikm)
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: derive_hpke_keypair failed: {e:?}"));
+            let sealed = provider
+                .hpke_seal(
+                    ciphersuite.hpke_config(),
+                    &key_pair.public,
+                    b"info",
+                    b"aad",
+                    b"plaintext",
+                )
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: hpke_seal failed: {e:?}"));
+            let opened = provider
+                .hpke_open(
+                    ciphersuite.hpke_config(),
+                    &sealed,
+                    &key_pair.private,
+                    b"info",
+                    b"aad",
+                )
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: hpke_open failed: {e:?}"));
+            assert_eq!(
+                opened.as_slice(),
+                b"plaintext",
+                "{ciphersuite:?}: hpke round trip"
+            );
+        }
     }
 }
