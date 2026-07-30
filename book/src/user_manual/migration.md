@@ -14,9 +14,9 @@ crate and the `migration-import` feature on the current one.
 ## When to use this
 
 The main migration use case is switching to a self-describing `serde` storage format,
-between `openmls` versions that introduce breaking changes when using non-self-describing formats.
+between `openmls` versions that introduce breaking changes when using non-self-describing formats (which have not been disallowed by OpenMLS so far).
 
-The approach described here can be used to migrate data serialized using `0.7.0`, `0.7.4` or `0.8.1`
+The approach described here can be used to migrate data serialized using `0.7.4` or `0.8.1`
 into the format used by `0.9.0`, which requires a self-describing format. 
 
 > [!NOTE]
