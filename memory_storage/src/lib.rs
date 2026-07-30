@@ -118,7 +118,7 @@ impl MemoryStorage {
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
         // fetch value from db, falling back to an empty list if doens't exist
-        let list_bytes = values.entry(storage_key).or_insert(b"[]".to_vec());
+        let list_bytes = values.entry(storage_key).or_insert_with(|| b"[]".to_vec());
 
         // parse old value and push new data
         let mut list: Vec<Vec<u8>> = serde_json::from_slice(list_bytes)?;
@@ -145,7 +145,7 @@ impl MemoryStorage {
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
         // fetch value from db, falling back to an empty list if doens't exist
-        let list_bytes = values.entry(storage_key).or_insert(b"[]".to_vec());
+        let list_bytes = values.entry(storage_key).or_insert_with(|| b"[]".to_vec());
 
         // parse old value, find value to delete and remove it from list
         let mut list: Vec<Vec<u8>> = serde_json::from_slice(list_bytes)?;
