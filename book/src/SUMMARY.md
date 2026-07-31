@@ -36,3 +36,5 @@
   - [Past epoch secret deletion](./user_manual/past_epoch_secret_deletion.md)
 - [Virtual Clients (draft)](./virtual_clients.md)
 - [Release management](./release_management.md)
+- [Releases](./releases/README.md)
+  - [0.9.0](./releases/0.9.0.md)
