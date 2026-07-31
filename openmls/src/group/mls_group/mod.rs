@@ -25,7 +25,7 @@ use crate::{
         MlsGroupStateError, OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension,
         RequiredCapabilitiesExtension, SetPastEpochDeletionPolicyError, StagedCommit,
     },
-    key_packages::KeyPackageBundle,
+    key_packages::{InitKey, KeyPackageBundle},
     messages::{
         group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
         proposals::*,
@@ -1305,6 +1305,12 @@ pub struct ProcessedWelcome {
 }
 
 /// The key material a client uses to process a [`Welcome`] message.
+#[derive(Debug)]
+pub struct WelcomeKeyMaterial {
+    inner: WelcomeKeyMaterialInner,
+}
+
+/// The inner data of a [`WelcomeKeyMaterial`].
 ///
 /// A regular member holds a local [`KeyPackageBundle`]. A sibling emulator
 /// joining a higher-level group as a virtual client has no local bundle: it
@@ -1313,7 +1319,7 @@ pub struct ProcessedWelcome {
 ///
 /// [`Welcome`]: crate::messages::Welcome
 #[derive(Debug)]
-pub(crate) enum WelcomeKeyMaterial {
+pub(crate) enum WelcomeKeyMaterialInner {
     /// A locally stored [`KeyPackageBundle`]. Boxed to keep the enum small,
     /// since the virtual-client variant is much smaller.
     KeyPackage(Box<KeyPackageBundle>),
@@ -1324,48 +1330,81 @@ pub(crate) enum WelcomeKeyMaterial {
 }
 
 impl WelcomeKeyMaterial {
+    /// Create a new [`WelcomeKeyMaterial`] from a [`KeyPackageBundle`].
+    pub(crate) fn with_key_package_bundle(key_package: KeyPackageBundle) -> Self {
+        Self {
+            inner: WelcomeKeyMaterialInner::KeyPackage(Box::new(key_package)),
+        }
+    }
+
+    /// Create a new [`WelcomeKeyMaterial`] from a [`VcWelcomeMaterial`].
+    ///
+    /// [`VcWelcomeMaterial`]: crate::components::vc_derivation_info::VcWelcomeMaterial
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn with_vc_welcome_material(
+        material: crate::components::vc_derivation_info::VcWelcomeMaterial,
+    ) -> Self {
+        Self {
+            inner: WelcomeKeyMaterialInner::VirtualClient(material),
+        }
+    }
+
+    pub(crate) fn inner(&self) -> &WelcomeKeyMaterialInner {
+        &self.inner
+    }
+
     /// The [`KeyPackageRef`] addressed by the welcome's encrypted group
     /// secrets. The bundle computes it from its KeyPackage, the virtual-client
     /// material carries the ref it was matched on.
     ///
     /// [`KeyPackageRef`]: crate::ciphersuite::hash_ref::KeyPackageRef
-    fn key_package_ref(
+    pub fn key_package_ref(
         &self,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<crate::ciphersuite::hash_ref::KeyPackageRef, LibraryError> {
-        match self {
-            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.key_package().hash_ref(crypto),
+        match &self.inner {
+            WelcomeKeyMaterialInner::KeyPackage(bundle) => bundle.key_package().hash_ref(crypto),
             #[cfg(feature = "virtual-clients-draft")]
-            WelcomeKeyMaterial::VirtualClient(material) => Ok(material.key_package_ref.clone()),
+            WelcomeKeyMaterialInner::VirtualClient(material) => {
+                Ok(material.key_package_ref.clone())
+            }
         }
     }
 
     /// The init private key used to decrypt the encrypted group secrets.
-    fn init_private_key(&self) -> &crate::ciphersuite::HpkePrivateKey {
-        match self {
-            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.init_private_key(),
+    pub fn init_private_key(&self) -> &crate::ciphersuite::HpkePrivateKey {
+        match &self.inner {
+            WelcomeKeyMaterialInner::KeyPackage(bundle) => bundle.init_private_key(),
             #[cfg(feature = "virtual-clients-draft")]
-            WelcomeKeyMaterial::VirtualClient(material) => &material.init_private_key,
+            WelcomeKeyMaterialInner::VirtualClient(material) => &material.init_private_key,
+        }
+    }
+
+    pub fn hpke_init_key(&self) -> &InitKey {
+        match &self.inner {
+            WelcomeKeyMaterialInner::KeyPackage(bundle) => bundle.key_package().hpke_init_key(),
+            #[cfg(feature = "virtual-clients-draft")]
+            WelcomeKeyMaterialInner::VirtualClient(material) => &material.init_key,
         }
     }
 
     /// The local [`KeyPackageBundle`] on the regular path, or `None` on the
     /// virtual-client path. Checks that only apply when there is a local
     /// KeyPackage to compare against branch on this.
-    fn key_package_bundle(&self) -> Option<&KeyPackageBundle> {
-        match self {
-            WelcomeKeyMaterial::KeyPackage(bundle) => Some(bundle),
+    pub fn key_package_bundle(&self) -> Option<&KeyPackageBundle> {
+        match &self.inner {
+            WelcomeKeyMaterialInner::KeyPackage(bundle) => Some(bundle),
             #[cfg(feature = "virtual-clients-draft")]
-            WelcomeKeyMaterial::VirtualClient(_) => None,
+            WelcomeKeyMaterialInner::VirtualClient(_) => None,
         }
     }
 
     /// The joiner's leaf encryption keypair.
     fn encryption_key_pair(&self) -> EncryptionKeyPair {
-        match self {
-            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.encryption_key_pair(),
+        match &self.inner {
+            WelcomeKeyMaterialInner::KeyPackage(bundle) => bundle.encryption_key_pair(),
             #[cfg(feature = "virtual-clients-draft")]
-            WelcomeKeyMaterial::VirtualClient(material) => material.encryption_keypair.clone(),
+            WelcomeKeyMaterialInner::VirtualClient(material) => material.encryption_keypair.clone(),
         }
     }
 }

@@ -341,8 +341,8 @@ impl ProcessedWelcome {
         // virtual-client path there is no local signature key, so the leaf is
         // located by its derived encryption key and validated against the
         // emulation epoch's derivation info.
-        let own_leaf_index = match &self.key_material {
-            WelcomeKeyMaterial::KeyPackage(key_package_bundle) => {
+        let own_leaf_index = match &self.key_material.inner() {
+            WelcomeKeyMaterialInner::KeyPackage(key_package_bundle) => {
                 // Check that the leaf node of the added key package supports all extensions in
                 // the group context.
                 // https://validation.openmls.tech/#valn1415
@@ -380,7 +380,7 @@ impl ProcessedWelcome {
                     ))?
             }
             #[cfg(feature = "virtual-clients-draft")]
-            WelcomeKeyMaterial::VirtualClient(material) => {
+            WelcomeKeyMaterialInner::VirtualClient(material) => {
                 find_and_validate_vc_own_leaf(provider, &public_group, material)?
             }
         };
@@ -715,15 +715,28 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
             }
             return Ok((
                 resumption_psk_store,
-                WelcomeKeyMaterial::KeyPackage(Box::new(key_package_bundle)),
+                WelcomeKeyMaterial::with_key_package_bundle(key_package_bundle),
             ));
         }
 
         #[cfg(feature = "virtual-clients-draft")]
-        if let Some(material) = vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref)? {
+        if let Some(material) =
+            resolve_vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref)?
+        {
+            provider
+                .storage()
+                .delete_retained_key_package_material(&hash_ref)
+                .map_err(|e| {
+                    use crate::components::vc_derivation_info::VirtualClientsError;
+
+                    log::error!(
+                        "vc: delete retained key package material in welcome failed: {e:?}"
+                    );
+                    VirtualClientsError::StorageError
+                })?;
             return Ok((
                 resumption_psk_store,
-                WelcomeKeyMaterial::VirtualClient(material),
+                WelcomeKeyMaterial::with_vc_welcome_material(material),
             ));
         }
     }
@@ -736,7 +749,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
 /// caller can keep scanning the welcome's encrypted group secrets.
 ///
 /// On a match this reconstructs the per-KeyPackage seed pinned in the retained
-/// material at upload-processing time, deletes the consumed material, and
+/// material at upload-processing time, and
 /// derives the init and leaf-encryption keypairs from the seed under the
 /// Welcome's ciphersuite. It does not touch the operation tree: the batch
 /// generation was already consumed once when the upload was processed, and the
@@ -744,7 +757,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
 ///
 /// [`RetainedKeyPackageMaterial`]: crate::components::vc_derivation_info::RetainedKeyPackageMaterial
 #[cfg(feature = "virtual-clients-draft")]
-fn vc_welcome_material<Provider: OpenMlsProvider>(
+pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
     provider: &Provider,
     ciphersuite: Ciphersuite,
     hash_ref: &crate::ciphersuite::hash_ref::KeyPackageRef,
@@ -752,9 +765,7 @@ fn vc_welcome_material<Provider: OpenMlsProvider>(
     Option<crate::components::vc_derivation_info::VcWelcomeMaterial>,
     WelcomeError<<Provider as OpenMlsProvider>::StorageError>,
 > {
-    use crate::components::vc_derivation_info::{
-        RetainedKeyPackageMaterial, VcWelcomeMaterial, VirtualClientsError,
-    };
+    use crate::components::vc_derivation_info::{RetainedKeyPackageMaterial, VcWelcomeMaterial};
 
     let storage = provider.storage();
     let Some(material) = storage
@@ -768,19 +779,10 @@ fn vc_welcome_material<Provider: OpenMlsProvider>(
         return Err(WelcomeError::CiphersuiteMismatch);
     }
 
-    let crypto = provider.crypto();
-    // The material is consumed once, mirroring the non-last-resort
-    // `delete_key_package` on the bundle path.
-    storage
-        .delete_retained_key_package_material(hash_ref)
-        .map_err(|e| {
-            log::error!("vc: delete retained key package material in welcome failed: {e:?}");
-            VirtualClientsError::StorageError
-        })?;
-
     // The seed is imported into the KeyPackage's ciphersuite at
     // upload-processing time. The init and leaf-encryption keys are derived
     // from it under the KeyPackage's own (the welcome's) ciphersuite.
+    let crypto = provider.crypto();
     let init_key_pair = material
         .key_package_seed_secret
         .derive_init_key_secret(crypto, ciphersuite)?
@@ -797,6 +799,7 @@ fn vc_welcome_material<Provider: OpenMlsProvider>(
         generation: material.generation,
         key_package_index: material.key_package_index,
         init_private_key: init_key_pair.private,
+        init_key: init_key_pair.public.into(),
         encryption_keypair,
     }))
 }
