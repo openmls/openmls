@@ -1380,6 +1380,7 @@ impl WelcomeKeyMaterial {
         }
     }
 
+    /// The public init key the encrypted group secrets are encrypted to.
     pub fn hpke_init_key(&self) -> &InitKey {
         match &self.inner {
             WelcomeKeyMaterialInner::KeyPackage(bundle) => bundle.key_package().hpke_init_key(),
