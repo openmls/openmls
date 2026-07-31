@@ -1,7 +1,7 @@
 //! This module contains validation functions for incoming messages
 //! as defined in <https://github.com/openmls/openmls/wiki/Message-validation>
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 use openmls_traits::types::VerifiableCiphersuite;
 
@@ -25,6 +25,7 @@ use crate::{
         Commit,
     },
     prelude::LibraryError,
+    schedule::{errors::PskError, psk::ResumptionPskUsage, Psk},
     treesync::{errors::LeafNodeValidationError, LeafNode},
 };
 
@@ -515,13 +516,37 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
+        // ValSem403 (1/2)
+        // TODO(#1335): Duplicate proposals are (likely) filtered.
+        //              Let's do this check here until we haven't made sure.
+        let mut visited_psk_ids = BTreeSet::new();
+
         for proposal in proposal_queue.psk_proposals() {
             let psk_id = proposal.psk_proposal().clone().into_psk_id();
 
             // ValSem401
             // ValSem402
             // https://validation.openmls.tech/#valn0803
-            psk_id.validate_in_proposal(self.ciphersuite())?;
+            let psk_id = psk_id.validate_in_proposal(self.ciphersuite())?;
+            if let Psk::Resumption(psk) = psk_id.psk() {
+                if matches!(psk.usage(), ResumptionPskUsage::Branch) {
+                    // https://validation.openmls.tech/#valn0802
+                    // Branching PSKs must only be processed as part of the
+                    // initial commit, adding the other members.
+                    if self.group_context.epoch().as_u64() != 0 {
+                        return Err(PskError::NotAllowed.into());
+                    }
+                    // Note: branch/reinit exclusivity (valn1401) is enforced for
+                    // the Welcome PSK list in `PreSharedKeyId::validate_in_welcome`.
+                }
+            }
+
+            // ValSem403 (2/2)
+            if !visited_psk_ids.contains(&psk_id) {
+                visited_psk_ids.insert(psk_id);
+            } else {
+                return Err(PskError::Duplicate { first: psk_id }.into());
+            }
         }
 
         Ok(())
