@@ -6,7 +6,7 @@ use openmls_traits::types::Ciphersuite;
 use thiserror::Error;
 
 use crate::{
-    ciphersuite::signable::SignatureError, error::LibraryError,
+    ciphersuite::signable::SignatureError, error::LibraryError, extensions::ExtensionType,
     prelude::ExtensionTypeNotValidInKeyPackageError, treesync::errors::LifetimeError,
 };
 
@@ -43,6 +43,10 @@ pub enum KeyPackageVerifyError {
     /// The provided extension is not allowed in key packages
     #[error(transparent)]
     ExtensionTypeNotValidInKeyPackage(#[from] ExtensionTypeNotValidInKeyPackageError),
+    /// The last_resort_key_package component contains data.
+    #[cfg(feature = "extensions-draft")]
+    #[error("The last_resort_key_package component data must be empty.")]
+    MalformedLastResortComponent,
 }
 
 /// KeyPackage extension support error
@@ -68,6 +72,12 @@ pub enum KeyPackageNewError {
     /// Accessing storage failed.
     #[error("Accessing storage failed.")]
     StorageError,
+    /// The LeafNode capabilities do not advertise the extension used for a
+    /// last-resort marker.
+    #[error(
+        "The LeafNode capabilities do not advertise the {0:?} extension required by a last-resort KeyPackage."
+    )]
+    MissingLastResortCapability(ExtensionType),
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),

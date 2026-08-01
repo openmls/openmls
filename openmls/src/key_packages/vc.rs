@@ -232,7 +232,7 @@ impl VcKeyPackageBatchBuilder {
         let derivation_info_bytes = derivation_info
             .tls_serialize_detached()
             .map_err(VirtualClientsError::from)?;
-        builder.ensure_last_resort();
+        builder.ensure_last_resort()?;
         let leaf_node_extensions = merge_vc_derivation_info(
             builder.leaf_node_extensions.as_ref(),
             resolved_dictionary.clone(),
