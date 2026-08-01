@@ -782,7 +782,10 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         #[cfg(not(feature = "virtual-clients-draft"))]
         let own_update_override: Option<crate::treesync::diff::OwnUpdatePathOverride> = None;
 
-        let path_computation_result =
+        // `new_signer_used` is `Some` iff the new signature key ended up in the
+        // own leaf node. That only happens when a path is computed, so a new
+        // signer passed to a commit without a path is not applied.
+        let (path_computation_result, new_signer_used) =
             // If path is needed, compute path values
             if apply_proposals_values.path_required
                 || contains_own_updates
@@ -810,7 +813,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         new_signer.credential_with_key,
                     );
 
-                    diff.compute_path(
+                    let path_computation_result = diff.compute_path(
                         rand,
                         crypto,
                         own_leaf_index,
@@ -820,9 +823,10 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         new_signer.signer,
                         apply_proposals_values.extensions.clone(),
                         own_update_override,
-                    )?
+                    )?;
+                    (path_computation_result, Some(new_signer.signer))
                 } else {
-                    diff.compute_path(
+                    let path_computation_result = diff.compute_path(
                         rand,
                         crypto,
                         own_leaf_index,
@@ -832,13 +836,14 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         old_signer,
                         apply_proposals_values.extensions.clone(),
                         own_update_override,
-                    )?
+                    )?;
+                    (path_computation_result, None)
                 }
             } else {
                 // If path is not needed, update the group context and return
                 // empty path processing results
                 diff.update_group_context(crypto, apply_proposals_values.extensions.clone())?;
-                PathComputationResult::default()
+                (PathComputationResult::default(), None)
             };
 
         let update_path_leaf_node = path_computation_result
@@ -1008,8 +1013,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                             own_leaf_index,
                         )?
                     };
-                    // Sign to-be-signed group info.
-                    let group_info = group_info_tbs.sign(old_signer)?;
+                    // Sign to-be-signed group info. Joiners verify this against
+                    // the own leaf node in the post-commit ratchet tree, so a
+                    // rotated signature key has to be used here as well.
+                    let group_info = match new_signer_used {
+                        Some(new_signer) => group_info_tbs.sign(new_signer)?,
+                        None => group_info_tbs.sign(old_signer)?,
+                    };
 
                     // Encrypt GroupInfo object
                     let (welcome_key, welcome_nonce) = welcome_secret
@@ -1068,7 +1078,10 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         )?
                     };
                     // Sign to-be-signed group info.
-                    Ok(group_info_tbs.sign(old_signer)?)
+                    match new_signer_used {
+                        Some(new_signer) => Ok(group_info_tbs.sign(new_signer)?),
+                        None => Ok(group_info_tbs.sign(old_signer)?),
+                    }
                 })
                 .transpose()?;
 

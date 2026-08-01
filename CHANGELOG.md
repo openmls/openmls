@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#2143](https://github.com/openmls/openmls/pull/2143): A commit built with `CommitBuilder::build_with_new_signer` (or `MlsGroup::self_update_with_new_signer`) now signs the GroupInfo in the Welcome and the exported GroupInfo with the new signer, matching the signature key the commit puts in the committer's leaf. Previously both were signed with the old signer, so invited members rejected the Welcome with `InvalidGroupInfoSignature`.
 - [#2134](https://github.com/openmls/openmls/pull/2134): Known structured extension payloads now reject trailing bytes during decoding instead of silently ignoring them.
 - [#2109](https://github.com/openmls/openmls/pull/2109): `OpenMlsRustCrypto`'s `OpenMlsCrypto::supports` now accepts `MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87`, consistent with its `supported_ciphersuites` list (`draft-ietf-mls-pq-ciphersuites` feature).
 - [#2089](https://github.com/openmls/openmls/pull/2089): A Commit without an UpdatePath from this client's own leaf that does not match the pending commit is now staged as a regular commit instead of being rejected as a mismatched own commit.
