@@ -4170,3 +4170,134 @@ fn propose_self_update_with_new_signer_committed_by_proposer() {
         );
     }
 }
+
+// Alice adds Charlie and rotates her own signature key in the same commit. Both
+// GroupInfos that fall out of that commit are verified by their receivers
+// against Alice's leaf in the post-commit ratchet tree, which already carries
+// the new signature key, so both have to be signed with the new signer.
+#[openmls_test::openmls_test]
+fn commit_with_new_signer_signs_group_info_with_new_signer() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let charlie_party = CorePartyState::<Provider>::new("charlie");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
+    let new_signature_key = new_pre_group_state
+        .credential_with_key
+        .signature_key
+        .clone();
+    let charlie_key_package = charlie_pre_group.key_package_bundle.key_package().clone();
+
+    // An Add on its own does not require a path, and without a path the new
+    // signer never reaches Alice's leaf, so force the self-update.
+    let (commit, welcome, group_info) = {
+        let [alice_group_state] = group_state.members_mut(&["alice"]);
+        let provider = &alice_group_state.party.core_state.provider;
+        let new_signer = NewSignerBundle {
+            signer: &new_pre_group_state.signer,
+            credential_with_key: new_pre_group_state.credential_with_key.clone(),
+        };
+
+        let bundle = alice_group_state
+            .group
+            .commit_builder()
+            .propose_adds(Some(charlie_key_package))
+            .force_self_update(true)
+            .load_psks(provider.storage())
+            .expect("load_psks")
+            .build_with_new_signer(
+                provider.rand(),
+                provider.crypto(),
+                &alice_group_state.party.signer,
+                new_signer,
+                |_| true,
+            )
+            .expect("build_with_new_signer")
+            .stage_commit(provider)
+            .expect("stage_commit");
+
+        alice_group_state
+            .group
+            .merge_pending_commit(provider)
+            .expect("Alice failed to merge her commit");
+
+        let (commit, welcome, group_info) = bundle.into_messages();
+        (
+            commit,
+            welcome.expect("the Add should have produced a Welcome"),
+            group_info.expect("the group uses the ratchet tree extension"),
+        )
+    };
+
+    // Bob verifies the commit against Alice's old leaf, which is still the one
+    // in his pre-commit tree.
+    group_state
+        .deliver_and_apply_if(commit.into(), |state| state.party.core_state.name == "bob")
+        .expect("Bob failed to apply Alice's rotation commit");
+
+    let ratchet_tree = {
+        let [alice_group_state] = group_state.members_mut(&["alice"]);
+        alice_group_state.group.export_ratchet_tree()
+    };
+
+    for name in ["alice", "bob"] {
+        let [member] = group_state.members_mut(&[name]);
+        let alice_sigkey = member
+            .group
+            .members()
+            .find(|m| m.index == LeafNodeIndex::new(0))
+            .unwrap()
+            .signature_key;
+        assert_eq!(
+            alice_sigkey.as_slice(),
+            new_signature_key.as_slice(),
+            "{name} sees stale signature key for Alice after the rotation commit",
+        );
+    }
+
+    // The Welcome's GroupInfo.
+    let welcome = welcome.into_welcome().expect("expected a Welcome");
+    StagedWelcome::new_from_welcome(
+        &charlie_party.provider,
+        &mls_group_join_config,
+        welcome,
+        Some(ratchet_tree.clone().into()),
+    )
+    .expect("Charlie failed to process the Welcome");
+
+    // The exported GroupInfo.
+    let verifiable_group_info = group_info
+        .into_verifiable_group_info()
+        .expect("expected a GroupInfo");
+    PublicGroup::from_external(
+        charlie_party.provider.crypto(),
+        charlie_party.provider.storage(),
+        ratchet_tree.into(),
+        verifiable_group_info,
+        ProposalStore::new(),
+    )
+    .expect("Charlie failed to track the group from the exported GroupInfo");
+}
