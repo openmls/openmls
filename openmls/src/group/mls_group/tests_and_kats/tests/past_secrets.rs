@@ -568,6 +568,75 @@ fn test_update_policy<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
     assert_eq!(alice_group_stored.past_epoch_deletion_policy(), &new_policy);
 }
 
+/// Test that changing the past epoch deletion policy via `set_configuration`
+/// resizes and persists the message secrets store, just like
+/// `set_past_epoch_deletion_policy` does.
+#[openmls_test::openmls_test]
+fn test_update_policy_via_set_configuration<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
+    // initial policy
+    let policy = PastEpochDeletionPolicy::MaxEpochs(3);
+    // set up a provider, signer and group
+    let (alice_provider, alice_signer, mut alice_group) =
+        setup::<Provider>(ciphersuite, policy.clone());
+
+    // apply and merge commits to advance the group epoch
+    apply_and_merge_commits(4, &alice_provider, &alice_signer, &mut alice_group, policy);
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        3
+    );
+
+    // raise the policy via `set_configuration`
+    let new_policy = PastEpochDeletionPolicy::MaxEpochs(5);
+    let mut new_config = alice_group.configuration().clone();
+    new_config.past_epoch_deletion_policy = new_policy.clone();
+    alice_group
+        .set_configuration(alice_provider.storage(), &new_config)
+        .expect("error updating configuration");
+
+    // apply and merge additional commits to advance the group epoch
+    for _ in 0..10 {
+        alice_group
+            .update_group_context_extensions(&alice_provider, Extensions::empty(), &alice_signer)
+            .expect("error building commit");
+        alice_group
+            .merge_pending_commit(&alice_provider)
+            .expect("error merging commit");
+    }
+    // check that the policy was updated on the group and the store was resized
+    assert_eq!(alice_group.past_epoch_deletion_policy(), &new_policy);
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        5
+    );
+
+    // lower the policy via `set_configuration`
+    let new_policy = PastEpochDeletionPolicy::MaxEpochs(2);
+    let mut new_config = alice_group.configuration().clone();
+    new_config.past_epoch_deletion_policy = new_policy.clone();
+    alice_group
+        .set_configuration(alice_provider.storage(), &new_config)
+        .expect("error updating configuration");
+    // check that the policy was updated and the store was shrunk
+    assert_eq!(alice_group.past_epoch_deletion_policy(), &new_policy);
+    assert_eq!(
+        alice_group.message_secrets_store().num_past_epoch_trees(),
+        2
+    );
+
+    // load from storage to check the resized store was persisted
+    let alice_group_stored = MlsGroup::load(alice_provider.storage(), alice_group.group_id())
+        .expect("error loading group")
+        .expect("no group for id");
+    assert_eq!(
+        alice_group_stored
+            .message_secrets_store()
+            .num_past_epoch_trees(),
+        2
+    );
+    assert_eq!(alice_group_stored.past_epoch_deletion_policy(), &new_policy);
+}
+
 /// Test a secret tree store with all legacy timestamps, where a timestamp is available for the
 /// current MessageSecrets
 #[openmls_test::openmls_test]

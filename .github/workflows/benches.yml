@@ -34,7 +34,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Benchmarks
-        run: cargo bench -p openmls --verbose
+        run: cargo bench -p openmls --verbose --features=libcrux-provider
 
       - name: Large groups
         run: |

@@ -65,8 +65,16 @@ pub(crate) mod staged_commit;
 mod tests;
 mod validation;
 
+#[cfg(feature = "migration-import")]
+mod migration_import;
+
 /// This struct holds all public values of an MLS group.
 #[derive(Debug)]
+#[cfg_attr(feature = "migration-import", derive(serde::Deserialize))]
+#[cfg_attr(
+    all(feature = "test-utils", feature = "migration-import"),
+    derive(serde::Serialize)
+)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub struct PublicGroup {
     treesync: TreeSync,

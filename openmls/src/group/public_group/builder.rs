@@ -74,13 +74,15 @@ impl TempBuilderPG1 {
             } else {
                 (None, None, None)
             };
-        let capabilities = self.capabilities.unwrap_or(Capabilities::new(
-            Some(&[ProtocolVersion::default()]),
-            Some(&[self.ciphersuite]),
-            required_extensions,
-            required_proposals,
-            required_credentials,
-        ));
+        let capabilities = self.capabilities.unwrap_or_else(|| {
+            Capabilities::new(
+                Some(&[ProtocolVersion::default()]),
+                Some(&[self.ciphersuite]),
+                required_extensions,
+                required_proposals,
+                required_credentials,
+            )
+        });
         let (treesync, commit_secret, leaf_keypair) = TreeSync::new(
             provider,
             signer,

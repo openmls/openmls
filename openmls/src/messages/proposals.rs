@@ -176,8 +176,7 @@ impl DeserializeBytes for ProposalType {
     {
         let mut bytes_ref = bytes;
         let proposal_type = ProposalType::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[proposal_type.tls_serialized_len()..];
-        Ok((proposal_type, remainder))
+        Ok((proposal_type, bytes_ref))
     }
 }
 

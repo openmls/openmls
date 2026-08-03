@@ -160,7 +160,7 @@ impl FramedContentBodyIn {
             ),
             FramedContentBodyIn::Commit(commit_in) => {
                 let sender_context = sender_context
-                    .ok_or(LibraryError::custom("Forgot the commit sender context"))?;
+                    .ok_or_else(|| LibraryError::custom("Forgot the commit sender context"))?;
                 FramedContentBody::Commit(Box::new(commit_in.validate(
                     ciphersuite,
                     crypto,

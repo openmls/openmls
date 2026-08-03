@@ -141,8 +141,7 @@ impl DeserializeBytes for Extension {
     {
         let mut bytes_ref = bytes;
         let extension = Extension::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extension.tls_serialized_len()..];
-        Ok((extension, remainder))
+        Ok((extension, bytes_ref))
     }
 }
 

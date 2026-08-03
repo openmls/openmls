@@ -422,7 +422,7 @@ impl User {
                                     None
                                 }
                             });
-                        user_id.unwrap_or("".to_owned()).as_bytes().to_vec()
+                        user_id.unwrap_or_default().into_bytes()
                     }
                 };
                 let conversation_message = ConversationMessage::new(
