@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- [#2146](https://github.com/openmls/openmls/pull/2146): The `Debug` output of `HpkePrivateKey` and `ExporterSecret` no longer contains the secret bytes. The `crypto-debug` feature now also enables the corresponding feature in `openmls_traits`, restoring the full output for debugging.
 - [#2109](https://github.com/openmls/openmls/pull/2109): Group creation, key package creation, welcome processing, external commits, and `PublicGroup` creation from external input now fail early with a dedicated `UnsupportedCiphersuite` error when the crypto provider does not support the ciphersuite, instead of failing deep inside a crypto operation.
 - [#2109](https://github.com/openmls/openmls/pull/2109): `ExternalCommitError::UnsupportedCiphersuite` and `ExternalCommitBuilderError::UnsupportedCiphersuite` now carry the unsupported `Ciphersuite`.
 - [#1980](https://github.com/openmls/openmls/pull/1980): Enrich limetime related errors returned during leaf node validation with more information
