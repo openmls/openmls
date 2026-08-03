@@ -268,7 +268,6 @@ pub struct HpkeCiphertext {
 
 /// A simple type for HPKE private keys.
 #[derive(
-    Debug,
     Clone,
     serde::Serialize,
     serde::Deserialize,
@@ -280,6 +279,19 @@ pub struct HpkeCiphertext {
 #[cfg_attr(feature = "test-utils", derive(PartialEq, Eq))]
 #[serde(transparent)]
 pub struct HpkePrivateKey(SecretVLBytes);
+
+impl std::fmt::Debug for HpkePrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut dt = f.debug_tuple("HpkePrivateKey");
+
+        #[cfg(feature = "crypto-debug")]
+        dt.field(&self.0);
+        #[cfg(not(feature = "crypto-debug"))]
+        dt.field(&"***");
+
+        dt.finish()
+    }
+}
 
 impl From<Vec<u8>> for HpkePrivateKey {
     fn from(bytes: Vec<u8>) -> Self {
@@ -309,8 +321,21 @@ pub struct HpkeKeyPair {
 }
 
 pub type KemOutput = Vec<u8>;
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ExporterSecret(SecretVLBytes);
+
+impl std::fmt::Debug for ExporterSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut dt = f.debug_tuple("ExporterSecret");
+
+        #[cfg(feature = "crypto-debug")]
+        dt.field(&self.0);
+        #[cfg(not(feature = "crypto-debug"))]
+        dt.field(&"***");
+
+        dt.finish()
+    }
+}
 
 impl Deref for ExporterSecret {
     type Target = [u8];

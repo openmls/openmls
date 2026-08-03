@@ -45,3 +45,43 @@ test = false
 doc = false
 harness = false
 bench = false
+
+[[bin]]
+name = "welcome_decode_bytes"
+path = "fuzz_targets/welcome_decode_bytes.rs"
+test = false
+doc = false
+harness = false
+bench = false
+
+[[bin]]
+name = "key_package_decode_bytes"
+path = "fuzz_targets/key_package_decode_bytes.rs"
+test = false
+doc = false
+harness = false
+bench = false
+
+[[bin]]
+name = "mls_message_decode_bytes"
+path = "fuzz_targets/mls_message_decode_bytes.rs"
+test = false
+doc = false
+harness = false
+bench = false
+
+[[bin]]
+name = "proposal_decode_bytes"
+path = "fuzz_targets/proposal_decode_bytes.rs"
+test = false
+doc = false
+harness = false
+bench = false
+
+[[bin]]
+name = "extension_decode_bytes"
+path = "fuzz_targets/extension_decode_bytes.rs"
+test = false
+doc = false
+harness = false
+bench = false

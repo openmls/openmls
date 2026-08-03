@@ -29,13 +29,34 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tests: [welcome_decode, mls_message_decode, proposal_decode]
+        tests:
+          - welcome_decode
+          - key_package_decode
+          - mls_message_decode
+          - proposal_decode
+          - welcome_decode_bytes
+          - key_package_decode_bytes
+          - mls_message_decode_bytes
+          - proposal_decode_bytes
+          - extension_decode_bytes
         include:
           - tests: welcome_decode
             runs: 10000
+          - tests: key_package_decode
+            runs: 50000
           - tests: mls_message_decode
             runs: 50000
           - tests: proposal_decode
+            runs: 50000
+          - tests: welcome_decode_bytes
+            runs: 10000
+          - tests: key_package_decode_bytes
+            runs: 50000
+          - tests: mls_message_decode_bytes
+            runs: 50000
+          - tests: proposal_decode_bytes
+            runs: 50000
+          - tests: extension_decode_bytes
             runs: 50000
     runs-on: ubuntu-latest
     steps:
