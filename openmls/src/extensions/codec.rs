@@ -12,11 +12,11 @@ fn deserialize_extension_exact<T: Deserialize>(
 }
 
 fn vlbytes_len_len(length: usize) -> usize {
-    if length < 0x40 {
+    if length <= 0x3f {
         1
-    } else if length < 0x3fff {
+    } else if length <= 0x3fff {
         2
-    } else if length < 0x3fff_ffff {
+    } else if length <= 0x3fff_ffff {
         4
     } else {
         8
@@ -141,8 +141,7 @@ impl DeserializeBytes for Extension {
     {
         let mut bytes_ref = bytes;
         let extension = Extension::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extension.tls_serialized_len()..];
-        Ok((extension, remainder))
+        Ok((extension, bytes_ref))
     }
 }
 

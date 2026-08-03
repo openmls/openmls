@@ -148,8 +148,7 @@ impl DeserializeBytes for CredentialType {
     {
         let mut bytes_ref = bytes;
         let credential_type = CredentialType::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[credential_type.tls_serialized_len()..];
-        Ok((credential_type, remainder))
+        Ok((credential_type, bytes_ref))
     }
 }
 

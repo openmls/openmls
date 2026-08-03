@@ -16,6 +16,7 @@ path = "src/traits.rs"
 [features]
 default = []
 test-utils = []
+crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 extensions-draft = []
 draft-ietf-mls-pq-ciphersuites = []
 virtual-clients-draft = ["extensions-draft"]

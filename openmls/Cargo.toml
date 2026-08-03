@@ -81,7 +81,9 @@ all-ciphersuites = ["openmls_test?/all-ciphersuites"]
 # Compile the KAT regenerators. Opt in when refreshing the bundled JSON test
 # vectors.
 generate-kats = []
-crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
+crypto-debug = [
+    "openmls_traits/crypto-debug",
+] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 js = [
     "dep:getrandom",

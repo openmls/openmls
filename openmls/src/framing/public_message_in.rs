@@ -244,8 +244,7 @@ impl DeserializeBytes for PublicMessageIn {
     {
         let mut bytes_ref = bytes;
         let message = PublicMessageIn::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[message.tls_serialized_len()..];
-        Ok((message, remainder))
+        Ok((message, bytes_ref))
     }
 }
 

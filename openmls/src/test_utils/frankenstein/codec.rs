@@ -17,11 +17,11 @@ use super::{
 use super::{FrankenAppDataUpdateProposal, FrankenAppEphemeralProposal};
 
 fn vlbytes_len_len(length: usize) -> usize {
-    if length < 0x40 {
+    if length <= 0x3f {
         1
-    } else if length < 0x3fff {
+    } else if length <= 0x3fff {
         2
-    } else if length < 0x3fff_ffff {
+    } else if length <= 0x3fff_ffff {
         4
     } else {
         8
@@ -61,8 +61,7 @@ impl DeserializeBytes for FrankenProposalType {
     {
         let mut bytes_ref = bytes;
         let proposal_type = FrankenProposalType::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[proposal_type.tls_serialized_len()..];
-        Ok((proposal_type, remainder))
+        Ok((proposal_type, bytes_ref))
     }
 }
 
@@ -163,8 +162,7 @@ impl DeserializeBytes for FrankenProposal {
     {
         let mut bytes_ref = bytes;
         let proposal = FrankenProposal::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[proposal.tls_serialized_len()..];
-        Ok((proposal, remainder))
+        Ok((proposal, bytes_ref))
     }
 }
 
@@ -195,8 +193,7 @@ impl DeserializeBytes for FrankenExtensionType {
     {
         let mut bytes_ref = bytes;
         let extension_type = FrankenExtensionType::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extension_type.tls_serialized_len()..];
-        Ok((extension_type, remainder))
+        Ok((extension_type, bytes_ref))
     }
 }
 
@@ -289,7 +286,6 @@ impl DeserializeBytes for FrankenExtension {
     {
         let mut bytes_ref = bytes;
         let extension = FrankenExtension::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extension.tls_serialized_len()..];
-        Ok((extension, remainder))
+        Ok((extension, bytes_ref))
     }
 }

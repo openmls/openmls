@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - [#2143](https://github.com/openmls/openmls/pull/2143): A commit built with `CommitBuilder::build_with_new_signer` (or `MlsGroup::self_update_with_new_signer`) now signs the GroupInfo in the Welcome and the exported GroupInfo with the new signer, matching the signature key the commit puts in the committer's leaf. Previously both were signed with the old signer, so invited members rejected the Welcome with `InvalidGroupInfoSignature`.
+- [#2147](https://github.com/openmls/openmls/pull/2147): Fixed an off-by-one in the computation of the variable-length prefix size during extension serialization. Extensions with payloads of exactly 0x3fff or 0x3fff_ffff bytes now serialize with the correct length prefix.
 - [#2134](https://github.com/openmls/openmls/pull/2134): Known structured extension payloads now reject trailing bytes during decoding instead of silently ignoring them.
 - [#2109](https://github.com/openmls/openmls/pull/2109): `OpenMlsRustCrypto`'s `OpenMlsCrypto::supports` now accepts `MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87`, consistent with its `supported_ciphersuites` list (`draft-ietf-mls-pq-ciphersuites` feature).
 - [#2089](https://github.com/openmls/openmls/pull/2089): A Commit without an UpdatePath from this client's own leaf that does not match the pending commit is now staged as a regular commit instead of being rejected as a mismatched own commit.
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- [#2146](https://github.com/openmls/openmls/pull/2146): The `Debug` output of `HpkePrivateKey` and `ExporterSecret` no longer contains the secret bytes. The `crypto-debug` feature now also enables the corresponding feature in `openmls_traits`, restoring the full output for debugging.
 - [#2109](https://github.com/openmls/openmls/pull/2109): Group creation, key package creation, welcome processing, external commits, and `PublicGroup` creation from external input now fail early with a dedicated `UnsupportedCiphersuite` error when the crypto provider does not support the ciphersuite, instead of failing deep inside a crypto operation.
 - [#2109](https://github.com/openmls/openmls/pull/2109): `ExternalCommitError::UnsupportedCiphersuite` and `ExternalCommitBuilderError::UnsupportedCiphersuite` now carry the unsupported `Ciphersuite`.
 - [#1980](https://github.com/openmls/openmls/pull/1980): Enrich limetime related errors returned during leaf node validation with more information

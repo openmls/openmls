@@ -1,5 +1,5 @@
 use tls_codec::{
-    Deserialize, DeserializeBytes, Error, Size, TlsDeserialize, TlsDeserializeBytes, TlsSerialize,
+    Deserialize, DeserializeBytes, Error, TlsDeserialize, TlsDeserializeBytes, TlsSerialize,
     TlsSize,
 };
 
@@ -38,7 +38,6 @@ impl DeserializeBytes for UnmergedLeaves {
     {
         let mut bytes_ref = bytes;
         let unmerged_leaves = UnmergedLeaves::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[unmerged_leaves.tls_serialized_len()..];
-        Ok((unmerged_leaves, remainder))
+        Ok((unmerged_leaves, bytes_ref))
     }
 }
