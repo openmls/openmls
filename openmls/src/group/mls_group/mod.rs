@@ -308,8 +308,19 @@ impl MlsGroup {
         storage: &Storage,
         mls_group_config: &MlsGroupJoinConfig,
     ) -> Result<(), Storage::Error> {
+        let policy_changed = self.mls_group_config.past_epoch_deletion_policy()
+            != mls_group_config.past_epoch_deletion_policy();
+
         self.mls_group_config = mls_group_config.clone();
-        storage.write_mls_join_config(self.group_id(), mls_group_config)
+        storage.write_mls_join_config(self.group_id(), mls_group_config)?;
+
+        if policy_changed {
+            // Resize the store to adhere to the new policy.
+            self.resize_message_secrets_store(mls_group_config.past_epoch_deletion_policy());
+            storage.write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+        }
+
+        Ok(())
     }
 
     /// Sets the additional authenticated data (AAD) for the next outgoing
