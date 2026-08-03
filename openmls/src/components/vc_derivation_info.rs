@@ -14,6 +14,7 @@ use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::{hash_ref::KeyPackageRef, Secret},
     group::{GroupEpoch, GroupId},
+    key_packages::InitKey,
     messages::PathSecret,
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
@@ -742,6 +743,8 @@ pub(crate) struct VcWelcomeMaterial {
     /// Init private key derived from the seed, used to decrypt the encrypted
     /// group secrets.
     pub(crate) init_private_key: openmls_traits::types::HpkePrivateKey,
+    /// Init key the welcome encrypted group secrets are encrypted with.
+    pub(crate) init_key: InitKey,
     /// Leaf encryption keypair derived from the seed, used as the joiner's
     /// leaf keypair.
     pub(crate) encryption_keypair: EncryptionKeyPair,
