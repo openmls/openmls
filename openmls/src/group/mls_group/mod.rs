@@ -55,6 +55,9 @@ mod application;
 mod exporting;
 mod updates;
 
+#[cfg(feature = "migration-import")]
+pub(crate) mod migration_import;
+
 #[cfg(feature = "virtual-clients-draft")]
 pub use application::UnconfirmedMessage;
 pub use proposal::Propose;
@@ -233,6 +236,11 @@ pub enum MlsGroupState {
 /// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
 /// more information.
 #[derive(Debug)]
+#[cfg_attr(feature = "migration-import", derive(serde::Deserialize))]
+#[cfg_attr(
+    all(feature = "migration-import", feature = "test-utils"),
+    derive(serde::Serialize)
+)]
 #[cfg_attr(feature = "test-utils", derive(Clone, PartialEq))]
 pub struct MlsGroup {
     /// The group configuration. See [`MlsGroupJoinConfig`] for more information.
@@ -264,6 +272,13 @@ pub struct MlsGroup {
     // alongside `aad`. Only consulted when the group's GroupContext requires
     // Safe AAD framing.
     #[cfg(feature = "extensions-draft")]
+    // Migration bridge:
+    // absent from older serializations, so default it to empty on import — it is
+    // ephemeral, so a freshly migrated group has nothing staged anyway.
+    #[cfg_attr(
+        feature = "migration-import",
+        serde(default = "crate::framing::SafeAad::empty")
+    )]
     safe_aad: SafeAad,
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
@@ -272,6 +287,10 @@ pub struct MlsGroup {
     /// for more information. This is `None` if an old OpenMLS group state was
     /// loaded and has not yet merged a commit.
     #[cfg(feature = "extensions-draft")]
+    // Migration bridge (see the note on the struct): absent when migrating in a
+    // group from a version that did not have `extensions-draft`, so default it to
+    // `None` on import — it initializes on the next merged commit.
+    #[cfg_attr(feature = "migration-import", serde(default))]
     application_export_tree: Option<ApplicationExportTree>,
 }
 
@@ -289,8 +308,19 @@ impl MlsGroup {
         storage: &Storage,
         mls_group_config: &MlsGroupJoinConfig,
     ) -> Result<(), Storage::Error> {
+        let policy_changed = self.mls_group_config.past_epoch_deletion_policy()
+            != mls_group_config.past_epoch_deletion_policy();
+
         self.mls_group_config = mls_group_config.clone();
-        storage.write_mls_join_config(self.group_id(), mls_group_config)
+        storage.write_mls_join_config(self.group_id(), mls_group_config)?;
+
+        if policy_changed {
+            // Resize the store to adhere to the new policy.
+            self.resize_message_secrets_store(mls_group_config.past_epoch_deletion_policy());
+            storage.write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+        }
+
+        Ok(())
     }
 
     /// Sets the additional authenticated data (AAD) for the next outgoing
