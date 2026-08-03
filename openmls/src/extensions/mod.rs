@@ -249,8 +249,7 @@ impl DeserializeBytes for ExtensionType {
     {
         let mut bytes_ref = bytes;
         let extension_type = ExtensionType::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extension_type.tls_serialized_len()..];
-        Ok((extension_type, remainder))
+        Ok((extension_type, bytes_ref))
     }
 }
 
@@ -420,8 +419,7 @@ where
     {
         let mut bytes_ref = bytes;
         let extensions = Extensions::<T>::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extensions.tls_serialized_len()..];
-        Ok((extensions, remainder))
+        Ok((extensions, bytes_ref))
     }
 }
 

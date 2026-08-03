@@ -151,13 +151,10 @@ impl tls_codec::Deserialize for AppDataDictionary {
 
 impl tls_codec::DeserializeBytes for AppDataDictionary {
     fn tls_deserialize_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), tls_codec::Error> {
-        use tls_codec::{Deserialize, Size};
+        use tls_codec::Deserialize;
         let mut bytes_ref = bytes;
         let dictionary = Self::tls_deserialize(&mut bytes_ref)?;
-
-        let remainder = &bytes[dictionary.tls_serialized_len()..];
-
-        Ok((dictionary, remainder))
+        Ok((dictionary, bytes_ref))
     }
 }
 

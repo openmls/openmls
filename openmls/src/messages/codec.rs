@@ -168,7 +168,10 @@ impl DeserializeBytes for ProposalIn {
     {
         let mut bytes_ref = bytes;
         let proposal = ProposalIn::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[proposal.tls_serialized_len()..];
-        Ok((proposal, remainder))
+        // Return the tail `tls_deserialize` actually consumed. Recomputing it
+        // as `&bytes[..tls_serialized_len()]` can panic (out of bounds) when the
+        // re-serialized length exceeds the bytes read. See `MlsMessageIn` in
+        // `framing/codec.rs` for the reported crash.
+        Ok((proposal, bytes_ref))
     }
 }
