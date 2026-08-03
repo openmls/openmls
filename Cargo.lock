@@ -2528,6 +2528,7 @@ dependencies = [
  "flate2",
  "getrandom 0.2.17",
  "getrandom 0.4.3",
+ "hax-lib",
  "hex",
  "indicatif",
  "itertools 0.14.0",

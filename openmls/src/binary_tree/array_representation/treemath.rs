@@ -3,8 +3,40 @@ use std::cmp::Ordering;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
+#[allow(unused_imports)]
+use hax_lib::{attributes, ensures, forall, implies, requires};
+
 pub(crate) const MAX_TREE_SIZE: u32 = (1 << 30) - 1;
 pub(crate) const MIN_TREE_SIZE: u32 = 1;
+
+// Verification-only constants naming the bound of each index domain. Valid tree
+// sizes are the full trees `2^(k+1) - 1 <= MAX_TREE_SIZE` (so `k <= 29`); the
+// constants below are all derived from that geometry. They are only mentioned in
+// contract attributes, hence the `dead_code` allows.
+
+/// Largest tree (node) index of any valid tree: node indices range over
+/// `0..=MAX_TREE_INDEX`. It is the last leaf of the maximal tree (even).
+#[allow(dead_code)]
+const MAX_TREE_INDEX: u32 = MAX_TREE_SIZE - 2;
+
+/// Largest leaf payload: leaf `l` sits at tree index `2*l <= MAX_TREE_INDEX`.
+#[allow(dead_code)]
+const MAX_LEAF: u32 = MAX_TREE_INDEX / 2;
+
+/// Largest parent payload: parent `p` sits at tree index `2*p + 1 < MAX_TREE_INDEX`
+/// (odd indices stop one short of the even maximum).
+#[allow(dead_code)]
+const MAX_PARENT: u32 = MAX_LEAF - 1;
+
+/// Largest leaf count of a valid tree (attained by the maximal tree, whose
+/// leaves are `0..=MAX_LEAF`).
+#[allow(dead_code)]
+const MAX_LEAF_COUNT: u32 = MAX_LEAF + 1;
+
+/// Tree index of the maximal tree's root (`2^29 - 1`; numerically equal to
+/// `MAX_LEAF`, but it lives in the tree-index domain, not the payload domain).
+#[allow(dead_code)]
+const MAX_ROOT_INDEX: u32 = MAX_TREE_SIZE / 2 - 1;
 
 /// LeafNodeIndex references a leaf node in a tree.
 #[derive(
@@ -31,6 +63,16 @@ impl std::fmt::Display for LeafNodeIndex {
     }
 }
 
+#[attributes]
+impl LeafNodeIndex {
+    /// Checks that the wrapped index is valid. Used only for verification
+    #[allow(dead_code)]
+    fn valid(&self) -> bool {
+        self.0 <= MAX_LEAF
+    }
+}
+
+#[attributes]
 impl LeafNodeIndex {
     /// Create a new `LeafNodeIndex` from a `u32`.
     pub fn new(index: u32) -> Self {
@@ -48,11 +90,14 @@ impl LeafNodeIndex {
     }
 
     /// Return the index as a TreeNodeIndex value.
+    #[requires(self.valid())]
+    #[ensures(|r| r == self.0 * 2 && r <= MAX_TREE_INDEX)]
     fn to_tree_index(self) -> u32 {
         self.0 * 2
     }
 
     /// Warning: Only use when the node index represents a leaf node
+    #[requires(node_index % 2 == 0)]
     fn from_tree_index(node_index: u32) -> Self {
         debug_assert!(node_index.is_multiple_of(2));
         LeafNodeIndex(node_index / 2)
@@ -63,6 +108,16 @@ impl LeafNodeIndex {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ParentNodeIndex(u32);
 
+#[attributes]
+impl ParentNodeIndex {
+    /// Checks that the wrapped index is valid. Used only for verification
+    #[allow(dead_code)]
+    fn valid(&self) -> bool {
+        self.0 <= MAX_PARENT
+    }
+}
+
+#[attributes]
 impl ParentNodeIndex {
     /// Create a new `ParentNodeIndex` from a `u32`.
     pub(crate) fn new(index: u32) -> Self {
@@ -79,11 +134,14 @@ impl ParentNodeIndex {
     }
 
     /// Return the index as a TreeNodeIndex value.
+    #[requires(self.valid())]
+    #[ensures(|r| r == self.0 * 2 + 1 && r < MAX_TREE_INDEX)]
     fn to_tree_index(self) -> u32 {
         self.0 * 2 + 1
     }
 
     /// Warning: Only use when the node index represents a parent node
+    #[requires(node_index % 2 == 1)]
     fn from_tree_index(node_index: u32) -> Self {
         debug_assert!(node_index > 0);
         debug_assert!(node_index % 2 == 1);
@@ -126,8 +184,22 @@ pub enum TreeNodeIndex {
     Parent(ParentNodeIndex),
 }
 
+#[attributes]
+impl TreeNodeIndex {
+    /// Checks that the wrapped index is valid. Used only for verification
+    #[allow(dead_code)]
+    fn valid(&self) -> bool {
+        match self {
+            TreeNodeIndex::Leaf(leaf_node_index) => leaf_node_index.valid(),
+            TreeNodeIndex::Parent(parent_node_index) => parent_node_index.valid(),
+        }
+    }
+}
+
+#[attributes]
 impl TreeNodeIndex {
     /// Create a new `TreeNodeIndex` from a `u32`.
+    #[ensures(|r| index > MAX_TREE_INDEX || r.valid())]
     fn new(index: u32) -> Self {
         if index.is_multiple_of(2) {
             TreeNodeIndex::Leaf(LeafNodeIndex::from_tree_index(index))
@@ -143,6 +215,8 @@ impl TreeNodeIndex {
     }
 
     /// Return the inner value as `u32`.
+    #[requires(self.valid())]
+    #[ensures(|r| r <= MAX_TREE_INDEX)]
     fn u32(&self) -> u32 {
         match self {
             TreeNodeIndex::Leaf(index) => index.to_tree_index(),
@@ -184,10 +258,24 @@ impl PartialOrd for TreeNodeIndex {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub(crate) struct TreeSize(u32);
 
+#[attributes]
+impl TreeSize {
+    /// Used only for verification.
+    #[allow(dead_code)]
+    fn valid(&self) -> bool {
+        MIN_TREE_SIZE <= self.0
+            && self.0 <= MAX_TREE_SIZE
+            && self.0 == 2u32.pow(log2(self.0) as u32 + 1) - 1
+    }
+}
+
+#[attributes]
 impl TreeSize {
     /// Create a new `TreeSize` from `nodes`, which will be rounded up to the
     /// next power of 2. The tree size then reflects the smallest tree that can
     /// contain the number of nodes.
+    #[requires(nodes < MAX_TREE_SIZE)]
+    #[ensures(|result| result.valid())]
     pub(crate) fn new(nodes: u32) -> Self {
         let k = log2(nodes);
         TreeSize((1 << (k + 1)) - 1)
@@ -200,6 +288,8 @@ impl TreeSize {
     }
 
     /// Return the number of leaf nodes in the tree.
+    #[requires(self.valid())]
+    #[ensures(|r| r == self.0 / 2 + 1 && r <= MAX_LEAF_COUNT)]
     pub(crate) fn leaf_count(&self) -> u32 {
         (self.0 / 2) + 1
     }
@@ -221,11 +311,15 @@ impl TreeSize {
     }
 
     /// Increase the size.
+    #[requires(self.valid() && self.0 < MAX_TREE_SIZE / 2)]
+    #[ensures(|_| future(self).valid() && future(self).0 == self.0 * 2 + 1)]
     pub(super) fn inc(&mut self) {
         self.0 = self.0 * 2 + 1;
     }
 
     /// Decrease the size.
+    #[requires(self.valid() && MIN_TREE_SIZE < self.0)]
+    #[ensures(|_| future(self).valid() && future(self).0 == self.0 / 2)]
     pub(super) fn dec(&mut self) {
         debug_assert!(self.0 >= 2);
         if self.0 >= 2 {
@@ -279,17 +373,23 @@ fn log2(x: u32) -> usize {
     (31 - x.leading_zeros()) as usize
 }
 
+#[requires(index < MAX_TREE_SIZE)]
+#[ensures(|r| r <= 30 && index % (1u32 << (r + 1)) == (1u32 << r) - 1)]
 pub fn level(index: u32) -> usize {
     // The cast is always valid, as there is at most 32 trailing ones
     index.trailing_ones() as usize
 }
 
+#[requires(size.valid())]
+#[ensures(|r| r.valid() && r.u32() < size.u32())]
 pub(crate) fn root(size: TreeSize) -> TreeNodeIndex {
     let size = size.u32();
     debug_assert!(size > 0);
     TreeNodeIndex::new((1 << log2(size)) - 1)
 }
 
+#[requires(index.valid())]
+#[ensures(|r| r.valid() && r.u32() < index.to_tree_index())]
 pub(crate) fn left(index: ParentNodeIndex) -> TreeNodeIndex {
     let x = index.to_tree_index();
     let k = level(x);
@@ -298,6 +398,8 @@ pub(crate) fn left(index: ParentNodeIndex) -> TreeNodeIndex {
     TreeNodeIndex::new(index)
 }
 
+#[requires(index.valid())]
+#[ensures(|r| r.valid() && r.u32() > index.to_tree_index())]
 pub(crate) fn right(index: ParentNodeIndex) -> TreeNodeIndex {
     let x = index.to_tree_index();
     let k = level(x);
@@ -308,6 +410,12 @@ pub(crate) fn right(index: ParentNodeIndex) -> TreeNodeIndex {
 
 /// Warning: There is no check about the tree size and whether the parent is
 /// beyond the root
+#[requires(x.valid())]
+// The result is valid except for the parent of the maximal tree's root
+// (x.u32() == MAX_ROOT_INDEX), which reaches exactly MAX_PARENT + 1.
+#[ensures(|r| r.u32() <= MAX_PARENT + 1
+    && (x.u32() == MAX_ROOT_INDEX || r.valid())
+    && level(2 * r.u32() + 1) == level(x.u32()) + 1)]
 fn parent(x: TreeNodeIndex) -> ParentNodeIndex {
     let x = x.u32();
     let k = level(x);
@@ -322,6 +430,8 @@ pub(crate) fn test_parent(index: TreeNodeIndex) -> ParentNodeIndex {
     parent(index)
 }
 
+/// Should not be called on the root
+#[requires(index.valid() && index.u32() != MAX_ROOT_INDEX)]
 fn sibling(index: TreeNodeIndex) -> TreeNodeIndex {
     let p = parent(index);
     match index.u32().cmp(&p.to_tree_index()) {
@@ -339,6 +449,12 @@ pub(crate) fn test_sibling(index: TreeNodeIndex) -> TreeNodeIndex {
 
 /// Direct path from a node to the root.
 /// Does not include the node itself.
+#[requires(size.valid() && node_index.u32() < size.leaf_count())]
+#[ensures(|result|
+    forall(|i: usize| implies(i < result.len(), result[i].valid()))
+    .and(forall(|i: usize| implies(i < result.len(),
+        result[i].u32() < size.parent_count())))
+    .and(result.len() <= 30))]
 pub(crate) fn direct_path(node_index: LeafNodeIndex, size: TreeSize) -> Vec<ParentNodeIndex> {
     let r = root(size).u32();
 
@@ -353,26 +469,26 @@ pub(crate) fn direct_path(node_index: LeafNodeIndex, size: TreeSize) -> Vec<Pare
 }
 
 /// Copath of a leaf node.
+#[requires(size.valid() && leaf_index.u32() < size.leaf_count())]
 pub(crate) fn copath(leaf_index: LeafNodeIndex, size: TreeSize) -> Vec<TreeNodeIndex> {
-    // Start with leaf
-    let mut full_path = vec![TreeNodeIndex::Leaf(leaf_index)];
     let mut direct_path = direct_path(leaf_index, size);
-    if !direct_path.is_empty() {
-        // Remove root
-        direct_path.pop();
+    if direct_path.is_empty() {
+        // The leaf is the root: its copath is empty.
+        return vec![];
     }
-    full_path.append(
-        &mut direct_path
-            .iter()
-            .map(|i| TreeNodeIndex::Parent(*i))
-            .collect(),
-    );
-
+    // Remove root
+    direct_path.pop();
+    let mut full_path = Vec::with_capacity(direct_path.len() + 1);
+    full_path.push(TreeNodeIndex::Leaf(leaf_index));
+    for i in &direct_path {
+        full_path.push(TreeNodeIndex::Parent(*i));
+    }
     full_path.into_iter().map(sibling).collect()
 }
 
 /// Common ancestor of two leaf nodes, aka the node where their direct paths
 /// intersect.
+#[requires(x.valid() && y.valid() && x.u32() != y.u32())]
 pub(super) fn lowest_common_ancestor(x: LeafNodeIndex, y: LeafNodeIndex) -> ParentNodeIndex {
     let x = x.to_tree_index();
     let y = y.to_tree_index();
@@ -395,6 +511,7 @@ pub(super) fn lowest_common_ancestor(x: LeafNodeIndex, y: LeafNodeIndex) -> Pare
 
 /// The common direct path of two leaf nodes, i.e. the path from their common
 /// ancestor to the root.
+#[requires( size.valid() && x.u32() < size.leaf_count() && y.u32() < size.leaf_count())]
 pub(crate) fn common_direct_path(
     x: LeafNodeIndex,
     y: LeafNodeIndex,
@@ -405,14 +522,18 @@ pub(crate) fn common_direct_path(
     x_path.reverse();
     y_path.reverse();
 
-    let mut common_path = vec![];
-
-    for (x, y) in x_path.iter().zip(y_path.iter()) {
-        if x == y {
-            common_path.push(*x);
+    let len = core::cmp::min(x_path.len(), y_path.len());
+    let mut common_path = Vec::with_capacity(len);
+    let mut i = 0;
+    while i < len {
+        let xi = x_path[i];
+        let yi = y_path[i];
+        if xi == yi {
+            common_path.push(xi);
         } else {
             break;
         }
+        i += 1;
     }
 
     common_path.reverse();
@@ -428,6 +549,7 @@ pub(crate) fn node_width(n: usize) -> usize {
     }
 }
 
+#[requires(node_index.valid())]
 pub(crate) fn is_node_in_tree(node_index: TreeNodeIndex, size: TreeSize) -> bool {
     node_index.u32() < size.u32()
 }
