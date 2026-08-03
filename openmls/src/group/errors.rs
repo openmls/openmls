@@ -452,6 +452,9 @@ pub enum CreateCommitError {
     /// Invalid [`LeafNodeParameters`]. `[CredentialWithKey]` can't be set with new signer.
     #[error("Invalid LeafNodeParameters. CredentialWithKey can't be set with new signer.")]
     InvalidLeafNodeParameters,
+    /// The new signer's signature scheme does not match the group's ciphersuite.
+    #[error("The new signer's signature scheme does not match the group's ciphersuite.")]
+    InvalidSignerCiphersuite,
     /// A new signer cannot be used with an external commit.
     #[error("A new signer cannot be used with an external commit. The credential and signer are the ones passed to the external commit builder.")]
     ExternalCommitWithNewSigner,

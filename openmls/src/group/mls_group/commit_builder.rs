@@ -615,8 +615,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// objects created for this commit are signed with the new signer,
     /// matching the post-commit leaf.
     ///
-    /// Returns an error when used on an external commit. External commits take
-    /// their credential and signer from the external commit builder.
+    /// Returns an error if the new signer's signature scheme does not match the
+    /// group's ciphersuite, or when used on an external commit. External commits
+    /// take their credential and signer from the external commit builder.
     pub fn build_with_new_signer<S: Signer>(
         self,
         rand: &impl OpenMlsRand,
@@ -685,6 +686,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 signer,
                 credential_with_key,
             }) => {
+                if ciphersuite.signature_algorithm() != signer.signature_scheme() {
+                    return Err(CreateCommitError::InvalidSignerCiphersuite);
+                }
                 if let Some(params_credential) =
                     cur_stage.leaf_node_parameters.credential_with_key()
                 {

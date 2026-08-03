@@ -3928,6 +3928,51 @@ fn propose_self_update_with_new_signer_mismatched_ciphersuite() {
     assert_eq!(err, ProposeSelfUpdateError::InvalidSignerCiphersuite);
 }
 
+#[openmls_test::openmls_test]
+fn commit_with_new_signer_mismatched_ciphersuite() {
+    use crate::credentials::{BasicCredential, CredentialWithKey};
+    use openmls_traits::types::SignatureScheme;
+
+    let provider = &Provider::default();
+    let (credential_with_key, _key_package, signer, _signature_key) =
+        setup_client("Alice", ciphersuite, provider);
+    let mut group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(provider, &signer, credential_with_key)
+        .unwrap();
+
+    let group_scheme = ciphersuite.signature_algorithm();
+    let mismatched_scheme = if group_scheme == SignatureScheme::ED25519 {
+        SignatureScheme::ECDSA_SECP256R1_SHA256
+    } else {
+        SignatureScheme::ED25519
+    };
+    let mismatched_signer = SignatureKeyPair::new(mismatched_scheme).unwrap();
+    let mismatched_credential_with_key = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice".to_vec()).into(),
+        signature_key: mismatched_signer.to_public_vec().into(),
+    };
+    let new_signer = NewSignerBundle {
+        signer: &mismatched_signer,
+        credential_with_key: mismatched_credential_with_key,
+    };
+
+    let err = group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build_with_new_signer(
+            provider.rand(),
+            provider.crypto(),
+            &signer,
+            new_signer,
+            |_| true,
+        )
+        .unwrap_err();
+
+    assert_eq!(err, CreateCommitError::InvalidSignerCiphersuite);
+}
+
 // Alice proposes a signer swap; Bob processes the proposal (envelope verifies
 // against Alice's OLD leaf sig key, embedded leaf verifies against the NEW sig
 // key), stores it, and commits it. After both merge, everyone's view of
