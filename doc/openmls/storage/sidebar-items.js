@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["OpenMlsProvider","PublicStorageProvider","StorageProvider"]};
+window.SIDEBAR_ITEMS = {"struct":["GroupMigrationBundle"],"trait":["OpenMlsProvider","PublicStorageProvider","StorageProvider"]};

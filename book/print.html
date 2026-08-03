@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-35124223.js";
+            window.path_to_searchindex_js = "searchindex-32f6fbca.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-6ca32bdb.js"></script>
+        <script src="toc-e443a964.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -1232,6 +1232,439 @@ as well as the <code>GroupId</code> of the group to be loaded. For this to work,
 must have been written to the provider previously.</p>
 <h2 id="forward-secrecy-considerations"><a class="header" href="#forward-secrecy-considerations">Forward-Secrecy Considerations</a></h2>
 <p>OpenMLS uses the <code>StorageProvider</code> to store sensitive key material. To achieve forward-secrecy (i.e. to prevent an adversary from decrypting messages sent in the past if a client is compromised), OpenMLS frequently deletes previously used key material through calls to the <code>StorageProvider</code>. <code>StorageProvider</code> implementations must thus take care to ensure that values deleted through any of the <code>delete_</code> functions of the trait are irrevocably deleted and that no copies are kept.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="migrating-the-storage-provider"><a class="header" href="#migrating-the-storage-provider">Migrating the storage provider</a></h1>
+<p>OpenMLS supports migrating the storage provider between versions through a serialization bridge:
+a group, together with all the group-associated data it owns, is exported with the
+previous version of the library, serialized into <code>serde_json</code>, and
+then imported into the <em>current</em> version of the library, which writes it back out in the new storage format.</p>
+<p>The storage migration is a re-encoding of a member’s own stored, local state:
+it doesn’t change anything on the wire, and doesn’t need coordination with other group members.</p>
+<p>This migration approach requires the <code>migration-export</code> feature on the previous version’s <code>openmls</code>
+crate and the <code>migration-import</code> feature on the current one.</p>
+<h2 id="when-to-use-this"><a class="header" href="#when-to-use-this">When to use this</a></h2>
+<p>The main migration use case is switching to a self-describing <code>serde</code> storage format,
+between <code>openmls</code> versions that introduce breaking changes when using non-self-describing formats (which have not been disallowed by OpenMLS so far).</p>
+<p>The approach described here can be used to migrate data serialized using <code>0.7.4</code> or <code>0.8.1</code>
+into the format used by <code>0.9.0</code>, which requires a self-describing format.</p>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>As of this version, non-self-describing formats are no longer supported.
+When using non-self-describing formats, changes in struct layouts between <code>openmls</code> versions
+may silently shift the layout used for serialization, and corrupt existing data.</p>
+</blockquote>
+<p><strong>The migration target must use a self-describing format</strong> (such as JSON), even
+when the source did not: a current-version group cannot currently be stored in or loaded
+from a non-self-describing format like postcard. Migrating <em>in place while
+staying on a non-self-describing format</em> is therefore not supported — a
+self-describing format should be used for the current-version store.</p>
+<h2 id="migration-prerequisites"><a class="header" href="#migration-prerequisites">Migration prerequisites</a></h2>
+<ul>
+<li>Both the previous-version and the current-version OpenMLS crates should be in the
+dependency tree (e.g. <code>openmls_0_8_1</code> and <code>openmls</code>), the previous version with
+its <code>migration-export</code> feature, and the current one with <code>migration-import</code> enabled.
+<ul>
+<li><code>openmls-v0.7.4-migration-helpers</code></li>
+<li><code>openmls-v0.8.1-migration-helpers</code></li>
+</ul>
+</li>
+<li>A storage provider for each version: one implementing the <em>previous</em> version’s
+storage traits (holding the existing data), and one implementing the <em>current</em>
+version’s storage traits (receiving the migrated data).</li>
+</ul>
+<h2 id="migration-requirements"><a class="header" href="#migration-requirements">Migration requirements</a></h2>
+<p>The following requirements must be satisfied when migrating:</p>
+<ul>
+<li><strong>Quiescence.</strong> The migration must run while the local MLS state is at rest: no
+message is mid-processing, and nothing else — no other thread or process —
+touches the store being migrated until the migration completes. Group state that is
+legitimately pending at rest is fine: queued (uncommitted) proposals and a
+pending, not yet merged commit are both migrated and preserved.</li>
+<li><strong>Atomicity.</strong> Perform the migration (together with any cleanup of the old
+data, see below) within a single storage transaction, so that an interruption
+cannot leave a group partially migrated. Any such transaction has to come from
+the <em>backing store</em> (e.g. SQLite) — the OpenMLS storage traits have no
+transaction API — so it is only available if your backing store supports one.
+When it does not — and recommended in general — migrate into a <strong>fresh store</strong>,
+verify, then atomically swap it in and discard the old one.</li>
+<li><strong>Interruption tolerance.</strong> Import is a <em>replace</em>, not an append, so it is
+idempotent: re-running the migration after a crash is safe as long as the old
+data is still intact.</li>
+</ul>
+<p><strong>Prefer a fresh store over migrating in place.</strong> A transaction only protects
+against interruption, not against a migration defect, and an in-place
+migration that overwrites the same keys destroys the source data as it writes:
+once the transaction commits there is nothing left to verify against and
+nothing to roll back to. In-place with changed keys keeps the old entries
+longer, but its cleanup is item-wise deletion of key material in a live store,
+where anything missed lingers silently. Migrating into a fresh store keeps the
+source intact for verification and rollback, tolerates interruption even
+without a transactional store, and makes cleanup a simple discard. If the
+store itself cannot be swapped (e.g. it shares a database with other
+application data), it is better to migrate into a fresh table set or namespace within it,
+and swap that instead of overwriting.</p>
+<h2 id="performing-the-migration"><a class="header" href="#performing-the-migration">Performing the migration</a></h2>
+<p>For each group, the migration is performed by exporting it using the previous version’s API,
+then bridging the bundle through <code>serde_json</code>, and storing it with the current version:</p>
+<pre><code class="language-rust no_run noplayground">/// Migrate a single group from the previous OpenMLS version to the current one.
+///
+/// `old_provider` implements the *previous* version's storage traits and already
+/// holds the group; `new_provider` implements the *current* version's storage
+/// traits and receives the migrated group. Both refer to the same `group_id`.
+///
+/// This requires the `migration-export` feature on the previous version's
+/// `openmls` crate and the `migration-import` feature on the current one.
+///
+/// **NOTE**: The `migration-export` feature is not available on the current
+/// `openmls` version, since there are no supported migration paths that would
+/// utilize this feature yet, although it may be added later, if needed.
+fn migrate_group(
+    old_provider: &amp;PostcardProvider&lt;'_&gt;,
+    new_provider: &amp;SerdeJsonProvider&lt;'_&gt;,
+    group_id: &amp;openmls_compat::prelude::GroupId,
+) {
+    // 1. Export the group and all the group-associated data it owns, using the
+    //    *previous* version's API.
+    let bundle = openmls_compat::prelude::MlsGroup::export_for_migration(old_provider, group_id)
+        .expect("error reading the old storage")
+        .expect("no group with this id in the old storage");
+
+    // 2. Bridge the bundle through `serde_json` into the *current* version's
+    //    migration bundle. The intermediate buffer is zeroized on drop (see
+    //    `serde_json_bridge`).
+    let bundle: openmls_current::storage::GroupMigrationBundle =
+        serde_json_bridge(&amp;bundle).expect("error bridging the migration bundle through serde_json");
+
+    // 3. Write the group and all its data to storage in the current version's
+    //    format.
+    bundle
+        .store(new_provider)
+        .expect("error storing the migrated group");
+}</code></pre>
+<p>The target store need not be <code>serde_json</code>: the <code>new_provider</code> can be any current-version
+storage provider that uses a self-describing format. Only its type changes, and the
+migration body is identical. For example, to migrate into a CBOR-based (<code>ciborium</code>) store
+instead:</p>
+<pre><code class="language-rust no_run noplayground">fn migrate_group(
+    old_provider: &amp;PostcardProvider&lt;'_&gt;,
+    new_provider: &amp;CiboriumProvider&lt;'_&gt;,
+    group_id: &amp;openmls_compat::prelude::GroupId,
+) {
+    // ... migration ...
+}</code></pre>
+<p>The bundle is bridged with the small helper below, which serializes to JSON and
+deserializes into the current version’s type. Because the intermediate JSON buffer
+holds the group’s private keys in plaintext, it is kept in a <code>Zeroizing</code> buffer
+that is wiped when the helper returns (see <a href="#key-material-hygiene">Key material hygiene</a>).
+The same helper is reused for the application-managed material further down.</p>
+<pre><code class="language-rust no_run noplayground">/// Bridge a value across the serde_json version boundary: serialize `source` (a
+/// previous-version type) to JSON, then deserialize it as the current-version type
+/// `T`.
+///
+/// The intermediate JSON buffer holds the value's secret key material in plaintext.
+/// Unlike the typed `source` and returned `T` — whose secret fields are
+/// `SecretVLBytes` and are wiped on their own drop — a plain `Vec&lt;u8&gt;` is not
+/// scrubbed when freed, so it is held in a `Zeroizing` buffer that is wiped when
+/// this function returns, on the error path as well as on success.
+///
+/// Keep the bridge on this byte-buffer path (`to_vec` / `from_slice`)
+/// rather than routing it through `serde_json::Value`.
+fn serde_json_bridge&lt;S: serde::Serialize, T: serde::de::DeserializeOwned&gt;(
+    source: &amp;S,
+) -&gt; Result&lt;T, serde_json::Error&gt; {
+    let serialized = zeroize::Zeroizing::new(serde_json::to_vec(source)?);
+    serde_json::from_slice(&amp;serialized)
+}</code></pre>
+<p>This flow is performed once per group, observing the invariants in
+<a href="#migration-requirements">Migration requirements</a>; afterwards the group loads normally
+with the current-version <code>MlsGroup::load</code>.</p>
+<h2 id="what-is-not-migrated"><a class="header" href="#what-is-not-migrated">What is not migrated</a></h2>
+<p>The migration bundle carries the group and all group-associated data OpenMLS owns
+— group state, queued proposals, a pending commit if stored, the group’s encryption key
+pairs, and the group’s resumption PSK store (which covers resumption, reinit, and branch PSKs).
+Application-managed material that OpenMLS does <em>not</em> own — signature key
+pairs, <em>external</em> PSKs (and application-component PSKs), and key packages — is not group-scoped,
+and is not part of the migration bundle. If you keep this data in the same store, migrate it
+separately with the same read → bridge → write pattern over the ids that your application tracks.</p>
+<h3 id="migrating-data-that-is-managed-by-the-application"><a class="header" href="#migrating-data-that-is-managed-by-the-application">Migrating data that is managed by the application</a></h3>
+<p>All three cases below use the existing public storage APIs. Each takes a value (or its
+id) from the previous version and produces the current-version equivalent in the
+new store.</p>
+<p><strong>Signature key pairs</strong> bridge directly through <code>serde_json</code>:</p>
+<pre><code class="language-rust no_run noplayground">/// Migrate one application-managed signature key pair by bridging it through
+/// `serde_json`: serialize the previous version's `SignatureKeyPair`, deserialize
+/// it as the current version's type, and store it in the current provider.
+fn migrate_signature_key_pair(
+    old_signer: &amp;openmls_basic_credential_compat::SignatureKeyPair,
+    new_storage: &amp;SerdeJsonProvider&lt;'_&gt;,
+) -&gt; openmls_basic_credential_current::SignatureKeyPair {
+    let signer: openmls_basic_credential_current::SignatureKeyPair =
+        serde_json_bridge(old_signer).expect("bridge signer into the current version");
+    signer
+        .store(new_storage)
+        .expect("store the migrated signer");
+    signer
+}</code></pre>
+<p><strong>Published key packages</strong> are read from the old store by the hash reference your
+application tracks, bridged, and written to the new store:</p>
+<pre><code class="language-rust no_run noplayground">/// Migrate one key package. The application supplies the hash reference
+/// it tracks (OpenMLS keys stored key packages by it). We read the stored
+/// `KeyPackageBundle` with the previous version's storage API, bridge it through
+/// `serde_json`, and write it to the current store under its current-version hash
+/// reference. Returns that current-version hash reference so the application can
+/// track it and load the migrated key package back from the new store.
+///
+/// The two `StorageProvider` traits (previous and current version) are brought
+/// into scope in separate blocks: the backing `PostcardProvider` implements both,
+/// so keeping only one in scope per call avoids an ambiguous method resolution.
+fn migrate_key_package&lt;NewProvider: openmls_traits::OpenMlsProvider&gt;(
+    old_storage: &amp;PostcardProvider&lt;'_&gt;,
+    old_hash_ref: &amp;openmls_compat::prelude::KeyPackageRef,
+    new_provider: &amp;NewProvider,
+) -&gt; openmls_current::prelude::KeyPackageRef {
+    // 1. Read the stored bundle (public key package + private init and encryption
+    //    keys) with the previous version's storage API.
+    let old_bundle: KeyPackageBundle = {
+        use openmls_traits_compat::storage::StorageProvider as _;
+        old_storage
+            .key_package(old_hash_ref)
+            .expect("read the old key package")
+            .expect("no key package stored under this hash ref")
+    };
+
+    // 2. Bridge it through `serde_json` into the current version's type.
+    let bundle: openmls_current::prelude::KeyPackageBundle =
+        serde_json_bridge(&amp;old_bundle).expect("bridge key package into the current version");
+
+    // 3. Write it to the current store, keyed by its current-version hash ref.
+    let new_hash_ref = bundle
+        .key_package()
+        .hash_ref(new_provider.crypto())
+        .expect("compute the current key package hash ref");
+    {
+        use openmls_traits::storage::StorageProvider as _;
+        new_provider
+            .storage()
+            .write_key_package(&amp;new_hash_ref, &amp;bundle)
+            .expect("write the migrated key package");
+    }
+
+    new_hash_ref
+}</code></pre>
+<p><strong>Pre-shared keys</strong> split by type. <em>Resumption</em> PSKs — including the <em>reinit</em> and <em>branch</em>
+usages — are group-owned: OpenMLS keeps them in the group’s resumption PSK store and they
+travel <em>inside</em> the group migration bundle, so they need no separate handling. Only
+<em>external</em> PSKs (and, under <code>extensions-draft</code>, application-component PSKs) are
+application-managed. Their secret is supplied by the application and written with
+<code>PreSharedKeyId::store</code>; the stored bundle is not publicly readable, so — unlike the two
+cases above — there is nothing to read and bridge. Migrating one re-stores the
+application-held secret under a current-version <code>PreSharedKeyId</code>. The nonce is not
+persisted (see <code>PreSharedKeyId::store</code>), so only the PSK id has to match:</p>
+<pre><code class="language-rust no_run noplayground">/// Migrate one application-managed pre-shared key (an *external* PSK, or an
+/// `extensions-draft` *application* component PSK).
+///
+/// These PSK secrets are *supplied by the application* and written with
+/// `PreSharedKeyId::store`, and the stored bundle is not publicly readable — so there
+/// is nothing to read back out of the old store. The application already holds the psk
+/// id and the secret bytes it tracks; migrating one is simply re-storing that secret
+/// into the new provider under a current-version `PreSharedKeyId`. (The nonce is not
+/// persisted, so only the psk id identifies the stored secret.)
+///
+/// *Resumption* PSKs (including the reinit and branch usages) are **not** handled here:
+/// they are group-owned, kept in the group's resumption psk store, and are carried
+/// automatically by the group migration bundle.
+fn migrate_psk&lt;NewProvider: openmls_traits::OpenMlsProvider&gt;(
+    psk_id: &amp;openmls_current::schedule::PreSharedKeyId,
+    secret: &amp;[u8],
+    new_provider: &amp;NewProvider,
+) {
+    psk_id
+        .store(new_provider, secret)
+        .expect("store the migrated PSK secret");
+}</code></pre>
+<p>This assumes the application still holds the PSK secret. If an external PSK was stored only
+through OpenMLS and the secret was not retained elsewhere, there is currently no public API
+to read it back out of the old store, so there is no migration path for it.</p>
+<h2 id="migration-recommendations"><a class="header" href="#migration-recommendations">Migration recommendations</a></h2>
+<h3 id="verifying-the-migration"><a class="header" href="#verifying-the-migration">Verifying the migration</a></h3>
+<p>Before relying on the migrated store, and before any cleanup, load each group
+with the current-version <code>MlsGroup::load</code> and sanity-check what the application
+expects (e.g., the epoch and the member list). If any group fails to export,
+bridge, or load, then fail closed: abort the migration, keep the old data, and report
+the error, rather than continuing with a partially migrated store.</p>
+<p><strong>Recommendation</strong>: Store a <strong>schema-version marker</strong> alongside the data so the migration runs
+exactly once and the application always knows which format the store holds.</p>
+<h2 id="cleaning-up-the-old-data"><a class="header" href="#cleaning-up-the-old-data">Cleaning up the old data</a></h2>
+<p>Whether the old data needs to be removed depends on how you migrate:</p>
+<ul>
+<li><strong>Into a fresh or separate store:</strong> simply discard the old store once every
+group has been migrated; there is nothing else to clean up.</li>
+<li><strong>In-place, when the storage keys change:</strong> moving between a non-self-describing
+and a self-describing format generally changes how storage keys are encoded, so
+the new entries are written under <em>new</em> keys and the old entries remain behind.
+Remove them by loading each group with the previous version’s API and calling
+its <code>MlsGroup::delete</code> on the old storage provider.</li>
+<li><strong>In-place, when the storage keys are unchanged</strong> (e.g. toggling a feature flag,
+or a same-format update): the import overwrites the existing entries, so no
+separate cleanup is needed — and deleting would remove the freshly migrated
+data.</li>
+</ul>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>Rolling back to retained old data is only safe before the first use after migration.
+Afterwards, once a migrated group sends or processes anything, the ratchet state in the old store
+becomes stale, and reverting to it forks the group and risks key reuse. The old store should not
+be kept as a rollback path after the migrated state is used.</p>
+</blockquote>
+<h2 id="running-the-migration-in-an-application"><a class="header" href="#running-the-migration-in-an-application">Running the migration in an application</a></h2>
+<p>There are two strategies for <em>when</em> to migrate. An application chooses based on how
+much local state it holds and how much startup latency it can absorb:</p>
+<ol>
+<li><strong>Migrate everything at startup</strong> — simplest, and lets you discard the old store
+promptly, but blocks startup for as long as the migration takes.</li>
+<li><strong>Migrate lazily, one group at a time</strong> — no startup stall, at the cost of the
+old and new stores coexisting for the whole support window.</li>
+</ol>
+<p>The following apply to <strong>both</strong> strategies (particularly for an application with
+local storage on end-user devices, e.g. a mobile app):</p>
+<ul>
+<li><strong>Watch for other processes touching the store.</strong> For example, an iOS
+Notification Service Extension that decrypts MLS messages runs in a different
+process and can wake on a push mid-migration; hold a cross-process lock or gate
+it on the migration marker.</li>
+<li><strong>Expect interruption.</strong> Mobile operating systems terminate apps freely, so the
+migration can be cut short at any point — the idempotent design above makes this
+safe. The migration should be run off of the main thread.</li>
+<li><strong>Plan the release lifecycle.</strong> One “migration release” of the application ships
+both OpenMLS versions; keep the migration path for a defined support window (an
+enforced minimum client version, telemetry on remaining un-migrated installs, or
+a stated time period). The release that finally removes it must keep the marker
+check and ship a fallback — resetting the local MLS state and rejoining groups —
+because users can jump arbitrary version gaps when updating.</li>
+</ul>
+<h3 id="option-1-migrate-everything-at-startup"><a class="header" href="#option-1-migrate-everything-at-startup">Option 1: migrate everything at startup</a></h3>
+<ul>
+<li><strong>Run at startup, before any MLS traffic.</strong> Application startup is a natural
+quiescence point: gate all message processing and outbound operations on the
+migration having completed, checked via a single, store-wide schema-version
+marker.</li>
+<li><strong>Migrate into a fresh store, then swap.</strong> Following
+<a href="#migration-requirements">Migration requirements</a>, migrate into a fresh store,
+verify every group, then atomically swap it in and discard the old one.</li>
+<li><strong>Check disk space.</strong> Migrating into a fresh store temporarily roughly doubles
+the storage footprint.</li>
+</ul>
+<p>This option is the simplest and cleans up after itself, but the startup delay is
+proportional to the <em>total</em> stored state — every group’s ratchet tree and retained
+epochs. For an install with many or large groups that stall may be unacceptable;
+use Option 2 instead.</p>
+<h3 id="option-2-migrate-lazily-one-group-at-a-time"><a class="header" href="#option-2-migrate-lazily-one-group-at-a-time">Option 2: migrate lazily, one group at a time</a></h3>
+<p>Migrate each group the first time the application loads it, recording a <strong>per-group</strong>
+marker so each group is migrated exactly once and already-migrated groups load
+directly from the current store:</p>
+<pre><code class="language-rust no_run noplayground">/// Load a group from the current-version store, migrating it from the previous
+/// version *on first access* if it has not been migrated yet.
+///
+/// This is the building block of a **lazy, per-group** migration: instead of
+/// migrating every group up front (a startup stall), each group is migrated the
+/// first time the application needs it, exactly once. A per-group marker — a row in
+/// the application's own store, here `CiboriumProvider::mark_group_migrated` —
+/// records that a group has been migrated so it is never migrated twice, and so an
+/// already-migrated group is loaded directly from the current store.
+fn lazy_load_or_migrate(
+    old_provider: &amp;PostcardProvider&lt;'_&gt;,
+    new_provider: &amp;CiboriumProvider&lt;'_&gt;,
+    group_id_bytes: &amp;[u8],
+) -&gt; openmls_current::prelude::MlsGroup {
+    let new_group_id = openmls_current::prelude::GroupId::from_slice(group_id_bytes);
+
+    // Migrate this group only if it has not been migrated into the new store yet.
+    // The marker is keyed by the (current-version) group id, checked through the
+    // same provider used to load it.
+    if !new_provider.is_group_migrated(&amp;new_group_id) {
+        let old_group_id = openmls_compat::prelude::GroupId::from_slice(group_id_bytes);
+        let bundle =
+            openmls_compat::prelude::MlsGroup::export_for_migration(old_provider, &amp;old_group_id)
+                .expect("error reading the old storage")
+                .expect("no group with this id in the old storage");
+        let bundle: openmls_current::storage::GroupMigrationBundle =
+            serde_json_bridge(&amp;bundle).expect("error bridging the migration bundle");
+        bundle
+            .store(new_provider)
+            .expect("error storing the migrated group");
+
+        // Set the marker
+        new_provider.mark_group_migrated(&amp;new_group_id);
+    }
+
+    openmls_current::prelude::MlsGroup::load(new_provider, &amp;new_group_id)
+        .expect("error loading the migrated group")
+        .expect("no migrated group state persisted")
+}</code></pre>
+<p>The helper above is deliberately minimal: it assumes every group still lives in the
+old store. A shipped version must also handle groups <strong>created or joined under the
+new version</strong> — those were never in the old store, so they should load directly from
+the current store rather than attempt an export that would find nothing. Setting the
+marker when the application creates or joins a group lets them skip the check.</p>
+<p>Guidance specific to this strategy:</p>
+<ul>
+<li><strong>The marker is per-group, not store-wide.</strong> Store it in the current store, keyed
+by group id the same way the store keys the group’s own data, and set it only
+<em>after</em> that group’s migrated state has been written. Because import is an
+idempotent replace, an interruption before the marker is set simply re-runs that
+group’s migration on the next access — no transaction required.</li>
+<li><strong>Lock per group.</strong> A group’s first access can come from more than one place at
+the same time — e.g. the UI opening a conversation while a push handler processes a
+message for it, possibly in a different process. Take a lock keyed by the group id
+that spans the marker check, the migration, and setting the marker, so a given
+group is accessed by only one caller at a time. (A single global lock also works —
+e.g. relying on SQLite’s single-writer — trading some concurrency for simplicity.)
+A single, shared group-loading path can be a convenient place to enforce this
+together with the migrate-on-access check.</li>
+<li><strong>Migrate application-managed material eagerly.</strong> Signature key pairs, key
+packages, and PSKs are not group-scoped (a signature key pair can back several
+groups), so they cannot be partitioned per group. They are also small, so migrate
+them up front: this keeps any residual startup cost tiny while the expensive
+per-group state migrates on demand, and guarantees a lazily-migrated group is
+immediately operable.</li>
+<li><strong>Quiescence is per-group.</strong> Migrate a group before processing its traffic, and
+gate that group’s processing (including from other processes) on its marker.</li>
+<li><strong>The two stores coexist for the whole support window.</strong> You cannot discard the
+old store promptly or swap it out, because un-accessed groups still live there.
+Clean up each group’s old data after it has been migrated (via the previous
+version’s <code>MlsGroup::delete</code>, see <a href="#cleaning-up-the-old-data">Cleaning up the old data</a>)
+. Track how many groups remain
+un-migrated, so you know when it is safe to retire the old-version code.</li>
+<li><strong>Rollback is per-group.</strong> The “rollback only before first use” rule applies to
+each group independently: once a lazily-migrated group has been used, its old copy
+is stale and must not be reverted to.</li>
+<li><strong>Binary size.</strong> Only code reachable from <code>export_for_migration</code> is linked
+from the previous version — storage reads and serde impls, no crypto backend,
+no protocol machinery — and the linker strips the rest. Measure (e.g. with
+<code>cargo bloat</code>) if you are concerned about binary size.</li>
+</ul>
+<h3 id="key-material-hygiene"><a class="header" href="#key-material-hygiene">Key material hygiene</a></h3>
+<ul>
+<li>
+<p><strong>Never log or upload the migration bundle.</strong> The serialized <code>GroupMigrationBundle</code> contains
+private encryption keys in plaintext JSON. Error reports and diagnostics must not
+include the migration bundle, value diffs, or any deserialization error messages
+that embed the offending content. The bundle should also stay in memory, and never
+be written to a temp file for debugging.</p>
+</li>
+<li>
+<p>Create the fresh store with the same protections as the old. Same at-rest encryption
+(e.g. SQLCipher key), and on desktop, restrictive file permissions set before the data is written,
+not fixed up after.</p>
+</li>
+<li>
+<p><strong>Wipe the intermediate serialized buffer.</strong> The <code>serde_json_bridge</code> helper keeps
+the plaintext-JSON buffer in a <code>Zeroizing</code> wrapper so it is scrubbed on drop. This approach is best-effort,
+since <code>serde_json</code> may make intermediate copies during (de)serialization that cannot be reached and cleared.
+Keep the bridge on the <code>to_vec</code> / <code>from_slice</code> byte path rather than
+<code>serde_json::Value</code>. <!-- TODO: add more details on this --></p>
+</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="discarding-commits"><a class="header" href="#discarding-commits">Discarding commits</a></h1>
 <p>The delivery service may reject a commit sent by a client. In this case, the application needs to ensure that the local state remains the same as it was before the commit was staged.</p>

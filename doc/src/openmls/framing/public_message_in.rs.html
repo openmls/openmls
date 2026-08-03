@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/public_message_in.rs`."><title>public_message_in.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-650bd49d.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (1a833e165 2026-07-29)" data-channel="nightly" data-search-js="search-cf4fc35e.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-d4bd101e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/framing/</div>public_message_in.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # PublicMessageIn
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/public_message_in.rs`."><title>public_message_in.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-650bd49d.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (11177f223 2026-08-02)" data-channel="nightly" data-search-js="search-cf4fc35e.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-d4bd101e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/framing/</div>public_message_in.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # PublicMessageIn
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! A PublicMessageIn is a framing structure for MLS messages. It can contain
 <a href=#4 id=4 data-nosnippet>4</a>//! Proposals, Commits and application messages.
@@ -244,58 +244,57 @@
 <a href=#244 id=244 data-nosnippet>244</a>    {
 <a href=#245 id=245 data-nosnippet>245</a>        <span class="kw">let </span><span class="kw-2">mut </span>bytes_ref = bytes;
 <a href=#246 id=246 data-nosnippet>246</a>        <span class="kw">let </span>message = PublicMessageIn::tls_deserialize(<span class="kw-2">&amp;mut </span>bytes_ref)<span class="question-mark">?</span>;
-<a href=#247 id=247 data-nosnippet>247</a>        <span class="kw">let </span>remainder = <span class="kw-2">&amp;</span>bytes[message.tls_serialized_len()..];
-<a href=#248 id=248 data-nosnippet>248</a>        <span class="prelude-val">Ok</span>((message, remainder))
-<a href=#249 id=249 data-nosnippet>249</a>    }
-<a href=#250 id=250 data-nosnippet>250</a>}
-<a href=#251 id=251 data-nosnippet>251</a>
-<a href=#252 id=252 data-nosnippet>252</a><span class="kw">impl </span>Size <span class="kw">for </span>PublicMessageIn {
-<a href=#253 id=253 data-nosnippet>253</a>    <span class="attr">#[inline]
-<a href=#254 id=254 data-nosnippet>254</a>    </span><span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-<a href=#255 id=255 data-nosnippet>255</a>        <span class="self">self</span>.content.tls_serialized_len()
-<a href=#256 id=256 data-nosnippet>256</a>            + <span class="self">self</span>.auth.tls_serialized_len()
-<a href=#257 id=257 data-nosnippet>257</a>            + <span class="kw">if let </span><span class="prelude-val">Some</span>(membership_tag) = <span class="kw-2">&amp;</span><span class="self">self</span>.membership_tag {
-<a href=#258 id=258 data-nosnippet>258</a>                membership_tag.tls_serialized_len()
-<a href=#259 id=259 data-nosnippet>259</a>            } <span class="kw">else </span>{
-<a href=#260 id=260 data-nosnippet>260</a>                <span class="number">0
-<a href=#261 id=261 data-nosnippet>261</a>            </span>}
-<a href=#262 id=262 data-nosnippet>262</a>    }
-<a href=#263 id=263 data-nosnippet>263</a>}
-<a href=#264 id=264 data-nosnippet>264</a>
-<a href=#265 id=265 data-nosnippet>265</a><span class="kw">impl </span>TlsSerializeTrait <span class="kw">for </span>PublicMessageIn {
-<a href=#266 id=266 data-nosnippet>266</a>    <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
-<a href=#267 id=267 data-nosnippet>267</a>        <span class="comment">// Serialize the content, not the TBS.
-<a href=#268 id=268 data-nosnippet>268</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>written = <span class="self">self</span>.content.tls_serialize(writer)<span class="question-mark">?</span>;
-<a href=#269 id=269 data-nosnippet>269</a>        written += <span class="self">self</span>.auth.tls_serialize(writer)<span class="question-mark">?</span>;
-<a href=#270 id=270 data-nosnippet>270</a>        written += <span class="kw">if let </span><span class="prelude-val">Some</span>(membership_tag) = <span class="kw-2">&amp;</span><span class="self">self</span>.membership_tag {
-<a href=#271 id=271 data-nosnippet>271</a>            membership_tag.tls_serialize(writer)<span class="question-mark">?
-<a href=#272 id=272 data-nosnippet>272</a>        </span>} <span class="kw">else </span>{
-<a href=#273 id=273 data-nosnippet>273</a>            <span class="number">0
-<a href=#274 id=274 data-nosnippet>274</a>        </span>};
-<a href=#275 id=275 data-nosnippet>275</a>        <span class="prelude-val">Ok</span>(written)
-<a href=#276 id=276 data-nosnippet>276</a>    }
-<a href=#277 id=277 data-nosnippet>277</a>}
-<a href=#278 id=278 data-nosnippet>278</a>
-<a href=#279 id=279 data-nosnippet>279</a><span class="kw">impl </span>From&lt;PublicMessage&gt; <span class="kw">for </span>PublicMessageIn {
-<a href=#280 id=280 data-nosnippet>280</a>    <span class="kw">fn </span>from(v: PublicMessage) -&gt; <span class="self">Self </span>{
-<a href=#281 id=281 data-nosnippet>281</a>        PublicMessageIn {
-<a href=#282 id=282 data-nosnippet>282</a>            content: v.content.into(),
-<a href=#283 id=283 data-nosnippet>283</a>            auth: v.auth,
-<a href=#284 id=284 data-nosnippet>284</a>            membership_tag: v.membership_tag,
-<a href=#285 id=285 data-nosnippet>285</a>        }
-<a href=#286 id=286 data-nosnippet>286</a>    }
-<a href=#287 id=287 data-nosnippet>287</a>}
-<a href=#288 id=288 data-nosnippet>288</a>
-<a href=#289 id=289 data-nosnippet>289</a><span class="comment">// The following `From` implementation( breaks abstraction layers and MUST
-<a href=#290 id=290 data-nosnippet>290</a>// NOT be made available outside of tests or "test-utils".
-<a href=#291 id=291 data-nosnippet>291</a></span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-<a href=#292 id=292 data-nosnippet>292</a></span><span class="kw">impl </span>From&lt;PublicMessageIn&gt; <span class="kw">for </span>PublicMessage {
-<a href=#293 id=293 data-nosnippet>293</a>    <span class="kw">fn </span>from(v: PublicMessageIn) -&gt; <span class="self">Self </span>{
-<a href=#294 id=294 data-nosnippet>294</a>        PublicMessage {
-<a href=#295 id=295 data-nosnippet>295</a>            content: v.content.into(),
-<a href=#296 id=296 data-nosnippet>296</a>            auth: v.auth,
-<a href=#297 id=297 data-nosnippet>297</a>            membership_tag: v.membership_tag,
-<a href=#298 id=298 data-nosnippet>298</a>        }
-<a href=#299 id=299 data-nosnippet>299</a>    }
-<a href=#300 id=300 data-nosnippet>300</a>}
+<a href=#247 id=247 data-nosnippet>247</a>        <span class="prelude-val">Ok</span>((message, bytes_ref))
+<a href=#248 id=248 data-nosnippet>248</a>    }
+<a href=#249 id=249 data-nosnippet>249</a>}
+<a href=#250 id=250 data-nosnippet>250</a>
+<a href=#251 id=251 data-nosnippet>251</a><span class="kw">impl </span>Size <span class="kw">for </span>PublicMessageIn {
+<a href=#252 id=252 data-nosnippet>252</a>    <span class="attr">#[inline]
+<a href=#253 id=253 data-nosnippet>253</a>    </span><span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+<a href=#254 id=254 data-nosnippet>254</a>        <span class="self">self</span>.content.tls_serialized_len()
+<a href=#255 id=255 data-nosnippet>255</a>            + <span class="self">self</span>.auth.tls_serialized_len()
+<a href=#256 id=256 data-nosnippet>256</a>            + <span class="kw">if let </span><span class="prelude-val">Some</span>(membership_tag) = <span class="kw-2">&amp;</span><span class="self">self</span>.membership_tag {
+<a href=#257 id=257 data-nosnippet>257</a>                membership_tag.tls_serialized_len()
+<a href=#258 id=258 data-nosnippet>258</a>            } <span class="kw">else </span>{
+<a href=#259 id=259 data-nosnippet>259</a>                <span class="number">0
+<a href=#260 id=260 data-nosnippet>260</a>            </span>}
+<a href=#261 id=261 data-nosnippet>261</a>    }
+<a href=#262 id=262 data-nosnippet>262</a>}
+<a href=#263 id=263 data-nosnippet>263</a>
+<a href=#264 id=264 data-nosnippet>264</a><span class="kw">impl </span>TlsSerializeTrait <span class="kw">for </span>PublicMessageIn {
+<a href=#265 id=265 data-nosnippet>265</a>    <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
+<a href=#266 id=266 data-nosnippet>266</a>        <span class="comment">// Serialize the content, not the TBS.
+<a href=#267 id=267 data-nosnippet>267</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>written = <span class="self">self</span>.content.tls_serialize(writer)<span class="question-mark">?</span>;
+<a href=#268 id=268 data-nosnippet>268</a>        written += <span class="self">self</span>.auth.tls_serialize(writer)<span class="question-mark">?</span>;
+<a href=#269 id=269 data-nosnippet>269</a>        written += <span class="kw">if let </span><span class="prelude-val">Some</span>(membership_tag) = <span class="kw-2">&amp;</span><span class="self">self</span>.membership_tag {
+<a href=#270 id=270 data-nosnippet>270</a>            membership_tag.tls_serialize(writer)<span class="question-mark">?
+<a href=#271 id=271 data-nosnippet>271</a>        </span>} <span class="kw">else </span>{
+<a href=#272 id=272 data-nosnippet>272</a>            <span class="number">0
+<a href=#273 id=273 data-nosnippet>273</a>        </span>};
+<a href=#274 id=274 data-nosnippet>274</a>        <span class="prelude-val">Ok</span>(written)
+<a href=#275 id=275 data-nosnippet>275</a>    }
+<a href=#276 id=276 data-nosnippet>276</a>}
+<a href=#277 id=277 data-nosnippet>277</a>
+<a href=#278 id=278 data-nosnippet>278</a><span class="kw">impl </span>From&lt;PublicMessage&gt; <span class="kw">for </span>PublicMessageIn {
+<a href=#279 id=279 data-nosnippet>279</a>    <span class="kw">fn </span>from(v: PublicMessage) -&gt; <span class="self">Self </span>{
+<a href=#280 id=280 data-nosnippet>280</a>        PublicMessageIn {
+<a href=#281 id=281 data-nosnippet>281</a>            content: v.content.into(),
+<a href=#282 id=282 data-nosnippet>282</a>            auth: v.auth,
+<a href=#283 id=283 data-nosnippet>283</a>            membership_tag: v.membership_tag,
+<a href=#284 id=284 data-nosnippet>284</a>        }
+<a href=#285 id=285 data-nosnippet>285</a>    }
+<a href=#286 id=286 data-nosnippet>286</a>}
+<a href=#287 id=287 data-nosnippet>287</a>
+<a href=#288 id=288 data-nosnippet>288</a><span class="comment">// The following `From` implementation( breaks abstraction layers and MUST
+<a href=#289 id=289 data-nosnippet>289</a>// NOT be made available outside of tests or "test-utils".
+<a href=#290 id=290 data-nosnippet>290</a></span><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+<a href=#291 id=291 data-nosnippet>291</a></span><span class="kw">impl </span>From&lt;PublicMessageIn&gt; <span class="kw">for </span>PublicMessage {
+<a href=#292 id=292 data-nosnippet>292</a>    <span class="kw">fn </span>from(v: PublicMessageIn) -&gt; <span class="self">Self </span>{
+<a href=#293 id=293 data-nosnippet>293</a>        PublicMessage {
+<a href=#294 id=294 data-nosnippet>294</a>            content: v.content.into(),
+<a href=#295 id=295 data-nosnippet>295</a>            auth: v.auth,
+<a href=#296 id=296 data-nosnippet>296</a>            membership_tag: v.membership_tag,
+<a href=#297 id=297 data-nosnippet>297</a>        }
+<a href=#298 id=298 data-nosnippet>298</a>    }
+<a href=#299 id=299 data-nosnippet>299</a>}
 </code></pre></div></section></main></body></html>
