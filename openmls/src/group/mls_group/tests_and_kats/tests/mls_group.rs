@@ -4211,8 +4211,8 @@ fn commit_with_new_signer_signs_group_info_with_new_signer() {
         .clone();
     let charlie_key_package = charlie_pre_group.key_package_bundle.key_package().clone();
 
-    // An Add on its own does not require a path, and without a path the new
-    // signer never reaches Alice's leaf, so force the self-update.
+    // An Add on its own does not require a path, but the new signer does: the
+    // new signature key only reaches Alice's leaf through an UpdatePath.
     let (commit, welcome, group_info) = {
         let [alice_group_state] = group_state.members_mut(&["alice"]);
         let provider = &alice_group_state.party.core_state.provider;
@@ -4225,7 +4225,6 @@ fn commit_with_new_signer_signs_group_info_with_new_signer() {
             .group
             .commit_builder()
             .propose_adds(Some(charlie_key_package))
-            .force_self_update(true)
             .load_psks(provider.storage())
             .expect("load_psks")
             .build_with_new_signer(
@@ -4238,6 +4237,19 @@ fn commit_with_new_signer_signs_group_info_with_new_signer() {
             .expect("build_with_new_signer")
             .stage_commit(provider)
             .expect("stage_commit");
+
+        // The new signer alone must have forced an UpdatePath that carries the
+        // new signature key.
+        let update_path_leaf_node = alice_group_state
+            .group
+            .pending_commit()
+            .expect("expected a pending commit")
+            .update_path_leaf_node()
+            .expect("the new signer must force an UpdatePath");
+        assert_eq!(
+            update_path_leaf_node.signature_key().as_slice(),
+            new_signature_key.as_slice()
+        );
 
         alice_group_state
             .group

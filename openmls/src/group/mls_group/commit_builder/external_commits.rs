@@ -4,6 +4,8 @@ use tls_codec::Serialize as _;
 
 #[cfg(doc)]
 use super::CommitMessageBundle;
+#[cfg(doc)]
+use crate::treesync::LeafNodeParameters;
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -27,7 +29,7 @@ use crate::{
     },
     schedule::{psk::store::ResumptionPskStore, EpochSecrets, InitSecret},
     storage::OpenMlsProvider,
-    treesync::{LeafNodeParameters, RatchetTreeIn},
+    treesync::RatchetTreeIn,
     versions::ProtocolVersion,
 };
 
@@ -318,13 +320,9 @@ impl ExternalCommitBuilder {
         commit_builder.stage.force_self_update = true;
         commit_builder.stage.external_commit_info = Some(ExternalCommitInfo {
             wire_format_policy: original_wire_format_policy,
-            credential: credential_with_key.clone(),
+            credential: credential_with_key,
             aad,
         });
-        let leaf_node_parameters = LeafNodeParameters::builder()
-            .with_credential_with_key(credential_with_key)
-            .build();
-        commit_builder.stage.leaf_node_parameters = leaf_node_parameters;
 
         Ok(commit_builder)
     }

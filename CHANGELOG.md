@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `CommitBuilder::build_with_new_signer` now always generates an UpdatePath, so the new signature key is installed in the committer's leaf even when no proposal requires a path. Previously, a new signer passed to an otherwise pathless commit was silently ignored.
+- External commits now have a single authoritative credential: the `CredentialWithKey` passed to `ExternalCommitBuilder::build_group`. Leaf node parameters that pin a different credential are rejected with the new `CreateCommitError::ExternalCommitCredentialMismatch`, and `build_with_new_signer` on an external commit fails with the new `CreateCommitError::ExternalCommitWithNewSigner`.
 - [#2109](https://github.com/openmls/openmls/pull/2109): Group creation, key package creation, welcome processing, external commits, and `PublicGroup` creation from external input now fail early with a dedicated `UnsupportedCiphersuite` error when the crypto provider does not support the ciphersuite, instead of failing deep inside a crypto operation.
 - [#2109](https://github.com/openmls/openmls/pull/2109): `ExternalCommitError::UnsupportedCiphersuite` and `ExternalCommitBuilderError::UnsupportedCiphersuite` now carry the unsupported `Ciphersuite`.
 - [#1980](https://github.com/openmls/openmls/pull/1980): Enrich limetime related errors returned during leaf node validation with more information
