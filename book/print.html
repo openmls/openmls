@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-32f6fbca.js";
+            window.path_to_searchindex_js = "searchindex-3547de6b.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-e443a964.js"></script>
+        <script src="toc-d3aff166.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -3829,13 +3829,16 @@ Pre-releases must be tagged but don’t require release notes or other documenta
 It is also sufficient to tag only the most high-level crate being published.</p>
 <hr>
 <h2 id="crates-in-this-repository"><a class="header" href="#crates-in-this-repository">Crates in this Repository</a></h2>
-<p>The crates must be published in the order below.</p>
-<ul>
-<li><a href="https://github.com/openmls/openmls/blob/main/traits/Cargo.toml">Traits</a></li>
-<li><a href="https://github.com/openmls/openmls/blob/main/memory_storage/Cargo.toml">Memory storage</a></li>
-<li><a href="https://github.com/openmls/openmls/blob/main/openmls_rust_crypto/Cargo.toml">Rust Crypto provider</a></li>
-<li><a href="https://github.com/openmls/openmls/blob/main/openmls/Cargo.toml">OpenMLS</a></li>
-</ul>
+<p>Publish the workspace with:</p>
+<pre><code class="language-sh">cargo publish --workspace
+</code></pre>
+<p>This publishes every workspace member that isn’t marked <code>publish = false</code> (currently: <code>traits</code>, <code>memory_storage</code>, <code>openmls_rust_crypto</code>, <code>libcrux_crypto</code>, <code>basic_credential</code>, <code>openmls_test</code>, <code>sqlite_storage</code>, <code>serialization_helpers</code>, <code>openmls</code>), resolving the dependency order automatically — you no longer need to publish crate-by-crate in a fixed order. Use <code>--dry-run</code> first to verify everything resolves before publishing for real.</p>
+<p><code>openmls_sqlx_storage</code> is <strong>not</strong> a workspace member (it’s excluded in the root <code>Cargo.toml</code> due to build conflicts) and is not covered by <code>cargo publish --workspace</code>. Publish it separately:</p>
+<pre><code class="language-sh">cd sqlx_storage
+cargo publish --dry-run
+cargo publish
+</code></pre>
+<p>Its only workspace dependency is <code>openmls_traits</code>, so publish it any time after <code>traits</code> has gone out — either before or after the <code>--workspace</code> batch.</p>
 <h2 id="release-note-and-changelog-template"><a class="header" href="#release-note-and-changelog-template">Release note and changelog template</a></h2>
 <pre><code class="language-markdown">## 0.0.0 (2022-02-22)
 
@@ -3875,8 +3878,79 @@ It is also sufficient to tag only the most high-level crate being published.</p>
 <li><input disabled="" type="checkbox"> Describe the release in the CHANGELOG.md file of each crate.</li>
 <li><input disabled="" type="checkbox"> Create and publish a git tag for each crate, e.g. <code>openmls/v0.4.0-rc.99</code>.</li>
 <li><input disabled="" type="checkbox"> Create and publish release notes on Github.</li>
-<li><input disabled="" type="checkbox"> Publish the crates to crates.io</li>
+<li><input disabled="" type="checkbox"> Publish the workspace with <code>cargo publish --workspace</code> (see <a href="#crates-in-this-repository">Crates in this Repository</a> above), then publish <code>openmls_sqlx_storage</code> separately.</li>
 </ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="releases"><a class="header" href="#releases">Releases</a></h1>
+<p>Release notes for <code>openmls</code>, one page per version.</p>
+<ul>
+<li><a href="#090-2026-08-03">0.9.0</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="090-2026-08-03"><a class="header" href="#090-2026-08-03">0.9.0 (2026-08-03)</a></h1>
+<blockquote>
+<p>This release is going out first as <code>0.9.0-rc.1</code>, per the <a href="#release-management">pre-release strategy</a>. The final <code>0.9.0</code> tag will follow after the rc is deemed good.</p>
+</blockquote>
+<h2 id="highlights"><a class="header" href="#highlights">Highlights</a></h2>
+<ul>
+<li><strong>Storage.</strong> Non-self describing storage formats are officially not supported anymore in OpenMLS starting with this release.</li>
+<li><strong>Storage migration helper.</strong> A new opt-in <code>migration-import</code> feature lets applications move existing group state to a storage provider using a different serde codec (e.g. bincode -&gt; CBOR), via new import entry points on <code>MlsGroup</code> and <code>PublicGroup</code>. See <a href="#migrating-the-storage-provider">Migrating from a previous version</a>.</li>
+<li><strong>Targeted messages.</strong> Initial support for targeted messages, behind the new <code>targeted-messages-draft</code> feature flag.</li>
+<li><strong>Reworked <code>AppDataUpdate</code> processing.</strong> Both <code>MlsGroup</code> and <code>PublicGroup</code> now return commits carrying <code>AppDataUpdate</code> proposals as <code>ProcessedMessageContent::UnresolvedAppDataCommit</code>, replacing the previous <code>unprotect_message</code>/<code>process_unverified_message_with_app_data_updates</code> flow that exposed unverified content.</li>
+<li><strong>MSRV raised to Rust 1.91.</strong></li>
+</ul>
+<h2 id="added"><a class="header" href="#added">Added</a></h2>
+<ul>
+<li><a href="https://github.com/openmls/openmls/pull/1972">#1972</a>: APIs for time-based deletion of past epoch secrets, and for setting the past epoch deletion policy for an <code>MlsGroup</code>.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2010">#2010</a>: <code>MlsGroup::propose_self_update_with_new_signer</code>.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2084">#2084</a>: <code>ProcessedMessageContent::OwnPendingCommit</code> variant.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2109">#2109</a>: <code>Capabilities::for_provider</code>, plus dedicated <code>UnsupportedCiphersuite</code> errors returned early when a provider doesn’t support a requested ciphersuite.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2099">#2099</a>: <code>ProcessedMessageContent::OwnPrivateMessage</code> variant for processing echoed-back own messages.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2128">#2128</a>: Storage-format migration helper (<code>migration-import</code> feature).</li>
+<li><a href="https://github.com/openmls/openmls/pull/2028">#2028</a>: Targeted messages (<code>targeted-messages-draft</code> feature).</li>
+<li><a href="https://github.com/openmls/openmls/pull/2046">#2046</a>, <a href="https://github.com/openmls/openmls/pull/2118">#2118</a>: P-384, ML-DSA and additional PQ ciphersuites.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2037">#2037</a>: Safe AAD capabilities from the extensions draft.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2045">#2045</a>: Unchecked constructors to bypass <code>KeyPackage</code>/<code>LeafNode</code> validation for already-verified input.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2095">#2095</a>: <code>AppDataUpdate</code> proposals allowed in external commits; group-context getter on <code>VerifiableGroupInfo</code>.</li>
+<li><a href="https://github.com/openmls/openmls/pull/1979">#1979</a>: Application data dictionary extension in key packages.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2113">#2113</a>: <code>VcKeyPackageBatchBuilder</code> for virtual clients (experimental).</li>
+</ul>
+<h2 id="changed"><a class="header" href="#changed">Changed</a></h2>
+<ul>
+<li><a href="https://github.com/openmls/openmls/pull/2109">#2109</a>: Group/key-package creation, welcome processing, external commits and <code>PublicGroup</code> creation now fail early with <code>UnsupportedCiphersuite</code> instead of failing deep in a crypto operation.</li>
+<li><a href="https://github.com/openmls/openmls/pull/1980">#1980</a>: Enriched lifetime-related leaf node validation errors.</li>
+<li><a href="https://github.com/openmls/openmls/pull/1972">#1972</a>: <code>MlsGroup::max_past_epochs()</code> now returns <code>Option&lt;usize&gt;</code>.</li>
+<li><a href="https://github.com/openmls/openmls/pull/1963">#1963</a>: <code>MessageEncryptionError</code> is now public (behind <code>virtual-clients-draft</code>).</li>
+<li><a href="https://github.com/openmls/openmls/pull/2043">#2043</a>: Renamed and deprecated <code>MlsGroup::propose_external_psk</code> to <code>propose_pre_shared_key</code> (and the <code>_by_value</code> variant).</li>
+<li><a href="https://github.com/openmls/openmls/pull/2084">#2084</a>: Renamed <code>StageCommitError::OwnCommit</code> to <code>OwnCommitMismatch</code>.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2099">#2099</a>: Removed <code>ValidationError::CannotDecryptOwnMessage</code> — processing an own <code>PrivateMessage</code> is no longer an error.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2060">#2060</a>: Renamed the <code>extensions-draft-08</code> feature flag to <code>extensions-draft</code> (across the <code>openmls</code>, <code>openmls_sqlite_storage</code> and <code>openmls_sqlx_storage</code> crates).</li>
+<li><a href="https://github.com/openmls/openmls/pull/2092">#2092</a>, <a href="https://github.com/openmls/openmls/pull/2098">#2098</a>, <a href="https://github.com/openmls/openmls/pull/2099">#2099</a>: Reworked the <code>AppDataUpdate</code> receive-side API on <code>MlsGroup</code> and <code>PublicGroup</code> (see Highlights above).</li>
+<li><a href="https://github.com/openmls/openmls/pull/2083">#2083</a>: Raised MSRV to Rust 1.91.</li>
+</ul>
+<h2 id="fixed"><a class="header" href="#fixed">Fixed</a></h2>
+<ul>
+<li><a href="https://github.com/openmls/openmls/pull/2134">#2134</a>: Known structured extension payloads now reject trailing bytes during decoding.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2109">#2109</a>: <code>OpenMlsRustCrypto</code>’s <code>supports()</code> now agrees with <code>supported_ciphersuites()</code> for <code>MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87</code>.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2089">#2089</a>: A Commit without an UpdatePath from this client’s own leaf that doesn’t match the pending commit is now staged normally instead of rejected.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2034">#2034</a>: Fixed incorrect storage-format deserialization caused by changed integer storage tags; storage-format compatibility with <code>openmls</code> v0.7.1 and earlier is restored by default (<code>0-8-1-storage-format</code> feature keeps v0.8.1 compatibility).</li>
+<li><a href="https://github.com/openmls/openmls/pull/2125">#2125</a>: A bare <code>GroupContextExtensions</code> proposal could bypass the <code>AppDataUpdate</code> immutability check on the <code>app_data_dictionary</code> extension.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2051">#2051</a>: Backward-incompatible deserialization of <code>PastEpochDeletionPolicy</code>.</li>
+</ul>
+<h2 id="supporting-crates"><a class="header" href="#supporting-crates">Supporting crates</a></h2>
+<p>None of these contain breaking changes to their own <em>stable</em> public APIs — all additive (new PQ ciphersuite support, virtual-clients-draft storage plumbing) or internal fixes. Several also carry the <code>extensions-draft-08</code> → <code>extensions-draft</code> feature-flag rename from #2060 (an unstable/draft feature that was never part of a stable release):</p>
+<ul>
+<li><code>openmls_traits</code> 0.6.0 (feature-flag rename, new PQ/virtual-clients/targeted-messages draft feature flags)</li>
+<li><code>openmls_memory_storage</code> 0.6.0 (feature-flag rename, new features)</li>
+<li><code>openmls_rust_crypto</code> 0.6.0</li>
+<li><code>openmls_libcrux_crypto</code> 0.4.0 (feature-flag rename, new features, fix)</li>
+<li><code>openmls_basic_credential</code> 0.6.0</li>
+<li><code>openmls_sqlite_storage</code> 0.3.0 (feature-flag rename, new features)</li>
+<li><code>openmls_sqlx_storage</code> 0.3.0 (feature-flag rename <code>extensions-draft-08</code> → <code>extensions-draft</code>)</li>
+<li><code>openmls_test</code> 0.3.0 (dev-only)</li>
+<li><code>openmls_serialization_helpers</code> 0.1.0 (new crate)</li>
+</ul>
+<p>See each crate’s own <code>CHANGELOG.md</code> for details.</p>
 
                     </main>
 
