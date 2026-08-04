@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## Changed
+## 0.3.0 (2026-08-03)
 
-- [#2060](https://github.com/openmls/openmls/pull/2060) Renamed `extensions-draft-08` feature flag to `extensions-draft`.
+### Added
+
+- [#2068](https://github.com/openmls/openmls/pull/2068): Added a transactions example showing how to use `SqlxStorageProvider` within a database transaction.
+
+### Changed
+
+- [#2060](https://github.com/openmls/openmls/pull/2060): Renamed the `extensions-draft-08` feature flag to `extensions-draft`.
 
 ## 0.2.0 (2026-02-04)
 

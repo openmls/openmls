@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.9.0 (2026-08-03)
 
 ### Added
 
@@ -16,15 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `UnsupportedCiphersuite(Ciphersuite)` variants to `NewGroupError`, `KeyPackageNewError`, `WelcomeError`, and `CreationFromExternalError`, returned when the crypto provider does not support the requested ciphersuite.
 - [#2148](https://github.com/openmls/openmls/pull/2148): Added fuzz targets that exercise the `DeserializeBytes` byte-slice decode path for `MlsMessageIn`, `KeyPackageIn`, `Welcome`, `ProposalIn`, and `Extension`, and run them in the fuzz CI workflow.
 - [#2099](https://github.com/openmls/openmls/pull/2099): Added `ProcessedMessageContent::OwnPrivateMessage` variant. Processing a `PrivateMessage` authored by this client (e.g. echoed back by the delivery service) now succeeds and returns this variant instead of failing. The content cannot be decrypted and the sender claim is unauthenticated; applications should use it only to skip/ignore the echoed message and must not act on it further. With the `virtual-clients-draft` feature, own messages whose secrets are still retained (e.g. unconfirmed sends) keep decrypting normally; the variant is returned in groups that do not use virtual clients when decryption of an own message fails.
+- [#2128](https://github.com/openmls/openmls/pull/2128): Added an opt-in `migration-import` feature that lets applications move existing group state to a storage provider using a different serde codec (e.g. bincode -> CBOR). `MlsGroup` and `PublicGroup` gain import entry points that re-read state with the old codec and fully overwrite it in the new provider, with the intermediate buffer zeroized. See the new "Migrating from a previous version" book chapter.
+- [#2028](https://github.com/openmls/openmls/pull/2028): Added support for targeted messages, behind the new `targeted-messages-draft` feature flag.
+- [#2046](https://github.com/openmls/openmls/pull/2046), [#2118](https://github.com/openmls/openmls/pull/2118): Added P-384, ML-DSA and additional PQ ciphersuites (including the `draft-ietf-mls-pq-ciphersuites` draft v5 code points), behind the `draft-ietf-mls-pq-ciphersuites` feature flag.
+- [#2037](https://github.com/openmls/openmls/pull/2037): Implemented Safe AAD capabilities as defined in the MLS extensions draft.
+- [#2045](https://github.com/openmls/openmls/pull/2045): Added unchecked constructors to bypass `KeyPackage`/`LeafNode` validation, for callers that have already verified the input through another path.
+- [#2095](https://github.com/openmls/openmls/pull/2095): `AppDataUpdate` proposals are now allowed in external commits (`extensions-draft` feature). Also added a getter for the group context on `VerifiableGroupInfo`.
+- [#1979](https://github.com/openmls/openmls/pull/1979): Key packages can now carry an application data dictionary extension (`extensions-draft` feature).
+- [#2113](https://github.com/openmls/openmls/pull/2113): Added `VcKeyPackageBatchBuilder` to build heterogeneous batches of key packages (`virtual-clients-draft` feature, experimental).
 
 ### Fixed
 
 - [#2143](https://github.com/openmls/openmls/pull/2143): A commit built with `CommitBuilder::build_with_new_signer` (or `MlsGroup::self_update_with_new_signer`) now signs the GroupInfo in the Welcome and the exported GroupInfo with the new signer, matching the signature key the commit puts in the committer's leaf. Previously both were signed with the old signer, so invited members rejected the Welcome with `InvalidGroupInfoSignature`.
 - [#2147](https://github.com/openmls/openmls/pull/2147): Fixed an off-by-one in the computation of the variable-length prefix size during extension serialization. Extensions with payloads of exactly 0x3fff or 0x3fff_ffff bytes now serialize with the correct length prefix.
+- [GHSA-rrmv-c79f-cf5r](https://github.com/openmls/openmls/security/advisories/GHSA-rrmv-c79f-cf5r): Fix out-of-bounds panic in manual DeserializeBytes impls
 - [#2134](https://github.com/openmls/openmls/pull/2134): Known structured extension payloads now reject trailing bytes during decoding instead of silently ignoring them.
 - [#2109](https://github.com/openmls/openmls/pull/2109): `OpenMlsRustCrypto`'s `OpenMlsCrypto::supports` now accepts `MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87`, consistent with its `supported_ciphersuites` list (`draft-ietf-mls-pq-ciphersuites` feature).
 - [#2089](https://github.com/openmls/openmls/pull/2089): A Commit without an UpdatePath from this client's own leaf that does not match the pending commit is now staged as a regular commit instead of being rejected as a mismatched own commit.
 - [#2034](https://github.com/openmls/openmls/pull/2034): Fixes a bug where the integer storage tags for `serde` non-self-describing serializations were changed, leading to incorrect deserializations. By default, storage format compatibility with `openmls` v0.7.1 and earlier is now restored. Enabling the `0-8-1-storage-format` feature maintains storage format compatibility with `openmls` v0.8.1 (the previous `openmls` release).
+- [#2125](https://github.com/openmls/openmls/pull/2125): A bare `GroupContextExtensions` proposal could rewrite the `app_data_dictionary` extension directly, bypassing the `AppDataUpdate` proposal machinery required by the extensions draft. The immutability check now applies to every commit carrying a `GroupContextExtensions` proposal.
+- [#2051](https://github.com/openmls/openmls/pull/2051): Fixed a backward-incompatible deserialization of `PastEpochDeletionPolicy`.
 
 ### Changed
 
@@ -40,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2060](https://github.com/openmls/openmls/pull/2060) Renamed `extensions-draft-08` feature flag to `extensions-draft`.
 - Reworked the receive-side API for `AppDataUpdate` proposals (`extensions-draft` feature). `MlsGroup::process_message` now returns a commit covering `AppDataUpdate` proposals as `ProcessedMessageContent::UnresolvedAppDataCommit`. Applications inspect the verified proposals via `UnresolvedAppDataCommit::app_data_update_proposals()` and resume staging with `MlsGroup::stage_app_data_commit()`. This replaces the `MlsGroup::unprotect_message`/`MlsGroup::process_unverified_message_with_app_data_updates` flow, which exposed unverified message content; both functions are no longer public, and `ProcessMessageError::FoundAppDataUpdateProposal` was removed.
 - [#2098](https://github.com/openmls/openmls/pull/2098): Extended the reworked receive-side API for `AppDataUpdate` proposals to `PublicGroup` (`extensions-draft` feature). `PublicGroup::process_message` now returns a commit covering `AppDataUpdate` proposals as `ProcessedMessageContent::UnresolvedAppDataCommit`. Applications compute the updates with the new `PublicGroup::app_data_dictionary_updater()` and resume staging with the new `PublicGroup::stage_app_data_commit()`. This replaces `PublicGroup::process_message_with_app_data_updates`, which was removed. Also added `MlsGroup::resolve_app_data_commit()` and `PublicGroup::resolve_app_data_commit()`, which stage an `UnresolvedAppDataCommit` and return the same `ProcessedMessage` with regular `StagedCommitMessage` content, so callers can keep a single code path for commits with and without `AppDataUpdate` proposals. Made `StagedCommit::safe_export_secret()` public so secrets of the new epoch can be exported from resolved commits before merging.
+- [#2083](https://github.com/openmls/openmls/pull/2083): Raised MSRV to Rust 1.91.
+- Bumped the minimum required versions of `openmls_traits` (0.6.0), `openmls_memory_storage` (0.6.0), `openmls_rust_crypto` (0.6.0), `openmls_libcrux_crypto` (0.4.0), `openmls_basic_credential` (0.6.0), `openmls_sqlite_storage` (0.3.0), and `openmls_test` (0.3.0); added the new `openmls_serialization_helpers` (0.1.0) crate. All of these are additive releases (new PQ ciphersuite support, virtual-clients-draft storage plumbing, MSRV bump); `openmls_traits`, `openmls_memory_storage`, `openmls_libcrux_crypto` and `openmls_sqlite_storage` also carry the `extensions-draft-08` → `extensions-draft` feature-flag rename from #2060 (an unstable/draft feature, never part of a stable release).
 
 ## 0.8.1 (2026-02-13)
 

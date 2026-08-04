@@ -6,6 +6,7 @@
 use hash_ref::HashReference;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
+    storage::StorageProvider,
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
 };
 use serde::{Deserialize, Serialize};
@@ -19,8 +20,9 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     framing::SenderContext,
-    group::errors::ValidationError,
+    group::{errors::ValidationError, WelcomeError, WelcomeKeyMaterial},
     schedule::{psk::PreSharedKeyId, JoinerSecret},
+    storage::OpenMlsProvider,
     treesync::{
         node::{
             encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
@@ -119,6 +121,37 @@ impl Welcome {
     #[cfg(test)]
     pub fn set_encrypted_group_info(&mut self, encrypted_group_info: Vec<u8>) {
         self.encrypted_group_info = encrypted_group_info.into();
+    }
+
+    /// Resolve the own key material from the welcome's encrypted group secrets.
+    ///
+    /// Read-only: nothing is deleted or consumed, in contrast to
+    /// [`crate::group::ProcessedWelcome::new_from_welcome`]. Returns `None` if no secret addresses
+    /// this client (not found in the provider's storage).
+    pub fn resolve_own_key_material<Provider: OpenMlsProvider>(
+        &self,
+        provider: &Provider,
+    ) -> Result<Option<WelcomeKeyMaterial>, WelcomeError<Provider::StorageError>> {
+        for egs in &self.secrets {
+            let hash_ref = egs.new_member();
+
+            if let Some(bundle) = provider
+                .storage()
+                .key_package(&hash_ref)
+                .map_err(WelcomeError::StorageError)?
+            {
+                return Ok(Some(WelcomeKeyMaterial::with_key_package_bundle(bundle)));
+            }
+
+            #[cfg(feature = "virtual-clients-draft")]
+            if let Some(material) =
+                crate::group::resolve_vc_welcome_material(provider, self.ciphersuite(), &hash_ref)?
+            {
+                return Ok(Some(WelcomeKeyMaterial::with_vc_welcome_material(material)));
+            }
+        }
+
+        Ok(None)
     }
 }
 
