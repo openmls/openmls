@@ -75,6 +75,20 @@ impl OpenMlsCrypto for CryptoProvider {
             HashType::Sha2_256 | HashType::Sha2_384 | HashType::Sha2_512 => Ok(()),
         }?;
 
+        // The hpke-rs libcrux backend only implements these KEMs.
+        match ciphersuite.hpke_kem_algorithm() {
+            HpkeKemType::DhKemP256 | HpkeKemType::DhKem25519 => Ok(()),
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            HpkeKemType::XWingKemDraft6 => Ok(()),
+            HpkeKemType::DhKemP384 | HpkeKemType::DhKemP521 | HpkeKemType::DhKem448 => {
+                Err(CryptoError::UnsupportedCiphersuite)
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            HpkeKemType::MlKem768 | HpkeKemType::MlKem1024 => {
+                Err(CryptoError::UnsupportedCiphersuite)
+            }
+        }?;
+
         match ciphersuite.hpke_aead_algorithm() {
             HpkeAeadType::AesGcm128
             | HpkeAeadType::AesGcm256
