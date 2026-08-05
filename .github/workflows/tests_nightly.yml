@@ -17,6 +17,10 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # Full debuginfo for the test crate exceeds the memory of the hosted
+  # runners once the ciphersuite matrix is enabled, which gets the debug
+  # jobs killed mid-build. Line tables are enough for panic backtraces.
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
 
 jobs:
   tests:
