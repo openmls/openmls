@@ -3973,6 +3973,54 @@ fn commit_with_new_signer_mismatched_ciphersuite() {
     assert_eq!(err, CreateCommitError::InvalidSignerCiphersuite);
 }
 
+// A member commit whose `leaf_node_parameters` pin a credential that differs
+// from the new signer's credential is rejected with
+// `InvalidLeafNodeParameters`.
+#[openmls_test::openmls_test]
+fn commit_with_new_signer_mismatched_credential() {
+    use crate::credentials::{BasicCredential, CredentialWithKey};
+
+    let provider = &Provider::default();
+    let (credential_with_key, _key_package, signer, _signature_key) =
+        setup_client("Alice", ciphersuite, provider);
+    let mut group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(provider, &signer, credential_with_key.clone())
+        .unwrap();
+
+    let new_signer_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    let new_credential_with_key = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice".to_vec()).into(),
+        signature_key: new_signer_keys.to_public_vec().into(),
+    };
+    let new_signer = NewSignerBundle {
+        signer: &new_signer_keys,
+        credential_with_key: new_credential_with_key,
+    };
+
+    // Disagreeing credentials: leaf_node_parameters pins the OLD credential
+    // while new_signer carries the NEW credential.
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_credential_with_key(credential_with_key)
+        .build();
+
+    let err = group
+        .commit_builder()
+        .leaf_node_parameters(leaf_node_parameters)
+        .load_psks(provider.storage())
+        .unwrap()
+        .build_with_new_signer(
+            provider.rand(),
+            provider.crypto(),
+            &signer,
+            new_signer,
+            |_| true,
+        )
+        .unwrap_err();
+
+    assert_eq!(err, CreateCommitError::InvalidLeafNodeParameters);
+}
+
 // Alice proposes a signer swap; Bob processes the proposal (envelope verifies
 // against Alice's OLD leaf sig key, embedded leaf verifies against the NEW sig
 // key), stores it, and commits it. After both merge, everyone's view of

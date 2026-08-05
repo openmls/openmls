@@ -626,6 +626,12 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         new_signer: NewSignerBundle<'_, S>,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete, G>, CreateCommitError> {
+        // On an external commit, the signer passed to the external commit
+        // builder signs the Commit, the UpdatePath leaf and the GroupInfo, so
+        // a new signer cannot be used.
+        if self.stage.external_commit_info.is_some() {
+            return Err(CreateCommitError::ExternalCommitWithNewSigner);
+        }
         self.build_internal(rand, crypto, old_signer, Some(new_signer), f)
     }
 
@@ -657,16 +663,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let psks = cur_stage.psks;
 
         // An external commit has exactly one authoritative credential and
-        // signature key: the ones passed to the external commit builder. The
-        // signer given to `build` signs the Commit, the UpdatePath leaf and
-        // the GroupInfo, so a new signer cannot be used. Leaf node parameters
-        // that pin a different credential are rejected, and the authoritative
-        // credential is folded into the parameters here so the rest of the
-        // commit flow only sees a single value.
+        // signature key: the ones passed to the external commit builder. Leaf
+        // node parameters that pin a different credential are rejected, and
+        // the authoritative credential is folded into the parameters here so
+        // the rest of the commit flow only sees a single value.
         if let Some(ExternalCommitInfo { credential, .. }) = &cur_stage.external_commit_info {
-            if new_signer.is_some() {
-                return Err(CreateCommitError::ExternalCommitWithNewSigner);
-            }
             if let Some(params_credential) = cur_stage.leaf_node_parameters.credential_with_key() {
                 if params_credential != credential {
                     return Err(CreateCommitError::ExternalCommitCredentialMismatch);
