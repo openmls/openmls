@@ -2075,20 +2075,28 @@ fn processing_own_application_message() {
     let (alice_credential, alice_signer) =
         new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
 
-    // === Alice creates a group ===
-    let mut alice_group = MlsGroup::builder()
-        .ciphersuite(ciphersuite)
-        .build(alice_provider, &alice_signer, alice_credential.clone())
-        .expect("An unexpected error occurred.");
+    // Alice's group is bound to an emulation epoch, so the dual-use ratchet
+    // retains the secrets of unconfirmed own sends.
+    let mut alice_group =
+        new_vc_main_group(ciphersuite, alice_provider, &alice_signer, alice_credential);
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+    let _ = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        alice_provider,
+        &alice_signer,
+    );
 
-    // Alice sends an application message and decrypts it herself
+    // Alice sends an application message and decrypts her own echo via the
+    // retained secret.
     let alice_message = b"Hello, this is Alice!";
     let unconfirmed = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
         .unwrap();
     assert!(
-        unconfirmed.generation_id.is_none(),
-        "a group with no emulation binding must not produce a generation id"
+        unconfirmed.generation_id.is_some(),
+        "a bound group must produce a generation id"
     );
     let ciphertext = unconfirmed.message;
 
@@ -2104,19 +2112,20 @@ fn processing_own_application_message() {
     };
     assert!(alice_message.as_slice() == msg.into_bytes().as_slice());
 
-    // Processing the message again cannot decrypt it because the generation
-    // has already been consumed. In a group without virtual clients this
-    // surfaces as OwnPrivateMessage.
-    let processed_message = alice_group
+    // Processing the message again fails: the first pass consumed the
+    // retained secret.
+    let err = alice_group
         .process_message(alice_provider, ciphertext.into_protocol_message().unwrap())
-        .expect("Expected processing the same message again to succeed.");
-    assert!(matches!(
-        processed_message.into_content(),
-        ProcessedMessageContent::OwnPrivateMessage
-    ));
+        .expect_err("a consumed generation must not decrypt again");
+    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
+    )) = err
+    else {
+        panic!("expected a secret reuse error, got {err:?}");
+    };
 
     // Alice sends another application message and confirms it. Its secret is
-    // deleted, so processing it also surfaces as OwnPrivateMessage.
+    // deleted, so its echo no longer decrypts.
     let alice_message = b"Hello, this is Alice again!";
     let unconfirmed = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
@@ -2130,16 +2139,52 @@ fn processing_own_application_message() {
         )
         .unwrap();
 
-    let processed_message = alice_group
-        .process_message(
-            alice_provider,
-            ciphertext.clone().into_protocol_message().unwrap(),
-        )
-        .expect("Expected processing a confirmed message to succeed.");
-    assert!(matches!(
-        processed_message.into_content(),
-        ProcessedMessageContent::OwnPrivateMessage
-    ));
+    let err = alice_group
+        .process_message(alice_provider, ciphertext.into_protocol_message().unwrap())
+        .expect_err("a confirmed generation must not decrypt");
+    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
+    )) = err
+    else {
+        panic!("expected a secret reuse error, got {err:?}");
+    };
+}
+
+/// Without an emulation binding, an own private message short-circuits to
+/// `OwnPrivateMessage` before touching any ratchet state, regardless of
+/// whether its retained secret was consumed or confirmed.
+#[openmls_test::openmls_test]
+fn own_echo_in_unbound_group_short_circuits() {
+    let alice_provider = &Provider::default();
+
+    let (alice_credential, alice_signer) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential)
+        .expect("alice create group");
+
+    let unconfirmed = alice_group
+        .create_unconfirmed_message(alice_provider, &alice_signer, b"no binding")
+        .expect("create unconfirmed message");
+    assert!(
+        unconfirmed.generation_id.is_none(),
+        "a group with no emulation binding must not produce a generation id"
+    );
+
+    for _ in 0..2 {
+        let processed = alice_group
+            .process_message(
+                alice_provider,
+                unconfirmed.message.clone().into_protocol_message().unwrap(),
+            )
+            .expect("process own echo");
+        assert!(matches!(
+            processed.into_content(),
+            ProcessedMessageContent::OwnPrivateMessage
+        ));
+    }
 }
 
 /// Confirming a message deletes the secret of its own creation epoch, even
@@ -2158,11 +2203,22 @@ fn confirm_targets_creation_epoch() {
 
     // Alice keeps one past epoch so the secret retained at epoch N survives
     // into epoch N+1.
-    let mut alice_group = MlsGroup::builder()
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
         .max_past_epochs(1)
-        .build(alice_provider, &alice_signer, alice_credential)
-        .expect("alice create group");
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    let mut alice_group = MlsGroup::new(
+        alice_provider,
+        &alice_signer,
+        &group_config,
+        alice_credential,
+    )
+    .expect("alice create group");
 
     let bob_key_package = KeyPackage::builder()
         .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
@@ -2179,12 +2235,23 @@ fn confirm_targets_creation_epoch() {
 
     let mut bob_group = StagedWelcome::new_from_welcome(
         bob_provider,
-        &MlsGroupJoinConfig::default(),
+        &vc_join_config(),
         welcome.into_welcome().unwrap(),
         Some(alice_group.export_ratchet_tree().into()),
     )
     .and_then(|s| s.into_group(bob_provider))
     .expect("bob join");
+
+    // Bind the group to an emulation epoch so own echoes are decryptable.
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+    let (binding_commit, _epoch_id) = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        alice_provider,
+        &alice_signer,
+    );
+    process_and_merge_commit(&mut bob_group, bob_provider, binding_commit);
 
     // Epoch N: Alice creates the first application message of the epoch.
     let msg1 = alice_group
@@ -2241,17 +2308,19 @@ fn confirm_targets_creation_epoch() {
     };
     assert_eq!(app.into_bytes().as_slice(), b"epoch N+1 message");
 
-    // msg1's secret was deleted, so its echo surfaces OwnPrivateMessage.
-    let processed = alice_group
+    // msg1's secret was deleted, so its echo no longer decrypts.
+    let err = alice_group
         .process_message(
             alice_provider,
             msg1.message.into_protocol_message().unwrap(),
         )
-        .expect("process msg1 echo");
-    assert!(matches!(
-        processed.into_content(),
-        ProcessedMessageContent::OwnPrivateMessage
-    ));
+        .expect_err("msg1's confirmed generation must not decrypt");
+    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
+    )) = err
+    else {
+        panic!("expected a secret reuse error, got {err:?}");
+    };
 }
 
 /// Confirming a message whose creation epoch has aged out of the message
@@ -2331,10 +2400,16 @@ fn confirm_after_processing_own_echo_is_noop() {
     let (alice_credential, alice_signer) =
         new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
 
-    let mut alice_group = MlsGroup::builder()
-        .ciphersuite(ciphersuite)
-        .build(alice_provider, &alice_signer, alice_credential)
-        .expect("alice create group");
+    let mut alice_group =
+        new_vc_main_group(ciphersuite, alice_provider, &alice_signer, alice_credential);
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+    let _ = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        alice_provider,
+        &alice_signer,
+    );
 
     let unconfirmed = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, b"echo me")
@@ -2403,6 +2478,9 @@ fn confirm_handshake_message_deletes_retained_secret() {
         .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
         .build();
     let mut alice_group = MlsGroup::new(
         alice_provider,
@@ -2423,6 +2501,16 @@ fn confirm_handshake_message_deletes_retained_secret() {
     alice_group
         .merge_pending_commit(alice_provider)
         .expect("alice merge add");
+
+    // Bind the group to an emulation epoch so own echoes are decryptable.
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+    let _ = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        alice_provider,
+        &alice_signer,
+    );
 
     let charlie_key_package = KeyPackage::builder()
         .build(
@@ -2476,14 +2564,16 @@ fn confirm_handshake_message_deletes_retained_secret() {
         .confirm_handshake_message(alice_provider.storage(), epoch, 1)
         .expect("confirm proposal B");
 
-    // Proposal B's secret was deleted, so its echo surfaces OwnPrivateMessage.
-    let processed = alice_group
+    // Proposal B's secret was deleted, so its echo no longer decrypts.
+    let err = alice_group
         .process_message(alice_provider, proposal_b.into_protocol_message().unwrap())
-        .expect("process proposal B echo");
-    assert!(matches!(
-        processed.into_content(),
-        ProcessedMessageContent::OwnPrivateMessage
-    ));
+        .expect_err("proposal B's confirmed generation must not decrypt");
+    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
+    )) = err
+    else {
+        panic!("expected a secret reuse error, got {err:?}");
+    };
 }
 
 #[openmls_test::openmls_test]
@@ -2493,10 +2583,16 @@ fn unconfirmed_message_decrypts_after_next_message_is_confirmed() {
     let (alice_credential, alice_signer) =
         new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
 
-    let mut alice_group = MlsGroup::builder()
-        .ciphersuite(ciphersuite)
-        .build(alice_provider, &alice_signer, alice_credential)
-        .expect("An unexpected error occurred.");
+    let mut alice_group =
+        new_vc_main_group(ciphersuite, alice_provider, &alice_signer, alice_credential);
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+    let _ = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        alice_provider,
+        &alice_signer,
+    );
 
     let first_message = b"first unconfirmed message";
     let first = alice_group
@@ -2533,10 +2629,16 @@ fn old_unconfirmed_own_message_survives_later_confirmations() {
     let (alice_credential, alice_signer) =
         new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
 
-    let mut alice_group = MlsGroup::builder()
-        .ciphersuite(ciphersuite)
-        .build(alice_provider, &alice_signer, alice_credential)
-        .expect("An unexpected error occurred.");
+    let mut alice_group =
+        new_vc_main_group(ciphersuite, alice_provider, &alice_signer, alice_credential);
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+    let _ = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        alice_provider,
+        &alice_signer,
+    );
 
     let first_message = b"first unconfirmed message";
     let first = alice_group
@@ -4063,11 +4165,11 @@ fn vc_group_creation_double_join_consumes_generation() {
     ));
 }
 
-/// `propose_unconfirmed` surfaces the handshake confirmation data end to end.
-/// On a group that is not bound to an emulation epoch, the `generation_id` is
-/// `None`. Confirming the proposal deletes its retained handshake secret, so
-/// its own echo then surfaces as `OwnPrivateMessage`, while an unconfirmed
-/// control proposal still decrypts back to a `ProposalMessage`.
+/// `propose_unconfirmed` surfaces the handshake confirmation data end to end
+/// on a group bound to an emulation epoch. Confirming the proposal deletes
+/// its retained handshake secret, so its own echo then fails to decrypt,
+/// while an unconfirmed control proposal still decrypts back to a
+/// `ProposalMessage`.
 #[openmls_test::openmls_test]
 fn propose_unconfirmed_confirm_flow() {
     let alice_provider = &Provider::default();
@@ -4090,6 +4192,9 @@ fn propose_unconfirmed_confirm_flow() {
         .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
         .build();
     let mut alice_group = MlsGroup::new(
         alice_provider,
@@ -4111,6 +4216,16 @@ fn propose_unconfirmed_confirm_flow() {
         .merge_pending_commit(alice_provider)
         .expect("alice merge add");
 
+    // Bind the group to an emulation epoch so own echoes are decryptable.
+    let (mut emulator_group, _emulator_signer) =
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+    let _ = send_vc_commit(
+        &mut alice_group,
+        &mut emulator_group,
+        alice_provider,
+        &alice_signer,
+    );
+
     let charlie_key_package = KeyPackage::builder()
         .build(
             ciphersuite,
@@ -4129,8 +4244,8 @@ fn propose_unconfirmed_confirm_flow() {
 
     let epoch = alice_group.epoch();
 
-    // The confirmation is present for a ciphertext-framed proposal. The group
-    // is not bound to an emulation epoch, so there is no generation id.
+    // The confirmation is present for a ciphertext-framed proposal, and the
+    // bound group produces a generation id.
     let (proposal_a, _ref_a, confirmation_a) = alice_group
         .propose_unconfirmed(
             alice_provider,
@@ -4141,10 +4256,10 @@ fn propose_unconfirmed_confirm_flow() {
         .expect("propose_unconfirmed add charlie");
     let confirmation_a = confirmation_a.expect("ciphertext-framed proposal carries confirmation");
     assert_eq!(confirmation_a.epoch, epoch);
-    assert!(confirmation_a.generation_id.is_none());
+    assert!(confirmation_a.generation_id.is_some());
 
     // Confirming deletes the retained handshake secret, so proposal A's own
-    // echo surfaces OwnPrivateMessage.
+    // echo no longer decrypts.
     alice_group
         .confirm_handshake_message(
             alice_provider.storage(),
@@ -4152,13 +4267,15 @@ fn propose_unconfirmed_confirm_flow() {
             confirmation_a.generation,
         )
         .expect("confirm proposal A");
-    let processed = alice_group
+    let err = alice_group
         .process_message(alice_provider, proposal_a.into_protocol_message().unwrap())
-        .expect("process proposal A echo");
-    assert!(matches!(
-        processed.into_content(),
-        ProcessedMessageContent::OwnPrivateMessage
-    ));
+        .expect_err("proposal A's confirmed generation must not decrypt");
+    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
+    )) = err
+    else {
+        panic!("expected a secret reuse error, got {err:?}");
+    };
 
     // A control proposal that is not confirmed retains its secret, so its echo
     // decrypts back to a ProposalMessage.
