@@ -71,6 +71,21 @@ fn grease_extension_type_classification() {
     assert_eq!(extension.extension_type(), ExtensionType::Unknown(0xFAFA));
 }
 
+/// `Extensions::unknown()` has to find GREASE extensions, not only unknown ones.
+#[test]
+fn grease_extension_is_available_through_unknown_getter() {
+    const GREASE: u16 = 0x8A8A;
+    let payload = vec![0xca, 0xfe];
+
+    let extensions = Extensions::<AnyObject>::single(Extension::Unknown(
+        GREASE,
+        UnknownExtension(payload.clone()),
+    ))
+    .expect("failed to create GREASE extension list");
+
+    assert_eq!(extensions.unknown(GREASE), Some(&UnknownExtension(payload)));
+}
+
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[openmls_test::openmls_test]

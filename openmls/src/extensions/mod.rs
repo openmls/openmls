@@ -722,10 +722,12 @@ impl<T> Extensions<T> {
         let extension_type: ExtensionType = extension_type_id.into();
 
         match extension_type {
-            ExtensionType::Unknown(_) => self.find_by_type(extension_type).and_then(|e| match e {
-                Extension::Unknown(_, e) => Some(e),
-                _ => None,
-            }),
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) => {
+                self.find_by_type(extension_type).and_then(|e| match e {
+                    Extension::Unknown(_, e) => Some(e),
+                    _ => None,
+                })
+            }
             _ => None,
         }
     }
