@@ -3928,6 +3928,99 @@ fn propose_self_update_with_new_signer_mismatched_ciphersuite() {
     assert_eq!(err, ProposeSelfUpdateError::InvalidSignerCiphersuite);
 }
 
+#[openmls_test::openmls_test]
+fn commit_with_new_signer_mismatched_ciphersuite() {
+    use crate::credentials::{BasicCredential, CredentialWithKey};
+    use openmls_traits::types::SignatureScheme;
+
+    let provider = &Provider::default();
+    let (credential_with_key, _key_package, signer, _signature_key) =
+        setup_client("Alice", ciphersuite, provider);
+    let mut group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(provider, &signer, credential_with_key)
+        .unwrap();
+
+    let group_scheme = ciphersuite.signature_algorithm();
+    let mismatched_scheme = if group_scheme == SignatureScheme::ED25519 {
+        SignatureScheme::ECDSA_SECP256R1_SHA256
+    } else {
+        SignatureScheme::ED25519
+    };
+    let mismatched_signer = SignatureKeyPair::new(mismatched_scheme).unwrap();
+    let mismatched_credential_with_key = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice".to_vec()).into(),
+        signature_key: mismatched_signer.to_public_vec().into(),
+    };
+    let new_signer = NewSignerBundle {
+        signer: &mismatched_signer,
+        credential_with_key: mismatched_credential_with_key,
+    };
+
+    let err = group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build_with_new_signer(
+            provider.rand(),
+            provider.crypto(),
+            &signer,
+            new_signer,
+            |_| true,
+        )
+        .unwrap_err();
+
+    assert_eq!(err, CreateCommitError::InvalidSignerCiphersuite);
+}
+
+// A member commit whose `leaf_node_parameters` pin a credential that differs
+// from the new signer's credential is rejected with
+// `InvalidLeafNodeParameters`.
+#[openmls_test::openmls_test]
+fn commit_with_new_signer_mismatched_credential() {
+    use crate::credentials::{BasicCredential, CredentialWithKey};
+
+    let provider = &Provider::default();
+    let (credential_with_key, _key_package, signer, _signature_key) =
+        setup_client("Alice", ciphersuite, provider);
+    let mut group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(provider, &signer, credential_with_key.clone())
+        .unwrap();
+
+    let new_signer_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    let new_credential_with_key = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice".to_vec()).into(),
+        signature_key: new_signer_keys.to_public_vec().into(),
+    };
+    let new_signer = NewSignerBundle {
+        signer: &new_signer_keys,
+        credential_with_key: new_credential_with_key,
+    };
+
+    // Disagreeing credentials: leaf_node_parameters pins the OLD credential
+    // while new_signer carries the NEW credential.
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_credential_with_key(credential_with_key)
+        .build();
+
+    let err = group
+        .commit_builder()
+        .leaf_node_parameters(leaf_node_parameters)
+        .load_psks(provider.storage())
+        .unwrap()
+        .build_with_new_signer(
+            provider.rand(),
+            provider.crypto(),
+            &signer,
+            new_signer,
+            |_| true,
+        )
+        .unwrap_err();
+
+    assert_eq!(err, CreateCommitError::InvalidLeafNodeParameters);
+}
+
 // Alice proposes a signer swap; Bob processes the proposal (envelope verifies
 // against Alice's OLD leaf sig key, embedded leaf verifies against the NEW sig
 // key), stores it, and commits it. After both merge, everyone's view of
@@ -4211,8 +4304,8 @@ fn commit_with_new_signer_signs_group_info_with_new_signer() {
         .clone();
     let charlie_key_package = charlie_pre_group.key_package_bundle.key_package().clone();
 
-    // An Add on its own does not require a path, and without a path the new
-    // signer never reaches Alice's leaf, so force the self-update.
+    // An Add on its own does not require a path, but the new signer does: the
+    // new signature key only reaches Alice's leaf through an UpdatePath.
     let (commit, welcome, group_info) = {
         let [alice_group_state] = group_state.members_mut(&["alice"]);
         let provider = &alice_group_state.party.core_state.provider;
@@ -4225,7 +4318,6 @@ fn commit_with_new_signer_signs_group_info_with_new_signer() {
             .group
             .commit_builder()
             .propose_adds(Some(charlie_key_package))
-            .force_self_update(true)
             .load_psks(provider.storage())
             .expect("load_psks")
             .build_with_new_signer(
@@ -4238,6 +4330,19 @@ fn commit_with_new_signer_signs_group_info_with_new_signer() {
             .expect("build_with_new_signer")
             .stage_commit(provider)
             .expect("stage_commit");
+
+        // The new signer alone must have forced an UpdatePath that carries the
+        // new signature key.
+        let update_path_leaf_node = alice_group_state
+            .group
+            .pending_commit()
+            .expect("expected a pending commit")
+            .update_path_leaf_node()
+            .expect("the new signer must force an UpdatePath");
+        assert_eq!(
+            update_path_leaf_node.signature_key().as_slice(),
+            new_signature_key.as_slice()
+        );
 
         alice_group_state
             .group
