@@ -159,14 +159,25 @@ impl DecryptedMessage {
         // If we are the sender, the content cannot be decrypted and the
         // signature cannot be verified: the own sender ratchet only produces
         // encryption keys. Return early before touching any ratchet state so
-        // no decryption counter is consumed. With the `virtual-clients-draft`
-        // feature, own-leaf messages are decryptable instead (sibling
-        // emulator clients share the leaf, and the dual-use ratchet retains
-        // the secrets of unconfirmed own sends), so decryption is attempted
-        // below and only its failure surfaces the message as an own private
-        // message.
+        // no decryption counter is consumed and no spurious "generation out
+        // of bounds" error is logged for an own echo.
+        //
+        // With the `virtual-clients-draft` feature, own-leaf messages are only
+        // decryptable when there is an emulator context for this epoch: a
+        // sibling emulator client shares the leaf, and the dual-use ratchet
+        // retains the secrets of unconfirmed own sends. In that case we still
+        // attempt decryption below, and only its failure surfaces the message
+        // as an own private message.
+        //
+        // Without an emulator context the group does not use virtual clients
+        // (which is the case for the emulation group) so an own message is
+        // unambiguously our own echo and we short-circuit just like the non-VC
+        // path.
         #[cfg(not(feature = "virtual-clients-draft"))]
-        if own_sender {
+        let short_circuit_own = own_sender;
+        #[cfg(feature = "virtual-clients-draft")]
+        let short_circuit_own = own_sender && emulator_ctx.is_none();
+        if short_circuit_own {
             return Ok(InboundDecryptionResult::OwnPrivateMessage {
                 epoch: ciphertext.epoch(),
                 authenticated_data: ciphertext.aad().to_vec(),
@@ -190,25 +201,7 @@ impl DecryptedMessage {
             #[cfg(feature = "virtual-clients-draft")]
             effective_emulator_ctx,
         );
-        #[cfg(not(feature = "virtual-clients-draft"))]
         let decrypted = decrypt_result?;
-        #[cfg(feature = "virtual-clients-draft")]
-        let decrypted = match decrypt_result {
-            Ok(decrypted) => decrypted,
-            // In a group that does not use virtual clients (no emulator
-            // context resolved for the epoch), an own message that fails to
-            // decrypt is an echo of a send this client already confirmed or
-            // processed. In groups that do use virtual clients, failures
-            // keep surfacing as errors, since the message may come from a
-            // sibling emulator client.
-            Err(_) if own_sender && emulator_ctx.is_none() => {
-                return Ok(InboundDecryptionResult::OwnPrivateMessage {
-                    epoch: ciphertext.epoch(),
-                    authenticated_data: ciphertext.aad().to_vec(),
-                });
-            }
-            Err(e) => return Err(e.into()),
-        };
         Self::from_verifiable_content(
             decrypted.verifiable,
             #[cfg(feature = "virtual-clients-draft")]
