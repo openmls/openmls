@@ -45,6 +45,9 @@ use crate::{
     },
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::components::vc_commit_data::{VcCommitDataError, VirtualClientCommitData};
+
 use super::{
     mls_auth_content::AuthenticatedContent,
     mls_auth_content_in::{AuthenticatedContentIn, VerifiableAuthenticatedContentIn},
@@ -478,6 +481,20 @@ impl ProcessedMessage {
         self.safe_aad
             .as_ref()
             .and_then(|safe_aad| safe_aad.get(component_id))
+    }
+
+    /// Parse the virtual-clients commit data from this message's Safe AAD.
+    ///
+    /// Returns `Ok(None)` when the message carries no Safe AAD item under
+    /// [`VC_COMPONENT_ID`], which includes the case where Safe AAD was not
+    /// active for the group.
+    ///
+    /// [`VC_COMPONENT_ID`]: crate::components::vc_derivation_info::VC_COMPONENT_ID
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn vc_commit_data(&self) -> Result<Option<VirtualClientCommitData>, VcCommitDataError> {
+        self.safe_aad_item(crate::components::vc_derivation_info::VC_COMPONENT_ID)
+            .map(VirtualClientCommitData::from_safe_aad_item_data)
+            .transpose()
     }
 
     /// Returns the bytes of `authenticated_data` after any Safe AAD prefix.
