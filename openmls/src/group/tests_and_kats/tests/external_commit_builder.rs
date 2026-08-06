@@ -1,14 +1,19 @@
 use openmls_test::openmls_test;
 
 use crate::{
+    ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey},
+    credentials::NewSignerBundle,
     framing::{ProcessedMessageContent, ProtocolMessage},
     group::{
+        errors::CreateCommitError,
         tests_and_kats::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
         MlsGroup, MlsGroupJoinConfig, WireFormatPolicy, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::{PreSharedKeyProposal, ProposalType},
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
-    treesync::node::leaf_node::{Capabilities, LeafNodeParameters},
+    treesync::node::leaf_node::{
+        Capabilities, LeafNodeIn, LeafNodeParameters, TreePosition, VerifiableLeafNode,
+    },
 };
 
 #[openmls_test]
@@ -227,4 +232,254 @@ fn external_commit_builder() {
     assert!(members
         .iter()
         .any(|m| m.credential == charlie_credential_with_key.credential));
+}
+
+// An external commit with a consistent credential, signature key and signer
+// succeeds, even when the leaf node parameters repeat the credential passed to
+// the external commit builder. The generated leaf carries that credential and
+// its signature verifies with the signature key stored in the leaf itself.
+#[openmls_test]
+fn external_commit_consistent_credential() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: alice_credential_with_key,
+        signer: alice_signer,
+    } = generate_credential_with_key(
+        b"alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: bob_credential_with_key,
+        signer: bob_signer,
+    } = generate_credential_with_key(
+        b"bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    // Alice's group accepts plaintext messages so she can process the
+    // external commit.
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(alice_provider, &alice_signer, alice_credential_with_key)
+        .unwrap();
+
+    let verifiable_group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    // Repeating the builder credential in the leaf node parameters is allowed.
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_credential_with_key(bob_credential_with_key.clone())
+        .build();
+
+    let (bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
+        .with_ratchet_tree(alice_group.export_ratchet_tree().into())
+        .build_group(
+            bob_provider,
+            verifiable_group_info,
+            bob_credential_with_key.clone(),
+        )
+        .unwrap()
+        .leaf_node_parameters(leaf_node_parameters)
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(bob_provider)
+        .unwrap();
+
+    // Alice can process the external commit.
+    let plaintext = commit_message_bundle
+        .into_commit()
+        .into_protocol_message()
+        .unwrap();
+    let processed_message = alice_group
+        .process_message(alice_provider, plaintext)
+        .unwrap();
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a staged commit message.");
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, *staged_commit)
+        .unwrap();
+
+    // The generated leaf carries the credential and signature key passed to
+    // the external commit builder.
+    let bob_leaf = bob_group.own_leaf_node().unwrap().clone();
+    assert_eq!(bob_leaf.credential(), &bob_credential_with_key.credential);
+    assert_eq!(
+        bob_leaf.signature_key(),
+        &bob_credential_with_key.signature_key
+    );
+
+    // The leaf's signature verifies with the signature key stored in the leaf
+    // itself.
+    let leaf_node_in = LeafNodeIn::from(bob_leaf);
+    let VerifiableLeafNode::Commit(mut verifiable_leaf) = leaf_node_in.into_verifiable_leaf_node()
+    else {
+        panic!("Expected a leaf node with source Commit.");
+    };
+    verifiable_leaf.add_tree_position(TreePosition::new(
+        bob_group.group_id().clone(),
+        bob_group.own_leaf_index(),
+    ));
+    let signature_key = OpenMlsSignaturePublicKey::from_signature_key(
+        verifiable_leaf.signature_key().clone(),
+        ciphersuite.signature_algorithm(),
+    );
+    verifiable_leaf
+        .verify(bob_provider.crypto(), &signature_key)
+        .expect("Leaf signature does not verify with the leaf's own signature key.");
+}
+
+// Leaf node parameters that pin a credential other than the one passed to the
+// external commit builder are rejected before a commit is built.
+#[openmls_test]
+fn external_commit_rejects_divergent_credential() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: alice_credential_with_key,
+        signer: alice_signer,
+    } = generate_credential_with_key(
+        b"alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: bob_credential_with_key,
+        signer: bob_signer,
+    } = generate_credential_with_key(
+        b"bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    // A second credential and signature key, unrelated to the one passed to
+    // the external commit builder.
+    let CredentialWithKeyAndSigner {
+        credential_with_key: other_credential_with_key,
+        signer: _other_signer,
+    } = generate_credential_with_key(
+        b"bob-other".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    let alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential_with_key)
+        .unwrap();
+
+    let verifiable_group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    let divergent_leaf_node_parameters = LeafNodeParameters::builder()
+        .with_credential_with_key(other_credential_with_key)
+        .build();
+
+    let err = MlsGroup::external_commit_builder()
+        .with_ratchet_tree(alice_group.export_ratchet_tree().into())
+        .build_group(bob_provider, verifiable_group_info, bob_credential_with_key)
+        .unwrap()
+        .leaf_node_parameters(divergent_leaf_node_parameters)
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_signer,
+            |_| true,
+        )
+        .unwrap_err();
+
+    assert_eq!(err, CreateCommitError::ExternalCommitCredentialMismatch);
+}
+
+// An external committer has no old signature key to rotate, so
+// `build_with_new_signer` is rejected on external commits.
+#[openmls_test]
+fn external_commit_rejects_new_signer() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: alice_credential_with_key,
+        signer: alice_signer,
+    } = generate_credential_with_key(
+        b"alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: bob_credential_with_key,
+        signer: bob_signer,
+    } = generate_credential_with_key(
+        b"bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: new_credential_with_key,
+        signer: new_signer,
+    } = generate_credential_with_key(
+        b"bob-new".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    let alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential_with_key)
+        .unwrap();
+
+    let verifiable_group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    let new_signer_bundle = NewSignerBundle {
+        signer: &new_signer,
+        credential_with_key: new_credential_with_key,
+    };
+
+    let err = MlsGroup::external_commit_builder()
+        .with_ratchet_tree(alice_group.export_ratchet_tree().into())
+        .build_group(bob_provider, verifiable_group_info, bob_credential_with_key)
+        .unwrap()
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build_with_new_signer(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_signer,
+            new_signer_bundle,
+            |_| true,
+        )
+        .unwrap_err();
+
+    assert_eq!(err, CreateCommitError::ExternalCommitWithNewSigner);
 }
