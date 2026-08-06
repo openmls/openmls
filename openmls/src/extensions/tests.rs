@@ -47,6 +47,30 @@ fn application_id_in_leaf_node_extensions() {
         .build();
 }
 
+/// A GREASE extension is stored as `Extension::Unknown`, but has to report
+/// `ExtensionType::Grease`, like the same value read from a capabilities list.
+#[test]
+fn grease_extension_type_classification() {
+    for &value in openmls_traits::grease::GREASE_VALUES.iter() {
+        let extension_type = Extension::Unknown(value, UnknownExtension(vec![])).extension_type();
+
+        assert_eq!(extension_type, ExtensionType::Grease(value));
+        assert_eq!(extension_type, ExtensionType::from(value));
+
+        // GREASE follows the same structural validation path as an unknown
+        // extension type in these validators.
+        assert!(extension_type.is_valid_in_leaf_node());
+        assert!(extension_type.is_valid_in_key_package());
+        assert!(extension_type.is_valid_in_group_context());
+        assert_eq!(extension_type.is_valid_in_group_info(), None);
+    }
+
+    // 0xFAFA has the shape of a GREASE value, but RFC 9420 Section 13.5 reserves
+    // only 0x0A0A through 0xEAEA. A pattern-based check would get this wrong.
+    let extension = Extension::Unknown(0xFAFA, UnknownExtension(vec![]));
+    assert_eq!(extension.extension_type(), ExtensionType::Unknown(0xFAFA));
+}
+
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[openmls_test::openmls_test]
