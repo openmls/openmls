@@ -54,9 +54,9 @@ dependencies = [
 
 [[package]]
 name = "aho-corasick"
-version = "1.1.4"
+version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddd31a130427c27518df266943a5308ed92d4b226cc639f5a8f1002816174301"
+checksum = "c982642fa9e8606056828ee9a8505737230110bb1099153c79efe865c59d12ba"
 dependencies = [
  "memchr",
 ]
@@ -474,9 +474,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.6.4"
+version = "4.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d91e0c145792ef73a6ad36d27c75ac09f1832222a3c209689d90f534685ee5b7"
+checksum = "301b56658598e48f3648647ac6fc887be7e7108eddfa4e9b63fcf3ec58c0cadf"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -484,9 +484,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.6.2"
+version = "4.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f09628afdcc538b57f3c6341e9c8e9970f18e4a481690a64974d7023bd33548b"
+checksum = "94a65403d1a1bd28f7dc68eb8506e8874808ee5eecb59298de588e2e1407a078"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1575,9 +1575,9 @@ checksum = "15cdd26707701c53297e2fa6afb323d55fbc1d0810c3aec078ae3ef0424c3c15"
 
 [[package]]
 name = "hybrid-array"
-version = "0.4.13"
+version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "818356c5132c1fede50f837ca96afbe78ff42413047f4abb886217845e1b6c8c"
+checksum = "707114b52a152fa7bdb290cd7cd5912d9467273b6d74e21b8d81aca1f8533f6b"
 dependencies = [
  "ctutils",
  "typenum",
@@ -1815,9 +1815,9 @@ dependencies = [
 
 [[package]]
 name = "ipnet"
-version = "2.12.0"
+version = "2.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d98f6fed1fde3f8c21bc40a1abb88dd75e67924f9cffc3ef95607bad8017f8e2"
+checksum = "6a756c3fac73139e83f14c2d742155dd2b78d3ee56597b419a0579b7bdd6dd78"
 
 [[package]]
 name = "is-terminal"
@@ -1942,9 +1942,9 @@ dependencies = [
 
 [[package]]
 name = "keccak"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e24a010dd405bd7ed803e5253182815b41bf2e6a80cc3bfc066658e03a198aa"
+checksum = "ffd9697dc4a9a62e2da93389f34400b77a28f0287711263cabb203b3ccb9c0e4"
 dependencies = [
  "cfg-if",
  "cpufeatures 0.3.0",
@@ -2519,7 +2519,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
 name = "openmls"
-version = "0.9.0-rc.1"
+version = "0.9.0-rc.2"
 dependencies = [
  "backtrace",
  "base64",
@@ -2584,7 +2584,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_basic_credential"
-version = "0.6.0-rc.1"
+version = "0.6.0-rc.2"
 dependencies = [
  "ed25519-dalek",
  "ml-dsa",
@@ -2600,7 +2600,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_libcrux_crypto"
-version = "0.4.0-rc.1"
+version = "0.4.0-rc.2"
 dependencies = [
  "aes",
  "fpe",
@@ -2622,7 +2622,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_memory_storage"
-version = "0.6.0-rc.1"
+version = "0.6.0-rc.2"
 dependencies = [
  "base64",
  "hex",
@@ -2636,7 +2636,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_rust_crypto"
-version = "0.6.0-rc.1"
+version = "0.6.0-rc.2"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -2663,7 +2663,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_serialization_helpers"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 dependencies = [
  "ciborium",
  "postcard",
@@ -2677,7 +2677,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_sqlite_storage"
-version = "0.3.0-rc.1"
+version = "0.3.0-rc.2"
 dependencies = [
  "openmls_traits",
  "refinery",
@@ -2688,7 +2688,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_test"
-version = "0.3.0-rc.1"
+version = "0.3.0-rc.2"
 dependencies = [
  "openmls_libcrux_crypto",
  "openmls_rust_crypto",
@@ -2700,7 +2700,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_traits"
-version = "0.6.0-rc.1"
+version = "0.6.0-rc.2"
 dependencies = [
  "serde",
  "tls_codec",
@@ -3306,9 +3306,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.16"
+version = "0.4.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fcfdb36bda0c880c5931cdc7a2bcdc8ba4556847b9d912bca70bc94708711ad"
+checksum = "ad8553b9b26413251cbf30e620595c7a41b3887f03da04579c0e6b0d6a06b4b2"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -4000,9 +4000,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.54"
+version = "0.3.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e1d5e639ff6bab73cb6885cc7e7b1de96c3f32c68ec55f3952614bec1092244"
+checksum = "cdb87b95ec50ddfa440816d227a17b2ccbdda963a316a727fda0fc4334f7d134"
 dependencies = [
  "deranged",
  "num-conv",
