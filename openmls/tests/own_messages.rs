@@ -252,28 +252,16 @@ fn own_private_commit_surfaces_as_own_private_message() {
         .expect("Expected processing own private commit to succeed.");
 
     // The commit is a PrivateMessage, so it cannot be decrypted/verified;
-    // it surfaces as OwnPrivateMessage, NOT OwnPendingCommit.
-    #[cfg(not(feature = "virtual-clients-draft"))]
+    // it surfaces as OwnPrivateMessage, NOT OwnPendingCommit. This also
+    // holds with the `virtual-clients-draft` feature: the group has no
+    // emulator context, so own messages short-circuit just like the non-VC
+    // path.
     assert!(
         matches!(
             processed.content(),
             ProcessedMessageContent::OwnPrivateMessage
         ),
         "Expected OwnPrivateMessage for own private commit, got {:?}",
-        processed.content()
-    );
-    // With the `virtual-clients-draft` feature, the dual-use ratchet still
-    // retains the commit's handshake encryption secret (only application
-    // secrets are confirmed), so the echo decrypts and matches the pending
-    // commit.
-    // TODO 2102: This will be fixed in a follow-up PR.
-    #[cfg(feature = "virtual-clients-draft")]
-    assert!(
-        matches!(
-            processed.content(),
-            ProcessedMessageContent::OwnPendingCommit
-        ),
-        "Expected OwnPendingCommit for own private commit, got {:?}",
         processed.content()
     );
 

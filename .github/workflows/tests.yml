@@ -27,6 +27,8 @@ jobs:
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: release, mode_arg: --release, features_name: fork-resolution, features_arg: "-F fork-resolution" }
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: debug, mode_arg: "", features_name: extensions-draft, features_arg: "-F extensions-draft,extensions-draft-test-dependencies" }
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: release, mode_arg: --release, features_name: extensions-draft, features_arg: "-F extensions-draft,extensions-draft-test-dependencies" }
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: debug, mode_arg: "", features_name: virtual-clients-draft, features_arg: "-F virtual-clients-draft,virtual-clients-draft-test-dependencies" }
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: release, mode_arg: --release, features_name: virtual-clients-draft, features_arg: "-F virtual-clients-draft,virtual-clients-draft-test-dependencies" }
           # Test the storage compatibility feature with and without extensions draft feature
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: release, mode_arg: --release, features_name: 0-8-1-storage-format, features_arg: "-F 0-8-1-storage-format" }
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, mode_name: release, mode_arg: --release, features_name: 0-8-1-storage-format-extensions-draft, features_arg: "-F 0-8-1-storage-format,extensions-draft,extensions-draft-test-dependencies" }
