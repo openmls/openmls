@@ -531,7 +531,7 @@ impl PublicGroup {
     ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
     ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
-    ///  - When the `extensions-draft` feature is enabled, AppDataUpdate proposal is allowed additionally.
+    ///  - When the `extensions-draft` feature is enabled, AppDataUpdate and AppEphemeral proposals are allowed additionally.
     pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
@@ -558,7 +558,7 @@ impl PublicGroup {
                 | Proposal::PreSharedKey(_)
                 | Proposal::Custom(_) => true,
                 #[cfg(feature = "extensions-draft")]
-                Proposal::AppDataUpdate(_) => true,
+                Proposal::AppDataUpdate(_) | Proposal::AppEphemeral(_) => true,
                 _ => false,
             };
             is_inline && !is_allowed_type

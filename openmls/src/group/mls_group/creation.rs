@@ -926,6 +926,15 @@ impl MlsGroup {
     /// `external_commit` is the sibling's external commit. On success the
     /// returned group sits at the epoch the commit installs, with this client
     /// on the shared virtual-client leaf.
+    ///
+    /// If the commit carries AppEphemeral proposals by value, their payload
+    /// can be read before calling this function via
+    /// [`PublicMessageIn::unverified_app_ephemeral_proposals`], for example
+    /// to decide how to follow the join. That data is unauthenticated until
+    /// the commit is verified, which this function does.
+    ///
+    /// [`PublicMessageIn::unverified_app_ephemeral_proposals`]:
+    ///     crate::framing::PublicMessageIn::unverified_app_ephemeral_proposals
     pub fn vc_join_via_sibling_external_commit<Provider: OpenMlsProvider>(
         provider: &Provider,
         join_config: &MlsGroupJoinConfig,
