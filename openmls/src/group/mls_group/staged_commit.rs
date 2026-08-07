@@ -321,19 +321,19 @@ impl MlsGroup {
         let ciphersuite = self.ciphersuite();
 
         // Unbundle the sibling-VC commit material: the per-commit operation
-        // secret recreates the path, the emulation `epoch_id` is recorded on
+        // secret recreates the path, the derivation `epoch_id` is recorded on
         // the staged commit, and the external init secret (external commits
         // only) feeds the key schedule.
         #[cfg(feature = "virtual-clients-draft")]
-        let (vc_material, vc_emulation_epoch_id, vc_external_init_secret) = match vc_commit_material
-        {
-            Some(material) => (
-                Some(material.operation_secret),
-                Some(material.epoch_id),
-                material.external_init_secret,
-            ),
-            None => (None, None, None),
-        };
+        let (vc_material, vc_derivation_epoch_id, vc_external_init_secret) =
+            match vc_commit_material {
+                Some(material) => (
+                    Some(material.operation_secret),
+                    Some(material.epoch_id),
+                    material.external_init_secret,
+                ),
+                None => (None, None, None),
+            };
 
         // A sibling-resync external commit is a VC external commit sent by a
         // sibling emulator client to onboard itself into this higher-level
@@ -600,7 +600,7 @@ impl MlsGroup {
             proposal_queue,
             staged_commit_state,
             #[cfg(feature = "virtual-clients-draft")]
-            vc_emulation_epoch_id,
+            vc_derivation_epoch_id,
         );
 
         Ok(staged_commit)
@@ -836,11 +836,11 @@ pub struct StagedCommit {
     pub staged_proposal_queue: ProposalQueue,
     /// The staged commit state.
     pub(super) state: StagedCommitState,
-    /// Emulation epoch this commit binds the group to on merge, when
+    /// Derivation epoch this commit binds the group to on merge, when
     /// the commit was built via `CommitBuilder::vc_emulation`.
     #[cfg(feature = "virtual-clients-draft")]
     #[serde(default)]
-    pub(super) vc_emulation_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
+    pub(super) vc_derivation_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
 }
 
 impl StagedCommit {
@@ -849,7 +849,7 @@ impl StagedCommit {
     pub(crate) fn new(
         staged_proposal_queue: ProposalQueue,
         state: StagedCommitState,
-        #[cfg(feature = "virtual-clients-draft")] vc_emulation_epoch_id: Option<
+        #[cfg(feature = "virtual-clients-draft")] vc_derivation_epoch_id: Option<
             crate::components::vc_derivation_info::EpochId,
         >,
     ) -> Self {
@@ -857,7 +857,7 @@ impl StagedCommit {
             staged_proposal_queue,
             state,
             #[cfg(feature = "virtual-clients-draft")]
-            vc_emulation_epoch_id,
+            vc_derivation_epoch_id,
         }
     }
 

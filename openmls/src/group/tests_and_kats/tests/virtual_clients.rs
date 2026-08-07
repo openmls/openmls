@@ -68,9 +68,9 @@ fn vc_group_config(ciphersuite: Ciphersuite) -> MlsGroupCreateConfig {
         .build()
 }
 
-/// Found a single-member emulation group on `provider` and register an
-/// emulation epoch on it.
-fn registered_emulation_epoch<P: OpenMlsProvider>(provider: &P) -> EpochId {
+/// Found a single-member emulation group on `provider` and register a
+/// derivation epoch on it.
+fn registered_derivation_epoch<P: OpenMlsProvider>(provider: &P) -> EpochId {
     let (credential, signer) = new_credential(
         provider,
         b"Emulator",
@@ -84,12 +84,12 @@ fn registered_emulation_epoch<P: OpenMlsProvider>(provider: &P) -> EpochId {
     )
     .expect("create emulation group");
     emulator_group
-        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
-        .expect("register emulation epoch")
+        .register_vc_derivation_epoch(provider.crypto(), provider.storage())
+        .expect("register derivation epoch")
 }
 
 #[openmls_test::openmls_test]
-fn register_vc_emulation_epoch_is_idempotent_per_epoch() {
+fn register_vc_derivation_epoch_is_idempotent_per_epoch() {
     let provider = &Provider::default();
     let (credential, signer) = new_credential(
         provider,
@@ -105,11 +105,11 @@ fn register_vc_emulation_epoch_is_idempotent_per_epoch() {
     .expect("create emulation group");
 
     let epoch_id = emulator_group
-        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
+        .register_vc_derivation_epoch(provider.crypto(), provider.storage())
         .expect("first registration");
 
     let epoch_id_again = emulator_group
-        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
+        .register_vc_derivation_epoch(provider.crypto(), provider.storage())
         .expect("repeated registration in the same epoch");
     assert_eq!(
         epoch_id, epoch_id_again,
@@ -118,7 +118,7 @@ fn register_vc_emulation_epoch_is_idempotent_per_epoch() {
     );
 
     // Advancing the group epoch installs a fresh exporter, so a new
-    // registration derives a new emulation epoch.
+    // registration derives a new derivation epoch.
     emulator_group
         .self_update(provider, &signer, LeafNodeParameters::default())
         .expect("self update");
@@ -127,12 +127,12 @@ fn register_vc_emulation_epoch_is_idempotent_per_epoch() {
         .expect("merge self update");
 
     let next_epoch_id = emulator_group
-        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
+        .register_vc_derivation_epoch(provider.crypto(), provider.storage())
         .expect("registration in the next epoch");
     assert_ne!(
         epoch_id, next_epoch_id,
         "a registration after the epoch advanced must derive a fresh \
-         emulation epoch"
+         derivation epoch"
     );
 }
 
@@ -146,7 +146,7 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
     let provider = &Provider::default();
     let bob_provider = &Provider::default();
 
-    let epoch_id = registered_emulation_epoch(provider);
+    let epoch_id = registered_derivation_epoch(provider);
 
     // Higher-level group: the VC leaf plus one regular member, so the VC
     // commit's update path contains a parent node.
@@ -260,7 +260,7 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
 fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
     let provider = &Provider::default();
 
-    let epoch_id = registered_emulation_epoch(provider);
+    let epoch_id = registered_derivation_epoch(provider);
 
     // Reference derivation per spec, from a scratch copy of the operation
     // tree (dropped unpersisted, so the builder consumes the same

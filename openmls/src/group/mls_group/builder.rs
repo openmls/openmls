@@ -49,7 +49,7 @@ impl MlsGroupBuilder {
         self
     }
 
-    /// Create the group as a virtual client on the emulation epoch `epoch_id`.
+    /// Create the group as a virtual client on the derivation epoch `epoch_id`.
     ///
     /// The creator's leaf is `key_package`-sourced and its key material is
     /// derived from a fresh `key_package` operation secret of that epoch (so
@@ -381,7 +381,7 @@ impl MlsGroupBuilder {
 /// leaf).
 ///
 /// The creator's leaf is `key_package`-sourced and its key material is derived
-/// from a fresh `key_package` operation secret of the emulation epoch
+/// from a fresh `key_package` operation secret of the derivation epoch
 /// `epoch_id` (batch index 0). The epoch-0 `epoch_secret` is derived from the
 /// same KeyPackage seed under the created group's ciphersuite. A sibling
 /// emulator client reconstructs this exact state with
@@ -433,7 +433,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         None,
     )?;
 
-    // Load the emulation epoch state and operation tree, allocate a fresh
+    // Load the derivation epoch state and operation tree, allocate a fresh
     // `key_package` generation (empty operation context, matching the KeyPackage
     // batch path), and persist the advanced tree right away. A retried creation
     // consumes a fresh generation.
@@ -565,11 +565,11 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         application_export_tree: None,
     };
 
-    // Bind epoch 0 of the new group to the emulation epoch so later VC
-    // operations in this group resolve the right emulation state. Written before
-    // the group itself, so an error between the writes cannot leave a loadable
-    // group without a binding (a bound group is required for the reuse-guard
-    // MUST).
+    // Bind epoch 0 of the new group to the derivation epoch so later VC
+    // operations in this group resolve the right derivation epoch state.
+    // Written before the group itself, so an error between the writes cannot
+    // leave a loadable group without a binding (a bound group is required for
+    // the reuse-guard MUST).
     let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
         .storage()
         .vc_emulation_bindings(&group_id)

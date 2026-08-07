@@ -86,10 +86,10 @@ pub enum VirtualClientsError {
     /// epoch.
     #[error("No virtual-clients operation secret tree for this epoch.")]
     MissingOperationTree,
-    /// No virtual-clients `EmulationEpochState` was registered for this
+    /// No virtual-clients `VcDerivationEpochState` was registered for this
     /// epoch, or it has been deleted.
-    #[error("No virtual-clients emulation-epoch state for this epoch.")]
-    MissingEmulationEpochState,
+    #[error("No virtual-clients derivation-epoch state for this epoch.")]
+    MissingDerivationEpochState,
     /// Loading or storing virtual-clients state via the storage provider
     /// failed.
     #[error("Virtual-clients storage error")]
@@ -154,11 +154,11 @@ pub enum VirtualClientsError {
     DuplicateKeyPackageRef,
 }
 
-/// Per-emulation-epoch root secret. Sourced internally by
-/// [`MlsGroup::register_vc_emulation_epoch`] from the emulation group's
+/// Per-derivation-epoch root secret. Sourced internally by
+/// [`MlsGroup::register_vc_derivation_epoch`] from the emulation group's
 /// `safe_export_secret(VC_COMPONENT_ID)`.
 ///
-/// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
+/// [`MlsGroup::register_vc_derivation_epoch`]: crate::group::MlsGroup::register_vc_derivation_epoch
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct EmulatorEpochSecret(Secret);
 
@@ -203,7 +203,7 @@ impl EmulatorEpochSecret {
             .derive_secret(crypto, ciphersuite, EPOCH_BASE_SECRET_LABEL)?)
     }
 
-    /// Derive the per-emulation-epoch [`ReuseGuardSecret`].
+    /// Derive the per-derivation-epoch [`ReuseGuardSecret`].
     pub(crate) fn derive_reuse_guard_secret(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -215,7 +215,7 @@ impl EmulatorEpochSecret {
         Ok(ReuseGuardSecret(secret))
     }
 
-    /// Derive the per-emulation-epoch [`GenerationIdSecret`].
+    /// Derive the per-derivation-epoch [`GenerationIdSecret`].
     pub(crate) fn derive_generation_id_secret(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -228,7 +228,7 @@ impl EmulatorEpochSecret {
     }
 }
 
-/// Per-emulation-epoch secret used to derive the FF1 PRP key for
+/// Per-derivation-epoch secret used to derive the FF1 PRP key for
 /// `reuse_guard` values sent by this virtual client. Derived from
 /// [`EmulatorEpochSecret`] via [`EmulatorEpochSecret::derive_reuse_guard_secret`].
 #[derive(Debug, Serialize, Deserialize)]
@@ -249,7 +249,7 @@ impl ReuseGuardSecret {
     /// ```
     ///
     /// `ciphersuite` is the emulation group's ciphersuite, stored on
-    /// [`EmulationEpochState`].
+    /// [`VcDerivationEpochState`].
     pub(crate) fn derive_prp_key(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -272,7 +272,7 @@ impl ReuseGuardSecret {
     }
 }
 
-/// Per-emulation-epoch secret used to derive generation IDs for DS
+/// Per-derivation-epoch secret used to derive generation IDs for DS
 /// collision detection (mls-virtual-clients draft, "Coordinating ratchet
 /// generations with the DS" section). Derived from [`EmulatorEpochSecret`]
 /// via [`EmulatorEpochSecret::derive_generation_id_secret`].
@@ -362,7 +362,7 @@ pub(crate) struct PrivateMessageContext<'a> {
 /// collisions between siblings, per higher-level group, per higher-level
 /// group epoch, and per ratchet type (mls-virtual-clients draft).
 ///
-/// Derived from the emulation epoch's `GenerationIdSecret` over a
+/// Derived from the derivation epoch's `GenerationIdSecret` over a
 /// `PrivateMessageContext`. The value is opaque to the application: it is
 /// produced by [`MlsGroup::create_unconfirmed_message`] and handed to the DS,
 /// which compares it for equality across siblings.
@@ -461,12 +461,12 @@ impl DerivationInfo {
     }
 }
 
-/// Identifier of an emulation epoch's registered virtual-clients state.
+/// Identifier of a derivation epoch's registered virtual-clients state.
 /// Derived deterministically from the emulation group's
 /// `safe_export_secret(VC_COMPONENT_ID)` by
-/// [`MlsGroup::register_vc_emulation_epoch`].
+/// [`MlsGroup::register_vc_derivation_epoch`].
 ///
-/// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
+/// [`MlsGroup::register_vc_derivation_epoch`]: crate::group::MlsGroup::register_vc_derivation_epoch
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserializeBytes,
 )]
@@ -514,7 +514,7 @@ pub struct KeyPackageInfo {
 }
 
 /// Wire struct a virtual client uploads to a sibling so the sibling learns
-/// about the KeyPackages the virtual client published for an emulation epoch
+/// about the KeyPackages the virtual client published for a derivation epoch
 /// (mls-virtual-clients draft):
 ///
 /// ```text
@@ -526,7 +526,7 @@ pub struct KeyPackageInfo {
 /// } KeyPackageUpload
 /// ```
 ///
-/// `epoch_id` identifies the emulation epoch the KeyPackages belong to.
+/// `epoch_id` identifies the derivation epoch the KeyPackages belong to.
 /// `leaf_index` is the uploading client's emulation-group leaf index at that
 /// epoch. The receiver stores this leaf index: the KeyPackage operation
 /// secret was allocated from the uploader's per-leaf ratchet, so a sibling
@@ -537,7 +537,7 @@ pub struct KeyPackageInfo {
 /// batch.
 #[derive(Debug, PartialEq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub struct KeyPackageUpload {
-    /// Emulation epoch the uploaded KeyPackages belong to.
+    /// Derivation epoch the uploaded KeyPackages belong to.
     pub epoch_id: EpochId,
     /// Uploading client's emulation-group leaf index at that epoch.
     pub leaf_index: LeafNodeIndex,
@@ -550,7 +550,7 @@ pub struct KeyPackageUpload {
 /// Per-`KeyPackageRef` material a sibling retains when it processes a
 /// [`KeyPackageUpload`]. It captures what the Welcome path needs to later
 /// rederive the KeyPackage's init and leaf-encryption keys without touching
-/// the operation tree: the per-KeyPackage seed secret, plus the emulation
+/// the operation tree: the per-KeyPackage seed secret, plus the derivation
 /// epoch, leaf index, generation, and batch index used to validate the leaf
 /// found in the ratchet tree.
 ///
@@ -561,7 +561,7 @@ pub struct KeyPackageUpload {
 /// generation is consumed once and each seed is stored alongside its index.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RetainedKeyPackageMaterial {
-    /// Emulation epoch the KeyPackage belongs to.
+    /// Derivation epoch the KeyPackage belongs to.
     pub epoch_id: EpochId,
     /// Uploader's emulation-group leaf index, identifying the operation
     /// ratchet the batch generation was allocated from.
@@ -604,14 +604,14 @@ fn validate_key_package_infos(infos: &[KeyPackageInfo]) -> Result<(), VirtualCli
 
 /// Build a [`KeyPackageUpload`] for `epoch_id` from a batch's `generation` and
 /// its [`KeyPackageInfo`] entries, filling `leaf_index` from the
-/// [`EmulationEpochState`] stored for that epoch.
+/// [`VcDerivationEpochState`] stored for that epoch.
 ///
 /// The virtual client calls this after building a batch of KeyPackages with
 /// [`KeyPackageBuilder::build_vc_batch`] to assemble the message it hands to
 /// its sibling. `generation` is the single `key_package` operation generation
 /// the batch consumed.
 ///
-/// Returns [`VirtualClientsError::MissingEmulationEpochState`] if no state is
+/// Returns [`VirtualClientsError::MissingDerivationEpochState`] if no state is
 /// registered for `epoch_id`.
 ///
 /// [`KeyPackageBuilder::build_vc_batch`]: crate::key_packages::KeyPackageBuilder::build_vc_batch
@@ -622,13 +622,13 @@ pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
     key_package_info: Vec<KeyPackageInfo>,
 ) -> Result<KeyPackageUpload, VirtualClientsError> {
     validate_key_package_infos(&key_package_info)?;
-    let state: EmulationEpochState = storage
-        .vc_emulation_epoch_state(&epoch_id)
+    let state: VcDerivationEpochState = storage
+        .vc_derivation_epoch_state(&epoch_id)
         .map_err(|e| {
-            log::error!("vc: load emulation epoch state in assemble upload failed: {e:?}");
+            log::error!("vc: load derivation epoch state in assemble upload failed: {e:?}");
             VirtualClientsError::StorageError
         })?
-        .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+        .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
     Ok(KeyPackageUpload {
         epoch_id,
         leaf_index: state.leaf_index,
@@ -663,13 +663,13 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
     let storage = provider.storage();
     let crypto = provider.crypto();
 
-    let state: EmulationEpochState = storage
-        .vc_emulation_epoch_state(&upload.epoch_id)
+    let state: VcDerivationEpochState = storage
+        .vc_derivation_epoch_state(&upload.epoch_id)
         .map_err(|e| {
-            log::error!("vc: load emulation epoch state in process upload failed: {e:?}");
+            log::error!("vc: load derivation epoch state in process upload failed: {e:?}");
             VirtualClientsError::StorageError
         })?
-        .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+        .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
     let mut operation_tree: OperationSecretTree = storage
         .vc_operation_tree(&upload.epoch_id)
         .map_err(|e| {
@@ -731,7 +731,7 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
 pub(crate) struct VcWelcomeMaterial {
     /// The [`KeyPackageRef`] the welcome's encrypted group secrets addressed.
     pub(crate) key_package_ref: KeyPackageRef,
-    /// Emulation epoch the KeyPackage belongs to.
+    /// Derivation epoch the KeyPackage belongs to.
     pub(crate) epoch_id: EpochId,
     /// Uploader's emulation-group leaf index, identifying the operation
     /// ratchet the batch generation was allocated from.
@@ -750,8 +750,8 @@ pub(crate) struct VcWelcomeMaterial {
     pub(crate) encryption_keypair: EncryptionKeyPair,
 }
 
-/// The emulation epoch an emulation group registered at one of its own group
-/// epochs, recorded by [`MlsGroup::register_vc_emulation_epoch`] so that a
+/// The derivation epoch an emulation group registered at one of its own group
+/// epochs, recorded by [`MlsGroup::register_vc_derivation_epoch`] so that a
 /// repeated call in the same group epoch returns the existing [`EpochId`]
 /// instead of consuming the forward-secure exporter again (the exporter is
 /// punctured by the first call and cannot be re-evaluated).
@@ -761,12 +761,12 @@ pub(crate) struct VcWelcomeMaterial {
 /// they cannot distinguish a registration in the current epoch from a
 /// carry-forward of an older one.
 ///
-/// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
+/// [`MlsGroup::register_vc_derivation_epoch`]: crate::group::MlsGroup::register_vc_derivation_epoch
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct RegisteredVcEmulationEpoch {
+pub(crate) struct RegisteredVcDerivationEpoch {
     /// The emulation group's own epoch at registration time.
     pub(crate) group_epoch: crate::group::GroupEpoch,
-    /// The emulation epoch id derived by that registration.
+    /// The derivation epoch id derived by that registration.
     pub(crate) epoch_id: EpochId,
 }
 
@@ -774,7 +774,7 @@ pub(crate) struct RegisteredVcEmulationEpoch {
 /// virtual-client LeafNode that was active at each recent epoch of that
 /// group.
 ///
-/// Reuse guards must be resolved with the emulation epoch that was bound at
+/// Reuse guards must be resolved with the derivation epoch that was bound at
 /// the higher-level epoch a message was sent in, not the latest one: a
 /// delayed PrivateMessage from a past higher-level epoch has to be
 /// deprotected with the state that was active then. Entries are written at
@@ -788,7 +788,7 @@ pub struct VcEmulationBindings {
 }
 
 impl VcEmulationBindings {
-    /// Look up the emulation epoch bound at the given higher-level epoch.
+    /// Look up the derivation epoch bound at the given higher-level epoch.
     pub fn get(&self, epoch: crate::group::GroupEpoch) -> Option<&EpochId> {
         for (bound_epoch, epoch_id) in &self.bindings {
             if *bound_epoch == epoch {
@@ -830,9 +830,9 @@ impl VcEmulationBindings {
 /// LeafNode carrying the derivation info. Every operation produces a fresh
 /// leaf encryption key, so each wrap uses a distinct key-nonce pair.
 /// Derived from the emulation group's `safe_export_secret(VC_COMPONENT_ID)`
-/// by [`MlsGroup::register_vc_emulation_epoch`].
+/// by [`MlsGroup::register_vc_derivation_epoch`].
 ///
-/// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
+/// [`MlsGroup::register_vc_derivation_epoch`]: crate::group::MlsGroup::register_vc_derivation_epoch
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct EpochEncryptionKey(Secret);
 
@@ -864,16 +864,19 @@ impl EpochEncryptionKey {
     }
 }
 
-/// Per-emulation-epoch state persisted by
-/// [`MlsGroup::register_vc_emulation_epoch`] alongside the per-epoch
+/// Per-derivation-epoch state persisted by
+/// [`MlsGroup::register_vc_derivation_epoch`] alongside the per-epoch
 /// operation secret tree, keyed by [`EpochId`]. Bundles everything the
 /// library needs to emit a VC commit for this epoch and to XOR application
 /// message nonces with deterministic reuse guards.
 ///
-/// [`MlsGroup::register_vc_emulation_epoch`]:
-///     crate::group::MlsGroup::register_vc_emulation_epoch
+/// [`MlsGroup::register_vc_derivation_epoch`]:
+///     crate::group::MlsGroup::register_vc_derivation_epoch
 #[derive(Debug, Serialize, Deserialize)]
-pub struct EmulationEpochState {
+pub struct VcDerivationEpochState {
+    /// The emulation group's own epoch this derivation epoch was sourced
+    /// from. Derivation epochs are ordered by this number.
+    pub(crate) group_epoch: GroupEpoch,
     /// The registering client's leaf index in the emulation group at
     /// registration time. Sent in `DerivationInfoTbe` and used as the
     /// sender's `leaf_index_e` in the reuse-guard derivation.
@@ -881,7 +884,7 @@ pub struct EmulationEpochState {
     pub(crate) epoch_encryption_key: EpochEncryptionKey,
     pub(crate) reuse_guard_secret: ReuseGuardSecret,
     /// Used to derive the per-message [`GenerationId`] handed to the DS, via
-    /// [`EmulationEpochState::derive_generation_id`].
+    /// [`VcDerivationEpochState::derive_generation_id`].
     pub(crate) generation_id_secret: GenerationIdSecret,
     /// Number of leaves `N_e` in the emulation group at registration time.
     pub(crate) emulation_group_size: TreeSize,
@@ -890,8 +893,9 @@ pub struct EmulationEpochState {
     pub(crate) emulation_ciphersuite: Ciphersuite,
 }
 
-impl EmulationEpochState {
+impl VcDerivationEpochState {
     pub(crate) fn new(
+        group_epoch: GroupEpoch,
         leaf_index: LeafNodeIndex,
         epoch_encryption_key: EpochEncryptionKey,
         reuse_guard_secret: ReuseGuardSecret,
@@ -900,6 +904,7 @@ impl EmulationEpochState {
         emulation_ciphersuite: Ciphersuite,
     ) -> Self {
         Self {
+            group_epoch,
             leaf_index,
             epoch_encryption_key,
             reuse_guard_secret,
@@ -922,7 +927,7 @@ impl EmulationEpochState {
     /// Derive the [`GenerationId`] for an application message sent in
     /// `group_id` at `epoch` with ratchet `generation`. The
     /// [`PrivateMessageContext`] is assembled from these inputs and the
-    /// emulation epoch's [`GenerationIdSecret`], using the emulation group's
+    /// derivation epoch's [`GenerationIdSecret`], using the emulation group's
     /// ciphersuite.
     pub(crate) fn derive_generation_id(
         &self,
@@ -1286,7 +1291,7 @@ impl TargetOperationSecret {
 /// commit) or none are.
 #[derive(Debug)]
 pub(crate) struct VcCommitMaterial {
-    /// Emulation epoch the commit's derivation info references.
+    /// Derivation epoch the commit's derivation info references.
     pub(crate) epoch_id: EpochId,
     /// Per-commit operation secret the receiver rederives the path from.
     pub(crate) operation_secret: OperationSecret,
@@ -1451,7 +1456,7 @@ impl DerivationInfoTbe {
     }
 }
 
-/// Load the [`EmulationEpochState`] and [`OperationSecretTree`] for `epoch_id`,
+/// Load the [`VcDerivationEpochState`] and [`OperationSecretTree`] for `epoch_id`,
 /// mapping a missing entry to the matching `Missing*` error. Callers convert the
 /// returned [`VirtualClientsError`] into their own error type.
 ///
@@ -1461,7 +1466,7 @@ pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
     epoch_id: &EpochId,
 ) -> Result<
     (
-        EmulationEpochState,
+        VcDerivationEpochState,
         crate::components::vc_operation_tree::OperationSecretTree,
     ),
     VirtualClientsError,
@@ -1470,12 +1475,12 @@ pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
 
     let storage = provider.storage();
     let state = storage
-        .vc_emulation_epoch_state(epoch_id)
+        .vc_derivation_epoch_state(epoch_id)
         .map_err(|e| {
-            log::error!("vc: load emulation epoch state failed: {e:?}");
+            log::error!("vc: load derivation epoch state failed: {e:?}");
             VirtualClientsError::StorageError
         })?
-        .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+        .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
     let operation_tree = storage
         .vc_operation_tree(epoch_id)
         .map_err(|e| {
@@ -1606,10 +1611,14 @@ mod tests {
 
     const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
-    /// Register a full `EmulationEpochState` and a matching
+    /// Register a full `VcDerivationEpochState` and a matching
     /// `OperationSecretTree` for a fresh epoch, returning the derived
     /// `EpochId` and the leaf index it was registered with.
-    fn register_epoch_state(provider: &OpenMlsRustCrypto, leaf_index: LeafNodeIndex) -> EpochId {
+    fn register_epoch_state(
+        provider: &OpenMlsRustCrypto,
+        group_epoch: GroupEpoch,
+        leaf_index: LeafNodeIndex,
+    ) -> EpochId {
         use crate::components::vc_operation_tree::OperationSecretTree;
 
         let emulator = EmulatorEpochSecret::new(
@@ -1634,7 +1643,8 @@ mod tests {
             .derive_epoch_base_secret(provider.crypto(), CIPHERSUITE)
             .expect("derive epoch base secret");
         let emulation_group_size = TreeSize::new(2);
-        let state = EmulationEpochState::new(
+        let state = VcDerivationEpochState::new(
+            group_epoch,
             leaf_index,
             epoch_encryption_key,
             reuse_guard_secret,
@@ -1642,12 +1652,12 @@ mod tests {
             emulation_group_size,
             CIPHERSUITE,
         );
-        <MemoryStorage as StorageProvider<CURRENT_VERSION>>::write_vc_emulation_epoch_state(
+        <MemoryStorage as StorageProvider<CURRENT_VERSION>>::write_vc_derivation_epoch_state(
             provider.storage(),
             &epoch_id,
             &state,
         )
-        .expect("write emulation epoch state");
+        .expect("write derivation epoch state");
         let operation_tree = OperationSecretTree::new(epoch_base_secret, emulation_group_size);
         <MemoryStorage as StorageProvider<CURRENT_VERSION>>::write_vc_operation_tree(
             provider.storage(),
@@ -1659,12 +1669,12 @@ mod tests {
     }
 
     /// The assembly helper fills `leaf_index` from the registered
-    /// `EmulationEpochState` for the epoch.
+    /// `VcDerivationEpochState` for the epoch.
     #[test]
     fn assemble_upload_reads_leaf_index_from_state() {
         let provider = OpenMlsRustCrypto::default();
         let leaf_index = LeafNodeIndex::new(5);
-        let epoch_id = register_epoch_state(&provider, leaf_index);
+        let epoch_id = register_epoch_state(&provider, GroupEpoch::from(0), leaf_index);
         let infos = vec![
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
@@ -1687,15 +1697,34 @@ mod tests {
         assert_eq!(upload.key_package_info.len(), 2);
     }
 
+    /// The emulation-group epoch a derivation epoch was sourced from is
+    /// recovered from the storage provider.
+    #[test]
+    fn derivation_epoch_state_round_trips_group_epoch() {
+        let provider = OpenMlsRustCrypto::default();
+        let group_epoch = GroupEpoch::from(7);
+        let epoch_id = register_epoch_state(&provider, group_epoch, LeafNodeIndex::new(1));
+
+        let state: VcDerivationEpochState =
+            <MemoryStorage as StorageProvider<CURRENT_VERSION>>::vc_derivation_epoch_state(
+                provider.storage(),
+                &epoch_id,
+            )
+            .expect("load derivation epoch state")
+            .expect("derivation epoch state present");
+
+        assert_eq!(state.group_epoch, group_epoch);
+    }
+
     /// Assembling for an unregistered epoch fails with
-    /// `MissingEmulationEpochState`.
+    /// `MissingDerivationEpochState`.
     #[test]
     fn assemble_upload_without_state_fails() {
         let provider = OpenMlsRustCrypto::default();
         let epoch_id = EpochId(b"unregistered-epoch".to_vec().into());
         let err = assemble_vc_key_package_upload(provider.storage(), epoch_id, 0, Vec::new())
             .expect_err("assemble must fail without registered state");
-        assert_eq!(err, VirtualClientsError::MissingEmulationEpochState);
+        assert_eq!(err, VirtualClientsError::MissingDerivationEpochState);
     }
 
     /// `process_vc_key_package_upload` stores one material entry per info,
@@ -1705,7 +1734,7 @@ mod tests {
     fn process_upload_stores_records() {
         let provider = OpenMlsRustCrypto::default();
         let leaf_index = LeafNodeIndex::new(0);
-        let epoch_id = register_epoch_state(&provider, leaf_index);
+        let epoch_id = register_epoch_state(&provider, GroupEpoch::from(0), leaf_index);
         let ref_a = KeyPackageRef::from_slice(b"kp-ref-a");
         let ref_b = KeyPackageRef::from_slice(b"kp-ref-b");
         let upload = KeyPackageUpload {
@@ -1760,7 +1789,7 @@ mod tests {
     fn delete_key_package_removes_vc_record() {
         let provider = OpenMlsRustCrypto::default();
         let leaf_index = LeafNodeIndex::new(0);
-        let epoch_id = register_epoch_state(&provider, leaf_index);
+        let epoch_id = register_epoch_state(&provider, GroupEpoch::from(0), leaf_index);
         let kp_ref = KeyPackageRef::from_slice(b"kp-ref");
         let upload = KeyPackageUpload {
             epoch_id,
@@ -2255,7 +2284,7 @@ mod tests {
     fn process_upload_rejects_malformed_without_consuming_generation() {
         let provider = OpenMlsRustCrypto::default();
         let leaf_index = LeafNodeIndex::new(0);
-        let epoch_id = register_epoch_state(&provider, leaf_index);
+        let epoch_id = register_epoch_state(&provider, GroupEpoch::from(0), leaf_index);
         let ref_a = KeyPackageRef::from_slice(b"kp-ref-a");
         let ref_b = KeyPackageRef::from_slice(b"kp-ref-b");
 
@@ -2321,13 +2350,13 @@ mod tests {
         assert_eq!(material_b.key_package_index, 1);
     }
 
-    /// Build an `EmulationEpochState` from raw emulator-epoch-secret bytes, so
-    /// two siblings sharing the same bytes can be compared.
+    /// Build a `VcDerivationEpochState` from raw emulator-epoch-secret
+    /// bytes, so two siblings sharing the same bytes can be compared.
     fn state_from_secret_bytes(
         provider: &OpenMlsRustCrypto,
         secret_bytes: &[u8],
         leaf_index: LeafNodeIndex,
-    ) -> EmulationEpochState {
+    ) -> VcDerivationEpochState {
         let emulator = EmulatorEpochSecret::new(secret_bytes);
         let epoch_encryption_key = emulator
             .derive_epoch_encryption_key(provider.crypto(), CIPHERSUITE)
@@ -2338,7 +2367,8 @@ mod tests {
         let generation_id_secret = emulator
             .derive_generation_id_secret(provider.crypto(), CIPHERSUITE)
             .expect("derive generation id secret");
-        EmulationEpochState::new(
+        VcDerivationEpochState::new(
+            GroupEpoch::from(0),
             leaf_index,
             epoch_encryption_key,
             reuse_guard_secret,

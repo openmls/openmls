@@ -134,7 +134,7 @@ mod vc_tests {
         ReuseGuardSecret::from_secret_for_tests(Secret::from_slice(&bytes))
     }
 
-    /// `leaf_index_e >= N_e` is a malformed `EmulationEpochState`. The
+    /// `leaf_index_e >= N_e` is a malformed `VcDerivationEpochState`. The
     /// sender path catches it before drawing any randomness or running
     /// FF1.
     #[test]

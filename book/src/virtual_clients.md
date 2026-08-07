@@ -35,12 +35,12 @@ Two mechanisms make this work without secret sharing:
   operation secret, and from that secret each client derives the leaf encryption
   key, init key, signature key seed, and path secrets for a single operation.
 - A `DerivationInfo` component embedded in every leaf node the virtual client
-  produces. It carries, encrypted, the emulation epoch's `leaf_index` and the
+  produces. It carries, encrypted, the derivation epoch's `leaf_index` and the
   `generation` that was used. A sibling emulator client reads it, derives the
   same operation secret from the operation tree at that position, and so
   reconstructs the private keys for the leaf without ever receiving them.
 
-Each emulation epoch also produces a `generation_id_secret` (so the Delivery
+Each derivation epoch also produces a `generation_id_secret` (so the Delivery
 Service can detect when two emulator clients pick the same ratchet generation)
 and a `reuse_guard_secret` (so two emulator clients never reuse a key and nonce
 pair while still looking random to outside observers).
@@ -94,7 +94,7 @@ through `.capabilities(...)` and `.with_leaf_node_extensions(...)`, and to the
 `KeyPackage::builder()` through `.leaf_node_capabilities(...)` and
 `.leaf_node_extensions(...)`.
 
-## Registering an emulation epoch
+## Registering a derivation epoch
 
 An emulation group is an ordinary `MlsGroup`. Each emulator client maintains its
 own copy. To make a given epoch usable for virtual-client operations, every
@@ -104,16 +104,16 @@ and persists the per-epoch state, returning an `EpochId`:
 
 ```rust,no_run,noplayground
 let epoch_id = emulator_group
-    .register_vc_emulation_epoch(provider.crypto(), provider.storage())?;
+    .register_vc_derivation_epoch(provider.crypto(), provider.storage())?;
 ```
 
 Because the secret comes from the Safe Exporter, all emulator clients that are
-at the same emulation epoch derive the **same** `EpochId` and the same operation
+at the same derivation epoch derive the **same** `EpochId` and the same operation
 tree. The `EpochId` is the key under which all per-epoch state is stored, and it
 is the value embedded in the leaves the virtual client produces. Register the
 epoch on every emulator client before any of them issues an operation against
 it. A missed registration is not recoverable, because the Safe Exporter state of
-a past emulation epoch is not retained.
+a past derivation epoch is not retained.
 
 ## Committing in a higher-level group
 
@@ -147,7 +147,7 @@ skipped secret.
 
 `process_message` detects the `DerivationInfo` component in a committer's leaf.
 If the committer's leaf index is the receiver's own leaf, the commit came from a
-sibling emulator client. The receiver loads the emulation epoch state, decrypts
+sibling emulator client. The receiver loads the derivation epoch state, decrypts
 the derivation info, derives the same operation secret positionally from the
 operation tree (advancing or skipping the sibling's ratchet as needed),
 reconstructs the path secrets, and processes the commit as if it had created it:
@@ -157,7 +157,7 @@ let processed = receiver_group
     .process_message(provider, commit.into_protocol_message().unwrap())?;
 ```
 
-A receiver that does not hold the referenced emulation epoch state, for example
+A receiver that does not hold the referenced derivation epoch state, for example
 a real member of the higher-level group that is not an emulator client,
 processes the commit as an ordinary commit. The permissive handling is framed
 around the receiver, who may not be a sibling. The sender is always a sibling.
@@ -165,7 +165,7 @@ around the receiver, who may not be a sibling. The sender is always a sibling.
 When a commit that carries a `DerivationInfo` is merged, the client stores a
 binding from `(GroupId, GroupEpoch)` to the `EpochId` from that leaf. The
 binding is keyed by epoch, not just group id, because a delayed application
-message from an earlier higher-level epoch must be processed with the emulation
+message from an earlier higher-level epoch must be processed with the derivation
 epoch that was active then. Bindings follow the same retention window as the
 message secrets store.
 
@@ -213,7 +213,7 @@ let (proposal, proposal_ref, confirmation) = main_group.propose_unconfirmed(
 The confirmation from either path is `Some` when the message was framed as
 PrivateMessage and `None` when it was framed as a plaintext PublicMessage. As
 with application messages, the `generation_id` is `Some` only on a group bound
-to an emulation epoch.
+to a derivation epoch.
 
 Once the Delivery Service accepts the message, drop the retained key with
 `confirm_handshake_message`, passing the confirmation's `epoch` and
@@ -277,10 +277,10 @@ let unconfirmed = main_group
 send_to_delivery_service(unconfirmed.message, unconfirmed.generation_id);
 ```
 
-The `generation_id` is `Some` on a group bound to an emulation epoch and `None`
+The `generation_id` is `Some` on a group bound to a derivation epoch and `None`
 otherwise. It is derived from `generation_id_secret` over the spec's
 `PrivateMessageContext`. The reuse guard is computed rather than sampled: the
-client resolves the emulation epoch through the `(GroupId, GroupEpoch)` binding,
+client resolves the derivation epoch through the `(GroupId, GroupEpoch)` binding,
 picks a value congruent to its emulation leaf index modulo the emulation group
 size, and encrypts it with a small-space PRP keyed from `reuse_guard_secret`.
 
@@ -401,8 +401,8 @@ The implementation tracks the draft but does not yet cover everything in it:
   transport of the KeyPackage upload is left entirely to the application.
 - There is no convenience layer for marking a group as an emulation group on its
   config and deriving epoch secrets automatically. Registration is the manual
-  `register_vc_emulation_epoch` call shown above.
-- Per-epoch state for dead emulation epochs is not garbage collected
+  `register_vc_derivation_epoch` call shown above.
+- Per-epoch state for dead derivation epochs is not garbage collected
   automatically.
 
 Refer to the [virtual clients draft](https://github.com/mlswg/mls-virtual-clients)

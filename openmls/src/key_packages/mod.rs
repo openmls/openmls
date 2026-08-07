@@ -647,7 +647,7 @@ impl KeyPackageBuilder {
     /// Build a batch of virtual-client KeyPackages a sibling can reproduce.
     ///
     /// Allocates a single generation of the `key_package` operation ratchet for
-    /// the emulation epoch identified by `epoch_id`. For each
+    /// the derivation epoch identified by `epoch_id`. For each
     /// `key_package_index` in `0..count` it derives a per-KeyPackage seed
     /// secret from that one operation secret and derives the KeyPackage's init
     /// key and leaf encryption key from the seed. Each leaf carries an
@@ -656,7 +656,7 @@ impl KeyPackageBuilder {
     /// so a sibling can recover the emulation leaf index, generation, and
     /// index.
     ///
-    /// The operation secret and the seeds are derived under the emulation
+    /// The operation secret and the seeds are derived under the derivation
     /// epoch's ciphersuite (the operation tree's ciphersuite). The init and
     /// leaf-encryption keys are derived from each seed under the KeyPackage's
     /// own `ciphersuite`.

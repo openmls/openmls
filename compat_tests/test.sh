@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 # tests cannot build with them: enabling `openmls/virtual-clients-draft` gates
 # `MlsGroup::self_update` / `add_members` behind `test-utils` (which these tests do
 # not enable), so the operability tests fail to compile. As a result the vc-draft
-# storage-provider code (including `registered_vc_emulation_epoch`) is not covered
+# storage-provider code (including `registered_vc_derivation_epoch`) is not covered
 # here; re-enable these lines once the tests no longer need those gated APIs.
 cargo test -F storage_migration_0_8
 cargo test -F storage_migration_0_8,extensions-draft

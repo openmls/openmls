@@ -38,8 +38,8 @@ use crate::{
 #[cfg(feature = "virtual-clients-draft")]
 use crate::{
     components::vc_derivation_info::{
-        DerivationInfo, DerivationInfoTbe, EmulationEpochState, EpochEncryptionKey, EpochId,
-        ExternalInitSecret, OperationSecret, VirtualClientOperationType, VirtualClientsError,
+        DerivationInfo, DerivationInfoTbe, EpochEncryptionKey, EpochId, ExternalInitSecret,
+        OperationSecret, VcDerivationEpochState, VirtualClientOperationType, VirtualClientsError,
     },
     components::vc_operation_tree::OperationSecretTree,
     extensions::AppDataDictionary,
@@ -364,8 +364,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// Opt this commit into the virtual-clients-draft sender flow.
     ///
     /// The application supplies the [`EpochId`] of an already-registered
-    /// emulation epoch (see
-    /// [`MlsGroup::register_vc_emulation_epoch`]). This method loads the
+    /// derivation epoch (see
+    /// [`MlsGroup::register_vc_derivation_epoch`]). This method loads the
     /// per-epoch operation secret tree and AEAD key from the storage
     /// provider, validates the leaf configuration (see the preconditions
     /// below), then advances the own `LeafNode` operation ratchet by one
@@ -400,7 +400,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// [`CreateCommitError::VirtualClientsError`]) before allocating a
     /// generation, so no operation secret is burned in that case.
     ///
-    /// Fails with `VirtualClientsError::MissingEmulationEpochState` or
+    /// Fails with `VirtualClientsError::MissingDerivationEpochState` or
     /// `VirtualClientsError::MissingOperationTree` if the epoch was never
     /// registered. Neither the state nor the tree is instantiated on the
     /// fly, since that could diverge from a sibling virtual client's
@@ -409,7 +409,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// Implies that a self-update takes place: the commit will always have
     /// a path even if no other proposals are queued.
     ///
-    /// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
+    /// [`MlsGroup::register_vc_derivation_epoch`]: crate::group::MlsGroup::register_vc_derivation_epoch
     #[cfg(feature = "virtual-clients-draft")]
     pub fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         mut self,
@@ -417,13 +417,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         storage: &Storage,
         epoch_id: EpochId,
     ) -> Result<Self, CreateCommitError> {
-        let state: EmulationEpochState = storage
-            .vc_emulation_epoch_state(&epoch_id)
+        let state: VcDerivationEpochState = storage
+            .vc_derivation_epoch_state(&epoch_id)
             .map_err(|e| {
-                log::error!("vc: load emulation epoch state in vc_emulation failed: {e:?}");
+                log::error!("vc: load derivation epoch state in vc_emulation failed: {e:?}");
                 CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
             })?
-            .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+            .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
         let mut operation_tree: OperationSecretTree = storage
             .vc_operation_tree(&epoch_id)
             .map_err(|e| {
@@ -961,6 +961,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     (aad_bytes, WireFormat::PublicMessage)
                 }
             };
+
         let framing_parameters = FramingParameters::new(&outgoing_aad, wire_format);
 
         // Build AuthenticatedContent
@@ -1289,7 +1290,7 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
 /// inject the corresponding `DerivationInfo` blob into
 /// `leaf_node_parameters`'s `app_data_dictionary` extension.
 ///
-/// The `DerivationInfoTbe` wrapping stays in the emulation epoch's
+/// The `DerivationInfoTbe` wrapping stays in the derivation epoch's
 /// ciphersuite, while the operation secret is imported into the
 /// higher-level group ciphersuite to produce MLS path material for this
 /// group. The generation was consumed and the advanced tree persisted when

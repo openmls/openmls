@@ -60,7 +60,7 @@ pub struct VcKeyPackageBatchBuilder {
 }
 
 impl VcKeyPackageBatchBuilder {
-    /// Load emulation epoch and allocate the next generation of the key package operation ratchet.
+    /// Load derivation epoch and allocate the next generation of the key package operation ratchet.
     ///
     /// Nothing is persisted yet. Dropping the builder without calling `finalize` burns no
     /// generation.

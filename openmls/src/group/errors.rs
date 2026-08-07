@@ -223,9 +223,9 @@ pub enum VcExternalCommitJoinError<StorageError> {
     /// so a sibling cannot reconstruct the joining state from it.
     #[error("The external commit carries no virtual-clients derivation info.")]
     MissingDerivationInfo,
-    /// The derivation info references a different emulation epoch than the one
+    /// The derivation info references a different derivation epoch than the one
     /// supplied.
-    #[error("The external commit references a different emulation epoch.")]
+    #[error("The external commit references a different derivation epoch.")]
     EpochIdMismatch,
     /// A virtual-clients processing error occurred.
     #[error(transparent)]
@@ -259,9 +259,9 @@ pub enum VcGroupCreationJoinError<StorageError> {
     /// The creator leaf carries no virtual-clients derivation info.
     #[error("The creator leaf carries no virtual-clients derivation info.")]
     MissingDerivationInfo,
-    /// The derivation info references a different emulation epoch than the one
+    /// The derivation info references a different derivation epoch than the one
     /// supplied.
-    #[error("The creator leaf references a different emulation epoch.")]
+    #[error("The creator leaf references a different derivation epoch.")]
     EpochIdMismatch,
     /// The creator leaf is not `key_package`-sourced, so it is not a virtual
     /// client's group-creation leaf.

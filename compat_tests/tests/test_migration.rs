@@ -303,7 +303,7 @@ fn is_expected_schema_diff(path: &str) -> bool {
             && (path.ends_with(".EncryptionRatchet")
                 || path.ends_with(".DualUse")
                 || path.ends_with(".new_own_leaf_index")
-                || path.ends_with(".vc_emulation_epoch_id")))
+                || path.ends_with(".vc_derivation_epoch_id")))
 }
 
 /// Check that a migrated GroupMigration bundle matches the exported one,

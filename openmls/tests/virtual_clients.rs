@@ -133,7 +133,7 @@ fn setup_alice_bob_group_with_policy<P: OpenMlsProvider>(
 /// Build a single-member emulator group on `provider` with VC
 /// capabilities and an `AppComponents` entry listing `VC_COMPONENT_ID`.
 /// Used as the source of `safe_export_secret(VC_COMPONENT_ID)` when
-/// registering an emulation epoch.
+/// registering a derivation epoch.
 fn make_emulator_group<P: OpenMlsProvider>(
     ciphersuite: openmls_traits::types::Ciphersuite,
     provider: &P,
@@ -153,10 +153,10 @@ fn make_emulator_group<P: OpenMlsProvider>(
     (group, signer)
 }
 
-/// Register a fresh emulation epoch on `emulator_group` (sourcing the
+/// Register a fresh derivation epoch on `emulator_group` (sourcing the
 /// root secret from its `safe_export_secret(VC_COMPONENT_ID)`) and send
 /// a VC-flavoured commit on `sender_group` referencing that epoch.
-/// `register_vc_emulation_epoch` captures `own_leaf_index` of the
+/// `register_vc_derivation_epoch` captures `own_leaf_index` of the
 /// emulator group at registration time, so callers no longer pass it.
 fn send_vc_commit<P: OpenMlsProvider>(
     sender_group: &mut MlsGroup,
@@ -165,7 +165,7 @@ fn send_vc_commit<P: OpenMlsProvider>(
     sender_signer: &SignatureKeyPair,
 ) -> (openmls::prelude::MlsMessageOut, EpochId) {
     let epoch_id = emulator_group
-        .register_vc_emulation_epoch(sender_provider.crypto(), sender_provider.storage())
+        .register_vc_derivation_epoch(sender_provider.crypto(), sender_provider.storage())
         .expect("register vc epoch (sender)");
     let commit = send_vc_commit_with_epoch(
         sender_group,
@@ -178,7 +178,7 @@ fn send_vc_commit<P: OpenMlsProvider>(
 
 /// Send a VC-flavoured commit on `sender_group` referencing an
 /// already-registered `epoch_id`. Useful for tests that want to issue
-/// multiple commits against the same emulation epoch without
+/// multiple commits against the same derivation epoch without
 /// re-puncturing the emulator group's application-export tree.
 fn send_vc_commit_with_epoch<P: OpenMlsProvider>(
     sender_group: &mut MlsGroup,
@@ -284,7 +284,7 @@ fn vc_join_config() -> MlsGroupJoinConfig {
 }
 
 /// A second emulator client brought in alongside an existing one, sharing the
-/// virtual client's emulation epoch.
+/// virtual client's derivation epoch.
 struct SiblingEmulators {
     emulator_a: MlsGroup,
     emulator_a_signer: SignatureKeyPair,
@@ -295,7 +295,7 @@ struct SiblingEmulators {
 
 /// Bring a second emulator client (alice_b) into an existing virtual client
 /// without cloning storage. alice_a founds the emulation group and alice_b
-/// joins it via Welcome; both register the same emulation epoch; then alice_b
+/// joins it via Welcome. Both register the same derivation epoch, then alice_b
 /// resyncs into the higher-level group via an external commit. Returns the
 /// emulator state plus that resync commit, which the caller delivers to
 /// `alice_a_main` (and any other higher-level members) so they converge on
@@ -352,12 +352,12 @@ fn join_sibling_emulator<P: OpenMlsProvider>(
     .and_then(|s| s.into_group(alice_b_provider))
     .expect("alice_b join emulator group");
 
-    // Both clients independently register the same emulation epoch.
+    // Both clients independently register the same derivation epoch.
     let epoch_id = emulator_a
-        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .register_vc_derivation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
         .expect("alice_a register vc epoch");
     let epoch_id_b = emulator_b
-        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .register_vc_derivation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
         .expect("alice_b register vc epoch");
     assert_eq!(
         epoch_id, epoch_id_b,
@@ -460,20 +460,20 @@ fn vc_operation_tree_persists_across_own_commits() {
     let (mut emulator, _emulator_signer) =
         make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
 
-    // Register the emulation epoch once; both commits reference it.
+    // Register the derivation epoch once. Both commits reference it.
     // `safe_export_secret(VC_COMPONENT_ID)` punctures the emulator
     // group's application-export tree, so registering twice in the same
     // emulator-group epoch would fail with `PuncturedInput`. The point
-    // of this test is that the per-emulation-epoch operation secret tree
+    // of this test is that the per-derivation-epoch operation secret tree
     // survives, with its advanced ratchet head, across build boundaries.
     let epoch_id = emulator
-        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
+        .register_vc_derivation_epoch(provider.crypto(), provider.storage())
         .expect("register vc epoch");
 
     let _msg1 = send_vc_commit_with_epoch(&mut alice, &provider, &alice_signer, epoch_id.clone());
     let epoch_after_first = alice.epoch();
 
-    // A *second* VC commit on the same emulation epoch must still
+    // A *second* VC commit on the same derivation epoch must still
     // succeed and consume generation 1. If `build` had wiped the
     // registration or failed to persist the ratchet advance, this would
     // fail at tree lookup or when the consumed generation is re-derived.
@@ -481,12 +481,12 @@ fn vc_operation_tree_persists_across_own_commits() {
     assert_eq!(
         alice.epoch().as_u64(),
         epoch_after_first.as_u64() + 1,
-        "second VC commit on the same emulation epoch must succeed"
+        "second VC commit on the same derivation epoch must succeed"
     );
 }
 
 /// A non-emulator group member processes a VC commit through the normal HPKE
-/// path, without holding any per-emulation-epoch VC state.
+/// path, without holding any per-derivation-epoch VC state.
 #[openmls_test]
 fn non_emulator_processes_vc_commit_without_registering_state() {
     let alice_provider = Provider::default();
@@ -515,9 +515,9 @@ fn non_emulator_processes_vc_commit_without_registering_state() {
 /// sibling. The receiver identifies itself as a sibling from the commit
 /// shape (`Sender::NewMemberCommit` plus an inline `Remove` of its own
 /// leaf), then *must* load the per-epoch operation secret tree and
-/// emulation-epoch state to derive the path. If the receiver hasn't yet
-/// registered the matching emulation epoch (e.g. it joined the emulator
-/// group but skipped the `register_vc_emulation_epoch` step before the
+/// derivation-epoch state to derive the path. If the receiver hasn't yet
+/// registered the matching derivation epoch (e.g. it joined the emulator
+/// group but skipped the `register_vc_derivation_epoch` step before the
 /// sibling attempted the resync), processing must fail loudly with a
 /// virtual-clients error rather than silently fall through to HPKE.
 #[openmls_test]
@@ -609,7 +609,7 @@ fn sibling_resync_external_commit_fails_when_receiver_lacks_operation_tree() {
     // Only alice_b registers the VC epoch. alice_a "forgets" to register
     // on her side, manufacturing the failure scenario.
     let epoch_id_b = emulator_b
-        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .register_vc_derivation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
         .expect("alice_b register vc epoch");
 
     // alice_a exports the higher-level GroupInfo for alice_b's external commit.
@@ -671,7 +671,7 @@ fn sibling_resync_external_commit_fails_when_receiver_lacks_operation_tree() {
         .expect_err("must fail without VC state");
     let msg = format!("{err:?}");
     assert!(
-        msg.contains("MissingEmulationEpochState")
+        msg.contains("MissingDerivationEpochState")
             || msg.contains("MissingOperationTree")
             || msg.contains("VirtualClients"),
         "expected a virtual-clients error, got {msg}"
@@ -691,7 +691,7 @@ fn sibling_resync_external_commit_fails_when_receiver_lacks_operation_tree() {
 ///   2. Charly's commit: processed by alice_a, alice_b, bob via HPKE.
 ///   3. alice_a's VC commit: alice_b uses own-leaf VC path, bob+charly HPKE.
 ///   4. alice_b's VC commit: alice_a uses own-leaf VC path, bob+charly HPKE.
-///   5. alice_a's second VC commit on the same emulation epoch: alice_b
+///   5. alice_a's second VC commit on the same derivation epoch: alice_b
 ///      derives generation 1 of alice_a's ratchet positionally, having
 ///      derived generation 0 for commit 3.
 ///
@@ -842,10 +842,10 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
 
     // ---- Both Alice clients independently register the same VC epoch ----
     let epoch_id_a = emulator_a
-        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .register_vc_derivation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
         .expect("alice_a register vc epoch");
     let epoch_id_b = emulator_b
-        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .register_vc_derivation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
         .expect("alice_b register vc epoch");
     assert_eq!(
         epoch_id_a, epoch_id_b,
@@ -1007,7 +1007,7 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
     );
 
     // ---- Commit 3: alice_a's VC commit ----
-    // alice_a's first own LeafNode operation on this emulation epoch
+    // alice_a's first own LeafNode operation on this derivation epoch
     // consumes generation 0 of her emulation-leaf ratchet.
     let alice_a_vc_commit = send_vc_commit_with_epoch(
         &mut alice_a_main,
@@ -1043,11 +1043,11 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
         "post alice_b VC commit",
     );
 
-    // ---- Commit 5: alice_a's second VC commit on the same emulation
+    // ---- Commit 5: alice_a's second VC commit on the same derivation
     // epoch. alice_b already derived generation 0 of alice_a's ratchet for
     // commit 3, so she now derives generation 1 positionally. This is the
     // behavioral check that two successive VC commits from the same
-    // emulation epoch consume successive generations.
+    // derivation epoch consume successive generations.
     let alice_a_second_vc_commit = send_vc_commit_with_epoch(
         &mut alice_a_main,
         &alice_a_provider,
@@ -1085,7 +1085,7 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
 ///     (with bob). `alice_b` is a fresh emulator client that joins the
 ///     emulation group of `alice_a` via Welcome but has no higher-level
 ///     group state.
-///   * Both alice clients register the same emulation epoch on their copy
+///   * Both alice clients register the same derivation epoch on their copy
 ///     of the emulator group (deterministic derivation from
 ///     `safe_export_secret(VC_COMPONENT_ID)`).
 ///   * `alice_b` joins the higher-level group via an external commit signed
@@ -1215,12 +1215,12 @@ fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
     .and_then(|s| s.into_group(&bob_provider))
     .expect("bob join higher-level group");
 
-    // Both alice clients register the same VC emulation epoch.
+    // Both alice clients register the same VC derivation epoch.
     let epoch_id_a = emulator_a
-        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .register_vc_derivation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
         .expect("alice_a register vc epoch");
     let epoch_id_b = emulator_b
-        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .register_vc_derivation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
         .expect("alice_b register vc epoch");
     assert_eq!(
         epoch_id_a, epoch_id_b,
@@ -1455,7 +1455,7 @@ fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
 /// `charly_a` joins the higher-level group (Alice + Bob) via a plain external
 /// commit. Per the mls-virtual-clients draft the commit's leaf carries the
 /// external init secret in its derivation info. `charly_b`, which shares the
-/// emulation epoch but is not a member, calls
+/// derivation epoch but is not a member, calls
 /// [`MlsGroup::vc_join_via_sibling_external_commit`] with the prior-epoch
 /// GroupInfo and that commit: it rebuilds the prior-epoch public group,
 /// recreates the commit path from the shared operation secret tree, and uses
@@ -1521,7 +1521,7 @@ fn vc_second_emulator_client_onboards_via_external_commit() {
     };
 
     // ... and a two-member emulator group from which both derive the same
-    // emulation epoch (operation secret tree + AEAD key + EpochId).
+    // derivation epoch (operation secret tree + AEAD key + EpochId).
     let (mut emulator_a, emulator_a_signer) =
         make_emulator_group(ciphersuite, &charly_a_provider, b"CharlyEmulatorA");
     let (emulator_b_credential, emulator_b_signer) = new_credential(
@@ -1557,10 +1557,10 @@ fn vc_second_emulator_client_onboards_via_external_commit() {
     .and_then(|s| s.into_group(&charly_b_provider))
     .expect("charly_b join emulator group");
     let epoch_id = emulator_a
-        .register_vc_emulation_epoch(charly_a_provider.crypto(), charly_a_provider.storage())
+        .register_vc_derivation_epoch(charly_a_provider.crypto(), charly_a_provider.storage())
         .expect("charly_a register vc epoch");
     let epoch_id_b = emulator_b
-        .register_vc_emulation_epoch(charly_b_provider.crypto(), charly_b_provider.storage())
+        .register_vc_derivation_epoch(charly_b_provider.crypto(), charly_b_provider.storage())
         .expect("charly_b register vc epoch");
     assert_eq!(
         epoch_id, epoch_id_b,
@@ -1792,7 +1792,7 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
     .expect("bob join higher-level group");
 
     // Charly is one virtual client with two emulator clients sharing a signing
-    // identity and an emulation epoch.
+    // identity and a derivation epoch.
     let vc_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).expect("vc signer");
     vc_signer
         .store(charly_a_provider.storage())
@@ -1840,10 +1840,10 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
     .and_then(|s| s.into_group(&charly_b_provider))
     .expect("charly_b join emulator group");
     let epoch_id = emulator_a
-        .register_vc_emulation_epoch(charly_a_provider.crypto(), charly_a_provider.storage())
+        .register_vc_derivation_epoch(charly_a_provider.crypto(), charly_a_provider.storage())
         .expect("charly_a register vc epoch");
     let epoch_id_b = emulator_b
-        .register_vc_emulation_epoch(charly_b_provider.crypto(), charly_b_provider.storage())
+        .register_vc_derivation_epoch(charly_b_provider.crypto(), charly_b_provider.storage())
         .expect("charly_b register vc epoch");
     assert_eq!(
         epoch_id, epoch_id_b,
@@ -1973,7 +1973,7 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
 /// KeyPackage that another emulator published.
 ///
 ///   * `alice_a` and `alice_b` share an emulator group and both register the
-///     same emulation epoch, so both hold its `EmulationEpochState` and
+///     same derivation epoch, so both hold its `VcDerivationEpochState` and
 ///     `OperationSecretTree`.
 ///   * `alice_a` builds a one-KeyPackage batch with `build_vc_batch`
 ///     (consuming generation 0 of its `key_package` operation ratchet) and
@@ -2040,12 +2040,12 @@ fn vc_sibling_joins_higher_level_group_via_key_package_welcome() {
     .and_then(|s| s.into_group(&alice_b_provider))
     .expect("alice_b join emulator group");
 
-    // Both emulators register the same emulation epoch.
+    // Both emulators register the same derivation epoch.
     let epoch_id_a = emulator_a
-        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .register_vc_derivation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
         .expect("alice_a register vc epoch");
     let epoch_id_b = emulator_b
-        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .register_vc_derivation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
         .expect("alice_b register vc epoch");
     assert_eq!(
         epoch_id_a, epoch_id_b,
@@ -2225,10 +2225,10 @@ fn vc_batch_key_packages_join_in_any_order() {
     .expect("alice_b join emulator group");
 
     let epoch_id_a = emulator_a
-        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .register_vc_derivation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
         .expect("alice_a register vc epoch");
     let epoch_id_b = emulator_b
-        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .register_vc_derivation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
         .expect("alice_b register vc epoch");
     assert_eq!(
         epoch_id_a, epoch_id_b,
@@ -2333,7 +2333,7 @@ fn processing_own_application_message() {
     let (alice_credential, alice_signer) =
         new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
 
-    // Alice's group is bound to an emulation epoch, so the dual-use ratchet
+    // Alice's group is bound to a derivation epoch, so the dual-use ratchet
     // retains the secrets of unconfirmed own sends.
     let mut alice_group =
         new_vc_main_group(ciphersuite, alice_provider, &alice_signer, alice_credential);
@@ -2500,7 +2500,7 @@ fn confirm_targets_creation_epoch() {
     .and_then(|s| s.into_group(bob_provider))
     .expect("bob join");
 
-    // Bind the group to an emulation epoch so own echoes are decryptable.
+    // Bind the group to a derivation epoch so own echoes are decryptable.
     let (mut emulator_group, _emulator_signer) =
         make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
     let (binding_commit, _epoch_id) = send_vc_commit(
@@ -2760,7 +2760,7 @@ fn confirm_handshake_message_deletes_retained_secret() {
         .merge_pending_commit(alice_provider)
         .expect("alice merge add");
 
-    // Bind the group to an emulation epoch so own echoes are decryptable.
+    // Bind the group to a derivation epoch so own echoes are decryptable.
     let (mut emulator_group, _emulator_signer) =
         make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
     let _ = send_vc_commit(
@@ -3028,9 +3028,9 @@ fn emulator_sender_leaf_index_none_without_binding() {
 }
 
 /// A higher-level group with an emulation binding must not send with a
-/// random reuse guard if the bound emulation state is missing.
+/// random reuse guard if the bound derivation epoch state is missing.
 #[test]
-fn bound_group_fails_closed_when_emulation_state_missing_on_send() {
+fn bound_group_fails_closed_when_derivation_state_missing_on_send() {
     let ciphersuite =
         openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let provider = OpenMlsRustCrypto::default();
@@ -3058,8 +3058,8 @@ fn bound_group_fails_closed_when_emulation_state_missing_on_send() {
     );
     let deleted = provider
         .storage()
-        .delete_vc_emulation_state_if_unreferenced(&epoch_id)
-        .expect("delete emulation state");
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .expect("delete derivation epoch state");
     assert!(
         deleted,
         "no retained material, so the epoch state is deleted"
@@ -3067,14 +3067,14 @@ fn bound_group_fails_closed_when_emulation_state_missing_on_send() {
 
     let err = alice_group
         .create_message(&provider, &alice_signer, b"must not send")
-        .expect_err("bound group without emulation state must fail closed");
+        .expect_err("bound group without derivation epoch state must fail closed");
 
     assert!(
         matches!(
             err,
             openmls::group::CreateMessageError::MessageEncryptionError(
                 openmls::framing::errors::MessageEncryptionError::VirtualClientsError(
-                    openmls::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState
+                    openmls::components::vc_derivation_info::VirtualClientsError::MissingDerivationEpochState
                 )
             )
         ),
@@ -3082,7 +3082,7 @@ fn bound_group_fails_closed_when_emulation_state_missing_on_send() {
     );
 }
 
-/// On a group bound to an emulation epoch, `create_unconfirmed_message`
+/// On a group bound to a derivation epoch, `create_unconfirmed_message`
 /// returns a generation ID, and consecutive ratchet generations produce
 /// distinct generation IDs.
 #[test]
@@ -3098,7 +3098,7 @@ fn create_unconfirmed_message_returns_generation_id_when_bound() {
     let (mut emulator_group, _emulator_signer) =
         make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
 
-    // Bind alice_group's current epoch to the emulation epoch.
+    // Bind alice_group's current epoch to the derivation epoch.
     let _ = send_vc_commit(
         &mut alice_group,
         &mut emulator_group,
@@ -3159,7 +3159,7 @@ fn vc_emulation_rejects_misconfigured_leaf_before_allocating() {
         make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
 
     let epoch_id = emulator_group
-        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
+        .register_vc_derivation_epoch(provider.crypto(), provider.storage())
         .expect("register vc epoch");
 
     let err = alice_group
@@ -3180,7 +3180,7 @@ fn vc_emulation_rejects_misconfigured_leaf_before_allocating() {
 
 /// End-to-end reuse-guard recovery with the emulator group and the
 /// higher-level group on different ciphersuites with different AEAD key
-/// lengths. The emulation epoch's AEAD and operation-tree material must
+/// lengths. The derivation epoch's AEAD and operation-tree material must
 /// use the
 /// emulation ciphersuite, while the generated update path remains in the
 /// higher-level group's ciphersuite.
@@ -3271,9 +3271,9 @@ fn process_and_merge_commit<P: OpenMlsProvider>(
 }
 
 /// Emulation bindings are kept per higher-level epoch: a delayed application
-/// message from a previous epoch is deprotected with the emulation epoch that
+/// message from a previous epoch is deprotected with the derivation epoch that
 /// was bound when it was sent, even after a later VC commit re-bound the
-/// group to a newer emulation epoch.
+/// group to a newer derivation epoch.
 ///
 /// Setup mirrors `vc_two_alice_clients_in_group_with_bob_and_charly`: two
 /// Alice clients share the main-group leaf and a two-member emulation group,
@@ -3334,7 +3334,7 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
     let expected_emulation_leaf = emulator_a.own_leaf_index();
 
     // ---- The resync is the first VC commit: it binds the new main-group
-    // epoch to the first emulation epoch. alice_a converges by processing
+    // epoch to the first derivation epoch. alice_a converges by processing
     // it. ----
     process_and_merge_commit(&mut alice_a_main, &alice_a_provider, resync_commit);
     let first_bound_epoch = alice_a_main.epoch();
@@ -3346,7 +3346,7 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
         .create_message(&alice_a_provider, &vc_signer, plaintext)
         .expect("alice_a creates delayed application message");
 
-    // ---- Advance the emulation group and register a second emulation
+    // ---- Advance the emulation group and register a second derivation
     // epoch on both emulator clients. ----
     let emulator_commit = {
         let bundle = emulator_a
@@ -3371,15 +3371,15 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
     process_and_merge_commit(&mut emulator_b, &alice_b_provider, emulator_commit);
 
     let epoch_id_two = emulator_a
-        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .register_vc_derivation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
         .expect("register second vc epoch (alice_a)");
     let epoch_id_two_b = emulator_b
-        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .register_vc_derivation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
         .expect("register second vc epoch (alice_b)");
     assert_eq!(epoch_id_two, epoch_id_two_b);
     assert_ne!(epoch_id_one, epoch_id_two);
 
-    // ---- Second VC commit: re-binds the group to the second emulation
+    // ---- Second VC commit: re-binds the group to the second derivation
     // epoch. ----
     let commit_two = send_vc_commit_with_epoch(
         &mut alice_a_main,
@@ -3399,7 +3399,7 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
     assert_eq!(bindings.get(first_bound_epoch), Some(&epoch_id_one));
     assert_eq!(bindings.get(second_bound_epoch), Some(&epoch_id_two));
 
-    // ---- The delayed message is attributed via the first emulation
+    // ---- The delayed message is attributed via the first derivation
     // epoch's state. ----
     let processed_app = alice_b_main
         .process_message(
@@ -3541,7 +3541,7 @@ fn vc_binding_carries_forward_across_foreign_commits() {
 ///     carry a virtual-clients `DerivationInfo`, so on shape alone it is
 ///     indistinguishable from `alice_a`'s own commit echoed back.
 ///   * `alice_b` (the sibling) processes it. Because the group's current epoch
-///     is bound to the emulation epoch and `alice_b` holds no pending commit of
+///     is bound to the derivation epoch and `alice_b` holds no pending commit of
 ///     its own, the commit is recognized as a sibling's Commit without an
 ///     UpdatePath and staged as a regular commit rather than rejected as a
 ///     mismatched own commit. `bob` processes it through the ordinary path.
@@ -3744,7 +3744,7 @@ fn vc_sibling_applies_commit_without_update_path() {
 /// sibling-commit material.
 ///
 /// alice_a and alice_b are sibling emulators sharing the higher-level leaf and
-/// one emulation epoch, in a group that also holds the regular member bob.
+/// one derivation epoch, in a group that also holds the regular member bob.
 /// alice_a builds a VC commit and, before merging it, processes the copy the
 /// delivery service echoed back. The commit is framed as
 /// `Sender::Member(own_leaf_index)` with an UpdatePath carrying VC material, so
@@ -3793,7 +3793,7 @@ fn vc_own_commit_echo_surfaces_as_own_pending_commit() {
 
     // alice_b joins as a sibling emulator and resyncs into the higher-level
     // group, so both Alice clients share `own_leaf_index` and the same
-    // emulation epoch.
+    // derivation epoch.
     let (siblings, resync_commit) = join_sibling_emulator(
         ciphersuite,
         &alice_a_provider,
@@ -3818,7 +3818,7 @@ fn vc_own_commit_echo_surfaces_as_own_pending_commit() {
         "both Alice clients must share the higher-level leaf"
     );
 
-    // alice_a builds a VC commit on the shared emulation epoch but does not
+    // alice_a builds a VC commit on the shared derivation epoch but does not
     // merge it, so it is still her pending commit when the delivery service
     // fans the copy back to her.
     let bundle = alice_a_main
@@ -3828,7 +3828,7 @@ fn vc_own_commit_echo_surfaces_as_own_pending_commit() {
             alice_a_provider.storage(),
             epoch_id.clone(),
         )
-        .expect("alice_a bind commit to emulation epoch")
+        .expect("alice_a bind commit to derivation epoch")
         .load_psks(alice_a_provider.storage())
         .expect("alice_a load psks")
         .build(
@@ -3888,7 +3888,7 @@ fn vc_own_commit_echo_surfaces_as_own_pending_commit() {
         "bob must converge with the committer"
     );
 
-    // A second VC commit on the same emulation epoch, this time from alice_b,
+    // A second VC commit on the same derivation epoch, this time from alice_b,
     // proves the operation secret tree stayed healthy after the echo.
     let second_commit =
         send_vc_commit_with_epoch(&mut alice_b_main, &alice_b_provider, &vc_signer, epoch_id);
@@ -3910,9 +3910,9 @@ fn vc_own_commit_echo_surfaces_as_own_pending_commit() {
 
 /// Set up two sibling emulator clients sharing one emulation group and epoch.
 /// `alice_a` founds the emulation group, `alice_b` joins it via Welcome, and
-/// both register the same emulation epoch, so both hold its
-/// `EmulationEpochState` and `OperationSecretTree`. Returns the shared epoch id.
-fn setup_sibling_emulation_epoch<P: OpenMlsProvider>(
+/// both register the same derivation epoch, so both hold its
+/// `VcDerivationEpochState` and `OperationSecretTree`. Returns the shared epoch id.
+fn setup_sibling_derivation_epoch<P: OpenMlsProvider>(
     emulator_ciphersuite: openmls_traits::types::Ciphersuite,
     alice_a_provider: &P,
     alice_b_provider: &P,
@@ -3953,10 +3953,10 @@ fn setup_sibling_emulation_epoch<P: OpenMlsProvider>(
     .expect("alice_b join emulator group");
 
     let epoch_id = emulator_a
-        .register_vc_emulation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
+        .register_vc_derivation_epoch(alice_a_provider.crypto(), alice_a_provider.storage())
         .expect("alice_a register vc epoch");
     let epoch_id_b = emulator_b
-        .register_vc_emulation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
+        .register_vc_derivation_epoch(alice_b_provider.crypto(), alice_b_provider.storage())
         .expect("alice_b register vc epoch");
     assert_eq!(
         epoch_id, epoch_id_b,
@@ -4020,7 +4020,8 @@ fn vc_sibling_joins_group_created_by_virtual_client() {
     let alice_b_provider = Provider::default();
     let bob_provider = Provider::default();
 
-    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id =
+        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4109,7 +4110,8 @@ fn vc_group_creation_join_with_separate_ratchet_tree() {
     let alice_a_provider = Provider::default();
     let alice_b_provider = Provider::default();
 
-    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id =
+        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4140,17 +4142,18 @@ fn vc_group_creation_join_with_separate_ratchet_tree() {
     );
 }
 
-/// A client that does not share the emulation epoch cannot reconstruct the
-/// created group: it holds no `EmulationEpochState` for the referenced epoch.
+/// A client that does not share the derivation epoch cannot reconstruct the
+/// created group: it holds no `VcDerivationEpochState` for the referenced epoch.
 #[openmls_test]
-fn vc_group_creation_join_fails_without_emulation_state() {
+fn vc_group_creation_join_fails_without_derivation_state() {
     use openmls::prelude::VcGroupCreationJoinError;
 
     let alice_a_provider = Provider::default();
     let alice_b_provider = Provider::default();
     let outsider_provider = Provider::default();
 
-    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id =
+        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4178,7 +4181,7 @@ fn vc_group_creation_join_fails_without_emulation_state() {
     ));
 }
 
-/// The join is rejected when the supplied emulation epoch differs from the one
+/// The join is rejected when the supplied derivation epoch differs from the one
 /// the creator leaf references.
 #[openmls_test]
 fn vc_group_creation_join_fails_on_epoch_id_mismatch() {
@@ -4189,10 +4192,11 @@ fn vc_group_creation_join_fails_on_epoch_id_mismatch() {
     let other_a_provider = Provider::default();
     let other_b_provider = Provider::default();
 
-    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
-    // A distinct, valid emulation epoch from an unrelated emulator group.
+    let epoch_id =
+        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    // A distinct, valid derivation epoch from an unrelated emulator group.
     let other_epoch_id =
-        setup_sibling_emulation_epoch(ciphersuite, &other_a_provider, &other_b_provider);
+        setup_sibling_derivation_epoch(ciphersuite, &other_a_provider, &other_b_provider);
     assert_ne!(epoch_id, other_epoch_id);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
@@ -4214,7 +4218,7 @@ fn vc_group_creation_join_fails_on_epoch_id_mismatch() {
         None,
         other_epoch_id,
     )
-    .expect_err("mismatched emulation epoch must be rejected");
+    .expect_err("mismatched derivation epoch must be rejected");
     assert!(matches!(err, VcGroupCreationJoinError::EpochIdMismatch));
 }
 
@@ -4228,7 +4232,8 @@ fn vc_group_creation_join_fails_on_non_key_package_creator_leaf() {
     let alice_a_provider = Provider::default();
     let alice_b_provider = Provider::default();
 
-    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id =
+        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4292,7 +4297,8 @@ fn vc_group_creation_join_fails_on_multi_leaf_tree() {
     let alice_b_provider = Provider::default();
     let bob_provider = Provider::default();
 
-    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id =
+        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4343,7 +4349,8 @@ fn vc_group_creation_join_fails_on_missing_derivation_info() {
     let alice_a_provider = Provider::default();
     let alice_b_provider = Provider::default();
 
-    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id =
+        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
     let (founder_credential, founder_signer) = new_credential(
         &alice_a_provider,
         b"Founder",
@@ -4382,7 +4389,8 @@ fn vc_group_creation_double_join_consumes_generation() {
     let alice_a_provider = Provider::default();
     let alice_b_provider = Provider::default();
 
-    let epoch_id = setup_sibling_emulation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id =
+        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4424,7 +4432,7 @@ fn vc_group_creation_double_join_consumes_generation() {
 }
 
 /// `propose_unconfirmed` surfaces the handshake confirmation data end to end
-/// on a group bound to an emulation epoch. Confirming the proposal deletes
+/// on a group bound to a derivation epoch. Confirming the proposal deletes
 /// its retained handshake secret, so its own echo then fails to decrypt,
 /// while an unconfirmed control proposal still decrypts back to a
 /// `ProposalMessage`.
@@ -4474,7 +4482,7 @@ fn propose_unconfirmed_confirm_flow() {
         .merge_pending_commit(alice_provider)
         .expect("alice merge add");
 
-    // Bind the group to an emulation epoch so own echoes are decryptable.
+    // Bind the group to a derivation epoch so own echoes are decryptable.
     let (mut emulator_group, _emulator_signer) =
         make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
     let _ = send_vc_commit(
@@ -4634,7 +4642,7 @@ fn vc_private_commit_end_to_end() {
     } = sib;
 
     // alice_a and bob process the resync external commit (PublicMessage). This
-    // is what binds alice_a_main to the emulation epoch.
+    // is what binds alice_a_main to the derivation epoch.
     process_and_merge_commit(&mut alice_a_main, &alice_a_provider, resync_commit.clone());
     process_and_merge_commit(&mut bob_main, &bob_provider, resync_commit);
     assert_eq!(
@@ -4810,7 +4818,7 @@ fn handshake_generation_ids_are_distinct() {
     let (mut emulator_group, _emulator_signer) =
         make_emulator_group(ciphersuite, provider, b"AliceEmulator");
 
-    // Bind alice_group's current epoch to the emulation epoch via a VC commit.
+    // Bind alice_group's current epoch to the derivation epoch via a VC commit.
     let _ = send_vc_commit(
         &mut alice_group,
         &mut emulator_group,

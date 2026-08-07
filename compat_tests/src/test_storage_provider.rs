@@ -79,9 +79,9 @@ struct Data {
     application_export_tree: Table,
 
     // virtual-clients-draft
-    vc_emulation_epoch_state: Table,
+    vc_derivation_epoch_state: Table,
     vc_emulation_bindings: Table,
-    registered_vc_emulation_epoch: Table,
+    registered_vc_derivation_epoch: Table,
     vc_operation_tree: Table,
     retained_key_package_material: Table,
     retained_key_package_epoch: Table,
@@ -1037,15 +1037,15 @@ macro_rules! impl_storage_provider_extensions_draft {
 macro_rules! impl_storage_provider_virtual_clients_draft {
     ($version:expr, $error:ty) => {
         #[cfg(feature = "virtual-clients-draft")]
-        fn vc_emulation_epoch_state<
+        fn vc_derivation_epoch_state<
             EpochId: traits::VcEpochId<$version>,
-            VcEmulationEpochState: traits::VcEmulationEpochState<$version>,
+            VcDerivationEpochState: traits::VcDerivationEpochState<$version>,
         >(
             &self,
             epoch_id: &EpochId,
-        ) -> Result<Option<VcEmulationEpochState>, $error> {
+        ) -> Result<Option<VcDerivationEpochState>, $error> {
             let data = self.0 .0.lock().unwrap();
-            read(epoch_id, &data.vc_emulation_epoch_state)
+            read(epoch_id, &data.vc_derivation_epoch_state)
         }
 
         #[cfg(feature = "virtual-clients-draft")]
@@ -1061,15 +1061,15 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
-        fn registered_vc_emulation_epoch<
+        fn registered_vc_derivation_epoch<
             GroupId: traits::GroupId<$version>,
-            RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<$version>,
+            RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<$version>,
         >(
             &self,
             group_id: &GroupId,
-        ) -> Result<Option<RegisteredVcEmulationEpoch>, $error> {
+        ) -> Result<Option<RegisteredVcDerivationEpoch>, $error> {
             let data = self.0 .0.lock().unwrap();
-            read(group_id, &data.registered_vc_emulation_epoch)
+            read(group_id, &data.registered_vc_derivation_epoch)
         }
 
         #[cfg(feature = "virtual-clients-draft")]
@@ -1106,19 +1106,19 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
-        fn write_vc_emulation_epoch_state<
+        fn write_vc_derivation_epoch_state<
             EpochId: traits::VcEpochId<$version>,
-            VcEmulationEpochState: traits::VcEmulationEpochState<$version>,
+            VcDerivationEpochState: traits::VcDerivationEpochState<$version>,
         >(
             &self,
             epoch_id: &EpochId,
-            vc_emulation_epoch_state: &VcEmulationEpochState,
+            vc_derivation_epoch_state: &VcDerivationEpochState,
         ) -> Result<(), $error> {
             let mut data = self.0 .0.lock().unwrap();
             write(
                 epoch_id,
-                vc_emulation_epoch_state,
-                &mut data.vc_emulation_epoch_state,
+                vc_derivation_epoch_state,
+                &mut data.vc_derivation_epoch_state,
             )
         }
 
@@ -1136,19 +1136,19 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
-        fn write_registered_vc_emulation_epoch<
+        fn write_registered_vc_derivation_epoch<
             GroupId: traits::GroupId<$version>,
-            RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<$version>,
+            RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<$version>,
         >(
             &self,
             group_id: &GroupId,
-            registered: &RegisteredVcEmulationEpoch,
+            registered: &RegisteredVcDerivationEpoch,
         ) -> Result<(), $error> {
             let mut data = self.0 .0.lock().unwrap();
             write(
                 group_id,
                 registered,
-                &mut data.registered_vc_emulation_epoch,
+                &mut data.registered_vc_derivation_epoch,
             )
         }
 
@@ -1195,20 +1195,20 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
-        fn delete_vc_emulation_state_if_unreferenced<EpochId: traits::VcEpochId<$version>>(
+        fn delete_vc_derivation_epoch_state_if_unreferenced<EpochId: traits::VcEpochId<$version>>(
             &self,
             epoch_id: &EpochId,
         ) -> Result<bool, $error> {
             let mut data = self.0 .0.lock().unwrap();
             let Data {
-                vc_emulation_epoch_state,
+                vc_derivation_epoch_state,
                 vc_operation_tree,
                 retained_key_package_epoch,
                 ..
             } = &mut *data;
             delete_vc_state_if_unreferenced(
                 epoch_id,
-                vc_emulation_epoch_state,
+                vc_derivation_epoch_state,
                 vc_operation_tree,
                 retained_key_package_epoch,
             )
@@ -1224,12 +1224,12 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
-        fn delete_registered_vc_emulation_epoch<GroupId: traits::GroupId<$version>>(
+        fn delete_registered_vc_derivation_epoch<GroupId: traits::GroupId<$version>>(
             &self,
             group_id: &GroupId,
         ) -> Result<(), $error> {
             let mut data = self.0 .0.lock().unwrap();
-            delete(group_id, &mut data.registered_vc_emulation_epoch)
+            delete(group_id, &mut data.registered_vc_derivation_epoch)
         }
 
         #[cfg(feature = "virtual-clients-draft")]
@@ -1505,8 +1505,8 @@ macro_rules! storage_helpers {
             Ok(())
         }
 
-        /// Deletes the emulation state and operation tree for `epoch_id` if no
-        /// retained key package material still references it.
+        /// Deletes the derivation epoch state and operation tree for
+        /// `epoch_id` if no retained key package material still references it.
         #[cfg(feature = "virtual-clients-draft")]
         fn delete_vc_state_if_unreferenced<EpochId: Key<$version>>(
             epoch_id: &EpochId,
