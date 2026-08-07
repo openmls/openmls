@@ -622,7 +622,27 @@ impl StagedWelcome {
         };
 
         #[cfg(feature = "extensions-draft")]
-        let application_export_tree = ApplicationExportTree::new(self.application_export_secret);
+        #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+        let mut application_export_tree =
+            ApplicationExportTree::new(self.application_export_secret);
+
+        // The epoch the Welcome hands us is a derivation epoch of the emulation
+        // group: the commit that created it added us, so it changed membership.
+        #[cfg(feature = "virtual-clients-draft")]
+        if self.mls_group_config.emulation_group() {
+            crate::group::mls_group::exporting::register_vc_derivation_epoch(
+                provider.crypto(),
+                provider.storage(),
+                &mut application_export_tree,
+                crate::group::mls_group::exporting::VcDerivationEpochParams {
+                    group_id: self.public_group.group_id(),
+                    ciphersuite: self.public_group.ciphersuite(),
+                    group_epoch: self.public_group.group_context().epoch(),
+                    own_leaf_index: self.own_leaf_index,
+                    tree_size: self.public_group.tree_size(),
+                },
+            )?;
+        }
 
         let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();
 
@@ -1038,7 +1058,8 @@ impl MlsGroup {
         if material.epoch_id != epoch_id {
             return Err(Error::EpochIdMismatch);
         }
-        let staged = group.stage_commit(&content, vec![], vec![], provider, Some(material))?;
+        let staged =
+            group.stage_commit(&content, vec![], vec![], provider, Some(material), false)?;
         group.merge_staged_commit(provider, staged)?;
         group.resize_message_secrets_store(join_config.past_epoch_deletion_policy());
         group

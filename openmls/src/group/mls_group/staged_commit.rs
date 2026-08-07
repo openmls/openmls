@@ -226,6 +226,7 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")] vc_commit_material: Option<
             crate::components::vc_derivation_info::VcCommitMaterial,
         >,
+        #[cfg(feature = "virtual-clients-draft")] marks_new_vc_derivation_epoch: bool,
     ) -> Result<StagedCommit, StageCommitError> {
         let (commit, proposal_queue, sender_index) = self
             .public_group
@@ -257,6 +258,8 @@ impl MlsGroup {
             provider,
             #[cfg(feature = "virtual-clients-draft")]
             vc_commit_material,
+            #[cfg(feature = "virtual-clients-draft")]
+            marks_new_vc_derivation_epoch,
         )
     }
 
@@ -272,6 +275,7 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")] vc_commit_material: Option<
             crate::components::vc_derivation_info::VcCommitMaterial,
         >,
+        #[cfg(feature = "virtual-clients-draft")] marks_new_vc_derivation_epoch: bool,
     ) -> Result<StagedCommit, StageCommitError> {
         let (commit, proposal_queue, sender_index) = self
             .public_group
@@ -299,6 +303,8 @@ impl MlsGroup {
             provider,
             #[cfg(feature = "virtual-clients-draft")]
             vc_commit_material,
+            #[cfg(feature = "virtual-clients-draft")]
+            marks_new_vc_derivation_epoch,
         )
     }
 
@@ -317,11 +323,12 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")] vc_commit_material: Option<
             crate::components::vc_derivation_info::VcCommitMaterial,
         >,
+        #[cfg(feature = "virtual-clients-draft")] marks_new_vc_derivation_epoch: bool,
     ) -> Result<StagedCommit, StageCommitError> {
         let ciphersuite = self.ciphersuite();
 
         // Unbundle the sibling-VC commit material: the per-commit operation
-        // secret recreates the path, the derivation `epoch_id` is recorded on
+        // secret recreates the path, the emulation `epoch_id` is recorded on
         // the staged commit, and the external init secret (external commits
         // only) feeds the key schedule.
         #[cfg(feature = "virtual-clients-draft")]
@@ -409,6 +416,8 @@ impl MlsGroup {
                         StagedCommitState::PublicState(Box::new(staged_state)),
                         #[cfg(feature = "virtual-clients-draft")]
                         None,
+                        #[cfg(feature = "virtual-clients-draft")]
+                        marks_new_vc_derivation_epoch,
                     );
                     return Ok(staged_commit);
                 }
@@ -601,6 +610,8 @@ impl MlsGroup {
             staged_commit_state,
             #[cfg(feature = "virtual-clients-draft")]
             vc_derivation_epoch_id,
+            #[cfg(feature = "virtual-clients-draft")]
+            marks_new_vc_derivation_epoch,
         );
 
         Ok(staged_commit)
@@ -684,6 +695,11 @@ impl MlsGroup {
         let old_epoch_keypairs = self
             .read_epoch_keypairs(provider.storage())
             .map_err(MergeCommitError::StorageError)?;
+
+        #[cfg(feature = "virtual-clients-draft")]
+        let creates_vc_derivation_epoch =
+            self.is_emulation_group() && staged_commit.creates_vc_derivation_epoch();
+
         match staged_commit.state {
             StagedCommitState::PublicState(staged_state) => {
                 self.public_group
@@ -711,28 +727,6 @@ impl MlsGroup {
                     leaves,
                 );
 
-                // Replace the previous exporter tree with the new one.
-                #[cfg(feature = "extensions-draft")]
-                {
-                    // The application exporter is only None if the group was
-                    // stored using an older version of OpenMLS that did not
-                    // support the application exporter.
-                    if let Some(application_export_tree) = state.application_export_tree {
-                        // Overwrite the existing exporter tree in the storage.
-
-                        use openmls_traits::storage::StorageProvider as _;
-                        provider
-                            .storage()
-                            .write_application_export_tree(
-                                self.group_id(),
-                                &application_export_tree,
-                            )
-                            .map_err(MergeCommitError::StorageError)?;
-
-                        self.application_export_tree = Some(application_export_tree);
-                    }
-                }
-
                 self.public_group.merge_diff(state.staged_diff);
 
                 #[cfg(feature = "virtual-clients-draft")]
@@ -745,6 +739,57 @@ impl MlsGroup {
                 #[cfg(feature = "virtual-clients-draft")]
                 if let Some(new_idx) = state.new_own_leaf_index {
                     self.own_leaf_index = new_idx;
+                }
+
+                // Replace the previous exporter tree with the new one. This
+                // happens after the public group is merged, so that a
+                // virtual-clients registration sees the new epoch's tree size
+                // and own leaf index.
+                #[cfg(feature = "extensions-draft")]
+                {
+                    // The application exporter is only None if the group was
+                    // stored using an older version of OpenMLS that did not
+                    // support the application exporter.
+                    #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+                    if let Some(mut application_export_tree) = state.application_export_tree {
+                        // The registration punctures the new epoch's exporter,
+                        // so it has to run before the tree is persisted.
+                        #[cfg(feature = "virtual-clients-draft")]
+                        if creates_vc_derivation_epoch {
+                            crate::group::mls_group::exporting::register_vc_derivation_epoch(
+                                provider.crypto(),
+                                provider.storage(),
+                                &mut application_export_tree,
+                                crate::group::mls_group::exporting::VcDerivationEpochParams {
+                                    group_id: self.group_id(),
+                                    ciphersuite: self.ciphersuite(),
+                                    group_epoch: self.epoch(),
+                                    own_leaf_index: self.own_leaf_index(),
+                                    tree_size: self.public_group().tree_size(),
+                                },
+                            )?;
+                        }
+
+                        // Overwrite the existing exporter tree in the storage.
+                        use openmls_traits::storage::StorageProvider as _;
+                        provider
+                            .storage()
+                            .write_application_export_tree(
+                                self.group_id(),
+                                &application_export_tree,
+                            )
+                            .map_err(MergeCommitError::StorageError)?;
+
+                        self.application_export_tree = Some(application_export_tree);
+                    } else {
+                        #[cfg(feature = "virtual-clients-draft")]
+                        if creates_vc_derivation_epoch {
+                            log::error!(
+                                "vc: emulation group without an application exporter cannot \
+                                 register a derivation epoch"
+                            );
+                        }
+                    }
                 }
 
                 let leaf_keypair = if let Some(keypair) = &state.new_leaf_keypair_option {
@@ -839,8 +884,16 @@ pub struct StagedCommit {
     /// Derivation epoch this commit binds the group to on merge, when
     /// the commit was built via `CommitBuilder::vc_emulation`.
     #[cfg(feature = "virtual-clients-draft")]
-    #[serde(default)]
+    #[serde(default, alias = "vc_emulation_epoch_id")]
+    // alias for backwards compatibility after renaming field
     pub(super) vc_derivation_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
+    /// Whether the commit's virtual-clients Safe AAD item carries a
+    /// `new_derivation_epoch` action. Membership changes are not covered here,
+    /// they are read off the proposal queue by
+    /// [`Self::creates_vc_derivation_epoch`].
+    #[cfg(feature = "virtual-clients-draft")]
+    #[serde(default)]
+    pub(super) marks_new_vc_derivation_epoch: bool,
 }
 
 impl StagedCommit {
@@ -852,13 +905,45 @@ impl StagedCommit {
         #[cfg(feature = "virtual-clients-draft")] vc_derivation_epoch_id: Option<
             crate::components::vc_derivation_info::EpochId,
         >,
+        #[cfg(feature = "virtual-clients-draft")] marks_new_vc_derivation_epoch: bool,
     ) -> Self {
         StagedCommit {
             staged_proposal_queue,
             state,
             #[cfg(feature = "virtual-clients-draft")]
             vc_derivation_epoch_id,
+            #[cfg(feature = "virtual-clients-draft")]
+            marks_new_vc_derivation_epoch,
         }
+    }
+
+    /// Returns whether the epoch this commit moves an emulation group into is a
+    /// derivation epoch: the commit either changes membership or carries a
+    /// `new_derivation_epoch` action in its virtual-clients Safe AAD item.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn creates_vc_derivation_epoch(&self) -> bool {
+        self.marks_new_vc_derivation_epoch || self.changes_membership()
+    }
+
+    /// Returns whether the commit adds or removes a member. External commits
+    /// count, since the sender joins the group through them.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn changes_membership(&self) -> bool {
+        self.staged_proposal_queue
+            .queued_proposals()
+            .any(|queued| match queued.proposal() {
+                Proposal::Add(_)
+                | Proposal::Remove(_)
+                | Proposal::SelfRemove
+                | Proposal::ExternalInit(_) => true,
+                Proposal::Update(_)
+                | Proposal::PreSharedKey(_)
+                | Proposal::ReInit(_)
+                | Proposal::GroupContextExtensions(_)
+                | Proposal::AppDataUpdate(_)
+                | Proposal::AppEphemeral(_)
+                | Proposal::Custom(_) => false,
+            })
     }
 
     /// Returns the epoch that this commit moves the group into

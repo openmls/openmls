@@ -306,6 +306,8 @@ impl PublicGroup {
             staged_commit_state,
             #[cfg(feature = "virtual-clients-draft")]
             None,
+            #[cfg(feature = "virtual-clients-draft")]
+            false,
         ))
     }
 
@@ -337,6 +339,8 @@ impl PublicGroup {
             staged_commit_state,
             #[cfg(feature = "virtual-clients-draft")]
             None,
+            #[cfg(feature = "virtual-clients-draft")]
+            false,
         ))
     }
 

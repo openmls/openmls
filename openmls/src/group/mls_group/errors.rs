@@ -62,6 +62,11 @@ pub enum NewGroupError<StorageError> {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// The group is an emulation group, and registering the derivation epoch of
+    /// its initial epoch failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    RegisterVcDerivationEpoch(#[from] RegisterVcDerivationEpochError<StorageError>),
 }
 
 /// An error when deleting past epoch secrets.
@@ -594,7 +599,6 @@ mod virtual_clients_draft {
     use super::MlsGroupStateError;
     use crate::error::LibraryError;
     use crate::framing::MessageEncryptionError;
-    use crate::group::SafeExportSecretError;
     use crate::tree::secret_tree::SecretTreeError;
 
     /// Create message error
@@ -646,13 +650,20 @@ mod virtual_clients_draft {
         }
     }
 
-    /// Errors returned by
-    /// [`MlsGroup::register_vc_derivation_epoch`](crate::group::MlsGroup::register_vc_derivation_epoch).
+    /// Errors returned when deriving and persisting the state of a
+    /// virtual-clients derivation epoch. OpenMLS does this implicitly for
+    /// emulation groups, so this error is always wrapped in the error of the
+    /// operation that triggered the registration.
+    ///
+    /// See [`MlsGroupJoinConfigBuilder::emulation_group`](crate::group::MlsGroupJoinConfigBuilder::emulation_group).
     #[derive(Error, Debug, PartialEq, Clone)]
     pub enum RegisterVcDerivationEpochError<StorageError> {
-        /// See [`SafeExportSecretError`] for more details.
+        /// Puncturing the application exporter for the virtual-clients
+        /// component failed. See
+        /// [`ApplicationExportTreeError`](super::ApplicationExportTreeError) for
+        /// more details.
         #[error(transparent)]
-        SafeExportSecret(#[from] SafeExportSecretError<StorageError>),
+        ApplicationExportTree(#[from] super::ApplicationExportTreeError),
         /// See [`VirtualClientsError`](crate::components::vc_derivation_info::VirtualClientsError)
         /// for more details.
         #[error(transparent)]

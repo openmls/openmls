@@ -239,6 +239,14 @@ impl VirtualClientCommitData {
         &self.actions
     }
 
+    /// Adds a [`VirtualClientAction::NewDerivationEpoch`] action unless the
+    /// commit data already carries one.
+    pub(crate) fn require_new_derivation_epoch(&mut self) {
+        if !self.creates_derivation_epoch() {
+            self.actions.push(VirtualClientAction::NewDerivationEpoch);
+        }
+    }
+
     /// Returns true if the commit asks for a new derivation epoch.
     pub fn creates_derivation_epoch(&self) -> bool {
         self.actions

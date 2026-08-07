@@ -113,6 +113,11 @@ pub enum WelcomeError<StorageError> {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// The joined group is an emulation group, and registering the derivation
+    /// epoch of the Welcome's output epoch failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    RegisterVcDerivationEpoch(#[from] crate::group::RegisterVcDerivationEpochError<StorageError>),
     /// This error indicates that computing the key schedule failed
     #[error(transparent)]
     KeySchedule(#[from] KeyScheduleError),
@@ -407,6 +412,22 @@ pub enum CreateCommitError {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// See [`VcCommitDataError`](crate::components::vc_commit_data::VcCommitDataError)
+    /// for more details.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VcCommitData(#[from] crate::components::vc_commit_data::VcCommitDataError),
+    /// A new derivation epoch was requested, but the group's GroupContext does
+    /// not require Safe AAD framing, so the commit cannot carry the marker.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error("A new derivation epoch requires the group to use Safe AAD framing.")]
+    NewDerivationEpochWithoutSafeAad,
+    /// A new derivation epoch was requested in a group that is not configured
+    /// as an emulation group. The sender would broadcast the marker without
+    /// registering the epoch itself, desynchronizing the emulator clients.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error("A new derivation epoch can only be requested in an emulation group.")]
+    NewDerivationEpochOutsideEmulationGroup,
     /// Missing own key to apply proposal.
     #[error("Missing own key to apply proposal.")]
     OwnKeyNotFound,
@@ -762,6 +783,11 @@ pub enum MergeCommitError<StorageError> {
     /// Error writing updated group to storage.
     #[error("Error writing updated group data to storage.")]
     StorageError(StorageError),
+    /// The commit creates a virtual-clients derivation epoch for this emulation
+    /// group, and registering it failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    RegisterVcDerivationEpoch(#[from] crate::group::RegisterVcDerivationEpochError<StorageError>),
 }
 
 #[cfg(feature = "extensions-draft")]

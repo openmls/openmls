@@ -303,8 +303,9 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
         .capabilities(capabilities.clone())
         .with_leaf_node_extensions(vc_leaf_extensions.clone())
         .expect("attach emulator leaf-node extensions")
+        .emulation_group(true)
         .build();
-    let mut emulator = MlsGroup::new(
+    let emulator = MlsGroup::new(
         &provider,
         &emulator_signer,
         &emulator_config,
@@ -314,8 +315,9 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
     let emulation_leaf_index = emulator.own_leaf_index();
 
     let epoch_id = emulator
-        .register_vc_derivation_epoch(provider.crypto(), provider.storage())
-        .expect("register vc derivation epoch");
+        .newest_vc_derivation_epoch(provider.storage())
+        .expect("read newest vc derivation epoch")
+        .expect("group creation registers a derivation epoch");
 
     // The virtual client's own signing identity for the KeyPackage.
     let (vc_credential, vc_signer) = new_credential(

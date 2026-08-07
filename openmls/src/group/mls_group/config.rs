@@ -214,6 +214,10 @@ pub struct MlsGroupJoinConfig {
     pub(crate) use_ratchet_tree_extension: bool,
     /// Sender ratchet configuration
     pub(crate) sender_ratchet_configuration: SenderRatchetConfiguration,
+    /// Flag marking this group as an emulation group of a virtual client.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[serde(default)]
+    pub(crate) emulation_group: bool,
 }
 
 impl MlsGroupJoinConfig {
@@ -235,6 +239,13 @@ impl MlsGroupJoinConfig {
     /// Returns the [`SenderRatchetConfiguration`] set in this  [`MlsGroupJoinConfig`].
     pub fn sender_ratchet_configuration(&self) -> &SenderRatchetConfiguration {
         &self.sender_ratchet_configuration
+    }
+
+    /// Returns whether this group is an emulation group of a virtual client.
+    /// See [`MlsGroupJoinConfigBuilder::emulation_group`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulation_group(&self) -> bool {
+        self.emulation_group
     }
 
     /// Returns the max past epochs configured in this [`MlsGroupJoinConfig`]
@@ -360,6 +371,37 @@ impl MlsGroupJoinConfigBuilder {
         sender_ratchet_configuration: SenderRatchetConfiguration,
     ) -> Self {
         self.join_config.sender_ratchet_configuration = sender_ratchet_configuration;
+        self
+    }
+
+    /// Marks the group as an emulation group of a virtual client.
+    ///
+    /// This is the application's declaration that the group's members are the
+    /// emulator clients of one virtual client. It is local state, nothing about
+    /// it travels on the wire, and every member of an emulation group has to
+    /// set it.
+    ///
+    /// An emulation group derives the virtual client's secrets from its
+    /// derivation epochs. The initial epoch is a derivation epoch, and so is
+    /// the output epoch of every commit that changes membership or that carries
+    /// a `new_derivation_epoch` action in its virtual-clients Safe AAD item
+    /// (see [`CommitBuilder::new_derivation_epoch`]). OpenMLS derives and
+    /// persists the derivation-epoch state itself at group creation, at a
+    /// Welcome join, and when such a commit is merged. Applications should wrap
+    /// merge calls in a storage transaction, since those writes happen
+    /// alongside the merge's own writes.
+    ///
+    /// Use [`MlsGroup::newest_vc_derivation_epoch`] to look up the derivation
+    /// epoch that virtual-client operations resolve to. It may be older than
+    /// the group's current epoch.
+    ///
+    /// Groups without this flag never write virtual-clients state.
+    ///
+    /// [`CommitBuilder::new_derivation_epoch`]: crate::group::CommitBuilder::new_derivation_epoch
+    /// [`MlsGroup::newest_vc_derivation_epoch`]: crate::group::MlsGroup::newest_vc_derivation_epoch
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulation_group(mut self, emulation_group: bool) -> Self {
+        self.join_config.emulation_group = emulation_group;
         self
     }
 
@@ -518,6 +560,14 @@ impl MlsGroupCreateConfigBuilder {
     /// Sets the `capabilities` of the group creator's leaf node.
     pub fn capabilities(mut self, capabilities: Capabilities) -> Self {
         self.config.capabilities = capabilities;
+        self
+    }
+
+    /// Marks the group as an emulation group of a virtual client. See
+    /// [`MlsGroupJoinConfigBuilder::emulation_group`] for what that entails.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulation_group(mut self, emulation_group: bool) -> Self {
+        self.config.join_config.emulation_group = emulation_group;
         self
     }
 
@@ -695,6 +745,23 @@ pub const MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPoli
 #[cfg(test)]
 mod tests {
     use super::PastEpochDeletionPolicy;
+
+    /// A join config stored before the `emulation_group` flag existed loads
+    /// with the flag unset.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[test]
+    fn join_config_without_emulation_group_field_deserializes() {
+        let mut json = serde_json::to_value(super::MlsGroupJoinConfig::default()).unwrap();
+        let removed = json
+            .as_object_mut()
+            .unwrap()
+            .remove("emulation_group")
+            .expect("the current encoding carries the field");
+        assert_eq!(removed, serde_json::Value::Bool(false));
+
+        let deserialized: super::MlsGroupJoinConfig = serde_json::from_value(json).unwrap();
+        assert!(!deserialized.emulation_group());
+    }
 
     #[test]
     fn past_epoch_deletion_policy_roundtrip() {

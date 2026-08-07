@@ -154,11 +154,9 @@ pub enum VirtualClientsError {
     DuplicateKeyPackageRef,
 }
 
-/// Per-derivation-epoch root secret. Sourced internally by
-/// [`MlsGroup::register_vc_derivation_epoch`] from the emulation group's
-/// `safe_export_secret(VC_COMPONENT_ID)`.
-///
-/// [`MlsGroup::register_vc_derivation_epoch`]: crate::group::MlsGroup::register_vc_derivation_epoch
+/// Per-derivation-epoch root secret. Sourced internally from the emulation
+/// group's `safe_export_secret(VC_COMPONENT_ID)` when a derivation epoch is
+/// registered.
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct EmulatorEpochSecret(Secret);
 
@@ -463,10 +461,8 @@ impl DerivationInfo {
 
 /// Identifier of a derivation epoch's registered virtual-clients state.
 /// Derived deterministically from the emulation group's
-/// `safe_export_secret(VC_COMPONENT_ID)` by
-/// [`MlsGroup::register_vc_derivation_epoch`].
-///
-/// [`MlsGroup::register_vc_derivation_epoch`]: crate::group::MlsGroup::register_vc_derivation_epoch
+/// `safe_export_secret(VC_COMPONENT_ID)`, so every emulator client of a virtual
+/// client arrives at the same value for a given derivation epoch.
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserializeBytes,
 )]
@@ -750,18 +746,18 @@ pub(crate) struct VcWelcomeMaterial {
     pub(crate) encryption_keypair: EncryptionKeyPair,
 }
 
-/// The derivation epoch an emulation group registered at one of its own group
-/// epochs, recorded by [`MlsGroup::register_vc_derivation_epoch`] so that a
-/// repeated call in the same group epoch returns the existing [`EpochId`]
-/// instead of consuming the forward-secure exporter again (the exporter is
-/// punctured by the first call and cannot be re-evaluated).
+/// The newest derivation epoch of an emulation group, and the group epoch it
+/// was sourced from. All virtual-client operations of the group resolve to this
+/// derivation epoch, which may be older than the group's current epoch.
 ///
-/// Not folded into [`VcEmulationBindings`]: bindings are carried forward to
-/// the new epoch when a merged commit installs no virtual-client leaf, so
-/// they cannot distinguish a registration in the current epoch from a
-/// carry-forward of an older one.
+/// The group epoch is retained so that a repeated registration for the same
+/// group epoch returns the existing [`EpochId`] instead of consuming the
+/// forward-secure exporter again (the exporter is punctured by the first
+/// registration and cannot be re-evaluated).
 ///
-/// [`MlsGroup::register_vc_derivation_epoch`]: crate::group::MlsGroup::register_vc_derivation_epoch
+/// Not folded into [`VcEmulationBindings`]: bindings are per higher-level group
+/// and are carried forward to the new epoch when a merged commit installs no
+/// virtual-client leaf, so they cannot say which derivation epoch is newest.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct RegisteredVcDerivationEpoch {
     /// The emulation group's own epoch at registration time.
@@ -830,9 +826,7 @@ impl VcEmulationBindings {
 /// LeafNode carrying the derivation info. Every operation produces a fresh
 /// leaf encryption key, so each wrap uses a distinct key-nonce pair.
 /// Derived from the emulation group's `safe_export_secret(VC_COMPONENT_ID)`
-/// by [`MlsGroup::register_vc_derivation_epoch`].
-///
-/// [`MlsGroup::register_vc_derivation_epoch`]: crate::group::MlsGroup::register_vc_derivation_epoch
+/// when the derivation epoch is registered.
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct EpochEncryptionKey(Secret);
 
@@ -864,14 +858,10 @@ impl EpochEncryptionKey {
     }
 }
 
-/// Per-derivation-epoch state persisted by
-/// [`MlsGroup::register_vc_derivation_epoch`] alongside the per-epoch
-/// operation secret tree, keyed by [`EpochId`]. Bundles everything the
-/// library needs to emit a VC commit for this epoch and to XOR application
-/// message nonces with deterministic reuse guards.
-///
-/// [`MlsGroup::register_vc_derivation_epoch`]:
-///     crate::group::MlsGroup::register_vc_derivation_epoch
+/// Per-derivation-epoch state, persisted alongside the per-epoch operation
+/// secret tree and keyed by [`EpochId`]. Bundles everything the library needs
+/// to emit a VC commit for this epoch and to XOR application message nonces
+/// with deterministic reuse guards.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VcDerivationEpochState {
     /// The emulation group's own epoch this derivation epoch was sourced

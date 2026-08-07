@@ -94,26 +94,72 @@ through `.capabilities(...)` and `.with_leaf_node_extensions(...)`, and to the
 `KeyPackage::builder()` through `.leaf_node_capabilities(...)` and
 `.leaf_node_extensions(...)`.
 
-## Registering a derivation epoch
+## Derivation epochs
 
 An emulation group is an ordinary `MlsGroup`. Each emulator client maintains its
-own copy. To make a given epoch usable for virtual-client operations, every
-emulator client registers it. Registration sources the root secret from the
-group's `safe_export_secret(VC_COMPONENT_ID)`, builds the operation secret tree,
-and persists the per-epoch state, returning an `EpochId`:
+own copy. What makes it an emulation group is a flag on its config, which every
+emulator client has to set:
+
+```rust,no_run,noplayground
+let create_config = MlsGroupCreateConfig::builder()
+    .emulation_group(true)
+    // ... the leaf requirements above, ciphersuite, wire format policy
+    .build();
+
+let join_config = MlsGroupJoinConfig::builder()
+    .emulation_group(true)
+    .build();
+```
+
+The flag is local state. Nothing about it travels on the wire, and OpenMLS does
+not verify that the other members set it.
+
+Virtual-client secrets are not derived from every epoch of the emulation group,
+only from its *derivation epochs*. The initial epoch is one, and so is the output
+epoch of any commit that changes membership or that carries a
+`new_derivation_epoch` action. Other commits leave the newest derivation epoch in
+place.
+
+OpenMLS registers those epochs itself: at group creation, at a Welcome join, and
+when such a commit is merged. Registration sources the root secret from the
+epoch's Safe Exporter under `VC_COMPONENT_ID`, builds the operation secret tree,
+and persists the per-epoch state under a derived `EpochId`. Because the secret
+comes from the Safe Exporter, all emulator clients derive the **same** `EpochId`
+and the same operation tree for a given derivation epoch. Ask for the epoch that
+virtual-client operations resolve to with:
 
 ```rust,no_run,noplayground
 let epoch_id = emulator_group
-    .register_vc_derivation_epoch(provider.crypto(), provider.storage())?;
+    .newest_vc_derivation_epoch(provider.storage())?
+    .expect("an emulation group has a derivation epoch");
 ```
 
-Because the secret comes from the Safe Exporter, all emulator clients that are
-at the same derivation epoch derive the **same** `EpochId` and the same operation
-tree. The `EpochId` is the key under which all per-epoch state is stored, and it
-is the value embedded in the leaves the virtual client produces. Register the
-epoch on every emulator client before any of them issues an operation against
-it. A missed registration is not recoverable, because the Safe Exporter state of
-a past derivation epoch is not retained.
+That epoch may be older than the emulation group's current epoch. The `EpochId`
+is the key under which all per-epoch state is stored, and it is the value
+embedded in the leaves the virtual client produces.
+
+Registration writes happen alongside the writes of the operation that triggered
+them, so wrap `merge_staged_commit` and `merge_pending_commit` calls on an
+emulation group in a storage transaction.
+
+To start a fresh derivation epoch without changing membership, for instance to
+bound the damage of a compromise, mark a commit on the emulation group:
+
+```rust,no_run,noplayground
+let bundle = emulator_group
+    .commit_builder()
+    .new_derivation_epoch()
+    .force_self_update(true)
+    .load_psks(provider.storage())?
+    .build(provider.rand(), provider.crypto(), &emulator_signer, |_| true)?
+    .stage_commit(provider)?;
+```
+
+The marker travels in the commit's Safe AAD, so the emulation group's
+GroupContext has to require Safe AAD framing. Like all actions, the marker
+applies relative to the commit's input state: operations that reference a
+derivation epoch, including ones carried by this very commit, keep using the
+input state's newest derivation epoch.
 
 ## Committing in a higher-level group
 
@@ -399,9 +445,6 @@ The implementation tracks the draft but does not yet cover everything in it:
 - The `VirtualClientAction` coordination channel over SafeAAD (the draft's
   `external_join` and `key_package_upload` actions) is not implemented. The
   transport of the KeyPackage upload is left entirely to the application.
-- There is no convenience layer for marking a group as an emulation group on its
-  config and deriving epoch secrets automatically. Registration is the manual
-  `register_vc_derivation_epoch` call shown above.
 - Per-epoch state for dead derivation epochs is not garbage collected
   automatically.
 

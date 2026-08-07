@@ -52,7 +52,7 @@ use crate::schedule::{application_export_tree::ApplicationExportTree, Applicatio
 
 // Private
 mod application;
-mod exporting;
+pub(crate) mod exporting;
 mod updates;
 
 #[cfg(feature = "migration-import")]
@@ -766,6 +766,37 @@ impl MlsGroup {
                 VcDerivationStateError::MissingDerivationEpochState
             })?;
         Ok(Some(state))
+    }
+
+    /// Returns whether this group is an emulation group of a virtual client, as
+    /// declared by the application in the group's [`MlsGroupJoinConfig`]. See
+    /// [`MlsGroupJoinConfigBuilder::emulation_group`].
+    ///
+    /// [`MlsGroupJoinConfigBuilder::emulation_group`]: crate::group::MlsGroupJoinConfigBuilder::emulation_group
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn is_emulation_group(&self) -> bool {
+        self.mls_group_config.emulation_group
+    }
+
+    /// Returns the [`EpochId`] of the newest derivation epoch of this emulation
+    /// group, or `None` if none was registered yet.
+    ///
+    /// All virtual-client operations resolve to this derivation epoch. It is
+    /// sourced from the newest group epoch that was a derivation epoch, which
+    /// may be older than the group's current epoch: only commits that change
+    /// membership or that carry a `new_derivation_epoch` action create one.
+    ///
+    /// Returns `None` for groups that are not emulation groups.
+    ///
+    /// [`EpochId`]: crate::components::vc_derivation_info::EpochId
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn newest_vc_derivation_epoch<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<Option<crate::components::vc_derivation_info::EpochId>, Storage::Error> {
+        let registered: Option<crate::components::vc_derivation_info::RegisteredVcDerivationEpoch> =
+            storage.registered_vc_derivation_epoch(self.group_id())?;
+        Ok(registered.map(|registered| registered.epoch_id))
     }
 
     // Encrypt an AuthenticatedContent into an PrivateMessage

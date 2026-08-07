@@ -213,6 +213,11 @@ pub struct CommitBuilder<'a, T, G: BorrowMut<MlsGroup> = &'a mut MlsGroup> {
     #[cfg(feature = "virtual-clients-draft")]
     vc_loaded: Option<VcLoaded>,
 
+    /// Set by [`Self::new_derivation_epoch`]. `build` makes sure the outgoing
+    /// commit's virtual-clients Safe AAD item carries the marker action.
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_new_derivation_epoch: bool,
+
     pd: PhantomData<&'a ()>,
 }
 
@@ -244,6 +249,8 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
             stage,
             #[cfg(feature = "virtual-clients-draft")]
             vc_loaded,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_new_derivation_epoch,
             pd: PhantomData,
         } = self;
 
@@ -256,6 +263,8 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
                 stage,
                 #[cfg(feature = "virtual-clients-draft")]
                 vc_loaded,
+                #[cfg(feature = "virtual-clients-draft")]
+                vc_new_derivation_epoch,
                 pd: PhantomData,
             },
         )
@@ -350,6 +359,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             stage,
             #[cfg(feature = "virtual-clients-draft")]
             vc_loaded: None,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_new_derivation_epoch: false,
             pd: PhantomData,
         }
     }
@@ -363,9 +374,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
 
     /// Opt this commit into the virtual-clients-draft sender flow.
     ///
-    /// The application supplies the [`EpochId`] of an already-registered
-    /// derivation epoch (see
-    /// [`MlsGroup::register_vc_derivation_epoch`]). This method loads the
+    /// The application supplies the [`EpochId`] of a derivation epoch of the
+    /// emulation group, normally the one
+    /// [`MlsGroup::newest_vc_derivation_epoch`] reports. This method loads the
     /// per-epoch operation secret tree and AEAD key from the storage
     /// provider, validates the leaf configuration (see the preconditions
     /// below), then advances the own `LeafNode` operation ratchet by one
@@ -409,7 +420,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// Implies that a self-update takes place: the commit will always have
     /// a path even if no other proposals are queued.
     ///
-    /// [`MlsGroup::register_vc_derivation_epoch`]: crate::group::MlsGroup::register_vc_derivation_epoch
+    /// [`MlsGroup::newest_vc_derivation_epoch`]: crate::group::MlsGroup::newest_vc_derivation_epoch
     #[cfg(feature = "virtual-clients-draft")]
     pub fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         mut self,
@@ -480,6 +491,35 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             resolved_dictionary,
         });
         Ok(self)
+    }
+
+    /// Ask the emulation group to start a new derivation epoch with this
+    /// commit.
+    ///
+    /// `build` makes sure the commit's virtual-clients Safe AAD item carries a
+    /// `new_derivation_epoch` action, creating the item if the application
+    /// staged none. Every member of the emulation group then registers the
+    /// epoch this commit moves the group into as a derivation epoch when the
+    /// commit is merged, and subsequent virtual-client operations resolve to
+    /// it.
+    ///
+    /// This is the application's cadence knob for post-compromise security of
+    /// the virtual client's secrets. Commits that change membership create a
+    /// derivation epoch on their own, so they do not need this.
+    ///
+    /// Like all actions, the marker applies relative to the commit's input
+    /// state. Operations that reference a derivation epoch keep using the
+    /// newest derivation epoch of that input state, including operations
+    /// carried by this very commit.
+    ///
+    /// The group has to be configured as an emulation group and its
+    /// GroupContext has to require Safe AAD framing. Otherwise `build` fails
+    /// with [`CreateCommitError::NewDerivationEpochOutsideEmulationGroup`] or
+    /// [`CreateCommitError::NewDerivationEpochWithoutSafeAad`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn new_derivation_epoch(mut self) -> Self {
+        self.vc_new_derivation_epoch = true;
+        self
     }
 
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
@@ -962,6 +1002,19 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 }
             };
 
+        // The wire format is authoritative for whether this commit creates a
+        // derivation epoch, so the flag is read back off the assembled Safe AAD
+        // rather than from the builder: an application that staged the marker
+        // itself gets the same result as one that called
+        // `new_derivation_epoch`.
+        #[cfg(feature = "virtual-clients-draft")]
+        let (outgoing_aad, marks_new_vc_derivation_epoch) = apply_vc_new_derivation_epoch(
+            group.is_emulation_group(),
+            group.context().safe_aad_required(),
+            outgoing_aad,
+            builder.vc_new_derivation_epoch,
+        )?;
+
         let framing_parameters = FramingParameters::new(&outgoing_aad, wire_format);
 
         // Build AuthenticatedContent
@@ -1172,6 +1225,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
             #[cfg(feature = "virtual-clients-draft")]
             vc_loaded.as_ref().map(|loaded| loaded.epoch_id.clone()),
+            #[cfg(feature = "virtual-clients-draft")]
+            marks_new_vc_derivation_epoch,
         );
 
         Ok(builder.into_stage(Complete {
@@ -1283,6 +1338,90 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
             confirmation: framing.confirmation,
         })
     }
+}
+
+/// Make sure the commit's virtual-clients Safe AAD item carries the
+/// `new_derivation_epoch` action when `add_marker` is set, and report whether
+/// the item carries it.
+///
+/// Returns the `authenticated_data` bytes to frame the commit with. They differ
+/// from the input only when the marker had to be added. An application that
+/// staged the marker itself is reported as asking for a new derivation epoch
+/// even when `add_marker` is unset, since the wire format is what the receivers
+/// act on.
+///
+/// Only an emulation group interprets the item, so only there does a malformed
+/// one fail the commit. That mirrors the receiving side.
+#[cfg(feature = "virtual-clients-draft")]
+fn apply_vc_new_derivation_epoch(
+    is_emulation_group: bool,
+    safe_aad_required: bool,
+    authenticated_data: Vec<u8>,
+    add_marker: bool,
+) -> Result<(Vec<u8>, bool), CreateCommitError> {
+    use crate::{
+        components::{
+            vc_commit_data::{VirtualClientAction, VirtualClientCommitData},
+            vc_derivation_info::VC_COMPONENT_ID,
+        },
+        framing::{safe_aad, SafeAad, SafeAadItem},
+    };
+
+    if !is_emulation_group {
+        if add_marker {
+            return Err(CreateCommitError::NewDerivationEpochOutsideEmulationGroup);
+        }
+        return Ok((authenticated_data, false));
+    }
+    if !safe_aad_required {
+        if add_marker {
+            return Err(CreateCommitError::NewDerivationEpochWithoutSafeAad);
+        }
+        return Ok((authenticated_data, false));
+    }
+
+    let (safe_aad, prefix_len) = safe_aad::parse_authenticated_data_prefix(&authenticated_data)
+        .map_err(|_| LibraryError::custom("SafeAad parsing failed"))?;
+    let mut items = safe_aad.items().to_vec();
+    let existing = items
+        .iter()
+        .position(|item| item.component_id() == VC_COMPONENT_ID);
+
+    let marks_new_derivation_epoch = match existing {
+        Some(index) => {
+            let mut commit_data =
+                VirtualClientCommitData::from_safe_aad_item_data(items[index].data())?;
+            let already_marked = commit_data.creates_derivation_epoch();
+            if add_marker && !already_marked {
+                commit_data.require_new_derivation_epoch();
+                items[index] = commit_data.to_safe_aad_item()?;
+            }
+            already_marked || add_marker
+        }
+        None => {
+            if add_marker {
+                let commit_data = VirtualClientCommitData::new(
+                    None,
+                    vec![VirtualClientAction::NewDerivationEpoch],
+                )?;
+                items.push(commit_data.to_safe_aad_item()?);
+                // The item list has to stay sorted by component id.
+                items.sort_by_key(SafeAadItem::component_id);
+            }
+            add_marker
+        }
+    };
+
+    if !add_marker {
+        return Ok((authenticated_data, marks_new_derivation_epoch));
+    }
+
+    let tail = &authenticated_data[prefix_len..];
+    let safe_aad =
+        SafeAad::from_items(items).map_err(|_| LibraryError::custom("SafeAad assembly failed"))?;
+    let authenticated_data = safe_aad::assemble_authenticated_data(&safe_aad, tail)
+        .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?;
+    Ok((authenticated_data, marks_new_derivation_epoch))
 }
 
 /// Build the path-secret + leaf-keypair override from the

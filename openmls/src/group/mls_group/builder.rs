@@ -216,7 +216,25 @@ impl MlsGroupBuilder {
         resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
 
         #[cfg(feature = "extensions-draft")]
-        let application_export_tree = ApplicationExportTree::new(application_exporter);
+        #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+        let mut application_export_tree = ApplicationExportTree::new(application_exporter);
+
+        // The initial epoch of an emulation group is a derivation epoch.
+        #[cfg(feature = "virtual-clients-draft")]
+        if mls_group_create_config.join_config.emulation_group {
+            crate::group::mls_group::exporting::register_vc_derivation_epoch(
+                provider.crypto(),
+                provider.storage(),
+                &mut application_export_tree,
+                crate::group::mls_group::exporting::VcDerivationEpochParams {
+                    group_id: public_group.group_id(),
+                    ciphersuite,
+                    group_epoch: public_group.group_context().epoch(),
+                    own_leaf_index: LeafNodeIndex::new(0),
+                    tree_size: TreeSize::new(1),
+                },
+            )?;
+        }
 
         let mls_group = MlsGroup {
             mls_group_config: mls_group_create_config.join_config.clone(),
