@@ -252,6 +252,13 @@ pub(crate) struct CommitIn {
 }
 
 impl CommitIn {
+    /// Returns the proposals covered by this commit. The commit has not been
+    /// validated at this point.
+    #[cfg(feature = "extensions-draft")]
+    pub(crate) fn proposals(&self) -> &[ProposalOrRefIn] {
+        &self.proposals
+    }
+
     pub(crate) fn unverified_credential(&self) -> Option<CredentialWithKey> {
         self.path.as_ref().map(|p| {
             let credential = p.leaf_node().credential().clone();

@@ -14,7 +14,8 @@ use openmls::{
     key_packages::KeyPackage,
     prelude::{
         test_utils::new_credential, Capabilities, LeafNode, LeafNodeParameters,
-        ProcessMessageError, ProcessedMessageContent, ProposalOrRefType, ValidationError,
+        ProcessMessageError, ProcessedMessageContent, ProposalOrRefType, ProposalType,
+        ValidationError,
     },
 };
 use openmls_basic_credential::SignatureKeyPair;
@@ -1709,6 +1710,263 @@ fn vc_second_emulator_client_onboards_via_external_commit() {
         };
         assert_eq!(message.into_bytes(), b"charly_b bootstrapped");
     }
+}
+
+/// The VC capabilities, extended with support for the AppEphemeral proposal
+/// type. All leaves of a group need this before anyone may commit such a
+/// proposal.
+fn vc_app_ephemeral_capabilities() -> Capabilities {
+    Capabilities::builder()
+        .extensions(vec![ExtensionType::AppDataDictionary])
+        .proposals(vec![ProposalType::AppEphemeral])
+        .build()
+}
+
+/// An AppEphemeral proposal attached by value to a virtual client's external
+/// commit reaches both the members of the group and the committer's sibling.
+///
+/// `charly_a` joins the higher-level group (Alice + Bob) via an external commit
+/// carrying the proposal. `charly_b` reads the payload out of that commit while
+/// it is still an outsider, then bootstraps into the group with
+/// [`MlsGroup::vc_join_via_sibling_external_commit`]. Alice and Bob find the
+/// same payload in the staged commit, and all four parties converge.
+#[openmls_test]
+fn vc_sibling_reads_app_ephemeral_from_external_commit() {
+    use openmls::component::ComponentId;
+    use openmls::credentials::{BasicCredential, CredentialWithKey};
+    use openmls::messages::proposals::{AppEphemeralProposal, Proposal};
+    use openmls::prelude::{LeafNodeParameters, MlsMessageIn, ProtocolMessage};
+    use tls_codec::Deserialize as _;
+
+    const COMPONENT_ID: ComponentId = 7;
+    const DATA: &[u8] = b"wrapped key material";
+
+    let alice_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let charly_a_provider = Provider::default();
+    let charly_b_provider = Provider::default();
+
+    // Alice founds the higher-level group and adds Bob. Every leaf declares
+    // support for the AppEphemeral proposal type.
+    let (alice_credential, alice_signer) =
+        new_credential(&alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let main_group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_app_ephemeral_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    let mut alice_main = MlsGroup::new(
+        &alice_provider,
+        &alice_signer,
+        &main_group_config,
+        alice_credential,
+    )
+    .expect("create vc main group");
+
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_app_ephemeral_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_, welcome, _) = alice_main
+        .add_members(&alice_provider, &alice_signer, &[bob_kp])
+        .expect("alice add bob");
+    alice_main
+        .merge_pending_commit(&alice_provider)
+        .expect("alice merge add bob");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join higher-level group");
+
+    // Charly is one virtual client with two emulator clients sharing a signing
+    // identity and an emulation epoch.
+    let vc_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).expect("vc signer");
+    vc_signer
+        .store(charly_a_provider.storage())
+        .expect("store vc signer on charly_a");
+    vc_signer
+        .store(charly_b_provider.storage())
+        .expect("store vc signer on charly_b");
+    let vc_credential = CredentialWithKey {
+        credential: BasicCredential::new(b"Charly (VC)".to_vec()).into(),
+        signature_key: vc_signer.public().into(),
+    };
+
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(ciphersuite, &charly_a_provider, b"CharlyEmulatorA");
+    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        &charly_b_provider,
+        b"CharlyEmulatorB",
+        ciphersuite.signature_algorithm(),
+    );
+    let emulator_b_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            ciphersuite,
+            &charly_b_provider,
+            &emulator_b_signer,
+            emulator_b_credential,
+        )
+        .expect("charly_b emulator KP build")
+        .key_package()
+        .to_owned();
+    let (_, e_welcome, _) = emulator_a
+        .add_members(&charly_a_provider, &emulator_a_signer, &[emulator_b_kp])
+        .expect("emulator_a add charly_b");
+    emulator_a
+        .merge_pending_commit(&charly_a_provider)
+        .expect("emulator_a merge add");
+    let mut emulator_b = StagedWelcome::new_from_welcome(
+        &charly_b_provider,
+        &vc_join_config(),
+        e_welcome.into_welcome().expect("emulator welcome"),
+        Some(emulator_a.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&charly_b_provider))
+    .expect("charly_b join emulator group");
+    let epoch_id = emulator_a
+        .register_vc_emulation_epoch(charly_a_provider.crypto(), charly_a_provider.storage())
+        .expect("charly_a register vc epoch");
+    let epoch_id_b = emulator_b
+        .register_vc_emulation_epoch(charly_b_provider.crypto(), charly_b_provider.storage())
+        .expect("charly_b register vc epoch");
+    assert_eq!(
+        epoch_id, epoch_id_b,
+        "siblings must derive the same EpochId"
+    );
+
+    // One copy of the prior-epoch GroupInfo is consumed by charly_a's external
+    // commit, the other lets charly_b rebuild the prior-epoch public group.
+    let export_prior_epoch_vgi = |label: &str| {
+        let gi = alice_main
+            .export_group_info(alice_provider.crypto(), &alice_signer, true)
+            .unwrap_or_else(|_| panic!("export group info ({label})"));
+        let serialized = gi.tls_serialize_detached().expect("serialize gi");
+        MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+            .expect("deserialize gi")
+            .into_verifiable_group_info()
+            .expect("into vgi")
+    };
+    let vgi_charly_a = export_prior_epoch_vgi("charly_a");
+    let vgi_charly_b = export_prior_epoch_vgi("charly_b");
+
+    let (charly_a_main, bundle) = MlsGroup::external_commit_builder()
+        .with_config(vc_join_config())
+        .build_group(&charly_a_provider, vgi_charly_a, vc_credential.clone())
+        .expect("build_group charly_a")
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(vc_app_ephemeral_capabilities())
+                .with_extensions(vc_leaf_extensions())
+                .build(),
+        )
+        .vc_emulation(
+            charly_a_provider.crypto(),
+            charly_a_provider.storage(),
+            epoch_id.clone(),
+        )
+        .expect("vc emulation charly_a")
+        .add_proposal(Proposal::AppEphemeral(Box::new(AppEphemeralProposal::new(
+            COMPONENT_ID,
+            DATA.to_vec(),
+        ))))
+        .load_psks(charly_a_provider.storage())
+        .expect("load psks")
+        .build(
+            charly_a_provider.rand(),
+            charly_a_provider.crypto(),
+            &vc_signer,
+            |_| true,
+        )
+        .expect("build external commit charly_a")
+        .finalize(&charly_a_provider)
+        .expect("finalize charly_a join");
+    let charly_a_join = bundle.into_commit();
+    let charly_a_commit_for_b = charly_a_join
+        .clone()
+        .into_protocol_message()
+        .expect("charly_a commit as protocol message");
+
+    // Alice and Bob find the payload in the staged commit before merging it.
+    for (group, provider) in [
+        (&mut alice_main, &alice_provider),
+        (&mut bob_main, &bob_provider),
+    ] {
+        let processed = group
+            .process_message(
+                provider,
+                charly_a_join
+                    .clone()
+                    .into_protocol_message()
+                    .expect("commit as protocol message"),
+            )
+            .expect("process charly_a external commit");
+        let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
+            panic!("expected staged commit");
+        };
+        let staged = *staged;
+        {
+            let mut proposals = staged
+                .staged_proposal_queue
+                .app_ephemeral_proposals_for_component_id(COMPONENT_ID);
+            let queued_proposal = proposals.next().expect("no AppEphemeral proposal");
+            assert_eq!(queued_proposal.app_ephemeral_proposal().data(), DATA);
+            assert!(proposals.next().is_none());
+        }
+        group
+            .merge_staged_commit(provider, staged)
+            .expect("merge staged commit");
+    }
+
+    // charly_b reads the payload while it is still an outsider, with no group
+    // state of its own.
+    let ProtocolMessage::PublicMessage(public_message) = &charly_a_commit_for_b else {
+        panic!("an external commit is always a public message");
+    };
+    let peeked = public_message.unverified_app_ephemeral_proposals(COMPONENT_ID);
+    assert_eq!(peeked.len(), 1);
+    assert_eq!(peeked[0].data(), DATA);
+
+    let bootstrap_join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .max_past_epochs(1)
+        .build();
+    let charly_b_main = MlsGroup::vc_join_via_sibling_external_commit(
+        &charly_b_provider,
+        &bootstrap_join_config,
+        vgi_charly_b,
+        None,
+        charly_a_commit_for_b,
+        epoch_id_b.clone(),
+    )
+    .expect("charly_b bootstraps by processing charly_a's external commit");
+
+    assert!(charly_a_main.is_active() && charly_b_main.is_active());
+    assert_eq!(
+        charly_b_main.own_leaf_index(),
+        charly_a_main.own_leaf_index(),
+        "the bootstrapped sibling must land on the shared VC leaf"
+    );
+    let auth = charly_b_main.epoch_authenticator();
+    assert_eq!(charly_a_main.epoch_authenticator(), auth);
+    assert_eq!(alice_main.epoch_authenticator(), auth);
+    assert_eq!(bob_main.epoch_authenticator(), auth);
 }
 
 /// A sibling emulator joins a higher-level group via a virtual client's

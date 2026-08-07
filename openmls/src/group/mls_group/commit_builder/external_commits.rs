@@ -66,8 +66,10 @@ pub enum ExternalCommitBuilderError<StorageError> {
 /// group join configuration can be set in the first builder stage.
 ///
 /// The second stage of this builder is a [`CommitBuilder`] that can be used to
-/// add one or more [`PreSharedKeyProposal`]s to the external commit and specify
-/// [`LeafNodeParameters`].
+/// add one or more proposals by value to the external commit and specify
+/// [`LeafNodeParameters`]. Note that only proposal types that RFC 9420 and the
+/// MLS extensions draft allow in an external commit pass validation when the
+/// commit is built.
 #[derive(Default)]
 pub struct ExternalCommitBuilder {
     proposals: Vec<PublicMessageIn>,
@@ -330,6 +332,29 @@ impl ExternalCommitBuilder {
 
 // Impls that only apply to external commits.
 impl<'a> CommitBuilder<'a, Initial, MlsGroup> {
+    /// Adds a proposal to the proposals to be committed by value. To add
+    /// multiple proposals, use [`Self::add_proposals`].
+    ///
+    /// Only proposal types that are allowed by value in an external commit
+    /// (such as PreSharedKey, Remove, or AppEphemeral) pass validation when
+    /// the commit is built. Other types cause `build` to fail with
+    /// [`ExternalCommitValidationError::InvalidInlineProposals`].
+    ///
+    /// [`ExternalCommitValidationError::InvalidInlineProposals`]:
+    ///     crate::group::errors::ExternalCommitValidationError::InvalidInlineProposals
+    pub fn add_proposal(mut self, proposal: Proposal) -> Self {
+        self.stage.own_proposals.push(proposal);
+        self
+    }
+
+    /// Adds the proposals in the iterator to the proposals to be committed by
+    /// value. See [`Self::add_proposal`] for the proposal types allowed in an
+    /// external commit.
+    pub fn add_proposals(mut self, proposals: impl IntoIterator<Item = Proposal>) -> Self {
+        self.stage.own_proposals.extend(proposals);
+        self
+    }
+
     /// Adds a [`PreSharedKeyProposal`] to the proposals to be committed.
     pub fn add_psk_proposal(mut self, proposal: PreSharedKeyProposal) -> Self {
         self.stage.own_proposals.push(Proposal::psk(proposal));
