@@ -1,16 +1,23 @@
-use openmls_traits::{types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::Serialize as _;
 
 use crate::{
-    component::{ComponentId, ComponentType},
-    components::vc_derivation_info::{
-        load_vc_epoch_state_and_tree, EpochId, VirtualClientOperationType, VC_COMPONENT_ID,
+    component::{ComponentId, ComponentType, ComponentsList},
+    components::{
+        vc_commit_data::{VcEpochUsage, VirtualClientAction, VirtualClientCommitData},
+        vc_derivation_info::{
+            load_vc_epoch_state_and_tree, EpochId, VirtualClientOperationType, VC_COMPONENT_ID,
+        },
     },
     credentials::test_utils::new_credential,
     extensions::{
         AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
     },
-    group::{MlsGroup, MlsGroupCreateConfig, PURE_PLAINTEXT_WIRE_FORMAT_POLICY},
+    framing::{MlsMessageIn, ProcessedMessageContent},
+    group::{
+        GroupContext, MlsGroup, MlsGroupCreateConfig, StagedWelcome,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+    },
     key_packages::KeyPackage,
     messages::PathSecret,
     prelude::{Capabilities, LeafNode, LeafNodeParameters},
@@ -309,4 +316,153 @@ fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
         "the creator leaf's encryption key secret must derive from the \
          per-KeyPackage seed imported into the created group's ciphersuite"
     );
+}
+
+/// GroupContext extensions requiring Safe AAD framing, with no component id
+/// that every member must understand.
+fn safe_aad_group_context_extensions() -> Extensions<GroupContext> {
+    let mut dictionary = AppDataDictionary::new();
+    let body = ComponentsList::new(Vec::new())
+        .tls_serialize_detached()
+        .expect("serialize ComponentsList body");
+    dictionary.insert(ComponentId::from(ComponentType::SafeAad), body);
+    let ext = Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary));
+    Extensions::single(ext).expect("one app_data_dictionary extension is valid")
+}
+
+/// Found a two-member group that requires Safe AAD framing. Returns Alice's
+/// group and signer plus Bob's group.
+fn safe_aad_group_pair<P: OpenMlsProvider>(
+    alice_provider: &P,
+    bob_provider: &P,
+) -> (MlsGroup, MlsGroup, impl Signer) {
+    let config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(GROUP_CIPHERSUITE)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .with_group_context_extensions(safe_aad_group_context_extensions())
+        .build();
+
+    let (alice_credential, alice_signer) = new_credential(
+        alice_provider,
+        b"Alice (VC)",
+        GROUP_CIPHERSUITE.signature_algorithm(),
+    );
+    let mut alice_group = MlsGroup::new(alice_provider, &alice_signer, &config, alice_credential)
+        .expect("create safe-aad group");
+
+    let (bob_credential, bob_signer) = new_credential(
+        bob_provider,
+        b"Bob",
+        GROUP_CIPHERSUITE.signature_algorithm(),
+    );
+    let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .build(GROUP_CIPHERSUITE, bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build");
+    let (_commit, welcome, _group_info) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signer,
+            core::slice::from_ref(bob_key_package.key_package()),
+        )
+        .expect("add bob");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("merge add");
+
+    let welcome = MlsMessageIn::from(welcome)
+        .into_welcome()
+        .expect("welcome message");
+    let bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        config.join_config(),
+        welcome,
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("stage welcome")
+    .into_group(bob_provider)
+    .expect("group from staged welcome");
+
+    (alice_group, bob_group, alice_signer)
+}
+
+/// A [`VirtualClientCommitData`] item attached to a commit's Safe AAD reaches
+/// the other member and parses back to the same value.
+#[openmls_test::openmls_test]
+fn vc_commit_data_travels_in_commit_safe_aad() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (mut alice_group, mut bob_group, alice_signer) =
+        safe_aad_group_pair(alice_provider, bob_provider);
+
+    let epoch_usage = VcEpochUsage::new([
+        EpochId::new(b"second declared epoch".to_vec()),
+        EpochId::new(b"first declared epoch".to_vec()),
+    ])
+    .expect("epoch ids must serialize");
+    let commit_data = VirtualClientCommitData::new(
+        Some(epoch_usage),
+        vec![VirtualClientAction::NewDerivationEpoch],
+    )
+    .expect("one new_derivation_epoch action is valid");
+
+    alice_group
+        .set_safe_aad(vec![commit_data
+            .to_safe_aad_item()
+            .expect("serialize commit data")])
+        .expect("a single item is sorted and unique");
+
+    let commit = alice_group
+        .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .expect("self update")
+        .into_messages()
+        .0;
+
+    let processed = bob_group
+        .process_message(
+            bob_provider,
+            MlsMessageIn::from(commit)
+                .into_protocol_message()
+                .expect("protocol message"),
+        )
+        .expect("process commit");
+
+    let parsed = processed
+        .vc_commit_data()
+        .expect("the item must parse")
+        .expect("the item must be present");
+    assert_eq!(parsed, commit_data);
+    assert!(parsed.creates_derivation_epoch());
+
+    // Both members advance so the next commit is processed in a shared epoch.
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("merge own self update");
+    let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
+        panic!("a commit must process into a staged commit");
+    };
+    bob_group
+        .merge_staged_commit(bob_provider, *staged)
+        .expect("merge staged commit");
+
+    // A later commit without the item leaves the accessor with nothing to parse.
+    let commit = alice_group
+        .self_update(alice_provider, &alice_signer, LeafNodeParameters::default())
+        .expect("second self update")
+        .into_messages()
+        .0;
+    let processed = bob_group
+        .process_message(
+            bob_provider,
+            MlsMessageIn::from(commit)
+                .into_protocol_message()
+                .expect("protocol message"),
+        )
+        .expect("process second commit");
+    assert_eq!(processed.vc_commit_data(), Ok(None));
 }
