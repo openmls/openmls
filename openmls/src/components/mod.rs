@@ -9,3 +9,9 @@ pub mod vc_derivation_info;
 /// ratchet per operation type.
 #[cfg(feature = "virtual-clients-draft")]
 pub mod vc_operation_tree;
+
+/// Virtual-clients commit data (mls-virtual-clients draft): the Safe AAD item a
+/// virtual client attaches to a commit to declare its in-use derivation epochs
+/// and the actions the commit performs.
+#[cfg(feature = "virtual-clients-draft")]
+pub mod vc_commit_data;

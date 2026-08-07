@@ -503,7 +503,7 @@ impl EpochId {
 ///
 /// [`HashReference`]: crate::ciphersuite::hash_ref::HashReference
 /// [`KeyPackageBuilder::build_vc_batch`]: crate::key_packages::KeyPackageBuilder::build_vc_batch
-#[derive(Debug, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+#[derive(Debug, PartialEq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub struct KeyPackageInfo {
     /// Hash reference of the virtual client's KeyPackage.
     pub key_package_ref: KeyPackageRef,
@@ -535,7 +535,7 @@ pub struct KeyPackageInfo {
 /// consumed for the whole batch. `key_package_info` carries one
 /// [`KeyPackageInfo`] per uploaded KeyPackage, each with its index within the
 /// batch.
-#[derive(Debug, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+#[derive(Debug, PartialEq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub struct KeyPackageUpload {
     /// Emulation epoch the uploaded KeyPackages belong to.
     pub epoch_id: EpochId,
