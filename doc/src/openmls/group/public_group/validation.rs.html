@@ -531,7 +531,7 @@
 <a href=#531 id=531 data-nosnippet>531</a>    ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
 <a href=#532 id=532 data-nosnippet>532</a>    ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
 <a href=#533 id=533 data-nosnippet>533</a>    ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
-<a href=#534 id=534 data-nosnippet>534</a>    ///  - When the `extensions-draft` feature is enabled, AppDataUpdate proposal is allowed additionally.
+<a href=#534 id=534 data-nosnippet>534</a>    ///  - When the `extensions-draft` feature is enabled, AppDataUpdate and AppEphemeral proposals are allowed additionally.
 <a href=#535 id=535 data-nosnippet>535</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_external_commit(
 <a href=#536 id=536 data-nosnippet>536</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#537 id=537 data-nosnippet>537</a>        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
@@ -558,7 +558,7 @@
 <a href=#558 id=558 data-nosnippet>558</a>                | Proposal::PreSharedKey(<span class="kw">_</span>)
 <a href=#559 id=559 data-nosnippet>559</a>                | Proposal::Custom(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
 <a href=#560 id=560 data-nosnippet>560</a>                <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#561 id=561 data-nosnippet>561</a>                </span>Proposal::AppDataUpdate(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+<a href=#561 id=561 data-nosnippet>561</a>                </span>Proposal::AppDataUpdate(<span class="kw">_</span>) | Proposal::AppEphemeral(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
 <a href=#562 id=562 data-nosnippet>562</a>                <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
 <a href=#563 id=563 data-nosnippet>563</a>            };
 <a href=#564 id=564 data-nosnippet>564</a>            is_inline &amp;&amp; !is_allowed_type
