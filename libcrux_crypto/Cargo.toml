@@ -8,7 +8,7 @@ description = "A crypto backend for OpenMLS based on libcrux implementing openml
 license = "MIT"
 documentation = "https://docs.rs/openmls_libcrux_crypto"
 repository = "https://github.com/openmls/openmls/tree/main/openmls_libcrux_crypto"
-readme = "../README.md"
+readme = "Readme.md"
 
 [dependencies]
 libcrux-aead = { version = "0.0.9" }
@@ -25,9 +25,20 @@ openmls_memory_storage = { workspace = true }
 rand = "0.10"
 tls_codec.workspace = true
 
-hpke-rs = { version = "0.7", features = ["hazmat", "serialization"] }
-hpke-rs-crypto = { version = "0.7" }
-hpke-rs-libcrux = { version = "0.7" }
+hpke-rs = { git = "https://github.com/celabshq/libcrux", rev = "ccfca6a411c87d4370b2aad2a13a59202ad97687", package = "hpke-rs", features = [
+    "hazmat",
+    "serialization",
+] }
+hpke-rs-crypto = { git = "https://github.com/celabshq/libcrux", rev = "ccfca6a411c87d4370b2aad2a13a59202ad97687", package = "hpke-rs-crypto" }
+hpke-rs-libcrux = { git = "https://github.com/celabshq/libcrux", rev = "ccfca6a411c87d4370b2aad2a13a59202ad97687", package = "hpke-rs-libcrux" }
+
+# ECDSA P-256 signing (there is no libcrux P-384 signing crate yet, so
+# ciphersuites requiring P-384 signatures are not implemented; see Readme.md).
+libcrux-p256 = { version = "0.0.8" }
+libcrux-ecdsa = { version = "0.0.8", features = ["rand"] }
+
+# ML-DSA-44/65/87 signing.
+libcrux-ml-dsa = { version = "0.0.10" }
 
 # FF1-AES128 backing for the virtual-clients-draft reuse-guard PRP.
 # libcrux has no FF1 implementation, so this provider also uses the
@@ -43,6 +54,7 @@ extensions-draft = [
 draft-ietf-mls-pq-ciphersuites = [
     "openmls_traits/draft-ietf-mls-pq-ciphersuites",
     "openmls_memory_storage/draft-ietf-mls-pq-ciphersuites",
+    "hpke-rs/draft-ietf-hpke-pq",
 ]
 virtual-clients-draft = [
     "extensions-draft",

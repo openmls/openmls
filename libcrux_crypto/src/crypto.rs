@@ -13,6 +13,11 @@ use openmls_traits::types::{
 use libcrux_hmac_drbg::{HmacDrbgSha256, MAX_GENERATE_BYTES};
 use rand::rngs::SysRng;
 
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+use libcrux_ecdsa::{p256 as ecdsa_p256, DigestAlgorithm};
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+use libcrux_traits::ecdh::arrayref::EcdhArrayref;
+
 use tls_codec::SecretVLBytes;
 
 /// Application-specific personalization string mixed into the HMAC-DRBG seed.
@@ -68,6 +73,13 @@ impl OpenMlsCrypto for CryptoProvider {
 
         match ciphersuite.signature_algorithm() {
             SignatureScheme::ED25519 => Ok(()),
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(()),
+
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
+                Ok(())
+            }
+
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }?;
 
@@ -75,16 +87,28 @@ impl OpenMlsCrypto for CryptoProvider {
             HashType::Sha2_256 | HashType::Sha2_384 | HashType::Sha2_512 => Ok(()),
         }?;
 
-        // The hpke-rs libcrux backend only implements these KEMs.
         match ciphersuite.hpke_kem_algorithm() {
             HpkeKemType::DhKemP256 | HpkeKemType::DhKem25519 => Ok(()),
+
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            HpkeKemType::XWingKemDraft6 => Ok(()),
+            HpkeKemType::MlKem768X25519
+            | HpkeKemType::MlKem768P256
+            | HpkeKemType::MlKem768
+            | HpkeKemType::MlKem1024 => Ok(()),
+
+            // The `draft-ietf-hpke-pq`-enabled HPKE backend this provider
+            // depends on only implements the current X-Wing code point
+            // (`MlKem768X25519`, 0x647a), not the obsolete one this variant
+            // uses (0x004D) — see libcrux_crypto/Readme.md.
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            HpkeKemType::XWingKemDraft6 => Err(CryptoError::UnsupportedCiphersuite),
+
+            // No libcrux P-384 signing crate exists yet, so ciphersuites using
+            // this KEM are unimplemented; see libcrux_crypto/Readme.md.
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            HpkeKemType::MlKem1024P384 => Err(CryptoError::UnsupportedCiphersuite),
+
             HpkeKemType::DhKemP384 | HpkeKemType::DhKemP521 | HpkeKemType::DhKem448 => {
-                Err(CryptoError::UnsupportedCiphersuite)
-            }
-            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            HpkeKemType::MlKem768 | HpkeKemType::MlKem1024 => {
                 Err(CryptoError::UnsupportedCiphersuite)
             }
         }?;
@@ -100,14 +124,33 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 
     fn supported_ciphersuites(&self) -> Vec<Ciphersuite> {
-        vec![
+        // MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519 is not advertised:
+        // its (obsolete) X-Wing code point is no longer implemented by the
+        // `draft-ietf-hpke-pq`-enabled HPKE backend this provider depends
+        // on. See libcrux_crypto/Readme.md.
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        let pq_draft = vec![
+            Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519,
+            Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519,
+            Ciphersuite::MLS_128_MLKEM768P256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS_128_MLKEM768P256_AES256GCM_SHA384_P256,
+            Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519,
+            Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256,
+            Ciphersuite::MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44,
+            Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
+            Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
+        ];
+
+        #[allow(unused_mut)]
+        let mut suites = vec![
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
-            // TODO: enable
-            //Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
-        ]
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+        ];
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        suites.extend(pq_draft);
+
+        suites
     }
 
     fn hkdf_extract(
@@ -251,33 +294,86 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 
     fn signature_key_gen(&self, alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
-        if !matches!(alg, SignatureScheme::ED25519) {
-            return Err(CryptoError::UnsupportedSignatureScheme);
-        }
+        match alg {
+            SignatureScheme::ED25519 => {
+                // Ed25519 key generation is just sampling a non-zero 32-byte secret
+                // and deriving the public point. We do it here (rather than via
+                // `libcrux_ed25519::generate_key_pair`, which requires an infallible
+                // `CryptoRng`) so that a DRBG reseed failure is propagated as an error.
+                const LIMIT: usize = 100;
+                let mut sk = [0u8; 32];
+                let mut found = false;
+                for _ in 0..LIMIT {
+                    self.fill_random(&mut sk)?;
+                    // Reject the all-zero secret key.
+                    if sk.iter().any(|&b| b != 0) {
+                        found = true;
+                        break;
+                    }
+                }
+                if !found {
+                    return Err(CryptoError::SigningError);
+                }
 
-        // Ed25519 key generation is just sampling a non-zero 32-byte secret and
-        // deriving the public point. We do it here (rather than via
-        // `libcrux_ed25519::generate_key_pair`, which requires an infallible
-        // `CryptoRng`) so that a DRBG reseed failure is propagated as an error.
-        const LIMIT: usize = 100;
-        let mut sk = [0u8; 32];
-        let mut found = false;
-        for _ in 0..LIMIT {
-            self.fill_random(&mut sk)?;
-            // Reject the all-zero secret key.
-            if sk.iter().any(|&b| b != 0) {
-                found = true;
-                break;
+                let mut pk = [0u8; 32];
+                libcrux_ed25519::secret_to_public(&mut pk, &sk);
+
+                Ok((sk.to_vec(), pk.to_vec()))
             }
-        }
-        if !found {
-            return Err(CryptoError::SigningError);
-        }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                // Sample a valid ECDSA private scalar via rejection sampling (see
+                // the Ed25519 comment above for why we don't use
+                // `ecdsa_p256::PrivateKey::random`, which needs an infallible
+                // `CryptoRng`), then derive the public key as `sk * G`.
+                const LIMIT: usize = 100;
+                let mut sk = [0u8; 32];
+                let mut found = false;
+                for _ in 0..LIMIT {
+                    self.fill_random(&mut sk)?;
+                    if ecdsa_p256::PrivateKey::try_from(&sk).is_ok() {
+                        found = true;
+                        break;
+                    }
+                }
+                if !found {
+                    return Err(CryptoError::SigningError);
+                }
 
-        let mut pk = [0u8; 32];
-        libcrux_ed25519::secret_to_public(&mut pk, &sk);
+                let mut coordinates = [0u8; 64];
+                libcrux_p256::P256::secret_to_public(&mut coordinates, &sk)
+                    .map_err(|_| CryptoError::SigningError)?;
 
-        Ok((sk.to_vec(), pk.to_vec()))
+                // Return the public key in SEC1 uncompressed form (`0x04 || x || y`)
+                // to match the encoding used by the RustCrypto provider.
+                let mut public = Vec::with_capacity(65);
+                public.push(0x04);
+                public.extend_from_slice(&coordinates);
+                Ok((sk.to_vec(), public))
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA44 => {
+                let mut seed = [0u8; 32];
+                self.fill_random(&mut seed)?;
+                let key_pair = libcrux_ml_dsa::ml_dsa_44::generate_key_pair(seed);
+                Ok((seed.to_vec(), key_pair.verification_key.as_slice().to_vec()))
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA65 => {
+                let mut seed = [0u8; 32];
+                self.fill_random(&mut seed)?;
+                let key_pair = libcrux_ml_dsa::ml_dsa_65::generate_key_pair(seed);
+                Ok((seed.to_vec(), key_pair.verification_key.as_slice().to_vec()))
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA87 => {
+                let mut seed = [0u8; 32];
+                self.fill_random(&mut seed)?;
+                let key_pair = libcrux_ml_dsa::ml_dsa_87::generate_key_pair(seed);
+                Ok((seed.to_vec(), key_pair.verification_key.as_slice().to_vec()))
+            }
+            _ => Err(CryptoError::UnsupportedSignatureScheme),
+        }
     }
 
     fn verify_signature(
@@ -287,28 +383,132 @@ impl OpenMlsCrypto for CryptoProvider {
         pk: &[u8],
         signature: &[u8],
     ) -> Result<(), CryptoError> {
-        if !matches!(alg, SignatureScheme::ED25519) {
-            return Err(CryptoError::UnsupportedSignatureScheme);
+        match alg {
+            SignatureScheme::ED25519 => {
+                let pk = <&[u8; 32]>::try_from(pk).map_err(|_| CryptoError::InvalidLength)?;
+                let sig =
+                    <&[u8; 64]>::try_from(signature).map_err(|_| CryptoError::InvalidLength)?;
+
+                libcrux_ed25519::verify(data, pk, sig).map_err(|e| match e {
+                    libcrux_ed25519::Error::InvalidSignature => CryptoError::InvalidSignature,
+                    _ => CryptoError::SigningError,
+                })
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                // MLS carries ECDSA signatures DER-encoded; libcrux works on the
+                // raw `(r, s)` scalars.
+                let (r, s) =
+                    crate::ecdsa_der::der_to_raw(signature).ok_or(CryptoError::InvalidSignature)?;
+                let sig = ecdsa_p256::Signature::from_raw(r, s);
+                let public_key = p256_public_key(pk)?;
+
+                ecdsa_p256::verify(DigestAlgorithm::Sha256, data, &sig, &public_key)
+                    .map_err(|_| CryptoError::InvalidSignature)
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA44 => {
+                let vk = libcrux_ml_dsa::ml_dsa_44::MLDSA44VerificationKey::new(
+                    pk.try_into().map_err(|_| CryptoError::InvalidLength)?,
+                );
+                let sig = libcrux_ml_dsa::ml_dsa_44::MLDSA44Signature::new(
+                    signature
+                        .try_into()
+                        .map_err(|_| CryptoError::InvalidLength)?,
+                );
+                libcrux_ml_dsa::ml_dsa_44::verify(&vk, data, b"", &sig)
+                    .map_err(|_| CryptoError::InvalidSignature)
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA65 => {
+                let vk = libcrux_ml_dsa::ml_dsa_65::MLDSA65VerificationKey::new(
+                    pk.try_into().map_err(|_| CryptoError::InvalidLength)?,
+                );
+                let sig = libcrux_ml_dsa::ml_dsa_65::MLDSA65Signature::new(
+                    signature
+                        .try_into()
+                        .map_err(|_| CryptoError::InvalidLength)?,
+                );
+                libcrux_ml_dsa::ml_dsa_65::verify(&vk, data, b"", &sig)
+                    .map_err(|_| CryptoError::InvalidSignature)
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA87 => {
+                let vk = libcrux_ml_dsa::ml_dsa_87::MLDSA87VerificationKey::new(
+                    pk.try_into().map_err(|_| CryptoError::InvalidLength)?,
+                );
+                let sig = libcrux_ml_dsa::ml_dsa_87::MLDSA87Signature::new(
+                    signature
+                        .try_into()
+                        .map_err(|_| CryptoError::InvalidLength)?,
+                );
+                libcrux_ml_dsa::ml_dsa_87::verify(&vk, data, b"", &sig)
+                    .map_err(|_| CryptoError::InvalidSignature)
+            }
+            _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
-
-        let pk = <&[u8; 32]>::try_from(pk).map_err(|_| CryptoError::InvalidLength)?;
-        let sk = <&[u8; 64]>::try_from(signature).map_err(|_| CryptoError::InvalidLength)?;
-
-        libcrux_ed25519::verify(data, pk, sk).map_err(|e| match e {
-            libcrux_ed25519::Error::InvalidSignature => CryptoError::InvalidSignature,
-            _ => CryptoError::SigningError,
-        })
     }
 
     fn sign(&self, alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        if !matches!(alg, SignatureScheme::ED25519) {
-            return Err(CryptoError::UnsupportedSignatureScheme);
-        }
+        match alg {
+            SignatureScheme::ED25519 => {
+                let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
+                libcrux_ed25519::sign(data, key)
+                    .map_err(|_| CryptoError::SigningError)
+                    .map(|sig| sig.to_vec())
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
+                let private =
+                    ecdsa_p256::PrivateKey::try_from(key).map_err(|_| CryptoError::SigningError)?;
 
-        let key = <&[u8; 32]>::try_from(key).map_err(|_| CryptoError::InvalidLength)?;
-        libcrux_ed25519::sign(data, key)
-            .map_err(|_| CryptoError::SigningError)
-            .map(|sig| sig.to_vec())
+                // `ecdsa_p256::Nonce` can only be constructed via `Nonce::random`,
+                // which needs an infallible `CryptoRng`. Our DRBG is fallible (see
+                // `fill_random`), so it's wrapped in `UnwrapErr`, which panics on a
+                // DRBG failure instead of propagating it as a `CryptoError` — the
+                // same trade-off the HPKE provider we depend on makes for its own
+                // PRNG. A DRBG failure here means the OS entropy source failed on
+                // reseed, an unrecoverable condition in practice.
+                let mut rng = rand::rand_core::UnwrapErr(DrbgTryRng(self));
+                let sig = ecdsa_p256::rand::sign(DigestAlgorithm::Sha256, data, &private, &mut rng)
+                    .map_err(|_| CryptoError::SigningError)?;
+
+                let (r, s) = sig.as_bytes();
+                Ok(crate::ecdsa_der::raw_to_der(r, s))
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA44 => {
+                let seed: [u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let signing_key = libcrux_ml_dsa::ml_dsa_44::generate_key_pair(seed).signing_key;
+                let mut randomness = [0u8; 32];
+                self.fill_random(&mut randomness)?;
+                libcrux_ml_dsa::ml_dsa_44::sign(&signing_key, data, b"", randomness)
+                    .map_err(|_| CryptoError::SigningError)
+                    .map(|sig| sig.as_slice().to_vec())
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA65 => {
+                let seed: [u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let signing_key = libcrux_ml_dsa::ml_dsa_65::generate_key_pair(seed).signing_key;
+                let mut randomness = [0u8; 32];
+                self.fill_random(&mut randomness)?;
+                libcrux_ml_dsa::ml_dsa_65::sign(&signing_key, data, b"", randomness)
+                    .map_err(|_| CryptoError::SigningError)
+                    .map(|sig| sig.as_slice().to_vec())
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA87 => {
+                let seed: [u8; 32] = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let signing_key = libcrux_ml_dsa::ml_dsa_87::generate_key_pair(seed).signing_key;
+                let mut randomness = [0u8; 32];
+                self.fill_random(&mut randomness)?;
+                libcrux_ml_dsa::ml_dsa_87::sign(&signing_key, data, b"", randomness)
+                    .map_err(|_| CryptoError::SigningError)
+                    .map(|sig| sig.as_slice().to_vec())
+            }
+            _ => Err(CryptoError::UnsupportedSignatureScheme),
+        }
     }
 
     fn hpke_seal(
@@ -536,14 +736,78 @@ fn hpke_kem(kem: HpkeKemType) -> hpke_rs_crypto::types::KemAlgorithm {
         HpkeKemType::DhKemP521 => hpke_rs_crypto::types::KemAlgorithm::DhKemP521,
         HpkeKemType::DhKem25519 => hpke_rs_crypto::types::KemAlgorithm::DhKem25519,
         HpkeKemType::DhKem448 => hpke_rs_crypto::types::KemAlgorithm::DhKem448,
+        // `HpkeKemType::XWingKemDraft6` (0x004D) is the obsolete X-Wing code
+        // point; `MlKem768X25519` (0x647a) is the current one used by
+        // draft-ietf-mls-pq-ciphersuites below. `supports()` rejects this
+        // variant — the HPKE backend this provider depends on no longer
+        // implements the obsolete code point — so this arm exists only for
+        // match exhaustiveness. See libcrux_crypto/Readme.md.
         #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        HpkeKemType::XWingKemDraft6 => hpke_rs_crypto::types::KemAlgorithm::XWingDraft06,
+        #[allow(deprecated)]
+        HpkeKemType::XWingKemDraft6 => hpke_rs_crypto::types::KemAlgorithm::XWingDraft06Obsolete,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem768X25519 => hpke_rs_crypto::types::KemAlgorithm::XWingDraft06,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem768P256 => hpke_rs_crypto::types::KemAlgorithm::MlKem768P256,
         #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         HpkeKemType::MlKem768 => hpke_rs_crypto::types::KemAlgorithm::MlKem768,
         #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         HpkeKemType::MlKem1024 => hpke_rs_crypto::types::KemAlgorithm::MlKem1024,
+        // Not supported: `supports()` rejects this KEM (no libcrux P-384
+        // signing crate exists yet), so this is unreachable in practice. See
+        // libcrux_crypto/Readme.md.
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem1024P384 => {
+            unreachable!("MlKem1024P384 is not supported by this provider")
+        }
     }
 }
+
+/// Parse an ECDSA P-256 public key into the coordinate form libcrux expects.
+///
+/// Accepts SEC1 uncompressed (`0x04 || x || y`, 65 bytes), compressed, or the
+/// raw `x || y` concatenation (64 bytes).
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+fn p256_public_key(pk: &[u8]) -> Result<ecdsa_p256::PublicKey, CryptoError> {
+    let coordinates = ecdsa_p256::uncompressed_to_coordinates(pk)
+        .or_else(|_| ecdsa_p256::compressed_to_coordinates(pk))
+        .or_else(|_| <[u8; 64]>::try_from(pk))
+        .map_err(|_| CryptoError::CryptoLibraryError)?;
+    Ok(ecdsa_p256::PublicKey(coordinates))
+}
+
+/// Adapts [`CryptoProvider::fill_random`] to the `rand_core` traits that
+/// `libcrux-ecdsa`'s randomized nonce generation needs.
+///
+/// `try_fill_bytes` propagates DRBG failures as [`CryptoError`]; wrap in
+/// [`rand::rand_core::UnwrapErr`] to get a `CryptoRng` (which panics on that
+/// error instead, since `CryptoRng` requires an infallible source).
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+struct DrbgTryRng<'a>(&'a CryptoProvider);
+
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+impl rand::TryRng for DrbgTryRng<'_> {
+    type Error = CryptoError;
+
+    fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
+        let mut bytes = [0u8; 4];
+        self.0.fill_random(&mut bytes)?;
+        Ok(u32::from_le_bytes(bytes))
+    }
+
+    fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
+        let mut bytes = [0u8; 8];
+        self.0.fill_random(&mut bytes)?;
+        Ok(u64::from_le_bytes(bytes))
+    }
+
+    fn try_fill_bytes(&mut self, dst: &mut [u8]) -> Result<(), Self::Error> {
+        self.0.fill_random(dst)
+    }
+}
+
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+impl rand::TryCryptoRng for DrbgTryRng<'_> {}
 
 fn hpke_aead(aead: HpkeAeadType) -> hpke_rs_crypto::types::AeadAlgorithm {
     match aead {
@@ -647,6 +911,23 @@ mod tests {
                 opened.as_slice(),
                 b"plaintext",
                 "{ciphersuite:?}: hpke round trip"
+            );
+
+            let sig_alg = ciphersuite.signature_algorithm();
+            let (sk, pk) = provider
+                .signature_key_gen(sig_alg)
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: signature_key_gen failed: {e:?}"));
+            let signature = provider
+                .sign(sig_alg, b"plaintext", &sk)
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: sign failed: {e:?}"));
+            provider
+                .verify_signature(sig_alg, b"plaintext", &pk, &signature)
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: verify_signature failed: {e:?}"));
+            assert!(
+                provider
+                    .verify_signature(sig_alg, b"tampered", &pk, &signature)
+                    .is_err(),
+                "{ciphersuite:?}: verify_signature accepted a signature over the wrong message"
             );
         }
     }
