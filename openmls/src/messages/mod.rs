@@ -255,7 +255,7 @@ impl CommitIn {
     /// Returns the proposals covered by this commit. The commit has not been
     /// validated at this point.
     #[cfg(feature = "extensions-draft")]
-    pub(crate) fn proposals(&self) -> &[ProposalOrRefIn] {
+    pub(crate) fn unverified_proposals(&self) -> &[ProposalOrRefIn] {
         &self.proposals
     }
 

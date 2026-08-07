@@ -111,7 +111,7 @@ impl PublicMessageIn {
             return vec![];
         };
         commit
-            .proposals()
+            .unverified_proposals()
             .iter()
             .filter_map(|proposal_or_ref| match proposal_or_ref {
                 ProposalOrRefIn::Proposal(proposal) => match proposal.as_ref() {
