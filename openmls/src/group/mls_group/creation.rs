@@ -27,6 +27,14 @@ use crate::{
 
 use crate::key_packages::KeyPackage;
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::{
+    component::ComponentId,
+    framing::mls_auth_content::AuthenticatedContent,
+    group::mls_group::processing::{AppDataDictionaryUpdater, AppDataUpdates},
+    messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal},
+};
+
 impl MlsGroup {
     // === Group creation ===
 
@@ -907,144 +915,11 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
 
 #[cfg(feature = "virtual-clients-draft")]
 impl MlsGroup {
-    /// Bootstrap a virtual client's sibling emulator client into a higher-level
-    /// group by processing another sibling's external commit, when this client
-    /// is not yet a member of that group.
-    ///
-    /// The first emulator client joined the higher-level group via an external
-    /// commit. A second emulator client (this one), sharing the same emulation
-    /// epoch (`epoch_id`), reconstructs the resulting group state from that
-    /// commit. It cannot decapsulate the external init secret from the previous
-    /// epoch's `external_secret` (it never held it), so it uses the external
-    /// init secret the committing sibling carried in the commit's
-    /// `DerivationInfoTBE` (mls-virtual-clients draft), and recreates
-    /// the commit path from the shared operation secret tree.
-    ///
-    /// `verifiable_group_info` and `ratchet_tree` describe the higher-level
-    /// group at the epoch *before* the external commit (the ratchet tree may
-    /// instead travel in the GroupInfo's `ratchet_tree` extension).
-    /// `external_commit` is the sibling's external commit. On success the
-    /// returned group sits at the epoch the commit installs, with this client
-    /// on the shared virtual-client leaf.
-    ///
-    /// If the commit carries AppEphemeral proposals by value, their payload
-    /// can be read before calling this function via
-    /// [`PublicMessageIn::unverified_app_ephemeral_proposals`], for example
-    /// to decide how to follow the join. That data is unauthenticated until
-    /// the commit is verified, which this function does.
-    ///
-    /// [`PublicMessageIn::unverified_app_ephemeral_proposals`]:
-    ///     crate::framing::PublicMessageIn::unverified_app_ephemeral_proposals
-    pub fn vc_join_via_sibling_external_commit<Provider: OpenMlsProvider>(
-        provider: &Provider,
-        join_config: &MlsGroupJoinConfig,
-        verifiable_group_info: VerifiableGroupInfo,
-        ratchet_tree: Option<RatchetTreeIn>,
-        external_commit: impl Into<crate::framing::ProtocolMessage>,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
-    ) -> Result<MlsGroup, crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>>
-    {
-        use crate::{
-            framing::Sender,
-            group::config::PastEpochDeletionPolicy,
-            group::errors::{ProcessMessageError, VcExternalCommitJoinError as Error},
-            group::public_group::PublicGroup,
-            prelude::mls_content::FramedContentBody,
-            schedule::{EpochSecrets, InitSecret},
-        };
-
-        // Resolve the prior-epoch ratchet tree (from the GroupInfo extension or
-        // the argument) and rebuild the prior-epoch public group.
-        let ratchet_tree = match verifiable_group_info.extensions().ratchet_tree() {
-            Some(extension) => extension.ratchet_tree().clone(),
-            None => ratchet_tree.ok_or(Error::MissingRatchetTree)?,
-        };
-        let (public_group, _group_info) = PublicGroup::from_ratchet_tree(
-            provider.crypto(),
-            ratchet_tree,
-            verifiable_group_info,
-            ProposalStore::new(),
-            LeafNodeLifetimePolicy::default(),
-        )?;
-
-        // Assemble a transient group at the prior epoch. Its epoch secrets are
-        // never used cryptographically here: the external commit carries the
-        // external init secret and the operation secret tree supplies the path,
-        // so a random init-secret stub is sufficient. The own leaf index is the
-        // leftmost free index, where the committing sibling installs the shared
-        // virtual-client leaf.
-        let ciphersuite = public_group.ciphersuite();
-        let serialized_group_context = public_group
-            .group_context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-        let own_leaf_index = public_group.leftmost_free_index(std::iter::empty())?;
-        let init_secret = InitSecret::random(ciphersuite, provider.rand())
-            .map_err(LibraryError::unexpected_crypto_error)?;
-        let epoch_secrets =
-            EpochSecrets::with_init_secret(provider.crypto(), ciphersuite, init_secret)
-                .map_err(LibraryError::unexpected_crypto_error)?;
-        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
-            serialized_group_context,
-            public_group.tree_size(),
-            LeafNodeIndex::new(0u32),
-        );
-        // Do not retain the synthetic prior-epoch secrets used only to stage
-        // this external commit.
-        let message_secrets_store = MessageSecretsStore::new_with_secret(
-            &PastEpochDeletionPolicy::MaxEpochs(0),
-            message_secrets,
-        );
-        let mut group = MlsGroup {
-            mls_group_config: join_config.clone(),
-            own_leaf_nodes: vec![],
-            aad: vec![],
-            #[cfg(feature = "extensions-draft")]
-            safe_aad: crate::framing::SafeAad::empty(),
-            group_state: MlsGroupState::Operational,
-            public_group,
-            group_epoch_secrets,
-            own_leaf_index,
-            message_secrets_store,
-            resumption_psk_store: ResumptionPskStore::new(join_config.number_of_resumption_psks),
-            #[cfg(feature = "extensions-draft")]
-            application_export_tree: None,
-        };
-
-        // Parse and verify the external commit against the prior-epoch group.
-        // A PrivateMessage claiming our own leaf cannot be an external commit.
-        let processing::UnprotectedMessage::Unverified(unverified) =
-            group.unprotect_message(provider, external_commit)?
-        else {
-            return Err(Error::NotAnExternalCommit);
-        };
-        let verified = unverified
-            .verify(group.ciphersuite(), provider.crypto(), group.version())
-            .map_err(ProcessMessageError::from)?;
-        if !matches!(verified.content.sender(), Sender::NewMemberCommit) {
-            return Err(Error::NotAnExternalCommit);
-        }
-        let content = verified.content;
-        let FramedContentBody::Commit(commit) = content.content() else {
-            return Err(Error::NotAnExternalCommit);
-        };
-
-        // Recover the sibling-VC commit material (operation secret + emulation
-        // epoch id + carried external init secret) from the leaf's derivation
-        // info, then stage and merge the commit through the sibling-VC path.
-        let material = group
-            .load_vc_commit_material(provider, commit)?
-            .ok_or(Error::MissingDerivationInfo)?;
-        if material.epoch_id != epoch_id {
-            return Err(Error::EpochIdMismatch);
-        }
-        let staged = group.stage_commit(&content, vec![], vec![], provider, Some(material))?;
-        group.merge_staged_commit(provider, staged)?;
-        group.resize_message_secrets_store(join_config.past_epoch_deletion_policy());
-        group
-            .store(provider.storage())
-            .map_err(Error::StorageError)?;
-        Ok(group)
+    /// Returns a new [`VcExternalCommitJoinBuilder`] for joining a
+    /// higher-level group as a virtual client's sibling emulator client, by
+    /// processing another sibling's external commit.
+    pub fn vc_external_commit_join_builder() -> VcExternalCommitJoinBuilder {
+        VcExternalCommitJoinBuilder::new()
     }
 
     /// Bootstrap a virtual client's sibling emulator client into a higher-level
@@ -1266,6 +1141,352 @@ impl MlsGroup {
             .map_err(Error::StorageError)?;
 
         Ok(mls_group)
+    }
+}
+
+/// Builder for bootstrapping a virtual client's sibling emulator client into
+/// a higher-level group by processing another sibling's external commit,
+/// when this client is not yet a member of that group.
+///
+/// The first emulator client joined the higher-level group via an external
+/// commit. A second emulator client (this one), sharing the same emulation
+/// epoch, reconstructs the resulting group state from that commit.
+///
+/// The join happens in two steps. [`Self::process_commit`] rebuilds the
+/// prior-epoch group and verifies the commit, returning a
+/// [`PendingVcExternalCommitJoin`]. The application inspects the verified
+/// proposals it exposes, resolves any AppDataUpdate proposals, and completes
+/// the join with [`PendingVcExternalCommitJoin::join`].
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Debug, Default)]
+pub struct VcExternalCommitJoinBuilder {
+    join_config: MlsGroupJoinConfig,
+    ratchet_tree: Option<RatchetTreeIn>,
+    lifetime_policy: LeafNodeLifetimePolicy,
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl VcExternalCommitJoinBuilder {
+    /// Creates a new [`VcExternalCommitJoinBuilder`] with default values.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Specifies the configuration to use for the joined group.
+    pub fn with_config(mut self, join_config: MlsGroupJoinConfig) -> Self {
+        self.join_config = join_config;
+        self
+    }
+
+    /// Specifies the prior-epoch ratchet tree. This is only used if the
+    /// ratchet tree is not provided in the [`VerifiableGroupInfo`]
+    /// extensions. A ratchet tree must be provided, either in the
+    /// [`VerifiableGroupInfo`] extensions or via this method.
+    pub fn with_ratchet_tree(mut self, ratchet_tree: RatchetTreeIn) -> Self {
+        self.ratchet_tree = Some(ratchet_tree);
+        self
+    }
+
+    /// Skip the validation of lifetimes in leaf nodes in the ratchet tree.
+    /// Note that only the leaf nodes are checked that were never updated.
+    ///
+    /// By default they are validated.
+    pub fn skip_lifetime_validation(mut self) -> Self {
+        self.lifetime_policy = LeafNodeLifetimePolicy::Skip;
+        self
+    }
+
+    /// Rebuilds the higher-level group at the epoch *before* the external
+    /// commit from `verifiable_group_info` (and the ratchet tree, taken from
+    /// the GroupInfo's `ratchet_tree` extension or
+    /// [`Self::with_ratchet_tree`]), and verifies `external_commit` against
+    /// it: the GroupInfo signature and tree, the commit's signature and
+    /// external-commit shape, and that the commit's derivation info
+    /// references the shared emulation epoch `epoch_id`.
+    ///
+    /// Nothing is consumed or persisted at this point. Dropping the returned
+    /// [`PendingVcExternalCommitJoin`] discards the join without advancing
+    /// the shared operation secret tree.
+    pub fn process_commit<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+        verifiable_group_info: VerifiableGroupInfo,
+        external_commit: impl Into<crate::framing::ProtocolMessage>,
+        epoch_id: crate::components::vc_derivation_info::EpochId,
+    ) -> Result<
+        PendingVcExternalCommitJoin,
+        crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>,
+    > {
+        use tls_codec::DeserializeBytes as _;
+
+        use crate::{
+            components::vc_derivation_info::{
+                DerivationInfo, VirtualClientsError, VC_COMPONENT_ID,
+            },
+            framing::Sender,
+            group::config::PastEpochDeletionPolicy,
+            group::errors::{ProcessMessageError, VcExternalCommitJoinError as Error},
+            group::mls_group::processing::committed_app_data_update_proposals,
+            group::public_group::PublicGroup,
+            prelude::mls_content::FramedContentBody,
+            schedule::{EpochSecrets, InitSecret},
+        };
+
+        let Self {
+            join_config,
+            ratchet_tree,
+            lifetime_policy,
+        } = self;
+
+        // Resolve the prior-epoch ratchet tree (from the GroupInfo extension
+        // or the builder) and rebuild the prior-epoch public group.
+        let ratchet_tree = match verifiable_group_info.extensions().ratchet_tree() {
+            Some(extension) => extension.ratchet_tree().clone(),
+            None => ratchet_tree.ok_or(Error::MissingRatchetTree)?,
+        };
+        let (public_group, _group_info) = PublicGroup::from_ratchet_tree(
+            provider.crypto(),
+            ratchet_tree,
+            verifiable_group_info,
+            ProposalStore::new(),
+            lifetime_policy,
+        )?;
+
+        // Assemble a transient group at the prior epoch. Its epoch secrets are
+        // never used cryptographically here: the external commit carries the
+        // external init secret and the operation secret tree supplies the path,
+        // so a random init-secret stub is sufficient. The own leaf index is the
+        // leftmost free index, where the committing sibling installs the shared
+        // virtual-client leaf.
+        let ciphersuite = public_group.ciphersuite();
+        let serialized_group_context = public_group
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+        let own_leaf_index = public_group.leftmost_free_index(std::iter::empty())?;
+        let init_secret = InitSecret::random(ciphersuite, provider.rand())
+            .map_err(LibraryError::unexpected_crypto_error)?;
+        let epoch_secrets =
+            EpochSecrets::with_init_secret(provider.crypto(), ciphersuite, init_secret)
+                .map_err(LibraryError::unexpected_crypto_error)?;
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            serialized_group_context,
+            public_group.tree_size(),
+            LeafNodeIndex::new(0u32),
+        );
+        // Do not retain the synthetic prior-epoch secrets used only to stage
+        // this external commit.
+        let message_secrets_store = MessageSecretsStore::new_with_secret(
+            &PastEpochDeletionPolicy::MaxEpochs(0),
+            message_secrets,
+        );
+        let resumption_psk_store = ResumptionPskStore::new(join_config.number_of_resumption_psks);
+        let mut group = MlsGroup {
+            mls_group_config: join_config,
+            own_leaf_nodes: vec![],
+            aad: vec![],
+            #[cfg(feature = "extensions-draft")]
+            safe_aad: crate::framing::SafeAad::empty(),
+            group_state: MlsGroupState::Operational,
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            message_secrets_store,
+            resumption_psk_store,
+            #[cfg(feature = "extensions-draft")]
+            application_export_tree: None,
+        };
+
+        // Parse and verify the external commit against the prior-epoch group.
+        // A PrivateMessage claiming our own leaf cannot be an external commit.
+        let processing::UnprotectedMessage::Unverified(unverified) =
+            group.unprotect_message(provider, external_commit)?
+        else {
+            return Err(Error::NotAnExternalCommit);
+        };
+        let verified = unverified
+            .verify(group.ciphersuite(), provider.crypto(), group.version())
+            .map_err(ProcessMessageError::from)?;
+        if !matches!(verified.content.sender(), Sender::NewMemberCommit) {
+            return Err(Error::NotAnExternalCommit);
+        }
+        let content = verified.content;
+        let FramedContentBody::Commit(commit) = content.content() else {
+            return Err(Error::NotAnExternalCommit);
+        };
+
+        // Check the commit's derivation info without consuming an operation
+        // secret generation: presence and the emulation epoch binding are
+        // validated here, decryption and the consume-once secret derivation
+        // happen in `PendingVcExternalCommitJoin::join`.
+        let derivation_info_bytes = commit
+            .path
+            .as_ref()
+            .and_then(|path| path.leaf_node().extensions().app_data_dictionary())
+            .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+            .ok_or(Error::MissingDerivationInfo)?;
+        let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
+            .map_err(|_| VirtualClientsError::DerivationInfoMalformed)?;
+        if derivation_info.epoch_id() != &epoch_id {
+            return Err(Error::EpochIdMismatch);
+        }
+
+        // The AppDataUpdate proposals covered by the commit, for the
+        // application to resolve before completing the join. The transient
+        // group's proposal store is empty, so only by-value proposals
+        // resolve. An external commit cannot reference proposals a
+        // non-member could hold.
+        let app_data_update_proposals =
+            committed_app_data_update_proposals(commit, group.proposal_store());
+
+        Ok(PendingVcExternalCommitJoin {
+            group,
+            content,
+            app_data_update_proposals,
+        })
+    }
+}
+
+/// A verified sibling external commit, ready to be joined. Returned by
+/// [`VcExternalCommitJoinBuilder::process_commit`].
+///
+/// The commit's signature has been verified against the prior-epoch group,
+/// so the proposals exposed here are authenticated. If the commit covers
+/// AppDataUpdate proposals, the application must interpret them (with the
+/// help of [`Self::app_data_dictionary_updater`]) and pass the resulting
+/// [`AppDataUpdates`] to [`Self::join`], exactly as it would for
+/// [`MlsGroup::resolve_app_data_commit`] when processing the same commit as
+/// a member.
+///
+/// Dropping this value discards the join. No operation secret generation is
+/// consumed before [`Self::join`], so a discarded join can be started over
+/// by processing the same commit again.
+#[cfg(feature = "virtual-clients-draft")]
+pub struct PendingVcExternalCommitJoin {
+    /// Transient reconstruction of the group at the prior epoch.
+    group: MlsGroup,
+    /// The verified commit content.
+    content: AuthenticatedContent,
+    /// The by-value AppDataUpdate proposals covered by the commit, sorted by
+    /// component id.
+    app_data_update_proposals: Vec<AppDataUpdateProposal>,
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl PendingVcExternalCommitJoin {
+    /// Returns the AppDataUpdate proposals covered by the commit, sorted by
+    /// component id. The application interprets them to compute the
+    /// [`AppDataUpdates`] that [`Self::join`] requires.
+    pub fn app_data_update_proposals(&self) -> impl Iterator<Item = &AppDataUpdateProposal> {
+        self.app_data_update_proposals.iter()
+    }
+
+    /// Returns the AppEphemeral proposals for `component_id` that the commit
+    /// carries by value, in the order they appear in the commit, for example
+    /// to decide how to follow the join. Unlike
+    /// [`PublicMessageIn::unverified_app_ephemeral_proposals`], the returned
+    /// data is authenticated: the commit's signature has been verified.
+    ///
+    /// [`PublicMessageIn::unverified_app_ephemeral_proposals`]:
+    ///     crate::framing::PublicMessageIn::unverified_app_ephemeral_proposals
+    pub fn app_ephemeral_proposals(
+        &self,
+        component_id: ComponentId,
+    ) -> impl Iterator<Item = &AppEphemeralProposal> {
+        use crate::{
+            messages::proposals::{Proposal, ProposalOrRef},
+            prelude::mls_content::FramedContentBody,
+        };
+
+        let proposals = match self.content.content() {
+            FramedContentBody::Commit(commit) => commit.proposals.as_slice(),
+            // `process_commit` only constructs pending joins from commits.
+            _ => &[],
+        };
+        proposals
+            .iter()
+            .filter_map(move |proposal_or_ref| match proposal_or_ref {
+                ProposalOrRef::Proposal(proposal) => match proposal.as_ref() {
+                    Proposal::AppEphemeral(app_ephemeral)
+                        if app_ephemeral.component_id() == component_id =>
+                    {
+                        Some(app_ephemeral.as_ref())
+                    }
+                    _ => None,
+                },
+                ProposalOrRef::Reference(_) => None,
+            })
+    }
+
+    /// Returns a helper for computing the [`AppDataUpdates`], seeded with
+    /// the app data dictionary of the prior-epoch group context.
+    pub fn app_data_dictionary_updater(&self) -> AppDataDictionaryUpdater<'_> {
+        AppDataDictionaryUpdater::new(self.group.context().app_data_dict())
+    }
+
+    /// Completes the join. `app_data_updates` must be `Some` exactly when the
+    /// commit covers AppDataUpdate proposals. Absent updates are rejected
+    /// before the consume-once operation secret generation is spent, so the
+    /// join can be started over. Updates that do not reproduce the committing
+    /// sibling's dictionary fail with a confirmation tag mismatch after the
+    /// generation is consumed, so they should be computed deterministically
+    /// from the proposals rather than guessed.
+    pub fn join<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+        app_data_updates: Option<AppDataUpdates>,
+    ) -> Result<MlsGroup, crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>>
+    {
+        use crate::{
+            group::errors::{StageCommitError, VcExternalCommitJoinError as Error},
+            group::public_group::errors::ApplyAppDataUpdateError,
+            prelude::mls_content::FramedContentBody,
+        };
+
+        let Self {
+            mut group,
+            content,
+            app_data_update_proposals,
+        } = self;
+
+        // An application that has not resolved the commit's AppDataUpdate
+        // proposals yet is rejected before the operation secret generation
+        // is consumed, so it can compute the updates and process the commit
+        // again. Staging repeats this check. Superfluous updates are only
+        // rejected there.
+        if !app_data_update_proposals.is_empty() && app_data_updates.is_none() {
+            return Err(StageCommitError::ApplyAppDataUpdateError(
+                ApplyAppDataUpdateError::MissingAppDataUpdates,
+            )
+            .into());
+        }
+
+        let FramedContentBody::Commit(commit) = content.content() else {
+            // `process_commit` only constructs pending joins from commits.
+            return Err(LibraryError::custom("pending join without commit content").into());
+        };
+
+        // Recover the sibling-VC commit material (operation secret + emulation
+        // epoch id + carried external init secret) from the leaf's derivation
+        // info, then stage and merge the commit through the sibling-VC path.
+        let material = group
+            .load_vc_commit_material(provider, commit)?
+            .ok_or(Error::MissingDerivationInfo)?;
+        let staged = group.stage_commit_with_app_data_updates(
+            &content,
+            vec![],
+            vec![],
+            app_data_updates,
+            provider,
+            Some(material),
+        )?;
+        group.merge_staged_commit(provider, staged)?;
+        let deletion_policy = group.mls_group_config.past_epoch_deletion_policy().clone();
+        group.resize_message_secrets_store(&deletion_policy);
+        group
+            .store(provider.storage())
+            .map_err(Error::StorageError)?;
+        Ok(group)
     }
 }
 
