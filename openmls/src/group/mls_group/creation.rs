@@ -630,17 +630,14 @@ impl StagedWelcome {
         // group: the commit that created it added us, so it changed membership.
         #[cfg(feature = "virtual-clients-draft")]
         if self.mls_group_config.emulation_group() {
-            crate::group::mls_group::exporting::register_vc_derivation_epoch(
+            crate::components::vc_derivation_info::register_vc_derivation_epoch(
                 provider.crypto(),
                 provider.storage(),
-                &mut application_export_tree,
-                crate::group::mls_group::exporting::VcDerivationEpochParams {
-                    group_id: self.public_group.group_id(),
-                    ciphersuite: self.public_group.ciphersuite(),
-                    group_epoch: self.public_group.group_context().epoch(),
-                    own_leaf_index: self.own_leaf_index,
-                    tree_size: self.public_group.tree_size(),
-                },
+                Some(&mut application_export_tree),
+                crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
+                    &self.public_group,
+                    self.own_leaf_index,
+                ),
             )?;
         }
 
@@ -1058,8 +1055,7 @@ impl MlsGroup {
         if material.epoch_id != epoch_id {
             return Err(Error::EpochIdMismatch);
         }
-        let staged =
-            group.stage_commit(&content, vec![], vec![], provider, Some(material), false)?;
+        let staged = group.stage_commit(&content, vec![], vec![], provider, Some(material))?;
         group.merge_staged_commit(provider, staged)?;
         group.resize_message_secrets_store(join_config.past_epoch_deletion_policy());
         group

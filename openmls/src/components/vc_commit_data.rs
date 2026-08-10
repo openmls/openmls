@@ -53,7 +53,7 @@ use tls_codec::{
 
 use crate::{
     components::vc_derivation_info::{EpochId, KeyPackageUpload, VC_COMPONENT_ID},
-    framing::SafeAadItem,
+    framing::{SafeAad, SafeAadItem},
 };
 
 /// Errors that can occur when building or parsing a [`VirtualClientCommitData`].
@@ -273,6 +273,16 @@ impl VirtualClientCommitData {
     /// [`VC_COMPONENT_ID`]. Rejects bytes left over after the struct.
     pub fn from_safe_aad_item_data(data: &[u8]) -> Result<Self, VcCommitDataError> {
         Ok(Self::tls_deserialize_exact_bytes(data)?)
+    }
+
+    /// Parse the commit data carried by `safe_aad` under [`VC_COMPONENT_ID`].
+    ///
+    /// Returns `Ok(None)` when `safe_aad` carries no such item.
+    pub fn from_safe_aad(safe_aad: &SafeAad) -> Result<Option<Self>, VcCommitDataError> {
+        safe_aad
+            .get(VC_COMPONENT_ID)
+            .map(Self::from_safe_aad_item_data)
+            .transpose()
     }
 
     fn validate(actions: &[VirtualClientAction]) -> Result<(), VcCommitDataError> {

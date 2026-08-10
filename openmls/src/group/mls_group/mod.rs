@@ -52,7 +52,7 @@ use crate::schedule::{application_export_tree::ApplicationExportTree, Applicatio
 
 // Private
 mod application;
-pub(crate) mod exporting;
+mod exporting;
 mod updates;
 
 #[cfg(feature = "migration-import")]
@@ -797,9 +797,7 @@ impl MlsGroup {
         &self,
         storage: &Storage,
     ) -> Result<Option<crate::components::vc_derivation_info::EpochId>, Storage::Error> {
-        let registered: Option<crate::components::vc_derivation_info::RegisteredVcDerivationEpoch> =
-            storage.registered_vc_derivation_epoch(self.group_id())?;
-        Ok(registered.map(|registered| registered.epoch_id))
+        crate::components::vc_derivation_info::newest_vc_derivation_epoch(storage, self.group_id())
     }
 
     // Encrypt an AuthenticatedContent into an PrivateMessage

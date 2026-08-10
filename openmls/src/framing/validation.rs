@@ -492,9 +492,10 @@ impl ProcessedMessage {
     /// [`VC_COMPONENT_ID`]: crate::components::vc_derivation_info::VC_COMPONENT_ID
     #[cfg(feature = "virtual-clients-draft")]
     pub fn vc_commit_data(&self) -> Result<Option<VirtualClientCommitData>, VcCommitDataError> {
-        self.safe_aad_item(crate::components::vc_derivation_info::VC_COMPONENT_ID)
-            .map(VirtualClientCommitData::from_safe_aad_item_data)
-            .transpose()
+        let Some(safe_aad) = self.safe_aad.as_ref() else {
+            return Ok(None);
+        };
+        VirtualClientCommitData::from_safe_aad(safe_aad)
     }
 
     /// Returns the bytes of `authenticated_data` after any Safe AAD prefix.

@@ -169,10 +169,6 @@ pub struct UnresolvedAppDataCommit {
     proposals: Vec<AppDataUpdateProposal>,
     #[cfg(feature = "virtual-clients-draft")]
     vc_commit_material: Option<crate::components::vc_derivation_info::VcCommitMaterial>,
-    /// Whether the commit's virtual-clients Safe AAD item asks for a new
-    /// derivation epoch. Always `false` outside emulation groups.
-    #[cfg(feature = "virtual-clients-draft")]
-    marks_new_vc_derivation_epoch: bool,
 }
 
 #[cfg(feature = "extensions-draft")]
@@ -189,8 +185,6 @@ impl UnresolvedAppDataCommit {
             proposals,
             #[cfg(feature = "virtual-clients-draft")]
             vc_commit_material: None,
-            #[cfg(feature = "virtual-clients-draft")]
-            marks_new_vc_derivation_epoch: false,
         }
     }
 
@@ -728,40 +722,6 @@ impl MlsGroup {
         ))
     }
 
-    /// Returns whether an incoming commit's virtual-clients Safe AAD item
-    /// carries a `new_derivation_epoch` action.
-    ///
-    /// Only emulation groups look at the item, so no other group can be
-    /// rejected over it. In an emulation group a malformed item fails the
-    /// message: the item decides whether the commit's output epoch is a
-    /// derivation epoch, and guessing that wrong would fork the group's
-    /// virtual-clients state.
-    #[cfg(feature = "virtual-clients-draft")]
-    fn commit_marks_new_vc_derivation_epoch<StorageError>(
-        &self,
-        authenticated_data: &[u8],
-    ) -> Result<bool, ProcessMessageError<StorageError>> {
-        use crate::components::{
-            vc_commit_data::VirtualClientCommitData, vc_derivation_info::VC_COMPONENT_ID,
-        };
-
-        if !self.is_emulation_group() || !self.context().safe_aad_required() {
-            return Ok(false);
-        }
-        let (safe_aad, _prefix_len) =
-            crate::framing::safe_aad::parse_authenticated_data_prefix(authenticated_data)
-                .map_err(|_| ProcessMessageError::MalformedSafeAad)?;
-        let Some(item_data) = safe_aad.get(VC_COMPONENT_ID) else {
-            return Ok(false);
-        };
-        let commit_data =
-            VirtualClientCommitData::from_safe_aad_item_data(item_data).map_err(|e| {
-                log::error!("vc: commit data in a commit's Safe AAD failed to parse: {e:?}");
-                ProcessMessageError::MalformedSafeAad
-            })?;
-        Ok(commit_data.creates_derivation_epoch())
-    }
-
     /// Helper function to read decryption keypairs.
     pub(super) fn read_decryption_keypairs(
         &self,
@@ -816,8 +776,6 @@ impl MlsGroup {
             provider,
             #[cfg(feature = "virtual-clients-draft")]
             vc_commit_material,
-            #[cfg(feature = "virtual-clients-draft")]
-            unresolved_commit.marks_new_vc_derivation_epoch,
         )
     }
 
@@ -940,13 +898,6 @@ impl MlsGroup {
                 }
             }
             FramedContentBody::Commit(commit) => {
-                // Parsed here rather than off the `ProcessedMessage`'s Safe AAD
-                // so that commits which need a second staging pass (see
-                // `UnresolvedAppDataCommit`) carry the marker as well.
-                #[cfg(feature = "virtual-clients-draft")]
-                let marks_new_vc_derivation_epoch =
-                    self.commit_marks_new_vc_derivation_epoch(&authenticated_data)?;
-
                 let is_own_commit =
                     matches!(&sender, Sender::Member(member) if member == &self.own_leaf_index());
 
@@ -1030,8 +981,6 @@ impl MlsGroup {
                             proposals: app_data_update_proposals,
                             #[cfg(feature = "virtual-clients-draft")]
                             vc_commit_material,
-                            #[cfg(feature = "virtual-clients-draft")]
-                            marks_new_vc_derivation_epoch,
                         };
                         return Ok(ProcessedMessage::new(
                             self.group_id().clone(),
@@ -1059,8 +1008,6 @@ impl MlsGroup {
                     provider,
                     #[cfg(feature = "virtual-clients-draft")]
                     vc_commit_material,
-                    #[cfg(feature = "virtual-clients-draft")]
-                    marks_new_vc_derivation_epoch,
                 )?;
 
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))

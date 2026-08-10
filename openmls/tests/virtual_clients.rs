@@ -8,7 +8,7 @@ use openmls::{
     framing::errors::{MessageDecryptionError, SecretTreeError},
     group::{
         ConfirmMessageError, GroupEpoch, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig,
-        Propose, StagedWelcome, MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        Propose, StageCommitError, StagedWelcome, MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
@@ -145,23 +145,37 @@ fn safe_aad_group_context_extensions() -> Extensions<openmls::group::GroupContex
     Extensions::single(ext).expect("one app_data_dictionary extension is valid")
 }
 
-/// The create config of an emulation group: VC capabilities, an
-/// `AppComponents` entry listing `VC_COMPONENT_ID`, Safe AAD framing, and the
-/// `emulation_group` flag that makes OpenMLS register derivation epochs.
-fn emulation_group_config(
+/// The create-config builder of an emulation group: VC capabilities, an
+/// `AppComponents` entry listing `VC_COMPONENT_ID`, and the `emulation_group`
+/// flag that makes OpenMLS register derivation epochs. `safe_aad` adds the
+/// GroupContext extensions that require Safe AAD framing, without which a
+/// commit cannot carry the `new_derivation_epoch` marker.
+fn emulation_config_builder(
     ciphersuite: openmls_traits::types::Ciphersuite,
     emulation_group: bool,
-) -> MlsGroupCreateConfig {
-    MlsGroupCreateConfig::builder()
+    safe_aad: bool,
+) -> openmls::group::MlsGroupCreateConfigBuilder {
+    let builder = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .capabilities(vc_capabilities())
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions on emulator config")
-        .with_group_context_extensions(safe_aad_group_context_extensions())
-        .emulation_group(emulation_group)
-        .build()
+        .emulation_group(emulation_group);
+    if safe_aad {
+        builder.with_group_context_extensions(safe_aad_group_context_extensions())
+    } else {
+        builder
+    }
+}
+
+/// The create config of an emulation group, with Safe AAD framing.
+fn emulation_group_config(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    emulation_group: bool,
+) -> MlsGroupCreateConfig {
+    emulation_config_builder(ciphersuite, emulation_group, true).build()
 }
 
 /// The join config a sibling emulator client uses to join an emulation group.
@@ -173,30 +187,37 @@ fn emulation_join_config() -> MlsGroupJoinConfig {
         .build()
 }
 
-/// Build a single-member emulation group on `provider`. Creating it registers
-/// the initial epoch as a derivation epoch, whose root secret comes from the
-/// group's `safe_export_secret(VC_COMPONENT_ID)`.
+/// A KeyPackage carrying the leaf configuration a virtual-client leaf needs,
+/// together with the freshly generated signature keypair it is signed with.
+fn vc_key_package<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider: &P,
+    label: &[u8],
+) -> (KeyPackage, SignatureKeyPair) {
+    let (credential, signer) = new_credential(provider, label, ciphersuite.signature_algorithm());
+    let key_package = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(ciphersuite, provider, &signer, credential)
+        .expect("build vc key package")
+        .key_package()
+        .to_owned();
+    (key_package, signer)
+}
+
+/// Build a single-member emulation group on `provider`. With `emulation_group`
+/// set, creating it registers the initial epoch as a derivation epoch, whose
+/// root secret comes from the group's `safe_export_secret(VC_COMPONENT_ID)`.
+/// Without it, this client's copy of the group never registers one.
 fn make_emulator_group<P: OpenMlsProvider>(
     ciphersuite: openmls_traits::types::Ciphersuite,
     provider: &P,
     label: &[u8],
+    emulation_group: bool,
 ) -> (MlsGroup, SignatureKeyPair) {
     let (credential, signer) = new_credential(provider, label, ciphersuite.signature_algorithm());
-    let group_config = emulation_group_config(ciphersuite, true);
-    let group =
-        MlsGroup::new(provider, &signer, &group_config, credential).expect("create emulator group");
-    (group, signer)
-}
-
-/// Like [`make_emulator_group`], but without the `emulation_group` flag, so no
-/// derivation epoch is ever registered on this client's copy of the group.
-fn make_unregistered_emulator_group<P: OpenMlsProvider>(
-    ciphersuite: openmls_traits::types::Ciphersuite,
-    provider: &P,
-    label: &[u8],
-) -> (MlsGroup, SignatureKeyPair) {
-    let (credential, signer) = new_credential(provider, label, ciphersuite.signature_algorithm());
-    let group_config = emulation_group_config(ciphersuite, false);
+    let group_config = emulation_group_config(ciphersuite, emulation_group);
     let group =
         MlsGroup::new(provider, &signer, &group_config, credential).expect("create emulator group");
     (group, signer)
@@ -211,14 +232,14 @@ fn newest_epoch<P: OpenMlsProvider>(emulator_group: &MlsGroup, provider: &P) -> 
 }
 
 /// Send a VC-flavoured commit on `sender_group` as a virtual client of
-/// `emulator_group`, and report the derivation epoch it used.
+/// `emulator_group`. The commit uses the emulation group's newest derivation
+/// epoch, which the caller can read with [`newest_epoch`].
 fn send_vc_commit<P: OpenMlsProvider>(
     sender_group: &mut MlsGroup,
     emulator_group: &MlsGroup,
     sender_provider: &P,
     sender_signer: &SignatureKeyPair,
-) -> (openmls::prelude::MlsMessageOut, EpochId) {
-    let epoch_id = newest_epoch(emulator_group, sender_provider);
+) -> openmls::prelude::MlsMessageOut {
     let bundle = sender_group
         .commit_builder()
         .vc_emulation(
@@ -243,7 +264,7 @@ fn send_vc_commit<P: OpenMlsProvider>(
         .merge_pending_commit(sender_provider)
         .expect("sender merge");
 
-    (bundle.into_commit(), epoch_id)
+    bundle.into_commit()
 }
 
 /// Send a VC-flavoured commit on `sender_group` from the given `epoch_id`
@@ -383,40 +404,20 @@ fn join_sibling_emulator<P: OpenMlsProvider>(
     use tls_codec::Deserialize as _;
 
     // alice_a founds the emulation group; alice_b joins it via Welcome.
-    let (mut emulator_a, emulator_a_signer) =
-        make_emulator_group(emulator_ciphersuite, alice_a_provider, b"AliceEmulatorA");
-    let (emulator_b_credential, emulator_b_signer) = new_credential(
+    let (mut emulator_a, emulator_a_signer) = make_emulator_group(
+        emulator_ciphersuite,
+        alice_a_provider,
+        b"AliceEmulatorA",
+        true,
+    );
+    let (_e_commit, emulator_b, _emulator_b_signer) = add_emulator_client(
+        emulator_ciphersuite,
+        &mut emulator_a,
+        alice_a_provider,
+        &emulator_a_signer,
         alice_b_provider,
         b"AliceEmulatorB",
-        emulator_ciphersuite.signature_algorithm(),
     );
-    let emulator_b_kp = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(
-            emulator_ciphersuite,
-            alice_b_provider,
-            &emulator_b_signer,
-            emulator_b_credential,
-        )
-        .expect("emulator_b KP build")
-        .key_package()
-        .to_owned();
-    let (_e_commit, e_welcome, _e_gi) = emulator_a
-        .add_members(alice_a_provider, &emulator_a_signer, &[emulator_b_kp])
-        .expect("emulator_a add alice_b");
-    emulator_a
-        .merge_pending_commit(alice_a_provider)
-        .expect("emulator_a merge add");
-    let emulator_b = StagedWelcome::new_from_welcome(
-        alice_b_provider,
-        &emulation_join_config(),
-        e_welcome.into_welcome().expect("emulator welcome"),
-        Some(emulator_a.export_ratchet_tree().into()),
-    )
-    .and_then(|s| s.into_group(alice_b_provider))
-    .expect("alice_b join emulator group");
 
     // Both clients independently register the same derivation epoch.
     let epoch_id = newest_epoch(&emulator_a, alice_a_provider);
@@ -520,20 +521,22 @@ fn vc_operation_tree_persists_across_own_commits() {
     let mut alice = MlsGroup::new(&provider, &alice_signer, &group_config, alice_credential)
         .expect("create group");
     let (emulator, _emulator_signer) =
-        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator", true);
 
     // The emulator group stays at the epoch it was created in, so both commits
     // resolve to the same derivation epoch. The point of this test is that the
     // per-derivation-epoch operation secret tree survives, with its advanced
     // ratchet head, across build boundaries.
-    let (_msg1, epoch_id) = send_vc_commit(&mut alice, &emulator, &provider, &alice_signer);
+    let epoch_id = newest_epoch(&emulator, &provider);
+    let _msg1 = send_vc_commit(&mut alice, &emulator, &provider, &alice_signer);
     let epoch_after_first = alice.epoch();
 
     // A *second* VC commit on the same derivation epoch must still
     // succeed and consume generation 1. If `build` had wiped the
     // registration or failed to persist the ratchet advance, this would
     // fail at tree lookup or when the consumed generation is re-derived.
-    let (_msg2, epoch_id_again) = send_vc_commit(&mut alice, &emulator, &provider, &alice_signer);
+    let _msg2 = send_vc_commit(&mut alice, &emulator, &provider, &alice_signer);
+    let epoch_id_again = newest_epoch(&emulator, &provider);
     assert_eq!(
         epoch_id, epoch_id_again,
         "an unchanged emulator group keeps its derivation epoch"
@@ -554,10 +557,9 @@ fn non_emulator_processes_vc_commit_without_registering_state() {
     let (mut alice, alice_signer, mut bob, _bob_signer) =
         setup_alice_bob_group(ciphersuite, &alice_provider, &bob_provider);
     let (emulator, _emulator_signer) =
-        make_emulator_group(ciphersuite, &alice_provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, &alice_provider, b"AliceEmulator", true);
 
-    let (commit_msg, _epoch_id) =
-        send_vc_commit(&mut alice, &emulator, &alice_provider, &alice_signer);
+    let commit_msg = send_vc_commit(&mut alice, &emulator, &alice_provider, &alice_signer);
 
     let processed = bob
         .process_message(&bob_provider, commit_msg.into_protocol_message().unwrap())
@@ -607,44 +609,15 @@ fn sibling_resync_external_commit_fails_when_receiver_lacks_operation_tree() {
     // member (joined via Welcome). alice_a holds the group without the
     // `emulation_group` flag, so it never registers a derivation epoch.
     let (mut emulator_a, alice_emulator_a_signer) =
-        make_unregistered_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA");
-    let (alice_emulator_b_credential, alice_emulator_b_signer) = new_credential(
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA", false);
+    let (_e_commit, emulator_b, _alice_emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &alice_a_provider,
+        &alice_emulator_a_signer,
         &alice_b_provider,
         b"AliceEmulatorB",
-        ciphersuite.signature_algorithm(),
     );
-    let alice_emulator_b_kp = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(
-            ciphersuite,
-            &alice_b_provider,
-            &alice_emulator_b_signer,
-            alice_emulator_b_credential,
-        )
-        .expect("alice_b emulator KP build")
-        .key_package()
-        .to_owned();
-    let (_, e_welcome, _) = emulator_a
-        .add_members(
-            &alice_a_provider,
-            &alice_emulator_a_signer,
-            &[alice_emulator_b_kp],
-        )
-        .expect("emulator_a add alice_b");
-    emulator_a
-        .merge_pending_commit(&alice_a_provider)
-        .expect("emulator_a merge add");
-
-    let emulator_b = StagedWelcome::new_from_welcome(
-        &alice_b_provider,
-        &emulation_join_config(),
-        e_welcome.into_welcome().expect("welcome"),
-        Some(emulator_a.export_ratchet_tree().into()),
-    )
-    .and_then(|s| s.into_group(&alice_b_provider))
-    .expect("alice_b join emulator group");
 
     // Higher-level group: alice_a is the sole VC member.
     let group_config = MlsGroupCreateConfig::builder()
@@ -664,8 +637,14 @@ fn sibling_resync_external_commit_fails_when_receiver_lacks_operation_tree() {
     .expect("alice_a create higher-level group");
 
     // Only alice_b holds derivation-epoch state, manufacturing the failure
-    // scenario. `newest_epoch` panics if alice_b registered none.
-    newest_epoch(&emulator_b, &alice_b_provider);
+    // scenario.
+    assert!(
+        emulator_b
+            .newest_vc_derivation_epoch(alice_b_provider.storage())
+            .expect("read newest derivation epoch")
+            .is_some(),
+        "alice_b must hold the derivation epoch alice_a lacks"
+    );
     assert_eq!(
         emulator_a
             .newest_vc_derivation_epoch(alice_a_provider.storage())
@@ -863,44 +842,15 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
 
     // ---- Emulator group: alice_a creates, alice_b joins via Welcome ----
     let (mut emulator_a, alice_emulator_a_signer) =
-        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA");
-    let (alice_emulator_b_credential, alice_emulator_b_signer) = new_credential(
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA", true);
+    let (_e_commit, emulator_b, _alice_emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &alice_a_provider,
+        &alice_emulator_a_signer,
         &alice_b_provider,
         b"AliceEmulatorB",
-        ciphersuite.signature_algorithm(),
     );
-    let alice_emulator_b_kp = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(
-            ciphersuite,
-            &alice_b_provider,
-            &alice_emulator_b_signer,
-            alice_emulator_b_credential,
-        )
-        .expect("alice_b emulator KP build")
-        .key_package()
-        .to_owned();
-    let (_e_commit, e_welcome, _e_gi) = emulator_a
-        .add_members(
-            &alice_a_provider,
-            &alice_emulator_a_signer,
-            &[alice_emulator_b_kp],
-        )
-        .expect("emulator_a add alice_b");
-    emulator_a
-        .merge_pending_commit(&alice_a_provider)
-        .expect("emulator_a merge add");
-
-    let emulator_b = StagedWelcome::new_from_welcome(
-        &alice_b_provider,
-        &emulation_join_config(),
-        e_welcome.into_welcome().expect("emulator welcome"),
-        Some(emulator_a.export_ratchet_tree().into()),
-    )
-    .and_then(|s| s.into_group(&alice_b_provider))
-    .expect("alice_b join emulator group");
 
     // ---- Both Alice clients independently register the same VC epoch ----
     let epoch_id_a = newest_epoch(&emulator_a, &alice_a_provider);
@@ -1067,7 +1017,7 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
     // ---- Commit 3: alice_a's VC commit ----
     // alice_a's first own LeafNode operation on this derivation epoch
     // consumes generation 0 of her emulation-leaf ratchet.
-    let (alice_a_vc_commit, _) = send_vc_commit(
+    let alice_a_vc_commit = send_vc_commit(
         &mut alice_a_main,
         &emulator_a,
         &alice_a_provider,
@@ -1085,7 +1035,7 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
     );
 
     // ---- Commit 4: alice_b's VC commit ----
-    let (alice_b_vc_commit, _) = send_vc_commit(
+    let alice_b_vc_commit = send_vc_commit(
         &mut alice_b_main,
         &emulator_b,
         &alice_b_provider,
@@ -1106,7 +1056,7 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
     // commit 3, so she now derives generation 1 positionally. This is the
     // behavioral check that two successive VC commits from the same
     // derivation epoch consume successive generations.
-    let (alice_a_second_vc_commit, _) = send_vc_commit(
+    let alice_a_second_vc_commit = send_vc_commit(
         &mut alice_a_main,
         &emulator_a,
         &alice_a_provider,
@@ -1189,44 +1139,15 @@ fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
 
     // Emulator group: alice_a creates, adds alice_b via Welcome.
     let (mut emulator_a, alice_emulator_a_signer) =
-        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA");
-    let (alice_emulator_b_credential, alice_emulator_b_signer) = new_credential(
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA", true);
+    let (_e_commit, emulator_b, _alice_emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &alice_a_provider,
+        &alice_emulator_a_signer,
         &alice_b_provider,
         b"AliceEmulatorB",
-        ciphersuite.signature_algorithm(),
     );
-    let alice_emulator_b_kp = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(
-            ciphersuite,
-            &alice_b_provider,
-            &alice_emulator_b_signer,
-            alice_emulator_b_credential,
-        )
-        .expect("alice_b emulator KP build")
-        .key_package()
-        .to_owned();
-    let (_, e_welcome, _) = emulator_a
-        .add_members(
-            &alice_a_provider,
-            &alice_emulator_a_signer,
-            &[alice_emulator_b_kp],
-        )
-        .expect("emulator_a add alice_b");
-    emulator_a
-        .merge_pending_commit(&alice_a_provider)
-        .expect("emulator_a merge add");
-
-    let emulator_b = StagedWelcome::new_from_welcome(
-        &alice_b_provider,
-        &emulation_join_config(),
-        e_welcome.into_welcome().expect("welcome"),
-        Some(emulator_a.export_ratchet_tree().into()),
-    )
-    .and_then(|s| s.into_group(&alice_b_provider))
-    .expect("alice_b join emulator group");
 
     // Higher-level group: alice_a creates as the sole VC member,
     // signing with the VC's shared signer. Adds bob via Welcome.
@@ -1417,7 +1338,7 @@ fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
     // Followup VC commit from alice_b. alice_a now processes via the
     // own-leaf VC path because both Alice clients share `own_leaf_index`.
     // Bob processes via HPKE.
-    let (alice_b_followup, _) = send_vc_commit(
+    let alice_b_followup = send_vc_commit(
         &mut alice_b_main,
         &emulator_b,
         &alice_b_provider,
@@ -1573,39 +1494,15 @@ fn vc_second_emulator_client_onboards_via_external_commit() {
     // ... and a two-member emulator group from which both derive the same
     // derivation epoch (operation secret tree + AEAD key + EpochId).
     let (mut emulator_a, emulator_a_signer) =
-        make_emulator_group(ciphersuite, &charly_a_provider, b"CharlyEmulatorA");
-    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        make_emulator_group(ciphersuite, &charly_a_provider, b"CharlyEmulatorA", true);
+    let (_e_commit, emulator_b, _emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &charly_a_provider,
+        &emulator_a_signer,
         &charly_b_provider,
         b"CharlyEmulatorB",
-        ciphersuite.signature_algorithm(),
     );
-    let emulator_b_kp = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(
-            ciphersuite,
-            &charly_b_provider,
-            &emulator_b_signer,
-            emulator_b_credential,
-        )
-        .expect("charly_b emulator KP build")
-        .key_package()
-        .to_owned();
-    let (_, e_welcome, _) = emulator_a
-        .add_members(&charly_a_provider, &emulator_a_signer, &[emulator_b_kp])
-        .expect("emulator_a add charly_b");
-    emulator_a
-        .merge_pending_commit(&charly_a_provider)
-        .expect("emulator_a merge add");
-    let emulator_b = StagedWelcome::new_from_welcome(
-        &charly_b_provider,
-        &emulation_join_config(),
-        e_welcome.into_welcome().expect("emulator welcome"),
-        Some(emulator_a.export_ratchet_tree().into()),
-    )
-    .and_then(|s| s.into_group(&charly_b_provider))
-    .expect("charly_b join emulator group");
     let epoch_id = newest_epoch(&emulator_a, &charly_a_provider);
     let epoch_id_b = newest_epoch(&emulator_b, &charly_b_provider);
     assert_eq!(
@@ -1852,39 +1749,15 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
     };
 
     let (mut emulator_a, emulator_a_signer) =
-        make_emulator_group(ciphersuite, &charly_a_provider, b"CharlyEmulatorA");
-    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        make_emulator_group(ciphersuite, &charly_a_provider, b"CharlyEmulatorA", true);
+    let (_e_commit, emulator_b, _emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &charly_a_provider,
+        &emulator_a_signer,
         &charly_b_provider,
         b"CharlyEmulatorB",
-        ciphersuite.signature_algorithm(),
     );
-    let emulator_b_kp = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(
-            ciphersuite,
-            &charly_b_provider,
-            &emulator_b_signer,
-            emulator_b_credential,
-        )
-        .expect("charly_b emulator KP build")
-        .key_package()
-        .to_owned();
-    let (_, e_welcome, _) = emulator_a
-        .add_members(&charly_a_provider, &emulator_a_signer, &[emulator_b_kp])
-        .expect("emulator_a add charly_b");
-    emulator_a
-        .merge_pending_commit(&charly_a_provider)
-        .expect("emulator_a merge add");
-    let emulator_b = StagedWelcome::new_from_welcome(
-        &charly_b_provider,
-        &emulation_join_config(),
-        e_welcome.into_welcome().expect("emulator welcome"),
-        Some(emulator_a.export_ratchet_tree().into()),
-    )
-    .and_then(|s| s.into_group(&charly_b_provider))
-    .expect("charly_b join emulator group");
     let epoch_id = newest_epoch(&emulator_a, &charly_a_provider);
     let epoch_id_b = newest_epoch(&emulator_b, &charly_b_provider);
     assert_eq!(
@@ -2048,39 +1921,15 @@ fn vc_sibling_joins_higher_level_group_via_key_package_welcome() {
 
     // Emulator group: alice_a creates, alice_b joins via Welcome.
     let (mut emulator_a, emulator_a_signer) =
-        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA");
-    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA", true);
+    let (_e_commit, emulator_b, _emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &alice_a_provider,
+        &emulator_a_signer,
         &alice_b_provider,
         b"AliceEmulatorB",
-        ciphersuite.signature_algorithm(),
     );
-    let emulator_b_kp = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(
-            ciphersuite,
-            &alice_b_provider,
-            &emulator_b_signer,
-            emulator_b_credential,
-        )
-        .expect("emulator_b KP build")
-        .key_package()
-        .to_owned();
-    let (_e_commit, e_welcome, _e_gi) = emulator_a
-        .add_members(&alice_a_provider, &emulator_a_signer, &[emulator_b_kp])
-        .expect("emulator_a add alice_b");
-    emulator_a
-        .merge_pending_commit(&alice_a_provider)
-        .expect("emulator_a merge add");
-    let emulator_b = StagedWelcome::new_from_welcome(
-        &alice_b_provider,
-        &emulation_join_config(),
-        e_welcome.into_welcome().expect("emulator welcome"),
-        Some(emulator_a.export_ratchet_tree().into()),
-    )
-    .and_then(|s| s.into_group(&alice_b_provider))
-    .expect("alice_b join emulator group");
 
     // Both emulators register the same derivation epoch.
     let epoch_id_a = newest_epoch(&emulator_a, &alice_a_provider);
@@ -2233,39 +2082,15 @@ fn vc_batch_key_packages_join_in_any_order() {
 
     // Emulator group: alice_a creates, alice_b joins via Welcome.
     let (mut emulator_a, emulator_a_signer) =
-        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA");
-    let (emulator_b_credential, emulator_b_signer) = new_credential(
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA", true);
+    let (_e_commit, emulator_b, _emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &alice_a_provider,
+        &emulator_a_signer,
         &alice_b_provider,
         b"AliceEmulatorB",
-        ciphersuite.signature_algorithm(),
     );
-    let emulator_b_kp = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(
-            ciphersuite,
-            &alice_b_provider,
-            &emulator_b_signer,
-            emulator_b_credential,
-        )
-        .expect("emulator_b KP build")
-        .key_package()
-        .to_owned();
-    let (_e_commit, e_welcome, _e_gi) = emulator_a
-        .add_members(&alice_a_provider, &emulator_a_signer, &[emulator_b_kp])
-        .expect("emulator_a add alice_b");
-    emulator_a
-        .merge_pending_commit(&alice_a_provider)
-        .expect("emulator_a merge add");
-    let emulator_b = StagedWelcome::new_from_welcome(
-        &alice_b_provider,
-        &emulation_join_config(),
-        e_welcome.into_welcome().expect("emulator welcome"),
-        Some(emulator_a.export_ratchet_tree().into()),
-    )
-    .and_then(|s| s.into_group(&alice_b_provider))
-    .expect("alice_b join emulator group");
 
     let epoch_id_a = newest_epoch(&emulator_a, &alice_a_provider);
     let epoch_id_b = newest_epoch(&emulator_b, &alice_b_provider);
@@ -2381,7 +2206,7 @@ fn processing_own_application_message() {
     let mut alice_group =
         new_vc_main_group(ciphersuite, alice_provider, &alice_signer, alice_credential);
     let (emulator_group, _emulator_signer) =
-        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator", true);
     let _ = send_vc_commit(
         &mut alice_group,
         &emulator_group,
@@ -2545,8 +2370,8 @@ fn confirm_targets_creation_epoch() {
 
     // Bind the group to a derivation epoch so own echoes are decryptable.
     let (emulator_group, _emulator_signer) =
-        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
-    let (binding_commit, _epoch_id) = send_vc_commit(
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator", true);
+    let binding_commit = send_vc_commit(
         &mut alice_group,
         &emulator_group,
         alice_provider,
@@ -2704,7 +2529,7 @@ fn confirm_after_processing_own_echo_is_noop() {
     let mut alice_group =
         new_vc_main_group(ciphersuite, alice_provider, &alice_signer, alice_credential);
     let (emulator_group, _emulator_signer) =
-        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator", true);
     let _ = send_vc_commit(
         &mut alice_group,
         &emulator_group,
@@ -2805,7 +2630,7 @@ fn confirm_handshake_message_deletes_retained_secret() {
 
     // Bind the group to a derivation epoch so own echoes are decryptable.
     let (emulator_group, _emulator_signer) =
-        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator", true);
     let _ = send_vc_commit(
         &mut alice_group,
         &emulator_group,
@@ -2887,7 +2712,7 @@ fn unconfirmed_message_decrypts_after_next_message_is_confirmed() {
     let mut alice_group =
         new_vc_main_group(ciphersuite, alice_provider, &alice_signer, alice_credential);
     let (emulator_group, _emulator_signer) =
-        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator", true);
     let _ = send_vc_commit(
         &mut alice_group,
         &emulator_group,
@@ -2933,7 +2758,7 @@ fn old_unconfirmed_own_message_survives_later_confirmations() {
     let mut alice_group =
         new_vc_main_group(ciphersuite, alice_provider, &alice_signer, alice_credential);
     let (emulator_group, _emulator_signer) =
-        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator", true);
     let _ = send_vc_commit(
         &mut alice_group,
         &emulator_group,
@@ -3091,10 +2916,10 @@ fn bound_group_fails_closed_when_derivation_state_missing_on_send() {
     let mut alice_group = MlsGroup::new(&provider, &alice_signer, &group_config, alice_credential)
         .expect("create alice group");
     let (emulator_group, _emulator_signer) =
-        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator", true);
 
-    let (_commit_msg, epoch_id) =
-        send_vc_commit(&mut alice_group, &emulator_group, &provider, &alice_signer);
+    let epoch_id = newest_epoch(&emulator_group, &provider);
+    let _commit_msg = send_vc_commit(&mut alice_group, &emulator_group, &provider, &alice_signer);
     let deleted = provider
         .storage()
         .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
@@ -3135,7 +2960,7 @@ fn create_unconfirmed_message_returns_generation_id_when_bound() {
     let mut alice_group =
         new_vc_main_group(ciphersuite, &provider, &alice_signer, alice_credential);
     let (emulator_group, _emulator_signer) =
-        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator", true);
 
     // Bind alice_group's current epoch to the derivation epoch.
     let _ = send_vc_commit(&mut alice_group, &emulator_group, &provider, &alice_signer);
@@ -3190,7 +3015,7 @@ fn vc_emulation_rejects_misconfigured_leaf_before_allocating() {
     let mut alice_group = MlsGroup::new(&provider, &alice_signer, &group_config, alice_credential)
         .expect("create alice group");
     let (emulator_group, _emulator_signer) =
-        make_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator", true);
 
     let err = alice_group
         .commit_builder()
@@ -3221,7 +3046,7 @@ fn vc_operations_reject_a_group_without_a_derivation_epoch() {
     let mut alice_group =
         new_vc_main_group(ciphersuite, &provider, &alice_signer, alice_credential);
     let (unregistered, _signer) =
-        make_unregistered_emulator_group(ciphersuite, &provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator", false);
 
     let err = alice_group
         .commit_builder()
@@ -3462,7 +3287,8 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
 
     // ---- Second VC commit: re-binds the group to the second derivation
     // epoch. ----
-    let (commit_two, commit_two_epoch_id) = send_vc_commit(
+    let commit_two_epoch_id = newest_epoch(&emulator_a, &alice_a_provider);
+    let commit_two = send_vc_commit(
         &mut alice_a_main,
         &emulator_a,
         &alice_a_provider,
@@ -3980,7 +3806,7 @@ fn vc_own_commit_echo_surfaces_as_own_pending_commit() {
 
     // A second VC commit on the same derivation epoch, this time from alice_b,
     // proves the operation secret tree stayed healthy after the echo.
-    let (second_commit, _) = send_vc_commit(
+    let second_commit = send_vc_commit(
         &mut alice_b_main,
         &emulator_b,
         &alice_b_provider,
@@ -4000,60 +3826,6 @@ fn vc_own_commit_echo_surfaces_as_own_pending_commit() {
         authenticator,
         "bob must converge after the second commit"
     );
-}
-
-/// Set up two sibling emulator clients sharing one emulation group and epoch.
-/// `alice_a` founds the emulation group, `alice_b` joins it via Welcome, and
-/// both register the same derivation epoch, so both hold its
-/// `VcDerivationEpochState` and `OperationSecretTree`. Returns `alice_a`'s
-/// emulation group alongside the shared epoch id.
-fn setup_sibling_derivation_epoch<P: OpenMlsProvider>(
-    emulator_ciphersuite: openmls_traits::types::Ciphersuite,
-    alice_a_provider: &P,
-    alice_b_provider: &P,
-) -> (MlsGroup, EpochId) {
-    let (mut emulator_a, emulator_a_signer) =
-        make_emulator_group(emulator_ciphersuite, alice_a_provider, b"AliceEmulatorA");
-    let (emulator_b_credential, emulator_b_signer) = new_credential(
-        alice_b_provider,
-        b"AliceEmulatorB",
-        emulator_ciphersuite.signature_algorithm(),
-    );
-    let emulator_b_kp = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(
-            emulator_ciphersuite,
-            alice_b_provider,
-            &emulator_b_signer,
-            emulator_b_credential,
-        )
-        .expect("emulator_b KP build")
-        .key_package()
-        .to_owned();
-    let (_e_commit, e_welcome, _e_gi) = emulator_a
-        .add_members(alice_a_provider, &emulator_a_signer, &[emulator_b_kp])
-        .expect("emulator_a add alice_b");
-    emulator_a
-        .merge_pending_commit(alice_a_provider)
-        .expect("emulator_a merge add");
-    let emulator_b = StagedWelcome::new_from_welcome(
-        alice_b_provider,
-        &emulation_join_config(),
-        e_welcome.into_welcome().expect("emulator welcome"),
-        Some(emulator_a.export_ratchet_tree().into()),
-    )
-    .and_then(|s| s.into_group(alice_b_provider))
-    .expect("alice_b join emulator group");
-
-    let epoch_id = newest_epoch(&emulator_a, alice_a_provider);
-    let epoch_id_b = newest_epoch(&emulator_b, alice_b_provider);
-    assert_eq!(
-        epoch_id, epoch_id_b,
-        "siblings must derive the same EpochId"
-    );
-    (emulator_a, epoch_id)
 }
 
 /// Export a `VerifiableGroupInfo` for `group`, signed by `signer`, optionally
@@ -4112,8 +3884,9 @@ fn vc_sibling_joins_group_created_by_virtual_client() {
     let alice_b_provider = Provider::default();
     let bob_provider = Provider::default();
 
-    let (emulator_a, epoch_id) =
-        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (emulator_a, _emulator_a_signer, _emulator_b, _emulator_b_signer) =
+        sibling_emulation_group(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id = newest_epoch(&emulator_a, &alice_a_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4202,8 +3975,9 @@ fn vc_group_creation_join_with_separate_ratchet_tree() {
     let alice_a_provider = Provider::default();
     let alice_b_provider = Provider::default();
 
-    let (emulator_a, epoch_id) =
-        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (emulator_a, _emulator_a_signer, _emulator_b, _emulator_b_signer) =
+        sibling_emulation_group(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id = newest_epoch(&emulator_a, &alice_a_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4244,8 +4018,9 @@ fn vc_group_creation_join_fails_without_derivation_state() {
     let alice_b_provider = Provider::default();
     let outsider_provider = Provider::default();
 
-    let (emulator_a, epoch_id) =
-        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (emulator_a, _emulator_a_signer, _emulator_b, _emulator_b_signer) =
+        sibling_emulation_group(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id = newest_epoch(&emulator_a, &alice_a_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4284,11 +4059,13 @@ fn vc_group_creation_join_fails_on_epoch_id_mismatch() {
     let other_a_provider = Provider::default();
     let other_b_provider = Provider::default();
 
-    let (emulator_a, epoch_id) =
-        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (emulator_a, _emulator_a_signer, _emulator_b, _emulator_b_signer) =
+        sibling_emulation_group(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id = newest_epoch(&emulator_a, &alice_a_provider);
     // A distinct, valid derivation epoch from an unrelated emulator group.
-    let (_other_emulator_a, other_epoch_id) =
-        setup_sibling_derivation_epoch(ciphersuite, &other_a_provider, &other_b_provider);
+    let (other_emulator_a, _other_signer_a, _other_emulator_b, _other_signer_b) =
+        sibling_emulation_group(ciphersuite, &other_a_provider, &other_b_provider);
+    let other_epoch_id = newest_epoch(&other_emulator_a, &other_a_provider);
     assert_ne!(epoch_id, other_epoch_id);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
@@ -4324,8 +4101,9 @@ fn vc_group_creation_join_fails_on_non_key_package_creator_leaf() {
     let alice_a_provider = Provider::default();
     let alice_b_provider = Provider::default();
 
-    let (emulator_a, epoch_id) =
-        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (emulator_a, _emulator_a_signer, _emulator_b, _emulator_b_signer) =
+        sibling_emulation_group(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id = newest_epoch(&emulator_a, &alice_a_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4389,8 +4167,9 @@ fn vc_group_creation_join_fails_on_multi_leaf_tree() {
     let alice_b_provider = Provider::default();
     let bob_provider = Provider::default();
 
-    let (emulator_a, epoch_id) =
-        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (emulator_a, _emulator_a_signer, _emulator_b, _emulator_b_signer) =
+        sibling_emulation_group(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id = newest_epoch(&emulator_a, &alice_a_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4441,8 +4220,9 @@ fn vc_group_creation_join_fails_on_missing_derivation_info() {
     let alice_a_provider = Provider::default();
     let alice_b_provider = Provider::default();
 
-    let (_emulator_a, epoch_id) =
-        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (emulator_a, _emulator_a_signer, _emulator_b, _emulator_b_signer) =
+        sibling_emulation_group(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id = newest_epoch(&emulator_a, &alice_a_provider);
     let (founder_credential, founder_signer) = new_credential(
         &alice_a_provider,
         b"Founder",
@@ -4481,8 +4261,9 @@ fn vc_group_creation_double_join_consumes_generation() {
     let alice_a_provider = Provider::default();
     let alice_b_provider = Provider::default();
 
-    let (emulator_a, epoch_id) =
-        setup_sibling_derivation_epoch(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (emulator_a, _emulator_a_signer, _emulator_b, _emulator_b_signer) =
+        sibling_emulation_group(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let epoch_id = newest_epoch(&emulator_a, &alice_a_provider);
     let (vc_signer, vc_credential) =
         shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
 
@@ -4576,7 +4357,7 @@ fn propose_unconfirmed_confirm_flow() {
 
     // Bind the group to a derivation epoch so own echoes are decryptable.
     let (emulator_group, _emulator_signer) =
-        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, alice_provider, b"AliceEmulator", true);
     let _ = send_vc_commit(
         &mut alice_group,
         &emulator_group,
@@ -4908,7 +4689,7 @@ fn handshake_generation_ids_are_distinct() {
         MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
     );
     let (emulator_group, _emulator_signer) =
-        make_emulator_group(ciphersuite, provider, b"AliceEmulator");
+        make_emulator_group(ciphersuite, provider, b"AliceEmulator", true);
 
     // Bind alice_group's current epoch to the derivation epoch via a VC commit.
     let _ = send_vc_commit(&mut alice_group, &emulator_group, provider, &alice_signer);
@@ -5056,65 +4837,44 @@ fn propose_self_update_with_new_signer_unconfirmed_flow() {
 }
 
 /// A two-member emulation group: `emulator_a` founds it, `emulator_b` joins via
-/// Welcome. Both clients set the `emulation_group` flag.
+/// Welcome. Both clients set the `emulation_group` flag, so both register the
+/// same derivation epoch and hold its `VcDerivationEpochState` and
+/// `OperationSecretTree`. Read the shared epoch id with [`newest_epoch`].
 fn sibling_emulation_group<P: OpenMlsProvider>(
     ciphersuite: openmls_traits::types::Ciphersuite,
     provider_a: &P,
     provider_b: &P,
 ) -> (MlsGroup, SignatureKeyPair, MlsGroup, SignatureKeyPair) {
-    let (mut emulator_a, signer_a) = make_emulator_group(ciphersuite, provider_a, b"EmulatorA");
-    let (emulator_b, signer_b) = join_emulation_group(
+    let (mut emulator_a, signer_a) =
+        make_emulator_group(ciphersuite, provider_a, b"EmulatorA", true);
+    let (_commit, emulator_b, signer_b) = add_emulator_client(
         ciphersuite,
         &mut emulator_a,
         provider_a,
         &signer_a,
         provider_b,
+        b"EmulatorB",
+    );
+    assert_eq!(
+        newest_epoch(&emulator_a, provider_a),
+        newest_epoch(&emulator_b, provider_b),
+        "siblings must derive the same EpochId"
     );
     (emulator_a, signer_a, emulator_b, signer_b)
 }
 
 /// Add a fresh emulator client on `joiner_provider` to `emulator_a`'s emulation
-/// group and return its group. The Add commit is merged on `emulator_a` only,
-/// so any other member has to be handed the commit separately.
-fn join_emulation_group<P: OpenMlsProvider>(
-    ciphersuite: openmls_traits::types::Ciphersuite,
-    emulator_a: &mut MlsGroup,
-    provider_a: &P,
-    signer_a: &SignatureKeyPair,
-    joiner_provider: &P,
-) -> (MlsGroup, SignatureKeyPair) {
-    let (_commit, group, signer) = add_emulator_client(
-        ciphersuite,
-        emulator_a,
-        provider_a,
-        signer_a,
-        joiner_provider,
-    );
-    (group, signer)
-}
-
-/// Like [`join_emulation_group`], but also returns the Add commit so other
-/// members can be advanced to the same epoch.
+/// group and return its group alongside the Add commit, so other members can be
+/// advanced to the same epoch. The commit is merged on `emulator_a` only.
 fn add_emulator_client<P: OpenMlsProvider>(
     ciphersuite: openmls_traits::types::Ciphersuite,
     emulator_a: &mut MlsGroup,
     provider_a: &P,
     signer_a: &SignatureKeyPair,
     joiner_provider: &P,
+    joiner_label: &[u8],
 ) -> (openmls::prelude::MlsMessageOut, MlsGroup, SignatureKeyPair) {
-    let (credential, signer) = new_credential(
-        joiner_provider,
-        b"EmulatorJoiner",
-        ciphersuite.signature_algorithm(),
-    );
-    let key_package = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(ciphersuite, joiner_provider, &signer, credential)
-        .expect("joiner KP build")
-        .key_package()
-        .to_owned();
+    let (key_package, signer) = vc_key_package(ciphersuite, joiner_provider, joiner_label);
     let (commit, welcome, _gi) = emulator_a
         .add_members(provider_a, signer_a, &[key_package])
         .expect("emulator_a add joiner");
@@ -5166,15 +4926,17 @@ fn welcome_joiner_converges_on_newest_vc_derivation_epoch() {
     let provider_a = Provider::default();
     let provider_b = Provider::default();
 
-    let (mut emulator_a, signer_a) = make_emulator_group(ciphersuite, &provider_a, b"EmulatorA");
+    let (mut emulator_a, signer_a) =
+        make_emulator_group(ciphersuite, &provider_a, b"EmulatorA", true);
     let initial_epoch = newest_epoch(&emulator_a, &provider_a);
 
-    let (emulator_b, _signer_b) = join_emulation_group(
+    let (_commit, emulator_b, _signer_b) = add_emulator_client(
         ciphersuite,
         &mut emulator_a,
         &provider_a,
         &signer_a,
         &provider_b,
+        b"EmulatorB",
     );
 
     let after_add = newest_epoch(&emulator_a, &provider_a);
@@ -5228,8 +4990,8 @@ fn ordinary_commit_keeps_newest_vc_derivation_epoch() {
 
     // The derivation epoch is older than the emulation group's current epoch,
     // and virtual-client operations still resolve to it.
-    let (_commit, used_epoch) =
-        send_vc_commit(&mut main_group, &emulator_a, &provider_a, &vc_signer);
+    let used_epoch = newest_epoch(&emulator_a, &provider_a);
+    let _commit = send_vc_commit(&mut main_group, &emulator_a, &provider_a, &vc_signer);
     assert_eq!(used_epoch, before);
 }
 
@@ -5277,6 +5039,7 @@ fn membership_change_creates_vc_derivation_epoch_without_marker() {
         &provider_a,
         &signer_a,
         &provider_c,
+        b"EmulatorC",
     );
     process_and_merge_commit(&mut emulator_b, &provider_b, commit);
 
@@ -5332,13 +5095,15 @@ fn vc_commit_uses_newest_derivation_epoch_after_membership_change() {
         &provider_a,
         &signer_a,
         &provider_c,
+        b"EmulatorC",
     );
     process_and_merge_commit(&mut emulator_b, &provider_b, add_commit);
     let new_epoch_id = newest_epoch(&emulator_a, &provider_a);
     assert_ne!(new_epoch_id, old_epoch_id);
     assert_eq!(new_epoch_id, newest_epoch(&emulator_b, &provider_b));
 
-    let (commit, used_epoch_id) = send_vc_commit(&mut main_a, &emulator_a, &provider_a, &vc_signer);
+    let used_epoch_id = newest_epoch(&emulator_a, &provider_a);
+    let commit = send_vc_commit(&mut main_a, &emulator_a, &provider_a, &vc_signer);
     assert_eq!(
         used_epoch_id, new_epoch_id,
         "a commit must resolve to the newest derivation epoch"
@@ -5383,16 +5148,7 @@ fn marker_with_membership_change_registers_once() {
         sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
     let before = newest_epoch(&emulator_a, &provider_a);
 
-    let (credential_c, signer_c) =
-        new_credential(&provider_c, b"EmulatorC", ciphersuite.signature_algorithm());
-    let key_package = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(ciphersuite, &provider_c, &signer_c, credential_c)
-        .expect("emulator_c KP build")
-        .key_package()
-        .to_owned();
+    let (key_package, _signer_c) = vc_key_package(ciphersuite, &provider_c, b"EmulatorC");
 
     let bundle = emulator_a
         .commit_builder()
@@ -5421,7 +5177,8 @@ fn external_commit_into_emulation_group_creates_vc_derivation_epoch() {
     let provider_a = Provider::default();
     let provider_c = Provider::default();
 
-    let (mut emulator_a, signer_a) = make_emulator_group(ciphersuite, &provider_a, b"EmulatorA");
+    let (mut emulator_a, signer_a) =
+        make_emulator_group(ciphersuite, &provider_a, b"EmulatorA", true);
     let before = newest_epoch(&emulator_a, &provider_a);
 
     let verifiable_group_info =
@@ -5527,16 +5284,7 @@ fn malformed_vc_commit_data_is_rejected_by_emulation_group() {
     )
     .expect("alice create group");
 
-    let (bob_credential, bob_signer) =
-        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
-    let bob_kp = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
-        .leaf_node_extensions(vc_leaf_extensions())
-        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
-        .expect("bob KP build")
-        .key_package()
-        .to_owned();
+    let (bob_kp, _bob_signer) = vc_key_package(ciphersuite, &bob_provider, b"Bob");
     let (_commit, welcome, _gi) = alice_group
         .add_members(&alice_provider, &alice_signer, &[bob_kp])
         .expect("alice add bob");
@@ -5572,7 +5320,10 @@ fn malformed_vc_commit_data_is_rejected_by_emulation_group() {
         .process_message(&bob_provider, commit.into_protocol_message().unwrap())
         .expect_err("a malformed virtual-clients item must be rejected");
     assert!(
-        matches!(err, ProcessMessageError::MalformedSafeAad),
+        matches!(
+            err,
+            ProcessMessageError::InvalidCommit(StageCommitError::MalformedVcCommitData(_))
+        ),
         "unexpected error: {err:?}"
     );
 }
@@ -5637,15 +5388,7 @@ fn new_derivation_epoch_requires_safe_aad() {
 
     let (credential, signer) =
         new_credential(&provider, b"Emulator", ciphersuite.signature_algorithm());
-    let group_config = MlsGroupCreateConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
-        .with_leaf_node_extensions(vc_leaf_extensions())
-        .expect("attach leaf-node extensions")
-        .emulation_group(true)
-        .build();
+    let group_config = emulation_config_builder(ciphersuite, true, false).build();
     let mut emulator = MlsGroup::new(&provider, &signer, &group_config, credential)
         .expect("create emulation group without safe aad");
 
@@ -5678,14 +5421,7 @@ fn new_derivation_epoch_requires_emulation_group() {
         b"NotAnEmulator",
         ciphersuite.signature_algorithm(),
     );
-    let group_config = MlsGroupCreateConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
-        .with_leaf_node_extensions(vc_leaf_extensions())
-        .expect("attach leaf-node extensions")
-        .build();
+    let group_config = emulation_group_config(ciphersuite, false);
     let mut group = MlsGroup::new(&provider, &signer, &group_config, credential)
         .expect("create group without the emulation flag");
 

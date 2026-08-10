@@ -27,18 +27,6 @@ use crate::{
     },
 };
 
-/// Which derivation epoch a virtual client creates a group from.
-#[cfg(feature = "virtual-clients-draft")]
-#[derive(Debug)]
-enum VcCreationEpoch {
-    /// Resolve the newest derivation epoch of this emulation group when the
-    /// group is built.
-    NewestOf(GroupId),
-    /// Use this derivation epoch as given.
-    #[cfg(any(test, feature = "test-utils"))]
-    At(crate::components::vc_derivation_info::EpochId),
-}
-
 /// Builder struct for an [`MlsGroup`].
 #[derive(Default, Debug)]
 pub struct MlsGroupBuilder {
@@ -46,8 +34,10 @@ pub struct MlsGroupBuilder {
     mls_group_create_config_builder: MlsGroupCreateConfigBuilder,
     replace_old_group: bool,
     psk_ids: Vec<PreSharedKeyId>,
+    /// The emulation group to create this group as a virtual client of. The
+    /// derivation epoch is resolved from its state when [`Self::build`] runs.
     #[cfg(feature = "virtual-clients-draft")]
-    vc_creation_epoch: Option<VcCreationEpoch>,
+    vc_emulation_group_id: Option<GroupId>,
 }
 
 impl MlsGroupBuilder {
@@ -78,26 +68,7 @@ impl MlsGroupBuilder {
     /// [`MlsGroup::vc_join_at_creation`]: crate::group::MlsGroup::vc_join_at_creation
     #[cfg(feature = "virtual-clients-draft")]
     pub fn vc_emulation(mut self, emulation_group: &MlsGroup) -> Self {
-        self.vc_creation_epoch = Some(VcCreationEpoch::NewestOf(
-            emulation_group.group_id().clone(),
-        ));
-        self
-    }
-
-    /// Test-only variant of [`Self::vc_emulation`] that creates the group from
-    /// the named derivation epoch instead of the emulation group's newest one.
-    ///
-    /// Using an epoch other than the newest one violates the draft, which
-    /// requires every new virtual-client operation to use the newest derivation
-    /// epoch of the acting client's current emulation-group state. It exists to
-    /// construct scenarios that an application must not produce, such as a
-    /// sibling that acts on a stale emulation-group state.
-    #[cfg(all(feature = "virtual-clients-draft", any(test, feature = "test-utils")))]
-    pub fn vc_emulation_at_epoch(
-        mut self,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
-    ) -> Self {
-        self.vc_creation_epoch = Some(VcCreationEpoch::At(epoch_id));
+        self.vc_emulation_group_id = Some(emulation_group.group_id().clone());
         self
     }
 
@@ -145,17 +116,12 @@ impl MlsGroupBuilder {
             .map_err(|_| NewGroupError::UnsupportedCiphersuite(ciphersuite))?;
 
         #[cfg(feature = "virtual-clients-draft")]
-        if let Some(creation_epoch) = &self.vc_creation_epoch {
-            let epoch_id = match creation_epoch {
-                VcCreationEpoch::NewestOf(emulation_group_id) => {
-                    crate::components::vc_derivation_info::require_newest_vc_derivation_epoch(
-                        provider.storage(),
-                        emulation_group_id,
-                    )?
-                }
-                #[cfg(any(test, feature = "test-utils"))]
-                VcCreationEpoch::At(epoch_id) => epoch_id.clone(),
-            };
+        if let Some(emulation_group_id) = &self.vc_emulation_group_id {
+            let epoch_id =
+                crate::components::vc_derivation_info::require_newest_vc_derivation_epoch(
+                    provider.storage(),
+                    emulation_group_id,
+                )?;
             return build_vc_internal(
                 provider,
                 signer,
@@ -265,17 +231,14 @@ impl MlsGroupBuilder {
         // The initial epoch of an emulation group is a derivation epoch.
         #[cfg(feature = "virtual-clients-draft")]
         if mls_group_create_config.join_config.emulation_group {
-            crate::group::mls_group::exporting::register_vc_derivation_epoch(
+            crate::components::vc_derivation_info::register_vc_derivation_epoch(
                 provider.crypto(),
                 provider.storage(),
-                &mut application_export_tree,
-                crate::group::mls_group::exporting::VcDerivationEpochParams {
-                    group_id: public_group.group_id(),
-                    ciphersuite,
-                    group_epoch: public_group.group_context().epoch(),
-                    own_leaf_index: LeafNodeIndex::new(0),
-                    tree_size: TreeSize::new(1),
-                },
+                Some(&mut application_export_tree),
+                crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
+                    &public_group,
+                    LeafNodeIndex::new(0),
+                ),
             )?;
         }
 

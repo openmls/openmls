@@ -93,27 +93,12 @@ impl VcKeyPackageBatchBuilder {
     ) -> Result<Self, KeyPackageNewError> {
         let epoch_id =
             require_newest_vc_derivation_epoch(provider.storage(), emulation_group.group_id())?;
-        Self::with_capacity_at_epoch_internal(provider, epoch_id, capacity)
+        Self::with_capacity_at_epoch(provider, epoch_id, capacity)
     }
 
-    /// Test-only variant of [`Self::with_capacity`] that builds the batch from
-    /// the named derivation epoch instead of the emulation group's newest one.
-    ///
-    /// Using an epoch other than the newest one violates the draft, which
-    /// requires every new virtual-client operation to use the newest derivation
-    /// epoch of the acting client's current emulation-group state. It exists to
-    /// construct scenarios that an application must not produce, such as a
-    /// sibling that acts on a stale emulation-group state.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn with_capacity_at_epoch(
-        provider: &impl OpenMlsProvider,
-        epoch_id: EpochId,
-        capacity: usize,
-    ) -> Result<Self, KeyPackageNewError> {
-        Self::with_capacity_at_epoch_internal(provider, epoch_id, capacity)
-    }
-
-    pub(crate) fn with_capacity_at_epoch_internal(
+    /// Same as [`Self::with_capacity`], but for an explicitly named derivation
+    /// epoch instead of the emulation group's newest one.
+    pub(crate) fn with_capacity_at_epoch(
         provider: &impl OpenMlsProvider,
         epoch_id: EpochId,
         capacity: usize,

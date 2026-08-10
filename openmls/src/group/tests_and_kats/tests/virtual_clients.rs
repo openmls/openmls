@@ -2,11 +2,15 @@ use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::Serialize as _;
 
 use crate::{
+    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
+    ciphersuite::Secret,
     component::{ComponentId, ComponentType, ComponentsList},
     components::{
         vc_commit_data::{VcEpochUsage, VirtualClientAction, VirtualClientCommitData},
         vc_derivation_info::{
-            load_vc_epoch_state_and_tree, EpochId, VirtualClientOperationType, VC_COMPONENT_ID,
+            load_vc_epoch_state_and_tree, register_vc_derivation_epoch, EpochId,
+            RegisteredVcDerivationEpoch, VcDerivationEpochParams, VirtualClientOperationType,
+            VC_COMPONENT_ID,
         },
     },
     credentials::test_utils::new_credential,
@@ -15,12 +19,13 @@ use crate::{
     },
     framing::{MlsMessageIn, ProcessedMessageContent},
     group::{
-        GroupContext, MlsGroup, MlsGroupCreateConfig, StagedWelcome,
-        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        GroupContext, GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig,
+        MlsGroupCreateConfigBuilder, StagedWelcome, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
     messages::PathSecret,
     prelude::{Capabilities, LeafNode, LeafNodeParameters},
+    schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
 };
 
 /// Emulation group suite. Its KDF hash (SHA-384) differs from the
@@ -57,7 +62,7 @@ fn vc_leaf_extensions() -> Extensions<LeafNode> {
     Extensions::from_vec(vec![ext]).expect("build leaf-node Extensions")
 }
 
-fn vc_group_config(ciphersuite: Ciphersuite) -> MlsGroupCreateConfig {
+fn vc_config_builder(ciphersuite: Ciphersuite) -> MlsGroupCreateConfigBuilder {
     MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
@@ -65,21 +70,26 @@ fn vc_group_config(ciphersuite: Ciphersuite) -> MlsGroupCreateConfig {
         .capabilities(vc_capabilities())
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
-        .build()
+}
+
+fn vc_group_config(ciphersuite: Ciphersuite) -> MlsGroupCreateConfig {
+    vc_config_builder(ciphersuite).build()
 }
 
 /// Like [`vc_group_config`], but marking the group as an emulation group, so
 /// derivation epochs are registered implicitly.
 fn emulation_group_config(ciphersuite: Ciphersuite) -> MlsGroupCreateConfig {
-    MlsGroupCreateConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
-        .with_leaf_node_extensions(vc_leaf_extensions())
-        .expect("attach leaf-node extensions")
-        .emulation_group(true)
-        .build()
+    vc_config_builder(ciphersuite).emulation_group(true).build()
+}
+
+/// A full-size, unpunctured export tree seeded with `fill` repeated over the
+/// ciphersuite's hash length. Two trees built with the same `fill` derive the
+/// same secrets, which is what a retried Welcome join rebuilds.
+fn fresh_export_tree(ciphersuite: Ciphersuite, fill: u8) -> ApplicationExportTree {
+    ApplicationExportTree::new_with_size(
+        Secret::from_slice(&vec![fill; ciphersuite.hash_length()]),
+        TreeSize::from_leaf_count(u16::MAX as u32),
+    )
 }
 
 /// Found a single-member emulation group on `provider`. Creating it registers
@@ -443,20 +453,8 @@ fn vc_commit_data_travels_in_commit_safe_aad() {
 /// repeat.
 #[openmls_test::openmls_test]
 fn repeated_registration_with_fresh_tree_punctures_it() {
-    use crate::{
-        binary_tree::{array_representation::TreeSize, LeafNodeIndex},
-        ciphersuite::Secret,
-        components::vc_derivation_info::RegisteredVcDerivationEpoch,
-        group::{
-            mls_group::exporting::{register_vc_derivation_epoch, VcDerivationEpochParams},
-            GroupEpoch, GroupId,
-        },
-        schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
-    };
-
     let provider = Provider::default();
     let group_id = GroupId::from_slice(b"vc retry group");
-    let exporter_size = TreeSize::from_leaf_count(u16::MAX as u32);
     let params = || VcDerivationEpochParams {
         group_id: &group_id,
         ciphersuite,
@@ -465,22 +463,24 @@ fn repeated_registration_with_fresh_tree_punctures_it() {
         tree_size: TreeSize::from_leaf_count(2),
     };
 
-    let mut tree_a = ApplicationExportTree::new_with_size(
-        Secret::from_slice(&vec![1u8; ciphersuite.hash_length()]),
-        exporter_size,
-    );
-    let id_a =
-        register_vc_derivation_epoch(provider.crypto(), provider.storage(), &mut tree_a, params())
-            .expect("first registration");
+    let mut tree_a = fresh_export_tree(ciphersuite, 1);
+    let id_a = register_vc_derivation_epoch(
+        provider.crypto(),
+        provider.storage(),
+        Some(&mut tree_a),
+        params(),
+    )
+    .expect("first registration");
 
     // A retried Welcome join rebuilds the same tree from the same Welcome.
-    let mut tree_b = ApplicationExportTree::new_with_size(
-        Secret::from_slice(&vec![1u8; ciphersuite.hash_length()]),
-        exporter_size,
-    );
-    let id_b =
-        register_vc_derivation_epoch(provider.crypto(), provider.storage(), &mut tree_b, params())
-            .expect("repeated registration with a fresh tree");
+    let mut tree_b = fresh_export_tree(ciphersuite, 1);
+    let id_b = register_vc_derivation_epoch(
+        provider.crypto(),
+        provider.storage(),
+        Some(&mut tree_b),
+        params(),
+    )
+    .expect("repeated registration with a fresh tree");
     assert_eq!(id_a, id_b);
     let err = tree_b
         .safe_export_secret(provider.crypto(), ciphersuite, VC_COMPONENT_ID)
@@ -488,9 +488,13 @@ fn repeated_registration_with_fresh_tree_punctures_it() {
     assert!(matches!(err, ApplicationExportTreeError::PuncturedInput));
 
     // An in-process repeat with the consumed tree returns the recorded id.
-    let id_c =
-        register_vc_derivation_epoch(provider.crypto(), provider.storage(), &mut tree_a, params())
-            .expect("repeat with the already-punctured tree");
+    let id_c = register_vc_derivation_epoch(
+        provider.crypto(),
+        provider.storage(),
+        Some(&mut tree_a),
+        params(),
+    )
+    .expect("repeat with the already-punctured tree");
     assert_eq!(id_c, id_a);
 
     let registered: Option<RegisteredVcDerivationEpoch> = provider
@@ -506,20 +510,8 @@ fn repeated_registration_with_fresh_tree_punctures_it() {
 /// registration derives fresh state and overwrites the record.
 #[openmls_test::openmls_test]
 fn stale_registration_record_is_overwritten() {
-    use crate::{
-        binary_tree::{array_representation::TreeSize, LeafNodeIndex},
-        ciphersuite::Secret,
-        components::vc_derivation_info::RegisteredVcDerivationEpoch,
-        group::{
-            mls_group::exporting::{register_vc_derivation_epoch, VcDerivationEpochParams},
-            GroupEpoch, GroupId,
-        },
-        schedule::application_export_tree::ApplicationExportTree,
-    };
-
     let provider = Provider::default();
     let group_id = GroupId::from_slice(b"vc recycled group id");
-    let exporter_size = TreeSize::from_leaf_count(u16::MAX as u32);
     let params = || VcDerivationEpochParams {
         group_id: &group_id,
         ciphersuite,
@@ -528,26 +520,20 @@ fn stale_registration_record_is_overwritten() {
         tree_size: TreeSize::from_leaf_count(1),
     };
 
-    let mut tree_old = ApplicationExportTree::new_with_size(
-        Secret::from_slice(&vec![2u8; ciphersuite.hash_length()]),
-        exporter_size,
-    );
+    let mut tree_old = fresh_export_tree(ciphersuite, 2);
     let id_old = register_vc_derivation_epoch(
         provider.crypto(),
         provider.storage(),
-        &mut tree_old,
+        Some(&mut tree_old),
         params(),
     )
     .expect("registration of the crashed instance");
 
-    let mut tree_new = ApplicationExportTree::new_with_size(
-        Secret::from_slice(&vec![3u8; ciphersuite.hash_length()]),
-        exporter_size,
-    );
+    let mut tree_new = fresh_export_tree(ciphersuite, 3);
     let id_new = register_vc_derivation_epoch(
         provider.crypto(),
         provider.storage(),
-        &mut tree_new,
+        Some(&mut tree_new),
         params(),
     )
     .expect("registration of the recreated instance");

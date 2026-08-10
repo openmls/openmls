@@ -13,9 +13,11 @@ use tls_codec::{
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::{hash_ref::KeyPackageRef, Secret},
-    group::{GroupEpoch, GroupId},
+    components::vc_operation_tree::OperationSecretTree,
+    group::{mls_group::errors::RegisterVcDerivationEpochError, GroupEpoch, GroupId},
     key_packages::InitKey,
     messages::PathSecret,
+    schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
@@ -776,16 +778,28 @@ pub(crate) struct RegisteredVcDerivationEpoch {
     pub(crate) epoch_id: EpochId,
 }
 
+/// The newest derivation epoch registered for the emulation group
+/// `emulation_group_id`, or `None` if none was registered yet.
+///
+/// Reads the registration record, so the result reflects the emulation group's
+/// state at the time of the call.
+pub(crate) fn newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
+    storage: &Storage,
+    emulation_group_id: &GroupId,
+) -> Result<Option<EpochId>, Storage::Error> {
+    let registered: Option<RegisteredVcDerivationEpoch> =
+        storage.registered_vc_derivation_epoch(emulation_group_id)?;
+    Ok(registered.map(|registered| registered.epoch_id))
+}
+
 /// Resolve the derivation epoch a new virtual-client operation must use: the
 /// newest one registered for the emulation group `emulation_group_id`.
 ///
 /// The draft requires every new operation to use the newest derivation epoch of
 /// the acting client's current emulation-group state, so the epoch is never a
-/// parameter of an operation. Resolution reads the registration record, so it
-/// reflects the emulation group's state at the time of the call. An operation
-/// carried by a commit that itself creates a new derivation epoch still resolves
-/// against the commit's input state, because the new epoch is only registered
-/// when that commit is merged.
+/// parameter of an operation. An operation carried by a commit that itself
+/// creates a new derivation epoch still resolves against the commit's input
+/// state, because the new epoch is only registered when that commit is merged.
 ///
 /// Returns [`VirtualClientsError::NoDerivationEpoch`] when no derivation epoch
 /// is registered, which is the case for every group that is not an emulation
@@ -794,15 +808,173 @@ pub(crate) fn require_newest_vc_derivation_epoch<Storage: crate::storage::Storag
     storage: &Storage,
     emulation_group_id: &GroupId,
 ) -> Result<EpochId, VirtualClientsError> {
-    let registered: Option<RegisteredVcDerivationEpoch> = storage
-        .registered_vc_derivation_epoch(emulation_group_id)
+    newest_vc_derivation_epoch(storage, emulation_group_id)
         .map_err(|e| {
             log::error!("vc: load newest derivation epoch for a new operation failed: {e:?}");
             VirtualClientsError::StorageError
-        })?;
-    registered
-        .map(|registered| registered.epoch_id)
+        })?
         .ok_or(VirtualClientsError::NoDerivationEpoch)
+}
+
+/// The emulation-group coordinates of the group epoch a derivation epoch is
+/// registered for. All values describe the *target* epoch, which for a merge is
+/// the epoch the commit moves the group into, not the one it is merged from.
+pub(crate) struct VcDerivationEpochParams<'a> {
+    /// Group id of the emulation group.
+    pub(crate) group_id: &'a GroupId,
+    /// Ciphersuite of the emulation group.
+    pub(crate) ciphersuite: Ciphersuite,
+    /// The emulation group's epoch this derivation epoch is sourced from.
+    pub(crate) group_epoch: GroupEpoch,
+    /// The registering client's own leaf index in the emulation group.
+    pub(crate) own_leaf_index: LeafNodeIndex,
+    /// Number of leaves in the emulation group's ratchet tree.
+    pub(crate) tree_size: TreeSize,
+}
+
+impl<'a> VcDerivationEpochParams<'a> {
+    /// Read the coordinates off the emulation group's public state. The caller
+    /// supplies `own_leaf_index`, which the public state does not carry.
+    ///
+    /// For a merge, pass the state after the staged diff was merged, so the
+    /// coordinates describe the epoch the commit moves the group into.
+    pub(crate) fn for_public_group(
+        public_group: &'a crate::group::PublicGroup,
+        own_leaf_index: LeafNodeIndex,
+    ) -> Self {
+        Self {
+            group_id: public_group.group_id(),
+            ciphersuite: public_group.ciphersuite(),
+            group_epoch: public_group.group_context().epoch(),
+            own_leaf_index,
+            tree_size: public_group.tree_size(),
+        }
+    }
+}
+
+/// Derive and persist the virtual-clients derivation-epoch state for one epoch
+/// of an emulation group.
+///
+/// Sources the per-derivation-epoch root secret by puncturing `export_tree`
+/// under [`VC_COMPONENT_ID`], derives the [`EpochId`], the AEAD key, the epoch
+/// base secret and the reuse-guard and generation-id secrets, builds the
+/// per-epoch operation secret tree (sized like the emulation group's ratchet
+/// tree), and persists the tree, the per-epoch state and the
+/// newest-derivation-epoch record. Returns the derived [`EpochId`].
+///
+/// The caller owns `export_tree` and is responsible for persisting it after
+/// this call, so that the puncture is not lost. A `None` export tree fails with
+/// [`RegisterVcDerivationEpochError::MissingApplicationExportTree`]: merging
+/// without registering would silently keep the old derivation epoch active,
+/// which breaks the post-compromise guarantees of a membership change.
+///
+/// A registration consumes the forward-secure exporter, so it can derive
+/// state at most once per group epoch. A repeated call for an
+/// already-registered group epoch returns the recorded [`EpochId`] and leaves
+/// the persisted operation secret tree untouched. The repeat still punctures
+/// `export_tree` when it is handed a fresh, unpunctured tree for that epoch,
+/// as a retried Welcome join does. Without the puncture the caller would
+/// persist a tree that can re-derive the consumed secret. A record for the
+/// same group epoch whose [`EpochId`] does not match the tree belongs to a
+/// group instance that was never fully stored, for example a crashed group
+/// creation under a recycled group id, and is overwritten.
+pub(crate) fn register_vc_derivation_epoch<
+    Crypto: OpenMlsCrypto,
+    Storage: crate::storage::StorageProvider,
+>(
+    crypto: &Crypto,
+    storage: &Storage,
+    export_tree: Option<&mut ApplicationExportTree>,
+    params: VcDerivationEpochParams<'_>,
+) -> Result<EpochId, RegisterVcDerivationEpochError<Storage::Error>> {
+    let VcDerivationEpochParams {
+        group_id,
+        ciphersuite,
+        group_epoch,
+        own_leaf_index,
+        tree_size,
+    } = params;
+    let export_tree =
+        export_tree.ok_or(RegisterVcDerivationEpochError::MissingApplicationExportTree)?;
+
+    let registered: Option<RegisteredVcDerivationEpoch> = storage
+        .registered_vc_derivation_epoch(group_id)
+        .map_err(|e| {
+            log::error!("vc: load newest derivation epoch before registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
+
+    // Puncture before consulting the record. A repeat for a registered epoch
+    // can hold a fresh, unpunctured tree, and returning early on the record
+    // alone would let the caller persist that tree with the consumed secret
+    // still derivable.
+    let bytes = match export_tree.safe_export_secret(crypto, ciphersuite, VC_COMPONENT_ID) {
+        Ok(bytes) => bytes,
+        Err(ApplicationExportTreeError::PuncturedInput) => {
+            // The tree in hand is already consumed, so this is an in-process
+            // repeat of a completed registration and the record must agree.
+            if let Some(registered) = &registered {
+                if registered.group_epoch == group_epoch {
+                    return Ok(registered.epoch_id.clone());
+                }
+            }
+            return Err(RegisterVcDerivationEpochError::ApplicationExportTree(
+                ApplicationExportTreeError::PuncturedInput,
+            ));
+        }
+        Err(e) => return Err(e.into()),
+    };
+    let emulator_epoch_secret = EmulatorEpochSecret::new(bytes.as_slice());
+    let epoch_id = emulator_epoch_secret.derive_epoch_id(crypto, ciphersuite)?;
+    if let Some(registered) = registered {
+        if registered.group_epoch == group_epoch && registered.epoch_id == epoch_id {
+            // A retry with identical key material, for example a Welcome join
+            // that crashed after registration. The per-epoch state is already
+            // persisted, only the fresh tree needed puncturing.
+            return Ok(registered.epoch_id);
+        }
+    }
+    let epoch_encryption_key =
+        emulator_epoch_secret.derive_epoch_encryption_key(crypto, ciphersuite)?;
+    let epoch_base_secret = emulator_epoch_secret.derive_epoch_base_secret(crypto, ciphersuite)?;
+    let reuse_guard_secret =
+        emulator_epoch_secret.derive_reuse_guard_secret(crypto, ciphersuite)?;
+    let generation_id_secret =
+        emulator_epoch_secret.derive_generation_id_secret(crypto, ciphersuite)?;
+    let operation_tree = OperationSecretTree::new(epoch_base_secret, tree_size);
+    let state = VcDerivationEpochState::new(
+        own_leaf_index,
+        epoch_encryption_key,
+        reuse_guard_secret,
+        generation_id_secret,
+        tree_size,
+        ciphersuite,
+    );
+    let registered = RegisteredVcDerivationEpoch {
+        group_epoch,
+        epoch_id,
+    };
+
+    storage
+        .write_vc_operation_tree(&registered.epoch_id, &operation_tree)
+        .map_err(|e| {
+            log::error!("vc: persist operation tree at registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
+    storage
+        .write_vc_derivation_epoch_state(&registered.epoch_id, &state)
+        .map_err(|e| {
+            log::error!("vc: persist derivation epoch state at registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
+    storage
+        .write_registered_vc_derivation_epoch(group_id, &registered)
+        .map_err(|e| {
+            log::error!("vc: record newest derivation epoch at registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
+
+    Ok(registered.epoch_id)
 }
 
 /// Per-higher-level-group record of which emulation-group epoch produced the
@@ -903,9 +1075,6 @@ impl EpochEncryptionKey {
 /// with deterministic reuse guards.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VcDerivationEpochState {
-    /// The emulation group's own epoch this derivation epoch was sourced
-    /// from. Derivation epochs are ordered by this number.
-    pub(crate) group_epoch: GroupEpoch,
     /// The registering client's leaf index in the emulation group at
     /// registration time. Sent in `DerivationInfoTbe` and used as the
     /// sender's `leaf_index_e` in the reuse-guard derivation.
@@ -924,7 +1093,6 @@ pub struct VcDerivationEpochState {
 
 impl VcDerivationEpochState {
     pub(crate) fn new(
-        group_epoch: GroupEpoch,
         leaf_index: LeafNodeIndex,
         epoch_encryption_key: EpochEncryptionKey,
         reuse_guard_secret: ReuseGuardSecret,
@@ -933,7 +1101,6 @@ impl VcDerivationEpochState {
         emulation_ciphersuite: Ciphersuite,
     ) -> Self {
         Self {
-            group_epoch,
             leaf_index,
             epoch_encryption_key,
             reuse_guard_secret,
@@ -1643,11 +1810,7 @@ mod tests {
     /// Register a full `VcDerivationEpochState` and a matching
     /// `OperationSecretTree` for a fresh epoch, returning the derived
     /// `EpochId` and the leaf index it was registered with.
-    fn register_epoch_state(
-        provider: &OpenMlsRustCrypto,
-        group_epoch: GroupEpoch,
-        leaf_index: LeafNodeIndex,
-    ) -> EpochId {
+    fn register_epoch_state(provider: &OpenMlsRustCrypto, leaf_index: LeafNodeIndex) -> EpochId {
         use crate::components::vc_operation_tree::OperationSecretTree;
 
         let emulator = EmulatorEpochSecret::new(
@@ -1673,7 +1836,6 @@ mod tests {
             .expect("derive epoch base secret");
         let emulation_group_size = TreeSize::new(2);
         let state = VcDerivationEpochState::new(
-            group_epoch,
             leaf_index,
             epoch_encryption_key,
             reuse_guard_secret,
@@ -1703,7 +1865,7 @@ mod tests {
     fn assemble_upload_reads_leaf_index_from_state() {
         let provider = OpenMlsRustCrypto::default();
         let leaf_index = LeafNodeIndex::new(5);
-        let epoch_id = register_epoch_state(&provider, GroupEpoch::from(0), leaf_index);
+        let epoch_id = register_epoch_state(&provider, leaf_index);
         let infos = vec![
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
@@ -1726,25 +1888,6 @@ mod tests {
         assert_eq!(upload.key_package_info.len(), 2);
     }
 
-    /// The emulation-group epoch a derivation epoch was sourced from is
-    /// recovered from the storage provider.
-    #[test]
-    fn derivation_epoch_state_round_trips_group_epoch() {
-        let provider = OpenMlsRustCrypto::default();
-        let group_epoch = GroupEpoch::from(7);
-        let epoch_id = register_epoch_state(&provider, group_epoch, LeafNodeIndex::new(1));
-
-        let state: VcDerivationEpochState =
-            <MemoryStorage as StorageProvider<CURRENT_VERSION>>::vc_derivation_epoch_state(
-                provider.storage(),
-                &epoch_id,
-            )
-            .expect("load derivation epoch state")
-            .expect("derivation epoch state present");
-
-        assert_eq!(state.group_epoch, group_epoch);
-    }
-
     /// Assembling for an unregistered epoch fails with
     /// `MissingDerivationEpochState`.
     #[test]
@@ -1763,7 +1906,7 @@ mod tests {
     fn process_upload_stores_records() {
         let provider = OpenMlsRustCrypto::default();
         let leaf_index = LeafNodeIndex::new(0);
-        let epoch_id = register_epoch_state(&provider, GroupEpoch::from(0), leaf_index);
+        let epoch_id = register_epoch_state(&provider, leaf_index);
         let ref_a = KeyPackageRef::from_slice(b"kp-ref-a");
         let ref_b = KeyPackageRef::from_slice(b"kp-ref-b");
         let upload = KeyPackageUpload {
@@ -1818,7 +1961,7 @@ mod tests {
     fn delete_key_package_removes_vc_record() {
         let provider = OpenMlsRustCrypto::default();
         let leaf_index = LeafNodeIndex::new(0);
-        let epoch_id = register_epoch_state(&provider, GroupEpoch::from(0), leaf_index);
+        let epoch_id = register_epoch_state(&provider, leaf_index);
         let kp_ref = KeyPackageRef::from_slice(b"kp-ref");
         let upload = KeyPackageUpload {
             epoch_id,
@@ -2313,7 +2456,7 @@ mod tests {
     fn process_upload_rejects_malformed_without_consuming_generation() {
         let provider = OpenMlsRustCrypto::default();
         let leaf_index = LeafNodeIndex::new(0);
-        let epoch_id = register_epoch_state(&provider, GroupEpoch::from(0), leaf_index);
+        let epoch_id = register_epoch_state(&provider, leaf_index);
         let ref_a = KeyPackageRef::from_slice(b"kp-ref-a");
         let ref_b = KeyPackageRef::from_slice(b"kp-ref-b");
 
@@ -2397,7 +2540,6 @@ mod tests {
             .derive_generation_id_secret(provider.crypto(), CIPHERSUITE)
             .expect("derive generation id secret");
         VcDerivationEpochState::new(
-            GroupEpoch::from(0),
             leaf_index,
             epoch_encryption_key,
             reuse_guard_secret,
