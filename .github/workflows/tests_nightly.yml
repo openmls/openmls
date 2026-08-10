@@ -35,7 +35,17 @@ jobs:
           - { name: fork-resolution, arg: "-F fork-resolution" }
           - { name: extensions-draft, arg: "-F extensions-draft,extensions-draft-test-dependencies" }
           - { name: virtual-clients-draft, arg: "-F virtual-clients-draft,virtual-clients-draft-test-dependencies" }
-          - { name: pq-ciphersuites, arg: "-F draft-ietf-mls-pq-ciphersuites" }
+          # The PQ ciphersuites take the list that openmls_test expands every
+          # test over from 8 copies to 29, and the rustc that builds the
+          # openmls unit-test binary then needs more than the 16 GB a hosted
+          # runner has. It gets killed mid-build (exit code 143) in both debug
+          # and release mode. Sharding the ciphersuites over three jobs brings
+          # that back to roughly what the `base` job needs. Together the three
+          # shards cover the same ciphersuites as one unsharded run, including
+          # ciphersuites added later.
+          - { name: pq-ciphersuites-1, arg: "-F draft-ietf-mls-pq-ciphersuites", shard: "1/3" }
+          - { name: pq-ciphersuites-2, arg: "-F draft-ietf-mls-pq-ciphersuites", shard: "2/3" }
+          - { name: pq-ciphersuites-3, arg: "-F draft-ietf-mls-pq-ciphersuites", shard: "3/3" }
     runs-on: ubuntu-latest
     name: full matrix (${{ matrix.mode.name }}/${{ matrix.features.name }})
     steps:
@@ -44,6 +54,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Tests with all providers and ciphersuites
+        env:
+          OPENMLS_TEST_CIPHERSUITE_SHARD: ${{ matrix.features.shard }}
         run: |
           cargo test ${{ matrix.mode.arg }} -p openmls --verbose --no-default-features \
             -F all-ciphersuites,sqlite-provider,libcrux-provider ${{ matrix.features.arg }}
