@@ -86,6 +86,19 @@ fn grease_extension_is_available_through_unknown_getter() {
     assert_eq!(extensions.unknown(GREASE), Some(&UnknownExtension(payload)));
 }
 
+/// The per-context validators also run on deserialization, so they have to
+/// accept GREASE wherever they accept an unknown extension type.
+#[test]
+fn grease_extension_validators_match_unknown_handling() {
+    const GREASE: u16 = 0x8A8A;
+    let grease = Extension::Unknown(GREASE, UnknownExtension(vec![0xca, 0xfe]));
+
+    assert!(Extensions::<GroupContext>::single(grease.clone()).is_ok());
+    assert!(Extensions::<GroupInfo>::single(grease.clone()).is_ok());
+    assert!(Extensions::<LeafNode>::single(grease.clone()).is_ok());
+    assert!(Extensions::<KeyPackage>::single(grease).is_ok());
+}
+
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[openmls_test::openmls_test]
@@ -505,4 +518,97 @@ fn app_data_dictionary_extension() {
 
     // check the dictionary
     assert_eq!(&dictionary, extension.dictionary());
+}
+
+/// GREASE extensions listed in the capabilities have to pass validation. The key
+/// package is checked in `KeyPackageIn::validate`, the leaf node when the member
+/// is added and again when the invitee joins from the Welcome.
+#[openmls_test::openmls_test]
+fn grease_extensions_validate_when_advertised_in_capabilities() {
+    const KEY_PACKAGE_GREASE: u16 = 0x8A8A;
+    const LEAF_NODE_GREASE: u16 = 0x4A4A;
+
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential_with_key, alice_signer) =
+        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (bob_credential_with_key, bob_signer) =
+        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+
+    let capabilities = Capabilities::new(
+        None,
+        None,
+        Some(&[
+            ExtensionType::Grease(KEY_PACKAGE_GREASE),
+            ExtensionType::Grease(LEAF_NODE_GREASE),
+        ]),
+        None,
+        None,
+    );
+
+    let bob_key_package_bundle = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities)
+        .key_package_extensions(
+            Extensions::single(Extension::Unknown(
+                KEY_PACKAGE_GREASE,
+                UnknownExtension(vec![0x01, 0x02]),
+            ))
+            .expect("failed to create key package extensions"),
+        )
+        .leaf_node_extensions(
+            Extensions::single(Extension::Unknown(
+                LEAF_NODE_GREASE,
+                UnknownExtension(vec![0x03, 0x04]),
+            ))
+            .expect("failed to create leaf node extensions"),
+        )
+        .build(
+            ciphersuite,
+            bob_provider,
+            &bob_signer,
+            bob_credential_with_key,
+        )
+        .expect("failed to build key package with GREASE extensions");
+
+    // === Bob's key package validates on the receiving side ===
+    // The extensions decode as `Extension::Unknown`, while the capabilities
+    // decode the same values as `ExtensionType::Grease`.
+    let serialized = bob_key_package_bundle
+        .key_package()
+        .tls_serialize_detached()
+        .expect("failed to serialize the key package");
+    let bob_key_package = KeyPackageIn::tls_deserialize(&mut serialized.as_slice())
+        .expect("failed to deserialize the key package")
+        .validate(bob_provider.crypto(), ProtocolVersion::Mls10)
+        .expect("key package with a GREASE extension must validate");
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(alice_provider, &alice_signer, alice_credential_with_key)
+        .expect("Error creating group.");
+
+    // === Alice adds Bob, which validates his leaf node ===
+    let (_commit, welcome, _group_info) = alice_group
+        .add_members(alice_provider, &alice_signer, from_ref(&bob_key_package))
+        .expect("leaf node with a GREASE extension must validate");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("Error merging commit.");
+
+    // === Bob joins, which validates every leaf in the tree again ===
+    let bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &MlsGroupJoinConfig::default(),
+        welcome.into_welcome().unwrap(),
+        Some(alice_group.export_ratchet_tree().into()),
+    )
+    .expect("Error staging welcome")
+    .into_group(bob_provider)
+    .expect("Error creating group from welcome");
+
+    assert_eq!(
+        alice_group.epoch_authenticator(),
+        bob_group.epoch_authenticator()
+    );
 }
