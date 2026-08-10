@@ -125,8 +125,14 @@ when such a commit is merged. Registration sources the root secret from the
 epoch's Safe Exporter under `VC_COMPONENT_ID`, builds the operation secret tree,
 and persists the per-epoch state under a derived `EpochId`. Because the secret
 comes from the Safe Exporter, all emulator clients derive the **same** `EpochId`
-and the same operation tree for a given derivation epoch. Ask for the epoch that
-virtual-client operations resolve to with:
+and the same operation tree for a given derivation epoch.
+
+Every new virtual-client operation uses the newest derivation epoch of the
+emulation group, as the draft requires. The sender-side entry points take the
+emulation group and resolve that epoch themselves, so an application cannot keep
+operating from an older, possibly compromised epoch. They fail with
+`VirtualClientsError::NoDerivationEpoch` if the group has none registered. To
+inspect the epoch, for example for logging, ask the emulation group:
 
 ```rust,no_run,noplayground
 let epoch_id = emulator_group
@@ -164,14 +170,15 @@ input state's newest derivation epoch.
 ## Committing in a higher-level group
 
 To commit on behalf of the virtual client, set `vc_emulation` on the commit
-builder, passing the `EpochId`. The builder allocates the next `LeafNode`
-operation generation, derives the new leaf's encryption key and the first path
-secret from it, and embeds the encrypted `DerivationInfo` in the leaf:
+builder, passing the emulation group. The builder resolves that group's newest
+derivation epoch, allocates the next `LeafNode` operation generation, derives the
+new leaf's encryption key and the first path secret from it, and embeds the
+encrypted `DerivationInfo` in the leaf:
 
 ```rust,no_run,noplayground
 let bundle = main_group
     .commit_builder()
-    .vc_emulation(provider.crypto(), provider.storage(), epoch_id)?
+    .vc_emulation(provider.crypto(), provider.storage(), &emulator_group)?
     .load_psks(provider.storage())?
     .build(provider.rand(), provider.crypto(), &vc_signer, |_| true)?
     .stage_commit(provider)?;
@@ -232,7 +239,7 @@ confirmation data:
 ```rust,no_run,noplayground
 let mut bundle = main_group
     .commit_builder()
-    .vc_emulation(provider.crypto(), provider.storage(), epoch_id)?
+    .vc_emulation(provider.crypto(), provider.storage(), &emulator_group)?
     .load_psks(provider.storage())?
     .build(provider.rand(), provider.crypto(), &vc_signer, |_| true)?
     .stage_commit(provider)?;
@@ -383,7 +390,7 @@ let batch = KeyPackage::builder()
         provider,
         &vc_signer,
         vc_credential,
-        epoch_id.clone(),
+        &emulator_group,
         count, // number of KeyPackages, must be > 0
     )?;
 ```
@@ -392,9 +399,11 @@ The operation tree is advanced in memory and persisted only after every
 KeyPackage is built, so a build failure consumes no generation. A `count` of `0`
 returns `EmptyBatch` before any state is touched.
 
-Assemble the upload the virtual client hands to its sibling from the batch
-generation and its `KeyPackageInfo`s. OpenMLS fills the emulation `leaf_index`
-from the stored epoch state:
+Assemble the upload the virtual client hands to its sibling from the batch's
+epoch and generation and its `KeyPackageInfo`s. Take the epoch from the batch
+rather than resolving it again: the emulation group may have moved on to a newer
+derivation epoch in the meantime. OpenMLS fills the emulation `leaf_index` from
+the stored epoch state:
 
 ```rust,no_run,noplayground
 use openmls::components::vc_derivation_info::assemble_vc_key_package_upload;
@@ -407,7 +416,7 @@ let infos = batch
 
 let upload = assemble_vc_key_package_upload(
     provider.storage(),
-    epoch_id,
+    batch.epoch_id.clone(),
     batch.generation,
     infos,
 )?;

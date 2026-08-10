@@ -38,8 +38,9 @@ use crate::{
 #[cfg(feature = "virtual-clients-draft")]
 use crate::{
     components::vc_derivation_info::{
-        DerivationInfo, DerivationInfoTbe, EpochEncryptionKey, EpochId, ExternalInitSecret,
-        OperationSecret, VcDerivationEpochState, VirtualClientOperationType, VirtualClientsError,
+        require_newest_vc_derivation_epoch, DerivationInfo, DerivationInfoTbe, EpochEncryptionKey,
+        EpochId, ExternalInitSecret, OperationSecret, VcDerivationEpochState,
+        VirtualClientOperationType, VirtualClientsError,
     },
     components::vc_operation_tree::OperationSecretTree,
     extensions::AppDataDictionary,
@@ -374,13 +375,18 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
 
     /// Opt this commit into the virtual-clients-draft sender flow.
     ///
-    /// The application supplies the [`EpochId`] of a derivation epoch of the
-    /// emulation group, normally the one
-    /// [`MlsGroup::newest_vc_derivation_epoch`] reports. This method loads the
-    /// per-epoch operation secret tree and AEAD key from the storage
-    /// provider, validates the leaf configuration (see the preconditions
-    /// below), then advances the own `LeafNode` operation ratchet by one
-    /// generation and immediately persists the advanced tree. `build` then:
+    /// The commit uses the newest derivation epoch of `emulation_group`, which
+    /// is what the draft requires of every new virtual-client operation. The
+    /// epoch is resolved from the emulation group's current state, so a commit
+    /// that itself asks for a new derivation epoch (see
+    /// [`Self::new_derivation_epoch`]) still uses the epoch of its input state:
+    /// the requested one only exists once that commit is merged.
+    ///
+    /// This method loads the per-epoch operation secret tree and AEAD key from
+    /// the storage provider, validates the leaf configuration (see the
+    /// preconditions below), then advances the own `LeafNode` operation ratchet
+    /// by one generation and immediately persists the advanced tree. `build`
+    /// then:
     ///
     /// - derives the path secret and the new leaf's encryption keypair
     ///   from the allocated `OperationSecret`, so a sibling virtual
@@ -411,18 +417,47 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// [`CreateCommitError::VirtualClientsError`]) before allocating a
     /// generation, so no operation secret is burned in that case.
     ///
-    /// Fails with `VirtualClientsError::MissingDerivationEpochState` or
-    /// `VirtualClientsError::MissingOperationTree` if the epoch was never
-    /// registered. Neither the state nor the tree is instantiated on the
-    /// fly, since that could diverge from a sibling virtual client's
-    /// already-advanced ratchets.
+    /// Fails with `VirtualClientsError::NoDerivationEpoch` if `emulation_group`
+    /// has no registered derivation epoch, and with
+    /// `VirtualClientsError::MissingDerivationEpochState` or
+    /// `VirtualClientsError::MissingOperationTree` if the resolved epoch's state
+    /// is gone. Neither the state nor the tree is instantiated on the fly, since
+    /// that could diverge from a sibling virtual client's already-advanced
+    /// ratchets.
     ///
     /// Implies that a self-update takes place: the commit will always have
     /// a path even if no other proposals are queued.
-    ///
-    /// [`MlsGroup::newest_vc_derivation_epoch`]: crate::group::MlsGroup::newest_vc_derivation_epoch
     #[cfg(feature = "virtual-clients-draft")]
     pub fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        self,
+        crypto: &Crypto,
+        storage: &Storage,
+        emulation_group: &MlsGroup,
+    ) -> Result<Self, CreateCommitError> {
+        let epoch_id = require_newest_vc_derivation_epoch(storage, emulation_group.group_id())?;
+        self.vc_emulation_internal(crypto, storage, epoch_id)
+    }
+
+    /// Test-only variant of [`Self::vc_emulation`] that commits from the named
+    /// derivation epoch instead of the emulation group's newest one.
+    ///
+    /// Using an epoch other than the newest one violates the draft, which
+    /// requires every new virtual-client operation to use the newest derivation
+    /// epoch of the acting client's current emulation-group state. It exists to
+    /// construct scenarios that an application must not produce, such as a
+    /// sibling that acts on a stale emulation-group state.
+    #[cfg(all(feature = "virtual-clients-draft", any(test, feature = "test-utils")))]
+    pub fn vc_emulation_at_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        self,
+        crypto: &Crypto,
+        storage: &Storage,
+        epoch_id: EpochId,
+    ) -> Result<Self, CreateCommitError> {
+        self.vc_emulation_internal(crypto, storage, epoch_id)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_internal<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         mut self,
         crypto: &Crypto,
         storage: &Storage,

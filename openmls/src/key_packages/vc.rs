@@ -10,14 +10,16 @@ use crate::{
     binary_tree::LeafNodeIndex,
     components::{
         vc_derivation_info::{
-            load_vc_epoch_state_and_tree, merge_vc_derivation_info, resolve_vc_leaf_dictionary,
-            DerivationInfo, DerivationInfoTbe, EpochEncryptionKey, EpochId, KeyPackageInfo,
-            OperationSecret, VirtualClientOperationType, VirtualClientsError,
+            load_vc_epoch_state_and_tree, merge_vc_derivation_info,
+            require_newest_vc_derivation_epoch, resolve_vc_leaf_dictionary, DerivationInfo,
+            DerivationInfoTbe, EpochEncryptionKey, EpochId, KeyPackageInfo, OperationSecret,
+            VirtualClientOperationType, VirtualClientsError,
         },
         vc_operation_tree::OperationSecretTree,
     },
     credentials::CredentialWithKey,
     extensions::AppDataDictionary,
+    group::MlsGroup,
     key_packages::{
         errors::KeyPackageNewError, KeyPackage, KeyPackageBuilder, KeyPackageBundle,
         KeyPackageLeafNodeParams,
@@ -29,6 +31,13 @@ use crate::{
 /// Build from a single epoch id and generation.
 #[derive(Debug)]
 pub struct VcKeyPackageBatch {
+    /// The derivation epoch the batch was built from. Hand it to
+    /// [`assemble_vc_key_package_upload`] together with the batch's
+    /// `generation`, so the upload names the epoch this batch actually consumed
+    /// rather than whichever one is newest by then.
+    ///
+    /// [`assemble_vc_key_package_upload`]: crate::components::vc_derivation_info::assemble_vc_key_package_upload
+    pub epoch_id: EpochId,
     /// The `key_package` operation generation consumed for the whole batch.
     pub generation: u32,
     /// One entry per KeyPackage built, in batch-index order. Never empty.
@@ -60,19 +69,51 @@ pub struct VcKeyPackageBatchBuilder {
 }
 
 impl VcKeyPackageBatchBuilder {
-    /// Load derivation epoch and allocate the next generation of the key package operation ratchet.
+    /// Load the newest derivation epoch of `emulation_group` and allocate the
+    /// next generation of its key package operation ratchet.
+    ///
+    /// The batch uses the newest derivation epoch of the emulation group, which
+    /// is what the draft requires of every new virtual-client operation. The
+    /// epoch is resolved from the emulation group's current state.
     ///
     /// Nothing is persisted yet. Dropping the builder without calling `finalize` burns no
     /// generation.
     pub fn new(
         provider: &impl OpenMlsProvider,
-        epoch_id: EpochId,
+        emulation_group: &MlsGroup,
     ) -> Result<Self, KeyPackageNewError> {
-        Self::with_capacity(provider, epoch_id, 0)
+        Self::with_capacity(provider, emulation_group, 0)
     }
 
     /// Same as [`Self::new`], but with a capacity hint for the number of key packages.
     pub fn with_capacity(
+        provider: &impl OpenMlsProvider,
+        emulation_group: &MlsGroup,
+        capacity: usize,
+    ) -> Result<Self, KeyPackageNewError> {
+        let epoch_id =
+            require_newest_vc_derivation_epoch(provider.storage(), emulation_group.group_id())?;
+        Self::with_capacity_at_epoch_internal(provider, epoch_id, capacity)
+    }
+
+    /// Test-only variant of [`Self::with_capacity`] that builds the batch from
+    /// the named derivation epoch instead of the emulation group's newest one.
+    ///
+    /// Using an epoch other than the newest one violates the draft, which
+    /// requires every new virtual-client operation to use the newest derivation
+    /// epoch of the acting client's current emulation-group state. It exists to
+    /// construct scenarios that an application must not produce, such as a
+    /// sibling that acts on a stale emulation-group state.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn with_capacity_at_epoch(
+        provider: &impl OpenMlsProvider,
+        epoch_id: EpochId,
+        capacity: usize,
+    ) -> Result<Self, KeyPackageNewError> {
+        Self::with_capacity_at_epoch_internal(provider, epoch_id, capacity)
+    }
+
+    pub(crate) fn with_capacity_at_epoch_internal(
         provider: &impl OpenMlsProvider,
         epoch_id: EpochId,
         capacity: usize,
@@ -180,6 +221,7 @@ impl VcKeyPackageBatchBuilder {
         }
 
         Ok(VcKeyPackageBatch {
+            epoch_id: self.epoch_id,
             generation: self.generation,
             key_packages: self.key_packages,
         })

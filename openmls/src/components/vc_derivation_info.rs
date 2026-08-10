@@ -90,6 +90,11 @@ pub enum VirtualClientsError {
     /// epoch, or it has been deleted.
     #[error("No virtual-clients derivation-epoch state for this epoch.")]
     MissingDerivationEpochState,
+    /// No derivation epoch is registered for the group a new virtual-client
+    /// operation was resolved against. The operation requires that group to be
+    /// an emulation group with a registered derivation epoch.
+    #[error("No derivation epoch is registered for the group.")]
+    NoDerivationEpoch,
     /// Loading or storing virtual-clients state via the storage provider
     /// failed.
     #[error("Virtual-clients storage error")]
@@ -607,6 +612,11 @@ fn validate_key_package_infos(infos: &[KeyPackageInfo]) -> Result<(), VirtualCli
 /// its sibling. `generation` is the single `key_package` operation generation
 /// the batch consumed.
 ///
+/// This describes a completed operation rather than starting a new one, so it
+/// takes the epoch explicitly. Pass the `epoch_id` and `generation` the batch
+/// reports, not a freshly resolved epoch: the emulation group may have moved on
+/// to a newer derivation epoch since the batch was built.
+///
 /// Returns [`VirtualClientsError::MissingDerivationEpochState`] if no state is
 /// registered for `epoch_id`.
 ///
@@ -764,6 +774,35 @@ pub(crate) struct RegisteredVcDerivationEpoch {
     pub(crate) group_epoch: crate::group::GroupEpoch,
     /// The derivation epoch id derived by that registration.
     pub(crate) epoch_id: EpochId,
+}
+
+/// Resolve the derivation epoch a new virtual-client operation must use: the
+/// newest one registered for the emulation group `emulation_group_id`.
+///
+/// The draft requires every new operation to use the newest derivation epoch of
+/// the acting client's current emulation-group state, so the epoch is never a
+/// parameter of an operation. Resolution reads the registration record, so it
+/// reflects the emulation group's state at the time of the call. An operation
+/// carried by a commit that itself creates a new derivation epoch still resolves
+/// against the commit's input state, because the new epoch is only registered
+/// when that commit is merged.
+///
+/// Returns [`VirtualClientsError::NoDerivationEpoch`] when no derivation epoch
+/// is registered, which is the case for every group that is not an emulation
+/// group.
+pub(crate) fn require_newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
+    storage: &Storage,
+    emulation_group_id: &GroupId,
+) -> Result<EpochId, VirtualClientsError> {
+    let registered: Option<RegisteredVcDerivationEpoch> = storage
+        .registered_vc_derivation_epoch(emulation_group_id)
+        .map_err(|e| {
+            log::error!("vc: load newest derivation epoch for a new operation failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?;
+    registered
+        .map(|registered| registered.epoch_id)
+        .ok_or(VirtualClientsError::NoDerivationEpoch)
 }
 
 /// Per-higher-level-group record of which emulation-group epoch produced the

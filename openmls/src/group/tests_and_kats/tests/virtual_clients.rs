@@ -83,8 +83,9 @@ fn emulation_group_config(ciphersuite: Ciphersuite) -> MlsGroupCreateConfig {
 }
 
 /// Found a single-member emulation group on `provider`. Creating it registers
-/// the initial epoch as a derivation epoch.
-fn registered_derivation_epoch<P: OpenMlsProvider>(provider: &P) -> EpochId {
+/// the initial epoch as a derivation epoch. Returns the group alongside the
+/// [`EpochId`] the tests derive their reference values from.
+fn registered_derivation_epoch<P: OpenMlsProvider>(provider: &P) -> (MlsGroup, EpochId) {
     let (credential, signer) = new_credential(
         provider,
         b"Emulator",
@@ -97,10 +98,11 @@ fn registered_derivation_epoch<P: OpenMlsProvider>(provider: &P) -> EpochId {
         credential,
     )
     .expect("create emulation group");
-    emulator_group
+    let epoch_id = emulator_group
         .newest_vc_derivation_epoch(provider.storage())
         .expect("read newest derivation epoch")
-        .expect("group creation registers a derivation epoch")
+        .expect("group creation registers a derivation epoch");
+    (emulator_group, epoch_id)
 }
 
 /// A VC commit's update-path material (the leaf encryption key and the
@@ -113,7 +115,7 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
     let provider = &Provider::default();
     let bob_provider = &Provider::default();
 
-    let epoch_id = registered_derivation_epoch(provider);
+    let (emulator_group, epoch_id) = registered_derivation_epoch(provider);
 
     // Higher-level group: the VC leaf plus one regular member, so the VC
     // commit's update path contains a parent node.
@@ -187,7 +189,7 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
     // Actual: send the VC commit.
     main_group
         .commit_builder()
-        .vc_emulation(provider.crypto(), provider.storage(), epoch_id)
+        .vc_emulation(provider.crypto(), provider.storage(), &emulator_group)
         .expect("vc_emulation")
         .load_psks(provider.storage())
         .expect("load psks")
@@ -227,7 +229,7 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
 fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
     let provider = &Provider::default();
 
-    let epoch_id = registered_derivation_epoch(provider);
+    let (emulator_group, epoch_id) = registered_derivation_epoch(provider);
 
     // Reference derivation per spec, from a scratch copy of the operation
     // tree (dropped unpersisted, so the builder consumes the same
@@ -270,7 +272,7 @@ fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
         .with_capabilities(vc_capabilities())
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
-        .vc_emulation(epoch_id)
+        .vc_emulation(&emulator_group)
         .build(provider, &vc_signer, vc_credential)
         .expect("create vc group");
 

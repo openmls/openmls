@@ -786,6 +786,9 @@ impl MlsGroup {
     /// may be older than the group's current epoch: only commits that change
     /// membership or that carry a `new_derivation_epoch` action create one.
     ///
+    /// The sender-side operation entry points take the emulation group and
+    /// resolve the epoch themselves, so this getter is for inspection only.
+    ///
     /// Returns `None` for groups that are not emulation groups.
     ///
     /// [`EpochId`]: crate::components::vc_derivation_info::EpochId

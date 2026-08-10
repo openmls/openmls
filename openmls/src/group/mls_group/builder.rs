@@ -27,6 +27,18 @@ use crate::{
     },
 };
 
+/// Which derivation epoch a virtual client creates a group from.
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Debug)]
+enum VcCreationEpoch {
+    /// Resolve the newest derivation epoch of this emulation group when the
+    /// group is built.
+    NewestOf(GroupId),
+    /// Use this derivation epoch as given.
+    #[cfg(any(test, feature = "test-utils"))]
+    At(crate::components::vc_derivation_info::EpochId),
+}
+
 /// Builder struct for an [`MlsGroup`].
 #[derive(Default, Debug)]
 pub struct MlsGroupBuilder {
@@ -35,7 +47,7 @@ pub struct MlsGroupBuilder {
     replace_old_group: bool,
     psk_ids: Vec<PreSharedKeyId>,
     #[cfg(feature = "virtual-clients-draft")]
-    vc_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
+    vc_creation_epoch: Option<VcCreationEpoch>,
 }
 
 impl MlsGroupBuilder {
@@ -49,7 +61,12 @@ impl MlsGroupBuilder {
         self
     }
 
-    /// Create the group as a virtual client on the derivation epoch `epoch_id`.
+    /// Create the group as a virtual client of `emulation_group`.
+    ///
+    /// The group is created from the newest derivation epoch of the emulation
+    /// group, which is what the draft requires of every new virtual-client
+    /// operation. The epoch is resolved when [`Self::build`] runs, against the
+    /// emulation group's state at that point.
     ///
     /// The creator's leaf is `key_package`-sourced and its key material is
     /// derived from a fresh `key_package` operation secret of that epoch (so
@@ -60,11 +77,27 @@ impl MlsGroupBuilder {
     ///
     /// [`MlsGroup::vc_join_at_creation`]: crate::group::MlsGroup::vc_join_at_creation
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn vc_emulation(
+    pub fn vc_emulation(mut self, emulation_group: &MlsGroup) -> Self {
+        self.vc_creation_epoch = Some(VcCreationEpoch::NewestOf(
+            emulation_group.group_id().clone(),
+        ));
+        self
+    }
+
+    /// Test-only variant of [`Self::vc_emulation`] that creates the group from
+    /// the named derivation epoch instead of the emulation group's newest one.
+    ///
+    /// Using an epoch other than the newest one violates the draft, which
+    /// requires every new virtual-client operation to use the newest derivation
+    /// epoch of the acting client's current emulation-group state. It exists to
+    /// construct scenarios that an application must not produce, such as a
+    /// sibling that acts on a stale emulation-group state.
+    #[cfg(all(feature = "virtual-clients-draft", any(test, feature = "test-utils")))]
+    pub fn vc_emulation_at_epoch(
         mut self,
         epoch_id: crate::components::vc_derivation_info::EpochId,
     ) -> Self {
-        self.vc_epoch_id = Some(epoch_id);
+        self.vc_creation_epoch = Some(VcCreationEpoch::At(epoch_id));
         self
     }
 
@@ -112,7 +145,17 @@ impl MlsGroupBuilder {
             .map_err(|_| NewGroupError::UnsupportedCiphersuite(ciphersuite))?;
 
         #[cfg(feature = "virtual-clients-draft")]
-        if let Some(epoch_id) = self.vc_epoch_id.clone() {
+        if let Some(creation_epoch) = &self.vc_creation_epoch {
+            let epoch_id = match creation_epoch {
+                VcCreationEpoch::NewestOf(emulation_group_id) => {
+                    crate::components::vc_derivation_info::require_newest_vc_derivation_epoch(
+                        provider.storage(),
+                        emulation_group_id,
+                    )?
+                }
+                #[cfg(any(test, feature = "test-utils"))]
+                VcCreationEpoch::At(epoch_id) => epoch_id.clone(),
+            };
             return build_vc_internal(
                 provider,
                 signer,

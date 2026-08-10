@@ -332,7 +332,7 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
         &provider,
         &vc_signer,
         vc_credential.clone(),
-        epoch_id.clone(),
+        &emulator,
         0,
     );
     assert_eq!(empty.unwrap_err(), KeyPackageNewError::EmptyBatch);
@@ -345,7 +345,7 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
             &provider,
             &vc_signer,
             vc_credential,
-            epoch_id.clone(),
+            &emulator,
             1,
         )
         .expect("build_vc_batch must succeed");

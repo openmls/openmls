@@ -646,8 +646,13 @@ impl KeyPackageBuilder {
 
     /// Build a batch of virtual-client KeyPackages a sibling can reproduce.
     ///
+    /// The batch uses the newest derivation epoch of `emulation_group`, which is
+    /// what the draft requires of every new virtual-client operation. The epoch
+    /// is resolved from the emulation group's current state, and the returned
+    /// [`VcKeyPackageBatch`] reports it in its `epoch_id`.
+    ///
     /// Allocates a single generation of the `key_package` operation ratchet for
-    /// the derivation epoch identified by `epoch_id`. For each
+    /// that derivation epoch. For each
     /// `key_package_index` in `0..count` it derives a per-KeyPackage seed
     /// secret from that one operation secret and derives the KeyPackage's init
     /// key and leaf encryption key from the seed. Each leaf carries an
@@ -684,6 +689,58 @@ impl KeyPackageBuilder {
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
+        emulation_group: &crate::group::MlsGroup,
+        count: usize,
+    ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
+        let epoch_id = crate::components::vc_derivation_info::require_newest_vc_derivation_epoch(
+            provider.storage(),
+            emulation_group.group_id(),
+        )?;
+        self.build_vc_batch_internal(
+            ciphersuite,
+            provider,
+            signer,
+            credential_with_key,
+            epoch_id,
+            count,
+        )
+    }
+
+    /// Test-only variant of [`Self::build_vc_batch`] that builds the batch from
+    /// the named derivation epoch instead of the emulation group's newest one.
+    ///
+    /// Using an epoch other than the newest one violates the draft, which
+    /// requires every new virtual-client operation to use the newest derivation
+    /// epoch of the acting client's current emulation-group state. It exists to
+    /// construct scenarios that an application must not produce, such as a
+    /// sibling that acts on a stale emulation-group state.
+    #[cfg(all(feature = "virtual-clients-draft", any(test, feature = "test-utils")))]
+    pub fn build_vc_batch_at_epoch(
+        self,
+        ciphersuite: Ciphersuite,
+        provider: &impl OpenMlsProvider,
+        signer: &impl Signer,
+        credential_with_key: CredentialWithKey,
+        epoch_id: crate::components::vc_derivation_info::EpochId,
+        count: usize,
+    ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
+        self.build_vc_batch_internal(
+            ciphersuite,
+            provider,
+            signer,
+            credential_with_key,
+            epoch_id,
+            count,
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn build_vc_batch_internal(
+        self,
+        ciphersuite: Ciphersuite,
+        provider: &impl OpenMlsProvider,
+        signer: &impl Signer,
+        credential_with_key: CredentialWithKey,
         epoch_id: crate::components::vc_derivation_info::EpochId,
         count: usize,
     ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
@@ -697,7 +754,8 @@ impl KeyPackageBuilder {
         if count == 0 {
             return Err(KeyPackageNewError::EmptyBatch);
         }
-        let mut builder = VcKeyPackageBatchBuilder::with_capacity(provider, epoch_id, count)?;
+        let mut builder =
+            VcKeyPackageBatchBuilder::with_capacity_at_epoch_internal(provider, epoch_id, count)?;
         for _ in 0..count {
             builder.add_key_package(
                 self.clone(),
