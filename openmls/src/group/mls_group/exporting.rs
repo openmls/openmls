@@ -21,7 +21,7 @@ use crate::{
     },
     components::vc_operation_tree::OperationSecretTree,
     group::mls_group::errors::RegisterVcDerivationEpochError,
-    schedule::application_export_tree::ApplicationExportTree,
+    schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
 };
 
 use super::*;
@@ -56,10 +56,16 @@ pub(crate) struct VcDerivationEpochParams<'a> {
 /// The caller owns `export_tree` and is responsible for persisting it after
 /// this call, so that the puncture is not lost.
 ///
-/// A registration consumes the forward-secure exporter, so it can run at most
-/// once per group epoch. A repeated call for an already-registered group epoch
-/// returns the recorded [`EpochId`] and leaves both the exporter and the
-/// already-persisted operation secret tree untouched.
+/// A registration consumes the forward-secure exporter, so it can derive
+/// state at most once per group epoch. A repeated call for an
+/// already-registered group epoch returns the recorded [`EpochId`] and leaves
+/// the persisted operation secret tree untouched. The repeat still punctures
+/// `export_tree` when it is handed a fresh, unpunctured tree for that epoch,
+/// as a retried Welcome join does. Without the puncture the caller would
+/// persist a tree that can re-derive the consumed secret. A record for the
+/// same group epoch whose [`EpochId`] does not match the tree belongs to a
+/// group instance that was never fully stored, for example a crashed group
+/// creation under a recycled group id, and is overwritten.
 #[cfg(feature = "virtual-clients-draft")]
 pub(crate) fn register_vc_derivation_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
     crypto: &Crypto,
@@ -81,15 +87,37 @@ pub(crate) fn register_vc_derivation_epoch<Crypto: OpenMlsCrypto, Storage: Stora
             log::error!("vc: load newest derivation epoch before registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
         })?;
+
+    // Puncture before consulting the record. A repeat for a registered epoch
+    // can hold a fresh, unpunctured tree, and returning early on the record
+    // alone would let the caller persist that tree with the consumed secret
+    // still derivable.
+    let bytes = match export_tree.safe_export_secret(crypto, ciphersuite, VC_COMPONENT_ID) {
+        Ok(bytes) => bytes,
+        Err(ApplicationExportTreeError::PuncturedInput) => {
+            // The tree in hand is already consumed, so this is an in-process
+            // repeat of a completed registration and the record must agree.
+            if let Some(registered) = &registered {
+                if registered.group_epoch == group_epoch {
+                    return Ok(registered.epoch_id.clone());
+                }
+            }
+            return Err(RegisterVcDerivationEpochError::ApplicationExportTree(
+                ApplicationExportTreeError::PuncturedInput,
+            ));
+        }
+        Err(e) => return Err(e.into()),
+    };
+    let emulator_epoch_secret = EmulatorEpochSecret::new(bytes.as_slice());
+    let epoch_id = emulator_epoch_secret.derive_epoch_id(crypto, ciphersuite)?;
     if let Some(registered) = registered {
-        if registered.group_epoch == group_epoch {
+        if registered.group_epoch == group_epoch && registered.epoch_id == epoch_id {
+            // A retry with identical key material, for example a Welcome join
+            // that crashed after registration. The per-epoch state is already
+            // persisted, only the fresh tree needed puncturing.
             return Ok(registered.epoch_id);
         }
     }
-
-    let bytes = export_tree.safe_export_secret(crypto, ciphersuite, VC_COMPONENT_ID)?;
-    let emulator_epoch_secret = EmulatorEpochSecret::new(bytes.as_slice());
-    let epoch_id = emulator_epoch_secret.derive_epoch_id(crypto, ciphersuite)?;
     let epoch_encryption_key =
         emulator_epoch_secret.derive_epoch_encryption_key(crypto, ciphersuite)?;
     let epoch_base_secret = emulator_epoch_secret.derive_epoch_base_secret(crypto, ciphersuite)?;

@@ -433,3 +433,127 @@ fn vc_commit_data_travels_in_commit_safe_aad() {
         .expect("process second commit");
     assert_eq!(processed.vc_commit_data(), Ok(None));
 }
+
+/// A repeated registration for the same group epoch returns the recorded
+/// [`EpochId`] and consumes a fresh export tree handed to it, so a retried
+/// Welcome join cannot persist a tree from which the consumed secret is still
+/// derivable. Passing the already-punctured tree again is a plain no-op
+/// repeat.
+#[openmls_test::openmls_test]
+fn repeated_registration_with_fresh_tree_punctures_it() {
+    use crate::{
+        binary_tree::{array_representation::TreeSize, LeafNodeIndex},
+        ciphersuite::Secret,
+        components::vc_derivation_info::RegisteredVcDerivationEpoch,
+        group::{
+            mls_group::exporting::{register_vc_derivation_epoch, VcDerivationEpochParams},
+            GroupEpoch, GroupId,
+        },
+        schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
+    };
+
+    let provider = Provider::default();
+    let group_id = GroupId::from_slice(b"vc retry group");
+    let exporter_size = TreeSize::from_leaf_count(u16::MAX as u32);
+    let params = || VcDerivationEpochParams {
+        group_id: &group_id,
+        ciphersuite,
+        group_epoch: GroupEpoch::from(5),
+        own_leaf_index: LeafNodeIndex::new(0),
+        tree_size: TreeSize::from_leaf_count(2),
+    };
+
+    let mut tree_a = ApplicationExportTree::new_with_size(
+        Secret::from_slice(&vec![1u8; ciphersuite.hash_length()]),
+        exporter_size,
+    );
+    let id_a =
+        register_vc_derivation_epoch(provider.crypto(), provider.storage(), &mut tree_a, params())
+            .expect("first registration");
+
+    // A retried Welcome join rebuilds the same tree from the same Welcome.
+    let mut tree_b = ApplicationExportTree::new_with_size(
+        Secret::from_slice(&vec![1u8; ciphersuite.hash_length()]),
+        exporter_size,
+    );
+    let id_b =
+        register_vc_derivation_epoch(provider.crypto(), provider.storage(), &mut tree_b, params())
+            .expect("repeated registration with a fresh tree");
+    assert_eq!(id_a, id_b);
+    let err = tree_b
+        .safe_export_secret(provider.crypto(), ciphersuite, VC_COMPONENT_ID)
+        .expect_err("the repeat must consume the fresh tree");
+    assert!(matches!(err, ApplicationExportTreeError::PuncturedInput));
+
+    // An in-process repeat with the consumed tree returns the recorded id.
+    let id_c =
+        register_vc_derivation_epoch(provider.crypto(), provider.storage(), &mut tree_a, params())
+            .expect("repeat with the already-punctured tree");
+    assert_eq!(id_c, id_a);
+
+    let registered: Option<RegisteredVcDerivationEpoch> = provider
+        .storage()
+        .registered_vc_derivation_epoch(&group_id)
+        .expect("read registration record");
+    assert_eq!(registered.expect("record must exist").epoch_id, id_a);
+}
+
+/// A registration record whose [`EpochId`] does not match the export tree for
+/// the same group epoch is stale state from a group instance that was never
+/// fully stored, for example a crashed creation under a recycled group id. The
+/// registration derives fresh state and overwrites the record.
+#[openmls_test::openmls_test]
+fn stale_registration_record_is_overwritten() {
+    use crate::{
+        binary_tree::{array_representation::TreeSize, LeafNodeIndex},
+        ciphersuite::Secret,
+        components::vc_derivation_info::RegisteredVcDerivationEpoch,
+        group::{
+            mls_group::exporting::{register_vc_derivation_epoch, VcDerivationEpochParams},
+            GroupEpoch, GroupId,
+        },
+        schedule::application_export_tree::ApplicationExportTree,
+    };
+
+    let provider = Provider::default();
+    let group_id = GroupId::from_slice(b"vc recycled group id");
+    let exporter_size = TreeSize::from_leaf_count(u16::MAX as u32);
+    let params = || VcDerivationEpochParams {
+        group_id: &group_id,
+        ciphersuite,
+        group_epoch: GroupEpoch::from(0),
+        own_leaf_index: LeafNodeIndex::new(0),
+        tree_size: TreeSize::from_leaf_count(1),
+    };
+
+    let mut tree_old = ApplicationExportTree::new_with_size(
+        Secret::from_slice(&vec![2u8; ciphersuite.hash_length()]),
+        exporter_size,
+    );
+    let id_old = register_vc_derivation_epoch(
+        provider.crypto(),
+        provider.storage(),
+        &mut tree_old,
+        params(),
+    )
+    .expect("registration of the crashed instance");
+
+    let mut tree_new = ApplicationExportTree::new_with_size(
+        Secret::from_slice(&vec![3u8; ciphersuite.hash_length()]),
+        exporter_size,
+    );
+    let id_new = register_vc_derivation_epoch(
+        provider.crypto(),
+        provider.storage(),
+        &mut tree_new,
+        params(),
+    )
+    .expect("registration of the recreated instance");
+    assert_ne!(id_old, id_new);
+
+    let registered: Option<RegisteredVcDerivationEpoch> = provider
+        .storage()
+        .registered_vc_derivation_epoch(&group_id)
+        .expect("read registration record");
+    assert_eq!(registered.expect("record must exist").epoch_id, id_new);
+}

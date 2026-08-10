@@ -664,6 +664,15 @@ mod virtual_clients_draft {
         /// more details.
         #[error(transparent)]
         ApplicationExportTree(#[from] super::ApplicationExportTreeError),
+        /// The emulation group has no application export tree to source the
+        /// derivation epoch from. This happens when a group stored by an
+        /// OpenMLS version without application-exporter support is marked as
+        /// an emulation group.
+        #[error(
+            "The emulation group has no application export tree to source the derivation epoch \
+             from."
+        )]
+        MissingApplicationExportTree,
         /// See [`VirtualClientsError`](crate::components::vc_derivation_info::VirtualClientsError)
         /// for more details.
         #[error(transparent)]

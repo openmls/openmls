@@ -782,12 +782,14 @@ impl MlsGroup {
 
                         self.application_export_tree = Some(application_export_tree);
                     } else {
+                        // Merging without registering would silently keep the
+                        // old derivation epoch active, which breaks the
+                        // post-compromise guarantees of membership changes.
                         #[cfg(feature = "virtual-clients-draft")]
                         if creates_vc_derivation_epoch {
-                            log::error!(
-                                "vc: emulation group without an application exporter cannot \
-                                 register a derivation epoch"
-                            );
+                            return Err(MergeCommitError::RegisterVcDerivationEpoch(
+                                crate::group::mls_group::errors::RegisterVcDerivationEpochError::MissingApplicationExportTree,
+                            ));
                         }
                     }
                 }
