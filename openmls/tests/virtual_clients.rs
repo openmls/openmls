@@ -9,7 +9,7 @@ use openmls::{
     framing::errors::{MessageDecryptionError, SecretTreeError},
     group::{
         AppDataUpdates, ConfirmMessageError, GroupEpoch, MlsGroup, MlsGroupCreateConfig,
-        MlsGroupJoinConfig, PendingVcExternalCommitJoin, Propose, StageCommitError, StagedWelcome,
+        MlsGroupJoinConfig, Propose, StageCommitError, StagedVcExternalCommitJoin, StagedWelcome,
         VcExternalCommitJoinError, MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
@@ -1658,7 +1658,7 @@ fn vc_second_emulator_client_onboards_via_external_commit() {
             epoch_id_b.clone(),
         )
         .expect("process charly_a's external commit")
-        .join(&charly_b_provider, None)
+        .into_group(&charly_b_provider)
         .expect("charly_b bootstraps by processing charly_a's external commit");
     let err = charly_b_main
         .process_message(
@@ -1966,7 +1966,7 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
             epoch_id_b.clone(),
         )
         .expect("process charly_a's external commit")
-        .join(&charly_b_provider, None)
+        .into_group(&charly_b_provider)
         .expect("charly_b bootstraps by processing charly_a's external commit");
 
     assert!(charly_a_main.is_active() && charly_b_main.is_active());
@@ -2235,13 +2235,13 @@ fn resolve_and_merge_app_data_commit<P: OpenMlsProvider>(
         .expect("merge app data commit");
 }
 
-/// Reads the verified AppDataUpdate proposals from a pending sibling join,
+/// Reads the verified AppDataUpdate proposals from a staged sibling join,
 /// checks they carry the expected payload, and computes the resolved updates
 /// the join needs, the way an application's component logic would.
 fn sibling_resolved_app_data_updates(
-    pending: &PendingVcExternalCommitJoin,
+    staged: &StagedVcExternalCommitJoin,
 ) -> Option<AppDataUpdates> {
-    let proposals: Vec<_> = pending.app_data_update_proposals().collect();
+    let proposals: Vec<_> = staged.app_data_update_proposals().collect();
     assert_eq!(proposals.len(), 1);
     assert_eq!(proposals[0].component_id(), APP_DATA_COMPONENT_ID);
     let AppDataUpdateOperation::Update(payload) = proposals[0].operation() else {
@@ -2251,7 +2251,7 @@ fn sibling_resolved_app_data_updates(
 
     // No dictionary exists in the prior-epoch group context yet, so the
     // component computes the value from the payload alone.
-    let mut updater = pending.app_data_dictionary_updater();
+    let mut updater = staged.app_data_dictionary_updater();
     assert!(updater.old_value(APP_DATA_COMPONENT_ID).is_none());
     updater.set(ComponentData::from_parts(
         APP_DATA_COMPONENT_ID,
@@ -2286,7 +2286,7 @@ fn vc_sibling_external_commit_join_resolves_app_data_updates() {
 
     // charly_b computes the same updates from the verified commit's
     // proposals and completes the join with them.
-    let pending = MlsGroup::vc_external_commit_join_builder()
+    let mut staged = MlsGroup::vc_external_commit_join_builder()
         .with_config(vc_join_config())
         .process_commit(
             &scenario.charly_b_provider,
@@ -2295,10 +2295,18 @@ fn vc_sibling_external_commit_join_resolves_app_data_updates() {
             scenario.epoch_id.clone(),
         )
         .expect("process charly_a's external commit");
-    let updates = sibling_resolved_app_data_updates(&pending);
-    let charly_b_main = pending
-        .join(&scenario.charly_b_provider, updates)
+
+    // The staged join exposes the group state at the epoch before the
+    // commit: Alice and Bob, without the virtual-client leaf.
+    let prior_epoch = staged.prior_group_context().epoch();
+    assert_eq!(staged.prior_members().count(), 2);
+
+    let updates = sibling_resolved_app_data_updates(&staged);
+    staged.with_app_data_dictionary_updates(updates);
+    let charly_b_main = staged
+        .into_group(&scenario.charly_b_provider)
         .expect("charly_b joins with resolved app data updates");
+    assert_eq!(charly_b_main.epoch().as_u64(), prior_epoch.as_u64() + 1);
 
     assert!(charly_a_main.is_active() && charly_b_main.is_active());
     assert_eq!(
@@ -2369,7 +2377,7 @@ fn vc_sibling_external_commit_join_with_app_data_update_and_app_ephemeral() {
 
     // charly_b reads both payloads from the verified commit before deciding
     // to complete the join.
-    let pending = MlsGroup::vc_external_commit_join_builder()
+    let mut staged = MlsGroup::vc_external_commit_join_builder()
         .with_config(vc_join_config())
         .process_commit(
             &scenario.charly_b_provider,
@@ -2378,15 +2386,16 @@ fn vc_sibling_external_commit_join_with_app_data_update_and_app_ephemeral() {
             scenario.epoch_id.clone(),
         )
         .expect("process charly_a's external commit");
-    let app_ephemeral: Vec<_> = pending
-        .app_ephemeral_proposals(APP_EPHEMERAL_COMPONENT_ID)
+    let app_ephemeral: Vec<_> = staged
+        .app_ephemeral_proposals_for_component_id(APP_EPHEMERAL_COMPONENT_ID)
         .collect();
     assert_eq!(app_ephemeral.len(), 1);
     assert_eq!(app_ephemeral[0].data(), APP_EPHEMERAL_DATA);
-    let updates = sibling_resolved_app_data_updates(&pending);
+    let updates = sibling_resolved_app_data_updates(&staged);
+    staged.with_app_data_dictionary_updates(updates);
 
-    let charly_b_main = pending
-        .join(&scenario.charly_b_provider, updates)
+    let charly_b_main = staged
+        .into_group(&scenario.charly_b_provider)
         .expect("charly_b joins a commit carrying AppDataUpdate and AppEphemeral");
 
     assert!(charly_a_main.is_active() && charly_b_main.is_active());
@@ -2425,7 +2434,7 @@ fn vc_sibling_external_commit_join_without_app_data_updates_fails() {
     let (charly_a_main, commit) =
         charly_a_external_commit_with_app_data_update(&scenario, vgi_charly_a, None);
 
-    let pending = MlsGroup::vc_external_commit_join_builder()
+    let staged = MlsGroup::vc_external_commit_join_builder()
         .with_config(vc_join_config())
         .process_commit(
             &scenario.charly_b_provider,
@@ -2434,8 +2443,8 @@ fn vc_sibling_external_commit_join_without_app_data_updates_fails() {
             scenario.epoch_id.clone(),
         )
         .expect("process charly_a's external commit");
-    let err = pending
-        .join(&scenario.charly_b_provider, None)
+    let err = staged
+        .into_group(&scenario.charly_b_provider)
         .expect_err("joining without the resolved updates must fail");
     let VcExternalCommitJoinError::StageCommitError(StageCommitError::ApplyAppDataUpdateError(
         ApplyAppDataUpdateError::MissingAppDataUpdates,
@@ -2447,7 +2456,7 @@ fn vc_sibling_external_commit_join_without_app_data_updates_fails() {
     // The failed attempt did not consume an operation secret generation, so
     // processing the same commit again and joining with the resolved updates
     // succeeds.
-    let pending = MlsGroup::vc_external_commit_join_builder()
+    let mut staged = MlsGroup::vc_external_commit_join_builder()
         .with_config(vc_join_config())
         .process_commit(
             &scenario.charly_b_provider,
@@ -2456,9 +2465,10 @@ fn vc_sibling_external_commit_join_without_app_data_updates_fails() {
             scenario.epoch_id.clone(),
         )
         .expect("process charly_a's external commit again");
-    let updates = sibling_resolved_app_data_updates(&pending);
-    let charly_b_main = pending
-        .join(&scenario.charly_b_provider, updates)
+    let updates = sibling_resolved_app_data_updates(&staged);
+    staged.with_app_data_dictionary_updates(updates);
+    let charly_b_main = staged
+        .into_group(&scenario.charly_b_provider)
         .expect("retry with resolved updates succeeds");
     assert_eq!(
         charly_b_main.epoch_authenticator(),
@@ -2478,7 +2488,7 @@ fn vc_sibling_external_commit_join_with_wrong_app_data_updates_fails() {
     let (_charly_a_main, commit) =
         charly_a_external_commit_with_app_data_update(&scenario, vgi_charly_a, None);
 
-    let pending = MlsGroup::vc_external_commit_join_builder()
+    let mut staged = MlsGroup::vc_external_commit_join_builder()
         .with_config(vc_join_config())
         .process_commit(
             &scenario.charly_b_provider,
@@ -2487,14 +2497,15 @@ fn vc_sibling_external_commit_join_with_wrong_app_data_updates_fails() {
             scenario.epoch_id.clone(),
         )
         .expect("process charly_a's external commit");
-    let mut updater = pending.app_data_dictionary_updater();
+    let mut updater = staged.app_data_dictionary_updater();
     updater.set(ComponentData::from_parts(
         APP_DATA_COMPONENT_ID,
         b"a different value".to_vec().into(),
     ));
     let updates = updater.changes();
-    let err = pending
-        .join(&scenario.charly_b_provider, updates)
+    staged.with_app_data_dictionary_updates(updates);
+    let err = staged
+        .into_group(&scenario.charly_b_provider)
         .expect_err("joining with wrong updates must fail");
     let VcExternalCommitJoinError::StageCommitError(StageCommitError::ConfirmationTagMismatch) =
         err

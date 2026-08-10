@@ -1154,9 +1154,9 @@ impl MlsGroup {
 ///
 /// The join happens in two steps. [`Self::process_commit`] rebuilds the
 /// prior-epoch group and verifies the commit, returning a
-/// [`PendingVcExternalCommitJoin`]. The application inspects the verified
+/// [`StagedVcExternalCommitJoin`]. The application inspects the verified
 /// proposals it exposes, resolves any AppDataUpdate proposals, and completes
-/// the join with [`PendingVcExternalCommitJoin::join`].
+/// the join with [`StagedVcExternalCommitJoin::into_group`].
 #[cfg(feature = "virtual-clients-draft")]
 #[derive(Debug, Default)]
 pub struct VcExternalCommitJoinBuilder {
@@ -1205,7 +1205,7 @@ impl VcExternalCommitJoinBuilder {
     /// references the shared emulation epoch `epoch_id`.
     ///
     /// Nothing is consumed or persisted at this point. Dropping the returned
-    /// [`PendingVcExternalCommitJoin`] discards the join without advancing
+    /// [`StagedVcExternalCommitJoin`] discards the join without advancing
     /// the shared operation secret tree.
     pub fn process_commit<Provider: OpenMlsProvider>(
         self,
@@ -1214,7 +1214,7 @@ impl VcExternalCommitJoinBuilder {
         external_commit: impl Into<crate::framing::ProtocolMessage>,
         epoch_id: crate::components::vc_derivation_info::EpochId,
     ) -> Result<
-        PendingVcExternalCommitJoin,
+        StagedVcExternalCommitJoin,
         crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>,
     > {
         use tls_codec::DeserializeBytes as _;
@@ -1318,7 +1318,7 @@ impl VcExternalCommitJoinBuilder {
         // Check the commit's derivation info without consuming an operation
         // secret generation: presence and the emulation epoch binding are
         // validated here, decryption and the consume-once secret derivation
-        // happen in `PendingVcExternalCommitJoin::join`.
+        // happen in `StagedVcExternalCommitJoin::into_group`.
         let derivation_info_bytes = commit
             .path
             .as_ref()
@@ -1339,10 +1339,11 @@ impl VcExternalCommitJoinBuilder {
         let app_data_update_proposals =
             committed_app_data_update_proposals(commit, group.proposal_store());
 
-        Ok(PendingVcExternalCommitJoin {
+        Ok(StagedVcExternalCommitJoin {
             group,
             content,
             app_data_update_proposals,
+            app_data_updates: None,
         })
     }
 }
@@ -1353,16 +1354,17 @@ impl VcExternalCommitJoinBuilder {
 /// The commit's signature has been verified against the prior-epoch group,
 /// so the proposals exposed here are authenticated. If the commit covers
 /// AppDataUpdate proposals, the application must interpret them (with the
-/// help of [`Self::app_data_dictionary_updater`]) and pass the resulting
-/// [`AppDataUpdates`] to [`Self::join`], exactly as it would for
+/// help of [`Self::app_data_dictionary_updater`]) and supply the resulting
+/// [`AppDataUpdates`] via [`Self::with_app_data_dictionary_updates`] before
+/// calling [`Self::into_group`], exactly as it would for
 /// [`MlsGroup::resolve_app_data_commit`] when processing the same commit as
 /// a member.
 ///
 /// Dropping this value discards the join. No operation secret generation is
-/// consumed before [`Self::join`], so a discarded join can be started over
-/// by processing the same commit again.
+/// consumed before [`Self::into_group`], so a discarded join can be started
+/// over by processing the same commit again.
 #[cfg(feature = "virtual-clients-draft")]
-pub struct PendingVcExternalCommitJoin {
+pub struct StagedVcExternalCommitJoin {
     /// Transient reconstruction of the group at the prior epoch.
     group: MlsGroup,
     /// The verified commit content.
@@ -1370,13 +1372,32 @@ pub struct PendingVcExternalCommitJoin {
     /// The by-value AppDataUpdate proposals covered by the commit, sorted by
     /// component id.
     app_data_update_proposals: Vec<AppDataUpdateProposal>,
+    /// The application-resolved updates for the commit's AppDataUpdate
+    /// proposals, if any.
+    app_data_updates: Option<AppDataUpdates>,
 }
 
 #[cfg(feature = "virtual-clients-draft")]
-impl PendingVcExternalCommitJoin {
+impl StagedVcExternalCommitJoin {
+    /// Returns the [`GroupContext`] of the group at the epoch *before* the
+    /// external commit. The commit's changes (including any AppDataUpdate
+    /// proposals) are not applied to it. The joined group's context is
+    /// available on the [`MlsGroup`] returned by [`Self::into_group`].
+    pub fn prior_group_context(&self) -> &GroupContext {
+        self.group.context()
+    }
+
+    /// Returns an iterator over the [`Member`]s of the group at the epoch
+    /// *before* the external commit. The commit's changes are not applied:
+    /// the committing sibling's virtual-client leaf is absent and members
+    /// the commit inline-removes are still present.
+    pub fn prior_members(&self) -> impl Iterator<Item = Member> + '_ {
+        self.group.members()
+    }
+
     /// Returns the AppDataUpdate proposals covered by the commit, sorted by
     /// component id. The application interprets them to compute the
-    /// [`AppDataUpdates`] that [`Self::join`] requires.
+    /// [`AppDataUpdates`] that [`Self::into_group`] requires.
     pub fn app_data_update_proposals(&self) -> impl Iterator<Item = &AppDataUpdateProposal> {
         self.app_data_update_proposals.iter()
     }
@@ -1389,7 +1410,7 @@ impl PendingVcExternalCommitJoin {
     ///
     /// [`PublicMessageIn::unverified_app_ephemeral_proposals`]:
     ///     crate::framing::PublicMessageIn::unverified_app_ephemeral_proposals
-    pub fn app_ephemeral_proposals(
+    pub fn app_ephemeral_proposals_for_component_id(
         &self,
         component_id: ComponentId,
     ) -> impl Iterator<Item = &AppEphemeralProposal> {
@@ -1400,7 +1421,7 @@ impl PendingVcExternalCommitJoin {
 
         let proposals = match self.content.content() {
             FramedContentBody::Commit(commit) => commit.proposals.as_slice(),
-            // `process_commit` only constructs pending joins from commits.
+            // `process_commit` only constructs staged joins from commits.
             _ => &[],
         };
         proposals
@@ -1424,17 +1445,24 @@ impl PendingVcExternalCommitJoin {
         AppDataDictionaryUpdater::new(self.group.context().app_data_dict())
     }
 
-    /// Completes the join. `app_data_updates` must be `Some` exactly when the
-    /// commit covers AppDataUpdate proposals. Absent updates are rejected
-    /// before the consume-once operation secret generation is spent, so the
-    /// join can be started over. Updates that do not reproduce the committing
-    /// sibling's dictionary fail with a confirmation tag mismatch after the
-    /// generation is consumed, so they should be computed deterministically
-    /// from the proposals rather than guessed.
-    pub fn join<Provider: OpenMlsProvider>(
+    /// Sets the [`AppDataUpdates`] that contain the changes made by the
+    /// commit's AppDataUpdate proposals. Updates must be set exactly when
+    /// the commit covers AppDataUpdate proposals.
+    pub fn with_app_data_dictionary_updates(&mut self, app_data_updates: Option<AppDataUpdates>) {
+        self.app_data_updates = app_data_updates;
+    }
+
+    /// Completes the join and returns the joined [`MlsGroup`]. If the commit
+    /// covers AppDataUpdate proposals, the resolved updates must have been
+    /// set via [`Self::with_app_data_dictionary_updates`]. Absent updates
+    /// are rejected before the consume-once operation secret generation is
+    /// spent, so the join can be started over. Updates that do not reproduce
+    /// the committing sibling's dictionary fail with a confirmation tag
+    /// mismatch after the generation is consumed, so they should be computed
+    /// deterministically from the proposals rather than guessed.
+    pub fn into_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
-        app_data_updates: Option<AppDataUpdates>,
     ) -> Result<MlsGroup, crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>>
     {
         use crate::{
@@ -1447,6 +1475,7 @@ impl PendingVcExternalCommitJoin {
             mut group,
             content,
             app_data_update_proposals,
+            app_data_updates,
         } = self;
 
         // An application that has not resolved the commit's AppDataUpdate
@@ -1462,8 +1491,8 @@ impl PendingVcExternalCommitJoin {
         }
 
         let FramedContentBody::Commit(commit) = content.content() else {
-            // `process_commit` only constructs pending joins from commits.
-            return Err(LibraryError::custom("pending join without commit content").into());
+            // `process_commit` only constructs staged joins from commits.
+            return Err(LibraryError::custom("staged join without commit content").into());
         };
 
         // Recover the sibling-VC commit material (operation secret + emulation
