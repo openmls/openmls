@@ -85,3 +85,11 @@ test = false
 doc = false
 harness = false
 bench = false
+
+[[bin]]
+name = "extensions_decode_bytes"
+path = "fuzz_targets/extensions_decode_bytes.rs"
+test = false
+doc = false
+harness = false
+bench = false
