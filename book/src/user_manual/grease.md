@@ -77,7 +77,7 @@ let capabilities = Capabilities::builder()
 
 RFC 9420 Section 13.5 also lists `LeafNode.extensions`, `KeyPackage.extensions` and `GroupInfo.extensions` as fields that can carry GREASE values. `GroupContext.extensions` is not on that list, and GREASE values must not be sent there.
 
-There is no dedicated `Extension` variant for GREASE, so a GREASE extension is built as `Extension::Unknown`:
+GREASE has its own `ExtensionType::Grease` variant, but the `Extension` enum has no matching one, so a GREASE extension is carried as `Extension::Unknown`:
 
 ```rust
 use openmls::prelude::*;
