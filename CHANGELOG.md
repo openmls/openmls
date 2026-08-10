@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#2156](https://github.com/openmls/openmls/issues/2156): A GREASE extension in `KeyPackage.extensions` or `LeafNode.extensions` is now classified as `ExtensionType::Grease`, so it matches the entry for the same value in `LeafNode.capabilities.extensions`. A key package carrying one in `KeyPackage.extensions` was previously rejected with `KeyPackageVerifyError::UnsupportedExtension`, and one in `LeafNode.extensions` made adding the member fail with `LeafNodeValidationError::UnsupportedExtensions`. `Extensions::unknown()` now also finds GREASE extensions.
 - [#2143](https://github.com/openmls/openmls/pull/2143): A commit built with `CommitBuilder::build_with_new_signer` (or `MlsGroup::self_update_with_new_signer`) now signs the GroupInfo in the Welcome and the exported GroupInfo with the new signer, matching the signature key the commit puts in the committer's leaf. Previously both were signed with the old signer, so invited members rejected the Welcome with `InvalidGroupInfoSignature`.
 - [#2147](https://github.com/openmls/openmls/pull/2147): Fixed an off-by-one in the computation of the variable-length prefix size during extension serialization. Extensions with payloads of exactly 0x3fff or 0x3fff_ffff bytes now serialize with the correct length prefix.
 - [GHSA-rrmv-c79f-cf5r](https://github.com/openmls/openmls/security/advisories/GHSA-rrmv-c79f-cf5r): Fix out-of-bounds panic in manual DeserializeBytes impls
