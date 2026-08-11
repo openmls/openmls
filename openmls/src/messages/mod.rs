@@ -295,12 +295,12 @@ impl CommitIn {
                     self_removes_in_store,
                 } => {
                     // We need to determine if it is a a resync or a join.
-                    // Find the first remove proposal and extract the leaf index.
-                    let former_sender_index = proposals.iter().find_map(|p| {
+                    // Use the leftmost removed leaf, matching external-commit construction.
+                    let former_sender_index = proposals.iter().filter_map(|p| {
                         p.as_proposal()
                             .and_then(|p| p.as_remove())
                             .map(|r| r.removed())
-                    });
+                    }).min();
 
                     // Collect the sender indices of SelfRemoves that are part of
                     // this commit.
