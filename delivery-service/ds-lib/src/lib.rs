@@ -34,7 +34,7 @@ mod hashset_codec {
         io::{Read, Write},
     };
 
-    use crate::tls_codec::{self, Deserialize, Serialize};
+    use crate::tls_codec::{self, Deserialize, Serialize, Size};
 
     pub fn tls_serialized_len(hashset: &HashSet<Vec<u8>>) -> usize {
         let payload_len = hashset
