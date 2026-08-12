@@ -1028,18 +1028,33 @@ impl VcEmulationBindings {
 
     /// Record `epoch_id` as the binding for `epoch`, keeping at most
     /// `max_entries` entries by dropping the oldest ones.
+    ///
+    /// Returns the derivation epochs no binding of this row points at anymore,
+    /// either because their binding aged out or because the binding at `epoch`
+    /// replaced them. An epoch that is still bound at another epoch is not
+    /// reported.
     pub(crate) fn insert(
         &mut self,
         epoch: crate::group::GroupEpoch,
         epoch_id: EpochId,
         max_entries: usize,
-    ) {
+    ) -> Vec<EpochId> {
+        let mut dropped: Vec<EpochId> = self
+            .bindings
+            .iter()
+            .filter(|(bound_epoch, _)| *bound_epoch == epoch)
+            .map(|(_, bound_id)| bound_id.clone())
+            .collect();
         self.bindings
             .retain(|(bound_epoch, _)| *bound_epoch != epoch);
         self.bindings.push_back((epoch, epoch_id));
         while self.bindings.len() > max_entries {
-            self.bindings.pop_front();
+            if let Some((_, aged_out)) = self.bindings.pop_front() {
+                dropped.push(aged_out);
+            }
         }
+        dropped.retain(|candidate| !self.epoch_ids().any(|bound| bound == candidate));
+        dropped
     }
 }
 

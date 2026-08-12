@@ -34,11 +34,10 @@ use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
-    framing::{InterimTranscriptHashInput, Sender},
+    framing::InterimTranscriptHashInput,
     group::mls_group::creation::LeafNodeLifetimePolicy,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
-        proposals::Proposal,
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
@@ -320,23 +319,13 @@ impl PublicGroup {
     /// The proposals must be validated before calling this function.
     pub(crate) fn leftmost_free_index<'a>(
         &self,
-        queued_proposals: impl Iterator<Item = &'a QueuedProposal>,
+        queued_proposals: impl Iterator<Item = &'a QueuedProposal> + 'a,
     ) -> Result<LeafNodeIndex, LibraryError> {
         // Leftmost free leaf in the tree
         let free_leaf_index = self.treesync().free_leaf_index();
-        // Indices that are freed due to queued self-remove proposals or remove
-        // proposals.
-        let removed_indices = queued_proposals.filter_map(|proposal| {
-            match (proposal.proposal(), proposal.sender()) {
-                (Proposal::Remove(r), _) => Some(r.removed),
-                (Proposal::SelfRemove, Sender::Member(sender)) => Some(*sender),
-                _ => None, // SelfRemove proposals must come from group members
-            }
-        });
         // Find the leftmost free leaf index, which is either the free leaf index
-        // or the leftmost index of a self-remove proposal or remove proposal.
-        removed_indices
-            .into_iter()
+        // or the leftmost index a Remove or SelfRemove proposal frees.
+        crate::group::mls_group::proposal_store::removed_leaves(queued_proposals)
             .chain(std::iter::once(free_leaf_index))
             .min()
             .ok_or_else(|| LibraryError::custom("No free leaf index found"))

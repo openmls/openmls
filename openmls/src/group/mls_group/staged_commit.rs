@@ -346,21 +346,20 @@ impl MlsGroup {
         // is validated against the state the commit was built on before the
         // commit is accepted.
         #[cfg(feature = "virtual-clients-draft")]
-        let (marks_new_vc_derivation_epoch, vc_declaration) =
-            if self.is_emulation_group() && self.context().safe_aad_required() {
-                let commit_data = parse_vc_commit_data(mls_content.authenticated_data())?;
-                let marks_new_epoch = commit_data
-                    .as_ref()
-                    .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
-                let declaration = self.validate_vc_epoch_usage(
-                    provider.storage(),
-                    sender_index,
-                    commit_data.as_ref(),
-                )?;
-                (marks_new_epoch, declaration)
-            } else {
-                (false, None)
-            };
+        let (marks_new_vc_derivation_epoch, vc_declaration) = if self.carries_vc_commit_data() {
+            let commit_data = parse_vc_commit_data(mls_content.authenticated_data())?;
+            let marks_new_epoch = commit_data
+                .as_ref()
+                .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
+            let declaration = self.validate_vc_epoch_usage(
+                provider.storage(),
+                sender_index,
+                commit_data.as_ref(),
+            )?;
+            (marks_new_epoch, declaration)
+        } else {
+            (false, None)
+        };
 
         // Unbundle the sibling-VC commit material: the per-commit operation
         // secret recreates the path, the emulation `epoch_id` is recorded on
@@ -802,20 +801,12 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")]
         let creates_vc_derivation_epoch = self.commit_creates_vc_derivation_epoch(&staged_commit);
 
-        // Read off the commit's input state, before the merge below moves the
-        // group into the commit's output epoch and the registration overwrites
-        // the newest derivation epoch.
+        // Read off what the commit's retention effects need, before the merge
+        // below consumes the staged commit.
         #[cfg(feature = "virtual-clients-draft")]
-        let vc_retention_input = if self.is_emulation_group()
-            && matches!(staged_commit.state, StagedCommitState::GroupMember(_))
-        {
-            Some(
-                self.vc_retention_merge_input(provider.storage(), &staged_commit)
-                    .map_err(MergeCommitError::StorageError)?,
-            )
-        } else {
-            None
-        };
+        let vc_retention_input = (self.is_emulation_group()
+            && matches!(staged_commit.state, StagedCommitState::GroupMember(_)))
+        .then(|| super::vc_retention::VcRetentionMergeInput::new(&staged_commit));
 
         match staged_commit.state {
             StagedCommitState::PublicState(staged_state) => {

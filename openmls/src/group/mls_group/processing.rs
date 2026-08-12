@@ -466,6 +466,14 @@ impl MlsGroup {
         provider: &Provider,
         staged_commit: StagedCommit,
     ) -> Result<(), MergeCommitError<Provider::StorageError>> {
+        // Read off the pending commit's derivation epoch before a self-removal
+        // overwrites the group state below. The release at the end of this
+        // function no longer sees the pending commit then.
+        #[cfg(feature = "virtual-clients-draft")]
+        let vc_pending_epoch_id = self
+            .pending_commit()
+            .and_then(|pending| pending.vc_derivation_epoch_id.clone());
+
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
@@ -475,58 +483,17 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(MergeCommitError::StorageError)?;
 
-        // Update the per-epoch emulation bindings. Self-removal drops them.
-        // Otherwise the epoch the commit moves the group into is bound to
-        // the derivation epoch of the commit's VC leaf, or, if the commit
-        // does not install a new VC leaf, to the binding of the current
-        // epoch, since the VC leaf stays active across commits by other
-        // members.
+        // Update the per-epoch emulation bindings. Self-removal tears the
+        // group's whole virtual-clients state down instead. Otherwise the epoch
+        // the commit moves the group into is bound to the derivation epoch of
+        // the commit's VC leaf, or, if the commit does not install a new VC
+        // leaf, to the binding of the current epoch, since the VC leaf stays
+        // active across commits by other members.
         #[cfg(feature = "virtual-clients-draft")]
         if staged_commit.self_removed() {
-            let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> =
-                provider
-                    .storage()
-                    .vc_emulation_bindings(self.group_id())
-                    .map_err(MergeCommitError::StorageError)?;
-            if let Some(bindings) = bindings {
-                vc_retention::release_vc_binding_refs(
-                    provider.storage(),
-                    self.group_id(),
-                    &bindings,
-                )
+            self.tear_down_vc_state(provider.storage(), vc_pending_epoch_id.as_ref())
                 .map_err(|e| {
-                    log::error!("vc: release binding references on self-removal failed: {e:?}");
-                    MergeCommitError::StorageError(e)
-                })?;
-            }
-            // The virtual client's leaf in this group is gone, so no sibling has
-            // to be able to derive one here anymore.
-            vc_retention::release_vc_creation_tracking(provider.storage(), self.group_id())
-                .map_err(|e| {
-                    log::error!("vc: release creation tracking on self-removal failed: {e:?}");
-                    MergeCommitError::StorageError(e)
-                })?;
-            provider
-                .storage()
-                .delete_vc_emulation_bindings(self.group_id())
-                .map_err(|e| {
-                    log::error!("vc: drop emulation bindings on self-removal failed: {e:?}");
-                    MergeCommitError::StorageError(e)
-                })?;
-            provider
-                .storage()
-                .delete_registered_vc_derivation_epoch(self.group_id())
-                .map_err(|e| {
-                    log::error!(
-                        "vc: drop registered derivation epoch on self-removal failed: {e:?}"
-                    );
-                    MergeCommitError::StorageError(e)
-                })?;
-            provider
-                .storage()
-                .delete_vc_retention_state(self.group_id())
-                .map_err(|e| {
-                    log::error!("vc: drop retention state on self-removal failed: {e:?}");
+                    log::error!("vc: tear down virtual-client state on self-removal failed: {e:?}");
                     MergeCommitError::StorageError(e)
                 })?;
         } else {
@@ -540,13 +507,11 @@ impl MlsGroup {
                 .clone()
                 .or_else(|| bindings.get(self.epoch()).cloned());
             if let Some(epoch_id) = epoch_id {
-                let bound_before: Vec<_> = bindings.epoch_ids().cloned().collect();
                 // Keep one entry per retained message-secrets epoch plus
                 // the new current one, so bindings age out in lockstep
                 // with the message secrets they are needed for.
                 let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
-                bindings.insert(staged_commit.epoch(), epoch_id, max_entries);
-                let bound_now: Vec<_> = bindings.epoch_ids().cloned().collect();
+                let unbound = bindings.insert(staged_commit.epoch(), epoch_id.clone(), max_entries);
                 provider
                     .storage()
                     .write_vc_emulation_bindings(self.group_id(), &bindings)
@@ -558,7 +523,7 @@ impl MlsGroup {
                 // lives, so that a delayed message from the bound epoch can
                 // still be deprotected. An epoch the insert aged out of the
                 // window is released again.
-                self.update_vc_binding_refs(provider.storage(), &bound_before, &bound_now)
+                self.update_vc_binding_refs(provider.storage(), &epoch_id, &unbound)
                     .map_err(|e| {
                         log::error!("vc: update binding references at merge failed: {e:?}");
                         MergeCommitError::StorageError(e)
@@ -572,11 +537,11 @@ impl MlsGroup {
         // derivation info.
         #[cfg(feature = "virtual-clients-draft")]
         if let Some(sender_leaf) = staged_commit.vc_sender_emulation_leaf {
-            vc_retention::mark_vc_creation_seen(provider.storage(), self.group_id(), sender_leaf)
+            vc_retention::mark_vc_creation_seen(provider.storage(), self.group_id(), [sender_leaf])
                 .map_err(|e| {
-                log::error!("vc: mark a sibling's commit in a created group failed: {e:?}");
-                MergeCommitError::StorageError(e)
-            })?;
+                    log::error!("vc: mark a sibling's commit in a created group failed: {e:?}");
+                    MergeCommitError::StorageError(e)
+                })?;
         }
 
         // Merge staged commit

@@ -1,3 +1,10 @@
+-- Each of the three entities below gets its own table rather than riding the
+-- generic `group_data` table with a type discriminator. That follows the local
+-- virtual-clients precedent: V4 gave the emulation bindings their own table and
+-- V6 did the same for the registered derivation epochs. The reference index is
+-- keyed on a derivation epoch rather than on a group id, which `group_data`
+-- cannot express at all.
+
 -- Virtual-clients retention state of an emulation group. One row per emulation
 -- group, holding the serialized log of retained derivation epochs, the
 -- per-member watermarks and latest declarations, the obligations assumed for

@@ -6,8 +6,8 @@
 //! bookkeeping where a group becomes an emulation group, computes the
 //! declaration an outgoing commit carries, applies a merged commit's membership
 //! changes and declaration, deletes derivation-epoch state nothing protects
-//! anymore, and offers the application the two signals OpenMLS cannot derive on
-//! its own.
+//! anymore, tears the whole bookkeeping down with the group, and offers the
+//! application the two signals OpenMLS cannot derive on its own.
 //!
 //! It also maintains the reverse reference index [`VcEpochRefs`], through which
 //! a higher-level group holds a derivation epoch its pending commit, its leaf
@@ -19,7 +19,7 @@ use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
-use super::{MlsGroup, Proposal, Sender, StagedCommit};
+use super::{proposal_store::removed_leaves, MlsGroup, StagedCommit};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::KeyPackageRef,
@@ -42,9 +42,29 @@ pub enum VcRetentionUpdateError<StorageError> {
     /// initialized, so nothing can be recorded against it.
     #[error("The emulation group has no retention state.")]
     MissingRetentionState,
+    /// A reference was taken on a derivation epoch the emulation group does not
+    /// retain anymore, so the epoch could not be declared to the siblings.
+    #[error("The derivation epoch {0:?} is not retained anymore.")]
+    UnretainedEpoch(EpochId),
     /// Reading or writing retention state failed.
     #[error("Storage error: {0}")]
     Storage(StorageError),
+}
+
+/// Why a mutation of the retention bookkeeping was rejected. A rejected mutation
+/// leaves the stored state untouched.
+enum VcRetentionRejection {
+    /// A reference was taken on a derivation epoch the bookkeeping does not
+    /// protect anymore.
+    UnretainedEpoch(EpochId),
+}
+
+impl<StorageError> From<VcRetentionRejection> for VcRetentionUpdateError<StorageError> {
+    fn from(rejection: VcRetentionRejection) -> Self {
+        match rejection {
+            VcRetentionRejection::UnretainedEpoch(epoch_id) => Self::UnretainedEpoch(epoch_id),
+        }
+    }
 }
 
 /// The `epoch_usage` declaration a commit carries, with the emulation-group leaf
@@ -55,38 +75,36 @@ pub enum VcRetentionUpdateError<StorageError> {
 /// declaration that belongs to it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct VcStagedDeclaration {
-    author: LeafNodeIndex,
-    declared: BTreeSet<EpochId>,
+    pub(crate) author: LeafNodeIndex,
+    /// The epochs the author declares as in use. An empty set is a declaration
+    /// too: it retires everything the author declared before.
+    pub(crate) declared: BTreeSet<EpochId>,
 }
 
 impl VcStagedDeclaration {
     pub(crate) fn new(author: LeafNodeIndex, declared: BTreeSet<EpochId>) -> Self {
         Self { author, declared }
     }
-
-    /// The epochs the author declares as in use. An empty set is a declaration
-    /// too: it retires everything the author declared before.
-    pub(crate) fn declared(&self) -> &BTreeSet<EpochId> {
-        &self.declared
-    }
 }
 
-/// What applying a commit's retention effects needs from the commit's input
-/// state.
+/// What applying a commit's retention effects needs from the commit itself.
 ///
-/// Collected before the staged diff is merged, because the registration the
-/// merge performs overwrites the newest derivation epoch of the input state, and
-/// because the membership the commit changes is read off the pre-merge tree.
+/// Collected before the staged diff is merged, since the merge consumes the
+/// staged commit.
 pub(crate) struct VcRetentionMergeInput {
-    /// The derivation epoch registered before this merge, if any. Absent for a
-    /// client that joins the emulation group through this very commit.
-    registered: Option<RegisteredVcDerivationEpoch>,
-    /// The leaves occupied before the merge.
-    occupied_before: BTreeSet<LeafNodeIndex>,
     /// The leaves the commit removes, whether by Remove or by SelfRemove.
     removed: BTreeSet<LeafNodeIndex>,
     /// The declaration the commit carries, if it carries one.
     declaration: Option<VcStagedDeclaration>,
+}
+
+impl VcRetentionMergeInput {
+    pub(crate) fn new(staged_commit: &StagedCommit) -> Self {
+        Self {
+            removed: removed_leaves(staged_commit.queued_proposals()).collect(),
+            declaration: staged_commit.vc_declaration.clone(),
+        }
+    }
 }
 
 /// Start the retention bookkeeping of an emulation group at the derivation epoch
@@ -101,7 +119,10 @@ pub(crate) fn initialize_vc_retention_state<Storage: StorageProvider>(
     epoch_id: EpochId,
 ) -> Result<(), Storage::Error> {
     let state = VcRetentionState::initialize(
-        public_group.members().map(|member| member.index),
+        public_group
+            .treesync()
+            .full_leaves()
+            .map(|(index, _leaf)| index),
         public_group.group_context().epoch(),
         epoch_id,
     );
@@ -129,25 +150,6 @@ pub(crate) fn update_vc_epoch_refs<Storage: StorageProvider>(
     }
 }
 
-/// Release the binding references `group_id` holds through `bindings`, one per
-/// distinct derivation epoch the bindings point at.
-///
-/// Called where a group's bindings row goes as a whole, on self-removal and on
-/// group deletion. The row itself is deleted by the caller.
-pub(crate) fn release_vc_binding_refs<Storage: StorageProvider>(
-    storage: &Storage,
-    group_id: &GroupId,
-    bindings: &VcEmulationBindings,
-) -> Result<(), Storage::Error> {
-    let bound: BTreeSet<&EpochId> = bindings.epoch_ids().collect();
-    for epoch_id in bound {
-        update_vc_epoch_refs(storage, epoch_id, |refs| {
-            refs.remove_binding(group_id);
-        })?;
-    }
-    Ok(())
-}
-
 /// Take the binding reference `group_id` gains by binding one of its epochs to
 /// the derivation epoch `epoch_id`.
 ///
@@ -160,7 +162,7 @@ pub(crate) fn take_vc_binding_ref<Storage: StorageProvider>(
     epoch_id: &EpochId,
 ) -> Result<(), Storage::Error> {
     update_vc_epoch_refs(storage, epoch_id, |refs| {
-        refs.add_binding(group_id.clone());
+        refs.bindings.insert(group_id.clone());
     })
 }
 
@@ -199,29 +201,35 @@ pub(crate) fn initialize_vc_creation_tracking<Storage: StorageProvider>(
     let tracking = VcCreationTracking::new(epoch_id.clone(), outstanding);
     storage.write_vc_creation_tracking(new_group_id, &tracking)?;
     update_vc_epoch_refs(storage, epoch_id, |refs| {
-        refs.add_creation(new_group_id.clone());
+        refs.creations.insert(new_group_id.clone());
     })
 }
 
-/// Record the emulation-group leaf `leaf` as seen in `group_id`'s creation
+/// Record the emulation-group leaves `leaves` as seen in `group_id`'s creation
 /// tracking, and release the creation reference once every sibling was seen.
 ///
 /// A sibling is seen either because it committed in the created group, which
 /// proves it processed the creation, or because it left the emulation group,
 /// which means it will never act on the epoch again.
 ///
+/// The tracking row is read and written once, whatever `leaves` holds.
+///
 /// Releasing does not reap. The epoch becomes reapable and goes at the emulation
 /// group's next reap point.
 pub(crate) fn mark_vc_creation_seen<Storage: StorageProvider>(
     storage: &Storage,
     group_id: &GroupId,
-    leaf: LeafNodeIndex,
+    leaves: impl IntoIterator<Item = LeafNodeIndex>,
 ) -> Result<(), Storage::Error> {
     let Some(mut tracking): Option<VcCreationTracking> = storage.vc_creation_tracking(group_id)?
     else {
         return Ok(());
     };
-    if !tracking.mark_seen(leaf) {
+    let mut seen_any = false;
+    for leaf in leaves {
+        seen_any |= tracking.mark_seen(leaf);
+    }
+    if !seen_any {
         return Ok(());
     }
     if !tracking.is_complete() {
@@ -229,7 +237,7 @@ pub(crate) fn mark_vc_creation_seen<Storage: StorageProvider>(
     }
     storage.delete_vc_creation_tracking(group_id)?;
     update_vc_epoch_refs(storage, tracking.epoch_id(), |refs| {
-        refs.remove_creation(group_id);
+        refs.creations.remove(group_id);
     })
 }
 
@@ -247,7 +255,7 @@ pub(crate) fn release_vc_creation_tracking<Storage: StorageProvider>(
     };
     storage.delete_vc_creation_tracking(group_id)?;
     update_vc_epoch_refs(storage, tracking.epoch_id(), |refs| {
-        refs.remove_creation(group_id);
+        refs.creations.remove(group_id);
     })
 }
 
@@ -273,7 +281,7 @@ pub(crate) fn vc_declared_epochs<Storage: StorageProvider>(
     storage: &Storage,
     group: &MlsGroup,
 ) -> Result<Option<BTreeSet<EpochId>>, Storage::Error> {
-    if !group.is_emulation_group() || !group.context().safe_aad_required() {
+    if !group.carries_vc_commit_data() {
         return Ok(None);
     }
     let Some(state): Option<VcRetentionState> = storage.vc_retention_state(group.group_id())?
@@ -308,27 +316,23 @@ pub(crate) fn reap_vc_derivation_epochs<Storage: StorageProvider>(
     storage: &Storage,
     state: &mut VcRetentionState,
 ) -> Result<(), Storage::Error> {
-    let newest = state
-        .newest_epoch()
-        .map(|retained| retained.epoch_id().clone());
+    let mut reaped = BTreeSet::new();
     for epoch_id in state.reapable_epochs() {
-        if Some(&epoch_id) == newest.as_ref() {
-            // The newest epoch is the upper bound of the baseline window, so a
-            // group with any member row at all protects it.
-            debug_assert!(false, "the newest derivation epoch must never be reapable");
-            continue;
-        }
         let refs: Option<VcEpochRefs> = storage.vc_epoch_refs(&epoch_id)?;
-        if refs.is_some_and(|refs| !refs.is_empty()) {
-            continue;
+        match refs {
+            // A row exists only while something holds the epoch, so an empty
+            // one is a leftover this reap cleans up.
+            Some(refs) if !refs.is_empty() => continue,
+            Some(_) => storage.delete_vc_epoch_refs(&epoch_id)?,
+            None => {}
         }
         if storage.has_retained_key_package_material_for_epoch(&epoch_id)? {
             continue;
         }
         storage.delete_vc_derivation_epoch_state(&epoch_id)?;
-        storage.delete_vc_epoch_refs(&epoch_id)?;
-        state.remove_retained(&epoch_id);
+        reaped.insert(epoch_id);
     }
+    state.remove_retained(&reaped);
     Ok(())
 }
 
@@ -354,52 +358,90 @@ fn release_creations_of_removed_members<Storage: StorageProvider>(
         tracked.extend(refs.creations().iter().cloned());
     }
     for group_id in &tracked {
-        for leaf in removed {
-            mark_vc_creation_seen(storage, group_id, *leaf)?;
-        }
+        mark_vc_creation_seen(storage, group_id, removed.iter().copied())?;
     }
     Ok(())
 }
 
 impl MlsGroup {
-    /// Collect what applying `staged_commit`'s retention effects needs from the
-    /// commit's input state. Call this before the staged diff is merged.
-    pub(crate) fn vc_retention_merge_input<Storage: StorageProvider>(
+    /// Delete every trace of virtual clients from this group, in both roles a
+    /// group can play: as a higher-level group of a virtual client and as an
+    /// emulation group.
+    ///
+    /// Called where the group itself goes, on self-removal and on group deletion.
+    /// `pending_epoch_id` names the derivation epoch a still-pending commit was
+    /// built from, which the caller has to read off the pending commit before it
+    /// overwrites the group state.
+    ///
+    /// A group only plays one of the two roles, and the teardown of the other one
+    /// finds nothing to do.
+    pub(crate) fn tear_down_vc_state<Storage: StorageProvider>(
         &self,
         storage: &Storage,
-        staged_commit: &StagedCommit,
-    ) -> Result<VcRetentionMergeInput, Storage::Error> {
-        let mut removed = BTreeSet::new();
-        for queued in staged_commit.queued_proposals() {
-            match queued.proposal() {
-                Proposal::Remove(remove) => {
-                    removed.insert(remove.removed());
-                }
-                Proposal::SelfRemove => {
-                    // Validated proposals always have a member sender here.
-                    if let Sender::Member(leaf) = queued.sender() {
-                        removed.insert(*leaf);
-                    }
-                }
-                Proposal::Add(_)
-                | Proposal::Update(_)
-                | Proposal::PreSharedKey(_)
-                | Proposal::ReInit(_)
-                | Proposal::ExternalInit(_)
-                | Proposal::GroupContextExtensions(_)
-                | Proposal::AppDataUpdate(_)
-                | Proposal::AppEphemeral(_)
-                | Proposal::Custom(_) => {}
+        pending_epoch_id: Option<&EpochId>,
+    ) -> Result<(), Storage::Error> {
+        self.release_vc_higher_level_state(storage, pending_epoch_id)?;
+        self.tear_down_vc_emulation_state(storage)
+    }
+
+    /// Release every derivation-epoch reference this group holds as a
+    /// higher-level group of a virtual client, and delete the state behind those
+    /// references: its leaf bindings and its creation tracking.
+    ///
+    /// The derivation epochs themselves are not deleted. They are keyed on the
+    /// epoch and belong to the emulation group, which may still exist and whose
+    /// other higher-level groups may still hold them. A released epoch becomes
+    /// reapable and goes at the emulation group's next reap point.
+    fn release_vc_higher_level_state<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+        pending_epoch_id: Option<&EpochId>,
+    ) -> Result<(), Storage::Error> {
+        let group_id = self.group_id();
+        if let Some(epoch_id) = pending_epoch_id {
+            update_vc_epoch_refs(storage, epoch_id, |refs| {
+                refs.pending_commits.remove(group_id);
+            })?;
+        }
+        let bindings: Option<VcEmulationBindings> = storage.vc_emulation_bindings(group_id)?;
+        if let Some(bindings) = bindings {
+            let bound: BTreeSet<&EpochId> = bindings.epoch_ids().collect();
+            for epoch_id in bound {
+                update_vc_epoch_refs(storage, epoch_id, |refs| {
+                    refs.bindings.remove(group_id);
+                })?;
             }
         }
-        let registered: Option<RegisteredVcDerivationEpoch> =
-            storage.registered_vc_derivation_epoch(self.group_id())?;
-        Ok(VcRetentionMergeInput {
-            registered,
-            occupied_before: self.occupied_leaves(),
-            removed,
-            declaration: staged_commit.vc_declaration.clone(),
-        })
+        // The virtual client's leaf in this group is gone, so no sibling has to
+        // be able to derive one here anymore.
+        release_vc_creation_tracking(storage, group_id)?;
+        storage.delete_vc_emulation_bindings(group_id)
+    }
+
+    /// Delete this group's state as an emulation group: the per-epoch state of
+    /// every derivation epoch its retained-epoch log still holds, the log itself,
+    /// and the derivation-epoch registration record.
+    ///
+    /// Unlike the reaper, this deletes every retained epoch unconditionally,
+    /// references and retained KeyPackage material notwithstanding. The virtual
+    /// client is gone with its emulation group, so nothing can act on one of its
+    /// epochs anymore, and the retained-epoch log is the only index of that
+    /// per-epoch state: whatever the log still names when it goes is key material
+    /// nothing could ever find again, let alone delete.
+    fn tear_down_vc_emulation_state<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        let group_id = self.group_id();
+        let state: Option<VcRetentionState> = storage.vc_retention_state(group_id)?;
+        if let Some(state) = state {
+            for retained in state.retained_epochs() {
+                storage.delete_vc_derivation_epoch_state(retained.epoch_id())?;
+                storage.delete_vc_epoch_refs(retained.epoch_id())?;
+            }
+        }
+        storage.delete_registered_vc_derivation_epoch(group_id)?;
+        storage.delete_vc_retention_state(group_id)
     }
 
     /// Apply a merged commit's retention effects, with the group already moved
@@ -419,13 +461,28 @@ impl MlsGroup {
         created: Option<EpochId>,
     ) -> Result<(), Storage::Error> {
         let VcRetentionMergeInput {
-            registered,
-            occupied_before,
             removed,
             declaration,
         } = input;
         let output_epoch = self.context().epoch();
         let occupied_now = self.occupied_leaves();
+        // The registration this merge performed, which is the authority on the
+        // emulation-group epoch a derivation epoch was sourced from. Every
+        // retention comparison is made against the log's epoch numbers, and the
+        // group's current epoch may run ahead of the epoch the registration
+        // recorded.
+        let registered: Option<RegisteredVcDerivationEpoch> =
+            storage.registered_vc_derivation_epoch(self.group_id())?;
+        let created = created.map(|epoch_id| {
+            let sourced_from = match &registered {
+                Some(record) if record.epoch_id == epoch_id => record.group_epoch,
+                _ => output_epoch,
+            };
+            (sourced_from, epoch_id)
+        });
+        // A commit that changes membership always creates a derivation epoch, so
+        // a member row is only ever added at one.
+        let member_epoch = created.as_ref().map_or(output_epoch, |(epoch, _)| *epoch);
 
         let mut state = match storage.vc_retention_state(self.group_id())? {
             Some(state) => state,
@@ -433,42 +490,41 @@ impl MlsGroup {
                 // This client joined the emulation group through this very
                 // commit, by way of an external commit. The creation and Welcome
                 // paths initialize the bookkeeping themselves.
-                let epoch_id = created
-                    .clone()
-                    .or_else(|| registered.as_ref().map(|record| record.epoch_id.clone()));
-                let Some(epoch_id) = epoch_id else {
+                let seed = created.clone().or_else(|| {
+                    registered
+                        .as_ref()
+                        .map(|record| (record.group_epoch, record.epoch_id.clone()))
+                });
+                let Some((epoch, epoch_id)) = seed else {
                     log::error!(
                         "vc: no derivation epoch to start retention bookkeeping from in {:?}",
                         self.group_id()
                     );
                     return Ok(());
                 };
-                VcRetentionState::initialize(occupied_now.iter().copied(), output_epoch, epoch_id)
+                VcRetentionState::initialize(occupied_now.iter().copied(), epoch, epoch_id)
             }
         };
 
         for leaf in &removed {
             state.member_removed(*leaf);
         }
-        // A leaf the commit removes and refills in one step holds a new member,
-        // and the new occupant carries none of the previous one's retention.
-        let kept: BTreeSet<LeafNodeIndex> = occupied_before.difference(&removed).copied().collect();
-        for leaf in occupied_now.difference(&kept) {
-            state.member_added(*leaf, output_epoch);
+        // The removals above ran first, so a leaf the commit removes and refills
+        // in one step has no row left here and gets a fresh one: the new occupant
+        // carries none of the previous one's retention.
+        for leaf in &occupied_now {
+            if state.member(*leaf).is_none() {
+                state.member_added(*leaf, member_epoch);
+            }
         }
 
-        let created_epoch = created.is_some().then_some(output_epoch);
-        if let Some(epoch_id) = created {
-            state.record_derivation_epoch(output_epoch, epoch_id);
+        if let Some((epoch, epoch_id)) = created {
+            state.record_derivation_epoch(epoch, epoch_id);
         }
+        // After the registration above, so the author advances to a derivation
+        // epoch the commit creates rather than to the one it built on.
         if let Some(declaration) = declaration {
-            let input_newest = registered.map_or(output_epoch, |record| record.group_epoch);
-            state.apply_declaration(
-                declaration.author,
-                declaration.declared(),
-                input_newest,
-                created_epoch,
-            );
+            state.apply_declaration(declaration.author, &declaration.declared);
         }
 
         if !removed.is_empty() {
@@ -478,28 +534,23 @@ impl MlsGroup {
         storage.write_vc_retention_state(self.group_id(), &state)
     }
 
-    /// Bring this group's binding references in line with a binding row that
-    /// moved from `before` to `now`.
+    /// Bring this group's binding references in line with a binding row that now
+    /// binds `bound` and stopped pointing at every epoch in `unbound`.
     ///
-    /// A derivation epoch the row started pointing at gains a reference, one it
-    /// stopped pointing at loses one. Both lists come straight off the row, so
-    /// an epoch bound at several of the group's epochs repeats and its reference
-    /// only goes when the last of those bindings does.
+    /// `unbound` comes straight off [`VcEmulationBindings::insert`], so an epoch
+    /// bound at several of the group's epochs keeps its reference until the last
+    /// of those bindings goes.
     pub(crate) fn update_vc_binding_refs<Storage: StorageProvider>(
         &self,
         storage: &Storage,
-        before: &[EpochId],
-        now: &[EpochId],
+        bound: &EpochId,
+        unbound: &[EpochId],
     ) -> Result<(), Storage::Error> {
-        let bound_before: BTreeSet<&EpochId> = before.iter().collect();
-        let bound_now: BTreeSet<&EpochId> = now.iter().collect();
-        for epoch_id in bound_now.difference(&bound_before) {
-            take_vc_binding_ref(storage, self.group_id(), epoch_id)?;
-        }
-        let group_id = self.group_id().clone();
-        for epoch_id in bound_before.difference(&bound_now) {
+        take_vc_binding_ref(storage, self.group_id(), bound)?;
+        let group_id = self.group_id();
+        for epoch_id in unbound {
             update_vc_epoch_refs(storage, epoch_id, |refs| {
-                refs.remove_binding(&group_id);
+                refs.bindings.remove(group_id);
             })?;
         }
         Ok(())
@@ -514,7 +565,7 @@ impl MlsGroup {
     ) -> Result<(), Storage::Error> {
         let group_id = self.group_id().clone();
         update_vc_epoch_refs(storage, epoch_id, |refs| {
-            refs.add_pending_commit(group_id);
+            refs.pending_commits.insert(group_id);
         })
     }
 
@@ -528,9 +579,9 @@ impl MlsGroup {
         storage: &Storage,
         epoch_id: &EpochId,
     ) -> Result<(), Storage::Error> {
-        let group_id = self.group_id().clone();
+        let group_id = self.group_id();
         update_vc_epoch_refs(storage, epoch_id, |refs| {
-            refs.remove_pending_commit(&group_id);
+            refs.pending_commits.remove(group_id);
         })
     }
 
@@ -563,11 +614,7 @@ impl MlsGroup {
                 .delete_retained_key_package_material(key_package_ref)
                 .map_err(VcRetentionUpdateError::Storage)?;
         }
-        let mut state = self.load_vc_retention_state(storage)?;
-        reap_vc_derivation_epochs(storage, &mut state).map_err(VcRetentionUpdateError::Storage)?;
-        storage
-            .write_vc_retention_state(self.group_id(), &state)
-            .map_err(VcRetentionUpdateError::Storage)
+        self.with_vc_retention_state(storage, |_state| Ok(()))
     }
 
     /// Record that the application holds the derivation epoch `epoch_id` under
@@ -579,11 +626,14 @@ impl MlsGroup {
     /// band. The epoch stays on this client and is folded into every declaration
     /// this client sends, which is how the siblings learn to keep it.
     ///
-    /// A reference has to be registered before the work it covers becomes
-    /// visible to anyone else, and before the commit that declares it is built.
-    /// The siblings only accept a declared epoch while it is still justified on
-    /// their side, so an epoch referenced after the group stopped retaining it
-    /// cannot be declared anymore, and the declaring commit is rejected.
+    /// The epoch must still be protected by this emulation group's bookkeeping,
+    /// which is why the reference has to be taken before the work it covers
+    /// becomes visible to anyone else, and before the commit that declares it is
+    /// built. Fails with [`VcRetentionUpdateError::UnretainedEpoch`] otherwise:
+    /// the siblings only accept a declared epoch while it is still justified on
+    /// their side, so a reference on an epoch this client no longer retains would
+    /// put an unjustifiable entry in every declaration it sends from then on and
+    /// have the siblings reject its commits.
     ///
     /// Release the reference with [`Self::remove_vc_epoch_reference`]. Adding a
     /// reference that is already held changes nothing.
@@ -594,11 +644,13 @@ impl MlsGroup {
         label: &[u8],
     ) -> Result<(), VcRetentionUpdateError<Storage::Error>> {
         self.require_emulation_group()?;
-        let mut state = self.load_vc_retention_state(storage)?;
-        state.add_app_reference(epoch_id.clone(), label.to_vec());
-        storage
-            .write_vc_retention_state(self.group_id(), &state)
-            .map_err(VcRetentionUpdateError::Storage)
+        self.with_vc_retention_state(storage, |state| {
+            if !state.blob_protected_epochs().contains(&epoch_id) {
+                return Err(VcRetentionRejection::UnretainedEpoch(epoch_id.clone()));
+            }
+            state.add_app_reference(epoch_id.clone(), label.to_vec());
+            Ok(())
+        })
     }
 
     /// Release the application's reference to `epoch_id` held under `label`, and
@@ -617,30 +669,42 @@ impl MlsGroup {
         label: &[u8],
     ) -> Result<(), VcRetentionUpdateError<Storage::Error>> {
         self.require_emulation_group()?;
-        let mut state = self.load_vc_retention_state(storage)?;
-        state.remove_app_reference(epoch_id, label);
+        self.with_vc_retention_state(storage, |state| {
+            state.remove_app_reference(epoch_id, label);
+            Ok(())
+        })
+    }
+
+    /// Load this emulation group's retention bookkeeping, hand it to `mutate`,
+    /// delete what nothing protects anymore and persist the result.
+    ///
+    /// A `mutate` that rejects the update leaves the stored state untouched.
+    ///
+    /// Reaping on every update is what keeps the three application-facing entry
+    /// points uniform. It is sound for an update that only adds protection, since
+    /// a larger protected set reaps nothing.
+    fn with_vc_retention_state<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+        mutate: impl FnOnce(&mut VcRetentionState) -> Result<(), VcRetentionRejection>,
+    ) -> Result<(), VcRetentionUpdateError<Storage::Error>> {
+        let mut state: VcRetentionState = storage
+            .vc_retention_state(self.group_id())
+            .map_err(VcRetentionUpdateError::Storage)?
+            .ok_or(VcRetentionUpdateError::MissingRetentionState)?;
+        mutate(&mut state)?;
         reap_vc_derivation_epochs(storage, &mut state).map_err(VcRetentionUpdateError::Storage)?;
         storage
             .write_vc_retention_state(self.group_id(), &state)
             .map_err(VcRetentionUpdateError::Storage)
     }
 
-    /// The retention bookkeeping of this emulation group.
-    pub(crate) fn load_vc_retention_state<Storage: StorageProvider>(
-        &self,
-        storage: &Storage,
-    ) -> Result<VcRetentionState, VcRetentionUpdateError<Storage::Error>> {
-        storage
-            .vc_retention_state(self.group_id())
-            .map_err(VcRetentionUpdateError::Storage)?
-            .ok_or(VcRetentionUpdateError::MissingRetentionState)
-    }
-
     /// The leaf indices of the group's current members.
     fn occupied_leaves(&self) -> BTreeSet<LeafNodeIndex> {
         self.public_group()
-            .members()
-            .map(|member| member.index)
+            .treesync()
+            .full_leaves()
+            .map(|(index, _leaf)| index)
             .collect()
     }
 

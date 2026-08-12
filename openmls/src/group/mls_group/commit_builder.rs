@@ -165,9 +165,10 @@ pub struct Complete {
     result: CreateCommitResult,
     // Only for external commits
     original_wire_format_policy: Option<WireFormatPolicy>,
-    /// The emulation group and own emulation leaf a virtual client's external
-    /// commit joins the group from. `None` for every other commit. `finalize`
-    /// starts the joined group's creation tracking from it.
+    /// The emulation group and own emulation leaf a virtual client's commit is
+    /// built from. `None` for a commit that is not a virtual-client commit. Only
+    /// the external-commit `finalize` reads it, to start the joined group's
+    /// creation tracking.
     #[cfg(feature = "virtual-clients-draft")]
     vc_external_join: Option<(GroupId, LeafNodeIndex)>,
 }
@@ -800,31 +801,30 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             other_extensions,
         } = cur_stage.group_info_config;
 
-        // Stage the marker before any proposal validation or path computation,
-        // so a misconfigured group is rejected before an operation generation is
-        // burned. The staged Safe AAD is what gets serialized into the commit's
-        // `authenticated_data` further down.
+        // Stage what this commit says about derivation epochs before any proposal
+        // validation or path computation, so a misconfigured group is rejected
+        // before an operation generation is burned. The staged Safe AAD is what
+        // gets serialized into the commit's `authenticated_data` further down,
+        // and it is authoritative for what the commit says: an application that
+        // staged the item itself gets the same result as one that let the builder
+        // assemble it.
         #[cfg(feature = "virtual-clients-draft")]
-        if builder.vc_new_derivation_epoch {
-            stage_vc_new_derivation_epoch(builder.group.borrow_mut())?;
-        }
-
-        // The declaration replaces whatever `epoch_usage` the application staged:
-        // it is computed from the retention state every emulator client agrees on,
-        // and the application's own epochs reach it through
-        // `MlsGroup::add_vc_epoch_reference`.
-        #[cfg(feature = "virtual-clients-draft")]
-        if let Some(declared) = builder.vc_declared_epochs.take() {
-            stage_vc_epoch_usage(builder.group.borrow_mut(), &declared)?;
-        }
+        let vc_commit_data = {
+            let new_derivation_epoch = builder.vc_new_derivation_epoch;
+            // The declaration replaces whatever `epoch_usage` the application
+            // staged: it is computed from the retention state every emulator
+            // client agrees on, and the application's own epochs reach it through
+            // `MlsGroup::add_vc_epoch_reference`.
+            let declared = builder.vc_declared_epochs.take();
+            stage_vc_commit_data(
+                builder.group.borrow_mut(),
+                new_derivation_epoch,
+                declared.as_ref(),
+            )?
+        };
 
         let group = builder.group.borrow();
 
-        // The staged Safe AAD is authoritative for what this commit says about
-        // derivation epochs, so an application that staged the item itself gets
-        // the same result as one that let the builder assemble it.
-        #[cfg(feature = "virtual-clients-draft")]
-        let vc_commit_data = staged_vc_commit_data(group)?;
         #[cfg(feature = "virtual-clients-draft")]
         let marks_new_vc_derivation_epoch = vc_commit_data
             .as_ref()
@@ -1377,15 +1377,12 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 .as_ref()
                 .map(|info| info.wire_format_policy),
             #[cfg(feature = "virtual-clients-draft")]
-            vc_external_join: vc_loaded
-                .as_ref()
-                .filter(|_| is_external_commit)
-                .map(|loaded| {
-                    (
-                        loaded.emulation_group_id.clone(),
-                        loaded.emulation_leaf_index,
-                    )
-                }),
+            vc_external_join: vc_loaded.as_ref().map(|loaded| {
+                (
+                    loaded.emulation_group_id.clone(),
+                    loaded.emulation_leaf_index,
+                )
+            }),
         }))
     }
 
@@ -1504,66 +1501,55 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     }
 }
 
-/// The virtual-clients commit data staged for `group`'s next outgoing message.
+/// Stage what `group`'s next commit says about derivation epochs into the
+/// virtual-clients Safe AAD item, and return the item the commit will carry.
 ///
-/// `Ok(None)` when the group does not act on the item at all, that is when it is
-/// not an emulation group or its GroupContext does not require Safe AAD framing,
-/// and when no item is staged.
-#[cfg(feature = "virtual-clients-draft")]
-fn staged_vc_commit_data(
-    group: &MlsGroup,
-) -> Result<Option<VirtualClientCommitData>, CreateCommitError> {
-    if !group.is_emulation_group() || !group.context().safe_aad_required() {
-        return Ok(None);
-    }
-    Ok(VirtualClientCommitData::from_safe_aad(&group.safe_aad)?)
-}
-
-/// Add a `new_derivation_epoch` action to the virtual-clients Safe AAD item
-/// staged on `group`, creating the item if the application staged none.
+/// Adds a `new_derivation_epoch` action when `new_derivation_epoch` is set, and
+/// installs `declared` as the commit's `epoch_usage` when a declaration was
+/// computed. An empty declaration is staged as an empty `epoch_usage`, which
+/// retires the author's previous one. Every other entry of an
+/// application-staged item is preserved, and the item is parsed and written once.
 ///
-/// Every other entry of an application-staged item is preserved. Fails if the
-/// group cannot carry the marker, either because it is not an emulation group or
-/// because its GroupContext does not require Safe AAD framing.
-#[cfg(feature = "virtual-clients-draft")]
-fn stage_vc_new_derivation_epoch(group: &mut MlsGroup) -> Result<(), CreateCommitError> {
-    if !group.is_emulation_group() {
-        return Err(CreateCommitError::NewDerivationEpochOutsideEmulationGroup);
-    }
-    if !group.context().safe_aad_required() {
-        return Err(CreateCommitError::NewDerivationEpochWithoutSafeAad);
-    }
-
-    let mut commit_data = staged_vc_commit_data(group)?
-        .map_or_else(|| VirtualClientCommitData::new(None, Vec::new()), Ok)?;
-    commit_data.require_new_derivation_epoch();
-    group.safe_aad.upsert(commit_data.to_safe_aad_item()?);
-    Ok(())
-}
-
-/// Declare `declared` as the epochs the author of `group`'s next commit still
-/// uses, in the virtual-clients Safe AAD item staged on `group`, creating the
-/// item if the application staged none.
+/// `Ok(None)` when the group does not act on the item at all, that is when it
+/// carries no virtual-clients commit data, and when no item is staged and
+/// nothing has to be staged.
 ///
-/// Every other entry of an application-staged item is preserved, including a
-/// `new_derivation_epoch` action. An empty set is declared as an empty
-/// `epoch_usage`, which retires the author's previous declaration. Groups that
-/// do not act on the item carry no declaration.
+/// Fails if the marker was requested on a group that cannot carry it. A
+/// declaration on such a group is dropped instead, since OpenMLS computes it
+/// rather than the application requesting it.
 #[cfg(feature = "virtual-clients-draft")]
-fn stage_vc_epoch_usage(
+fn stage_vc_commit_data(
     group: &mut MlsGroup,
-    declared: &std::collections::BTreeSet<EpochId>,
-) -> Result<(), CreateCommitError> {
+    new_derivation_epoch: bool,
+    declared: Option<&std::collections::BTreeSet<EpochId>>,
+) -> Result<Option<VirtualClientCommitData>, CreateCommitError> {
     use crate::components::vc_commit_data::VcEpochUsage;
 
-    if !group.is_emulation_group() || !group.context().safe_aad_required() {
-        return Ok(());
+    if new_derivation_epoch {
+        if !group.is_emulation_group() {
+            return Err(CreateCommitError::NewDerivationEpochOutsideEmulationGroup);
+        }
+        if !group.context().safe_aad_required() {
+            return Err(CreateCommitError::NewDerivationEpochWithoutSafeAad);
+        }
     }
-    let mut commit_data = staged_vc_commit_data(group)?
-        .map_or_else(|| VirtualClientCommitData::new(None, Vec::new()), Ok)?;
-    commit_data.set_epoch_usage(VcEpochUsage::new(declared.iter().cloned())?);
+    if !group.carries_vc_commit_data() {
+        return Ok(None);
+    }
+    let staged = VirtualClientCommitData::from_safe_aad(&group.safe_aad)?;
+    if !new_derivation_epoch && declared.is_none() {
+        return Ok(staged);
+    }
+    let mut commit_data =
+        staged.map_or_else(|| VirtualClientCommitData::new(None, Vec::new()), Ok)?;
+    if new_derivation_epoch {
+        commit_data.require_new_derivation_epoch();
+    }
+    if let Some(declared) = declared {
+        commit_data.set_epoch_usage(VcEpochUsage::new(declared.iter().cloned())?);
+    }
     group.safe_aad.upsert(commit_data.to_safe_aad_item()?);
-    Ok(())
+    Ok(Some(commit_data))
 }
 
 /// Build the path-secret + leaf-keypair override from the

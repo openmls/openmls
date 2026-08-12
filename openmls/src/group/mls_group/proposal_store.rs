@@ -27,6 +27,32 @@ pub(crate) struct SelfRemoveInStore {
     pub(crate) proposal_ref: ProposalRef,
 }
 
+/// The leaf indices that `queued_proposals` frees, whether by Remove or by
+/// SelfRemove. Leaves may repeat if the proposals do.
+///
+/// The proposals must be validated before calling this function, since a
+/// SelfRemove is only attributed to a leaf when its sender is a member.
+pub(crate) fn removed_leaves<'a>(
+    queued_proposals: impl Iterator<Item = &'a QueuedProposal> + 'a,
+) -> impl Iterator<Item = LeafNodeIndex> + 'a {
+    queued_proposals.filter_map(|queued| match queued.proposal() {
+        Proposal::Remove(remove) => Some(remove.removed()),
+        Proposal::SelfRemove => match queued.sender() {
+            Sender::Member(sender) => Some(*sender),
+            Sender::External(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => None,
+        },
+        Proposal::Add(_)
+        | Proposal::Update(_)
+        | Proposal::PreSharedKey(_)
+        | Proposal::ReInit(_)
+        | Proposal::ExternalInit(_)
+        | Proposal::GroupContextExtensions(_)
+        | Proposal::Custom(_) => None,
+        #[cfg(feature = "extensions-draft")]
+        Proposal::AppDataUpdate(_) | Proposal::AppEphemeral(_) => None,
+    })
+}
+
 /// A [ProposalStore] can store the standalone proposals that are received from
 /// the DS in between two commit messages.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]

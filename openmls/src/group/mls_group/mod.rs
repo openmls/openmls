@@ -594,23 +594,13 @@ impl MlsGroup {
 
         // Drop this group's derivation-epoch bindings, its registration record
         // and its retention bookkeeping, and release every derivation epoch this
-        // group held. `VcDerivationEpochState` and the operation secret tree are
-        // keyed on the derivation epoch and may still be referenced by other
-        // higher-level groups, so they're not deleted here. A released epoch
-        // becomes reapable and goes at the emulation group's next reap point.
+        // group held, including the one a pending commit was built from.
         #[cfg(feature = "virtual-clients-draft")]
         {
-            use crate::components::vc_derivation_info::VcEmulationBindings;
-
-            let bindings: Option<VcEmulationBindings> =
-                storage.vc_emulation_bindings(self.group_id())?;
-            if let Some(bindings) = bindings {
-                vc_retention::release_vc_binding_refs(storage, self.group_id(), &bindings)?;
-            }
-            vc_retention::release_vc_creation_tracking(storage, self.group_id())?;
-            storage.delete_vc_emulation_bindings(self.group_id())?;
-            storage.delete_registered_vc_derivation_epoch(self.group_id())?;
-            storage.delete_vc_retention_state(self.group_id())?;
+            let pending_epoch_id = self
+                .pending_commit()
+                .and_then(|staged_commit| staged_commit.vc_derivation_epoch_id.clone());
+            self.tear_down_vc_state(storage, pending_epoch_id.as_ref())?;
         }
 
         self.proposal_store_mut().empty();
@@ -828,6 +818,17 @@ impl MlsGroup {
     #[cfg(feature = "virtual-clients-draft")]
     pub fn is_emulation_group(&self) -> bool {
         self.emulation_group
+    }
+
+    /// Returns whether a commit in this group acts on virtual-clients commit
+    /// data, the Safe AAD item that carries the derivation-epoch marker and the
+    /// author's retention declaration.
+    ///
+    /// Only an emulation group has derivation epochs to say anything about, and
+    /// only a GroupContext that requires Safe AAD framing can carry the item.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn carries_vc_commit_data(&self) -> bool {
+        self.is_emulation_group() && self.context().safe_aad_required()
     }
 
     /// Returns the [`EpochId`] of the newest derivation epoch of this emulation
