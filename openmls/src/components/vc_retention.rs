@@ -23,7 +23,7 @@ use thiserror::Error;
 
 use crate::{
     binary_tree::LeafNodeIndex,
-    components::{vc_commit_data::VcEpochUsage, vc_derivation_info::EpochId},
+    components::vc_derivation_info::EpochId,
     group::{GroupEpoch, GroupId},
 };
 
@@ -108,7 +108,10 @@ pub struct VcRetentionState {
     retained_epochs: Vec<RetainedVcEpoch>,
     members: BTreeMap<LeafNodeIndex, VcMemberRetention>,
     removed_client_usage: BTreeSet<EpochId>,
-    app_references: BTreeMap<EpochId, BTreeSet<Vec<u8>>>,
+    /// The application's labeled epoch references, as `(epoch_id, label)` pairs.
+    /// A set of pairs rather than a map from epoch to labels, so that the state
+    /// also serializes in formats that only allow string map keys.
+    app_references: BTreeSet<(EpochId, Vec<u8>)>,
 }
 
 impl VcRetentionState {
@@ -137,7 +140,7 @@ impl VcRetentionState {
                 .map(|leaf| (leaf, VcMemberRetention::new(epoch)))
                 .collect(),
             removed_client_usage: BTreeSet::new(),
-            app_references: BTreeMap::new(),
+            app_references: BTreeSet::new(),
         }
     }
 
@@ -209,7 +212,7 @@ impl VcRetentionState {
     pub fn apply_declaration(
         &mut self,
         author: LeafNodeIndex,
-        declaration: &VcEpochUsage,
+        declaration: &BTreeSet<EpochId>,
         input_newest: GroupEpoch,
         created: Option<GroupEpoch>,
     ) {
@@ -219,7 +222,7 @@ impl VcRetentionState {
             .entry(author)
             .or_insert_with(|| VcMemberRetention::new(target));
         member.watermark = member.watermark.max(target);
-        member.latest_declaration = Some(declaration.epoch_ids().cloned().collect());
+        member.latest_declaration = Some(declaration.clone());
     }
 
     /// The lowest watermark over all members, the lower bound of the baseline
@@ -297,7 +300,7 @@ impl VcRetentionState {
             }
         }
         protected.extend(self.removed_client_usage.iter().cloned());
-        protected.extend(self.app_references.keys().cloned());
+        protected.extend(self.referenced_epochs());
         protected
     }
 
@@ -320,6 +323,27 @@ impl VcRetentionState {
             .retain(|retained| &retained.epoch_id != epoch_id);
     }
 
+    /// The epochs this client declares as in use in its next commit: the
+    /// obligations it assumed for removed clients and the epochs the
+    /// application holds a reference to.
+    ///
+    /// Epochs that are only kept alive by retained KeyPackage material are
+    /// deliberately absent. Every current member holds that material as a local
+    /// reference of its own, since the upload rides in a commit all of them
+    /// process, so declaring it would say nothing new.
+    pub fn declared_epochs(&self) -> BTreeSet<EpochId> {
+        let mut declared = self.removed_client_usage.clone();
+        declared.extend(self.referenced_epochs());
+        declared
+    }
+
+    /// The epochs the application holds a reference to, under any label.
+    fn referenced_epochs(&self) -> impl Iterator<Item = EpochId> + '_ {
+        self.app_references
+            .iter()
+            .map(|(epoch_id, _label)| epoch_id.clone())
+    }
+
     /// Check a commit's `epoch_usage` against this state, which must be the
     /// state the commit was built on.
     ///
@@ -327,8 +351,8 @@ impl VcRetentionState {
     /// group can see: the baseline window, some member's latest declaration, or
     /// the assumed obligations. Local references and application references
     /// justify nothing, because no other client knows about them.
-    pub fn validate_epoch_usage(&self, usage: &VcEpochUsage) -> Result<(), VcRetentionError> {
-        for epoch_id in usage.epoch_ids() {
+    pub fn validate_epoch_usage(&self, usage: &BTreeSet<EpochId>) -> Result<(), VcRetentionError> {
+        for epoch_id in usage {
             if self.is_in_baseline_window(epoch_id)
                 || self.removed_client_usage.contains(epoch_id)
                 || self.is_declared_by_any_member(epoch_id)
@@ -347,23 +371,14 @@ impl VcRetentionState {
     /// alive locally and are folded into this client's outgoing declarations,
     /// which is how other clients learn to keep the epoch.
     pub fn add_app_reference(&mut self, epoch_id: EpochId, label: Vec<u8>) -> bool {
-        self.app_references
-            .entry(epoch_id)
-            .or_default()
-            .insert(label)
+        self.app_references.insert((epoch_id, label))
     }
 
     /// Release the application reference to `epoch_id` held under `label`.
     /// Returns whether a reference was released.
     pub fn remove_app_reference(&mut self, epoch_id: &EpochId, label: &[u8]) -> bool {
-        let Some(labels) = self.app_references.get_mut(epoch_id) else {
-            return false;
-        };
-        let removed = labels.remove(label);
-        if labels.is_empty() {
-            self.app_references.remove(epoch_id);
-        }
-        removed
+        self.app_references
+            .remove(&(epoch_id.clone(), label.to_vec()))
     }
 
     fn is_declared_by_any_member(&self, epoch_id: &EpochId) -> bool {
@@ -495,8 +510,8 @@ mod tests {
         LeafNodeIndex::new(index)
     }
 
-    fn usage(epoch_ids: impl IntoIterator<Item = EpochId>) -> VcEpochUsage {
-        VcEpochUsage::new(epoch_ids).expect("epoch ids serialize")
+    fn usage(epoch_ids: impl IntoIterator<Item = EpochId>) -> BTreeSet<EpochId> {
+        epoch_ids.into_iter().collect()
     }
 
     /// Two members, three derivation epochs, no declarations.
@@ -583,7 +598,7 @@ mod tests {
         state.apply_declaration(leaf(0), &usage([epoch_id(b"epoch-1")]), epoch(3), None);
         // The other member advances too, so epoch 1 leaves the baseline window
         // and only the declaration keeps it.
-        state.apply_declaration(leaf(1), &VcEpochUsage::empty(), epoch(3), None);
+        state.apply_declaration(leaf(1), &BTreeSet::new(), epoch(3), None);
         assert_eq!(
             state.member(leaf(0)).unwrap().latest_declaration(),
             Some(&BTreeSet::from([epoch_id(b"epoch-1")]))
@@ -592,7 +607,7 @@ mod tests {
             .blob_protected_epochs()
             .contains(&epoch_id(b"epoch-1")));
 
-        state.apply_declaration(leaf(0), &VcEpochUsage::empty(), epoch(3), None);
+        state.apply_declaration(leaf(0), &BTreeSet::new(), epoch(3), None);
         assert_eq!(
             state.member(leaf(0)).unwrap().latest_declaration(),
             Some(&BTreeSet::new()),
@@ -742,16 +757,44 @@ mod tests {
 
         assert!(state.remove_app_reference(&epoch_id(b"epoch-1"), b"upload"));
         assert!(
-            state.app_references.contains_key(&epoch_id(b"epoch-1")),
+            state
+                .referenced_epochs()
+                .any(|epoch| epoch == epoch_id(b"epoch-1")),
             "the second label still holds the epoch"
         );
 
         assert!(state.remove_app_reference(&epoch_id(b"epoch-1"), b"backup"));
         assert!(
-            !state.app_references.contains_key(&epoch_id(b"epoch-1")),
-            "the map entry goes with its last label"
+            !state
+                .referenced_epochs()
+                .any(|epoch| epoch == epoch_id(b"epoch-1")),
+            "the epoch is released with its last label"
         );
         assert!(!state.remove_app_reference(&epoch_id(b"epoch-1"), b"backup"));
+    }
+
+    #[test]
+    fn declared_epochs_covers_obligations_and_app_references() {
+        let mut state = state_with_three_epochs();
+        assert!(state.declared_epochs().is_empty());
+
+        state.removed_client_usage.insert(epoch_id(b"gone"));
+        state.add_app_reference(epoch_id(b"epoch-1"), b"upload".to_vec());
+        state.add_app_reference(epoch_id(b"epoch-1"), b"backup".to_vec());
+
+        assert_eq!(
+            state.declared_epochs(),
+            BTreeSet::from([epoch_id(b"gone"), epoch_id(b"epoch-1")]),
+            "the two labels of epoch 1 declare it once"
+        );
+
+        state.remove_app_reference(&epoch_id(b"epoch-1"), b"upload");
+        assert_eq!(
+            state.declared_epochs(),
+            BTreeSet::from([epoch_id(b"gone"), epoch_id(b"epoch-1")])
+        );
+        state.remove_app_reference(&epoch_id(b"epoch-1"), b"backup");
+        assert_eq!(state.declared_epochs(), BTreeSet::from([epoch_id(b"gone")]));
     }
 
     #[test]

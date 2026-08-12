@@ -239,6 +239,14 @@ impl VirtualClientCommitData {
         &self.actions
     }
 
+    /// Replaces the author's epoch usage declaration.
+    ///
+    /// OpenMLS computes the declaration from the emulation group's retention
+    /// state, so it overwrites whatever the application staged.
+    pub(crate) fn set_epoch_usage(&mut self, epoch_usage: VcEpochUsage) {
+        self.epoch_usage = Some(epoch_usage);
+    }
+
     /// Adds a [`VirtualClientAction::NewDerivationEpoch`] action unless the
     /// commit data already carries one.
     pub(crate) fn require_new_derivation_epoch(&mut self) {

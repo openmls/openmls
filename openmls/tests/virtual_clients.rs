@@ -1,7 +1,15 @@
 #![cfg(feature = "virtual-clients-draft")]
+use std::collections::BTreeSet;
+
 use openmls::{
     component::{ComponentData, ComponentId},
-    components::vc_derivation_info::{EpochId, VcEmulationBindings, VC_COMPONENT_ID},
+    components::{
+        vc_derivation_info::{
+            EpochId, VcDerivationEpochState, VcEmulationBindings, VC_COMPONENT_ID,
+        },
+        vc_operation_tree::OperationSecretTree,
+        vc_retention::{VcRetentionError, VcRetentionState},
+    },
     credentials::NewSignerBundle,
     extensions::{
         AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
@@ -10,7 +18,7 @@ use openmls::{
     group::{
         AppDataUpdates, ConfirmMessageError, GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig,
         MlsGroupJoinConfig, Propose, StageCommitError, StagedVcExternalCommitJoin, StagedWelcome,
-        VcExternalCommitJoinError, MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        VcExternalCommitJoinError, VcRetentionUpdateError, MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
@@ -21,7 +29,7 @@ use openmls::{
         },
     },
     prelude::{
-        test_utils::new_credential, ApplyAppDataUpdateError, Capabilities, LeafNode,
+        test_utils::new_credential, ApplyAppDataUpdateError, Capabilities, LeafNode, LeafNodeIndex,
         LeafNodeParameters, ProcessMessageError, ProcessedMessageContent, ProposalOrRefType,
         ProposalType, ProtocolMessage, ValidationError,
     },
@@ -5432,6 +5440,82 @@ fn send_emulation_commit<P: OpenMlsProvider>(
     bundle.into_commit()
 }
 
+/// Like [`send_emulation_commit`], but with the automatic `epoch_usage`
+/// declaration turned off, so the commit carries only what the application
+/// staged itself and advances no watermark.
+fn send_emulation_commit_without_declaration<P: OpenMlsProvider>(
+    emulator_group: &mut MlsGroup,
+    provider: &P,
+    signer: &SignatureKeyPair,
+    new_derivation_epoch: bool,
+) -> openmls::prelude::MlsMessageOut {
+    let bundle = emulator_group
+        .commit_builder()
+        .force_self_update(true)
+        .derivation_epoch(new_derivation_epoch)
+        .declare_vc_epoch_usage(false)
+        .load_psks(provider.storage())
+        .expect("load psks")
+        .build(provider.rand(), provider.crypto(), signer, |_| true)
+        .expect("build emulation commit")
+        .stage_commit(provider)
+        .expect("stage emulation commit");
+    emulator_group
+        .merge_pending_commit(provider)
+        .expect("merge emulation commit");
+    bundle.into_commit()
+}
+
+/// The retention state of an emulation group, read straight out of storage.
+fn retention_state<P: OpenMlsProvider>(group: &MlsGroup, provider: &P) -> VcRetentionState {
+    provider
+        .storage()
+        .vc_retention_state(group.group_id())
+        .expect("read retention state")
+        .expect("an emulation group has a retention state")
+}
+
+/// The epoch ids of an emulation group's retained-epoch log, oldest first.
+fn retained_epoch_ids<P: OpenMlsProvider>(group: &MlsGroup, provider: &P) -> Vec<EpochId> {
+    retention_state(group, provider)
+        .retained_epochs()
+        .iter()
+        .map(|retained| retained.epoch_id().clone())
+        .collect()
+}
+
+/// The latest declaration `leaf` has applied in `group`'s retention state.
+fn latest_declaration<P: OpenMlsProvider>(
+    group: &MlsGroup,
+    provider: &P,
+    leaf: LeafNodeIndex,
+) -> Option<BTreeSet<EpochId>> {
+    retention_state(group, provider)
+        .member(leaf)
+        .expect("the leaf holds a member")
+        .latest_declaration()
+        .cloned()
+}
+
+/// Whether the per-epoch state and the operation secret tree of `epoch_id` are
+/// still stored.
+fn epoch_state_is_stored<P: OpenMlsProvider>(provider: &P, epoch_id: &EpochId) -> bool {
+    let state: Option<VcDerivationEpochState> = provider
+        .storage()
+        .vc_derivation_epoch_state(epoch_id)
+        .expect("read derivation epoch state");
+    let tree: Option<OperationSecretTree> = provider
+        .storage()
+        .vc_operation_tree(epoch_id)
+        .expect("read operation tree");
+    assert_eq!(
+        state.is_some(),
+        tree.is_some(),
+        "an epoch's state and its operation tree come and go together"
+    );
+    state.is_some()
+}
+
 /// The Welcome joiner of an emulation group registers the Welcome's output
 /// epoch, which is a derivation epoch because the commit that produced it added
 /// the joiner. It converges with the existing member, and that epoch is not the
@@ -5729,6 +5813,24 @@ fn external_commit_into_emulation_group_creates_vc_derivation_epoch() {
         after_a, after_c,
         "the external joiner and the existing member must converge"
     );
+
+    // The joiner has no retention state to update when it merges its own
+    // external commit, so the merge starts one, at the epoch it joined and with a
+    // row for every member.
+    assert_eq!(
+        retained_epoch_ids(&emulator_c, &provider_c),
+        vec![after_c.clone()]
+    );
+    let state = retention_state(&emulator_c, &provider_c);
+    for leaf in [emulator_a.own_leaf_index(), emulator_c.own_leaf_index()] {
+        assert_eq!(
+            state
+                .member(leaf)
+                .expect("every member has a row")
+                .watermark(),
+            emulator_c.epoch()
+        );
+    }
 }
 
 /// Loading a group recovers whether it is an emulation group, so the
@@ -5874,8 +5976,9 @@ fn malformed_vc_commit_data_is_rejected_by_emulation_group() {
 }
 
 /// The wire format decides: an application that stages the marker itself gets a
-/// fresh derivation epoch without calling `new_derivation_epoch`. Calling both
-/// keeps the rest of the application's commit data intact.
+/// fresh derivation epoch without calling `new_derivation_epoch`. With the
+/// automatic declaration turned off, the rest of the application's commit data
+/// reaches the siblings untouched.
 #[openmls_test]
 fn app_staged_vc_marker_refreshes_vc_derivation_epoch() {
     use openmls::components::vc_commit_data::{
@@ -5902,7 +6005,8 @@ fn app_staged_vc_marker_refreshes_vc_derivation_epoch() {
             .expect("serialize commit data")])
         .expect("a single item is sorted and unique");
 
-    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, false);
+    let commit =
+        send_emulation_commit_without_declaration(&mut emulator_a, &provider_a, &signer_a, false);
     let processed = emulator_b
         .process_message(&provider_b, commit.into_protocol_message().unwrap())
         .expect("process commit");
@@ -5984,5 +6088,543 @@ fn new_derivation_epoch_requires_emulation_group() {
             openmls::group::CreateCommitError::NewDerivationEpochOutsideEmulationGroup
         ),
         "unexpected error: {err:?}"
+    );
+}
+
+/// Creating an emulation group starts its retention bookkeeping: one retained
+/// derivation epoch and the creator as the only member, at the epoch that
+/// derivation epoch was sourced from.
+#[openmls_test]
+fn retention_state_starts_at_group_creation() {
+    let provider = Provider::default();
+
+    let (emulator, _signer) = make_emulator_group(ciphersuite, &provider, b"Emulator", true);
+
+    let epoch_id = newest_epoch(&emulator, &provider);
+    assert_eq!(retained_epoch_ids(&emulator, &provider), vec![epoch_id]);
+    let state = retention_state(&emulator, &provider);
+    let member = state
+        .member(emulator.own_leaf_index())
+        .expect("the creator has a member row");
+    assert_eq!(member.watermark(), emulator.epoch());
+    assert_eq!(member.latest_declaration(), None);
+}
+
+/// A Welcome joiner starts the bookkeeping at its entry epoch, with a row for
+/// every member: it cannot retain anything older than that epoch. The member
+/// that added it is at the same epoch, since its own declaration moved it there,
+/// and the epoch the group was founded on is gone on both sides because nothing
+/// claims it anymore.
+#[openmls_test]
+fn retention_state_starts_at_welcome_join() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a) =
+        make_emulator_group(ciphersuite, &provider_a, b"EmulatorA", true);
+    let founding_epoch_id = newest_epoch(&emulator_a, &provider_a);
+    let (_commit, emulator_b, _signer_b) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &provider_a,
+        &signer_a,
+        &provider_b,
+        b"EmulatorB",
+    );
+
+    let entry_epoch_id = newest_epoch(&emulator_b, &provider_b);
+    assert_ne!(entry_epoch_id, founding_epoch_id);
+    let entry_epoch = emulator_b.epoch();
+
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert_eq!(
+            retained_epoch_ids(group, provider),
+            vec![entry_epoch_id.clone()]
+        );
+        let state = retention_state(group, provider);
+        for leaf in [emulator_a.own_leaf_index(), emulator_b.own_leaf_index()] {
+            assert_eq!(
+                state
+                    .member(leaf)
+                    .expect("both members have a row")
+                    .watermark(),
+                entry_epoch
+            );
+        }
+        assert!(!epoch_state_is_stored(provider, &founding_epoch_id));
+    }
+}
+
+/// A commit with the default declaration records the derivation epoch it creates
+/// and advances its author's watermark, on the author's side and on the
+/// recipient's. The recipient's own watermark stays where it was: merging
+/// somebody else's commit says nothing about what this client uses.
+#[openmls_test]
+fn a_declaring_commit_advances_only_its_author() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let leaf_a = emulator_a.own_leaf_index();
+    let leaf_b = emulator_b.own_leaf_index();
+    let before = newest_epoch(&emulator_a, &provider_a);
+    let entry_epoch = emulator_a.epoch();
+
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+
+    let after = newest_epoch(&emulator_a, &provider_a);
+    assert_ne!(after, before);
+    let output_epoch = emulator_a.epoch();
+
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert_eq!(
+            retained_epoch_ids(group, provider),
+            vec![before.clone(), after.clone()],
+            "both sides log the created derivation epoch"
+        );
+        let state = retention_state(group, provider);
+        let author = state.member(leaf_a).expect("the author has a row");
+        assert_eq!(author.watermark(), output_epoch);
+        assert_eq!(author.latest_declaration(), Some(&BTreeSet::new()));
+        let recipient = state.member(leaf_b).expect("the recipient has a row");
+        assert_eq!(recipient.watermark(), entry_epoch);
+        assert_eq!(recipient.latest_declaration(), None);
+    }
+}
+
+/// A commit that carries no declaration advances no watermark and installs no
+/// declaration, even when it does create a derivation epoch.
+#[openmls_test]
+fn a_commit_without_a_declaration_advances_nothing() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let leaf_a = emulator_a.own_leaf_index();
+    let before = newest_epoch(&emulator_a, &provider_a);
+    let entry_epoch = emulator_a.epoch();
+    // Each side keeps whatever it recorded for the author before the commit. The
+    // two differ: the Welcome joiner starts every member without a declaration,
+    // while the adder applied its own.
+    let declared_on_a = latest_declaration(&emulator_a, &provider_a, leaf_a);
+    let declared_on_b = latest_declaration(&emulator_b, &provider_b, leaf_a);
+
+    let commit =
+        send_emulation_commit_without_declaration(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+
+    let after = newest_epoch(&emulator_a, &provider_a);
+    assert_ne!(after, before);
+
+    for (group, provider, declared_before) in [
+        (&emulator_a, &provider_a, declared_on_a),
+        (&emulator_b, &provider_b, declared_on_b),
+    ] {
+        assert_eq!(
+            retained_epoch_ids(group, provider),
+            vec![before.clone(), after.clone()]
+        );
+        assert_eq!(
+            retention_state(group, provider)
+                .member(leaf_a)
+                .expect("the author has a row")
+                .watermark(),
+            entry_epoch,
+            "no declaration, no advancement"
+        );
+        assert_eq!(
+            latest_declaration(group, provider, leaf_a),
+            declared_before,
+            "an absent declaration leaves the previous one in place"
+        );
+    }
+}
+
+/// A member that never commits pins the retention floor: every derivation epoch
+/// from its watermark onwards stays retained, on its own side and on the side of
+/// the member that keeps committing.
+#[openmls_test]
+fn a_stale_member_pins_the_retention_floor() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let mut expected = vec![newest_epoch(&emulator_a, &provider_a)];
+
+    for _ in 0..3 {
+        let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+        process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+        expected.push(newest_epoch(&emulator_a, &provider_a));
+    }
+
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert_eq!(retained_epoch_ids(group, provider), expected);
+        for epoch_id in &expected {
+            assert!(
+                epoch_state_is_stored(provider, epoch_id),
+                "the stale member's watermark keeps every epoch"
+            );
+        }
+    }
+}
+
+/// A derivation epoch nothing references is deleted, with its operation secret
+/// tree, once every member has advanced past it. It stays while one member is
+/// still at it.
+#[openmls_test]
+fn an_unreferenced_epoch_is_reaped_once_every_member_advanced() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let entry_epoch_id = newest_epoch(&emulator_a, &provider_a);
+
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+    let second = newest_epoch(&emulator_a, &provider_a);
+    for provider in [&provider_a, &provider_b] {
+        assert!(
+            epoch_state_is_stored(provider, &entry_epoch_id),
+            "the other member has not advanced yet"
+        );
+    }
+
+    let commit = send_emulation_commit(&mut emulator_b, &provider_b, &signer_b, true);
+    process_and_merge_commit(&mut emulator_a, &provider_a, commit);
+    let third = newest_epoch(&emulator_a, &provider_a);
+
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert!(!epoch_state_is_stored(provider, &entry_epoch_id));
+        assert_eq!(
+            retained_epoch_ids(group, provider),
+            vec![second.clone(), third.clone()],
+            "the reaped epoch leaves the log too"
+        );
+        assert!(epoch_state_is_stored(provider, &second));
+        assert!(epoch_state_is_stored(provider, &third));
+    }
+}
+
+/// The newest derivation epoch survives every reap, however far both members
+/// advance: it is the upper bound of the baseline retention window.
+#[openmls_test]
+fn the_newest_epoch_is_never_reaped() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+
+    for _ in 0..3 {
+        let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+        process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+        let commit = send_emulation_commit(&mut emulator_b, &provider_b, &signer_b, true);
+        process_and_merge_commit(&mut emulator_a, &provider_a, commit);
+
+        for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+            let newest = newest_epoch(group, provider);
+            assert_eq!(
+                retained_epoch_ids(group, provider).last(),
+                Some(&newest),
+                "the newest epoch stays at the end of the log"
+            );
+            assert!(epoch_state_is_stored(provider, &newest));
+        }
+    }
+}
+
+/// A commit that declares a derivation epoch the receiver does not retain is
+/// rejected: the sender and the receiver disagree about what the emulation group
+/// keeps, and accepting it would install a declaration for state that is gone.
+#[openmls_test]
+fn a_commit_declaring_an_unretained_epoch_is_rejected() {
+    use openmls::components::vc_commit_data::{VcEpochUsage, VirtualClientCommitData};
+
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+
+    // Only an application that stages the item itself can declare an epoch the
+    // retention state does not know: the automatic declaration is built from
+    // that state.
+    let unknown = EpochId::new(b"not a derivation epoch of this group".to_vec());
+    let commit_data = VirtualClientCommitData::new(
+        Some(VcEpochUsage::new([unknown.clone()]).expect("epoch ids must serialize")),
+        Vec::new(),
+    )
+    .expect("commit data without actions is valid");
+    emulator_a
+        .set_safe_aad(vec![commit_data
+            .to_safe_aad_item()
+            .expect("serialize commit data")])
+        .expect("a single item is sorted and unique");
+
+    let commit =
+        send_emulation_commit_without_declaration(&mut emulator_a, &provider_a, &signer_a, false);
+
+    let err = emulator_b
+        .process_message(&provider_b, commit.into_protocol_message().unwrap())
+        .expect_err("a declaration of an unretained epoch must be rejected");
+    assert!(
+        matches!(
+            &err,
+            ProcessMessageError::InvalidCommit(StageCommitError::VcRetention(
+                VcRetentionError::UnretainedEpoch(epoch_id)
+            )) if epoch_id == &unknown
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
+/// A two-member emulation group in which the entry derivation epoch has left the
+/// baseline window and only `emulator_a`'s latest declaration, sourced from an
+/// application reference, still protects it. Returns both clients and that epoch.
+fn emulation_group_with_a_declared_epoch<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider_a: &P,
+    provider_b: &P,
+) -> (
+    MlsGroup,
+    SignatureKeyPair,
+    MlsGroup,
+    SignatureKeyPair,
+    EpochId,
+) {
+    let (mut emulator_a, signer_a, mut emulator_b, signer_b) =
+        sibling_emulation_group(ciphersuite, provider_a, provider_b);
+    let epoch_id = newest_epoch(&emulator_a, provider_a);
+
+    // The reference is taken while every member still retains the epoch, so the
+    // declaration it produces is accepted.
+    emulator_a
+        .add_vc_epoch_reference(provider_a.storage(), &epoch_id, b"upload")
+        .expect("add epoch reference");
+    let commit = send_emulation_commit(&mut emulator_a, provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, provider_b, commit);
+
+    // The other member advances too, which moves the floor past the epoch.
+    let commit = send_emulation_commit(&mut emulator_b, provider_b, &signer_b, true);
+    process_and_merge_commit(&mut emulator_a, provider_a, commit);
+
+    for (group, provider) in [(&emulator_a, provider_a), (&emulator_b, provider_b)] {
+        let state = retention_state(group, provider);
+        assert!(
+            !state.is_in_baseline_window(&epoch_id),
+            "the epoch left the baseline window"
+        );
+        assert!(
+            epoch_state_is_stored(provider, &epoch_id),
+            "the declaration keeps the epoch"
+        );
+    }
+
+    (emulator_a, signer_a, emulator_b, signer_b, epoch_id)
+}
+
+/// An application reference keeps a derivation epoch past the baseline window,
+/// on this client and on its siblings. Releasing the reference alone does not
+/// release the epoch, because this client's applied declaration still names it.
+/// The next declaration retires it and the epoch goes on both sides.
+#[openmls_test]
+fn a_declared_epoch_goes_once_its_reference_is_released() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b, epoch_id) =
+        emulation_group_with_a_declared_epoch(ciphersuite, &provider_a, &provider_b);
+
+    emulator_a
+        .remove_vc_epoch_reference(provider_a.storage(), &epoch_id, b"upload")
+        .expect("remove epoch reference");
+    assert!(
+        epoch_state_is_stored(&provider_a, &epoch_id),
+        "this client's own applied declaration still names the epoch"
+    );
+
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert!(!epoch_state_is_stored(provider, &epoch_id));
+        assert!(!retained_epoch_ids(group, provider).contains(&epoch_id));
+    }
+}
+
+/// An absent declaration leaves the author's previous one in place, an empty one
+/// replaces it. The epoch the previous declaration protected survives the first
+/// and goes with the second.
+#[openmls_test]
+fn an_empty_declaration_retires_the_previous_one_but_an_absent_one_does_not() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b, epoch_id) =
+        emulation_group_with_a_declared_epoch(ciphersuite, &provider_a, &provider_b);
+    let leaf_a = emulator_a.own_leaf_index();
+    emulator_a
+        .remove_vc_epoch_reference(provider_a.storage(), &epoch_id, b"upload")
+        .expect("remove epoch reference");
+
+    let commit =
+        send_emulation_commit_without_declaration(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert_eq!(
+            latest_declaration(group, provider, leaf_a),
+            Some(BTreeSet::from([epoch_id.clone()])),
+            "an absent declaration leaves the previous one in place"
+        );
+        assert!(epoch_state_is_stored(provider, &epoch_id));
+    }
+
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert_eq!(
+            latest_declaration(group, provider, leaf_a),
+            Some(BTreeSet::new()),
+            "the empty declaration replaces the previous one"
+        );
+        assert!(!epoch_state_is_stored(provider, &epoch_id));
+    }
+}
+
+/// Retained KeyPackage material holds a derivation epoch on the sibling that
+/// stored it, past the point where the epoch is gone everywhere else. The
+/// application's end-of-life signal for those KeyPackages is what releases it.
+#[openmls_test]
+fn key_package_material_holds_an_epoch_until_end_of_life() {
+    use openmls::components::vc_derivation_info::{
+        assemble_vc_key_package_upload, process_vc_key_package_upload,
+    };
+
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, &provider_a, &provider_b);
+    let entry_epoch_id = newest_epoch(&emulator_a, &provider_a);
+
+    // emulator_a publishes one virtual-client KeyPackage from the entry epoch and
+    // hands the upload to emulator_b, which is where the material is retained.
+    let mut batch = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build_vc_batch(
+            ciphersuite,
+            &provider_a,
+            &vc_signer,
+            vc_credential,
+            emulator_a.group_id(),
+            1,
+        )
+        .expect("build_vc_batch");
+    assert_eq!(batch.epoch_id, entry_epoch_id);
+    let generation = batch.generation;
+    let (_bundle, key_package_info) = batch.key_packages.remove(0);
+    let key_package_ref = key_package_info.key_package_ref.clone();
+    let upload = assemble_vc_key_package_upload(
+        provider_a.storage(),
+        entry_epoch_id.clone(),
+        generation,
+        vec![key_package_info],
+    )
+    .expect("assemble upload");
+    process_vc_key_package_upload(&provider_b, &upload).expect("process upload");
+
+    // Both members advance past the entry epoch, so nothing but the retained
+    // material protects it.
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+    let commit = send_emulation_commit(&mut emulator_b, &provider_b, &signer_b, true);
+    process_and_merge_commit(&mut emulator_a, &provider_a, commit);
+
+    assert!(
+        !epoch_state_is_stored(&provider_a, &entry_epoch_id),
+        "the uploader retains no KeyPackage material, so the epoch goes there"
+    );
+    assert!(
+        epoch_state_is_stored(&provider_b, &entry_epoch_id),
+        "the retained KeyPackage material holds the epoch on the sibling"
+    );
+
+    emulator_b
+        .vc_key_packages_end_of_life(provider_b.storage(), &[key_package_ref])
+        .expect("key packages reached end of life");
+
+    assert!(!epoch_state_is_stored(&provider_b, &entry_epoch_id));
+    assert!(!retained_epoch_ids(&emulator_b, &provider_b).contains(&entry_epoch_id));
+}
+
+/// The retention entry points are only available on an emulation group: any other
+/// group keeps no derivation-epoch state to hold or release.
+#[openmls_test]
+fn the_retention_entry_points_require_an_emulation_group() {
+    let provider = Provider::default();
+
+    let (group, _signer) = make_emulator_group(ciphersuite, &provider, b"NotAnEmulator", false);
+    let epoch_id = EpochId::new(b"any epoch".to_vec());
+
+    assert_eq!(
+        group.add_vc_epoch_reference(provider.storage(), &epoch_id, b"upload"),
+        Err(VcRetentionUpdateError::NotAnEmulationGroup)
+    );
+    assert_eq!(
+        group.remove_vc_epoch_reference(provider.storage(), &epoch_id, b"upload"),
+        Err(VcRetentionUpdateError::NotAnEmulationGroup)
+    );
+    assert_eq!(
+        group.vc_key_packages_end_of_life(provider.storage(), &[]),
+        Err(VcRetentionUpdateError::NotAnEmulationGroup)
+    );
+}
+
+/// A removal drops the removed member's row, so its watermark stops pinning the
+/// retention floor and the epochs it was holding go. The removed client drops the
+/// emulation group's retention state altogether.
+#[openmls_test]
+fn a_removal_drops_the_removed_members_retention() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let leaf_b = emulator_b.own_leaf_index();
+    let entry_epoch_id = newest_epoch(&emulator_a, &provider_a);
+
+    let (commit, _welcome, _gi) = emulator_a
+        .remove_members(&provider_a, &signer_a, &[leaf_b])
+        .expect("remove the other member");
+    emulator_a
+        .merge_pending_commit(&provider_a)
+        .expect("merge the removal");
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+
+    assert_eq!(
+        retention_state(&emulator_a, &provider_a).member(leaf_b),
+        None
+    );
+    assert!(
+        !epoch_state_is_stored(&provider_a, &entry_epoch_id),
+        "the removed member's watermark no longer pins the floor"
+    );
+
+    let removed: Option<VcRetentionState> = provider_b
+        .storage()
+        .vc_retention_state(emulator_b.group_id())
+        .expect("read retention state");
+    assert!(
+        removed.is_none(),
+        "a client removed from the emulation group keeps no retention state"
     );
 }

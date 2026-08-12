@@ -229,10 +229,11 @@ impl MlsGroupBuilder {
         #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
         let mut application_export_tree = ApplicationExportTree::new(application_exporter);
 
-        // The initial epoch of an emulation group is a derivation epoch.
+        // The initial epoch of an emulation group is a derivation epoch, and the
+        // creator is the group's only member, at that epoch.
         #[cfg(feature = "virtual-clients-draft")]
         if mls_group_create_config.emulation_group {
-            crate::components::vc_derivation_info::register_vc_derivation_epoch(
+            let epoch_id = crate::components::vc_derivation_info::register_vc_derivation_epoch(
                 provider.crypto(),
                 provider.storage(),
                 Some(&mut application_export_tree),
@@ -241,6 +242,12 @@ impl MlsGroupBuilder {
                     LeafNodeIndex::new(0),
                 ),
             )?;
+            crate::group::mls_group::vc_retention::initialize_vc_retention_state(
+                provider.storage(),
+                &public_group,
+                epoch_id,
+            )
+            .map_err(NewGroupError::StorageError)?;
         }
 
         let mls_group = MlsGroup {

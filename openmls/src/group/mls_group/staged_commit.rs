@@ -65,25 +65,24 @@ fn validate_vc_external_init_secret(
     Ok(())
 }
 
-/// Returns whether a commit's virtual-clients Safe AAD item carries a
-/// `new_derivation_epoch` action, reading it off the commit's assembled
-/// `authenticated_data`.
+/// Parses a commit's virtual-clients Safe AAD item off the commit's assembled
+/// `authenticated_data`. Returns `Ok(None)` when the commit carries no such
+/// item.
 ///
-/// The wire bytes are authoritative: an application that staged the marker
-/// itself is treated exactly like one that asked the commit builder for it, on
-/// both the sending and the receiving side.
+/// The wire bytes are authoritative: an application that staged the item itself
+/// is treated exactly like one that let the commit builder assemble it, on both
+/// the sending and the receiving side.
 #[cfg(feature = "virtual-clients-draft")]
-fn commit_marks_new_vc_derivation_epoch(
+fn parse_vc_commit_data(
     authenticated_data: &[u8],
-) -> Result<bool, StageCommitError> {
+) -> Result<Option<crate::components::vc_commit_data::VirtualClientCommitData>, StageCommitError> {
     use crate::components::vc_commit_data::VirtualClientCommitData;
 
     let (safe_aad, _prefix_len) =
         crate::framing::safe_aad::parse_authenticated_data_prefix(authenticated_data)
             .map_err(|e| StageCommitError::MalformedVcCommitData(e.to_string()))?;
-    let commit_data = VirtualClientCommitData::from_safe_aad(&safe_aad)
-        .map_err(|e| StageCommitError::MalformedVcCommitData(e.to_string()))?;
-    Ok(commit_data.is_some_and(|commit_data| commit_data.creates_derivation_epoch()))
+    VirtualClientCommitData::from_safe_aad(&safe_aad)
+        .map_err(|e| StageCommitError::MalformedVcCommitData(e.to_string()))
 }
 
 impl MlsGroup {
@@ -341,14 +340,26 @@ impl MlsGroup {
     ) -> Result<StagedCommit, StageCommitError> {
         let ciphersuite = self.ciphersuite();
 
-        // Only an emulation group with Safe AAD framing acts on the marker, so
-        // only there does a malformed item fail the commit.
+        // Only an emulation group with Safe AAD framing acts on the item, so only
+        // there does a malformed one fail the commit. The item carries both the
+        // derivation-epoch marker and the sender's retention declaration, which
+        // is validated against the state the commit was built on before the
+        // commit is accepted.
         #[cfg(feature = "virtual-clients-draft")]
-        let marks_new_vc_derivation_epoch =
+        let (marks_new_vc_derivation_epoch, vc_declaration) =
             if self.is_emulation_group() && self.context().safe_aad_required() {
-                commit_marks_new_vc_derivation_epoch(mls_content.authenticated_data())?
+                let commit_data = parse_vc_commit_data(mls_content.authenticated_data())?;
+                let marks_new_epoch = commit_data
+                    .as_ref()
+                    .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
+                let declaration = self.validate_vc_epoch_usage(
+                    provider.storage(),
+                    sender_index,
+                    commit_data.as_ref(),
+                )?;
+                (marks_new_epoch, declaration)
             } else {
-                false
+                (false, None)
             };
 
         // Unbundle the sibling-VC commit material: the per-commit operation
@@ -637,6 +648,7 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")]
         {
             staged_commit.marks_new_vc_derivation_epoch = marks_new_vc_derivation_epoch;
+            staged_commit.vc_declaration = vc_declaration;
         }
 
         Ok(staged_commit)
@@ -705,6 +717,48 @@ impl MlsGroup {
         Ok((keypairs, commit_secret))
     }
 
+    /// Check the `epoch_usage` of a commit an emulation group is staging against
+    /// the retention state the commit was built on, and return the declaration
+    /// to install when the commit is merged.
+    ///
+    /// A commit may only declare epochs the whole group can see as retained: the
+    /// baseline retention window, some member's latest declaration, or the
+    /// obligations assumed for removed clients. Anything else means the sender
+    /// and this client disagree about what is retained, and the commit is
+    /// rejected. A commit that restates no declaration validates trivially and
+    /// leaves the sender's previous declaration in place.
+    ///
+    /// This runs while the commit is staged, so no state has been touched yet
+    /// when a commit is rejected. Own commits never reach it, because the builder
+    /// computed their declaration from this very state.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn validate_vc_epoch_usage<Storage: crate::storage::StorageProvider>(
+        &self,
+        storage: &Storage,
+        author: LeafNodeIndex,
+        commit_data: Option<&crate::components::vc_commit_data::VirtualClientCommitData>,
+    ) -> Result<Option<super::vc_retention::VcStagedDeclaration>, StageCommitError> {
+        use crate::components::{
+            vc_derivation_info::VirtualClientsError, vc_retention::VcRetentionState,
+        };
+
+        let Some(usage) = commit_data.and_then(|commit_data| commit_data.epoch_usage()) else {
+            return Ok(None);
+        };
+        let declared: std::collections::BTreeSet<_> = usage.epoch_ids().cloned().collect();
+        let state: Option<VcRetentionState> =
+            storage.vc_retention_state(self.group_id()).map_err(|e| {
+                log::error!("vc: load retention state to validate epoch_usage failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?;
+        if let Some(state) = state {
+            state.validate_epoch_usage(&declared)?;
+        }
+        Ok(Some(super::vc_retention::VcStagedDeclaration::new(
+            author, declared,
+        )))
+    }
+
     /// Returns whether merging `staged_commit` has to register the epoch it
     /// moves this group into as a virtual-clients derivation epoch.
     ///
@@ -741,6 +795,21 @@ impl MlsGroup {
 
         #[cfg(feature = "virtual-clients-draft")]
         let creates_vc_derivation_epoch = self.commit_creates_vc_derivation_epoch(&staged_commit);
+
+        // Read off the commit's input state, before the merge below moves the
+        // group into the commit's output epoch and the registration overwrites
+        // the newest derivation epoch.
+        #[cfg(feature = "virtual-clients-draft")]
+        let vc_retention_input = if self.is_emulation_group()
+            && matches!(staged_commit.state, StagedCommitState::GroupMember(_))
+        {
+            Some(
+                self.vc_retention_merge_input(provider.storage(), &staged_commit)
+                    .map_err(MergeCommitError::StorageError)?,
+            )
+        } else {
+            None
+        };
 
         match staged_commit.state {
             StagedCommitState::PublicState(staged_state) => {
@@ -783,6 +852,13 @@ impl MlsGroup {
                     self.own_leaf_index = new_idx;
                 }
 
+                // The derivation epoch the registration below creates, if the
+                // commit creates one. The retention bookkeeping records it.
+                #[cfg(feature = "virtual-clients-draft")]
+                let mut new_vc_derivation_epoch: Option<
+                    crate::components::vc_derivation_info::EpochId,
+                > = None;
+
                 // Replace the previous exporter tree with the new one. This
                 // happens after the public group is merged, so that a
                 // virtual-clients registration sees the new epoch's tree size
@@ -801,15 +877,17 @@ impl MlsGroup {
                     // has to run before the tree is persisted.
                     #[cfg(feature = "virtual-clients-draft")]
                     if creates_vc_derivation_epoch {
-                        crate::components::vc_derivation_info::register_vc_derivation_epoch(
-                            provider.crypto(),
-                            provider.storage(),
-                            application_export_tree.as_mut(),
-                            crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
-                                self.public_group(),
-                                self.own_leaf_index(),
-                            ),
-                        )?;
+                        new_vc_derivation_epoch = Some(
+                            crate::components::vc_derivation_info::register_vc_derivation_epoch(
+                                provider.crypto(),
+                                provider.storage(),
+                                application_export_tree.as_mut(),
+                                crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
+                                    self.public_group(),
+                                    self.own_leaf_index(),
+                                ),
+                            )?,
+                        );
                     }
 
                     if let Some(application_export_tree) = application_export_tree {
@@ -825,6 +903,19 @@ impl MlsGroup {
 
                         self.application_export_tree = Some(application_export_tree);
                     }
+                }
+
+                // Membership changes, a created derivation epoch and the commit's
+                // declaration all land in the retention bookkeeping, and what
+                // nothing protects anymore is deleted.
+                #[cfg(feature = "virtual-clients-draft")]
+                if let Some(input) = vc_retention_input {
+                    self.apply_vc_retention_at_merge(
+                        provider.storage(),
+                        input,
+                        new_vc_derivation_epoch,
+                    )
+                    .map_err(MergeCommitError::StorageError)?;
                 }
 
                 let leaf_keypair = if let Some(keypair) = &state.new_leaf_keypair_option {
@@ -930,6 +1021,14 @@ pub struct StagedCommit {
     #[cfg(feature = "virtual-clients-draft")]
     #[serde(default)]
     pub(super) marks_new_vc_derivation_epoch: bool,
+    /// The retention declaration the commit carries, with the emulation-group
+    /// leaf of its author. `None` when the commit restates no declaration, or
+    /// when the group is not an emulation group. Set when the commit is built or
+    /// staged and read again at merge, which is why it is persisted with an own
+    /// pending commit.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[serde(default)]
+    pub(super) vc_declaration: Option<super::vc_retention::VcStagedDeclaration>,
 }
 
 impl StagedCommit {
@@ -949,6 +1048,8 @@ impl StagedCommit {
             vc_derivation_epoch_id,
             #[cfg(feature = "virtual-clients-draft")]
             marks_new_vc_derivation_epoch: false,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_declaration: None,
         }
     }
 

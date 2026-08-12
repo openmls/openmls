@@ -499,6 +499,13 @@ impl MlsGroup {
                     );
                     MergeCommitError::StorageError(e)
                 })?;
+            provider
+                .storage()
+                .delete_vc_retention_state(self.group_id())
+                .map_err(|e| {
+                    log::error!("vc: drop retention state on self-removal failed: {e:?}");
+                    MergeCommitError::StorageError(e)
+                })?;
         } else {
             let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
                 .storage()

@@ -653,9 +653,11 @@ impl StagedWelcome {
 
         // The epoch the Welcome hands us is a derivation epoch of the emulation
         // group: the commit that created it added us, so it changed membership.
+        // It is also the entry epoch every member's watermark starts at, since
+        // we cannot retain anything older than it.
         #[cfg(feature = "virtual-clients-draft")]
         if self.emulation_group {
-            crate::components::vc_derivation_info::register_vc_derivation_epoch(
+            let epoch_id = crate::components::vc_derivation_info::register_vc_derivation_epoch(
                 provider.crypto(),
                 provider.storage(),
                 Some(&mut application_export_tree),
@@ -664,6 +666,12 @@ impl StagedWelcome {
                     self.own_leaf_index,
                 ),
             )?;
+            crate::group::mls_group::vc_retention::initialize_vc_retention_state(
+                provider.storage(),
+                &self.public_group,
+                epoch_id,
+            )
+            .map_err(WelcomeError::StorageError)?;
         }
 
         let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();

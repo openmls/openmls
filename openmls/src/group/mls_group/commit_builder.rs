@@ -221,6 +221,17 @@ pub struct CommitBuilder<'a, T, G: BorrowMut<MlsGroup> = &'a mut MlsGroup> {
     #[cfg(feature = "virtual-clients-draft")]
     vc_new_derivation_epoch: bool,
 
+    /// Whether an emulation-group commit declares which derivation epochs its
+    /// author still uses. Cleared by [`Self::declare_vc_epoch_usage`].
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_declare_epoch_usage: bool,
+
+    /// The declaration `load_psks` computed from the emulation group's retention
+    /// state, staged into the commit's Safe AAD item by `build`. `None` when the
+    /// commit carries no declaration.
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_declared_epochs: Option<std::collections::BTreeSet<EpochId>>,
+
     pd: PhantomData<&'a ()>,
 }
 
@@ -254,6 +265,10 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
             vc_loaded,
             #[cfg(feature = "virtual-clients-draft")]
             vc_new_derivation_epoch,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_declare_epoch_usage,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_declared_epochs,
             pd: PhantomData,
         } = self;
 
@@ -268,6 +283,10 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
                 vc_loaded,
                 #[cfg(feature = "virtual-clients-draft")]
                 vc_new_derivation_epoch,
+                #[cfg(feature = "virtual-clients-draft")]
+                vc_declare_epoch_usage,
+                #[cfg(feature = "virtual-clients-draft")]
+                vc_declared_epochs,
                 pd: PhantomData,
             },
         )
@@ -364,6 +383,10 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             vc_loaded: None,
             #[cfg(feature = "virtual-clients-draft")]
             vc_new_derivation_epoch: false,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_declare_epoch_usage: true,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_declared_epochs: None,
             pd: PhantomData,
         }
     }
@@ -559,11 +582,47 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         self
     }
 
+    /// Whether a commit in an emulation group declares which derivation epochs
+    /// its author still uses. Defaults to `true`.
+    ///
+    /// The declaration is what tells the sibling emulator clients which epochs
+    /// they have to keep, and applying it advances the author's watermark, which
+    /// is what lets the group release older epochs. OpenMLS computes it from the
+    /// emulation group's retention state when the commit's PSKs are loaded, and
+    /// it replaces an `epoch_usage` the application staged itself. Commits in
+    /// groups that are not emulation groups never carry a declaration.
+    ///
+    /// Turning it off omits the declaration, which leaves the author's previous
+    /// one in place and advances no watermark. An `epoch_usage` the application
+    /// staged itself is then carried and applied unchanged.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn declare_vc_epoch_usage(mut self, declare: bool) -> Self {
+        self.vc_declare_epoch_usage = declare;
+        self
+    }
+
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
+    ///
+    /// In an emulation group this is also where the commit's `epoch_usage`
+    /// declaration is read off the retention state, unless
+    /// [`Self::declare_vc_epoch_usage`] turned it off.
+    #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
     pub fn load_psks<Storage: StorageProvider>(
-        self,
+        mut self,
         storage: &'a Storage,
     ) -> Result<CommitBuilder<'a, LoadedPsks, G>, CreateCommitError> {
+        #[cfg(feature = "virtual-clients-draft")]
+        if self.vc_declare_epoch_usage {
+            self.vc_declared_epochs = crate::group::mls_group::vc_retention::vc_declared_epochs(
+                storage,
+                self.group.borrow(),
+            )
+            .map_err(|e| {
+                log::error!("vc: load retention state to declare epoch usage failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?;
+        }
+
         let psk_ids: Vec<_> = self
             .stage
             .own_proposals
@@ -739,16 +798,38 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             stage_vc_new_derivation_epoch(builder.group.borrow_mut())?;
         }
 
+        // The declaration replaces whatever `epoch_usage` the application staged:
+        // it is computed from the retention state every emulator client agrees on,
+        // and the application's own epochs reach it through
+        // `MlsGroup::add_vc_epoch_reference`.
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some(declared) = builder.vc_declared_epochs.take() {
+            stage_vc_epoch_usage(builder.group.borrow_mut(), &declared)?;
+        }
+
         let group = builder.group.borrow();
 
-        // The staged Safe AAD is authoritative for whether this commit creates a
-        // derivation epoch, so an application that staged the marker itself gets
-        // the same result as one that called `derivation_epoch`.
+        // The staged Safe AAD is authoritative for what this commit says about
+        // derivation epochs, so an application that staged the item itself gets
+        // the same result as one that let the builder assemble it.
         #[cfg(feature = "virtual-clients-draft")]
-        let marks_new_vc_derivation_epoch = staged_vc_commit_data(group)?
+        let vc_commit_data = staged_vc_commit_data(group)?;
+        #[cfg(feature = "virtual-clients-draft")]
+        let marks_new_vc_derivation_epoch = vc_commit_data
+            .as_ref()
             .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
         let ciphersuite = group.ciphersuite();
         let own_leaf_index = group.own_leaf_index();
+        #[cfg(feature = "virtual-clients-draft")]
+        let vc_declaration = vc_commit_data
+            .as_ref()
+            .and_then(|commit_data| commit_data.epoch_usage())
+            .map(|usage| {
+                crate::group::mls_group::vc_retention::VcStagedDeclaration::new(
+                    own_leaf_index,
+                    usage.epoch_ids().cloned().collect(),
+                )
+            });
         let (sender, is_external_commit) = match cur_stage.external_commit_info {
             None => (Sender::build_member(own_leaf_index), false),
             Some(_) => (Sender::NewMemberCommit, true),
@@ -1270,6 +1351,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         #[cfg(feature = "virtual-clients-draft")]
         {
             staged_commit.marks_new_vc_derivation_epoch = marks_new_vc_derivation_epoch;
+            staged_commit.vc_declaration = vc_declaration;
         }
 
         Ok(builder.into_stage(Complete {
@@ -1416,6 +1498,31 @@ fn stage_vc_new_derivation_epoch(group: &mut MlsGroup) -> Result<(), CreateCommi
     let mut commit_data = staged_vc_commit_data(group)?
         .map_or_else(|| VirtualClientCommitData::new(None, Vec::new()), Ok)?;
     commit_data.require_new_derivation_epoch();
+    group.safe_aad.upsert(commit_data.to_safe_aad_item()?);
+    Ok(())
+}
+
+/// Declare `declared` as the epochs the author of `group`'s next commit still
+/// uses, in the virtual-clients Safe AAD item staged on `group`, creating the
+/// item if the application staged none.
+///
+/// Every other entry of an application-staged item is preserved, including a
+/// `new_derivation_epoch` action. An empty set is declared as an empty
+/// `epoch_usage`, which retires the author's previous declaration. Groups that
+/// do not act on the item carry no declaration.
+#[cfg(feature = "virtual-clients-draft")]
+fn stage_vc_epoch_usage(
+    group: &mut MlsGroup,
+    declared: &std::collections::BTreeSet<EpochId>,
+) -> Result<(), CreateCommitError> {
+    use crate::components::vc_commit_data::VcEpochUsage;
+
+    if !group.is_emulation_group() || !group.context().safe_aad_required() {
+        return Ok(());
+    }
+    let mut commit_data = staged_vc_commit_data(group)?
+        .map_or_else(|| VirtualClientCommitData::new(None, Vec::new()), Ok)?;
+    commit_data.set_epoch_usage(VcEpochUsage::new(declared.iter().cloned())?);
     group.safe_aad.upsert(commit_data.to_safe_aad_item()?);
     Ok(())
 }

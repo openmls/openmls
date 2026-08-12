@@ -325,6 +325,12 @@ pub enum StageCommitError {
     #[cfg(feature = "virtual-clients-draft")]
     #[error("The commit's virtual-clients Safe AAD item did not parse: {0}")]
     MalformedVcCommitData(String),
+    /// The commit declares a derivation epoch this client does not retain, so
+    /// the sender and this client disagree about which derivation epochs the
+    /// emulation group keeps.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VcRetention(#[from] crate::components::vc_retention::VcRetentionError),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

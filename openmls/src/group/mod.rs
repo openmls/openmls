@@ -34,6 +34,8 @@ pub use mls_group::processing::{
 };
 pub use mls_group::proposal_store::*;
 pub use mls_group::staged_commit::StagedCommit;
+#[cfg(feature = "virtual-clients-draft")]
+pub use mls_group::vc_retention::VcRetentionUpdateError;
 pub use mls_group::{Member, *};
 pub use public_group::*;
 
