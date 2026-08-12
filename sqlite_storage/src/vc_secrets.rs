@@ -20,7 +20,7 @@ enum SecretType {
 impl ToSql for SecretType {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
         let secret_type_str = match self {
-            SecretType::DerivationEpochState => "emulation_epoch_state",
+            SecretType::DerivationEpochState => "derivation_epoch_state",
         };
         Ok(rusqlite::types::ToSqlOutput::Borrowed(
             rusqlite::types::ValueRef::Text(secret_type_str.as_bytes()),
@@ -44,7 +44,7 @@ impl<'a, VcDerivationEpochState: VcDerivationEpochStateTrait<STORAGE_PROVIDER_VE
         epoch_id: &EpochId,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO vc_emulation_group_secrets (provider_version, epoch_id, secret_type, vc_secret)
+            "INSERT INTO vc_derivation_epoch_secrets (provider_version, epoch_id, secret_type, vc_secret)
             VALUES (?1, ?2, ?3, ?4)
             ON CONFLICT(epoch_id, secret_type) DO UPDATE SET
                 vc_secret = excluded.vc_secret",
@@ -70,7 +70,7 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
         let Self(epoch_id) = self;
         let mut stmt = connection.prepare(
             "SELECT vc_secret
-            FROM vc_emulation_group_secrets
+            FROM vc_derivation_epoch_secrets
             WHERE epoch_id = ?1
                 AND provider_version = ?2
                 AND secret_type = ?3",
@@ -95,7 +95,7 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
     ) -> Result<(), rusqlite::Error> {
         let Self(epoch_id) = self;
         connection.execute(
-            "DELETE FROM vc_emulation_group_secrets
+            "DELETE FROM vc_derivation_epoch_secrets
             WHERE epoch_id = ?1
                 AND provider_version = ?2
                 AND secret_type = ?3",
@@ -275,7 +275,7 @@ impl<'a, RegisteredVcDerivationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>>
         group_id: &GroupId,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO registered_vc_emulation_epochs (provider_version, group_id, registration)
+            "INSERT INTO registered_vc_derivation_epochs (provider_version, group_id, registration)
             VALUES (?1, ?2, ?3)
             ON CONFLICT(group_id) DO UPDATE SET
                 registration = excluded.registration,
@@ -301,7 +301,7 @@ impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId
         let Self(group_id) = self;
         let mut stmt = connection.prepare(
             "SELECT registration
-            FROM registered_vc_emulation_epochs
+            FROM registered_vc_derivation_epochs
             WHERE group_id = ?1
                 AND provider_version = ?2",
         )?;
@@ -325,7 +325,7 @@ impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId
     ) -> Result<(), rusqlite::Error> {
         let Self(group_id) = self;
         connection.execute(
-            "DELETE FROM registered_vc_emulation_epochs
+            "DELETE FROM registered_vc_derivation_epochs
             WHERE group_id = ?1
                 AND provider_version = ?2",
             params![
