@@ -385,7 +385,7 @@ impl MlsGroupJoinConfigBuilder {
     /// derivation epochs. The initial epoch is a derivation epoch, and so is
     /// the output epoch of every commit that changes membership or that carries
     /// a `new_derivation_epoch` action in its virtual-clients Safe AAD item
-    /// (see [`CommitBuilder::new_derivation_epoch`]). OpenMLS derives and
+    /// (see [`CommitBuilder::derivation_epoch`]). OpenMLS derives and
     /// persists the derivation-epoch state itself at group creation, at a
     /// Welcome join, and when such a commit is merged. Applications should wrap
     /// merge calls in a storage transaction, since those writes happen
@@ -397,7 +397,7 @@ impl MlsGroupJoinConfigBuilder {
     ///
     /// Groups without this flag never write virtual-clients state.
     ///
-    /// [`CommitBuilder::new_derivation_epoch`]: crate::group::CommitBuilder::new_derivation_epoch
+    /// [`CommitBuilder::derivation_epoch`]: crate::group::CommitBuilder::derivation_epoch
     /// [`MlsGroup::newest_vc_derivation_epoch`]: crate::group::MlsGroup::newest_vc_derivation_epoch
     #[cfg(feature = "virtual-clients-draft")]
     pub fn emulation_group(mut self, emulation_group: bool) -> Self {

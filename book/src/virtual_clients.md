@@ -154,7 +154,7 @@ bound the damage of a compromise, mark a commit on the emulation group:
 ```rust,no_run,noplayground
 let bundle = emulator_group
     .commit_builder()
-    .new_derivation_epoch()
+    .derivation_epoch(true)
     .force_self_update(true)
     .load_psks(provider.storage())?
     .build(provider.rand(), provider.crypto(), &emulator_signer, |_| true)?

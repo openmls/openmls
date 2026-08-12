@@ -3268,7 +3268,7 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
     let emulator_commit = {
         let bundle = emulator_a
             .commit_builder()
-            .new_derivation_epoch()
+            .derivation_epoch(true)
             .force_self_update(true)
             .load_psks(alice_a_provider.storage())
             .expect("load psks")
@@ -4908,11 +4908,10 @@ fn send_emulation_commit<P: OpenMlsProvider>(
     signer: &SignatureKeyPair,
     new_derivation_epoch: bool,
 ) -> openmls::prelude::MlsMessageOut {
-    let mut builder = emulator_group.commit_builder().force_self_update(true);
-    if new_derivation_epoch {
-        builder = builder.new_derivation_epoch();
-    }
-    let bundle = builder
+    let bundle = emulator_group
+        .commit_builder()
+        .force_self_update(true)
+        .derivation_epoch(new_derivation_epoch)
         .load_psks(provider.storage())
         .expect("load psks")
         .build(provider.rand(), provider.crypto(), signer, |_| true)
@@ -5161,7 +5160,7 @@ fn marker_with_membership_change_registers_once() {
     let bundle = emulator_a
         .commit_builder()
         .propose_adds([key_package])
-        .new_derivation_epoch()
+        .derivation_epoch(true)
         .load_psks(provider_a.storage())
         .expect("load psks")
         .build(provider_a.rand(), provider_a.crypto(), &signer_a, |_| true)
@@ -5402,7 +5401,7 @@ fn new_derivation_epoch_requires_safe_aad() {
 
     let err = emulator
         .commit_builder()
-        .new_derivation_epoch()
+        .derivation_epoch(true)
         .force_self_update(true)
         .load_psks(provider.storage())
         .expect("load psks")
@@ -5435,7 +5434,7 @@ fn new_derivation_epoch_requires_emulation_group() {
 
     let err = group
         .commit_builder()
-        .new_derivation_epoch()
+        .derivation_epoch(true)
         .force_self_update(true)
         .load_psks(provider.storage())
         .expect("load psks")

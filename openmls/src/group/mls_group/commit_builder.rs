@@ -216,7 +216,7 @@ pub struct CommitBuilder<'a, T, G: BorrowMut<MlsGroup> = &'a mut MlsGroup> {
     #[cfg(feature = "virtual-clients-draft")]
     vc_loaded: Option<VcLoaded>,
 
-    /// Set by [`Self::new_derivation_epoch`]. `build` stages the marker action
+    /// Set by [`Self::derivation_epoch`]. `build` stages the marker action
     /// in the group's Safe AAD before it assembles the commit.
     #[cfg(feature = "virtual-clients-draft")]
     vc_new_derivation_epoch: bool,
@@ -381,7 +381,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// by `emulation_group_id`, which is what the draft requires of every new
     /// virtual-client operation. The epoch is resolved from the emulation
     /// group's current state, so a commit that itself asks for a new derivation
-    /// epoch (see [`Self::new_derivation_epoch`]) still uses the epoch of its
+    /// epoch (see [`Self::derivation_epoch`]) still uses the epoch of its
     /// input state: the requested one only exists once that commit is merged.
     ///
     /// This method loads the per-epoch operation secret tree and AEAD key from
@@ -533,12 +533,12 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// Ask the emulation group to start a new derivation epoch with this
     /// commit.
     ///
-    /// `build` makes sure the commit's virtual-clients Safe AAD item carries a
-    /// `new_derivation_epoch` action, creating the item if the application
-    /// staged none. Every member of the emulation group then registers the
-    /// epoch this commit moves the group into as a derivation epoch when the
-    /// commit is merged, and subsequent virtual-client operations resolve to
-    /// it.
+    /// When set, `build` makes sure the commit's virtual-clients Safe AAD item
+    /// carries a `new_derivation_epoch` action, creating the item if the
+    /// application staged none. Every member of the emulation group then
+    /// registers the epoch this commit moves the group into as a derivation
+    /// epoch when the commit is merged, and subsequent virtual-client
+    /// operations resolve to it.
     ///
     /// This is the application's cadence knob for post-compromise security of
     /// the virtual client's secrets. Commits that change membership create a
@@ -554,8 +554,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// with [`CreateCommitError::NewDerivationEpochOutsideEmulationGroup`] or
     /// [`CreateCommitError::NewDerivationEpochWithoutSafeAad`].
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn new_derivation_epoch(mut self) -> Self {
-        self.vc_new_derivation_epoch = true;
+    pub fn derivation_epoch(mut self, derivation_epoch: bool) -> Self {
+        self.vc_new_derivation_epoch = derivation_epoch;
         self
     }
 
@@ -743,7 +743,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
 
         // The staged Safe AAD is authoritative for whether this commit creates a
         // derivation epoch, so an application that staged the marker itself gets
-        // the same result as one that called `new_derivation_epoch`.
+        // the same result as one that called `derivation_epoch`.
         #[cfg(feature = "virtual-clients-draft")]
         let marks_new_vc_derivation_epoch = staged_vc_commit_data(group)?
             .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
