@@ -1,5 +1,6 @@
 #![cfg(feature = "virtual-clients-draft")]
 use openmls::{
+    component::{ComponentData, ComponentId},
     components::vc_derivation_info::{EpochId, VcEmulationBindings, VC_COMPONENT_ID},
     credentials::NewSignerBundle,
     extensions::{
@@ -7,15 +8,22 @@ use openmls::{
     },
     framing::errors::{MessageDecryptionError, SecretTreeError},
     group::{
-        ConfirmMessageError, GroupEpoch, MlsGroup, MlsGroupCreateConfig, MlsGroupJoinConfig,
-        Propose, StageCommitError, StagedWelcome, MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        AppDataUpdates, ConfirmMessageError, GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig,
+        MlsGroupJoinConfig, Propose, StageCommitError, StagedVcExternalCommitJoin, StagedWelcome,
+        VcExternalCommitJoinError, MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
+    messages::{
+        group_info::VerifiableGroupInfo,
+        proposals::{
+            AppDataUpdateOperation, AppDataUpdateProposal, AppEphemeralProposal, Proposal,
+        },
+    },
     prelude::{
-        test_utils::new_credential, Capabilities, LeafNode, LeafNodeParameters,
-        ProcessMessageError, ProcessedMessageContent, ProposalOrRefType, ProposalType,
-        ValidationError,
+        test_utils::new_credential, ApplyAppDataUpdateError, Capabilities, LeafNode,
+        LeafNodeParameters, ProcessMessageError, ProcessedMessageContent, ProposalOrRefType,
+        ProposalType, ProtocolMessage, ValidationError,
     },
 };
 use openmls_basic_credential::SignatureKeyPair;
@@ -1417,8 +1425,8 @@ fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
 /// `charly_a` joins the higher-level group (Alice + Bob) via a plain external
 /// commit. Per the mls-virtual-clients draft the commit's leaf carries the
 /// external init secret in its derivation info. `charly_b`, which shares the
-/// derivation epoch but is not a member, calls
-/// [`MlsGroup::vc_join_via_sibling_external_commit`] with the prior-epoch
+/// derivation epoch but is not a member, runs the
+/// [`VcExternalCommitJoinBuilder`] with the prior-epoch
 /// GroupInfo and that commit: it rebuilds the prior-epoch public group,
 /// recreates the commit path from the shared operation secret tree, and uses
 /// the carried external init secret as the new epoch's external init secret
@@ -1575,15 +1583,17 @@ fn vc_second_emulator_client_onboards_via_external_commit() {
         .use_ratchet_tree_extension(true)
         .max_past_epochs(1)
         .build();
-    let mut charly_b_main = MlsGroup::vc_join_via_sibling_external_commit(
-        &charly_b_provider,
-        &bootstrap_join_config,
-        vgi_charly_b,
-        None,
-        charly_a_commit_for_b,
-        epoch_id_b.clone(),
-    )
-    .expect("charly_b bootstraps by processing charly_a's external commit");
+    let mut charly_b_main = MlsGroup::vc_external_commit_join_builder()
+        .with_config(bootstrap_join_config)
+        .process_commit(
+            &charly_b_provider,
+            vgi_charly_b,
+            charly_a_commit_for_b,
+            epoch_id_b.clone(),
+        )
+        .expect("process charly_a's external commit")
+        .into_group(&charly_b_provider)
+        .expect("charly_b bootstraps by processing charly_a's external commit");
     let err = charly_b_main
         .process_message(
             &charly_b_provider,
@@ -1661,8 +1671,8 @@ fn vc_app_ephemeral_capabilities() -> Capabilities {
 ///
 /// `charly_a` joins the higher-level group (Alice + Bob) via an external commit
 /// carrying the proposal. `charly_b` reads the payload out of that commit while
-/// it is still an outsider, then bootstraps into the group with
-/// [`MlsGroup::vc_join_via_sibling_external_commit`]. Alice and Bob find the
+/// it is still an outsider, then bootstraps into the group with the
+/// [`VcExternalCommitJoinBuilder`]. Alice and Bob find the
 /// same payload in the staged commit, and all four parties converge.
 #[openmls_test]
 fn vc_sibling_reads_app_ephemeral_from_external_commit() {
@@ -1853,15 +1863,17 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
         .use_ratchet_tree_extension(true)
         .max_past_epochs(1)
         .build();
-    let charly_b_main = MlsGroup::vc_join_via_sibling_external_commit(
-        &charly_b_provider,
-        &bootstrap_join_config,
-        vgi_charly_b,
-        None,
-        charly_a_commit_for_b,
-        epoch_id_b.clone(),
-    )
-    .expect("charly_b bootstraps by processing charly_a's external commit");
+    let charly_b_main = MlsGroup::vc_external_commit_join_builder()
+        .with_config(bootstrap_join_config)
+        .process_commit(
+            &charly_b_provider,
+            vgi_charly_b,
+            charly_a_commit_for_b,
+            epoch_id_b.clone(),
+        )
+        .expect("process charly_a's external commit")
+        .into_group(&charly_b_provider)
+        .expect("charly_b bootstraps by processing charly_a's external commit");
 
     assert!(charly_a_main.is_active() && charly_b_main.is_active());
     assert_eq!(
@@ -1873,6 +1885,514 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
     assert_eq!(charly_a_main.epoch_authenticator(), auth);
     assert_eq!(alice_main.epoch_authenticator(), auth);
     assert_eq!(bob_main.epoch_authenticator(), auth);
+}
+
+/// The VC capabilities, extended with support for the AppDataUpdate and
+/// AppEphemeral proposal types. All leaves of a group need this before
+/// anyone may commit such proposals.
+fn vc_app_data_update_capabilities() -> Capabilities {
+    Capabilities::builder()
+        .extensions(vec![ExtensionType::AppDataDictionary])
+        .proposals(vec![
+            ProposalType::AppDataUpdate,
+            ProposalType::AppEphemeral,
+        ])
+        .build()
+}
+
+/// The group-context component the AppDataUpdate join tests below bump on
+/// the external commit. The proposal payload deliberately differs from the
+/// resulting dictionary value: the value is computed by the application from
+/// the payload, not copied from it, so the tests prove the applied value
+/// comes from the supplied updates.
+const APP_DATA_COMPONENT_ID: ComponentId = 0xf042;
+const APP_DATA_PROPOSAL_PAYLOAD: &[u8] = b"proposal payload";
+const APP_DATA_DICT_VALUE: &[u8] = b"caller computed value";
+
+/// Scenario for sibling joins of external commits carrying AppDataUpdate
+/// proposals: Alice and Bob form the higher-level group (every leaf supports
+/// the AppDataUpdate and AppEphemeral proposal types), and Charly is a
+/// virtual client with two emulator clients sharing an emulation epoch.
+struct VcAppDataScenario<P: OpenMlsProvider> {
+    alice_provider: P,
+    bob_provider: P,
+    charly_a_provider: P,
+    charly_b_provider: P,
+    alice_main: MlsGroup,
+    alice_signer: SignatureKeyPair,
+    bob_main: MlsGroup,
+    vc_signer: SignatureKeyPair,
+    vc_credential: openmls::credentials::CredentialWithKey,
+    emulation_group_id: GroupId,
+    epoch_id: EpochId,
+}
+
+fn vc_app_data_scenario<P: OpenMlsProvider + Default>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+) -> VcAppDataScenario<P> {
+    let alice_provider = P::default();
+    let bob_provider = P::default();
+    let charly_a_provider = P::default();
+    let charly_b_provider = P::default();
+
+    // Alice founds the higher-level group and adds Bob.
+    let (alice_credential, alice_signer) =
+        new_credential(&alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let main_group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .capabilities(vc_app_data_update_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions")
+        .build();
+    let mut alice_main = MlsGroup::new(
+        &alice_provider,
+        &alice_signer,
+        &main_group_config,
+        alice_credential,
+    )
+    .expect("create vc main group");
+
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_app_data_update_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
+        .expect("bob KP build")
+        .key_package()
+        .to_owned();
+    let (_, welcome, _) = alice_main
+        .add_members(&alice_provider, &alice_signer, &[bob_kp])
+        .expect("alice add bob");
+    alice_main
+        .merge_pending_commit(&alice_provider)
+        .expect("alice merge add bob");
+    let bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome"),
+        Some(alice_main.export_ratchet_tree().into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join higher-level group");
+
+    // Charly is one virtual client with two emulator clients sharing a
+    // signing identity and a derivation epoch.
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &charly_a_provider, &charly_b_provider);
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(ciphersuite, &charly_a_provider, b"CharlyEmulatorA", true);
+    let (_e_commit, emulator_b, _emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &charly_a_provider,
+        &emulator_a_signer,
+        &charly_b_provider,
+        b"CharlyEmulatorB",
+    );
+    let epoch_id = newest_epoch(&emulator_a, &charly_a_provider);
+    let epoch_id_b = newest_epoch(&emulator_b, &charly_b_provider);
+    assert_eq!(
+        epoch_id, epoch_id_b,
+        "siblings must derive the same EpochId"
+    );
+    let emulation_group_id = emulator_a.group_id().clone();
+
+    VcAppDataScenario {
+        alice_provider,
+        bob_provider,
+        charly_a_provider,
+        charly_b_provider,
+        alice_main,
+        alice_signer,
+        bob_main,
+        vc_signer,
+        vc_credential,
+        emulation_group_id,
+        epoch_id,
+    }
+}
+
+impl<P: OpenMlsProvider> VcAppDataScenario<P> {
+    /// Exports the prior-epoch GroupInfo (with the ratchet tree carried as an
+    /// extension) for one of the parties consuming it.
+    fn export_prior_epoch_vgi(&self, label: &str) -> VerifiableGroupInfo {
+        use tls_codec::Deserialize as _;
+        let gi = self
+            .alice_main
+            .export_group_info(self.alice_provider.crypto(), &self.alice_signer, true)
+            .unwrap_or_else(|_| panic!("export group info ({label})"));
+        let serialized = gi.tls_serialize_detached().expect("serialize gi");
+        openmls::prelude::MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+            .expect("deserialize gi")
+            .into_verifiable_group_info()
+            .expect("into vgi")
+    }
+}
+
+/// charly_a joins the higher-level group via an external commit carrying a
+/// by-value AppDataUpdate proposal for [`APP_DATA_COMPONENT_ID`], with the
+/// dictionary value computed by the application, and optionally a by-value
+/// AppEphemeral proposal. Returns charly_a's joined group and the commit for
+/// the other parties to process.
+fn charly_a_external_commit_with_app_data_update<P: OpenMlsProvider>(
+    scenario: &VcAppDataScenario<P>,
+    vgi: VerifiableGroupInfo,
+    app_ephemeral: Option<AppEphemeralProposal>,
+) -> (MlsGroup, openmls::prelude::MlsMessageOut) {
+    let provider = &scenario.charly_a_provider;
+    let mut builder = MlsGroup::external_commit_builder()
+        .with_config(vc_join_config())
+        .build_group(provider, vgi, scenario.vc_credential.clone())
+        .expect("build_group charly_a")
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(vc_app_data_update_capabilities())
+                .with_extensions(vc_leaf_extensions())
+                .build(),
+        )
+        .vc_emulation(
+            provider.crypto(),
+            provider.storage(),
+            &scenario.emulation_group_id,
+        )
+        .expect("vc emulation charly_a")
+        .add_app_data_update_proposal(AppDataUpdateProposal::update(
+            APP_DATA_COMPONENT_ID,
+            APP_DATA_PROPOSAL_PAYLOAD,
+        ));
+    if let Some(proposal) = app_ephemeral {
+        builder = builder.add_proposal(Proposal::AppEphemeral(Box::new(proposal)));
+    }
+    let mut builder = builder.load_psks(provider.storage()).expect("load psks");
+    let mut updater = builder.app_data_dictionary_updater();
+    updater.set(ComponentData::from_parts(
+        APP_DATA_COMPONENT_ID,
+        APP_DATA_DICT_VALUE.to_vec().into(),
+    ));
+    builder.with_app_data_dictionary_updates(updater.changes());
+    let (charly_a_main, bundle) = builder
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &scenario.vc_signer,
+            |_| true,
+        )
+        .expect("build external commit charly_a")
+        .finalize(provider)
+        .expect("finalize charly_a join");
+    (charly_a_main, bundle.into_commit())
+}
+
+/// Processes `commit` on `group`, resolves the expected AppDataUpdate
+/// proposal for [`APP_DATA_COMPONENT_ID`] to [`APP_DATA_DICT_VALUE`], and
+/// merges the resulting staged commit. This is the regular member-side
+/// resolution flow the sibling join must reproduce.
+fn resolve_and_merge_app_data_commit<P: OpenMlsProvider>(
+    group: &mut MlsGroup,
+    provider: &P,
+    commit: ProtocolMessage,
+) {
+    let processed = group
+        .process_message(provider, commit)
+        .expect("process app data commit");
+    let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved) = processed.into_content()
+    else {
+        panic!("expected an unresolved app data commit");
+    };
+    let mut updater = group.app_data_dictionary_updater();
+    updater.set(ComponentData::from_parts(
+        APP_DATA_COMPONENT_ID,
+        APP_DATA_DICT_VALUE.to_vec().into(),
+    ));
+    let staged = group
+        .stage_app_data_commit(provider, *unresolved, updater.changes())
+        .expect("stage app data commit");
+    group
+        .merge_staged_commit(provider, staged)
+        .expect("merge app data commit");
+}
+
+/// Reads the verified AppDataUpdate proposals from a staged sibling join,
+/// checks they carry the expected payload, and computes the resolved updates
+/// the join needs, the way an application's component logic would.
+fn sibling_resolved_app_data_updates(
+    staged: &StagedVcExternalCommitJoin,
+) -> Option<AppDataUpdates> {
+    let proposals: Vec<_> = staged.app_data_update_proposals().collect();
+    assert_eq!(proposals.len(), 1);
+    assert_eq!(proposals[0].component_id(), APP_DATA_COMPONENT_ID);
+    let AppDataUpdateOperation::Update(payload) = proposals[0].operation() else {
+        panic!("expected an update operation");
+    };
+    assert_eq!(payload.as_slice(), APP_DATA_PROPOSAL_PAYLOAD);
+
+    // No dictionary exists in the prior-epoch group context yet, so the
+    // component computes the value from the payload alone.
+    let mut updater = staged.app_data_dictionary_updater();
+    assert!(updater.old_value(APP_DATA_COMPONENT_ID).is_none());
+    updater.set(ComponentData::from_parts(
+        APP_DATA_COMPONENT_ID,
+        APP_DATA_DICT_VALUE.to_vec().into(),
+    ));
+    updater.changes()
+}
+
+/// A sibling join of an external commit carrying an AppDataUpdate proposal:
+/// the application supplies the resolved updates, the join succeeds, and the
+/// joined group's context matches the committing sibling's byte for byte.
+#[openmls_test]
+fn vc_sibling_external_commit_join_resolves_app_data_updates() {
+    let mut scenario = vc_app_data_scenario::<Provider>(ciphersuite);
+    let vgi_charly_a = scenario.export_prior_epoch_vgi("charly_a");
+    let vgi_charly_b = scenario.export_prior_epoch_vgi("charly_b");
+
+    let (charly_a_main, commit) =
+        charly_a_external_commit_with_app_data_update(&scenario, vgi_charly_a, None);
+
+    // Alice and Bob resolve the commit through the regular member flow.
+    resolve_and_merge_app_data_commit(
+        &mut scenario.alice_main,
+        &scenario.alice_provider,
+        commit.clone().into_protocol_message().expect("commit"),
+    );
+    resolve_and_merge_app_data_commit(
+        &mut scenario.bob_main,
+        &scenario.bob_provider,
+        commit.clone().into_protocol_message().expect("commit"),
+    );
+
+    // charly_b computes the same updates from the verified commit's
+    // proposals and completes the join with them.
+    let mut staged = MlsGroup::vc_external_commit_join_builder()
+        .with_config(vc_join_config())
+        .process_commit(
+            &scenario.charly_b_provider,
+            vgi_charly_b,
+            commit.into_protocol_message().expect("commit"),
+            scenario.epoch_id.clone(),
+        )
+        .expect("process charly_a's external commit");
+
+    // The staged join exposes the group state at the epoch before the
+    // commit: Alice and Bob, without the virtual-client leaf.
+    let prior_epoch = staged.prior_group_context().epoch();
+    assert_eq!(staged.prior_members().count(), 2);
+
+    let updates = sibling_resolved_app_data_updates(&staged);
+    staged.with_app_data_dictionary_updates(updates);
+    let charly_b_main = staged
+        .into_group(&scenario.charly_b_provider)
+        .expect("charly_b joins with resolved app data updates");
+    assert_eq!(charly_b_main.epoch().as_u64(), prior_epoch.as_u64() + 1);
+
+    assert!(charly_a_main.is_active() && charly_b_main.is_active());
+    assert_eq!(
+        charly_b_main.own_leaf_index(),
+        charly_a_main.own_leaf_index(),
+        "the bootstrapped sibling must land on the shared VC leaf"
+    );
+    let auth = charly_b_main.epoch_authenticator();
+    assert_eq!(charly_a_main.epoch_authenticator(), auth);
+    assert_eq!(scenario.alice_main.epoch_authenticator(), auth);
+    assert_eq!(scenario.bob_main.epoch_authenticator(), auth);
+
+    // The joined group's context matches the committing sibling's byte for
+    // byte, and its dictionary carries the caller-computed value.
+    assert_eq!(
+        charly_b_main
+            .export_group_context()
+            .tls_serialize_detached()
+            .expect("serialize charly_b context"),
+        charly_a_main
+            .export_group_context()
+            .tls_serialize_detached()
+            .expect("serialize charly_a context"),
+    );
+    let dictionary = charly_b_main
+        .export_group_context()
+        .extensions()
+        .app_data_dictionary()
+        .expect("joined context carries the dictionary")
+        .dictionary();
+    assert_eq!(
+        dictionary.get(&APP_DATA_COMPONENT_ID),
+        Some(APP_DATA_DICT_VALUE)
+    );
+}
+
+/// An external commit carrying both an AppDataUpdate proposal and a by-value
+/// AppEphemeral proposal: the sibling reads both payloads while still an
+/// outsider and the join succeeds with the resolved updates.
+#[openmls_test]
+fn vc_sibling_external_commit_join_with_app_data_update_and_app_ephemeral() {
+    const APP_EPHEMERAL_COMPONENT_ID: ComponentId = 7;
+    const APP_EPHEMERAL_DATA: &[u8] = b"wrapped key material";
+
+    let mut scenario = vc_app_data_scenario::<Provider>(ciphersuite);
+    let vgi_charly_a = scenario.export_prior_epoch_vgi("charly_a");
+    let vgi_charly_b = scenario.export_prior_epoch_vgi("charly_b");
+
+    let (charly_a_main, commit) = charly_a_external_commit_with_app_data_update(
+        &scenario,
+        vgi_charly_a,
+        Some(AppEphemeralProposal::new(
+            APP_EPHEMERAL_COMPONENT_ID,
+            APP_EPHEMERAL_DATA.to_vec(),
+        )),
+    );
+
+    resolve_and_merge_app_data_commit(
+        &mut scenario.alice_main,
+        &scenario.alice_provider,
+        commit.clone().into_protocol_message().expect("commit"),
+    );
+    resolve_and_merge_app_data_commit(
+        &mut scenario.bob_main,
+        &scenario.bob_provider,
+        commit.clone().into_protocol_message().expect("commit"),
+    );
+
+    // charly_b reads both payloads from the verified commit before deciding
+    // to complete the join.
+    let mut staged = MlsGroup::vc_external_commit_join_builder()
+        .with_config(vc_join_config())
+        .process_commit(
+            &scenario.charly_b_provider,
+            vgi_charly_b,
+            commit.into_protocol_message().expect("commit"),
+            scenario.epoch_id.clone(),
+        )
+        .expect("process charly_a's external commit");
+    let app_ephemeral: Vec<_> = staged
+        .app_ephemeral_proposals_for_component_id(APP_EPHEMERAL_COMPONENT_ID)
+        .collect();
+    assert_eq!(app_ephemeral.len(), 1);
+    assert_eq!(app_ephemeral[0].data(), APP_EPHEMERAL_DATA);
+    let updates = sibling_resolved_app_data_updates(&staged);
+    staged.with_app_data_dictionary_updates(updates);
+
+    let charly_b_main = staged
+        .into_group(&scenario.charly_b_provider)
+        .expect("charly_b joins a commit carrying AppDataUpdate and AppEphemeral");
+
+    assert!(charly_a_main.is_active() && charly_b_main.is_active());
+    assert_eq!(
+        charly_b_main.own_leaf_index(),
+        charly_a_main.own_leaf_index(),
+        "the bootstrapped sibling must land on the shared VC leaf"
+    );
+    let auth = charly_b_main.epoch_authenticator();
+    assert_eq!(charly_a_main.epoch_authenticator(), auth);
+    assert_eq!(scenario.alice_main.epoch_authenticator(), auth);
+    assert_eq!(scenario.bob_main.epoch_authenticator(), auth);
+    assert_eq!(
+        charly_b_main
+            .export_group_context()
+            .tls_serialize_detached()
+            .expect("serialize charly_b context"),
+        charly_a_main
+            .export_group_context()
+            .tls_serialize_detached()
+            .expect("serialize charly_a context"),
+    );
+}
+
+/// Without the resolved updates, a sibling join of an external commit
+/// carrying an AppDataUpdate proposal fails cleanly before consuming an
+/// operation secret generation, so the sibling can compute the updates and
+/// join by processing the same commit again.
+#[openmls_test]
+fn vc_sibling_external_commit_join_without_app_data_updates_fails() {
+    let scenario = vc_app_data_scenario::<Provider>(ciphersuite);
+    let vgi_charly_a = scenario.export_prior_epoch_vgi("charly_a");
+    let vgi_first_attempt = scenario.export_prior_epoch_vgi("charly_b first attempt");
+    let vgi_retry = scenario.export_prior_epoch_vgi("charly_b retry");
+
+    let (charly_a_main, commit) =
+        charly_a_external_commit_with_app_data_update(&scenario, vgi_charly_a, None);
+
+    let staged = MlsGroup::vc_external_commit_join_builder()
+        .with_config(vc_join_config())
+        .process_commit(
+            &scenario.charly_b_provider,
+            vgi_first_attempt,
+            commit.clone().into_protocol_message().expect("commit"),
+            scenario.epoch_id.clone(),
+        )
+        .expect("process charly_a's external commit");
+    let err = staged
+        .into_group(&scenario.charly_b_provider)
+        .expect_err("joining without the resolved updates must fail");
+    let VcExternalCommitJoinError::StageCommitError(StageCommitError::ApplyAppDataUpdateError(
+        ApplyAppDataUpdateError::MissingAppDataUpdates,
+    )) = err
+    else {
+        panic!("expected MissingAppDataUpdates, got {err:?}");
+    };
+
+    // The failed attempt did not consume an operation secret generation, so
+    // processing the same commit again and joining with the resolved updates
+    // succeeds.
+    let mut staged = MlsGroup::vc_external_commit_join_builder()
+        .with_config(vc_join_config())
+        .process_commit(
+            &scenario.charly_b_provider,
+            vgi_retry,
+            commit.into_protocol_message().expect("commit"),
+            scenario.epoch_id.clone(),
+        )
+        .expect("process charly_a's external commit again");
+    let updates = sibling_resolved_app_data_updates(&staged);
+    staged.with_app_data_dictionary_updates(updates);
+    let charly_b_main = staged
+        .into_group(&scenario.charly_b_provider)
+        .expect("retry with resolved updates succeeds");
+    assert_eq!(
+        charly_b_main.epoch_authenticator(),
+        charly_a_main.epoch_authenticator()
+    );
+}
+
+/// Updates that do not reproduce the committing sibling's dictionary fail
+/// the join at the confirmation tag check instead of installing a diverged
+/// group context.
+#[openmls_test]
+fn vc_sibling_external_commit_join_with_wrong_app_data_updates_fails() {
+    let scenario = vc_app_data_scenario::<Provider>(ciphersuite);
+    let vgi_charly_a = scenario.export_prior_epoch_vgi("charly_a");
+    let vgi_charly_b = scenario.export_prior_epoch_vgi("charly_b");
+
+    let (_charly_a_main, commit) =
+        charly_a_external_commit_with_app_data_update(&scenario, vgi_charly_a, None);
+
+    let mut staged = MlsGroup::vc_external_commit_join_builder()
+        .with_config(vc_join_config())
+        .process_commit(
+            &scenario.charly_b_provider,
+            vgi_charly_b,
+            commit.into_protocol_message().expect("commit"),
+            scenario.epoch_id.clone(),
+        )
+        .expect("process charly_a's external commit");
+    let mut updater = staged.app_data_dictionary_updater();
+    updater.set(ComponentData::from_parts(
+        APP_DATA_COMPONENT_ID,
+        b"a different value".to_vec().into(),
+    ));
+    let updates = updater.changes();
+    staged.with_app_data_dictionary_updates(updates);
+    let err = staged
+        .into_group(&scenario.charly_b_provider)
+        .expect_err("joining with wrong updates must fail");
+    let VcExternalCommitJoinError::StageCommitError(StageCommitError::ConfirmationTagMismatch) =
+        err
+    else {
+        panic!("expected ConfirmationTagMismatch, got {err:?}");
+    };
 }
 
 /// A sibling emulator joins a higher-level group via a virtual client's

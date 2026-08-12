@@ -196,9 +196,9 @@ impl<StorageError> From<ExternalCommitBuilderError<StorageError>>
 
 /// Error joining a higher-level group as a virtual client's sibling emulator
 /// by processing another sibling's external commit
-/// ([`MlsGroup::vc_join_via_sibling_external_commit`]).
+/// ([`VcExternalCommitJoinBuilder`]).
 ///
-/// [`MlsGroup::vc_join_via_sibling_external_commit`]: crate::group::MlsGroup::vc_join_via_sibling_external_commit
+/// [`VcExternalCommitJoinBuilder`]: crate::group::VcExternalCommitJoinBuilder
 #[cfg(feature = "virtual-clients-draft")]
 #[derive(Error, Debug)]
 pub enum VcExternalCommitJoinError<StorageError> {
