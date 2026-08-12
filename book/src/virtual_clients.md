@@ -170,7 +170,7 @@ input state's newest derivation epoch.
 ## Committing in a higher-level group
 
 To commit on behalf of the virtual client, set `vc_emulation` on the commit
-builder, passing the emulation group. The builder resolves that group's newest
+builder, passing the emulation group's id. The builder resolves that group's newest
 derivation epoch, allocates the next `LeafNode` operation generation, derives the
 new leaf's encryption key and the first path secret from it, and embeds the
 encrypted `DerivationInfo` in the leaf:
@@ -178,7 +178,7 @@ encrypted `DerivationInfo` in the leaf:
 ```rust,no_run,noplayground
 let bundle = main_group
     .commit_builder()
-    .vc_emulation(provider.crypto(), provider.storage(), &emulator_group)?
+    .vc_emulation(provider.crypto(), provider.storage(), emulator_group.group_id())?
     .load_psks(provider.storage())?
     .build(provider.rand(), provider.crypto(), &vc_signer, |_| true)?
     .stage_commit(provider)?;
@@ -239,7 +239,7 @@ confirmation data:
 ```rust,no_run,noplayground
 let mut bundle = main_group
     .commit_builder()
-    .vc_emulation(provider.crypto(), provider.storage(), &emulator_group)?
+    .vc_emulation(provider.crypto(), provider.storage(), emulator_group.group_id())?
     .load_psks(provider.storage())?
     .build(provider.rand(), provider.crypto(), &vc_signer, |_| true)?
     .stage_commit(provider)?;
@@ -390,7 +390,7 @@ let batch = KeyPackage::builder()
         provider,
         &vc_signer,
         vc_credential,
-        &emulator_group,
+        emulator_group.group_id(),
         count, // number of KeyPackages, must be > 0
     )?;
 ```

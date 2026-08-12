@@ -646,10 +646,11 @@ impl KeyPackageBuilder {
 
     /// Build a batch of virtual-client KeyPackages a sibling can reproduce.
     ///
-    /// The batch uses the newest derivation epoch of `emulation_group`, which is
-    /// what the draft requires of every new virtual-client operation. The epoch
-    /// is resolved from the emulation group's current state, and the returned
-    /// [`VcKeyPackageBatch`] reports it in its `epoch_id`.
+    /// The batch uses the newest derivation epoch of the emulation group named
+    /// by `emulation_group_id`, which is what the draft requires of every new
+    /// virtual-client operation. The epoch is resolved from the emulation
+    /// group's current state, and the returned [`VcKeyPackageBatch`] reports it
+    /// in its `epoch_id`.
     ///
     /// Allocates a single generation of the `key_package` operation ratchet for
     /// that derivation epoch. For each
@@ -689,7 +690,7 @@ impl KeyPackageBuilder {
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
-        emulation_group: &crate::group::MlsGroup,
+        emulation_group_id: &crate::group::GroupId,
         count: usize,
     ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
         // Reject an unsupported ciphersuite and an empty batch before loading
@@ -703,7 +704,7 @@ impl KeyPackageBuilder {
             return Err(KeyPackageNewError::EmptyBatch);
         }
         let mut builder =
-            VcKeyPackageBatchBuilder::with_capacity(provider, emulation_group, count)?;
+            VcKeyPackageBatchBuilder::with_capacity(provider, emulation_group_id, count)?;
         for _ in 0..count {
             builder.add_key_package(
                 self.clone(),

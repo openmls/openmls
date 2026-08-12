@@ -45,6 +45,7 @@ use crate::{
     },
     components::vc_operation_tree::OperationSecretTree,
     extensions::AppDataDictionary,
+    group::GroupId,
 };
 #[cfg(feature = "extensions-draft")]
 use crate::{
@@ -376,12 +377,12 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
 
     /// Opt this commit into the virtual-clients-draft sender flow.
     ///
-    /// The commit uses the newest derivation epoch of `emulation_group`, which
-    /// is what the draft requires of every new virtual-client operation. The
-    /// epoch is resolved from the emulation group's current state, so a commit
-    /// that itself asks for a new derivation epoch (see
-    /// [`Self::new_derivation_epoch`]) still uses the epoch of its input state:
-    /// the requested one only exists once that commit is merged.
+    /// The commit uses the newest derivation epoch of the emulation group named
+    /// by `emulation_group_id`, which is what the draft requires of every new
+    /// virtual-client operation. The epoch is resolved from the emulation
+    /// group's current state, so a commit that itself asks for a new derivation
+    /// epoch (see [`Self::new_derivation_epoch`]) still uses the epoch of its
+    /// input state: the requested one only exists once that commit is merged.
     ///
     /// This method loads the per-epoch operation secret tree and AEAD key from
     /// the storage provider, validates the leaf configuration (see the
@@ -418,8 +419,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// [`CreateCommitError::VirtualClientsError`]) before allocating a
     /// generation, so no operation secret is burned in that case.
     ///
-    /// Fails with `VirtualClientsError::NoDerivationEpoch` if `emulation_group`
-    /// has no registered derivation epoch, and with
+    /// Fails with `VirtualClientsError::NoDerivationEpoch` if the emulation
+    /// group has no registered derivation epoch, and with
     /// `VirtualClientsError::MissingDerivationEpochState` or
     /// `VirtualClientsError::MissingOperationTree` if the resolved epoch's state
     /// is gone. Neither the state nor the tree is instantiated on the fly, since
@@ -433,9 +434,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         self,
         crypto: &Crypto,
         storage: &Storage,
-        emulation_group: &MlsGroup,
+        emulation_group_id: &GroupId,
     ) -> Result<Self, CreateCommitError> {
-        let epoch_id = require_newest_vc_derivation_epoch(storage, emulation_group.group_id())?;
+        let epoch_id = require_newest_vc_derivation_epoch(storage, emulation_group_id)?;
         self.vc_emulation_internal(crypto, storage, epoch_id)
     }
 

@@ -51,7 +51,8 @@ impl MlsGroupBuilder {
         self
     }
 
-    /// Create the group as a virtual client of `emulation_group`.
+    /// Create the group as a virtual client of the emulation group named by
+    /// `emulation_group_id`.
     ///
     /// The group is created from the newest derivation epoch of the emulation
     /// group, which is what the draft requires of every new virtual-client
@@ -67,8 +68,8 @@ impl MlsGroupBuilder {
     ///
     /// [`MlsGroup::vc_join_at_creation`]: crate::group::MlsGroup::vc_join_at_creation
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn vc_emulation(mut self, emulation_group: &MlsGroup) -> Self {
-        self.vc_emulation_group_id = Some(emulation_group.group_id().clone());
+    pub fn vc_emulation(mut self, emulation_group_id: &GroupId) -> Self {
+        self.vc_emulation_group_id = Some(emulation_group_id.clone());
         self
     }
 

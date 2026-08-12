@@ -199,7 +199,11 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
     // Actual: send the VC commit.
     main_group
         .commit_builder()
-        .vc_emulation(provider.crypto(), provider.storage(), &emulator_group)
+        .vc_emulation(
+            provider.crypto(),
+            provider.storage(),
+            emulator_group.group_id(),
+        )
         .expect("vc_emulation")
         .load_psks(provider.storage())
         .expect("load psks")
@@ -282,7 +286,7 @@ fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
         .with_capabilities(vc_capabilities())
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
-        .vc_emulation(&emulator_group)
+        .vc_emulation(emulator_group.group_id())
         .build(provider, &vc_signer, vc_credential)
         .expect("create vc group");
 

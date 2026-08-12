@@ -19,7 +19,7 @@ use crate::{
     },
     credentials::CredentialWithKey,
     extensions::AppDataDictionary,
-    group::MlsGroup,
+    group::GroupId,
     key_packages::{
         errors::KeyPackageNewError, KeyPackage, KeyPackageBuilder, KeyPackageBundle,
         KeyPackageLeafNodeParams,
@@ -69,8 +69,9 @@ pub struct VcKeyPackageBatchBuilder {
 }
 
 impl VcKeyPackageBatchBuilder {
-    /// Load the newest derivation epoch of `emulation_group` and allocate the
-    /// next generation of its key package operation ratchet.
+    /// Load the newest derivation epoch of the emulation group named by
+    /// `emulation_group_id` and allocate the next generation of its key package
+    /// operation ratchet.
     ///
     /// The batch uses the newest derivation epoch of the emulation group, which
     /// is what the draft requires of every new virtual-client operation. The
@@ -80,19 +81,18 @@ impl VcKeyPackageBatchBuilder {
     /// generation.
     pub fn new(
         provider: &impl OpenMlsProvider,
-        emulation_group: &MlsGroup,
+        emulation_group_id: &GroupId,
     ) -> Result<Self, KeyPackageNewError> {
-        Self::with_capacity(provider, emulation_group, 0)
+        Self::with_capacity(provider, emulation_group_id, 0)
     }
 
     /// Same as [`Self::new`], but with a capacity hint for the number of key packages.
     pub fn with_capacity(
         provider: &impl OpenMlsProvider,
-        emulation_group: &MlsGroup,
+        emulation_group_id: &GroupId,
         capacity: usize,
     ) -> Result<Self, KeyPackageNewError> {
-        let epoch_id =
-            require_newest_vc_derivation_epoch(provider.storage(), emulation_group.group_id())?;
+        let epoch_id = require_newest_vc_derivation_epoch(provider.storage(), emulation_group_id)?;
         Self::with_capacity_at_epoch(provider, epoch_id, capacity)
     }
 

@@ -245,7 +245,7 @@ fn send_vc_commit<P: OpenMlsProvider>(
         .vc_emulation(
             sender_provider.crypto(),
             sender_provider.storage(),
-            emulator_group,
+            emulator_group.group_id(),
         )
         .unwrap()
         .load_psks(sender_provider.storage())
@@ -453,7 +453,7 @@ fn join_sibling_emulator<P: OpenMlsProvider>(
         .vc_emulation(
             alice_b_provider.crypto(),
             alice_b_provider.storage(),
-            &emulator_b,
+            emulator_b.group_id(),
         )
         .expect("vc emulation")
         .load_psks(alice_b_provider.storage())
@@ -688,7 +688,7 @@ fn sibling_resync_external_commit_fails_when_receiver_lacks_operation_tree() {
         .vc_emulation(
             alice_b_provider.crypto(),
             alice_b_provider.storage(),
-            &emulator_b,
+            emulator_b.group_id(),
         )
         .expect("vc emulation")
         .load_psks(alice_b_provider.storage())
@@ -894,7 +894,7 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
         .vc_emulation(
             alice_b_provider.crypto(),
             alice_b_provider.storage(),
-            &emulator_b,
+            emulator_b.group_id(),
         )
         .expect("vc emulation")
         .load_psks(alice_b_provider.storage())
@@ -1234,7 +1234,7 @@ fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
         .vc_emulation(
             alice_b_provider.crypto(),
             alice_b_provider.storage(),
-            &emulator_b,
+            emulator_b.group_id(),
         )
         .expect("vc emulation")
         .load_psks(alice_b_provider.storage())
@@ -1547,7 +1547,7 @@ fn vc_second_emulator_client_onboards_via_external_commit() {
         .vc_emulation(
             charly_a_provider.crypto(),
             charly_a_provider.storage(),
-            &emulator_a,
+            emulator_a.group_id(),
         )
         .expect("vc emulation charly_a")
         .load_psks(charly_a_provider.storage())
@@ -1793,7 +1793,7 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
         .vc_emulation(
             charly_a_provider.crypto(),
             charly_a_provider.storage(),
-            &emulator_a,
+            emulator_a.group_id(),
         )
         .expect("vc emulation charly_a")
         .add_proposal(Proposal::AppEphemeral(Box::new(AppEphemeralProposal::new(
@@ -1950,7 +1950,7 @@ fn vc_sibling_joins_higher_level_group_via_key_package_welcome() {
             &alice_a_provider,
             &vc_signer,
             vc_credential.clone(),
-            &emulator_a,
+            emulator_a.group_id(),
             1,
         )
         .expect("alice_a build_vc_batch");
@@ -2109,7 +2109,7 @@ fn vc_batch_key_packages_join_in_any_order() {
             &alice_a_provider,
             &vc_signer,
             vc_credential.clone(),
-            &emulator_a,
+            emulator_a.group_id(),
             count,
         )
         .expect("alice_a build_vc_batch");
@@ -3019,7 +3019,11 @@ fn vc_emulation_rejects_misconfigured_leaf_before_allocating() {
 
     let err = alice_group
         .commit_builder()
-        .vc_emulation(provider.crypto(), provider.storage(), &emulator_group)
+        .vc_emulation(
+            provider.crypto(),
+            provider.storage(),
+            emulator_group.group_id(),
+        )
         .expect_err("misconfigured leaf must be rejected at the builder step");
 
     assert!(
@@ -3050,7 +3054,11 @@ fn vc_operations_reject_a_group_without_a_derivation_epoch() {
 
     let err = alice_group
         .commit_builder()
-        .vc_emulation(provider.crypto(), provider.storage(), &unregistered)
+        .vc_emulation(
+            provider.crypto(),
+            provider.storage(),
+            unregistered.group_id(),
+        )
         .expect_err("a group without a derivation epoch must be rejected");
     assert!(
         matches!(
@@ -3072,7 +3080,7 @@ fn vc_operations_reject_a_group_without_a_derivation_epoch() {
             &provider,
             &vc_signer,
             vc_credential,
-            &unregistered,
+            unregistered.group_id(),
             1,
         )
         .expect_err("a group without a derivation epoch must be rejected");
@@ -3742,7 +3750,7 @@ fn vc_own_commit_echo_surfaces_as_own_pending_commit() {
         .vc_emulation(
             alice_a_provider.crypto(),
             alice_a_provider.storage(),
-            &emulator_a,
+            emulator_a.group_id(),
         )
         .expect("alice_a bind commit to derivation epoch")
         .load_psks(alice_a_provider.storage())
@@ -3868,7 +3876,7 @@ fn create_vc_group<P: OpenMlsProvider>(
         .with_capabilities(vc_capabilities())
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
-        .vc_emulation(emulator_group)
+        .vc_emulation(emulator_group.group_id())
         .build(provider, signer, credential)
         .expect("create vc group")
 }
@@ -4123,7 +4131,7 @@ fn vc_group_creation_join_fails_on_non_key_package_creator_leaf() {
         .vc_emulation(
             alice_a_provider.crypto(),
             alice_a_provider.storage(),
-            &emulator_a,
+            emulator_a.group_id(),
         )
         .expect("vc emulation commit builder")
         .load_psks(alice_a_provider.storage())
@@ -4533,7 +4541,7 @@ fn vc_private_commit_end_to_end() {
         .vc_emulation(
             alice_a_provider.crypto(),
             alice_a_provider.storage(),
-            &emulator_a,
+            emulator_a.group_id(),
         )
         .expect("vc emulation")
         .load_psks(alice_a_provider.storage())
@@ -4636,7 +4644,7 @@ fn vc_private_commit_end_to_end() {
         .vc_emulation(
             alice_a_provider.crypto(),
             alice_a_provider.storage(),
-            &emulator_a,
+            emulator_a.group_id(),
         )
         .expect("vc emulation")
         .load_psks(alice_a_provider.storage())
