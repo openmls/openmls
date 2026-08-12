@@ -265,6 +265,73 @@ pub trait StorageProvider<const VERSION: u16> {
         materials: &[(KeyPackageRef, RetainedKeyPackageMaterial)],
     ) -> Result<(), Self::Error>;
 
+    /// Write the virtual clients retention state of the emulation group with
+    /// the given id.
+    ///
+    /// The state holds the ordered log of retained derivation epochs, the
+    /// per-member watermarks and latest declarations, the obligations assumed
+    /// for removed clients, and the application's own epoch references. It is
+    /// one blob because a commit installs a member's watermark and its
+    /// declaration together, and observing one without the other would let the
+    /// epoch reaper delete state that is still declared as in use.
+    ///
+    /// Written by OpenMLS whenever a derivation epoch is recorded, a commit's
+    /// `epoch_usage` declaration is applied, emulation-group membership
+    /// changes, or the application adds or removes a reference. The application
+    /// should call it in the same storage transaction as the commit merge it
+    /// belongs to. A subsequent write replaces any previously stored state.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_retention_state<
+        GroupId: traits::GroupId<VERSION>,
+        VcRetentionState: traits::VcRetentionState<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        retention_state: &VcRetentionState,
+    ) -> Result<(), Self::Error>;
+
+    /// Write the reverse reference index of the given derivation epoch: the
+    /// higher-level groups that hold the epoch through a pending commit, an
+    /// active leaf binding, or an unacknowledged group creation.
+    ///
+    /// Those references all live keyed by higher-level group, which a reaper
+    /// working per emulation group cannot enumerate, so the epoch keeps its own
+    /// index of them. Written by OpenMLS when a reference is taken or released.
+    /// Deleted when the last reference is released (see
+    /// [`Self::delete_vc_epoch_refs`]). A subsequent write replaces any
+    /// previously stored index.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_epoch_refs<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcEpochRefs: traits::VcEpochRefs<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        epoch_refs: &VcEpochRefs,
+    ) -> Result<(), Self::Error>;
+
+    /// Write the creation tracking of the higher-level group with the given id:
+    /// the derivation epoch the group was created or externally joined from,
+    /// and the emulation-group members that have not been seen committing in
+    /// that group yet.
+    ///
+    /// A sibling that has not committed in the new group may still need the
+    /// epoch's material, so the epoch stays retained until the outstanding set
+    /// empties. Written by OpenMLS when the group is created or externally
+    /// joined and on every commit that reduces the outstanding set. Deleted
+    /// when the set empties or the group is deleted (see
+    /// [`Self::delete_vc_creation_tracking`]). A subsequent write replaces any
+    /// previously stored tracking.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_creation_tracking<
+        GroupId: traits::GroupId<VERSION>,
+        VcCreationTracking: traits::VcCreationTracking<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        creation_tracking: &VcCreationTracking,
+    ) -> Result<(), Self::Error>;
+
     //
     //    ---   setters/writers/enqueuers for crypto objects  ---
     //
@@ -589,13 +656,52 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Return `true` if any retained virtual clients KeyPackage material still
     /// references `epoch_id`. Used to keep a derivation epoch's state alive
-    /// while KeyPackages derived from it can still be welcomed (see
-    /// [`Self::delete_vc_derivation_epoch_state_if_unreferenced`]).
+    /// while KeyPackages derived from it can still be welcomed. One of the
+    /// reference sources OpenMLS consults before it deletes the epoch's state
+    /// (see [`Self::delete_vc_derivation_epoch_state`]).
     #[cfg(feature = "virtual-clients-draft")]
     fn has_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<bool, Self::Error>;
+
+    /// Load the virtual clients retention state of the given emulation group
+    /// (see [`Self::write_vc_retention_state`]). Returns `None` if the group is
+    /// not an emulation group, or is one whose retention state was never
+    /// initialized.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_retention_state<
+        GroupId: traits::GroupId<VERSION>,
+        VcRetentionState: traits::VcRetentionState<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<VcRetentionState>, Self::Error>;
+
+    /// Load the reverse reference index of the given derivation epoch (see
+    /// [`Self::write_vc_epoch_refs`]). Returns `None` if no higher-level group
+    /// holds the epoch, which is the same as an empty index.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_epoch_refs<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcEpochRefs: traits::VcEpochRefs<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcEpochRefs>, Self::Error>;
+
+    /// Load the creation tracking of the given higher-level group (see
+    /// [`Self::write_vc_creation_tracking`]). Returns `None` if the group was
+    /// not created or externally joined with virtual-client material, or if all
+    /// siblings have been seen committing in it.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_creation_tracking<
+        GroupId: traits::GroupId<VERSION>,
+        VcCreationTracking: traits::VcCreationTracking<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<VcCreationTracking>, Self::Error>;
 
     //
     //     ---    deleters for group state    ---
@@ -749,24 +855,20 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
-    /// Delete all per-epoch state for the given derivation epoch (both the
-    /// derivation epoch state and the Virtual Client Operation Secret Tree),
-    /// but only if no retained virtual clients KeyPackage material still
-    /// references it.
+    /// Delete all per-epoch state for the given derivation epoch, both the
+    /// derivation epoch state and the Virtual Client Operation Secret Tree.
     ///
-    /// Returns `Ok(true)` if the epoch state was deleted, and `Ok(false)` if
-    /// it was kept because retained material still references the epoch. The
-    /// liveness check and the deletion belong together. Providers do not open
-    /// their own transaction, so an application using a transactional provider
-    /// (such as SQLite) should call this within a transaction, so a material
-    /// stored concurrently cannot be orphaned by a deletion that already
-    /// observed the epoch as unreferenced. The in-memory provider holds its
-    /// write lock across both.
+    /// The deletion is unconditional. OpenMLS decides whether an epoch may go,
+    /// because it is the only place that sees every reference source: the
+    /// emulation group's retention state, the epoch's reverse reference index
+    /// ([`Self::vc_epoch_refs`]), and retained KeyPackage material
+    /// ([`Self::has_retained_key_package_material_for_epoch`]). Deleting state
+    /// that is not stored is a no-op.
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_derivation_epoch_state_if_unreferenced<EpochId: traits::VcEpochId<VERSION>>(
+    fn delete_vc_derivation_epoch_state<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<bool, Self::Error>;
+    ) -> Result<(), Self::Error>;
 
     /// Remove the per-epoch emulation bindings of the given group. Called
     /// when the group is being deleted.
@@ -792,6 +894,34 @@ pub trait StorageProvider<const VERSION: u16> {
     fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
+    ) -> Result<(), Self::Error>;
+
+    /// Delete the virtual clients retention state of the given emulation group
+    /// (see [`Self::write_vc_retention_state`]). Called when the emulation group
+    /// is deleted or the client removed itself from it.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_retention_state<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Delete the reverse reference index of the given derivation epoch (see
+    /// [`Self::write_vc_epoch_refs`]). Called when the last higher-level group
+    /// releases the epoch, and when the epoch's state is deleted.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_epoch_refs<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error>;
+
+    /// Delete the creation tracking of the given higher-level group (see
+    /// [`Self::write_vc_creation_tracking`]). Called when the last outstanding
+    /// sibling has been seen committing in the group, and when the group is
+    /// deleted.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_creation_tracking<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 }
 
@@ -860,6 +990,12 @@ pub mod traits {
     pub trait VcOperationTree<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait RetainedKeyPackageMaterial<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcRetentionState<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEpochRefs<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcCreationTracking<const VERSION: u16>: Entity<VERSION> {}
 
     // traits for types that implement both
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}

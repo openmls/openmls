@@ -770,23 +770,12 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_derivation_epoch_state_if_unreferenced<
-        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
-    >(
+    fn delete_vc_derivation_epoch_state<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<bool, Self::Error> {
-        // The application should call this within a transaction so the liveness
-        // check and the deletions apply atomically and a material stored
-        // concurrently cannot be orphaned.
-        if StorableKeyRef(epoch_id)
-            .has_retained_key_package_material_for_epoch::<C>(self.connection.borrow())?
-        {
-            return Ok(false);
-        }
+    ) -> Result<(), Self::Error> {
         StorableKeyRef(epoch_id).delete_vc_derivation_epoch_state::<C>(self.connection.borrow())?;
-        StorableKeyRef(epoch_id).delete_vc_operation_tree::<C>(self.connection.borrow())?;
-        Ok(true)
+        StorableKeyRef(epoch_id).delete_vc_operation_tree::<C>(self.connection.borrow())
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -944,5 +933,103 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         StorableKeyRef(hash_ref).delete_retained_key_package_material::<C>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_retention_state<
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        VcRetentionState: traits::VcRetentionState<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        retention_state: &VcRetentionState,
+    ) -> Result<(), Self::Error> {
+        crate::vc_retention::StorableRetentionStateRef(retention_state)
+            .store_vc_retention_state::<C, _>(self.connection.borrow(), group_id)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_retention_state<
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        VcRetentionState: traits::VcRetentionState<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<VcRetentionState>, Self::Error> {
+        StorableKeyRef(group_id)
+            .load_vc_retention_state::<C, VcRetentionState>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_retention_state<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        StorableKeyRef(group_id).delete_vc_retention_state::<C>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_epoch_refs<
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
+        VcEpochRefs: traits::VcEpochRefs<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        epoch_refs: &VcEpochRefs,
+    ) -> Result<(), Self::Error> {
+        crate::vc_retention::StorableEpochRefsRef(epoch_refs)
+            .store_vc_epoch_refs::<C, _>(self.connection.borrow(), epoch_id)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_epoch_refs<
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
+        VcEpochRefs: traits::VcEpochRefs<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcEpochRefs>, Self::Error> {
+        StorableKeyRef(epoch_id).load_vc_epoch_refs::<C, VcEpochRefs>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_epoch_refs<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        StorableKeyRef(epoch_id).delete_vc_epoch_refs::<C>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_creation_tracking<
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        VcCreationTracking: traits::VcCreationTracking<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        creation_tracking: &VcCreationTracking,
+    ) -> Result<(), Self::Error> {
+        crate::vc_retention::StorableCreationTrackingRef(creation_tracking)
+            .store_vc_creation_tracking::<C, _>(self.connection.borrow(), group_id)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_creation_tracking<
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        VcCreationTracking: traits::VcCreationTracking<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<VcCreationTracking>, Self::Error> {
+        StorableKeyRef(group_id)
+            .load_vc_creation_tracking::<C, VcCreationTracking>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_creation_tracking<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        StorableKeyRef(group_id).delete_vc_creation_tracking::<C>(self.connection.borrow())
     }
 }

@@ -49,9 +49,8 @@ struct TestDerivationState(Vec<u8>);
 impl traits::VcDerivationEpochState<1> for TestDerivationState {}
 impl Entity<1> for TestDerivationState {}
 
-/// A batch write stores the operation tree and the retained material, the
-/// material ties the epoch into liveness, and the guarded delete keeps the
-/// epoch state while material references it but removes it afterwards.
+/// A batch write stores the operation tree and the retained material, and the
+/// material makes the epoch report as referenced until it is deleted.
 #[test]
 fn batch_write_ties_retained_material_into_epoch_liveness() {
     let storage = storage();
@@ -90,32 +89,26 @@ fn batch_write_ties_retained_material_into_epoch_liveness() {
         .has_retained_key_package_material_for_epoch(&other_epoch_id)
         .unwrap());
 
-    // While material references the epoch the guarded delete is a no-op.
-    assert!(!storage
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .unwrap());
+    // The delete is unconditional. It removes both the epoch state and the
+    // operation tree even though material still references the epoch.
+    storage.delete_vc_derivation_epoch_state(&epoch_id).unwrap();
     let read_state: Option<TestDerivationState> =
         storage.vc_derivation_epoch_state(&epoch_id).unwrap();
-    assert!(read_state.is_some());
+    assert!(read_state.is_none());
     let read_tree: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();
-    assert!(read_tree.is_some());
+    assert!(read_tree.is_none());
 
-    // After deleting the material the guarded delete removes the epoch state
-    // and the operation tree.
+    // The material is independent of the epoch state. It keeps reporting the
+    // epoch as referenced until it is deleted itself.
+    assert!(storage
+        .has_retained_key_package_material_for_epoch(&epoch_id)
+        .unwrap());
     storage
         .delete_retained_key_package_material(&kp_ref)
         .unwrap();
     assert!(!storage
         .has_retained_key_package_material_for_epoch(&epoch_id)
         .unwrap());
-    assert!(storage
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .unwrap());
-    let read_state: Option<TestDerivationState> =
-        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
-    assert!(read_state.is_none());
-    let read_tree: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();
-    assert!(read_tree.is_none());
 }
 
 fn storage() -> openmls_sqlite_storage::SqliteStorageProvider<JsonCodec, Connection> {
@@ -156,12 +149,8 @@ fn operation_tree_read_write_delete() {
     let read: Option<TestOperationTree> = storage.vc_operation_tree(&other_epoch_id).unwrap();
     assert_eq!(read, None);
 
-    // Deleting the derivation epoch state removes the operation tree too. No
-    // retained material references this epoch, so the deletion goes through.
-    let deleted = storage
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .unwrap();
-    assert!(deleted);
+    // Deleting the derivation epoch state removes the operation tree too.
+    storage.delete_vc_derivation_epoch_state(&epoch_id).unwrap();
     let read: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();
     assert_eq!(read, None);
 }

@@ -587,10 +587,10 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_derivation_epoch_state_if_unreferenced<EpochId: traits::VcEpochId<V_TEST>>(
+    fn delete_vc_derivation_epoch_state<EpochId: traits::VcEpochId<V_TEST>>(
         &self,
         _epoch_id: &EpochId,
-    ) -> Result<bool, Self::Error> {
+    ) -> Result<(), Self::Error> {
         todo!()
     }
 
@@ -717,6 +717,99 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<V_TEST>>(
         &self,
         _hash_ref: &KeyPackageRef,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_retention_state<
+        GroupId: traits::GroupId<V_TEST>,
+        VcRetentionState: traits::VcRetentionState<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _retention_state: &VcRetentionState,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_retention_state<
+        GroupId: traits::GroupId<V_TEST>,
+        VcRetentionState: traits::VcRetentionState<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<Option<VcRetentionState>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_retention_state<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_epoch_refs<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcEpochRefs: traits::VcEpochRefs<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+        _epoch_refs: &VcEpochRefs,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_epoch_refs<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcEpochRefs: traits::VcEpochRefs<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<Option<VcEpochRefs>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_epoch_refs<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_creation_tracking<
+        GroupId: traits::GroupId<V_TEST>,
+        VcCreationTracking: traits::VcCreationTracking<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _creation_tracking: &VcCreationTracking,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_creation_tracking<
+        GroupId: traits::GroupId<V_TEST>,
+        VcCreationTracking: traits::VcCreationTracking<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<Option<VcCreationTracking>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_creation_tracking<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }

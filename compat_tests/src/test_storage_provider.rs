@@ -85,6 +85,9 @@ struct Data {
     vc_operation_tree: Table,
     retained_key_package_material: Table,
     retained_key_package_epoch: Table,
+    vc_retention_state: Table,
+    vc_epoch_refs: Table,
+    vc_creation_tracking: Table,
 }
 
 #[derive(Default)]
@@ -1106,6 +1109,42 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
+        fn vc_retention_state<
+            GroupId: traits::GroupId<$version>,
+            VcRetentionState: traits::VcRetentionState<$version>,
+        >(
+            &self,
+            group_id: &GroupId,
+        ) -> Result<Option<VcRetentionState>, $error> {
+            let data = self.0 .0.lock().unwrap();
+            read(group_id, &data.vc_retention_state)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn vc_epoch_refs<
+            EpochId: traits::VcEpochId<$version>,
+            VcEpochRefs: traits::VcEpochRefs<$version>,
+        >(
+            &self,
+            epoch_id: &EpochId,
+        ) -> Result<Option<VcEpochRefs>, $error> {
+            let data = self.0 .0.lock().unwrap();
+            read(epoch_id, &data.vc_epoch_refs)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn vc_creation_tracking<
+            GroupId: traits::GroupId<$version>,
+            VcCreationTracking: traits::VcCreationTracking<$version>,
+        >(
+            &self,
+            group_id: &GroupId,
+        ) -> Result<Option<VcCreationTracking>, $error> {
+            let data = self.0 .0.lock().unwrap();
+            read(group_id, &data.vc_creation_tracking)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
         fn write_vc_derivation_epoch_state<
             EpochId: traits::VcEpochId<$version>,
             VcDerivationEpochState: traits::VcDerivationEpochState<$version>,
@@ -1195,23 +1234,57 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
-        fn delete_vc_derivation_epoch_state_if_unreferenced<EpochId: traits::VcEpochId<$version>>(
+        fn write_vc_retention_state<
+            GroupId: traits::GroupId<$version>,
+            VcRetentionState: traits::VcRetentionState<$version>,
+        >(
+            &self,
+            group_id: &GroupId,
+            retention_state: &VcRetentionState,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            write(group_id, retention_state, &mut data.vc_retention_state)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn write_vc_epoch_refs<
+            EpochId: traits::VcEpochId<$version>,
+            VcEpochRefs: traits::VcEpochRefs<$version>,
+        >(
             &self,
             epoch_id: &EpochId,
-        ) -> Result<bool, $error> {
+            epoch_refs: &VcEpochRefs,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            write(epoch_id, epoch_refs, &mut data.vc_epoch_refs)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn write_vc_creation_tracking<
+            GroupId: traits::GroupId<$version>,
+            VcCreationTracking: traits::VcCreationTracking<$version>,
+        >(
+            &self,
+            group_id: &GroupId,
+            creation_tracking: &VcCreationTracking,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            write(group_id, creation_tracking, &mut data.vc_creation_tracking)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn delete_vc_derivation_epoch_state<EpochId: traits::VcEpochId<$version>>(
+            &self,
+            epoch_id: &EpochId,
+        ) -> Result<(), $error> {
             let mut data = self.0 .0.lock().unwrap();
             let Data {
                 vc_derivation_epoch_state,
                 vc_operation_tree,
-                retained_key_package_epoch,
                 ..
             } = &mut *data;
-            delete_vc_state_if_unreferenced(
-                epoch_id,
-                vc_derivation_epoch_state,
-                vc_operation_tree,
-                retained_key_package_epoch,
-            )
+            delete(epoch_id, vc_derivation_epoch_state)?;
+            delete(epoch_id, vc_operation_tree)
         }
 
         #[cfg(feature = "virtual-clients-draft")]
@@ -1240,6 +1313,33 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
             let mut data = self.0 .0.lock().unwrap();
             delete(hash_ref, &mut data.retained_key_package_material)?;
             delete(hash_ref, &mut data.retained_key_package_epoch)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn delete_vc_retention_state<GroupId: traits::GroupId<$version>>(
+            &self,
+            group_id: &GroupId,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            delete(group_id, &mut data.vc_retention_state)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn delete_vc_epoch_refs<EpochId: traits::VcEpochId<$version>>(
+            &self,
+            epoch_id: &EpochId,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            delete(epoch_id, &mut data.vc_epoch_refs)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn delete_vc_creation_tracking<GroupId: traits::GroupId<$version>>(
+            &self,
+            group_id: &GroupId,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            delete(group_id, &mut data.vc_creation_tracking)
         }
     };
 }
@@ -1503,25 +1603,6 @@ macro_rules! storage_helpers {
             }
 
             Ok(())
-        }
-
-        /// Deletes the derivation epoch state and operation tree for
-        /// `epoch_id` if no retained key package material still references it.
-        #[cfg(feature = "virtual-clients-draft")]
-        fn delete_vc_state_if_unreferenced<EpochId: Key<$version>>(
-            epoch_id: &EpochId,
-            epoch_states: &mut Table,
-            operation_trees: &mut Table,
-            epoch_tags: &Table,
-        ) -> Result<bool, $err> {
-            let serialized = $ser(epoch_id)?;
-            if epoch_tags.values().any(|value| value == &serialized) {
-                return Ok(false);
-            }
-            let _ = epoch_states.remove(&serialized);
-            let _ = operation_trees.remove(&serialized);
-
-            Ok(true)
         }
     };
 }

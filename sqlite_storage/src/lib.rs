@@ -38,6 +38,8 @@ mod psks;
 mod signature_key_pairs;
 mod storage_provider;
 #[cfg(feature = "virtual-clients-draft")]
+mod vc_retention;
+#[cfg(feature = "virtual-clients-draft")]
 mod vc_secrets;
 mod wrappers;
 

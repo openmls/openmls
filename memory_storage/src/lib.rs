@@ -271,6 +271,12 @@ const VC_OPERATION_TREE_LABEL: &[u8] = b"VcOperationTree";
 const RETAINED_KEY_PACKAGE_MATERIAL_LABEL: &[u8] = b"RetainedKeyPackageMaterial";
 #[cfg(feature = "virtual-clients-draft")]
 const RETAINED_KEY_PACKAGE_EPOCH_LABEL: &[u8] = b"RetainedKeyPackageEpoch";
+#[cfg(feature = "virtual-clients-draft")]
+const VC_RETENTION_STATE_LABEL: &[u8] = b"VcRetentionState";
+#[cfg(feature = "virtual-clients-draft")]
+const VC_EPOCH_REFS_LABEL: &[u8] = b"VcEpochRefs";
+#[cfg(feature = "virtual-clients-draft")]
+const VC_CREATION_TRACKING_LABEL: &[u8] = b"VcCreationTracking";
 const INTERIM_TRANSCRIPT_HASH_LABEL: &[u8] = b"InterimTranscriptHash";
 const CONFIRMATION_TAG_LABEL: &[u8] = b"ConfirmationTag";
 
@@ -1078,31 +1084,13 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_derivation_epoch_state_if_unreferenced<
-        EpochId: traits::VcEpochId<CURRENT_VERSION>,
-    >(
+    fn delete_vc_derivation_epoch_state<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<bool, Self::Error> {
+    ) -> Result<(), Self::Error> {
         let serialized_epoch_id = serde_json::to_vec(epoch_id)?;
-        // Hold the write lock across the liveness check and the deletion so a
-        // material stored concurrently cannot be orphaned.
-        let mut values = self.values.write().unwrap();
-        let referenced = values
-            .iter()
-            .any(|(key, value)| is_epoch_tag(key) && value == &serialized_epoch_id);
-        if referenced {
-            return Ok(false);
-        }
-        let state_key = build_key_from_vec::<CURRENT_VERSION>(
-            VC_DERIVATION_EPOCH_STATE_LABEL,
-            serialized_epoch_id.clone(),
-        );
-        let tree_key =
-            build_key_from_vec::<CURRENT_VERSION>(VC_OPERATION_TREE_LABEL, serialized_epoch_id);
-        values.remove(&state_key);
-        values.remove(&tree_key);
-        Ok(true)
+        self.delete::<CURRENT_VERSION>(VC_DERIVATION_EPOCH_STATE_LABEL, &serialized_epoch_id)?;
+        self.delete::<CURRENT_VERSION>(VC_OPERATION_TREE_LABEL, &serialized_epoch_id)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -1304,6 +1292,132 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let serialized_ref = serde_json::to_vec(hash_ref)?;
         self.delete::<CURRENT_VERSION>(RETAINED_KEY_PACKAGE_MATERIAL_LABEL, &serialized_ref)?;
         self.delete::<CURRENT_VERSION>(RETAINED_KEY_PACKAGE_EPOCH_LABEL, &serialized_ref)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_retention_state<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        VcRetentionState: traits::VcRetentionState<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        retention_state: &VcRetentionState,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            VC_RETENTION_STATE_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+            serde_json::to_vec(retention_state).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_retention_state<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        VcRetentionState: traits::VcRetentionState<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<VcRetentionState>, Self::Error> {
+        let values = self.values.read().unwrap();
+        let key = build_key::<CURRENT_VERSION, &GroupId>(VC_RETENTION_STATE_LABEL, group_id);
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        Ok(serde_json::from_slice(value).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_retention_state<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(
+            VC_RETENTION_STATE_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_epoch_refs<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcEpochRefs: traits::VcEpochRefs<CURRENT_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        epoch_refs: &VcEpochRefs,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            VC_EPOCH_REFS_LABEL,
+            &serde_json::to_vec(epoch_id).unwrap(),
+            serde_json::to_vec(epoch_refs).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_epoch_refs<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcEpochRefs: traits::VcEpochRefs<CURRENT_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcEpochRefs>, Self::Error> {
+        let values = self.values.read().unwrap();
+        let key = build_key::<CURRENT_VERSION, &EpochId>(VC_EPOCH_REFS_LABEL, epoch_id);
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        Ok(serde_json::from_slice(value).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_epoch_refs<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(VC_EPOCH_REFS_LABEL, &serde_json::to_vec(epoch_id).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_creation_tracking<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        VcCreationTracking: traits::VcCreationTracking<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        creation_tracking: &VcCreationTracking,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            VC_CREATION_TRACKING_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+            serde_json::to_vec(creation_tracking).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_creation_tracking<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        VcCreationTracking: traits::VcCreationTracking<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<VcCreationTracking>, Self::Error> {
+        let values = self.values.read().unwrap();
+        let key = build_key::<CURRENT_VERSION, &GroupId>(VC_CREATION_TRACKING_LABEL, group_id);
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        Ok(serde_json::from_slice(value).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_creation_tracking<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(
+            VC_CREATION_TRACKING_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+        )
     }
 }
 

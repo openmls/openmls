@@ -15,3 +15,9 @@ pub mod vc_operation_tree;
 /// and the actions the commit performs.
 #[cfg(feature = "virtual-clients-draft")]
 pub mod vc_commit_data;
+
+/// Virtual-clients retention bookkeeping (mls-virtual-clients draft): the
+/// per-member watermarks, retained-epoch log and declarations that decide which
+/// derivation epochs an emulation group keeps.
+#[cfg(feature = "virtual-clients-draft")]
+pub mod vc_retention;

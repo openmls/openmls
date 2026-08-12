@@ -470,8 +470,23 @@ impl DerivationInfo {
 /// Derived deterministically from the emulation group's
 /// `safe_export_secret(VC_COMPONENT_ID)`, so every emulator client of a virtual
 /// client arrives at the same value for a given derivation epoch.
+///
+/// The order is over the opaque bytes and only serves to key local sets and
+/// maps deterministically. The wire order of a `VcEpochUsage` compares TLS
+/// serializations instead, which agrees with this one for the equal-length ids a
+/// derivation produces.
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserializeBytes,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserializeBytes,
 )]
 pub struct EpochId(VLByteVec);
 

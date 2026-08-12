@@ -3431,14 +3431,10 @@ fn bound_group_fails_closed_when_derivation_state_missing_on_send() {
 
     let epoch_id = newest_epoch(&emulator_group, &provider);
     let _commit_msg = send_vc_commit(&mut alice_group, &emulator_group, &provider, &alice_signer);
-    let deleted = provider
+    provider
         .storage()
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .delete_vc_derivation_epoch_state(&epoch_id)
         .expect("delete derivation epoch state");
-    assert!(
-        deleted,
-        "no retained material, so the epoch state is deleted"
-    );
 
     let err = alice_group
         .create_message(&provider, &alice_signer, b"must not send")

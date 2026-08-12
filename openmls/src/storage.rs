@@ -164,6 +164,7 @@ mod virtual_clients_storage {
         VcEmulationBindings,
     };
     use crate::components::vc_operation_tree::OperationSecretTree;
+    use crate::components::vc_retention::{VcCreationTracking, VcEpochRefs, VcRetentionState};
 
     // EpochId is both used as a key and a value, so it implements both traits.
     impl Key<CURRENT_VERSION> for EpochId {}
@@ -184,6 +185,15 @@ mod virtual_clients_storage {
 
     impl Entity<CURRENT_VERSION> for RetainedKeyPackageMaterial {}
     impl traits::RetainedKeyPackageMaterial<CURRENT_VERSION> for RetainedKeyPackageMaterial {}
+
+    impl Entity<CURRENT_VERSION> for VcRetentionState {}
+    impl traits::VcRetentionState<CURRENT_VERSION> for VcRetentionState {}
+
+    impl Entity<CURRENT_VERSION> for VcEpochRefs {}
+    impl traits::VcEpochRefs<CURRENT_VERSION> for VcEpochRefs {}
+
+    impl Entity<CURRENT_VERSION> for VcCreationTracking {}
+    impl traits::VcCreationTracking<CURRENT_VERSION> for VcCreationTracking {}
 }
 
 #[cfg(test)]
